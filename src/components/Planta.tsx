@@ -322,7 +322,7 @@ function Carimbo(props: {
 
       {/* declaração confrontantes (resumida) */}
       <text x={x0 + 10} y={yAssin + 160} fontSize={8.5} fontWeight="bold">CONFRONTANTES</text>
-      <BlocoTexto x={x0 + 10} y={yAssin + 166} w={CARW - 24} h={70}
+      <TextoQuebrado x={x0 + 10} y={yAssin + 174} fontSize={8} larguraChars={62}
         texto="Concordamos com as medidas apresentadas nesta planta e no memorial anexo, no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade (§10 do art. 213 da LRP)." />
 
       {/* carimbo do escritório */}
@@ -336,11 +336,20 @@ function Carimbo(props: {
   );
 }
 
-// SVG não quebra texto sozinho; usamos <foreignObject> para o bloco de confrontantes.
-function BlocoTexto({ x, y, w, h, texto }: { x: number; y: number; w: number; h: number; texto: string }) {
+// SVG não quebra texto sozinho; quebramos em linhas por contagem de caracteres (texto nativo,
+// para o PDF rasterizar sem problema — foreignObject costuma falhar na conversão p/ canvas).
+function TextoQuebrado({ x, y, fontSize, larguraChars, texto }: { x: number; y: number; fontSize: number; larguraChars: number; texto: string }) {
+  const palavras = texto.split(' ');
+  const linhas: string[] = [];
+  let atual = '';
+  for (const p of palavras) {
+    if ((atual + ' ' + p).trim().length > larguraChars) { linhas.push(atual.trim()); atual = p; }
+    else atual = (atual + ' ' + p).trim();
+  }
+  if (atual) linhas.push(atual.trim());
   return (
-    <foreignObject x={x} y={y} width={w} height={h}>
-      <div style={{ fontSize: '8px', lineHeight: 1.25, color: '#000', textAlign: 'justify' }}>{texto}</div>
-    </foreignObject>
+    <text x={x} y={y} fontSize={fontSize} fill="#000">
+      {linhas.map((l, i) => <tspan key={i} x={x} dy={i === 0 ? 0 : fontSize * 1.25}>{l}</tspan>)}
+    </text>
   );
 }

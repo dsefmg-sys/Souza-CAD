@@ -79,7 +79,14 @@ Objetivo: tornar o núcleo à prova de erro e reutilizável.
   geramos uma planilha por gleba (arquivos separados), que é o fluxo já validado do dono. O
   multi-aba precisa de um template oficial multi-parcela para conferir a validade no SIGEF.
 
-## Etapa 3 — Motor de planta A3 profissional
+## Etapa 3 — Motor de planta A3 profissional  [GRANDE PARTE FEITA]
+Feito: layout A3 com carimbo do escritório (logo editável), confrontantes com rótulo + linha de
+assinatura por divisa, convenções por tipo de divisa, três nortes (NV/NQ/NM com convergência
+calculada + declinação informada), bloco de informações de coordenadas, texto central da gleba,
+impressão em folha A3. Falta: **planta de situação** (recorte sobre satélite) e **botão de PDF
+direto** (hoje via impressão do navegador → salvar como PDF).
+
+### (referência original)
 A planta dos modelos, fiel: A3, carimbo do escritório (com logotipo), bloco de título com todos
 os campos, blocos de assinatura (proprietário, laudo técnico, declaração dos confrontantes).
 - Confrontantes com rótulo + linha de assinatura ao lado de cada divisa.

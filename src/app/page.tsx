@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
+import { jsPDF } from 'jspdf';
 import {
   Upload, FileText, Sheet, Map as MapIcon, Printer, Settings, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
@@ -303,7 +304,30 @@ export default function EditorPage() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     await comCodigos();
     setVista('planta');
-    setTimeout(() => window.print(), 300);
+    aviso('Gerando PDF da planta…');
+    setTimeout(() => {
+      const svg = document.getElementById('planta-svg') as SVGSVGElement | null;
+      if (!svg) { aviso('Abra a planta e tente de novo.'); return; }
+      const xml = new XMLSerializer().serializeToString(svg);
+      const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
+      const img = new Image();
+      img.onload = () => {
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = 1587 * scale; canvas.height = 1123 * scale;
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 420, 297);
+        const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
+        pdf.save(`Planta - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.pdf`);
+        aviso('PDF da planta gerado.');
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); aviso('Não consegui rasterizar a planta.'); };
+      img.src = url;
+    }, 450);
   }
 
   async function exportarDxf() {
@@ -434,7 +458,7 @@ export default function EditorPage() {
         <div className="mx-1 h-6 w-px bg-border" />
         <Button size="sm" variant="outline" onClick={exportarMemorial}><FileText /> Memorial</Button>
         <Button size="sm" variant="outline" onClick={exportarOds}><Sheet /> Planilha SIGEF</Button>
-        <Button size="sm" variant="outline" onClick={exportarPlanta}><Printer /> Planta</Button>
+        <Button size="sm" variant="outline" onClick={exportarPlanta}><Printer /> Planta PDF</Button>
         <Button size="sm" variant="outline" onClick={exportarDxf}><PenTool /> DXF</Button>
         <Button size="sm" variant="outline" onClick={() => setReqAberto(true)}><FileSignature /> Requerimento</Button>
         <div className="mx-1 h-6 w-px bg-border" />
