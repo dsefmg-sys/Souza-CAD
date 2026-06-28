@@ -75,9 +75,11 @@ Objetivo: tornar o núcleo à prova de erro e reutilizável.
   (PG/PA/PT, inclui PT8 virtual), com as listas oficiais do template; ligados na planilha.
 - [FEITO] Modelo de dados **multi-gleba** (várias parcelas num imóvel) + UI de glebas (trocar/
   criar/renomear/remover) + migração de projetos antigos + geração por gleba ativa.
-- [PENDENTE] **ODS num único arquivo com várias abas `perimetro_N`** (uma por gleba). Hoje
-  geramos uma planilha por gleba (arquivos separados), que é o fluxo já validado do dono. O
-  multi-aba precisa de um template oficial multi-parcela para conferir a validade no SIGEF.
+- [FEITO] **ODS num único arquivo com várias abas `perimetro_N`** (uma por gleba). O dono
+  confirmou: é a mesma planilha + uma aba de perímetro idêntica por gleba. Clonamos a aba
+  `perimetro_1` → `perimetro_2`... com a parcela 001/002 e os vértices de cada gleba;
+  identificação compartilhada. Verificado: estrutura/validações intactas. Registra os pontos
+  com códigos únicos entre as parcelas.
 
 ## Etapa 3 — Motor de planta A3 profissional  [GRANDE PARTE FEITA]
 Feito: layout A3 com carimbo do escritório (logo editável), confrontantes com rótulo + linha de
