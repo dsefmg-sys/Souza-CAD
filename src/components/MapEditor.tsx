@@ -12,6 +12,7 @@ interface Props {
   selecionadoId: string | null;
   modo: ModoEdicao;
   mostrarRotulos: boolean;
+  referencias?: [number, number][][];
   onMover: (id: string, lat: number, lon: number) => void;
   onSelecionar: (id: string) => void;
   onApagar: (id: string) => void;
@@ -63,7 +64,7 @@ function CliqueMapa({ modo, onInserir }: { modo: ModoEdicao; onInserir: (lat: nu
   return null;
 }
 
-export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulos, onMover, onSelecionar, onApagar, onInserir }: Props) {
+export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulos, referencias = [], onMover, onSelecionar, onApagar, onInserir }: Props) {
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
   const centro = useMemo<[number, number]>(() => {
     if (validos.length) return [validos[0].lat, validos[0].lon];
@@ -93,6 +94,11 @@ export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulo
 
       <AjustarLimites vertices={validos} />
       <CliqueMapa modo={modo} onInserir={onInserir} />
+
+      {/* parcelas certificadas de referência (snap) */}
+      {referencias.filter((r) => r.length >= 2).map((r, i) => (
+        <Polyline key={`ref${i}`} positions={r.length >= 3 ? [...r, r[0]] : r} pathOptions={{ color: '#06b6d4', weight: 1.5, dashArray: '5 4' }} />
+      ))}
 
       {anel.length >= 3 ? (
         <Polygon positions={anel} pathOptions={{ color: '#facc15', weight: 2, fillColor: '#facc15', fillOpacity: 0.12 }} />

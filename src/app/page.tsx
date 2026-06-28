@@ -28,6 +28,7 @@ import { calcular } from '@/lib/topo/calcular';
 import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarSituacao } from '@/lib/io/situacao';
+import { importarGeoJsonAneis } from '@/lib/io/geojson';
 import { ancoraMunicipio } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
@@ -76,6 +77,8 @@ export default function EditorPage() {
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [snapAtivo, setSnapAtivo] = useState(false);
   const [situacaoUrl, setSituacaoUrl] = useState<string | undefined>(undefined);
+  // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
+  const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro');
   const [vista, setVista] = useState<'mapa' | 'planta'>('mapa');
   const [aba, setAba] = useState<Aba>('imovel');
@@ -93,6 +96,7 @@ export default function EditorPage() {
   const [msg, setMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const dxfRef = useRef<HTMLInputElement>(null);
+  const geojsonRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTecnico(carregarTecnico());
@@ -214,6 +218,7 @@ export default function EditorPage() {
   function alvosSnap(excluirId?: string) {
     const a = vertices.filter((v) => v.id !== excluirId).map((v) => ({ leste: v.leste, norte: v.norte }));
     for (const g of glebas) if (g.id !== glebaAtivaId) for (const v of g.vertices) a.push({ leste: v.leste, norte: v.norte });
+    for (const anel of referencias) for (const p of anel) a.push({ leste: p.leste, norte: p.norte });
     return a;
   }
 
@@ -351,6 +356,20 @@ export default function EditorPage() {
     }, 450);
   }
 
+  async function importarReferenciaGeoJson(file: File) {
+    try {
+      const texto = await file.text();
+      const { aneis, geografico } = importarGeoJsonAneis(texto);
+      if (!aneis.length) { aviso('Nenhum polígono encontrado no GeoJSON.'); return; }
+      const refs = aneis.map((anel) => anel.map((p) => {
+        if (geografico) { const lat = p.y, lon = p.x; const u = geoParaUtm(lat, lon, zona, hemisferio); return { lat, lon, leste: u.leste, norte: u.norte }; }
+        const leste = p.x, norte = p.y; const g = utmParaGeo(leste, norte, zona, hemisferio); return { lat: g.lat, lon: g.lon, leste, norte };
+      }));
+      setReferencias(refs);
+      aviso(`${refs.length} parcela(s) de referência importada(s). Ligue o snap para encostar nos pontos certificados.`);
+    } catch { aviso('GeoJSON inválido.'); }
+  }
+
   async function gerarSituacaoPlanta() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     aviso('Buscando satélite da situação…');
@@ -482,8 +501,11 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarDxfArquivo(f); e.currentTarget.value = ''; }} />
+        <input ref={geojsonRef} type="file" accept=".geojson,.json" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarReferenciaGeoJson(f); e.currentTarget.value = ''; }} />
         <Button size="sm" variant="secondary" disabled={processando} onClick={() => fileRef.current?.click()}><Upload /> Importar TXT</Button>
         <Button size="sm" variant="secondary" disabled={processando} onClick={() => dxfRef.current?.click()}><Upload /> Importar DXF</Button>
+        <Button size="sm" variant="secondary" onClick={() => geojsonRef.current?.click()} title="Importar confrontante certificado (GeoJSON do SIGEF/QGIS)"><Upload /> Ref. SIGEF</Button>
         <div className="mx-1 h-6 w-px bg-border" />
         <Button size="sm" variant="outline" onClick={exportarMemorial}><FileText /> Memorial</Button>
         <Button size="sm" variant="outline" onClick={exportarOds}><Sheet /> Planilha SIGEF</Button>
@@ -521,6 +543,7 @@ export default function EditorPage() {
                 <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} onClick={() => setSnapAtivo((s) => !s)} title="Snap: encaixar em vértices existentes"><Magnet /></Button>
               </div>
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos}
+                referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice} />
             </>
           ) : (
