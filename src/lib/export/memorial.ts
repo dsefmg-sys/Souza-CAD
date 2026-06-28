@@ -41,45 +41,66 @@ export function construirNarrativa(
 
   let txt = `Inicia-se a descrição deste perímetro no vértice ${v0.codigoSigef}, de coordenadas (${coordTexto(v0)}); `;
 
-  // agrupa lados consecutivos por confrontante
-  type Run = { confrontanteId: string | null; ladoIdx: number[] };
+  // agrupa lados consecutivos por (confrontante + tipo de divisa). Uma nova "passada" começa
+  // quando muda o confrontante OU o tipo de linha (cerca, córrego, linha ideal...).
+  type Run = { confrontanteId: string | null; representacao: string; ladoIdx: number[] };
   const runs: Run[] = [];
   lados.forEach((l, i) => {
     const cid = confrontantePorLado[i] ?? l.confrontanteId ?? null;
+    const rep = l.de.representacao || 'linha-ideal';
     const ultima = runs[runs.length - 1];
-    if (ultima && ultima.confrontanteId === cid) ultima.ladoIdx.push(i);
-    else runs.push({ confrontanteId: cid, ladoIdx: [i] });
+    if (ultima && ultima.confrontanteId === cid && ultima.representacao === rep) ultima.ladoIdx.push(i);
+    else runs.push({ confrontanteId: cid, representacao: rep, ladoIdx: [i] });
   });
 
   const totalLados = lados.length;
+  let confAnterior: string | null = null;
   runs.forEach((run, rIdx) => {
     const c = run.confrontanteId ? mapaC.get(run.confrontanteId) : undefined;
-    txt += `deste, segue por linha ideal, confrontando com ${descreverConfrontante(c)}, com os seguintes azimutes e distâncias: `;
-    const itens = run.ladoIdx.map((i) => {
+    const mesmoConf = run.confrontanteId != null && run.confrontanteId === confAnterior;
+    const confTxt = mesmoConf ? 'ainda confrontando com o mesmo' : `confrontando com ${descreverConfrontante(c)}`;
+    const item = (i: number) => {
       const l = lados[i];
-      const ehUltimoGlobal = i === totalLados - 1;
-      const az = azimuteDMS(l.azimute);
-      const d = numBR(l.distancia);
-      if (ehUltimoGlobal) {
-        return `${az} e ${d} m até o vértice ${l.para.codigoSigef}, ponto inicial da descrição deste perímetro`;
-      }
+      const az = azimuteDMS(l.azimute), d = numBR(l.distancia);
+      if (i === totalLados - 1) return `${az} e ${d} m até o vértice ${l.para.codigoSigef}, ponto inicial da descrição deste perímetro`;
       return `${az} e ${d} m até o vértice ${l.para.codigoSigef} (${coordTexto(l.para)})`;
-    });
-    // junção: "i1; i2; e i3"  | último lado global usa "e finalmente"
-    let bloco: string;
-    if (itens.length === 1) {
-      bloco = itens[0];
+    };
+
+    if (run.ladoIdx.length === 1) {
+      const i = run.ladoIdx[0];
+      const l = lados[i];
+      const az = azimuteDMS(l.azimute), d = numBR(l.distancia);
+      const destino = i === totalLados - 1
+        ? `o vértice ${l.para.codigoSigef}, ponto inicial da descrição deste perímetro`
+        : `o vértice ${l.para.codigoSigef} (${coordTexto(l.para)})`;
+      txt += `deste, segue por ${seguePor(run.representacao)}, ${confTxt}, com azimute de ${az} e distância de ${d} m até ${destino}`;
     } else {
+      const itens = run.ladoIdx.map(item);
       const ultimoIdxLado = run.ladoIdx[run.ladoIdx.length - 1];
       const conector = ultimoIdxLado === totalLados - 1 ? 'e finalmente ' : 'e ';
-      bloco = itens.slice(0, -1).join('; ') + '; ' + conector + itens[itens.length - 1];
+      const bloco = itens.slice(0, -1).join('; ') + '; ' + conector + itens[itens.length - 1];
+      txt += `deste, segue por ${seguePor(run.representacao)}, ${confTxt}, com os seguintes azimutes e distâncias: ${bloco}`;
     }
-    txt += bloco;
+    confAnterior = run.confrontanteId;
     if (rIdx < runs.length - 1) txt += '; ';
   });
 
   txt += '.';
   return txt;
+}
+
+/** Como o memorial descreve a linha que "segue por", conforme o tipo de divisa. */
+function seguePor(representacao: string): string {
+  switch (representacao) {
+    case 'cerca': return 'cerca';
+    case 'muro': return 'muro';
+    case 'vala': return 'vala';
+    case 'estrada': return 'estrada';
+    case 'corrego':
+    case 'rio':
+    case 'acude': return 'corpo de água';
+    default: return 'linha ideal';
+  }
 }
 
 const INFO_TECNICAS =

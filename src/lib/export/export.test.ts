@@ -87,6 +87,18 @@ describe('memorial', () => {
     })).rejects.toThrow(/sem código/);
   });
 
+  it('descreve o tipo de divisa ("segue por cerca") e "ainda confrontando com o mesmo"', () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    // muda só o 1º lado para cerca: vira passada própria, e o resto do mesmo confrontante
+    // segue como "ainda confrontando com o mesmo".
+    res.vertices[0] = { ...res.vertices[0], representacao: 'cerca' };
+    res.lados[0] = { ...res.lados[0], de: res.vertices[0] };
+    const txt = construirNarrativa(res, confrontantes, confrontantePorLado);
+    expect(txt).toContain('segue por cerca');
+    expect(txt).toContain('ainda confrontando com o mesmo');
+    expect(txt).toContain('com azimute de'); // trecho de lado único no singular
+  });
+
   it('gera o .docx', async () => {
     const { res, confrontantes, confrontantePorLado } = preparar();
     const blob = await gerarMemorialDocx({
