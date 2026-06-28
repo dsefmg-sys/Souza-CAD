@@ -17,6 +17,7 @@ interface Props {
   hemisferio: 'N' | 'S';
   glebaNome?: string;
   dataExtenso?: string;
+  situacaoUrl?: string;
 }
 
 // A3 paisagem @96dpi: 420x297mm
@@ -38,7 +39,7 @@ const REPRES_LABEL: Record<string, string> = {
   rio: 'Rio', acude: 'Açude', muro: 'Muro', vala: 'Vala',
 };
 
-export default function Planta({ vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado, zona, hemisferio, glebaNome, dataExtenso }: Props) {
+export default function Planta({ vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado, zona, hemisferio, glebaNome, dataExtenso, situacaoUrl }: Props) {
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
   }
@@ -160,6 +161,16 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
           <text key={i} x={cx} y={cy + i * 14} fontSize={i === 0 ? 13 : 11} fontWeight={i === 0 ? 'bold' : 'normal'} textAnchor="middle" fill="#1c1917">{t}</text>
         ))}
       </g>
+
+      {/* ---------- PLANTA DE SITUAÇÃO (recorte sobre satélite) ---------- */}
+      {situacaoUrl ? (
+        <g>
+          <image href={situacaoUrl} x={DRAW.x0 + 6} y={DRAW.y0 + 6} width={232} height={168} preserveAspectRatio="xMidYMid slice" />
+          <rect x={DRAW.x0 + 6} y={DRAW.y0 + 6} width={232} height={168} fill="none" stroke="#000" strokeWidth={1} />
+          <rect x={DRAW.x0 + 6} y={DRAW.y0 + 6} width={232} height={15} fill="#000" />
+          <text x={DRAW.x0 + 122} y={DRAW.y0 + 17} fontSize={9} fontWeight="bold" textAnchor="middle" fill="#fff">PLANTA DE SITUAÇÃO</text>
+        </g>
+      ) : null}
 
       {/* ---------- FAIXA INFERIOR ---------- */}
       <Faixa

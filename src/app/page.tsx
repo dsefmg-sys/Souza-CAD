@@ -27,6 +27,7 @@ import { novaGlebaVazia, glebaDe, migrarProjeto } from '@/lib/topo/glebas';
 import { calcular } from '@/lib/topo/calcular';
 import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
+import { gerarSituacao } from '@/lib/io/situacao';
 import { ancoraMunicipio } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
@@ -74,6 +75,7 @@ export default function EditorPage() {
   const [modo, setModo] = useState<ModoEdicao>('navegar');
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [snapAtivo, setSnapAtivo] = useState(false);
+  const [situacaoUrl, setSituacaoUrl] = useState<string | undefined>(undefined);
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro');
   const [vista, setVista] = useState<'mapa' | 'planta'>('mapa');
   const [aba, setAba] = useState<Aba>('imovel');
@@ -349,6 +351,14 @@ export default function EditorPage() {
     }, 450);
   }
 
+  async function gerarSituacaoPlanta() {
+    if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
+    aviso('Buscando satélite da situação…');
+    const url = await gerarSituacao(vertices.map((v) => ({ lat: v.lat, lon: v.lon })));
+    setSituacaoUrl(url ?? undefined);
+    aviso(url ? 'Planta de situação gerada.' : 'Não consegui carregar o satélite (rede/CORS).');
+  }
+
   async function exportarDxf() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     const vs = await comCodigos();
@@ -514,12 +524,16 @@ export default function EditorPage() {
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice} />
             </>
           ) : (
-            <div id="planta-print" className="h-full overflow-auto bg-neutral-200 p-4">
+            <div id="planta-print" className="relative h-full overflow-auto bg-neutral-200 p-4">
+              <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
+                <Button size="sm" variant="secondary" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
+                {situacaoUrl && <Button size="sm" variant="ghost" onClick={() => setSituacaoUrl(undefined)}>Remover</Button>}
+              </div>
               {res && tecnico && escritorio && (
                 <div className="mx-auto max-w-[1587px] bg-white shadow">
                   <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                     confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
-                    glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} />
+                    glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} />
                 </div>
               )}
             </div>
