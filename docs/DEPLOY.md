@@ -30,6 +30,23 @@ e cadastros entre dispositivos e ter login/multiusuário:
    existem (`firebaseConfigurado`). Próximo passo de código: uma camada `store/cloud` que espelha
    `projetos`/cadastros no Firestore por usuário (o banco de pontos por credenciado vira por conta).
 
+## CONECTADO — projeto Firebase `souza-cad`
+O app já tem login (Google + e-mail/senha) e salva **projetos e cadastros no Firestore** quando
+logado (`users/{uid}/...`); sem login, fica tudo local (IndexedDB). Config local em `.env.local`
+(não versionado). Passos para ativar de fato:
+
+1. **Ativar provedores de login** no Firebase console → Authentication → Sign-in method:
+   habilite **Google** e **E-mail/senha**.
+2. **Domínios autorizados** (Authentication → Settings → Authorized domains): adicione
+   `localhost`, o domínio da Vercel (`*.vercel.app`) e `souzacad.souza-solucoes-agro.com.br`.
+3. **Publicar as regras do Firestore** (segurança por usuário): com o firebase-tools instalado,
+   ```
+   firebase login
+   firebase deploy --only firestore:rules
+   ```
+4. **Vercel**: em Settings → Environment Variables, copie as mesmas variáveis `NEXT_PUBLIC_FIREBASE_*`
+   do `.env.local`.
+
 ## Por que Vercel + Firebase
 - Vercel: melhor experiência para Next.js, deploy e subdomínio triviais.
 - Firebase: mesmo ecossistema dos outros apps do escritório; Firestore para dados + Auth para login.

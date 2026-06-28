@@ -1,7 +1,7 @@
 // Inicialização do Firebase (cliente) — só ativa se as variáveis de ambiente estiverem
 // configuradas. Enquanto não houver backend, o app segue 100% local (IndexedDB).
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, type Firestore } from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
 
 const cfg = {
@@ -22,9 +22,17 @@ export function firebaseApp(): FirebaseApp | null {
   if (!_app) _app = getApps()[0] ?? initializeApp(cfg as Record<string, string>);
   return _app;
 }
+let _db: Firestore | null = null;
 export function db(): Firestore | null {
   const a = firebaseApp();
-  return a ? getFirestore(a) : null;
+  if (!a) return null;
+  if (!_db) {
+    // ignoreUndefinedProperties: o Firestore rejeita campos undefined; nossos projetos têm
+    // campos opcionais (requerente, transmitente, posRotulo...). Isso evita erro ao salvar.
+    try { _db = initializeFirestore(a, { ignoreUndefinedProperties: true }); }
+    catch { _db = getFirestore(a); }
+  }
+  return _db;
 }
 export function auth(): Auth | null {
   const a = firebaseApp();

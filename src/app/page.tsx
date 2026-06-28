@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
 import RequerimentoModal from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
+import AuthBar from '@/components/AuthBar';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -652,6 +653,7 @@ export default function EditorPage() {
           {msg && <span className="text-xs text-primary">{msg}</span>}
           <Button size="sm" variant="ghost" disabled={processando} onClick={salvar}><Save /> Salvar</Button>
           <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
+          <AuthBar onMudou={() => { atualizarLista(); }} />
           <Link href="/cadastros"><Button size="sm" variant="ghost"><BookUser /> Cadastros</Button></Link>
           <Link href="/configuracoes"><Button size="sm" variant="ghost"><Settings /> Config</Button></Link>
         </div>
