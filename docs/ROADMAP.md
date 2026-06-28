@@ -26,6 +26,20 @@ yet available"; excluir pontos (modo apagar).
 - Etapa 4 (CAD leve): selecionar vários objetos; snap; editar na visão de mapa E de planta.
 - Cartório: reutilização de CNS já entregue (cadastro + sugestão nos campos).
 
+## Concluído (DXF georreferenciado) + comparação com QCAD/SolarCAD
+Importar e exportar **DXF em UTM (metros)**, com a poligonal, pontos e rótulos, e o **SRC
+anotado** (SIRGAS2000 / UTM fuso N) no desenho. Round-trip testado.
+
+Os pontos fracos que o dono levantou sobre QCAD/SolarCAD estão **resolvidos por desenho** aqui,
+porque o Métrica é georreferência-nativo (não um CAD genérico):
+- **Conhece o SRC/datum** (SIRGAS2000 + fuso por projeto) — o QCAD trata como plano genérico.
+- **Reprojeta UTM↔lat/long** nativamente (proj4) — o QCAD não reprojeta.
+- **Mapa de fundo georreferenciado** (satélite Leaflet alinhado por coordenada) — o QCAD não tem.
+- **Não perde a etiqueta de SRC ao salvar**: o DXF exportado leva o SRC anotado (layer + TEXT);
+  e o app guarda fuso/datum no projeto, então a georreferência nunca depende só do arquivo.
+Falta (futuro, se necessário): escrever o objeto `GEODATA` formal do DXF e reprojeção entre
+fusos na importação (hoje assume o fuso do projeto, que é o caso real do dono).
+
 ## Concluído (Documentos cartoriais)
 - **Requerimento de averbação com retificação de área** (.docx) gerado automaticamente,
   reaproveitando imóvel/proprietário/área/técnico; campos novos de qualificação (requerente e

@@ -8,7 +8,7 @@ import {
   Upload, FileText, Sheet, Map as MapIcon, Printer, Settings, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, FileSignature,
+  Moon, Sun, Pencil, FileSignature, PenTool,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,8 @@ import { montarVertices, reordenar, inverterSentido, definirInicio, novoVertice,
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
 import { novaGlebaVazia, glebaDe, migrarProjeto } from '@/lib/topo/glebas';
 import { calcular } from '@/lib/topo/calcular';
-import { detectarZona, escolherZonaPorAncora, geoParaUtm } from '@/lib/topo/coords';
+import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
+import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { ancoraMunicipio } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { conferir, valoresEfetivos, type Problema } from '@/lib/topo/conferencia';
@@ -83,6 +84,7 @@ export default function EditorPage() {
   const [totalPontos, setTotalPontos] = useState(0);
   const [msg, setMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const dxfRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTecnico(carregarTecnico());
@@ -302,6 +304,42 @@ export default function EditorPage() {
     setTimeout(() => window.print(), 300);
   }
 
+  async function exportarDxf() {
+    if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
+    const vs = await comCodigos();
+    const dxf = gerarDxf(
+      vs.map((v) => ({ leste: v.leste, norte: v.norte, codigoSigef: v.codigoSigef, tipo: v.tipo })),
+      { zona, hemisferio, titulo: imovel.denominacao || nomeProjeto }
+    );
+    const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
+    saveAs(new Blob([dxf], { type: 'application/dxf' }), `${imovel.denominacao || nomeProjeto || 'desenho'}${sufixo}.dxf`);
+  }
+
+  async function importarDxfArquivo(file: File) {
+    if (processando) return;
+    setProcessando(true);
+    try {
+      const texto = await file.text();
+      let anel = anelDeDxf(importarDxf(texto));
+      if (!anel || anel.length < 3) { aviso('Não encontrei uma poligonal fechada no DXF.'); return; }
+      // remove ponto de fechamento duplicado, se houver
+      const f = anel[0], l = anel[anel.length - 1];
+      if (Math.hypot(f.x - l.x, f.y - l.y) < 0.01) anel = anel.slice(0, -1);
+      const tec = tecnico ?? carregarTecnico();
+      const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
+      let vs: Vertex[] = anel.map((p) => {
+        const { lat, lon } = utmParaGeo(p.x, p.y, zona, hemisferio);
+        return { ...novoVertice({ lat, lon, leste: p.x, norte: p.y, elevacao: 0 }), metodo: tec.metodoPosicionamento, tipoLimite: tec.tipoLimite, representacao: 'linha-ideal' };
+      });
+      vs = atribuirProvisorio(reordenar(vs), cont);
+      const { confrontantes: cs, confrontantePorLado: mapa } = montarConfrontantes(vs);
+      const alvoId = glebaAtivaId;
+      setGlebas((prev) => prev.map((g) => (g.id === alvoId ? { ...g, vertices: vs, confrontantes: cs, confrontantePorLado: mapa } : g)));
+      setVertices(vs); setConfrontantes(cs); setConfrontantePorLado(mapa);
+      aviso(`${vs.length} vértices importados do DXF na ${glebaAtivaNome} (fuso ${zona}${hemisferio}).`);
+    } finally { setProcessando(false); }
+  }
+
   // ---------- projetos ----------
   async function salvar() {
     if (processando) return;
@@ -387,11 +425,15 @@ export default function EditorPage() {
         <span className="mr-2 text-lg font-semibold tracking-tight">Métrica</span>
         <input ref={fileRef} type="file" accept=".txt,.csv" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
+        <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarDxfArquivo(f); e.currentTarget.value = ''; }} />
         <Button size="sm" variant="secondary" disabled={processando} onClick={() => fileRef.current?.click()}><Upload /> Importar TXT</Button>
+        <Button size="sm" variant="secondary" disabled={processando} onClick={() => dxfRef.current?.click()}><Upload /> Importar DXF</Button>
         <div className="mx-1 h-6 w-px bg-border" />
         <Button size="sm" variant="outline" onClick={exportarMemorial}><FileText /> Memorial</Button>
         <Button size="sm" variant="outline" onClick={exportarOds}><Sheet /> Planilha SIGEF</Button>
         <Button size="sm" variant="outline" onClick={exportarPlanta}><Printer /> Planta</Button>
+        <Button size="sm" variant="outline" onClick={exportarDxf}><PenTool /> DXF</Button>
         <Button size="sm" variant="outline" onClick={() => setReqAberto(true)}><FileSignature /> Requerimento</Button>
         <div className="mx-1 h-6 w-px bg-border" />
         <Button size="sm" variant="ghost" onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
