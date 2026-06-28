@@ -1,4 +1,4 @@
-import type { Vertex, ImovelData, ResultadoCalculo } from './types';
+import type { Vertex, ImovelData, ResultadoCalculo, Confrontante } from './types';
 
 export type Nivel = 'erro' | 'aviso' | 'ok';
 export interface Problema { nivel: Nivel; campo: string; msg: string; }
@@ -42,12 +42,29 @@ export function temAutoIntersecao(vertices: Vertex[]): boolean {
 }
 
 /** Roda todas as conferências e devolve a lista de problemas. */
-export function conferir(vertices: Vertex[], res: ResultadoCalculo | null, imovel: ImovelData): Problema[] {
+export function conferir(vertices: Vertex[], res: ResultadoCalculo | null, imovel: ImovelData, confrontantes: Confrontante[] = []): Problema[] {
   const out: Problema[] = [];
 
   if (vertices.length < 3) {
     out.push({ nivel: 'erro', campo: 'poligonal', msg: 'A poligonal precisa de ao menos 3 vértices.' });
     return out;
+  }
+
+  // dados do imóvel obrigatórios para as peças
+  const faltando: string[] = [];
+  if (!imovel.denominacao) faltando.push('denominação');
+  if (!imovel.matricula) faltando.push('matrícula');
+  if (!imovel.municipio) faltando.push('município');
+  if (!imovel.proprietario) faltando.push('proprietário');
+  if (faltando.length) out.push({ nivel: 'aviso', campo: 'imóvel', msg: `Faltam dados do imóvel: ${faltando.join(', ')}.` });
+
+  // confrontantes incompletos
+  for (const c of confrontantes) {
+    if (!c.nome) { out.push({ nivel: 'aviso', campo: 'confrontante', msg: 'Há trecho de divisa sem confrontante informado.' }); continue; }
+    const sem: string[] = [];
+    if (!c.cpf) sem.push('CPF');
+    if (!c.matricula) sem.push('matrícula');
+    if (sem.length) out.push({ nivel: 'aviso', campo: 'confrontante', msg: `${c.nome}: falta ${sem.join(' e ')}.` });
   }
 
   // vértices duplicados / muito próximos (< 5 cm)

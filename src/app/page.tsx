@@ -600,7 +600,7 @@ export default function EditorPage() {
               <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} onDetectar={detectarConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} />
             )}
             {aba === 'conferencia' && (
-              <PainelConferencia vertices={vertices} res={res} imovel={imovel} onChange={setImovel} />
+              <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} onChange={setImovel} />
             )}
             {aba === 'projetos' && (
               <div className="space-y-2">
@@ -712,10 +712,10 @@ function PainelImovel({ imovel, onChange, onMunicipio, nome, onNome, zona, hemis
   );
 }
 
-function PainelConferencia({ vertices, res, imovel, onChange }: {
-  vertices: Vertex[]; res: ReturnType<typeof calcular> | null; imovel: ImovelData; onChange: (i: ImovelData) => void;
+function PainelConferencia({ vertices, res, imovel, confrontantes, onChange }: {
+  vertices: Vertex[]; res: ReturnType<typeof calcular> | null; imovel: ImovelData; confrontantes: Confrontante[]; onChange: (i: ImovelData) => void;
 }) {
-  const problemas: Problema[] = conferir(vertices, res, imovel);
+  const problemas: Problema[] = conferir(vertices, res, imovel, confrontantes);
   const Icone = ({ n }: { n: Problema['nivel'] }) =>
     n === 'erro' ? <XCircle className="text-destructive" /> : n === 'aviso' ? <AlertTriangle className="text-amber-500" /> : <CheckCircle2 className="text-primary" />;
   const ef = res ? valoresEfetivos(res, imovel) : null;

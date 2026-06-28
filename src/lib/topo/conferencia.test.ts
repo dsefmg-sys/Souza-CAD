@@ -55,6 +55,16 @@ describe('conferir', () => {
     const probs = conferir(vs, res, { ...imovelBase, areaSigefHa: 3.6443 });
     expect(probs.some((p) => /Diferença para o SIGEF/.test(p.msg))).toBe(true);
   });
+
+  it('avisa dados do imóvel faltando e confrontante incompleto', () => {
+    const vs = montar();
+    const res = calcular(vs);
+    const semProp = { ...imovelBase, proprietario: '', municipio: '' };
+    const conf = [{ id: 'c1', nome: 'Fulano', cpf: '', matricula: '', cns: '' }];
+    const probs = conferir(vs, res, semProp, conf);
+    expect(probs.some((p) => /Faltam dados do imóvel/.test(p.msg))).toBe(true);
+    expect(probs.some((p) => /Fulano: falta/.test(p.msg))).toBe(true);
+  });
 });
 
 describe('valoresEfetivos', () => {
