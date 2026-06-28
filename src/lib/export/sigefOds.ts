@@ -209,7 +209,35 @@ export function montarContentXml(xml: string, dados: DadosSigef): string {
 
 export interface SigefInput extends DadosSigef {
   templateBytes: ArrayBuffer | Uint8Array;
-  glebas?: GlebaSigef[]; // se presente, gera multi-gleba
+  glebas?: GlebaSigef[]; // se presente, gera multi-gleba (uma aba perimetro_N por gleba)
+}
+
+/** Preenche o template (identificação + perímetros) e devolve os bytes do .ods. */
+async function montarOds(templateBytes: ArrayBuffer | Uint8Array, xmlBuilder: (xml: string) => string): Promise<Uint8Array> {
+  const zip = await JSZip.loadAsync(templateBytes);
+  const cf = zip.file('content.xml');
+  if (!cf) throw new Error('content.xml ausente no template ODS');
+  zip.file('content.xml', xmlBuilder(await cf.async('string')));
+  const mime = zip.file('mimetype');
+  if (mime) zip.file('mimetype', await mime.async('string'), { compression: 'STORE' });
+  return zip.generateAsync({ type: 'uint8array', mimeType: 'application/vnd.oasis.opendocument.spreadsheet' });
+}
+
+/**
+ * Gera PLANILHAS SEPARADAS — uma por gleba (cada uma com a identificação + sua própria aba de
+ * perímetro) — empacotadas num .zip.
+ */
+export async function gerarSigefOdsSeparadas(templateBytes: ArrayBuffer | Uint8Array, imovel: ImovelData, tecnico: TecnicoData, glebas: GlebaSigef[]): Promise<Blob> {
+  const zipOut = new JSZip();
+  const usados = new Set<string>();
+  for (const g of glebas) {
+    const bytes = await montarOds(templateBytes, (xml) => montarContentXmlGlebas(xml, imovel, tecnico, [g]));
+    let nome = `SIGEF - ${(imovel.denominacao || 'imovel')} - ${g.denominacao}`.replace(/[\\/:*?"<>|]/g, '_');
+    let n = nome; let k = 2; while (usados.has(n)) n = `${nome} (${k++})`;
+    usados.add(n);
+    zipOut.file(`${n}.ods`, bytes);
+  }
+  return zipOut.generateAsync({ type: 'blob' });
 }
 
 export async function gerarSigefOds(input: SigefInput): Promise<Blob> {

@@ -40,7 +40,7 @@ import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId 
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart } from '@/lib/store/cadastros';
 import { gerarMemorialDocx } from '@/lib/export/memorial';
-import { gerarSigefOds } from '@/lib/export/sigefOds';
+import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
 
 const MapEditor = dynamic(() => import('@/components/MapEditor'), {
   ssr: false,
@@ -339,8 +339,18 @@ export default function EditorPage() {
           confrontantes: g.confrontantes, confrontantePorLado: g.confrontantePorLado,
           denominacao: g.denominacao, parcela: g.parcela,
         }));
-        const blob = await gerarSigefOds({ templateBytes: tpl, res: glebasSigef[0].res, imovel, tecnico: tec, confrontantes: glebasSigef[0].confrontantes, confrontantePorLado: glebasSigef[0].confrontantePorLado, glebas: glebasSigef });
-        saveAs(blob, `SIGEF - ${imovel.denominacao || nomeProjeto || 'imovel'} (${glebasSigef.length} glebas).ods`);
+        const nome = imovel.denominacao || nomeProjeto || 'imovel';
+        // escolha: uma planilha com várias abas, ou planilhas separadas (zip)
+        const unica = window.confirm(
+          `Planilha SIGEF com ${glebasSigef.length} glebas:\n\nOK = uma planilha única (uma aba por gleba).\nCancelar = planilhas separadas (uma por gleba), num arquivo .zip.`
+        );
+        if (unica) {
+          const blob = await gerarSigefOds({ templateBytes: tpl, res: glebasSigef[0].res, imovel, tecnico: tec, confrontantes: glebasSigef[0].confrontantes, confrontantePorLado: glebasSigef[0].confrontantePorLado, glebas: glebasSigef });
+          saveAs(blob, `SIGEF - ${nome} (${glebasSigef.length} glebas).ods`);
+        } else {
+          const zip = await gerarSigefOdsSeparadas(tpl, imovel, tec, glebasSigef);
+          saveAs(zip, `SIGEF - ${nome} (${glebasSigef.length} planilhas).zip`);
+        }
       } else {
         const vs = await comCodigos();
         const r = calcular(vs, confrontantePorLado);

@@ -178,6 +178,18 @@ describe('sigef ods', () => {
     writeFileSync(resolve(OUT, 'sigef_2glebas.ods'), out);
   });
 
+  it('planilha separada (gleba única) tem só perimetro_1, com a parcela da gleba', async () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    const tplBytes = readFileSync(resolve(__dirname, '../../../public/templates/sigef.ods'));
+    const zip = await JSZip.loadAsync(tplBytes);
+    const xml = await zip.file('content.xml')!.async('string');
+    const novo = montarContentXmlGlebas(xml, imovel, tecnico, [{ res, confrontantes, confrontantePorLado, denominacao: 'Parcela 2', parcela: '002' }]);
+    expect(novo).toContain('table:name="perimetro_1"');
+    expect(novo).not.toContain('table:name="perimetro_2"');
+    const t1 = novo.match(/table:name="perimetro_1"[\s\S]*?<\/table:table>/)![0];
+    expect(t1).toContain('002');
+  });
+
   it('usa o tipo de limite e o método de cada vértice', async () => {
     const { res, confrontantes, confrontantePorLado } = preparar();
     // ajusta um vértice para limite natural e ponto virtual
