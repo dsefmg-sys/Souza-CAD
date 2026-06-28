@@ -9,7 +9,7 @@ import {
   Upload, FileText, Sheet, Map as MapIcon, Printer, Settings, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, FileSignature, PenTool,
+  Moon, Sun, Pencil, FileSignature, PenTool, Magnet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,7 @@ import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo } from '@/l
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { ancoraMunicipio } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
+import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema } from '@/lib/topo/conferencia';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
@@ -72,6 +73,7 @@ export default function EditorPage() {
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [modo, setModo] = useState<ModoEdicao>('navegar');
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
+  const [snapAtivo, setSnapAtivo] = useState(false);
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro');
   const [vista, setVista] = useState<'mapa' | 'planta'>('mapa');
   const [aba, setAba] = useState<Aba>('imovel');
@@ -206,8 +208,19 @@ export default function EditorPage() {
     }
   }
 
+  // alvos de snap: outros vértices da gleba ativa + vértices das demais glebas (divisas coincidentes)
+  function alvosSnap(excluirId?: string) {
+    const a = vertices.filter((v) => v.id !== excluirId).map((v) => ({ leste: v.leste, norte: v.norte }));
+    for (const g of glebas) if (g.id !== glebaAtivaId) for (const v of g.vertices) a.push({ leste: v.leste, norte: v.norte });
+    return a;
+  }
+
   function moverVertice(id: string, lat: number, lon: number) {
-    const { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
+    let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
+    if (snapAtivo) {
+      const s = snapUtm(leste, norte, alvosSnap(id), { tolVerticeM: 2 });
+      if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
+    }
     setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, lat, lon, leste, norte } : v)));
   }
 
@@ -224,7 +237,11 @@ export default function EditorPage() {
   }
 
   function inserirVertice(lat: number, lon: number) {
-    const { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
+    let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
+    if (snapAtivo) {
+      const s = snapUtm(leste, norte, alvosSnap(), { tolVerticeM: 2 });
+      if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
+    }
     let out: Vertex[];
     if (vertices.length < 2) {
       out = reordenar([...vertices, novoVertice({ lat, lon, leste, norte, elevacao: 0 })]);
@@ -491,6 +508,7 @@ export default function EditorPage() {
                 <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => selecionadoId && setVertices((vs) => definirInicio(vs, selecionadoId))} title="Definir início no vértice selecionado"><Flag /></Button>
                 <Button size="sm" variant="ghost" onClick={renumerar} title="Renumerar vértices"><Crosshair /></Button>
                 <Button size="sm" variant="ghost" onClick={() => setMostrarRotulos((m) => !m)} title={mostrarRotulos ? 'Esconder nomes' : 'Mostrar nomes'}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
+                <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} onClick={() => setSnapAtivo((s) => !s)} title="Snap: encaixar em vértices existentes"><Magnet /></Button>
               </div>
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos}
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice} />
