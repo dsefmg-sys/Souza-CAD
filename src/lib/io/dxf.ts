@@ -38,17 +38,20 @@ export function importarDxf(conteudo: string): DxfEntidades {
   }
 
   let atual: string | null = null;
-  let acc: Record<string, number[]> = {};
   let textoVal = '';
   let xs: number[] = [], ys: number[] = [];
   let fechada = false;
+  // POLYLINE clássico: vértices vêm em entidades VERTEX separadas até o SEQEND.
+  let polyAberto: { fechada: boolean; pontos: PontoXY[] } | null = null;
 
   const finaliza = () => {
     if (!atual) return;
     const tipo = atual.toUpperCase();
-    if (tipo === 'LWPOLYLINE' || tipo === 'POLYLINE') {
+    if (tipo === 'LWPOLYLINE') {
       const pts = xs.map((x, k) => ({ x, y: ys[k] }));
       if (pts.length >= 2) out.polilinhas.push({ fechada, pontos: pts });
+    } else if (tipo === 'VERTEX') {
+      if (polyAberto && xs.length >= 1) polyAberto.pontos.push({ x: xs[0], y: ys[0] });
     } else if (tipo === 'LINE') {
       if (xs.length >= 2) out.linhas.push({ a: { x: xs[0], y: ys[0] }, b: { x: xs[1], y: ys[1] } });
     } else if (tipo === 'POINT') {
@@ -56,14 +59,20 @@ export function importarDxf(conteudo: string): DxfEntidades {
     } else if (tipo === 'TEXT' || tipo === 'MTEXT') {
       if (xs.length >= 1) out.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal });
     }
-    atual = null; acc = {}; xs = []; ys = []; fechada = false; textoVal = '';
+    atual = null; xs = []; ys = []; fechada = false; textoVal = '';
   };
 
   for (; i < pares.length; i++) {
     const { code, value } = pares[i];
     if (code === 0) {
       finaliza();
-      if (value.toUpperCase() === 'ENDSEC') break;
+      const v = value.toUpperCase();
+      if (v === 'ENDSEC') break;
+      if (v === 'POLYLINE') { polyAberto = { fechada: false, pontos: [] }; atual = value; continue; }
+      if (v === 'SEQEND') {
+        if (polyAberto) { if (polyAberto.pontos.length >= 2) out.polilinhas.push(polyAberto); polyAberto = null; }
+        atual = null; continue;
+      }
       atual = value;
       continue;
     }
@@ -72,10 +81,11 @@ export function importarDxf(conteudo: string): DxfEntidades {
     else if (code === 20) ys.push(parseFloat(value));
     else if (code === 11) xs.push(parseFloat(value)); // segundo ponto de LINE
     else if (code === 21) ys.push(parseFloat(value));
-    else if (code === 70) fechada = (parseInt(value, 10) & 1) === 1;
+    else if (code === 70) { if (atual.toUpperCase() === 'POLYLINE' && polyAberto) polyAberto.fechada = (parseInt(value, 10) & 1) === 1; else fechada = (parseInt(value, 10) & 1) === 1; }
     else if (code === 1) textoVal = value;
   }
   finaliza();
+  if (polyAberto && polyAberto.pontos.length >= 2) out.polilinhas.push(polyAberto);
   return out;
 }
 

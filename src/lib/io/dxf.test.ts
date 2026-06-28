@@ -37,6 +37,24 @@ describe('DXF georreferenciado', () => {
     }
   });
 
+  it('lê POLYLINE clássico (vértices em entidades VERTEX)', () => {
+    const dxf = [
+      '0', 'SECTION', '2', 'ENTITIES',
+      '0', 'POLYLINE', '8', 'PERIMETRO', '70', '1',
+      '0', 'VERTEX', '8', 'PERIMETRO', '10', '1000', '20', '2000',
+      '0', 'VERTEX', '10', '1100', '20', '2000',
+      '0', 'VERTEX', '10', '1100', '20', '2100',
+      '0', 'SEQEND',
+      '0', 'ENDSEC', '0', 'EOF', '',
+    ].join('\n');
+    const ent = importarDxf(dxf);
+    expect(ent.polilinhas).toHaveLength(1);
+    expect(ent.polilinhas[0].fechada).toBe(true);
+    const anel = anelDeDxf(ent)!;
+    expect(anel).toHaveLength(3);
+    expect(anel[1]).toEqual({ x: 1100, y: 2000 });
+  });
+
   it('importa pontos e textos também', () => {
     const dxf = exportarDxf(verts(), { zona: 23, hemisferio: 'S' });
     const ent = importarDxf(dxf);
