@@ -109,11 +109,15 @@ os campos, blocos de assinatura (proprietário, laudo técnico, declaração dos
 - Gestão dos dados dos pontos importados (nome, coordenadas).
 
 ## Etapa 5 — Memorial multi-modelo + TRT + conferência cruzada
+- [FEITO] Tela **"Dados para TRT"**: compila tudo para o registro do TRT, com cópia campo a
+  campo e "copiar tudo".
 - Memorial cobrindo variações: gleba única, várias glebas, **área a destacar/desmembramento**
   (bate com os modelos A/B/C/AD/ABC).
-- Tela **"Dados para TRT"**: compila tudo para o registro do TRT, com cópia fácil.
 - **Conferência cruzada final**: memorial × planta × ODS usam os mesmos vértices, área e
   confrontantes; relatório de divergências antes de exportar.
+
+## DXF georreferenciado — FEITO (ver seção acima)
+## Planta PDF A3 direto — FEITO (botão "Planta PDF")
 
 ## Etapa 6 — Integração SIGEF (confrontantes certificados) [requer pesquisa]
 - Importar a geometria de imóveis confrontantes **já certificados no SIGEF** para o nosso
