@@ -3,7 +3,9 @@
 import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante } from '@/lib/topo/types';
 import { numBR, formatMatricula } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
-import { grausParaDMS, convergenciaMeridiana, meridianoCentral } from '@/lib/topo/coords';
+import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm } from '@/lib/topo/coords';
+import { distanciaCota } from '@/lib/topo/objetos';
+import type { ObjetoDesenho } from '@/lib/topo/types';
 
 interface Props {
   vertices: Vertex[];
@@ -19,6 +21,7 @@ interface Props {
   dataExtenso?: string;
   situacaoUrl?: string;
   outrasGlebas?: { nome: string; pts: { leste: number; norte: number }[] }[];
+  objetos?: ObjetoDesenho[];
 }
 
 // A3 paisagem @96dpi: 420x297mm
@@ -40,7 +43,7 @@ const REPRES_LABEL: Record<string, string> = {
   rio: 'Rio', acude: 'Açude', muro: 'Muro', vala: 'Vala',
 };
 
-export default function Planta({ vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado, zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [] }: Props) {
+export default function Planta({ vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado, zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], objetos = [] }: Props) {
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
   }
@@ -91,13 +94,17 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
     trechos.get(cid)!.push(i);
   }
   const rotulosConf = [...trechos.entries()].map(([cid, idxs]) => {
+    const c = mapaC.get(cid);
+    if (c?.posRotulo) {
+      const u = geoParaUtm(c.posRotulo.lat, c.posRotulo.lon, zona, hemisferio);
+      return { c, x: sx(u.leste), y: sy(u.norte) };
+    }
     const meio = idxs[Math.floor(idxs.length / 2)];
     const a = anel[meio], b = anel[(meio + 1) % anel.length];
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
     let dx = mx - cx, dy = my - cy;
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
-    const c = mapaC.get(cid);
     return { c, x: mx + dx * 60, y: my + dy * 60 };
   });
 
@@ -148,6 +155,31 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
 
       {/* ---------- POLÍGONO (gleba ativa) ---------- */}
       <polygon points={pts} fill="#fde68a" fillOpacity={0.18} stroke="#7c2d12" strokeWidth={1.8} />
+
+      {/* ---------- OBJETOS DE DESENHO ---------- */}
+      {objetos.map((o) => {
+        const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
+        if (o.tipo === 'texto' && sp[0]) {
+          const anchor = o.alinhamento === 'center' ? 'middle' : o.alinhamento === 'right' ? 'end' : 'start';
+          return <text key={o.id} x={sp[0].x} y={sp[0].y} fontSize={(o.tamanho ?? 12) * 0.8} textAnchor={anchor} fill={o.cor ?? '#000'}>{o.texto}</text>;
+        }
+        if (o.tipo === 'cota' && sp.length >= 2) {
+          const mx = (sp[0].x + sp[1].x) / 2, my = (sp[0].y + sp[1].y) / 2;
+          return (
+            <g key={o.id}>
+              <line x1={sp[0].x} y1={sp[0].y} x2={sp[1].x} y2={sp[1].y} stroke={o.cor ?? '#b91c1c'} strokeWidth={0.8} />
+              <text x={mx} y={my - 3} fontSize={8} textAnchor="middle" fill={o.cor ?? '#b91c1c'}>{numBR(distanciaCota(o))} m</text>
+            </g>
+          );
+        }
+        if (o.tipo === 'polilinha' && sp.length >= 2) {
+          const pp = sp.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+          return o.preenchido && sp.length >= 3
+            ? <polygon key={o.id} points={pp} fill={o.cor ?? '#2563eb'} fillOpacity={0.4} stroke={o.cor ?? '#2563eb'} strokeWidth={o.espessura ?? 1.2} />
+            : <polyline key={o.id} points={pp} fill="none" stroke={o.cor ?? '#2563eb'} strokeWidth={o.espessura ?? 1.2} />;
+        }
+        return null;
+      })}
 
       {/* confrontantes (rótulo + linha de assinatura) */}
       {rotulosConf.map((r, i) => r.c && r.c.nome ? (

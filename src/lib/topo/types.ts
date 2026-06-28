@@ -130,6 +130,23 @@ export interface Confrontante {
   cns: string;         // código do cartório
   // descrição livre opcional (ex.: espólio/inventariante)
   descricaoExtra?: string;
+  // posição manual do rótulo na planta (se o usuário arrastou); senão é automática
+  posRotulo?: { lat: number; lon: number };
+}
+
+/** Objeto de desenho livre (georreferenciado) sobreposto ao mapa/planta. */
+export type ObjetoTipo = 'polilinha' | 'texto' | 'cota';
+export interface PontoLL { lat: number; lon: number; leste: number; norte: number; }
+export interface ObjetoDesenho {
+  id: string;
+  tipo: ObjetoTipo;
+  pontos: PontoLL[];          // polilinha/cota: 2+; texto: 1 (âncora)
+  texto?: string;             // texto
+  tamanho?: number;           // tamanho do texto
+  alinhamento?: 'left' | 'center' | 'right';
+  cor?: string;
+  espessura?: number;
+  preenchido?: boolean;       // polilinha fechada com cor sólida (ex.: lago)
 }
 
 /** Um lado da poligonal (vértice i → vértice i+1). */
@@ -212,6 +229,7 @@ export interface Gleba {
   vertices: Vertex[];
   confrontantes: Confrontante[];
   confrontantePorLado: Record<number, string>;
+  objetos?: ObjetoDesenho[];   // desenho livre (linhas, textos, cotas)
 }
 
 /** Projeto completo, salvo no navegador. Um imóvel pode ter várias glebas. */

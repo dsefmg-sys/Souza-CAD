@@ -1,24 +1,36 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, Tooltip, LayersControl, useMap, useMapEvents } from 'react-leaflet';
+import { useEffect, useMemo, useRef, Fragment } from 'react';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, Tooltip, CircleMarker, LayersControl, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import type { Vertex } from '@/lib/topo/types';
+import type { Vertex, ObjetoDesenho } from '@/lib/topo/types';
+import { distanciaCota } from '@/lib/topo/objetos';
+import { numBR } from '@/lib/topo/geometry';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'cota' | 'texto';
+
+export interface RotuloMapa { id: string; lat: number; lon: number; texto: string; }
 
 interface Props {
   vertices: Vertex[];
   selecionadoId: string | null;
   modo: ModoEdicao;
   mostrarRotulos: boolean;
-  bloqueado: boolean;                 // vértices travados (não arrastam) por padrão
+  bloqueado: boolean;
   referencias?: [number, number][][];
-  outrasGlebas?: [number, number][][];// polígonos das demais glebas (visualização)
+  outrasGlebas?: [number, number][][];
+  objetos?: ObjetoDesenho[];
+  desenhoAtual?: [number, number][];
+  rotulos?: RotuloMapa[];
+  objetoSelId?: string | null;
   onMover: (id: string, lat: number, lon: number) => void;
   onSelecionar: (id: string) => void;
   onApagar: (id: string) => void;
   onInserir: (lat: number, lon: number) => void;
+  onCliqueDesenho?: (lat: number, lon: number) => void;
+  onSelecObjeto?: (id: string | null) => void;
+  onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
+  onMoverRotulo?: (id: string, lat: number, lon: number) => void;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -34,10 +46,23 @@ function iconeVertice(v: Vertex, selecionado: boolean) {
   return L.divIcon({
     className: 'vertice-icon',
     html: `<div style="width:${tam}px;height:${tam}px;border-radius:50%;background:${cor};border:2px solid ${borda};box-shadow:0 0 2px #000"></div>`,
-    iconSize: [tam, tam],
-    iconAnchor: [tam / 2, tam / 2],
+    iconSize: [tam, tam], iconAnchor: [tam / 2, tam / 2],
   });
 }
+
+function iconeTexto(o: ObjetoDesenho, sel: boolean) {
+  const al = o.alinhamento === 'center' ? 'center' : o.alinhamento === 'right' ? 'right' : 'left';
+  return L.divIcon({
+    className: 'objeto-texto',
+    html: `<div style="font-size:${o.tamanho ?? 12}px;color:${o.cor ?? '#000'};white-space:nowrap;text-align:${al};text-shadow:0 0 2px #fff,0 0 2px #fff;${sel ? 'outline:1px dashed #ef4444;' : ''}">${(o.texto ?? '').replace(/</g, '&lt;')}</div>`,
+    iconSize: [1, 1], iconAnchor: [0, 8],
+  });
+}
+const iconeRotulo = (r: RotuloMapa) => L.divIcon({
+  className: 'objeto-rotulo',
+  html: `<div style="font-size:10px;color:#000;background:rgba(255,255,255,0.8);border:1px solid #999;border-radius:3px;padding:1px 3px;white-space:nowrap">${r.texto.replace(/</g, '&lt;')}</div>`,
+  iconSize: [1, 1], iconAnchor: [0, 8],
+});
 
 function AjustarLimites({ vertices }: { vertices: Vertex[] }) {
   const map = useMap();
@@ -48,31 +73,34 @@ function AjustarLimites({ vertices }: { vertices: Vertex[] }) {
       try {
         const b = L.latLngBounds(validos.map((v) => [v.lat, v.lon] as [number, number]));
         if (b.isValid()) {
-          map.whenReady(() => { try { map.fitBounds(b, { padding: [40, 40] }); } catch { /* mapa ainda sem tamanho */ } });
+          map.whenReady(() => { try { map.fitBounds(b, { padding: [40, 40] }); } catch { /* sem tamanho */ } });
           ultimoN.current = validos.length;
         }
-      } catch { /* coords inválidas: ignora */ }
+      } catch { /* coords inválidas */ }
     }
   }, [vertices, map]);
   return null;
 }
 
-function CliqueMapa({ modo, onInserir }: { modo: ModoEdicao; onInserir: (lat: number, lon: number) => void }) {
+function CliqueMapa({ modo, onInserir, onCliqueDesenho }: { modo: ModoEdicao; onInserir: (lat: number, lon: number) => void; onCliqueDesenho?: (lat: number, lon: number) => void }) {
   useMapEvents({
     click(e) {
       if (modo === 'inserir') onInserir(e.latlng.lat, e.latlng.lng);
+      else if ((modo === 'linha' || modo === 'cota' || modo === 'texto') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
     },
   });
   return null;
 }
 
-export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], outrasGlebas = [], onMover, onSelecionar, onApagar, onInserir }: Props) {
-  const validos = useMemo(() => vertices.filter(valido), [vertices]);
-  const centro = useMemo<[number, number]>(() => {
-    if (validos.length) return [validos[0].lat, validos[0].lon];
-    return ESPERA_FELIZ;
-  }, [validos]);
+export default function MapEditor(props: Props) {
+  const {
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], outrasGlebas = [],
+    objetos = [], desenhoAtual = [], rotulos = [], objetoSelId = null,
+    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo,
+  } = props;
 
+  const validos = useMemo(() => vertices.filter(valido), [vertices]);
+  const centro = useMemo<[number, number]>(() => (validos.length ? [validos[0].lat, validos[0].lon] : ESPERA_FELIZ), [validos]);
   const anel = validos.map((v) => [v.lat, v.lon] as [number, number]);
 
   return (
@@ -82,12 +110,7 @@ export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulo
           <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={22} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
         </LayersControl.BaseLayer>
         <LayersControl.BaseLayer name="Satélite (Esri)">
-          <TileLayer
-            attribution="Tiles &copy; Esri"
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            maxZoom={22}
-            maxNativeZoom={18}
-          />
+          <TileLayer attribution="Tiles &copy; Esri" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={22} maxNativeZoom={18} />
         </LayersControl.BaseLayer>
         <LayersControl.BaseLayer name="Ruas (OpenStreetMap)">
           <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />
@@ -95,24 +118,78 @@ export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulo
       </LayersControl>
 
       <AjustarLimites vertices={validos} />
-      <CliqueMapa modo={modo} onInserir={onInserir} />
+      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} />
 
-      {/* parcelas certificadas de referência (snap) */}
+      {/* referências certificadas (snap) */}
       {referencias.filter((r) => r.length >= 2).map((r, i) => (
         <Polyline key={`ref${i}`} positions={r.length >= 3 ? [...r, r[0]] : r} pathOptions={{ color: '#06b6d4', weight: 1.5, dashArray: '5 4' }} />
       ))}
 
-      {/* demais glebas do imóvel (apenas visualização) */}
+      {/* demais glebas */}
       {outrasGlebas.filter((g) => g.length >= 3).map((g, i) => (
         <Polygon key={`gleba${i}`} positions={g} pathOptions={{ color: '#f97316', weight: 1.5, fillColor: '#f97316', fillOpacity: 0.06, dashArray: '6 4' }} />
       ))}
 
+      {/* polígono ativo */}
       {anel.length >= 3 ? (
         <Polygon positions={anel} pathOptions={{ color: '#facc15', weight: 2, fillColor: '#facc15', fillOpacity: 0.12 }} />
       ) : anel.length === 2 ? (
         <Polyline positions={anel} pathOptions={{ color: '#facc15', weight: 2 }} />
       ) : null}
 
+      {/* objetos de desenho */}
+      {objetos.map((o) => {
+        const pos = o.pontos.map((p) => [p.lat, p.lon] as [number, number]);
+        const sel = o.id === objetoSelId;
+        if (o.tipo === 'polilinha') {
+          const comum = { color: o.cor ?? '#2563eb', weight: (o.espessura ?? 1.5) + (sel ? 1 : 0) };
+          const fechado = o.preenchido && pos.length >= 3;
+          return (
+            <Fragment key={o.id}>
+              {fechado
+                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor: o.cor ?? '#2563eb', fillOpacity: 0.4 }} eventHandlers={{ click: () => onSelecObjeto?.(o.id) }} />
+                : <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => onSelecObjeto?.(o.id) }} />}
+              {sel && pos.map((p, idx) => (
+                <CircleMarker key={`c${idx}`} center={p} radius={5} pathOptions={{ color: '#ef4444', fillColor: '#fff', fillOpacity: 1 }} />
+              ))}
+              {sel && pos.map((p, idx) => (
+                <Marker key={`h${idx}`} position={p} draggable opacity={0}
+                  eventHandlers={{ dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); } }} />
+              ))}
+            </Fragment>
+          );
+        }
+        if (o.tipo === 'cota') {
+          const mid: [number, number] = [(o.pontos[0].lat + o.pontos[1].lat) / 2, (o.pontos[0].lon + o.pontos[1].lon) / 2];
+          return (
+            <Fragment key={o.id}>
+              <Polyline positions={pos} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 1 + (sel ? 1 : 0) }} eventHandlers={{ click: () => onSelecObjeto?.(o.id) }} />
+              <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:#b91c1c;background:#fff;padding:0 2px;border:1px solid #b91c1c;border-radius:2px">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })} />
+              {sel && pos.map((p, idx) => (
+                <Marker key={`hc${idx}`} position={p} draggable opacity={0}
+                  eventHandlers={{ dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); } }} />
+              ))}
+            </Fragment>
+          );
+        }
+        // texto
+        return (
+          <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable icon={iconeTexto(o, sel)}
+            eventHandlers={{ click: () => onSelecObjeto?.(o.id), dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); } }} />
+        );
+      })}
+
+      {/* desenho em andamento */}
+      {desenhoAtual.length >= 2 && <Polyline positions={desenhoAtual} pathOptions={{ color: '#2563eb', weight: 1.5, dashArray: '4 3' }} />}
+      {desenhoAtual.map((p, i) => <CircleMarker key={`da${i}`} center={p} radius={3} pathOptions={{ color: '#2563eb', fillColor: '#fff', fillOpacity: 1 }} />)}
+
+      {/* rótulos de confrontante (arrastáveis) */}
+      {rotulos.map((r) => (
+        <Marker key={r.id} position={[r.lat, r.lon]} draggable icon={iconeRotulo(r)}
+          eventHandlers={{ dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverRotulo?.(r.id, ll.lat, ll.lng); } }} />
+      ))}
+
+      {/* vértices */}
       {validos.map((v) => (
         <Marker
           key={v.id}
@@ -120,20 +197,12 @@ export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulo
           draggable={modo === 'navegar' && !bloqueado}
           icon={iconeVertice(v, v.id === selecionadoId)}
           eventHandlers={{
-            click() {
-              if (modo === 'apagar') onApagar(v.id);
-              else onSelecionar(v.id);
-            },
-            dragend(e) {
-              const ll = (e.target as L.Marker).getLatLng();
-              onMover(v.id, ll.lat, ll.lng);
-            },
+            click() { if (modo === 'apagar') onApagar(v.id); else onSelecionar(v.id); },
+            dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
           }}
         >
           {mostrarRotulos && (
-            <Tooltip permanent direction="top" offset={[0, -8]} className="vertice-label">
-              {v.codigoSigef || v.nome}
-            </Tooltip>
+            <Tooltip permanent direction="top" offset={[0, -8]} className="vertice-label">{v.codigoSigef || v.nome}</Tooltip>
           )}
         </Marker>
       ))}

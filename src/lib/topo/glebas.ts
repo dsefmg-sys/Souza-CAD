@@ -14,6 +14,7 @@ export function novaGlebaVazia(indice: number): Gleba {
     vertices: [],
     confrontantes: [],
     confrontantePorLado: {},
+    objetos: [],
   };
 }
 
@@ -31,6 +32,7 @@ export function glebaDe(
     vertices,
     confrontantes,
     confrontantePorLado,
+    objetos: [],
   };
 }
 

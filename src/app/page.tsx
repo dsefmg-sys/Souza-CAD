@@ -19,7 +19,9 @@ import Planta from '@/components/Planta';
 import RequerimentoModal from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL } from '@/lib/topo/types';
+import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
+import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
 import { montarVertices, reordenar, inverterSentido, definirInicio, novoVertice, reprojetar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
@@ -77,6 +79,10 @@ export default function EditorPage() {
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [snapAtivo, setSnapAtivo] = useState(false);
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
+  // camada de desenho livre (objetos da gleba ativa)
+  const [objetos, setObjetos] = useState<ObjetoDesenho[]>([]);
+  const [desenhoBuffer, setDesenhoBuffer] = useState<PontoLL[]>([]);
+  const [objetoSelId, setObjetoSelId] = useState<string | null>(null);
   const [situacaoUrl, setSituacaoUrl] = useState<string | undefined>(undefined);
   // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
   const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
@@ -127,17 +133,20 @@ export default function EditorPage() {
   // Devolve a lista completa de glebas com a ativa atualizada a partir do estado de trabalho.
   function sincronizarGlebas(): Gleba[] {
     if (!glebas.length) {
-      return [glebaDe(1, vertices, confrontantes, confrontantePorLado, 'Parcela 1')];
+      return [{ ...glebaDe(1, vertices, confrontantes, confrontantePorLado, 'Parcela 1'), objetos }];
     }
     if (!glebas.some((g) => g.id === glebaAtivaId)) {
-      return glebas.map((g, i) => (i === 0 ? { ...g, vertices, confrontantes, confrontantePorLado } : g));
+      return glebas.map((g, i) => (i === 0 ? { ...g, vertices, confrontantes, confrontantePorLado, objetos } : g));
     }
-    return glebas.map((g) => (g.id === glebaAtivaId ? { ...g, vertices, confrontantes, confrontantePorLado } : g));
+    return glebas.map((g) => (g.id === glebaAtivaId ? { ...g, vertices, confrontantes, confrontantePorLado, objetos } : g));
   }
   function carregarGleba(g: Gleba) {
     setVertices(g.vertices);
     setConfrontantes(g.confrontantes);
     setConfrontantePorLado(g.confrontantePorLado);
+    setObjetos(g.objetos ?? []);
+    setDesenhoBuffer([]);
+    setObjetoSelId(null);
     setGlebaAtivaId(g.id);
     setSelecionadoId(null);
   }
@@ -271,6 +280,51 @@ export default function EditorPage() {
   async function renumerar() {
     await aplicarCodigos(vertices);
     aviso('Vértices renumerados.');
+  }
+
+  // ---------- desenho livre (CAD leve) ----------
+  function pontoLL(lat: number, lon: number, comSnap = true): PontoLL {
+    let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
+    if (comSnap && snapAtivo) {
+      const s = snapUtm(leste, norte, alvosSnap(), { tolVerticeM: 2 });
+      if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
+    }
+    return { lat, lon, leste, norte };
+  }
+  function onCliqueDesenho(lat: number, lon: number) {
+    const p = pontoLL(lat, lon);
+    if (modo === 'texto') {
+      const t = window.prompt('Texto a inserir:'); if (!t) return;
+      setObjetos((os) => [...os, novoTexto(p, t)]);
+    } else if (modo === 'cota') {
+      setDesenhoBuffer((buf) => {
+        const nb = [...buf, p];
+        if (nb.length >= 2) { setObjetos((os) => [...os, novaCota(nb[0], nb[1])]); return []; }
+        return nb;
+      });
+    } else if (modo === 'linha') {
+      setDesenhoBuffer((buf) => [...buf, p]);
+    }
+  }
+  function finalizarLinha() {
+    if (desenhoBuffer.length >= 2) setObjetos((os) => [...os, novaPolilinha(desenhoBuffer)]);
+    setDesenhoBuffer([]);
+  }
+  function onMoverPontoObjeto(id: string, idx: number, lat: number, lon: number) {
+    const p = pontoLL(lat, lon);
+    setObjetos((os) => os.map((o) => (o.id === id ? { ...o, pontos: o.pontos.map((q, i) => (i === idx ? p : q)) } : o)));
+  }
+  function apagarObjetoSel() {
+    if (!objetoSelId) return;
+    setObjetos((os) => os.filter((o) => o.id !== objetoSelId));
+    setObjetoSelId(null);
+  }
+  function editarObjetoSel(patch: Partial<ObjetoDesenho>) {
+    if (!objetoSelId) return;
+    setObjetos((os) => os.map((o) => (o.id === objetoSelId ? { ...o, ...patch } : o)));
+  }
+  function onMoverRotulo(id: string, lat: number, lon: number) {
+    setConfrontantes((cs) => cs.map((c) => (c.id === id ? { ...c, posRotulo: { lat, lon } } : c)));
   }
 
   function alternarTipo(id: string) {
@@ -533,6 +587,23 @@ export default function EditorPage() {
 
   const lados = res?.lados ?? [];
 
+  // rótulos de confrontante arrastáveis no mapa (posRotulo manual ou centróide dos lados)
+  const rotulosConf: RotuloMapa[] = useMemo(() => {
+    const out: RotuloMapa[] = [];
+    for (const c of confrontantes) {
+      if (!c.nome) continue;
+      if (c.posRotulo) { out.push({ id: c.id, lat: c.posRotulo.lat, lon: c.posRotulo.lon, texto: c.nome }); continue; }
+      const idxs = Object.entries(confrontantePorLado).filter(([, cid]) => cid === c.id).map(([i]) => Number(i));
+      if (!idxs.length || vertices.length < 2) continue;
+      const mid = idxs[Math.floor(idxs.length / 2)];
+      const a = vertices[mid], b = vertices[(mid + 1) % vertices.length];
+      if (!a || !b) continue;
+      out.push({ id: c.id, lat: (a.lat + b.lat) / 2, lon: (a.lon + b.lon) / 2, texto: c.nome });
+    }
+    return out;
+  }, [confrontantes, confrontantePorLado, vertices]);
+  const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
+
   return (
     <div className="flex h-screen flex-col">
       {/* Topo */}
@@ -583,11 +654,29 @@ export default function EditorPage() {
                 <Button size="sm" variant="ghost" onClick={() => setMostrarRotulos((m) => !m)} title={mostrarRotulos ? 'Esconder nomes' : 'Mostrar nomes'}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
                 <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} onClick={() => setSnapAtivo((s) => !s)} title="Snap: encaixar em vértices existentes"><Magnet /></Button>
                 <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} onClick={() => setBloqueado((b) => !b)} title={bloqueado ? 'Vértices travados (clique para liberar a edição)' : 'Vértices liberados — cuidado para não mover sem querer'}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
+                <div className="mx-1 w-px bg-border" />
+                <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Desenhar linha/polilinha (clique os pontos, depois Finalizar)"><PenTool /></Button>
+                <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos"><RotateCcw className="rotate-90" /></Button>
+                <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir"><FileText /></Button>
+                {modo === 'linha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}>Finalizar</Button>}
+                {objSel?.tipo === 'texto' && (
+                  <>
+                    <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir">A-</Button>
+                    <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar">A+</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil /></Button>
+                  </>
+                )}
+                {objSel?.tipo === 'polilinha' && (
+                  <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher (ex.: lago)">Preencher</Button>
+                )}
+                {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /></Button>}
               </div>
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
-                onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice} />
+                objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} objetoSelId={objetoSelId}
+                onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
+                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} />
             </>
           ) : (
             <div id="planta-print" className="relative h-full overflow-auto bg-neutral-200 p-4">
@@ -599,7 +688,7 @@ export default function EditorPage() {
                 <div className="mx-auto max-w-[1587px] bg-white shadow">
                   <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                     confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
-                    glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl}
+                    glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos}
                     outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))} />
                 </div>
               )}
