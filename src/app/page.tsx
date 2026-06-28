@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
 import RequerimentoModal from '@/components/RequerimentoModal';
+import TrtModal from '@/components/TrtModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada } from '@/lib/topo/types';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
@@ -77,6 +78,7 @@ export default function EditorPage() {
   const [projetoId, setProjetoId] = useState<string | null>(null);
   const [nomeProjeto, setNomeProjeto] = useState('');
   const [reqAberto, setReqAberto] = useState(false);
+  const [trtAberto, setTrtAberto] = useState(false);
   const [requerente, setRequerente] = useState<PessoaQualificada | undefined>(undefined);
   const [transmitente, setTransmitente] = useState<PessoaQualificada | undefined>(undefined);
   const [projetos, setProjetos] = useState<Projeto[]>([]);
@@ -461,6 +463,7 @@ export default function EditorPage() {
         <Button size="sm" variant="outline" onClick={exportarPlanta}><Printer /> Planta PDF</Button>
         <Button size="sm" variant="outline" onClick={exportarDxf}><PenTool /> DXF</Button>
         <Button size="sm" variant="outline" onClick={() => setReqAberto(true)}><FileSignature /> Requerimento</Button>
+        <Button size="sm" variant="outline" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
         <div className="mx-1 h-6 w-px bg-border" />
         <Button size="sm" variant="ghost" onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
           {vista === 'mapa' ? <><FileText /> Ver planta</> : <><MapIcon /> Ver mapa</>}
@@ -612,6 +615,8 @@ export default function EditorPage() {
         onChangePessoas={(r, t) => { setRequerente(r); setTransmitente(t); }}
         sugProp={sugProp}
       />
+      <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico}
+        areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
     </div>
   );
 }
