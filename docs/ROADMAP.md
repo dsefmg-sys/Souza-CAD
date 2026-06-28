@@ -101,7 +101,7 @@ os campos, blocos de assinatura (proprietário, laudo técnico, declaração dos
 - **Planta de situação** (recorte do polígono sobre satélite).
 - **Exportar PDF A3** de verdade.
 
-## Etapa 4 — Editor gráfico da planta (CAD leve)
+## Etapa 4 — Editor gráfico da planta (CAD leve)  [FEITO o núcleo: linhas/cotas/textos/mover/lago]
 - Desenhar linhas e polilinhas; mover e redimensionar objetos; textos (tamanho, alinhamento);
   **cotar segmentos**; cor sólida (lago) e hachuras (mata, raro); **pesos de linha por norma**
   (divisa do imóvel mais grossa, auxiliares mais finas).
