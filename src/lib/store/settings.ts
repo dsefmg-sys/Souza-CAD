@@ -1,6 +1,7 @@
-import type { TecnicoData } from '../topo/types';
+import type { TecnicoData, EscritorioData } from '../topo/types';
 
 const KEY = 'metrica.tecnico';
+const KEY_ESCRITORIO = 'metrica.escritorio';
 
 // Dados padrão do responsável técnico (do modelo do dono). Editáveis em /configuracoes.
 export const TECNICO_PADRAO: TecnicoData = {
@@ -18,6 +19,30 @@ export const TECNICO_PADRAO: TecnicoData = {
   zonaBase: 23,
   fusosPermitidos: [22, 23, 24, 25],
 };
+
+export const ESCRITORIO_PADRAO: EscritorioData = {
+  nome: 'SOUZA GESTÃO FUNDIÁRIA',
+  ramo: 'Agrimensura e Georreferenciamento',
+  cnpj: '45.539.408/0001-74',
+  endereco: 'Rua Doutor José Paixão 1400, Sala 02 Santa Inês, Espera Feliz',
+  telefone: '(32) 99911-6227',
+};
+
+export function carregarEscritorio(): EscritorioData {
+  if (typeof window === 'undefined') return ESCRITORIO_PADRAO;
+  try {
+    const raw = localStorage.getItem(KEY_ESCRITORIO);
+    if (!raw) return ESCRITORIO_PADRAO;
+    return { ...ESCRITORIO_PADRAO, ...JSON.parse(raw) };
+  } catch {
+    return ESCRITORIO_PADRAO;
+  }
+}
+
+export function salvarEscritorio(e: EscritorioData): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(KEY_ESCRITORIO, JSON.stringify(e));
+}
 
 export function carregarTecnico(): TecnicoData {
   if (typeof window === 'undefined') return TECNICO_PADRAO;

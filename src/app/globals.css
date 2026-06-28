@@ -70,10 +70,15 @@
   white-space: nowrap;
 }
 
-/* impressão da planta */
+/* impressão da planta — folha A3 paisagem */
+@page {
+  size: A3 landscape;
+  margin: 0;
+}
 @media print {
   body * { visibility: hidden; }
   #planta-print, #planta-print * { visibility: visible; }
-  #planta-print { position: absolute; inset: 0; }
+  #planta-print { position: absolute; inset: 0; padding: 0 !important; background: #fff !important; }
+  #planta-print > div { max-width: none !important; box-shadow: none !important; }
   .no-print { display: none !important; }
 }

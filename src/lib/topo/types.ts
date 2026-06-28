@@ -164,6 +164,19 @@ export interface ImovelData {
   // Para o requerimento de retificação:
   areaAnterior?: number;  // área que consta na matrícula (ha)
   valorImovel?: number;   // valor declarado (R$)
+  // Para a planta:
+  declinacaoMagnetica?: number; // graus (negativo = oeste), do serviço de declinação
+  variacaoAnual?: number;       // minutos/ano
+}
+
+/** Dados fixos do escritório (carimbo da planta). */
+export interface EscritorioData {
+  nome: string;        // "SOUZA GESTÃO FUNDIÁRIA"
+  ramo: string;        // "Agrimensura e Georreferenciamento"
+  cnpj: string;        // "45.539.408/0001-74"
+  endereco: string;    // "Rua Doutor José Paixão 1400, Sala 02 Santa Inês, Espera Feliz"
+  telefone: string;    // "(32) 99911-6227"
+  logoDataUrl?: string;// logotipo opcional (base64 data URL)
 }
 
 /** Dados fixos do responsável técnico (Configurações). */

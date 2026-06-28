@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
 import RequerimentoModal from '@/components/RequerimentoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada } from '@/lib/topo/types';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
 import { montarVertices, reordenar, inverterSentido, definirInicio, novoVertice, reprojetar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
@@ -30,7 +30,7 @@ import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { conferir, valoresEfetivos, type Problema } from '@/lib/topo/conferencia';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
-import { carregarTecnico } from '@/lib/store/settings';
+import { carregarTecnico, carregarEscritorio } from '@/lib/store/settings';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart } from '@/lib/store/cadastros';
@@ -52,6 +52,7 @@ type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'conferencia' | 'projetos';
 
 export default function EditorPage() {
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
+  const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
   const [vertices, setVertices] = useState<Vertex[]>([]);
   const [imovel, setImovel] = useState<ImovelData>(IMOVEL_VAZIO);
   const [confrontantes, setConfrontantes] = useState<Confrontante[]>([]);
@@ -88,6 +89,7 @@ export default function EditorPage() {
 
   useEffect(() => {
     setTecnico(carregarTecnico());
+    setEscritorio(carregarEscritorio());
     cadProp.listar().then(setSugProp).catch(() => {});
     cadConf.listar().then(setSugConf).catch(() => {});
     cadCart.listar().then((cs) => setSugCns(cs.map((c) => c.cns).filter(Boolean))).catch(() => {});
@@ -468,7 +470,13 @@ export default function EditorPage() {
             </>
           ) : (
             <div id="planta-print" className="h-full overflow-auto bg-neutral-200 p-4">
-              {res && tecnico && <div className="mx-auto max-w-[1123px] bg-white shadow"><Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} /></div>}
+              {res && tecnico && escritorio && (
+                <div className="mx-auto max-w-[1587px] bg-white shadow">
+                  <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
+                    confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
+                    glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} />
+                </div>
+              )}
             </div>
           )}
         </main>

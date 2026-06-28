@@ -7,21 +7,30 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { TecnicoData } from '@/lib/topo/types';
-import { carregarTecnico, salvarTecnico, TECNICO_PADRAO } from '@/lib/store/settings';
+import type { TecnicoData, EscritorioData } from '@/lib/topo/types';
+import { carregarTecnico, salvarTecnico, TECNICO_PADRAO, carregarEscritorio, salvarEscritorio, ESCRITORIO_PADRAO } from '@/lib/store/settings';
 
 export default function ConfiguracoesPage() {
   const [t, setT] = useState<TecnicoData>(TECNICO_PADRAO);
+  const [esc, setEsc] = useState<EscritorioData>(ESCRITORIO_PADRAO);
   const [msg, setMsg] = useState('');
 
-  useEffect(() => { setT(carregarTecnico()); }, []);
+  useEffect(() => { setT(carregarTecnico()); setEsc(carregarEscritorio()); }, []);
 
   const set = (k: keyof TecnicoData, v: string | number) => setT((p) => ({ ...p, [k]: v }));
+  const setE = (k: keyof EscritorioData, v: string) => setEsc((p) => ({ ...p, [k]: v }));
 
   function salvar() {
     salvarTecnico(t);
+    salvarEscritorio(esc);
     setMsg('Configurações salvas.');
     setTimeout(() => setMsg(''), 3000);
+  }
+
+  function lerLogo(file: File) {
+    const r = new FileReader();
+    r.onload = () => setE('logoDataUrl', String(r.result));
+    r.readAsDataURL(file);
   }
 
   return (
@@ -69,6 +78,22 @@ export default function ConfiguracoesPage() {
         Os contadores aqui são apenas a semente inicial. Depois que você salva projetos, o banco
         de pontos passa a controlar a numeração para nunca repetir um vértice já usado.
       </p>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>Carimbo do escritório (planta)</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3">
+          <Campo wide label="Nome do escritório" value={esc.nome} onChange={(v) => setE('nome', v)} />
+          <Campo wide label="Ramo" value={esc.ramo} onChange={(v) => setE('ramo', v)} />
+          <Campo label="CNPJ" value={esc.cnpj} onChange={(v) => setE('cnpj', v)} />
+          <Campo label="Telefone/WhatsApp" value={esc.telefone} onChange={(v) => setE('telefone', v)} />
+          <Campo wide label="Endereço" value={esc.endereco} onChange={(v) => setE('endereco', v)} />
+          <div className="col-span-2 space-y-1">
+            <Label>Logotipo (opcional)</Label>
+            <Input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) lerLogo(f); }} />
+            {esc.logoDataUrl ? <img src={esc.logoDataUrl} alt="logo" className="mt-1 h-12 object-contain" /> : null}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="mt-4 flex items-center gap-3">
         <Button onClick={salvar}><Save /> Salvar configurações</Button>

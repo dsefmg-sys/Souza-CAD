@@ -62,6 +62,18 @@ export function utmDef(zona: number, hemisferio: 'N' | 'S'): string {
 
 export interface GeoCoord { lat: number; lon: number; }
 
+/**
+ * Convergência meridiana (graus): ângulo entre o Norte da quadrícula (NQ) e o Norte verdadeiro
+ * (NV) no ponto. γ = arctan( tan(λ - MC) · sin(φ) ). Positiva a leste do meridiano central.
+ */
+export function convergenciaMeridiana(latDeg: number, lonDeg: number, zona: number): number {
+  const mc = meridianoCentral(zona);
+  const dl = ((lonDeg - mc) * Math.PI) / 180;
+  const phi = (latDeg * Math.PI) / 180;
+  const g = Math.atan(Math.tan(dl) * Math.sin(phi));
+  return (g * 180) / Math.PI;
+}
+
 /** UTM (Leste, Norte) -> geográfica (lat, lon) em graus decimais. */
 export function utmParaGeo(leste: number, norte: number, zona: number, hemisferio: 'N' | 'S'): GeoCoord {
   const [lon, lat] = proj4(utmDef(zona, hemisferio), GEO, [leste, norte]);
