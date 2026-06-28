@@ -83,6 +83,7 @@ export default function EditorPage() {
   const [objetos, setObjetos] = useState<ObjetoDesenho[]>([]);
   const [desenhoBuffer, setDesenhoBuffer] = useState<PontoLL[]>([]);
   const [objetoSelId, setObjetoSelId] = useState<string | null>(null);
+  const [dragVtxIdx, setDragVtxIdx] = useState<number | null>(null);
   const [situacaoUrl, setSituacaoUrl] = useState<string | undefined>(undefined);
   // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
   const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
@@ -280,6 +281,15 @@ export default function EditorPage() {
   async function renumerar() {
     await aplicarCodigos(vertices);
     aviso('Vértices renumerados.');
+  }
+
+  // Reordena o anel arrastando na lista e renumera (muda o polígono e os nomes).
+  async function reordenarVertice(from: number, to: number) {
+    if (from === to || from < 0 || to < 0 || from >= vertices.length || to >= vertices.length) return;
+    const out = [...vertices];
+    const [m] = out.splice(from, 1);
+    out.splice(to, 0, m);
+    await aplicarCodigos(reordenar(out));
   }
 
   // ---------- desenho livre (CAD leve) ----------
@@ -608,7 +618,7 @@ export default function EditorPage() {
     <div className="flex h-screen flex-col">
       {/* Topo */}
       <header className="no-print flex items-center gap-2 border-b px-3 py-2">
-        <span className="mr-2 text-lg font-semibold tracking-tight">Métrica</span>
+        <span className="mr-2 text-lg font-semibold tracking-tight">Souza CAD</span>
         <input ref={fileRef} type="file" accept=".txt,.csv" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
@@ -736,10 +746,17 @@ export default function EditorPage() {
                   <Button size="sm" variant="outline" onClick={renumerar}>Renumerar</Button>
                   <Button size="sm" variant="outline" onClick={() => setVertices((vs) => inverterSentido(vs))}>Inverter</Button>
                 </div>
+                <p className="mb-1 text-[10px] text-muted-foreground">Arraste um vértice para reordenar o polígono (renumera automático).</p>
                 {vertices.map((v, i) => {
                   const l = lados[i];
                   return (
-                    <div key={v.id} className={`rounded border p-2 text-xs ${selecionadoId === v.id ? 'border-primary bg-accent' : ''}`} onClick={() => setSelecionadoId(v.id)}>
+                    <div key={v.id}
+                      draggable
+                      onDragStart={() => setDragVtxIdx(i)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => { if (dragVtxIdx != null) reordenarVertice(dragVtxIdx, i); setDragVtxIdx(null); }}
+                      className={`cursor-grab rounded border p-2 text-xs ${selecionadoId === v.id ? 'border-primary bg-accent' : ''} ${dragVtxIdx === i ? 'opacity-50' : ''}`}
+                      onClick={() => setSelecionadoId(v.id)}>
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-semibold">{v.codigoSigef || '(sem código)'}</span>
                         <span className="flex gap-1">

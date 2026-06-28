@@ -6,8 +6,8 @@ import 'leaflet/dist/leaflet.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Métrica — Peças técnicas de georreferenciamento',
-  description: 'Importa TXT, calcula área SGL e gera memorial, planilha SIGEF e planta.',
+  title: 'Souza CAD — Peças técnicas de georreferenciamento',
+  description: 'Importa TXT/DXF, calcula área SGL e gera memorial, planilha SIGEF, planta e requerimento.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

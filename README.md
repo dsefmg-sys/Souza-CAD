@@ -1,7 +1,7 @@
-# Métrica
+# Souza CAD
 
-App de peças técnicas de georreferenciamento (cópia das funções principais do Métrica Topo),
-para o fluxo do escritório Souza Agrimensura.
+App de peças técnicas de georreferenciamento para o escritório Souza Gestão Fundiária
+(inspirado nas funções principais do Métrica Topo).
 
 A partir de um arquivo TXT de coordenadas (GNSS, UTM), o app:
 
