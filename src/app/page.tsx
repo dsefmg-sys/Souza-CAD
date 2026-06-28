@@ -9,7 +9,7 @@ import {
   Upload, FileText, Sheet, Map as MapIcon, Printer, Settings, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, FileSignature, PenTool, Magnet,
+  Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,6 +76,7 @@ export default function EditorPage() {
   const [modo, setModo] = useState<ModoEdicao>('navegar');
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [snapAtivo, setSnapAtivo] = useState(false);
+  const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [situacaoUrl, setSituacaoUrl] = useState<string | undefined>(undefined);
   // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
   const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
@@ -408,7 +409,12 @@ export default function EditorPage() {
   async function gerarSituacaoPlanta() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     aviso('Buscando satélite da situação…');
-    const url = await gerarSituacao(vertices.map((v) => ({ lat: v.lat, lon: v.lon })));
+    // todas as glebas (a ativa primeiro), para a situação mostrar mais de um polígono
+    const aneis = [
+      vertices.map((v) => ({ lat: v.lat, lon: v.lon })),
+      ...glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.map((v) => ({ lat: v.lat, lon: v.lon }))),
+    ];
+    const url = await gerarSituacao(aneis);
     setSituacaoUrl(url ?? undefined);
     aviso(url ? 'Planta de situação gerada.' : 'Não consegui carregar o satélite (rede/CORS).');
   }
@@ -576,9 +582,11 @@ export default function EditorPage() {
                 <Button size="sm" variant="ghost" onClick={renumerar} title="Renumerar vértices"><Crosshair /></Button>
                 <Button size="sm" variant="ghost" onClick={() => setMostrarRotulos((m) => !m)} title={mostrarRotulos ? 'Esconder nomes' : 'Mostrar nomes'}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
                 <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} onClick={() => setSnapAtivo((s) => !s)} title="Snap: encaixar em vértices existentes"><Magnet /></Button>
+                <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} onClick={() => setBloqueado((b) => !b)} title={bloqueado ? 'Vértices travados (clique para liberar a edição)' : 'Vértices liberados — cuidado para não mover sem querer'}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
               </div>
-              <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos}
+              <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
+                outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice} />
             </>
           ) : (
@@ -591,7 +599,8 @@ export default function EditorPage() {
                 <div className="mx-auto max-w-[1587px] bg-white shadow">
                   <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                     confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
-                    glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} />
+                    glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl}
+                    outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))} />
                 </div>
               )}
             </div>

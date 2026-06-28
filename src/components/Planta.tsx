@@ -18,6 +18,7 @@ interface Props {
   glebaNome?: string;
   dataExtenso?: string;
   situacaoUrl?: string;
+  outrasGlebas?: { nome: string; pts: { leste: number; norte: number }[] }[];
 }
 
 // A3 paisagem @96dpi: 420x297mm
@@ -39,7 +40,7 @@ const REPRES_LABEL: Record<string, string> = {
   rio: 'Rio', acude: 'Açude', muro: 'Muro', vala: 'Vala',
 };
 
-export default function Planta({ vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado, zona, hemisferio, glebaNome, dataExtenso, situacaoUrl }: Props) {
+export default function Planta({ vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado, zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [] }: Props) {
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
   }
@@ -47,8 +48,10 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
 
   // ---- transform UTM -> tela (escala múltipla de 250) ----
-  const xs = vertices.map((v) => v.leste);
-  const ys = vertices.map((v) => v.norte);
+  // enquadra a gleba ativa + as demais glebas, para todas aparecerem
+  const outrasPts = outrasGlebas.flatMap((g) => g.pts);
+  const xs = [...vertices.map((v) => v.leste), ...outrasPts.map((p) => p.leste)];
+  const ys = [...vertices.map((v) => v.norte), ...outrasPts.map((p) => p.norte)];
   let minX = Math.min(...xs), maxX = Math.max(...xs);
   let minY = Math.min(...ys), maxY = Math.max(...ys);
   const padX = (maxX - minX) * 0.15 || 10;
@@ -129,7 +132,21 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
         </g>
       ))}
 
-      {/* ---------- POLÍGONO ---------- */}
+      {/* demais glebas do imóvel (contorno + nome) */}
+      {outrasGlebas.map((g, i) => {
+        if (g.pts.length < 3) return null;
+        const pp = g.pts.map((p) => `${sx(p.leste).toFixed(1)},${sy(p.norte).toFixed(1)}`).join(' ');
+        const ccx = g.pts.reduce((s, p) => s + sx(p.leste), 0) / g.pts.length;
+        const ccy = g.pts.reduce((s, p) => s + sy(p.norte), 0) / g.pts.length;
+        return (
+          <g key={`og${i}`}>
+            <polygon points={pp} fill="#f97316" fillOpacity={0.06} stroke="#c2410c" strokeWidth={1.2} strokeDasharray="6 4" />
+            <text x={ccx} y={ccy} fontSize={10} fontWeight="bold" textAnchor="middle" fill="#7c2d12">{g.nome}</text>
+          </g>
+        );
+      })}
+
+      {/* ---------- POLÍGONO (gleba ativa) ---------- */}
       <polygon points={pts} fill="#fde68a" fillOpacity={0.18} stroke="#7c2d12" strokeWidth={1.8} />
 
       {/* confrontantes (rótulo + linha de assinatura) */}

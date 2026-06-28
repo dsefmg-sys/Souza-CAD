@@ -35,7 +35,9 @@ function escolherZoom(spanLon: number, alvoPx: number): number {
   return 8;
 }
 
-export async function gerarSituacao(pts: PontoGeo[], opts: { alvoPx?: number; padding?: number } = {}): Promise<string | null> {
+export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number; padding?: number } = {}): Promise<string | null> {
+  const rings = aneis.filter((a) => a.length >= 3);
+  const pts = rings.flat();
   if (typeof document === 'undefined' || pts.length < 3) return null;
   const alvoPx = opts.alvoPx ?? 460;
   const pad = opts.padding ?? 0.6;
@@ -76,16 +78,20 @@ export async function gerarSituacao(pts: PontoGeo[], opts: { alvoPx?: number; pa
   }
   await Promise.all(cargas);
 
-  // contorno do imóvel
-  ctx.beginPath();
-  pts.forEach((p, i) => {
-    const x = lonToGlobalPx(p.lon, z) - pxMin;
-    const y = latToGlobalPx(p.lat, z) - pyMin;
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  // contorno de cada gleba (a primeira em destaque amarelo, as demais em laranja)
+  rings.forEach((anel, gi) => {
+    ctx.beginPath();
+    anel.forEach((p, i) => {
+      const x = lonToGlobalPx(p.lon, z) - pxMin;
+      const y = latToGlobalPx(p.lat, z) - pyMin;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = gi === 0 ? '#facc15' : '#f97316';
+    ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = gi === 0 ? 'rgba(250,204,21,0.15)' : 'rgba(249,115,22,0.10)';
+    ctx.fill();
   });
-  ctx.closePath();
-  ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2.5; ctx.stroke();
-  ctx.fillStyle = 'rgba(250,204,21,0.15)'; ctx.fill();
 
   try { return canvas.toDataURL('image/jpeg', 0.82); }
   catch { return null; } // canvas tainted (CORS) — sai sem situação

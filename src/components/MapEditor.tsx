@@ -12,7 +12,9 @@ interface Props {
   selecionadoId: string | null;
   modo: ModoEdicao;
   mostrarRotulos: boolean;
+  bloqueado: boolean;                 // vértices travados (não arrastam) por padrão
   referencias?: [number, number][][];
+  outrasGlebas?: [number, number][][];// polígonos das demais glebas (visualização)
   onMover: (id: string, lat: number, lon: number) => void;
   onSelecionar: (id: string) => void;
   onApagar: (id: string) => void;
@@ -64,7 +66,7 @@ function CliqueMapa({ modo, onInserir }: { modo: ModoEdicao; onInserir: (lat: nu
   return null;
 }
 
-export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulos, referencias = [], onMover, onSelecionar, onApagar, onInserir }: Props) {
+export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], outrasGlebas = [], onMover, onSelecionar, onApagar, onInserir }: Props) {
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
   const centro = useMemo<[number, number]>(() => {
     if (validos.length) return [validos[0].lat, validos[0].lon];
@@ -76,16 +78,16 @@ export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulo
   return (
     <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={22} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
       <LayersControl position="topright">
-        <LayersControl.BaseLayer checked name="Satélite (Esri)">
+        <LayersControl.BaseLayer checked name="Híbrido (Google)">
+          <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={22} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
+        </LayersControl.BaseLayer>
+        <LayersControl.BaseLayer name="Satélite (Esri)">
           <TileLayer
             attribution="Tiles &copy; Esri"
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             maxZoom={22}
-            maxNativeZoom={19}
+            maxNativeZoom={18}
           />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Híbrido (Google)">
-          <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={22} maxNativeZoom={21} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
         </LayersControl.BaseLayer>
         <LayersControl.BaseLayer name="Ruas (OpenStreetMap)">
           <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />
@@ -100,6 +102,11 @@ export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulo
         <Polyline key={`ref${i}`} positions={r.length >= 3 ? [...r, r[0]] : r} pathOptions={{ color: '#06b6d4', weight: 1.5, dashArray: '5 4' }} />
       ))}
 
+      {/* demais glebas do imóvel (apenas visualização) */}
+      {outrasGlebas.filter((g) => g.length >= 3).map((g, i) => (
+        <Polygon key={`gleba${i}`} positions={g} pathOptions={{ color: '#f97316', weight: 1.5, fillColor: '#f97316', fillOpacity: 0.06, dashArray: '6 4' }} />
+      ))}
+
       {anel.length >= 3 ? (
         <Polygon positions={anel} pathOptions={{ color: '#facc15', weight: 2, fillColor: '#facc15', fillOpacity: 0.12 }} />
       ) : anel.length === 2 ? (
@@ -110,7 +117,7 @@ export default function MapEditor({ vertices, selecionadoId, modo, mostrarRotulo
         <Marker
           key={v.id}
           position={[v.lat, v.lon]}
-          draggable={modo === 'navegar'}
+          draggable={modo === 'navegar' && !bloqueado}
           icon={iconeVertice(v, v.id === selecionadoId)}
           eventHandlers={{
             click() {
