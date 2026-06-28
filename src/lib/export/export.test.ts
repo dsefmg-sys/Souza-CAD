@@ -9,7 +9,7 @@ import { montarConfrontantes } from '../topo/confrontantes';
 import { calcular } from '../topo/calcular';
 import { detectarZona } from '../topo/coords';
 import type { ImovelData, TecnicoData } from '../topo/types';
-import { montarContentXml } from './sigefOds';
+import { montarContentXml, montarContentXmlGlebas } from './sigefOds';
 import { construirNarrativa, gerarMemorialDocx } from './memorial';
 import { gerarRequerimentoDocx } from './requerimento';
 import type { PessoaQualificada } from '../topo/types';
@@ -151,6 +151,31 @@ describe('sigef ods', () => {
     const out = await zip.generateAsync({ type: 'nodebuffer' });
     mkdirSync(OUT, { recursive: true });
     writeFileSync(resolve(OUT, 'sigef_out.ods'), out);
+  });
+
+  it('multi-gleba: gera uma aba perimetro_N por gleba', async () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    const tplBytes = readFileSync(resolve(__dirname, '../../../public/templates/sigef.ods'));
+    const zip = await JSZip.loadAsync(tplBytes);
+    const xml = await zip.file('content.xml')!.async('string');
+    const glebas = [
+      { res, confrontantes, confrontantePorLado, denominacao: 'Parcela 1', parcela: '001' },
+      { res, confrontantes, confrontantePorLado, denominacao: 'Parcela 2', parcela: '002' },
+    ];
+    const novo = montarContentXmlGlebas(xml, imovel, tecnico, glebas);
+    expect(novo).toContain('table:name="perimetro_1"');
+    expect(novo).toContain('table:name="perimetro_2"');
+    expect(novo).toContain('002');
+    // cada aba tem 11 vértices
+    const t1 = novo.match(/table:name="perimetro_1"[\s\S]*?<\/table:table>/)![0];
+    const t2 = novo.match(/table:name="perimetro_2"[\s\S]*?<\/table:table>/)![0];
+    expect((t1.match(/-[MP]-\d{4}/g) || []).length).toBe(11);
+    expect((t2.match(/-[MP]-\d{4}/g) || []).length).toBe(11);
+    // grava .ods real de 2 glebas para inspeção
+    zip.file('content.xml', novo);
+    const out = await zip.generateAsync({ type: 'nodebuffer' });
+    mkdirSync(OUT, { recursive: true });
+    writeFileSync(resolve(OUT, 'sigef_2glebas.ods'), out);
   });
 
   it('usa o tipo de limite e o método de cada vértice', async () => {

@@ -74,30 +74,42 @@ function fatiarTabela(xml: string, nome: string): { antes: string; tabela: strin
   };
 }
 
-/** Substitui as linhas de vértice da aba perimetro_1. */
-function injetarPerimetro(xml: string, linhas: string[]): string {
-  const { antes, tabela, depois } = fatiarTabela(xml, 'perimetro_1');
+/** Substitui as linhas de vértice DENTRO de uma string de tabela de perímetro. */
+function preencherPerimetroEm(tabela: string, linhas: string[]): string {
   const rows = [...tabela.matchAll(ROW_RE)];
   const headerIdx = rows.findIndex((r) => r[0].includes('E/Long'));
   if (headerIdx < 0) throw new Error('Cabeçalho da tabela de perímetro não encontrado');
-
-  // linhas de dados = contíguas após o cabeçalho que contêm o padrão de vértice (-M- ou -P-)
   const ehDado = (s: string) => /-[MP]-\d{2,}/.test(s);
   let first = -1, last = -1;
   for (let i = headerIdx + 1; i < rows.length; i++) {
-    if (ehDado(rows[i][0])) {
-      if (first < 0) first = i;
-      last = i;
-    } else if (first >= 0) {
-      break;
-    }
+    if (ehDado(rows[i][0])) { if (first < 0) first = i; last = i; }
+    else if (first >= 0) break;
   }
   if (first < 0) throw new Error('Linhas de vértice do template não encontradas');
-
   const startPos = rows[first].index!;
   const endPos = rows[last].index! + rows[last][0].length;
-  const novaTabela = tabela.slice(0, startPos) + linhas.join('') + tabela.slice(endPos);
-  return antes + novaTabela + depois;
+  return tabela.slice(0, startPos) + linhas.join('') + tabela.slice(endPos);
+}
+
+/** Define Denominação e Parcela número na tabela de perímetro. */
+function setDenominacaoParcela(tabela: string, denominacao: string, parcela: string): string {
+  const rows = [...tabela.matchAll(ROW_RE)];
+  let out = tabela;
+  // de trás pra frente para preservar índices
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i];
+    let novo: string | null = null;
+    if (/Denomina[çc]/.test(r[0]) && denominacao) novo = setTextoP(r[0], 1, denominacao);
+    else if (/Parcela n[úu]mero/.test(r[0]) && parcela) novo = setTextoP(r[0], 1, parcela);
+    if (novo) out = out.slice(0, r.index!) + novo + out.slice(r.index! + r[0].length);
+  }
+  return out;
+}
+
+/** Substitui as linhas de vértice da aba perimetro_1 (caso de gleba única). */
+function injetarPerimetro(xml: string, linhas: string[]): string {
+  const { antes, tabela, depois } = fatiarTabela(xml, 'perimetro_1');
+  return antes + preencherPerimetroEm(tabela, linhas) + depois;
 }
 
 /** Substitui o N-ésimo <text:p> de uma linha por novo texto. */
@@ -150,34 +162,67 @@ export interface DadosSigef {
   confrontantePorLado: Record<number, string>;
 }
 
-/** Transformação pura do content.xml do template (testável fora do browser). */
-export function montarContentXml(xml: string, dados: DadosSigef): string {
-  const { res, imovel, tecnico, confrontantes, confrontantePorLado } = dados;
-  // Defesa final: nunca gerar a planilha com lacuna de código de vértice.
-  const semCodigo = res.vertices.filter((v) => !v.codigoSigef).length;
-  if (semCodigo > 0) throw new Error(`${semCodigo} vértice(s) sem código. Renumere os vértices antes de gerar a planilha.`);
-  const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
-  const linhas = res.vertices.map((v, i) => {
-    const cid = confrontantePorLado[i] ?? null;
-    return linhaVertice(v, cid ? mapaC.get(cid) : undefined, tecnico, imovel.cns);
+/** Uma gleba para a planilha: dados de cálculo + identificação da parcela. */
+export interface GlebaSigef {
+  res: ResultadoCalculo;
+  confrontantes: Confrontante[];
+  confrontantePorLado: Record<number, string>;
+  denominacao: string;
+  parcela: string;
+}
+
+function linhasDaGleba(g: GlebaSigef, tecnico: TecnicoData, cnsImovel: string): string[] {
+  const sem = g.res.vertices.filter((v) => !v.codigoSigef).length;
+  if (sem > 0) throw new Error(`${sem} vértice(s) sem código. Renumere os vértices antes de gerar a planilha.`);
+  const mapaC = new Map(g.confrontantes.map((c) => [c.id, c]));
+  return g.res.vertices.map((v, i) => {
+    const cid = g.confrontantePorLado[i] ?? null;
+    return linhaVertice(v, cid ? mapaC.get(cid) : undefined, tecnico, cnsImovel);
   });
-  let out = injetarPerimetro(xml, linhas);
-  out = injetarIdentificacao(out, imovel);
+}
+
+/**
+ * Multi-gleba: identificação compartilhada + uma aba `perimetro_N` por gleba (clona a aba de
+ * perímetro do template, igual ao "adicionar parcela" do SIGEF).
+ */
+export function montarContentXmlGlebas(xml: string, imovel: ImovelData, tecnico: TecnicoData, glebas: GlebaSigef[]): string {
+  if (!glebas.length) throw new Error('Nenhuma gleba para gerar.');
+  let out = injetarIdentificacao(xml, imovel);
+  const { antes, tabela: template, depois } = fatiarTabela(out, 'perimetro_1');
+  const tabelas = glebas.map((g, i) => {
+    let t = preencherPerimetroEm(template, linhasDaGleba(g, tecnico, imovel.cns));
+    t = setDenominacaoParcela(t, g.denominacao, g.parcela);
+    if (i > 0) t = t.replace('table:name="perimetro_1"', `table:name="perimetro_${i + 1}"`);
+    return t;
+  });
+  out = antes + tabelas.join('') + depois;
   return out;
+}
+
+/** Transformação pura do content.xml (gleba única). */
+export function montarContentXml(xml: string, dados: DadosSigef): string {
+  return montarContentXmlGlebas(xml, dados.imovel, dados.tecnico, [{
+    res: dados.res, confrontantes: dados.confrontantes, confrontantePorLado: dados.confrontantePorLado,
+    denominacao: 'Parcela 1', parcela: '001',
+  }]);
 }
 
 export interface SigefInput extends DadosSigef {
   templateBytes: ArrayBuffer | Uint8Array;
+  glebas?: GlebaSigef[]; // se presente, gera multi-gleba
 }
 
 export async function gerarSigefOds(input: SigefInput): Promise<Blob> {
-  const { templateBytes, ...dados } = input;
+  const { templateBytes, glebas, ...dados } = input;
   const zip = await JSZip.loadAsync(templateBytes);
   const contentFile = zip.file('content.xml');
   if (!contentFile) throw new Error('content.xml ausente no template ODS');
   const xml = await contentFile.async('string');
 
-  zip.file('content.xml', montarContentXml(xml, dados));
+  const novoXml = glebas && glebas.length
+    ? montarContentXmlGlebas(xml, dados.imovel, dados.tecnico, glebas)
+    : montarContentXml(xml, dados);
+  zip.file('content.xml', novoXml);
   // mimetype deve permanecer STORED (sem compressão) — preserva validade do ODF
   const mime = zip.file('mimetype');
   if (mime) {

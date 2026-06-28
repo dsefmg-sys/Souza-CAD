@@ -316,14 +316,39 @@ export default function EditorPage() {
 
   async function exportarOds() {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
+    const tec = tecnico;
     try {
-      const vs = await comCodigos();
-      const r = calcular(vs, confrontantePorLado);
       const tpl = await fetch('/templates/sigef.ods').then((rr) => rr.arrayBuffer());
-      const blob = await gerarSigefOds({ templateBytes: tpl, res: r, imovel, tecnico, confrontantes, confrontantePorLado });
-      const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
-      saveAs(blob, `SIGEF - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.ods`);
+      if (glebas.length > 1) {
+        // Multi-gleba: registra os pontos de todas (códigos únicos entre parcelas) e gera uma
+        // aba perimetro_N por gleba.
+        setProcessando(true);
+        const id = projetoId ?? novoId();
+        const gs = sincronizarGlebas();
+        const registradas: Gleba[] = [];
+        for (const g of gs) {
+          if (g.vertices.length < 3) { registradas.push(g); continue; }
+          const r = await registrarPontos(g.vertices, tec.credenciamentoIncra, id, zona, hemisferio, tec);
+          registradas.push({ ...g, vertices: r.vertices });
+        }
+        setGlebas(registradas);
+        const ativa = registradas.find((g) => g.id === glebaAtivaId);
+        if (ativa) setVertices(ativa.vertices);
+        const glebasSigef = registradas.filter((g) => g.vertices.length >= 3).map((g) => ({
+          res: calcular(g.vertices, g.confrontantePorLado),
+          confrontantes: g.confrontantes, confrontantePorLado: g.confrontantePorLado,
+          denominacao: g.denominacao, parcela: g.parcela,
+        }));
+        const blob = await gerarSigefOds({ templateBytes: tpl, res: glebasSigef[0].res, imovel, tecnico: tec, confrontantes: glebasSigef[0].confrontantes, confrontantePorLado: glebasSigef[0].confrontantePorLado, glebas: glebasSigef });
+        saveAs(blob, `SIGEF - ${imovel.denominacao || nomeProjeto || 'imovel'} (${glebasSigef.length} glebas).ods`);
+      } else {
+        const vs = await comCodigos();
+        const r = calcular(vs, confrontantePorLado);
+        const blob = await gerarSigefOds({ templateBytes: tpl, res: r, imovel, tecnico: tec, confrontantes, confrontantePorLado });
+        saveAs(blob, `SIGEF - ${imovel.denominacao || nomeProjeto || 'imovel'}.ods`);
+      }
     } catch (e) { aviso((e as Error).message || 'Erro ao gerar a planilha.'); }
+    finally { setProcessando(false); }
   }
 
   async function exportarPlanta() {
