@@ -26,6 +26,17 @@ describe('banco de pontos — provisório', () => {
     expect(c.M).toBe(17);
   });
 
+  it('NÃO repete o número de um vértice já registrado ao numerar os provisórios', () => {
+    const c = semente('COIN', { contadorMarco: 5, contadorPonto: 1 });
+    const reg = v('M', { codigoSigef: 'COIN-M-0005', registrado: true });
+    const out = atribuirProvisorio([v('M'), reg, v('M')], c);
+    const codigos = out.map((x) => x.codigoSigef);
+    expect(codigos).toContain('COIN-M-0005'); // o registrado
+    // os provisórios não podem repetir o 0005
+    expect(codigos.filter((cd) => cd === 'COIN-M-0005')).toHaveLength(1);
+    expect(new Set(codigos).size).toBe(3); // todos distintos
+  });
+
   it('PRESERVA a marca registrado ao renumerar (não pode reconsumir número)', () => {
     const c = semente('COIN', tec);
     const reg = v('M', { codigoSigef: 'COIN-M-0005', registrado: true });

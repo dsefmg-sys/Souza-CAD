@@ -192,7 +192,12 @@ export function montarContentXmlGlebas(xml: string, imovel: ImovelData, tecnico:
   const tabelas = glebas.map((g, i) => {
     let t = preencherPerimetroEm(template, linhasDaGleba(g, tecnico, imovel.cns));
     t = setDenominacaoParcela(t, g.denominacao, g.parcela);
-    if (i > 0) t = t.replace('table:name="perimetro_1"', `table:name="perimetro_${i + 1}"`);
+    if (i > 0) {
+      // troca TODAS as referências à aba (table:name + âncoras dos controles), não só a 1ª.
+      t = t.replace(/perimetro_1/g, `perimetro_${i + 1}`);
+      // nomes de controle de formulário únicos por gleba (evita controles duplicados entre abas)
+      t = t.replace(/control(\d+)"/g, `control$1_g${i + 1}"`);
+    }
     return t;
   });
   out = antes + tabelas.join('') + depois;

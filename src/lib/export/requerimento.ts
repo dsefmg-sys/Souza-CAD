@@ -1,6 +1,6 @@
 import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 import type { ImovelData, TecnicoData, PessoaQualificada } from '../topo/types';
-import { numBR } from '../topo/geometry';
+import { numBR, numBRmilhar } from '../topo/geometry';
 import { valorPorExtenso } from '../topo/extenso';
 
 export interface RequerimentoInput {
@@ -108,7 +108,7 @@ export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<B
 
   c.push(titulo('DO VALOR DO IMÓVEL'));
   if (imovel.valorImovel != null && imovel.valorImovel > 0) {
-    c.push(par(`Declaram, para fins fiscais e de cálculo dos emolumentos, que o valor do imóvel é de: R$ ${numBR(imovel.valorImovel)} (${valorPorExtenso(imovel.valorImovel)}).`));
+    c.push(par(`Declaram, para fins fiscais e de cálculo dos emolumentos, que o valor do imóvel é de: R$ ${numBRmilhar(imovel.valorImovel)} (${valorPorExtenso(imovel.valorImovel)}).`));
   } else {
     c.push(par('Declaram, para fins fiscais e de cálculo dos emolumentos, que o valor do imóvel é de: R$ _______ (____________).'));
   }

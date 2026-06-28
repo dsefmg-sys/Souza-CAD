@@ -64,7 +64,9 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
   const areaH = DRAW.y1 - DRAW.y0;
   const escalaFit = Math.min(areaW / (maxX - minX), areaH / (maxY - minY));
   const denomNatural = 1 / (escalaFit * 0.0002645);
-  const escalaDenom = Math.max(250, Math.ceil(denomNatural / 250) * 250);
+  // escala da tabela cartográfica padrão (1:250, 500, 1000, 2000, 2500, 4000, 5000...)
+  const TABELA = [250, 500, 750, 1000, 1500, 2000, 2500, 4000, 5000, 7500, 10000, 15000, 20000, 25000, 50000, 100000];
+  const escalaDenom = TABELA.find((d) => d >= denomNatural) ?? Math.ceil(denomNatural / 10000) * 10000;
   const escala = 1 / (escalaDenom * 0.0002645);
   const desW = (maxX - minX) * escala, desH = (maxY - minY) * escala;
   const offX = DRAW.x0 + (areaW - desW) / 2;
@@ -93,11 +95,14 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
     if (!trechos.has(cid)) trechos.set(cid, []);
     trechos.get(cid)!.push(i);
   }
+  // mantém o rótulo dentro da área de desenho (não estoura a moldura)
+  const clampX = (x: number) => Math.max(DRAW.x0 + 75, Math.min(DRAW.x1 - 75, x));
+  const clampY = (y: number) => Math.max(DRAW.y0 + 22, Math.min(DRAW.y1 - 24, y));
   const rotulosConf = [...trechos.entries()].map(([cid, idxs]) => {
     const c = mapaC.get(cid);
     if (c?.posRotulo) {
       const u = geoParaUtm(c.posRotulo.lat, c.posRotulo.lon, zona, hemisferio);
-      return { c, x: sx(u.leste), y: sy(u.norte) };
+      return { c, x: clampX(sx(u.leste)), y: clampY(sy(u.norte)) };
     }
     const meio = idxs[Math.floor(idxs.length / 2)];
     const a = anel[meio], b = anel[(meio + 1) % anel.length];
@@ -105,7 +110,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
     let dx = mx - cx, dy = my - cy;
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
-    return { c, x: mx + dx * 60, y: my + dy * 60 };
+    return { c, x: clampX(mx + dx * 60), y: clampY(my + dy * 60) };
   });
 
   // ---- nortes ----
@@ -113,7 +118,10 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
   const conv = convergenciaMeridiana(vref.lat, vref.lon, zona); // NQ vs NV
   const decl = imovel.declinacaoMagnetica ?? 0;                 // NM vs NV (input)
   const escalaDenominador = escalaDenom;
-  const fatorK = 0.9996; // fator de escala no meridiano central (aprox.); refinável
+  // fator de escala (k) NO PONTO de referência: k = k0·(1 + (Δλ·cosφ)²/2), k0 = 0,9996 no MC.
+  const dLamb = ((vref.lon - meridianoCentral(zona)) * Math.PI) / 180;
+  const phiRef = (vref.lat * Math.PI) / 180;
+  const fatorK = 0.9996 * (1 + Math.pow(dLamb * Math.cos(phiRef), 2) / 2);
 
   // tipos de divisa em uso (legenda)
   const represUsadas = Array.from(new Set(vertices.map((v) => v.representacao || 'linha-ideal')));
@@ -121,7 +129,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
   const ix = (DRAW.x1 + DRAW.x0) / 2;
 
   return (
-    <svg id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%" style={{ background: '#fff' }} xmlns="http://www.w3.org/2000/svg">
+    <svg id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%" style={{ background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif' }} xmlns="http://www.w3.org/2000/svg">
       <rect x={0} y={0} width={W} height={H} fill="#fff" />
       <rect x={8} y={8} width={W - 16} height={H - 16} fill="none" stroke="#000" strokeWidth={1.5} />
 
@@ -221,6 +229,23 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
         </g>
       ) : null}
 
+      {/* ---------- BARRA DE ESCALA GRÁFICA ---------- */}
+      {(() => {
+        const nices = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
+        const barM = nices.find((n) => n * escala >= 120) ?? 5000;
+        const barPx = barM * escala;
+        const bx = DRAW.x0 + 14, by = DRAW.y1 - 18;
+        const seg = barPx / 4;
+        return (
+          <g>
+            <text x={bx} y={by - 6} fontSize={8} fontWeight="bold">Escala 1:{escalaDenom}</text>
+            {[0, 1, 2, 3].map((k) => <rect key={k} x={bx + k * seg} y={by} width={seg} height={5} fill={k % 2 ? '#fff' : '#000'} stroke="#000" strokeWidth={0.5} />)}
+            {[0, 1, 2, 3, 4].map((k) => <text key={k} x={bx + k * seg} y={by + 13} fontSize={7} textAnchor="middle">{Math.round((barM * k) / 4)}</text>)}
+            <text x={bx + barPx + 10} y={by + 5} fontSize={7}>m</text>
+          </g>
+        );
+      })()}
+
       {/* ---------- FAIXA INFERIOR ---------- */}
       <Faixa
         imovel={imovel} res={res} ef={ef} tecnico={tecnico} zona={zona} hemisferio={hemisferio}
@@ -249,8 +274,8 @@ function Faixa(props: {
   const c2 = x0 + w * 0.62;   // fim Coordenadas
   const c3 = x0 + w * 0.82;   // fim Convenções
 
-  const lon = grausParaDMS(vref.lon, { estilo: 'sigef', eixo: 'lon', casas: 3 });
-  const lat = grausParaDMS(vref.lat, { estilo: 'sigef', eixo: 'lat', casas: 3 });
+  const lon = grausParaDMS(vref.lon, { estilo: 'memorial', casas: 3 });
+  const lat = grausParaDMS(vref.lat, { estilo: 'memorial', casas: 3 });
 
   return (
     <g>
@@ -270,10 +295,11 @@ function Faixa(props: {
         ['Vértice de ref.:', vref.codigoSigef],
         ['Latitude:', lat], ['Longitude:', lon],
         ['Declinação magnética:', `${numBR(decl, 4)}°`],
+        ['Variação anual:', imovel.variacaoAnual != null ? `${numBR(imovel.variacaoAnual, 1)}'/ano` : '—'],
         ['Conv. meridiana:', `${numBR(conv, 4)}°`],
         ['SGR:', 'SIRGAS2000'],
         ['MC:', `${meridianoCentral(zona)}°  ·  Fuso ${zona}${hemisferio}`],
-        ['K:', String(fatorK)],
+        ['K:', fatorK.toFixed(7)],
       ].map(([k, v], i) => (
         <text key={i} x={c1 + 8} y={y0 + 34 + i * 14} fontSize={9}><tspan fontWeight="bold">{k} </tspan>{v}</text>
       ))}
@@ -344,20 +370,22 @@ function Carimbo(props: {
     const el = (
       <g key={label + y}>
         <text x={x0 + 10} y={y} fontSize={8.5} fontWeight="bold" fill="#333">{label}</text>
-        <text x={x0 + 10} y={y + 11} fontSize={10}>{(valor || '—').slice(0, 48)}</text>
+        <text x={x0 + 10} y={y + 11} fontSize={(valor || '').length > 46 ? 8.5 : 10}>{(valor || '—').slice(0, 64)}</text>
       </g>
     );
-    y += 28;
+    y += 27;
     return el;
   };
   const campos = [
     ['Título:', 'Levantamento Planimétrico Georreferenciado'],
+    ['Folha:', 'Única'],
     ['PROPRIEDADE:', glebaNome || imovel.denominacao || '—'],
     ['PROPRIETÁRIO(S):', imovel.proprietario || '—'],
     ['MUNICÍPIO(S):', imovel.municipio || '—'],
-    ['MATRÍCULA:', imovel.matricula || '—'],
+    ['MAT./TRANSC.:', imovel.matricula || '—'],
     ['ÁREA TOTAL (ha):', `${numBR(ef.areaHa, 4)} ha`],
     ['PERÍMETRO (m):', `${numBR(ef.perimetro)} m`],
+    ['TRT nº:', tecnico.art || '—'],
     ['ESCALA:', `1 / ${escalaDenom}`],
     ['DATA:', dataExtenso || '—'],
   ];
@@ -379,10 +407,15 @@ function Carimbo(props: {
       <text x={(x0 + W) / 2} y={yAssin + 112} fontSize={9} fontWeight="bold" textAnchor="middle">{tecnico.nome}</text>
       <text x={(x0 + W) / 2} y={yAssin + 122} fontSize={8} textAnchor="middle">{tecnico.formacao}</text>
       <text x={(x0 + W) / 2} y={yAssin + 132} fontSize={8} textAnchor="middle">CFT nº {tecnico.cft} · INCRA: {tecnico.credenciamentoIncra}</text>
+      <text x={(x0 + W) / 2} y={yAssin + 142} fontSize={8} textAnchor="middle" fill="#555">Assinatura do Responsável Técnico</text>
+
+      {/* laudo técnico (resumido) */}
+      <TextoQuebrado x={x0 + 10} y={yAssin + 158} fontSize={7.5} larguraChars={66}
+        texto="LAUDO TÉCNICO: Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha." />
 
       {/* declaração confrontantes (resumida) */}
-      <text x={x0 + 10} y={yAssin + 160} fontSize={8.5} fontWeight="bold">CONFRONTANTES</text>
-      <TextoQuebrado x={x0 + 10} y={yAssin + 174} fontSize={8} larguraChars={62}
+      <text x={x0 + 10} y={yAssin + 196} fontSize={8.5} fontWeight="bold">CONFRONTANTES</text>
+      <TextoQuebrado x={x0 + 10} y={yAssin + 208} fontSize={7.5} larguraChars={66}
         texto="Concordamos com as medidas apresentadas nesta planta e no memorial anexo, no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade (§10 do art. 213 da LRP)." />
 
       {/* carimbo do escritório */}

@@ -23,11 +23,23 @@ function codigo(prefixo: string, tipo: TipoVertice, n: number): string {
  */
 export function atribuirProvisorio(vertices: Vertex[], contadores: Contadores): Vertex[] {
   const c = { ...contadores };
+  // números já ocupados por vértices REGISTRADOS na própria lista — os provisórios devem PULAR
+  // esses números, senão um provisório poderia receber o mesmo código de um já registrado.
+  const usados: Record<string, Set<number>> = { M: new Set(), P: new Set(), V: new Set() };
+  for (const v of vertices) {
+    if (v.registrado && v.codigoSigef) {
+      const m = v.codigoSigef.match(/-([MPV])-(\d+)\s*$/);
+      if (m) usados[m[1]].add(parseInt(m[2], 10));
+    }
+  }
+  const proximo = (tipo: 'M' | 'P' | 'V'): number => {
+    while (usados[tipo].has(c[tipo])) c[tipo]++;
+    return c[tipo]++;
+  };
   return vertices.map((v, i) => {
-    // vértices já registrados mantêm o código E a marca de registrado (não podem ser
-    // renumerados nem reconsumir número do banco).
+    // vértices já registrados mantêm o código E a marca de registrado.
     if (v.registrado && v.codigoSigef) return { ...v, ordem: i, registrado: true };
-    const n = c[v.tipo]++;
+    const n = proximo(v.tipo);
     return { ...v, ordem: i, codigoSigef: codigo(contadores.prefixo, v.tipo, n), registrado: v.registrado };
   });
 }

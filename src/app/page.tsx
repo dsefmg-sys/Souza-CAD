@@ -251,7 +251,16 @@ export default function EditorPage() {
   async function aplicarCodigos(lista: Vertex[]) {
     const tec = tecnico ?? carregarTecnico();
     const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
-    setVertices(atribuirProvisorio(lista, cont));
+    const codificados = atribuirProvisorio(lista, cont);
+    // funde por id: mantém a ORDEM/códigos novos, mas preserva edições de coordenada/altitude
+    // feitas durante o await (ex.: arrastar outro vértice no mapa).
+    setVertices((cur) => {
+      const curById = new Map(cur.map((v) => [v.id, v]));
+      return codificados.map((v) => {
+        const c = curById.get(v.id);
+        return c ? { ...v, leste: c.leste, norte: c.norte, lat: c.lat, lon: c.lon, elevacao: c.elevacao } : v;
+      });
+    });
   }
 
   function inserirVertice(lat: number, lon: number) {
