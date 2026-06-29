@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users,
-  Maximize, Settings, LogOut, Table, FileWarning, Target,
+  Maximize, Settings, LogOut, Table, FileWarning, Target, Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,8 +22,9 @@ import Planta from '@/components/Planta';
 import RequerimentoModal from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
+import ConsultarModal from '@/components/ConsultarModal';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
@@ -152,6 +153,7 @@ export default function EditorPage() {
   const [reqAberto, setReqAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
   const [errataAberto, setErrataAberto] = useState(false);
+  const [consultarAberto, setConsultarAberto] = useState(false);
   const [requerente, setRequerente] = useState<PessoaQualificada | undefined>(undefined);
   const [transmitente, setTransmitente] = useState<PessoaQualificada | undefined>(undefined);
   const [plantaConfig, setPlantaConfig] = useState<PlantaConfig>({});
@@ -1073,6 +1075,31 @@ export default function EditorPage() {
     cadConf.listar().then(setSugConf).catch(() => {});
     aviso('Confrontante salvo no cadastro.');
   }
+
+  // ---- "Consultar" (modal): trazer dados antigos para o projeto aberto, sem redigitar ----
+  function inserirPropConsulta(p: ProprietarioCad) {
+    setImovel((im) => ({ ...im, proprietario: p.nome, cpfProprietario: p.cpf, tipoPessoa: p.tipoPessoa ?? im.tipoPessoa }));
+    aviso(`Proprietário "${p.nome}" inserido no imóvel.`);
+  }
+  function inserirConfConsulta(c: ConfrontanteCad) {
+    const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
+    setConfrontantes((cs) => [...cs, {
+      id, nome: c.nome, cpf: c.cpf, matricula: c.matricula, cns: c.cns, descricaoExtra: c.descricaoExtra,
+      condicao: c.condicao, conjugeNome: c.conjugeNome, conjugeCpf: c.conjugeCpf,
+      inventarianteNome: c.inventarianteNome, inventarianteCpf: c.inventarianteCpf,
+    }]);
+    aviso(`Confrontante "${c.nome}" adicionado.`);
+  }
+  function inserirImovelConsulta(i: ImovelCad) {
+    setImovel((im) => ({ ...im, denominacao: i.denominacao, matricula: i.matricula, cns: i.cns, codigoImovelIncra: i.codigoImovelIncra, municipio: i.municipio }));
+    if (i.municipio) aoMudarMunicipio(i.municipio); // ajusta o fuso pela âncora, se houver
+    aviso(`Imóvel "${i.denominacao}" inserido.`);
+  }
+  function inserirCartorioConsulta(c: CartorioCad) {
+    setImovel((im) => ({ ...im, cns: c.cns }));
+    aviso(`Cartório "${c.nome}" (CNS ${c.cns}) inserido.`);
+  }
+
   async function atualizarLista() { setProjetos(await listarProjetos()); totalPontosRegistrados().then(setTotalPontos).catch(() => {}); }
   async function abrir(id: string) {
     const p0 = await carregarProjeto(id);
@@ -1166,7 +1193,8 @@ export default function EditorPage() {
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 2) Dados do projeto atual */}
-        <Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Inserir/consultar dados: proprietário, confrontantes, imóvel, cartório"><BookUser /> Dados</Button></Link>
+        <Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório"><BookUser /> Dados</Button></Link>
+        <Button size="sm" variant="outline" className="shrink-0" title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /> Consultar</Button>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
@@ -1554,6 +1582,9 @@ export default function EditorPage() {
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
+      <ConsultarModal open={consultarAberto} onOpenChange={setConsultarAberto}
+        onInserirProprietario={inserirPropConsulta} onInserirConfrontante={inserirConfConsulta}
+        onInserirImovel={inserirImovelConsulta} onInserirCartorio={inserirCartorioConsulta} />
 
       {/* menu de formatação de texto da planta (clique direito) */}
       {menuTexto && (
