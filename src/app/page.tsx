@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import {
-  Upload, FileText, Map as MapIcon, Printer, Settings, Plus, Trash2,
+  Upload, FileText, Map as MapIcon, Printer, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Users,
@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
 import RequerimentoModal from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
-import AuthBar from '@/components/AuthBar';
+import ConfigGear from '@/components/ConfigGear';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -765,7 +765,6 @@ export default function EditorPage() {
           {msg && <span className="text-xs text-primary">{msg}</span>}
           <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /> Salvar</Button>
           <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
-          <AuthBar onMudou={() => { atualizarLista(); }} />
           <Link href="/cadastros"><Button size="sm" variant="ghost" title="Dados de proprietários, confrontantes, imóveis e cartórios"><BookUser /> Dados</Button></Link>
         </div>
       </header>
@@ -974,11 +973,8 @@ export default function EditorPage() {
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
 
-      {/* Configurações: engrenagem flutuante no canto inferior esquerdo */}
-      <Link href="/configuracoes" title="Configurações"
-        className="no-print fixed bottom-3 left-3 z-[1100] flex size-10 items-center justify-center rounded-full border bg-background/95 text-muted-foreground shadow-md hover:text-foreground [&_svg]:size-5">
-        <Settings />
-      </Link>
+      {/* Configurações + conta: engrenagem flutuante no canto inferior esquerdo */}
+      <ConfigGear />
     </div>
   );
 }
