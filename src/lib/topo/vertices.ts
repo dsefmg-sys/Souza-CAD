@@ -121,6 +121,29 @@ export function inverterSentido(vertices: Vertex[]): Vertex[] {
   return reordenar(inv);
 }
 
+/**
+ * Ordena o anel como manda a praxe do georreferenciamento: começa no vértice mais ao NORTE e
+ * percorre no sentido HORÁRIO. Não renumera (faça `recodificar`/`atribuirProvisorio` depois).
+ */
+export function iniciarDoNorteHorario(vertices: Vertex[]): Vertex[] {
+  if (vertices.length < 3) return reordenar(vertices);
+  // Orientação pela área assinada no plano UTM (E = x, N = y). >0 = anti-horário → inverter.
+  let area2 = 0;
+  for (let i = 0; i < vertices.length; i++) {
+    const a = vertices[i], b = vertices[(i + 1) % vertices.length];
+    area2 += a.leste * b.norte - b.leste * a.norte;
+  }
+  let anel = area2 > 0 ? [...vertices].reverse() : [...vertices];
+  // vértice mais ao norte (maior Norte; empate: mais a oeste)
+  let idx = 0;
+  for (let i = 1; i < anel.length; i++) {
+    const v = anel[i], m = anel[idx];
+    if (v.norte > m.norte || (v.norte === m.norte && v.leste < m.leste)) idx = i;
+  }
+  anel = [...anel.slice(idx), ...anel.slice(0, idx)];
+  return reordenar(anel);
+}
+
 /** Define qual vértice é o inicial, rotacionando o anel. */
 export function definirInicio(vertices: Vertex[], id: string): Vertex[] {
   const idx = vertices.findIndex((v) => v.id === id);

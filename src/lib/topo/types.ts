@@ -226,6 +226,7 @@ export interface PlantaConfig {
   mostrarEscalaGrafica?: boolean; // padrão true
   mostrarSituacao?: boolean;   // padrão true (quando há imagem de situação)
   fonteRotulos?: number;       // tamanho da fonte dos rótulos (vértices/confrontantes), padrão 8.5
+  escalaTextos?: number;       // multiplicador de TODOS os textos da planta (1 = padrão)
   textoLaudo?: string;         // texto do laudo técnico (carimbo)
   textoConfrontantes?: string; // declaração dos confrontantes (carimbo)
 }

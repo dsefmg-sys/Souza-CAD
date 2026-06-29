@@ -68,31 +68,38 @@ export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number
   const nTiles = Math.max(0, (tx1 - tx0 + 1) * (ty1 - ty0 + 1));
   if (nTiles === 0 || nTiles > 80) return null; // proteção
 
+  let carregados = 0;
   const cargas: Promise<void>[] = [];
   for (let tx = tx0; tx <= tx1; tx++) {
     for (let ty = ty0; ty <= ty1; ty++) {
       cargas.push(carregarTile(URL_ESRI(z, tx, ty)).then((img) => {
-        if (img) ctx.drawImage(img, tx * TILE - pxMin, ty * TILE - pyMin);
+        if (img) { ctx.drawImage(img, tx * TILE - pxMin, ty * TILE - pyMin); carregados++; }
       }));
     }
   }
   await Promise.all(cargas);
+  if (carregados === 0) return null; // nenhum tile de satélite carregou (rede/CORS)
 
-  // contorno de cada gleba (a primeira em destaque amarelo, as demais em laranja)
-  rings.forEach((anel, gi) => {
-    ctx.beginPath();
-    anel.forEach((p, i) => {
-      const x = lonToGlobalPx(p.lon, z) - pxMin;
-      const y = latToGlobalPx(p.lat, z) - pyMin;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    });
-    ctx.closePath();
-    ctx.strokeStyle = gi === 0 ? '#facc15' : '#f97316';
-    ctx.lineWidth = 2.5; ctx.stroke();
-    ctx.fillStyle = gi === 0 ? 'rgba(250,204,21,0.15)' : 'rgba(249,115,22,0.10)';
-    ctx.fill();
+  // contorno de cada gleba destacado em BRANCO com linha forte (e um halo escuro atrás para
+  // contraste sobre o satélite) — mostra ao cartório onde o imóvel está.
+  rings.forEach((anel) => {
+    const traco = () => {
+      ctx.beginPath();
+      anel.forEach((p, i) => {
+        const x = lonToGlobalPx(p.lon, z) - pxMin;
+        const y = latToGlobalPx(p.lat, z) - pyMin;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+    };
+    traco();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 6; ctx.stroke();   // halo
+    traco();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();            // linha branca forte
   });
 
-  try { return canvas.toDataURL('image/jpeg', 0.82); }
+  try { return canvas.toDataURL('image/jpeg', 0.85); }
   catch { return null; } // canvas tainted (CORS) — sai sem situação
 }

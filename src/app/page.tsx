@@ -24,7 +24,7 @@ import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Pro
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
-import { montarVertices, reordenar, inverterSentido, definirInicio, novoVertice, reprojetar } from '@/lib/topo/vertices';
+import { montarVertices, reordenar, inverterSentido, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
 import { novaGlebaVazia, glebaDe, migrarProjeto } from '@/lib/topo/glebas';
 import { calcular } from '@/lib/topo/calcular';
@@ -38,7 +38,7 @@ import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema } from '@/lib/topo/conferencia';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
-import { carregarTecnico, carregarEscritorio } from '@/lib/store/settings';
+import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao } from '@/lib/store/settings';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart } from '@/lib/store/cadastros';
@@ -123,6 +123,7 @@ export default function EditorPage() {
     totalPontosRegistrados().then(setTotalPontos).catch(() => {});
     const t = (localStorage.getItem('metrica.tema') as 'claro' | 'escuro') || 'claro';
     setTema(t);
+    setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
     // começa com uma gleba
     const g = glebaDe(1, [], [], {}, 'Parcela 1');
     setGlebas([g]);
@@ -203,7 +204,9 @@ export default function EditorPage() {
       setZona(z);
       // numeração provisória a partir do banco de pontos (para não colidir com o já usado)
       const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
-      const vs = montarVertices(perim, z, hemisferio, { credenciamentoIncra: tec.credenciamentoIncra, contadorMarco: cont.M, contadorPonto: cont.P });
+      const vs0 = montarVertices(perim, z, hemisferio, { credenciamentoIncra: tec.credenciamentoIncra, contadorMarco: cont.M, contadorPonto: cont.P });
+      // praxe: começa no vértice mais ao norte e segue no sentido horário; renumera nessa ordem
+      const vs = recodificar(iniciarDoNorteHorario(vs0), tec.credenciamentoIncra, cont.M, cont.P);
       const { confrontantes: cs, confrontantePorLado: mapa } = montarConfrontantes(vs);
       // grava a importação NA gleba ativa (em glebas) e no estado de trabalho, juntos.
       const alvoId = glebaAtivaId;
@@ -298,6 +301,13 @@ export default function EditorPage() {
   async function renumerar() {
     await aplicarCodigos(vertices);
     aviso('Vértices renumerados.');
+  }
+
+  // Reordena a partir do vértice mais ao norte, sentido horário (praxe), e renumera.
+  async function ordenarNorteHorario() {
+    if (vertices.length < 3) return;
+    await aplicarCodigos(iniciarDoNorteHorario(vertices));
+    aviso('Reordenado do norte em sentido horário.');
   }
 
   // Reordena o anel arrastando na lista e renumera (muda o polígono e os nomes).
@@ -533,7 +543,7 @@ export default function EditorPage() {
         const { lat, lon } = utmParaGeo(p.x, p.y, zona, hemisferio);
         return { ...novoVertice({ lat, lon, leste: p.x, norte: p.y, elevacao: 0 }), metodo: tec.metodoPosicionamento, tipoLimite: tec.tipoLimite, representacao: 'linha-ideal' };
       });
-      vs = atribuirProvisorio(reordenar(vs), cont);
+      vs = atribuirProvisorio(iniciarDoNorteHorario(vs), cont);
       const { confrontantes: cs, confrontantePorLado: mapa } = montarConfrontantes(vs);
       const alvoId = glebaAtivaId;
       setGlebas((prev) => prev.map((g) => (g.id === alvoId ? { ...g, vertices: vs, confrontantes: cs, confrontantePorLado: mapa } : g)));
@@ -777,7 +787,8 @@ export default function EditorPage() {
             {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} nome={nomeProjeto} onNome={setNomeProjeto} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={setHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} />}
             {aba === 'vertices' && (
               <div className="space-y-1">
-                <div className="mb-2 flex gap-1">
+                <div className="mb-2 flex flex-wrap gap-1">
+                  <Button size="sm" variant="outline" onClick={ordenarNorteHorario} title="Começa no vértice mais ao norte e segue no sentido horário">Norte ↻</Button>
                   <Button size="sm" variant="outline" onClick={renumerar}>Renumerar</Button>
                   <Button size="sm" variant="outline" onClick={() => setVertices((vs) => inverterSentido(vs))}>Inverter</Button>
                 </div>
@@ -822,7 +833,8 @@ export default function EditorPage() {
               <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} onDetectar={detectarConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} />
             )}
             {aba === 'planta' && (
-              <PainelPlanta config={plantaConfig} onChange={setPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} onVerPlanta={() => setVista('planta')} />
+              <PainelPlanta config={plantaConfig} onChange={setPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl}
+                onVerPlanta={() => setVista('planta')} onSalvarPadrao={() => { salvarPlantaPadrao(plantaConfig); aviso('Ajustes da planta salvos como padrão para os próximos trabalhos.'); }} />
             )}
             {aba === 'conferencia' && (
               <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} onChange={setImovel} />
@@ -1064,8 +1076,8 @@ function PainelConfrontantes({ confrontantes, onChange, onDetectar, mapa, lados,
   );
 }
 
-function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta }: {
-  config: PlantaConfig; onChange: (c: PlantaConfig) => void; temSituacao: boolean; temLogo: boolean; onVerPlanta: () => void;
+function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta, onSalvarPadrao }: {
+  config: PlantaConfig; onChange: (c: PlantaConfig) => void; temSituacao: boolean; temLogo: boolean; onVerPlanta: () => void; onSalvarPadrao: () => void;
 }) {
   const set = (patch: Partial<PlantaConfig>) => onChange({ ...config, ...patch });
   type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao';
@@ -1088,10 +1100,17 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta }: {
             onChange={(e) => set({ escalaManual: e.target.value ? Number(e.target.value) : undefined })} />
         </div>
       </div>
-      <div className="space-y-1">
-        <Label>Tamanho da fonte dos rótulos</Label>
-        <Input type="number" step="0.5" placeholder="8.5" value={config.fonteRotulos ? String(config.fonteRotulos) : ''}
-          onChange={(e) => set({ fonteRotulos: e.target.value ? Number(e.target.value) : undefined })} />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label>Fonte dos rótulos</Label>
+          <Input type="number" step="0.5" placeholder="8.5" value={config.fonteRotulos ? String(config.fonteRotulos) : ''}
+            onChange={(e) => set({ fonteRotulos: e.target.value ? Number(e.target.value) : undefined })} />
+        </div>
+        <div className="space-y-1">
+          <Label>Escala de todos os textos</Label>
+          <Input type="number" step="0.05" placeholder="1.0" value={config.escalaTextos ? String(config.escalaTextos) : ''}
+            onChange={(e) => set({ escalaTextos: e.target.value ? Number(e.target.value) : undefined })} />
+        </div>
       </div>
       <div className="space-y-1 rounded border p-2">
         <div className="text-[10px] uppercase text-muted-foreground">Mostrar na planta</div>
@@ -1111,6 +1130,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta }: {
         <textarea className="min-h-[84px] w-full rounded border border-input bg-background p-2 text-xs" placeholder="(texto padrão)"
           value={config.textoConfrontantes ?? ''} onChange={(e) => set({ textoConfrontantes: e.target.value })} />
       </div>
+      <Button size="sm" variant="secondary" className="w-full" onClick={onSalvarPadrao} title="Guarda estes ajustes como padrão para os próximos trabalhos"><Save /> Salvar ajustes como padrão</Button>
       <div className="space-y-1 rounded border bg-muted/40 p-2 text-[11px] text-muted-foreground">
         <div>{temLogo ? 'Logotipo carregado (aparece no carimbo).' : 'Sem logotipo — suba a imagem em Config para preencher o carimbo.'}</div>
         <div>{temSituacao ? 'Planta de situação pronta.' : 'Situação não gerada — use "Gerar situação" na visão da planta.'}</div>

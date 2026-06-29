@@ -71,7 +71,9 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
   const verConv = config.mostrarConvencoes !== false;
   const verEscalaG = config.mostrarEscalaGrafica !== false;
   const verSituacao = config.mostrarSituacao !== false;
-  const fonteRot = config.fonteRotulos ?? 8.5;
+  const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1;
+  const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
+  const fonteRot = fs(config.fonteRotulos ?? 8.5);
   const ef = valoresEfetivos(res, imovel);
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
 
@@ -164,13 +166,13 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
       {verGrade && linhasX.map((x) => (
         <g key={`x${x}`}>
           <line x1={sx(x)} y1={DRAW.y0} x2={sx(x)} y2={DRAW.y1} stroke="#bbb" strokeWidth={0.4} strokeDasharray="4 4" />
-          <text x={sx(x)} y={DRAW.y1 + 12} fontSize={9} textAnchor="middle" fill="#333">{`E ${x.toFixed(0)}`}</text>
+          <text x={sx(x)} y={DRAW.y1 + 12} fontSize={fs(9)} textAnchor="middle" fill="#333">{`E ${x.toFixed(0)}`}</text>
         </g>
       ))}
       {verGrade && linhasY.map((y) => (
         <g key={`y${y}`}>
           <line x1={DRAW.x0} y1={sy(y)} x2={DRAW.x1} y2={sy(y)} stroke="#bbb" strokeWidth={0.4} strokeDasharray="4 4" />
-          <text x={DRAW.x0 - 4} y={sy(y) + 3} fontSize={9} textAnchor="end" fill="#333" transform={`rotate(-90 ${DRAW.x0 - 4} ${sy(y)})`}>{`N ${y.toFixed(0)}`}</text>
+          <text x={DRAW.x0 - 4} y={sy(y) + 3} fontSize={fs(9)} textAnchor="end" fill="#333" transform={`rotate(-90 ${DRAW.x0 - 4} ${sy(y)})`}>{`N ${y.toFixed(0)}`}</text>
         </g>
       ))}
 
@@ -183,7 +185,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
         return (
           <g key={`og${i}`}>
             <polygon points={pp} fill="#f97316" fillOpacity={0.06} stroke="#c2410c" strokeWidth={1.2} strokeDasharray="6 4" />
-            <text x={ccx} y={ccy} fontSize={10} fontWeight="bold" textAnchor="middle" fill="#7c2d12">{g.nome}</text>
+            <text x={ccx} y={ccy} fontSize={fs(10)} fontWeight="bold" textAnchor="middle" fill="#7c2d12">{g.nome}</text>
           </g>
         );
       })}
@@ -264,7 +266,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
           `Área: ${numBR(ef.areaHa, 4)} ha`,
           imovel.proprietario ? `Prop.: ${imovel.proprietario}` : '',
         ].filter(Boolean).map((t, i) => (
-          <text key={i} x={cx} y={cy + i * 14} fontSize={i === 0 ? 13 : 11} fontWeight={i === 0 ? 'bold' : 'normal'} textAnchor="middle" fill="#1c1917">{t}</text>
+          <text key={i} x={cx} y={cy + i * 14} fontSize={fs(i === 0 ? 13 : 11)} fontWeight={i === 0 ? 'bold' : 'normal'} textAnchor="middle" fill="#1c1917">{t}</text>
         ))}
       </g>
 
@@ -274,7 +276,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
           <image href={situacaoUrl} x={DRAW.x0 + 6} y={DRAW.y0 + 6} width={232} height={168} preserveAspectRatio="xMidYMid slice" />
           <rect x={DRAW.x0 + 6} y={DRAW.y0 + 6} width={232} height={168} fill="none" stroke="#000" strokeWidth={1} />
           <rect x={DRAW.x0 + 6} y={DRAW.y0 + 6} width={232} height={15} fill="#000" />
-          <text x={DRAW.x0 + 122} y={DRAW.y0 + 17} fontSize={9} fontWeight="bold" textAnchor="middle" fill="#fff">PLANTA DE SITUAÇÃO</text>
+          <text x={DRAW.x0 + 122} y={DRAW.y0 + 17} fontSize={fs(9)} fontWeight="bold" textAnchor="middle" fill="#fff">PLANTA DE SITUAÇÃO</text>
         </g>
       ) : null}
 
@@ -287,10 +289,10 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
         const seg = barPx / 4;
         return (
           <g>
-            <text x={bx} y={by - 6} fontSize={8} fontWeight="bold">Escala 1:{escalaDenom}</text>
+            <text x={bx} y={by - 6} fontSize={fs(8)} fontWeight="bold">Escala 1:{escalaDenom}</text>
             {[0, 1, 2, 3].map((k) => <rect key={k} x={bx + k * seg} y={by} width={seg} height={5} fill={k % 2 ? '#fff' : '#000'} stroke="#000" strokeWidth={0.5} />)}
-            {[0, 1, 2, 3, 4].map((k) => <text key={k} x={bx + k * seg} y={by + 13} fontSize={7} textAnchor="middle">{Math.round((barM * k) / 4)}</text>)}
-            <text x={bx + barPx + 10} y={by + 5} fontSize={7}>m</text>
+            {[0, 1, 2, 3, 4].map((k) => <text key={k} x={bx + k * seg} y={by + 13} fontSize={fs(7)} textAnchor="middle">{Math.round((barM * k) / 4)}</text>)}
+            <text x={bx + barPx + 10} y={by + 5} fontSize={fs(7)}>m</text>
           </g>
         );
       })()}
@@ -299,7 +301,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
       <Faixa
         imovel={imovel} res={res} ef={ef} tecnico={tecnico} zona={zona} hemisferio={hemisferio}
         vref={vref} conv={conv} decl={decl} represUsadas={represUsadas} ix={ix} fatorK={fatorK}
-        verConv={verConv} verNortes={verNortes}
+        verConv={verConv} verNortes={verNortes} escala={escTxt}
       />
 
       {/* ---------- CARIMBO (coluna direita) ---------- */}
@@ -307,7 +309,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
         imovel={imovel} ef={ef} tecnico={tecnico} escritorio={escritorio} glebaNome={glebaNome}
         confrontantes={confrontantes} escalaDenom={escalaDenominador} dataExtenso={dataExtenso}
         titulo={config.titulo || 'Levantamento Planimétrico Georreferenciado'} folha={config.folha || 'Única'}
-        textoLaudo={config.textoLaudo || LAUDO_PADRAO} textoConfront={config.textoConfrontantes || CONFRONT_PADRAO}
+        textoLaudo={config.textoLaudo || LAUDO_PADRAO} textoConfront={config.textoConfrontantes || CONFRONT_PADRAO} escala={escTxt}
       />
     </svg>
   );
@@ -317,9 +319,10 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
 function Faixa(props: {
   imovel: ImovelData; res: ResultadoCalculo; ef: ReturnType<typeof valoresEfetivos>; tecnico: TecnicoData;
   zona: number; hemisferio: 'N' | 'S'; vref: Vertex; conv: number; decl: number; represUsadas: string[]; ix: number; fatorK: number;
-  verConv: boolean; verNortes: boolean;
+  verConv: boolean; verNortes: boolean; escala: number;
 }) {
-  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes } = props;
+  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala } = props;
+  const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = H - STRIP - 4;
   const x0 = DRAW.x0, x1 = DRAW.x1;
   const w = x1 - x0;
@@ -338,12 +341,12 @@ function Faixa(props: {
       <line x1={c3} y1={y0} x2={c3} y2={y0 + STRIP} stroke="#000" strokeWidth={0.8} />
 
       {/* Observações */}
-      <text x={x0 + 8} y={y0 + 16} fontSize={10} fontWeight="bold">Observações</text>
-      {imovel.matricula ? <text x={x0 + 8} y={y0 + 34} fontSize={9}>Matrícula nº {imovel.matricula}</text> : null}
-      {imovel.codigoImovelIncra ? <text x={x0 + 8} y={y0 + 48} fontSize={9}>SNCR/INCRA: {imovel.codigoImovelIncra}</text> : null}
+      <text x={x0 + 8} y={y0 + 16} fontSize={fs(10)} fontWeight="bold">Observações</text>
+      {imovel.matricula ? <text x={x0 + 8} y={y0 + 34} fontSize={fs(9)}>Matrícula nº {imovel.matricula}</text> : null}
+      {imovel.codigoImovelIncra ? <text x={x0 + 8} y={y0 + 48} fontSize={fs(9)}>SNCR/INCRA: {imovel.codigoImovelIncra}</text> : null}
 
       {/* Informações de Coordenadas */}
-      <text x={c1 + 8} y={y0 + 16} fontSize={10} fontWeight="bold">Informações de Coordenadas</text>
+      <text x={c1 + 8} y={y0 + 16} fontSize={fs(10)} fontWeight="bold">Informações de Coordenadas</text>
       {[
         ['Vértice de ref.:', vref.codigoSigef],
         ['Latitude:', lat], ['Longitude:', lon],
@@ -354,29 +357,29 @@ function Faixa(props: {
         ['MC:', `${meridianoCentral(zona)}°  ·  Fuso ${zona}${hemisferio}`],
         ['K:', fatorK.toFixed(7)],
       ].map(([k, v], i) => (
-        <text key={i} x={c1 + 8} y={y0 + 34 + i * 14} fontSize={9}><tspan fontWeight="bold">{k} </tspan>{v}</text>
+        <text key={i} x={c1 + 8} y={y0 + 34 + i * 14} fontSize={fs(9)}><tspan fontWeight="bold">{k} </tspan>{v}</text>
       ))}
 
       {/* Convenções */}
-      {verConv && <text x={c2 + 8} y={y0 + 16} fontSize={10} fontWeight="bold">CONVENÇÕES</text>}
+      {verConv && <text x={c2 + 8} y={y0 + 16} fontSize={fs(10)} fontWeight="bold">CONVENÇÕES</text>}
       {verConv && <g>
         <circle cx={c2 + 16} cy={y0 + 32} r={3.6} fill="#b45309" stroke="#000" strokeWidth={0.5} />
-        <text x={c2 + 26} y={y0 + 35} fontSize={9}>Vértice tipo M</text>
+        <text x={c2 + 26} y={y0 + 35} fontSize={fs(9)}>Vértice tipo M</text>
         <circle cx={c2 + 16} cy={y0 + 48} r={2.6} fill="#15803d" stroke="#000" strokeWidth={0.5} />
-        <text x={c2 + 26} y={y0 + 51} fontSize={9}>Vértice tipo P</text>
+        <text x={c2 + 26} y={y0 + 51} fontSize={fs(9)}>Vértice tipo P</text>
         <circle cx={c2 + 16} cy={y0 + 64} r={3} fill="#7c3aed" stroke="#000" strokeWidth={0.5} />
-        <text x={c2 + 26} y={y0 + 67} fontSize={9}>Vértice tipo V (virtual)</text>
+        <text x={c2 + 26} y={y0 + 67} fontSize={fs(9)}>Vértice tipo V (virtual)</text>
         {represUsadas.map((r, i) => (
           <g key={r}>
             <SimboloDivisa tipo={r} x={c2 + 10} y={y0 + 82 + i * 16} />
-            <text x={c2 + 26} y={y0 + 85 + i * 16} fontSize={9}>{REPRES_LABEL[r] || r}</text>
+            <text x={c2 + 26} y={y0 + 85 + i * 16} fontSize={fs(9)}>{REPRES_LABEL[r] || r}</text>
           </g>
         ))}
       </g>}
 
       {/* Projeção + Nortes */}
-      <text x={c3 + 8} y={y0 + 16} fontSize={9} fontWeight="bold">PROJEÇÃO UTM</text>
-      <text x={c3 + 8} y={y0 + 30} fontSize={8}>Univ. Transversa de Mercator</text>
+      <text x={c3 + 8} y={y0 + 16} fontSize={fs(9)} fontWeight="bold">PROJEÇÃO UTM</text>
+      <text x={c3 + 8} y={y0 + 30} fontSize={fs(8)}>Univ. Transversa de Mercator</text>
       {verNortes && <Nortes cx={(c3 + x1) / 2} cy={y0 + STRIP - 55} conv={conv} decl={decl} />}
     </g>
   );
@@ -417,16 +420,17 @@ function Nortes({ cx, cy, conv, decl }: { cx: number; cy: number; conv: number; 
 function Carimbo(props: {
   imovel: ImovelData; ef: ReturnType<typeof valoresEfetivos>; tecnico: TecnicoData; escritorio: EscritorioData;
   glebaNome?: string; confrontantes: Confrontante[]; escalaDenom: number; dataExtenso?: string;
-  titulo: string; folha: string; textoLaudo: string; textoConfront: string;
+  titulo: string; folha: string; textoLaudo: string; textoConfront: string; escala: number;
 }) {
-  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront } = props;
+  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala } = props;
+  const fs = (n: number) => +(n * escala).toFixed(2);
   const x0 = W - CARW;
   let y = 24;
   const linha = (label: string, valor: string) => {
     const el = (
       <g key={label + y}>
-        <text x={x0 + 10} y={y} fontSize={8.5} fontWeight="bold" fill="#333">{label}</text>
-        <text x={x0 + 10} y={y + 11} fontSize={(valor || '').length > 46 ? 8.5 : 10}>{(valor || '—').slice(0, 64)}</text>
+        <text x={x0 + 10} y={y} fontSize={fs(8.5)} fontWeight="bold" fill="#333">{label}</text>
+        <text x={x0 + 10} y={y + 11} fontSize={fs((valor || '').length > 46 ? 8.5 : 10)}>{(valor || '—').slice(0, 64)}</text>
       </g>
     );
     y += 27;
@@ -456,29 +460,29 @@ function Carimbo(props: {
 
       {/* assinaturas */}
       <line x1={x0 + 10} y1={yAssin + 40} x2={x0 + CARW - 20} y2={yAssin + 40} stroke="#000" strokeWidth={0.7} />
-      <text x={(x0 + W) / 2} y={yAssin + 52} fontSize={9} textAnchor="middle">{imovel.proprietario || 'Proprietário'}</text>
-      <text x={(x0 + W) / 2} y={yAssin + 62} fontSize={8} textAnchor="middle" fill="#555">Assinatura do Proprietário</text>
+      <text x={(x0 + W) / 2} y={yAssin + 52} fontSize={fs(9)} textAnchor="middle">{imovel.proprietario || 'Proprietário'}</text>
+      <text x={(x0 + W) / 2} y={yAssin + 62} fontSize={fs(8)} textAnchor="middle" fill="#555">Assinatura do Proprietário</text>
 
       <line x1={x0 + 10} y1={yAssin + 100} x2={x0 + CARW - 20} y2={yAssin + 100} stroke="#000" strokeWidth={0.7} />
-      <text x={(x0 + W) / 2} y={yAssin + 112} fontSize={9} fontWeight="bold" textAnchor="middle">{tecnico.nome}</text>
-      <text x={(x0 + W) / 2} y={yAssin + 122} fontSize={8} textAnchor="middle">{tecnico.formacao}</text>
-      <text x={(x0 + W) / 2} y={yAssin + 132} fontSize={8} textAnchor="middle">CFT nº {tecnico.cft} · INCRA: {tecnico.credenciamentoIncra}</text>
-      <text x={(x0 + W) / 2} y={yAssin + 142} fontSize={8} textAnchor="middle" fill="#555">Assinatura do Responsável Técnico</text>
+      <text x={(x0 + W) / 2} y={yAssin + 112} fontSize={fs(9)} fontWeight="bold" textAnchor="middle">{tecnico.nome}</text>
+      <text x={(x0 + W) / 2} y={yAssin + 122} fontSize={fs(8)} textAnchor="middle">{tecnico.formacao}</text>
+      <text x={(x0 + W) / 2} y={yAssin + 132} fontSize={fs(8)} textAnchor="middle">CFT nº {tecnico.cft} · INCRA: {tecnico.credenciamentoIncra}</text>
+      <text x={(x0 + W) / 2} y={yAssin + 142} fontSize={fs(8)} textAnchor="middle" fill="#555">Assinatura do Responsável Técnico</text>
 
       {/* laudo técnico (resumido) */}
-      <TextoQuebrado x={x0 + 10} y={yAssin + 158} fontSize={7.5} larguraChars={66} texto={textoLaudo} />
+      <TextoQuebrado x={x0 + 10} y={yAssin + 158} fontSize={fs(7.5)} larguraChars={66} texto={textoLaudo} />
 
       {/* declaração confrontantes (resumida) */}
-      <text x={x0 + 10} y={yAssin + 196} fontSize={8.5} fontWeight="bold">CONFRONTANTES</text>
-      <TextoQuebrado x={x0 + 10} y={yAssin + 208} fontSize={7.5} larguraChars={66} texto={textoConfront} />
+      <text x={x0 + 10} y={yAssin + 196} fontSize={fs(8.5)} fontWeight="bold">CONFRONTANTES</text>
+      <TextoQuebrado x={x0 + 10} y={yAssin + 208} fontSize={fs(7.5)} larguraChars={66} texto={textoConfront} />
 
       {/* carimbo do escritório */}
       <rect x={x0 + 8} y={H - 110} width={CARW - 16} height={94} fill="none" stroke="#000" strokeWidth={1} />
-      <text x={(x0 + W) / 2} y={H - 90} fontSize={11} fontWeight="bold" textAnchor="middle">{escritorio.nome}</text>
-      <text x={(x0 + W) / 2} y={H - 76} fontSize={8.5} textAnchor="middle">{escritorio.ramo}</text>
-      <text x={(x0 + W) / 2} y={H - 62} fontSize={8.5} textAnchor="middle">CNPJ {escritorio.cnpj}</text>
-      <text x={(x0 + W) / 2} y={H - 48} fontSize={8.5} textAnchor="middle">{escritorio.endereco.slice(0, 60)}</text>
-      <text x={(x0 + W) / 2} y={H - 34} fontSize={8.5} textAnchor="middle">Tel./WhatsApp: {escritorio.telefone}</text>
+      <text x={(x0 + W) / 2} y={H - 90} fontSize={fs(11)} fontWeight="bold" textAnchor="middle">{escritorio.nome}</text>
+      <text x={(x0 + W) / 2} y={H - 76} fontSize={fs(8.5)} textAnchor="middle">{escritorio.ramo}</text>
+      <text x={(x0 + W) / 2} y={H - 62} fontSize={fs(8.5)} textAnchor="middle">CNPJ {escritorio.cnpj}</text>
+      <text x={(x0 + W) / 2} y={H - 48} fontSize={fs(8.5)} textAnchor="middle">{escritorio.endereco.slice(0, 60)}</text>
+      <text x={(x0 + W) / 2} y={H - 34} fontSize={fs(8.5)} textAnchor="middle">Tel./WhatsApp: {escritorio.telefone}</text>
     </g>
   );
 }

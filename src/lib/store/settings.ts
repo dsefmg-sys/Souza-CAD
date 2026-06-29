@@ -1,7 +1,8 @@
-import type { TecnicoData, EscritorioData } from '../topo/types';
+import type { TecnicoData, EscritorioData, PlantaConfig } from '../topo/types';
 
 const KEY = 'metrica.tecnico';
 const KEY_ESCRITORIO = 'metrica.escritorio';
+const KEY_PLANTA = 'metrica.plantaPadrao';
 
 // Dados padrão do responsável técnico (do modelo do dono). Editáveis em /configuracoes.
 export const TECNICO_PADRAO: TecnicoData = {
@@ -58,4 +59,20 @@ export function carregarTecnico(): TecnicoData {
 export function salvarTecnico(t: TecnicoData): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(KEY, JSON.stringify(t));
+}
+
+/** Configuração-padrão da planta (tamanhos de fonte, blocos, textos) — vale para trabalhos futuros. */
+export function carregarPlantaPadrao(): PlantaConfig {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(KEY_PLANTA);
+    return raw ? (JSON.parse(raw) as PlantaConfig) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function salvarPlantaPadrao(c: PlantaConfig): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(KEY_PLANTA, JSON.stringify(c));
 }
