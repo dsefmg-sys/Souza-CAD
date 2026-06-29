@@ -1258,8 +1258,9 @@ export default function EditorPage() {
   return (
     <div className="flex h-screen flex-col">
       {/* Topo */}
-      {/* Cabeçalho = FLUXO DO TRABALHO (esquerda → direita) */}
-      <header className="no-print flex items-center gap-1.5 overflow-x-auto border-b px-3 py-2">
+      {/* Cabeçalho = FLUXO DO TRABALHO (esquerda → direita) + conta fixa à direita */}
+      <header className="no-print flex items-stretch border-b">
+       <div className="flex flex-1 items-center gap-1.5 overflow-x-auto px-3 py-2">
         <input ref={fileRef} type="file" accept=".txt,.csv" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
@@ -1296,6 +1297,16 @@ export default function EditorPage() {
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button>
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQUERIMENTO</Button>
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Gerar uma errata formal ao cartório (corrigir dados)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button>
+       </div>
+       {/* Conta/sistema fixos no canto superior direito */}
+       <div className="flex shrink-0 items-center gap-1 border-l px-2">
+         <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /></Button>
+         <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
+         <Link href="/configuracoes"><Button size="sm" variant="ghost" title="Configurações"><Settings /></Button></Link>
+         {nuvemDisponivel && user && (
+           <Button size="sm" variant="ghost" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
+         )}
+       </div>
       </header>
 
       {/* Linha fina de progresso por etapa do fluxo (verde = feito, vermelho = pulado, cinza = pendente) */}
@@ -1308,8 +1319,9 @@ export default function EditorPage() {
         })}
       </div>
 
-      {/* Faixa de status + controles contextuais (abaixo do cabeçalho, sem quebrar linha no topo) */}
-      <div className="no-print flex min-h-[28px] items-center gap-2 border-b px-3 py-1 text-xs">
+      {/* Faixa de status/controles contextuais — só aparece quando há algo para mostrar */}
+      {(!!msg || (vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante'))) && (
+      <div className="no-print flex items-center gap-2 border-b px-3 py-1 text-xs">
         {vista === 'mapa' && modo === 'divisa' && (
           <>
             <span className="text-muted-foreground">Pintando divisa:</span>
@@ -1330,6 +1342,7 @@ export default function EditorPage() {
         )}
         {msg && <span className="ml-auto text-primary">{msg}</span>}
       </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
         {/* Área principal: mapa ou planta */}
@@ -1347,10 +1360,10 @@ export default function EditorPage() {
                       <Button size="sm" variant="ghost" title="Refazer a ação desfeita" onClick={refazer}><Redo2 /> <span className="truncate text-xs">Refazer</span></Button>
                       <Button size="sm" variant="ghost" title="Focalizar/enquadrar o desenho atual" onClick={centralizar}><Target /> <span className="truncate text-xs">Focalizar</span></Button>
                     </div>
-                    <div className="flex flex-wrap gap-1 [&_button]:h-9 [&_button]:w-9 [&_button]:justify-center [&_button]:p-0">
-                      <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /></Button>
-                      <Button size="sm" variant="ghost" title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
-                      <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} title={bloqueado ? 'Vértices travados (clique para liberar)' : 'Vértices liberados'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
+                    <div className="flex flex-wrap gap-1 [&_button]:h-9 [&_button]:justify-center [&_button]:gap-0.5 [&_button]:px-1.5">
+                      <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /><span className="text-[9px] font-bold text-amber-400">F3</span></Button>
+                      <Button size="sm" variant="ghost" title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)}>{mostrarRotulos ? <EyeOff /> : <Eye />}<span className="text-[9px] font-bold text-amber-400">F4</span></Button>
+                      <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} className="!w-9 !px-0" title={bloqueado ? 'Vértices travados (clique para liberar)' : 'Vértices liberados'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
                     </div>
                   </>
                 )}
@@ -1360,7 +1373,7 @@ export default function EditorPage() {
                   <>
                     <div className="my-0.5 h-px w-full bg-border" />
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                      <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F5)"><MousePointer2 /> {L('Mover')}</Button>
+                      <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F5)"><MousePointer2 /> {L('Mover')}<span className="ml-auto text-[9px] font-bold text-amber-400">F5</span></Button>
                       <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice"><Plus /> {L('Inserir vértice')}</Button>
                       <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
                       <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'ignorar' ? 'navegar' : 'ignorar')} title="Ignorar vértice: clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar vértice')}</Button>
@@ -1386,8 +1399,7 @@ export default function EditorPage() {
                       )}
                       {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /> {L('Apagar objeto')}</Button>}
                       <div className="my-0.5 h-px w-full bg-border" />
-                      <Button size="sm" variant="ghost" onClick={() => geojsonRef.current?.click()} title="Ref. SIGEF: importar parcela certificada como referência (GeoJSON do SIGEF/QGIS)"><Upload /> {L('Ref. SIGEF')}</Button>
-                      {/* DXF: baixar e enviar logo abaixo do Ref. SIGEF */}
+                      {/* DXF: baixar e enviar */}
                       <div className={`flex items-center gap-0.5 rounded-md border px-1.5 ${COR_IMPORT}`}>
                         <span className="text-xs font-medium">DXF</span>
                         <Button size="sm" variant="ghost" className="size-7 p-0" title="Baixar o desenho em DXF" onClick={exportarDxf}><Download className="size-4" /></Button>
@@ -1410,20 +1422,12 @@ export default function EditorPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1 border-t pt-1 [&_button]:h-9 [&_button]:w-9 [&_button]:justify-center [&_button]:p-0">
-                  <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /></Button>
                   {vista === 'mapa' && mostrarRotulos && (
-                    <>
+                    <div className="flex flex-wrap gap-1 border-t pt-1 [&_button]:h-9 [&_button]:w-9 [&_button]:justify-center [&_button]:p-0">
                       <Button size="sm" variant="ghost" title="Diminuir os nomes dos vértices" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-xs font-bold">A-</span></Button>
                       <Button size="sm" variant="ghost" title="Aumentar os nomes dos vértices" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-xs font-bold">A+</span></Button>
-                    </>
+                    </div>
                   )}
-                  <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
-                  <Link href="/configuracoes"><Button size="sm" variant="ghost" title="Configurações"><Settings /></Button></Link>
-                  {nuvemDisponivel && user && (
-                    <Button size="sm" variant="ghost" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
-                  )}
-                  </div>
                 </div>
               </aside>
               {vista === 'mapa' && (
