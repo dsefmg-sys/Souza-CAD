@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, Fragment } from 'react';
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, LayersControl, Popup, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, LayersControl, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho } from '@/lib/topo/types';
 import { distanciaCota } from '@/lib/topo/objetos';
@@ -20,6 +20,10 @@ interface Props {
   bloqueado: boolean;
   referencias?: [number, number][][];
   parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
+  mostrarCert?: boolean;
+  opacidadeCert?: number;
+  parcelaCertSel?: number | null;
+  onSelParcelaCert?: (i: number | null) => void;
   onAdotarVertice?: (lat: number, lon: number) => void;
   onDblClick?: (lat: number, lon: number) => void;
   outrasGlebas?: [number, number][][];
@@ -161,6 +165,13 @@ function Centralizar({ sig, vertices }: { sig?: number; vertices: Vertex[] }) {
   return null;
 }
 
+// Acompanha o nível de zoom para mostrar/ocultar os rótulos dos vértices certificados.
+function VerZoom({ onZoom }: { onZoom: (z: number) => void }) {
+  const map = useMapEvents({ zoomend() { onZoom(map.getZoom()); } });
+  useEffect(() => { onZoom(map.getZoom()); }, [map, onZoom]);
+  return null;
+}
+
 function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblClick }: {
   modo: ModoEdicao;
   onInserir: (lat: number, lon: number) => void;
@@ -199,7 +210,7 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 
 export default function MapEditor(props: Props) {
   const {
-    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], onAdotarVertice, onDblClick, outrasGlebas = [],
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, onAdotarVertice, onDblClick, outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     conflitos = [],
@@ -211,6 +222,7 @@ export default function MapEditor(props: Props) {
     realceId = null,
   } = props;
 
+  const [zoom, setZoom] = useState(16);
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
   const centro = useMemo<[number, number]>(() => (validos.length ? [validos[0].lat, validos[0].lon] : ESPERA_FELIZ), [validos]);
   const anel = validos.map((v) => [v.lat, v.lon] as [number, number]);
@@ -237,6 +249,7 @@ export default function MapEditor(props: Props) {
 
       <AjustarLimites vertices={validos} referencias={referencias} />
       <Centralizar sig={centralizarSig} vertices={vertices} />
+      <VerZoom onZoom={setZoom} />
       <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} />
       <FocoMap latLng={focoLatLng} />
 
@@ -245,25 +258,31 @@ export default function MapEditor(props: Props) {
         <Polyline key={`ref${i}`} positions={r.length >= 3 ? [...r, r[0]] : r} pathOptions={{ color: '#06b6d4', weight: 1.5, dashArray: '5 4' }} />
       ))}
 
-      {/* parcelas certificadas do INCRA: clicáveis (info) + vértices clicáveis (adotar no projeto) */}
-      {parcelasCert.filter((p) => p.anel.length >= 3).map((p, i) => (
-        <Polygon key={`pc${i}`} positions={p.anel} pathOptions={{ color: '#0891b2', weight: 1.4, fillColor: '#06b6d4', fillOpacity: 0.04 }}>
-          <Popup>
-            <div className="text-xs leading-snug">
-              <div className="mb-0.5 font-bold">{p.info.titulo}</div>
-              {p.info.linhas.map((l, k) => <div key={k}>{l}</div>)}
-              <div className="mt-1 text-[10px] text-muted-foreground">Clique num vértice (ponto) para adotá-lo no seu projeto.</div>
-            </div>
-          </Popup>
-        </Polygon>
-      ))}
-      {parcelasCert.flatMap((p, i) => p.anel.map((pt, j) => (
-        <CircleMarker key={`pcv${i}-${j}`} center={pt} radius={4}
-          pathOptions={{ color: '#0e7490', fillColor: '#ffffff', fillOpacity: 1, weight: 1.6 }}
-          eventHandlers={{ click: () => onAdotarVertice?.(pt[0], pt[1]) }}>
-          <Tooltip direction="top" offset={[0, -4]}>Vértice certificado — clique para adotar</Tooltip>
-        </CircleMarker>
-      )))}
+      {/* parcelas certificadas do INCRA: clicáveis (destaca + abre painel) + vértices clicáveis (adotar) */}
+      {mostrarCert && parcelasCert.filter((p) => p.anel.length >= 3).map((p, i) => {
+        const sel = parcelaCertSel === i;
+        return (
+          <Polygon key={`pc${i}`} positions={p.anel}
+            pathOptions={sel
+              ? { color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: Math.max(opacidadeCert, 0.12) }
+              : { color: '#0891b2', weight: 1.4, fillColor: '#06b6d4', fillOpacity: opacidadeCert }}
+            eventHandlers={{ click: () => onSelParcelaCert?.(sel ? null : i) }} />
+        );
+      })}
+      {mostrarCert && parcelasCert.flatMap((p, i) => p.anel.map((pt, j) => {
+        const sel = parcelaCertSel === i;
+        // rótulo do vértice só aparece com zoom (>=17) ou quando a parcela está selecionada
+        const verRotulo = sel || zoom >= 17;
+        return (
+          <CircleMarker key={`pcv${i}-${j}`} center={pt} radius={sel ? 5 : 4}
+            pathOptions={{ color: sel ? '#b45309' : '#0e7490', fillColor: sel ? '#fde047' : '#ffffff', fillOpacity: 1, weight: 1.6 }}
+            eventHandlers={{ click: () => onAdotarVertice?.(pt[0], pt[1]) }}>
+            {verRotulo
+              ? <Tooltip permanent direction="top" offset={[0, -4]} className="rotulo-cert">{`${j + 1}`}</Tooltip>
+              : <Tooltip direction="top" offset={[0, -4]}>Vértice certificado — clique para adotar</Tooltip>}
+          </CircleMarker>
+        );
+      }))}
 
       {/* demais glebas */}
       {outrasGlebas.filter((g) => g.length >= 3).map((g, i) => (

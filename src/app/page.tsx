@@ -171,6 +171,9 @@ export default function EditorPage() {
   // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
   const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
   const [parcelasCert, setParcelasCert] = useState<{ anel: [number, number][]; info: { titulo: string; linhas: string[] } }[]>([]);
+  const [parcelaSel, setParcelaSel] = useState<number | null>(null); // parcela INCRA selecionada (painel)
+  const [mostrarCert, setMostrarCert] = useState(true);              // liga/desliga a camada de parcelas
+  const [opacidadeCert, setOpacidadeCert] = useState(0.06);          // opacidade do preenchimento
   const conflitos = useMemo(() => detectarConflitosDivisas(vertices, referencias), [vertices, referencias]);
   const [tema, setTema] = useState<'claro' | 'escuro'>('escuro');
   const [temaCarregadoDaNuvem, setTemaCarregadoDaNuvem] = useState(false);
@@ -1864,6 +1867,7 @@ export default function EditorPage() {
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 parcelasCert={parcelasCert} onAdotarVertice={inserirVertice}
+                mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
                 onDblClick={(lat, lon) => { const t = window.prompt('Texto a inserir:'); if (t) setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} objetoSelId={objetoSelId}
@@ -1874,7 +1878,41 @@ export default function EditorPage() {
                 onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
                 onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
                 onContextMenuMapa={(lat, lon, x, y) => setMenuContexto({ tipo: 'mapa', lat, lon, x, y })} />
-          ) : (
+          ) : null}
+
+          {/* CAMADA INCRA: controle de visibilidade/opacidade (canto inferior esquerdo do mapa) */}
+          {vista === 'mapa' && parcelasCert.length > 0 && (
+            <div className="absolute bottom-3 left-3 z-[1000] w-56 rounded-lg border bg-background/95 p-2 text-xs shadow-lg backdrop-blur">
+              <label className="flex items-center justify-between font-semibold">
+                <span className="flex items-center gap-1.5"><Users className="size-3.5 text-cyan-600" /> Parcelas INCRA ({parcelasCert.length})</span>
+                <input type="checkbox" className="size-4 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
+              </label>
+              {mostrarCert && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-muted-foreground">Opacidade</span>
+                  <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} className="flex-1 accent-cyan-600" onChange={(e) => setOpacidadeCert(Number(e.target.value))} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* PAINEL DE INFO da parcela selecionada (não tampa o mapa: canto superior direito, estreito) */}
+          {vista === 'mapa' && parcelaSel != null && parcelasCert[parcelaSel] && (
+            <div className="absolute right-3 top-3 z-[1000] w-72 rounded-lg border bg-background/95 p-3 text-xs shadow-xl backdrop-blur">
+              <div className="mb-1.5 flex items-start justify-between gap-2">
+                <span className="font-bold text-cyan-700 dark:text-cyan-300">{parcelasCert[parcelaSel].info.titulo}</span>
+                <button className="rounded p-0.5 hover:bg-muted" onClick={() => setParcelaSel(null)} title="Fechar"><X className="size-4" /></button>
+              </div>
+              <div className="space-y-1">
+                {parcelasCert[parcelaSel].info.linhas.length
+                  ? parcelasCert[parcelaSel].info.linhas.map((l, k) => <div key={k} className="border-b border-dashed border-border/50 pb-0.5">{l}</div>)
+                  : <div className="text-muted-foreground">Sem metadados extras (o serviço público do INCRA não trouxe).</div>}
+                <div className="pt-1 text-[10px] text-muted-foreground">{parcelasCert[parcelaSel].anel.length} vértices. Clique num ponto da divisa para adotá-lo no seu projeto.</div>
+              </div>
+            </div>
+          )}
+
+          {vista === 'planta' && (
             <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
               {/* controles da planta movidos para a coluna esquerda; aqui a folha fica limpa */}
               <div className={`absolute inset-0 overflow-hidden p-4 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
