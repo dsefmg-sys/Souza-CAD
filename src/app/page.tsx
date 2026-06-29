@@ -958,12 +958,6 @@ export default function EditorPage() {
     setObjetos((os) => os.filter((o) => o.id !== objetoSelId));
     setObjetoSelId(null);
   }
-  function limparObjetos() {
-    if (window.confirm('Deseja apagar todos os desenhos e textos da camada livre desta gleba?')) {
-      snap();
-      setObjetos([]);
-    }
-  }
   function editarObjetoSel(patch: Partial<ObjetoDesenho>) {
     if (!objetoSelId) return;
     setObjetos((os) => os.map((o) => (o.id === objetoSelId ? { ...o, ...patch } : o)));
@@ -1824,10 +1818,6 @@ export default function EditorPage() {
                       <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice (F12)"><Trash2 /> {L('Apagar vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
 
                       {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
-                      <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => { if (selecionadoId) { snap(); setVertices((vs) => definirInicio(vs, selecionadoId)); } }} title="Definir início no vértice selecionado"><Flag /> {L('Definir início')}</Button>
-                      {objetos.length > 0 && (
-                        <Button size="sm" variant="ghost" onClick={limparObjetos} title="Apagar todos os desenhos e textos livres desta gleba"><Trash2 className="text-destructive" /> {L('Limpar desenhos')}</Button>
-                      )}
                       {modo === 'polilinha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
                       {objSel?.tipo === 'texto' && (
                         <>
