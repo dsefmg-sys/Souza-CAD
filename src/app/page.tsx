@@ -95,6 +95,9 @@ export default function EditorPage() {
   const [tbH, setTbH] = useState<number | null>(null);
   const tbRef = useRef<HTMLDivElement>(null);
   const tbDrag = useRef<{ dx: number; dy: number } | null>(null);
+  // largura do painel da direita (redimensionável, salva por usuário)
+  const [asideW, setAsideW] = useState(380);
+  const asideDrag = useRef(false);
   // camada de desenho livre (objetos da gleba ativa)
   const [objetos, setObjetos] = useState<ObjetoDesenho[]>([]);
   const [desenhoBuffer, setDesenhoBuffer] = useState<PontoLL[]>([]);
@@ -137,6 +140,7 @@ export default function EditorPage() {
       const raw = localStorage.getItem('metrica.toolbar');
       if (raw) { const p = JSON.parse(raw); if (typeof p.x === 'number') setTbPos({ x: p.x, y: p.y }); if (typeof p.h === 'number') setTbH(p.h); }
     } catch { /* ignore */ }
+    try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680) setAsideW(w); } catch { /* ignore */ }
     // começa com uma gleba
     const g = glebaDe(1, [], [], {}, 'Parcela 1');
     setGlebas([g]);
@@ -152,6 +156,7 @@ export default function EditorPage() {
   useEffect(() => {
     try { localStorage.setItem('metrica.toolbar', JSON.stringify({ x: tbPos.x, y: tbPos.y, h: tbH })); } catch { /* ignore */ }
   }, [tbPos, tbH]);
+  useEffect(() => { try { localStorage.setItem('metrica.asideW', String(asideW)); } catch { /* ignore */ } }, [asideW]);
 
   // atalhos: F3 = imã (snap), F4 = nomes dos vértices, F5 = ferramenta mover (navegar)
   useEffect(() => {
@@ -197,6 +202,11 @@ export default function EditorPage() {
     tbDrag.current = null;
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
   }
+
+  // redimensionar o painel da direita
+  function asideDown(e: ReactPointerEvent) { asideDrag.current = true; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
+  function asideMove(e: ReactPointerEvent) { if (asideDrag.current) setAsideW(Math.min(680, Math.max(300, window.innerWidth - e.clientX))); }
+  function asideUp(e: ReactPointerEvent) { asideDrag.current = false; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ } }
 
   // ---------- glebas ----------
   // Devolve a lista completa de glebas com a ativa atualizada a partir do estado de trabalho.
@@ -722,6 +732,15 @@ export default function EditorPage() {
 
   const lados = res?.lados ?? [];
 
+  // progresso do trabalho (preenchimento + peças) para a barrinha à esquerda
+  const progresso = useMemo(() => {
+    const passos = [
+      !!imovel.denominacao, !!imovel.matricula, !!imovel.proprietario, !!imovel.municipio,
+      vertices.length >= 3, !!res, confrontantes.some((c) => c.nome), !!situacaoUrl,
+    ];
+    return passos.filter(Boolean).length / passos.length;
+  }, [imovel, vertices, res, confrontantes, situacaoUrl]);
+
   // rótulos de confrontante arrastáveis no mapa (posRotulo manual ou centróide dos lados)
   const rotulosConf: RotuloMapa[] = useMemo(() => {
     const out: RotuloMapa[] = [];
@@ -851,8 +870,12 @@ export default function EditorPage() {
           )}
         </main>
 
+        {/* Redimensionador do painel direito */}
+        <div onPointerDown={asideDown} onPointerMove={asideMove} onPointerUp={asideUp}
+          className="no-print w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar o painel" />
+
         {/* Painel direito */}
-        <aside className="no-print flex w-[380px] shrink-0 flex-col border-l">
+        <aside style={{ width: asideW }} className="no-print flex shrink-0 flex-col border-l">
           {/* glebas */}
           <div className="flex items-center gap-1 overflow-x-auto border-b p-1">
             {glebas.map((g) => (
@@ -972,6 +995,11 @@ export default function EditorPage() {
       />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
+
+      {/* Barra de progresso do trabalho (lateral esquerda) */}
+      <div className="no-print fixed left-0 top-0 z-[1050] h-screen w-1 bg-muted" title={`${Math.round(progresso * 100)}% do trabalho preenchido/gerado`}>
+        <div className="absolute bottom-0 left-0 w-full bg-primary transition-all" style={{ height: `${Math.round(progresso * 100)}%` }} />
+      </div>
 
       {/* Configurações + conta: engrenagem flutuante no canto inferior esquerdo */}
       <ConfigGear />
