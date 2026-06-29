@@ -8,7 +8,7 @@ import { distanciaCota } from '@/lib/topo/objetos';
 import { corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR } from '@/lib/topo/geometry';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'cota' | 'texto' | 'divisa' | 'confrontante';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'cota' | 'texto' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
@@ -39,6 +39,10 @@ interface Props {
   conflitos?: { ladoIdx: number; tipo: 'sobreposicao' | 'vao'; distancia: number }[];
   focoLatLng?: [number, number] | null;
   onCancelDesenho?: () => void;
+  tamNomes?: number;
+  verticesIgnorados?: Vertex[];
+  onIgnorarVertice?: (id: string) => void;
+  onConsiderarVertice?: (id: string) => void;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -63,12 +67,13 @@ function iconeVertice(v: Vertex, selecionado: boolean) {
   });
 }
 
-// rótulo do vértice: caixinha branca com texto preto, nítida sobre o mapa
-function iconeNomeVertice(texto: string, alterna: boolean) {
+// rótulo do vértice: caixinha branca SÓLIDA com texto preto, nítida sobre o mapa; tamanho ajustável
+function iconeNomeVertice(texto: string, alterna: boolean, tam: number) {
+  const fs = tam && tam > 0 ? tam : 11;
   return L.divIcon({
     className: 'vertice-nome',
-    html: `<div style="font-size:10px;font-weight:600;color:#000;background:rgba(255,255,255,0.92);border:1px solid #444;border-radius:3px;padding:0 3px;white-space:nowrap;box-shadow:0 0 2px rgba(0,0,0,.35)">${(texto || '').replace(/</g, '&lt;')}</div>`,
-    iconSize: [1, 1], iconAnchor: [-8, alterna ? 20 : -2],
+    html: `<div style="font-size:${fs}px;font-weight:700;color:#000;background:#fff;border:1px solid #333;border-radius:3px;padding:0 4px;white-space:nowrap;box-shadow:0 0 2px rgba(0,0,0,.5)">${(texto || '').replace(/</g, '&lt;')}</div>`,
+    iconSize: [1, 1], iconAnchor: [-8, alterna ? tam * 2 : -2],
   });
 }
 
@@ -163,6 +168,9 @@ export default function MapEditor(props: Props) {
     conflitos = [],
     focoLatLng = null,
     onCancelDesenho,
+    tamNomes = 11,
+    verticesIgnorados = [],
+    onIgnorarVertice, onConsiderarVertice,
   } = props;
 
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
@@ -309,6 +317,7 @@ export default function MapEditor(props: Props) {
               if (modo === 'apagar') onApagar(v.id);
               else if (modo === 'divisa') onPintarDivisa?.(v.id);
               else if (modo === 'confrontante') onPintarConfrontante?.(v.id);
+              else if (modo === 'ignorar') onIgnorarVertice?.(v.id);
               else onSelecionar(v.id);
             },
             drag(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
@@ -317,13 +326,20 @@ export default function MapEditor(props: Props) {
         />
       ))}
 
+      {/* vértices IGNORADOS: pontos cinza fora do anel; no modo "considerar", clicar reinsere */}
+      {verticesIgnorados.filter(valido).map((v) => (
+        <CircleMarker key={`ign${v.id}`} center={[v.lat, v.lon]} radius={6}
+          pathOptions={{ color: '#374151', fillColor: '#9ca3af', fillOpacity: 0.85, weight: 1.5, dashArray: '2 2' }}
+          eventHandlers={{ click() { if (modo === 'considerar') onConsiderarVertice?.(v.id); } }} />
+      ))}
+
       {/* rótulos dos vértices (caixinha branca; arrastáveis com a ferramenta mover/F5) */}
       {mostrarRotulos && validos.map((v, i) => (
         <Marker
           key={`nome${v.id}`}
           position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}
           draggable={modo === 'navegar'}
-          icon={iconeNomeVertice(v.codigoSigef || v.nome, i % 2 === 1)}
+          icon={iconeNomeVertice(v.codigoSigef || v.nome, i % 2 === 1, tamNomes)}
           eventHandlers={{
             click() { onSelecionar(v.id); },
             drag(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },

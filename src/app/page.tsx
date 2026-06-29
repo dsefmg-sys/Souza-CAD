@@ -93,6 +93,7 @@ export default function EditorPage() {
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
   const [vertices, setVertices] = useState<Vertex[]>([]);
+  const [verticesIgnorados, setVerticesIgnorados] = useState<Vertex[]>([]); // fora do anel (ferramenta ignorar/considerar)
   const [imovel, setImovel] = useState<ImovelData>(IMOVEL_VAZIO);
   const [confrontantes, setConfrontantes] = useState<Confrontante[]>([]);
   const [confrontantePorLado, setConfrontantePorLado] = useState<Record<number, string>>({});
@@ -109,6 +110,7 @@ export default function EditorPage() {
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [modo, setModo] = useState<ModoEdicao>('navegar');
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
+  const [tamNomes, setTamNomes] = useState(11); // tamanho da fonte dos nomes dos vértices no mapa
   const [snapAtivo, setSnapAtivo] = useState(false);
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
@@ -171,6 +173,7 @@ export default function EditorPage() {
     setTema(t);
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
     try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 320) setToolW(w); } catch { /* ignore */ }
+    try { const n = Number(localStorage.getItem('metrica.tamNomes')); if (n >= 7 && n <= 22) setTamNomes(n); } catch { /* ignore */ }
     try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680) setAsideW(w); } catch { /* ignore */ }
     // começa com uma gleba
     const g = glebaDe(1, [], [], {}, 'Parcela 1');
@@ -206,6 +209,7 @@ export default function EditorPage() {
 
   // salva posição/altura da barra de ferramentas
   useEffect(() => { try { localStorage.setItem('metrica.toolW', String(toolW)); } catch { /* ignore */ } }, [toolW]);
+  useEffect(() => { try { localStorage.setItem('metrica.tamNomes', String(tamNomes)); } catch { /* ignore */ } }, [tamNomes]);
   useEffect(() => { try { localStorage.setItem('metrica.asideW', String(asideW)); } catch { /* ignore */ } }, [asideW]);
 
   // Atualiza automaticamente o nome do projeto se não foi modificado manualmente
@@ -293,6 +297,7 @@ export default function EditorPage() {
     setObjetos(g.objetos ?? []);
     setDesenhoBuffer([]);
     setObjetoSelId(null);
+    setVerticesIgnorados([]);
     setGlebaAtivaId(g.id);
     setSelecionadoId(null);
   }
@@ -466,6 +471,35 @@ export default function EditorPage() {
     snap();
     setVertices((vs) => reordenar(vs.filter((v) => v.id !== id)));
     if (selecionadoId === id) setSelecionadoId(null);
+  }
+
+  // Ignorar vértice: tira-o do desenho do polígono (vai para a lista de ignorados, pode voltar).
+  function ignorarVertice(id: string) {
+    const v = vertices.find((x) => x.id === id);
+    if (!v) return;
+    setVertices((vs) => reordenar(vs.filter((x) => x.id !== id)));
+    setVerticesIgnorados((xs) => (xs.some((x) => x.id === id) ? xs : [...xs, v]));
+    if (selecionadoId === id) setSelecionadoId(null);
+    aviso('Vértice ignorado (o desenho passa direto). Use "considerar" para trazê-lo de volta.');
+  }
+
+  // Considerar vértice: reinsere um vértice ignorado no segmento mais próximo do anel atual.
+  function considerarVertice(id: string) {
+    const v = verticesIgnorados.find((x) => x.id === id);
+    if (!v || vertices.length < 2) return;
+    let melhor = vertices.length - 1, melhorD = Infinity;
+    for (let i = 0; i < vertices.length; i++) {
+      const a = vertices[i], b = vertices[(i + 1) % vertices.length];
+      const d = distPontoSegmento(v.leste, v.norte, a.leste, a.norte, b.leste, b.norte);
+      if (d < melhorD) { melhorD = d; melhor = i; }
+    }
+    setVertices((vs) => {
+      const out = [...vs];
+      out.splice(melhor + 1, 0, v);
+      return reordenar(out);
+    });
+    setVerticesIgnorados((xs) => xs.filter((x) => x.id !== id));
+    aviso('Vértice reincluído no segmento mais próximo.');
   }
 
   function executarDivisaoGleba() {
@@ -1075,6 +1109,12 @@ export default function EditorPage() {
             <Button size="sm" variant="ghost" title="Centralizar/enquadrar o desenho" onClick={centralizar}><Maximize /></Button>
             <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /></Button>
             <Button size="sm" variant="ghost" title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
+            {mostrarRotulos && (
+              <>
+                <Button size="sm" variant="ghost" className="px-1.5" title="Diminuir os nomes dos vértices" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}>A-</Button>
+                <Button size="sm" variant="ghost" className="px-1.5" title="Aumentar os nomes dos vértices" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}>A+</Button>
+              </>
+            )}
             <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} title={bloqueado ? 'Vértices travados (clique para liberar)' : 'Vértices liberados'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
           </>
         )}
@@ -1101,6 +1141,9 @@ export default function EditorPage() {
                 <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F5)"><MousePointer2 /> {L('Mover')}</Button>
                 <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice"><Plus /> {L('Inserir vértice')}</Button>
                 <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
+                <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'ignorar' ? 'navegar' : 'ignorar')} title="Ignorar vértice: clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar vértice')}</Button>
+                <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'considerar' ? 'navegar' : 'considerar')} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo no segmento mais próximo"><Plus /> {L('Considerar vértice')}</Button>
+                {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
                 <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => { if (selecionadoId) { snap(); setVertices((vs) => definirInicio(vs, selecionadoId)); } }} title="Definir início no vértice selecionado"><Flag /> {L('Definir início')}</Button>
                 <Button size="sm" variant="ghost" onClick={renumerar} title="Renumerar vértices"><Crosshair /> {L('Renumerar')}</Button>
                 <div className="my-0.5 h-px w-full bg-border" />
@@ -1153,9 +1196,10 @@ export default function EditorPage() {
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} objetoSelId={objetoSelId}
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice}
-                conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} />
+                conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}
+                verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} />
           ) : (
-            <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200" onWheel={onPlantaWheel}>
+            <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
                 <Button size="sm" variant="default" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> Baixar PDF</Button>
                 <Button size="sm" variant="secondary" title="Gerar a planta de situação (recorte de satélite)" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
