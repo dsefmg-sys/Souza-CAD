@@ -9,8 +9,8 @@ import {
   Upload, FileText, Map as MapIcon, Printer, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Users,
-  Maximize, Settings, LogOut, Table, FileWarning,
+  Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users,
+  Maximize, Settings, LogOut, Table, FileWarning, Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -248,18 +248,29 @@ export default function EditorPage() {
 
   function aviso(t: string) { setMsg(t); setTimeout(() => setMsg(''), 4000); }
 
-  // ---------- desfazer (histórico de vértices + trechos de confrontante) ----------
+  // ---------- desfazer / refazer (histórico de vértices + trechos de confrontante) ----------
   const histRef = useRef<{ v: Vertex[]; cpl: Record<number, string> }[]>([]);
+  const redoRef = useRef<{ v: Vertex[]; cpl: Record<number, string> }[]>([]);
   function snap() {
     histRef.current.push({ v: vertices, cpl: confrontantePorLado });
     if (histRef.current.length > 60) histRef.current.shift();
+    redoRef.current = []; // uma ação nova invalida o que havia para refazer
   }
   function desfazer() {
     const s = histRef.current.pop();
     if (!s) { aviso('Nada para desfazer.'); return; }
+    redoRef.current.push({ v: vertices, cpl: confrontantePorLado });
     setVertices(s.v);
     setConfrontantePorLado(s.cpl);
     aviso('Última ação desfeita.');
+  }
+  function refazer() {
+    const s = redoRef.current.pop();
+    if (!s) { aviso('Nada para refazer.'); return; }
+    histRef.current.push({ v: vertices, cpl: confrontantePorLado });
+    setVertices(s.v);
+    setConfrontantePorLado(s.cpl);
+    aviso('Ação refeita.');
   }
 
   // redimensionar a barra de ferramentas (largura, arrastando a borda direita)
@@ -1176,30 +1187,21 @@ export default function EditorPage() {
           return (
             <>
               <aside style={{ width: toolW }} className="no-print flex shrink-0 flex-col gap-1 overflow-y-auto border-r bg-background p-1.5">
-                {/* SISTEMA (topo, sempre acessível) */}
-                <div className="flex flex-wrap gap-1 [&_button]:h-9 [&_button]:w-9 [&_button]:justify-center [&_button]:p-0">
-                  {vista === 'mapa' && (
-                    <>
-                      <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /></Button>
-                      <Button size="sm" variant="ghost" title="Centralizar/enquadrar o desenho" onClick={centralizar}><Maximize /></Button>
+                {/* SISTEMA (topo): ações úteis com nome + ícones de alternância */}
+                {vista === 'mapa' && (
+                  <>
+                    <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
+                      <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /> <span className="truncate text-xs">Desfazer</span></Button>
+                      <Button size="sm" variant="ghost" title="Refazer a ação desfeita" onClick={refazer}><Redo2 /> <span className="truncate text-xs">Refazer</span></Button>
+                      <Button size="sm" variant="ghost" title="Focalizar/enquadrar o desenho atual" onClick={centralizar}><Target /> <span className="truncate text-xs">Focalizar</span></Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1 [&_button]:h-9 [&_button]:w-9 [&_button]:justify-center [&_button]:p-0">
                       <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /></Button>
                       <Button size="sm" variant="ghost" title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
-                      {mostrarRotulos && (
-                        <>
-                          <Button size="sm" variant="ghost" title="Diminuir os nomes dos vértices" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-xs font-bold">A-</span></Button>
-                          <Button size="sm" variant="ghost" title="Aumentar os nomes dos vértices" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-xs font-bold">A+</span></Button>
-                        </>
-                      )}
                       <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} title={bloqueado ? 'Vértices travados (clique para liberar)' : 'Vértices liberados'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
-                    </>
-                  )}
-                  <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
-                  <Link href="/configuracoes"><Button size="sm" variant="ghost" title="Configurações"><Settings /></Button></Link>
-                  {nuvemDisponivel && user && (
-                    <Button size="sm" variant="ghost" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
-                  )}
-                </div>
+                    </div>
+                  </>
+                )}
 
                 {/* FERRAMENTAS DE EDIÇÃO (só no mapa) */}
                 {vista === 'mapa' && (
@@ -1242,6 +1244,22 @@ export default function EditorPage() {
                     </div>
                   </>
                 )}
+
+                {/* BASE: botões globais só de ícone (auto-explicativos) */}
+                <div className="mt-auto flex flex-wrap gap-1 border-t pt-1 [&_button]:h-9 [&_button]:w-9 [&_button]:justify-center [&_button]:p-0">
+                  <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /></Button>
+                  {vista === 'mapa' && mostrarRotulos && (
+                    <>
+                      <Button size="sm" variant="ghost" title="Diminuir os nomes dos vértices" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-xs font-bold">A-</span></Button>
+                      <Button size="sm" variant="ghost" title="Aumentar os nomes dos vértices" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-xs font-bold">A+</span></Button>
+                    </>
+                  )}
+                  <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
+                  <Link href="/configuracoes"><Button size="sm" variant="ghost" title="Configurações"><Settings /></Button></Link>
+                  {nuvemDisponivel && user && (
+                    <Button size="sm" variant="ghost" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
+                  )}
+                </div>
               </aside>
               {vista === 'mapa' && (
                 <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
