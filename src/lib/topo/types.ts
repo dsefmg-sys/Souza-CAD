@@ -95,6 +95,7 @@ export interface ProprietarioCad extends Partial<PessoaQualificada> {
   nome: string;
   cpf: string;
   tipoPessoa: 'Física' | 'Jurídica';
+  projetoId?: string;
 }
 
 /**
@@ -118,6 +119,7 @@ export interface ConfrontanteCad {
   // quando espólio: quem assina pelo espólio (inventariante)
   inventarianteNome?: string;
   inventarianteCpf?: string;
+  projetoId?: string;
 }
 
 export interface ImovelCad {
@@ -127,6 +129,7 @@ export interface ImovelCad {
   cns: string;
   codigoImovelIncra: string;
   municipio: string;
+  projetoId?: string;
 }
 
 export interface CartorioCad {
