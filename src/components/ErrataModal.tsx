@@ -16,6 +16,7 @@ interface Props {
   imovel: ImovelData;
   tecnico: TecnicoData | null;
   confrontantes: Confrontante[];
+  areaHa: number;
 }
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -23,21 +24,20 @@ function dataExtensoHoje(d = new Date()): string {
   return `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
-export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confrontantes }: Props) {
+export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confrontantes, areaHa }: Props) {
   const [correcoes, setCorrecoes] = useState<CorrecaoErrata[]>([{ onde: '', constava: '', passa: '' }]);
-  const [motivo, setMotivo] = useState('');
+  const [acrescimoRT, setAcrescimoRT] = useState('');
   const [msg, setMsg] = useState('');
 
-  useEffect(() => { if (open) { setCorrecoes([{ onde: '', constava: '', passa: '' }]); setMotivo(''); setMsg(''); } }, [open]);
+  useEffect(() => { if (open) { setCorrecoes([{ onde: '', constava: '', passa: '' }]); setAcrescimoRT(''); setMsg(''); } }, [open]);
 
-  // Atalhos de "onde" mais comuns, pré-preenchendo o campo e o valor que constava.
+  // Atalhos de "onde" mais comuns, no formato dos modelos ("Confrontante X" + "Matrícula nº ...").
   const sugestoes: { rotulo: string; onde: string; constava: string }[] = [
-    { rotulo: 'Município', onde: 'Município do imóvel', constava: imovel.municipio || '' },
-    { rotulo: 'Matrícula', onde: 'Matrícula do imóvel', constava: imovel.matricula || '' },
+    { rotulo: 'Matrícula', onde: 'Matrícula do imóvel', constava: imovel.matricula ? `Matrícula nº ${imovel.matricula}` : '' },
     { rotulo: 'Denominação', onde: 'Denominação do imóvel', constava: imovel.denominacao || '' },
     { rotulo: 'Proprietário', onde: 'Nome do proprietário', constava: imovel.proprietario || '' },
     ...confrontantes.filter((c) => c.nome).map((c) => ({
-      rotulo: `Matríc. ${c.nome}`, onde: `Matrícula do confrontante ${c.nome}`, constava: c.matricula || '',
+      rotulo: `Confront. ${c.nome}`, onde: `Confrontante ${c.nome}`, constava: c.matricula ? `Matrícula nº ${c.matricula}` : '',
     })),
   ];
 
@@ -51,7 +51,7 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
     if (!tecnico) { setMsg('Configure o responsável técnico primeiro.'); return; }
     const validas = correcoes.filter((c) => c.onde.trim() && c.passa.trim());
     if (!validas.length) { setMsg('Preencha ao menos uma correção (onde e o valor correto).'); return; }
-    const blob = await gerarErrataDocx({ imovel, tecnico, correcoes: validas, motivo, dataExtenso: dataExtensoHoje() });
+    const blob = await gerarErrataDocx({ imovel, tecnico, correcoes: validas, areaHa, acrescimoRT, dataExtenso: dataExtensoHoje() });
     saveAs(blob, `Errata - ${imovel.denominacao || 'imovel'}.docx`);
     setMsg('Errata gerada.');
   }
@@ -88,16 +88,16 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
               <div className="grid grid-cols-1 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Onde está o erro</Label>
-                  <Input value={c.onde} onChange={(e) => setCor(i, { onde: e.target.value })} placeholder="ex.: Matrícula do confrontante João" />
+                  <Input value={c.onde} onChange={(e) => setCor(i, { onde: e.target.value })} placeholder="ex.: Confrontante João Alves" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <Label className="text-xs">Onde se lê (errado)</Label>
-                    <Input value={c.constava} onChange={(e) => setCor(i, { constava: e.target.value })} />
+                    <Input value={c.constava} onChange={(e) => setCor(i, { constava: e.target.value })} placeholder="ex.: Matrícula nº 3383" />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Leia-se (correto)</Label>
-                    <Input value={c.passa} onChange={(e) => setCor(i, { passa: e.target.value })} />
+                    <Input value={c.passa} onChange={(e) => setCor(i, { passa: e.target.value })} placeholder="ex.: Matrícula nº 5.378" />
                   </div>
                 </div>
               </div>
@@ -107,10 +107,9 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
         </div>
 
         <div className="space-y-1">
-          <Label className="text-xs">Justificativa geral (opcional)</Label>
-          <textarea className="min-h-[60px] w-full rounded border border-input bg-background p-2 text-sm"
-            value={motivo} onChange={(e) => setMotivo(e.target.value)}
-            placeholder="Se quiser, explique o motivo geral das correções (senão, usamos um texto padrão)." />
+          <Label className="text-xs">Acréscimo de Responsabilidade Técnica (opcional)</Label>
+          <Input value={acrescimoRT} onChange={(e) => setAcrescimoRT(e.target.value)}
+            placeholder="ex.: Número CFT/TRT 2605638774 (só se precisar acrescentar o registro)" />
         </div>
 
         <div className="flex items-center gap-3 border-t pt-3">

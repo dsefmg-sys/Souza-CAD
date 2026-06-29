@@ -1,69 +1,97 @@
 import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 import type { ImovelData, TecnicoData } from '../topo/types';
+import { numBR } from '../topo/geometry';
 
-/** Uma correção a ser feita na errata: onde, o que constava e o que passa a constar. */
+/** Uma correção da errata: onde, o que constava (onde se lê) e o que passa a constar (leia-se). */
 export interface CorrecaoErrata {
-  onde: string;     // ex.: "Matrícula do confrontante José Cláudio", "Município do imóvel"
-  constava: string; // o valor errado
-  passa: string;    // o valor correto
+  onde: string;     // ex.: "Confrontante Flávio Alves"
+  constava: string; // ex.: "Matrícula nº 3383"
+  passa: string;    // ex.: "Matrícula nº 5.378"
 }
 
 export interface ErrataInput {
   imovel: ImovelData;
   tecnico: TecnicoData;
   correcoes: CorrecaoErrata[];
-  motivo?: string;       // justificativa geral (opcional)
-  comarca?: string;      // padrão = município do imóvel
-  dataExtenso?: string;  // ex.: "29 de junho de 2026"
+  areaHa: number;
+  comarca?: string;        // padrão = município do imóvel
+  assunto?: string;        // padrão = retificação de georreferenciamento
+  acrescimoRT?: string;    // se preenchido, vira a seção "Acréscimo de Responsabilidade Técnica"
+  dataExtenso?: string;    // ex.: "5 de junho de 2026"
 }
 
-function titulo(t: string) {
-  return new Paragraph({ spacing: { before: 200, after: 80 }, children: [new TextRun({ text: t, bold: true, size: 22 })] });
+const ASSUNTO_PADRAO = 'Retificação de dados em processo de Georreferenciamento e Retificação de Área.';
+
+function par(runs: TextRun[], align: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.JUSTIFIED, after = 120) {
+  return new Paragraph({ alignment: align, spacing: { after }, children: runs });
 }
-function par(t: string, align: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.JUSTIFIED) {
-  return new Paragraph({ alignment: align, spacing: { after: 100 }, children: [new TextRun({ text: t, size: 22 })] });
+function t(texto: string, opts: { bold?: boolean; size?: number } = {}) {
+  return new TextRun({ text: texto, bold: opts.bold, size: opts.size ?? 22 });
+}
+function secao(n: number, titulo: string) {
+  return new Paragraph({ spacing: { before: 160, after: 60 }, children: [new TextRun({ text: `${n}. ${titulo}`, bold: true, size: 22 })] });
 }
 
 export async function gerarErrataDocx(input: ErrataInput): Promise<Blob> {
-  const { imovel, tecnico, correcoes } = input;
-  const comarca = input.comarca || imovel.municipio || '—';
+  const { imovel, tecnico, correcoes, areaHa } = input;
+  const comarca = (input.comarca || imovel.municipio || '—').replace(/\s*-\s*MG$/i, '').trim();
+  const nomeUpper = (tecnico.nome || '').toUpperCase();
+  const denom = imovel.denominacao || '—';
+  const area = `${numBR(areaHa, 4)} ha`;
+  const local = imovel.local || '';
   const c: Paragraph[] = [];
 
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: 'ERRATA AO MEMORIAL DESCRITIVO / RETIFICAÇÃO DE DADOS', bold: true, size: 24 })] }));
-  c.push(par(`Ilustríssimo Senhor(a) Oficial do Cartório de Registro de Imóveis da Comarca de ${comarca},`));
+  // Cabeçalho
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, children: [new TextRun({ text: 'ERRATA FORMAL DE MEMORIAL DESCRITIVO E PROJETO TÉCNICO', bold: true, size: 24 })] }));
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [new TextRun({ text: `AO OFICIAL DE REGISTRO DE IMÓVEIS DA COMARCA DE ${comarca.toUpperCase()} – MG`, bold: true, size: 22 })] }));
 
-  c.push(titulo('DA IDENTIFICAÇÃO DO IMÓVEL'));
-  c.push(par(`Imóvel denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, matrícula nº ${imovel.matricula || '—'}${imovel.codigoImovelIncra ? `, código INCRA (SIGEF) ${imovel.codigoImovelIncra}` : ''}.`));
+  // Referência
+  c.push(par([
+    t('Ref.: ', { bold: true }),
+    t(`Imóvel: ${denom}`),
+    t(` | Matrícula: ${imovel.matricula || '—'}`),
+    t(` | Proprietário(s): ${imovel.proprietario || '—'}`),
+    t(` | Assunto: ${input.assunto || ASSUNTO_PADRAO}`),
+  ]));
 
-  c.push(titulo('DAS CORREÇÕES'));
-  c.push(par(input.motivo?.trim()
-    || 'O responsável técnico abaixo identificado, tendo constatado equívoco(s) material(is) na documentação técnica do imóvel acima, vem, respeitosamente, apresentar a presente ERRATA, a fim de retificar as informações a seguir, sem alteração dos limites, confrontações ou da realidade física levantada:'));
+  // Parágrafo de abertura
+  c.push(par([
+    t('Eu, '), t(nomeUpper, { bold: true }),
+    t(`, Técnico em Agrimensura, inscrito no CFT sob o nº ${tecnico.cft || '—'}, responsável técnico pelos serviços de agrimensura do imóvel rural denominado ${denom}, com área de ${area}${local ? `, localizado no ${local}` : ''}, venho por meio desta apresentar ERRATA FORMAL para retificação de informações constantes na planta e no memorial descritivo anteriormente apresentados.`),
+  ]));
 
+  // Seção 1: correções
+  let n = 1;
+  c.push(secao(n++, 'Retificação de Dados de Confrontantes e Matrículas'));
+  c.push(par([t('Para fins de correta averbação e para evitar a necessidade de reconfecção de peças gráficas e novas colheitas de assinaturas, onde constam dados divergentes, leia-se conforme a correção abaixo:')]));
   if (correcoes.length === 0) {
-    c.push(par('(nenhuma correção informada)'));
+    c.push(par([t('(nenhuma correção informada)')]));
   } else {
-    correcoes.forEach((cor, i) => {
-      c.push(new Paragraph({ spacing: { before: 80, after: 10 }, children: [new TextRun({ text: `${i + 1}. ${cor.onde || 'Campo'}`, bold: true, size: 22 })] }));
-      c.push(new Paragraph({ spacing: { after: 10 }, children: [
-        new TextRun({ text: 'Onde se lê: ', bold: true, size: 22 }),
-        new TextRun({ text: cor.constava || '—', size: 22 }),
-      ] }));
-      c.push(new Paragraph({ spacing: { after: 60 }, children: [
-        new TextRun({ text: 'Leia-se: ', bold: true, size: 22 }),
-        new TextRun({ text: cor.passa || '—', size: 22 }),
-      ] }));
-    });
+    for (const cor of correcoes) {
+      c.push(par([
+        t(`${cor.onde}: `, { bold: true }),
+        t('Onde se lê '), t(cor.constava || '—'),
+        t(', leia-se: '), t(cor.passa || '—', { bold: true }), t('.'),
+      ], AlignmentType.JUSTIFIED, 60));
+    }
   }
 
-  c.push(titulo('DA RESPONSABILIDADE TÉCNICA'));
-  c.push(par('O profissional declara, sob as penas da lei, que as correções acima são verdadeiras e que não alteram os limites, a área levantada ou os direitos dos confrontantes, restando o memorial descritivo e a planta retificados conforme aqui consignado.'));
+  // Seção opcional: acréscimo de responsabilidade técnica
+  if (input.acrescimoRT?.trim()) {
+    c.push(secao(n++, 'Acréscimo de Informação de Responsabilidade Técnica'));
+    c.push(par([t('Fica devidamente registrado e acrescido ao processo o número de registro profissional correspondente: '), t(input.acrescimoRT.trim(), { bold: true })]));
+  }
 
-  const data = input.dataExtenso ? `${comarca}, ${input.dataExtenso}.` : `${comarca}, ____ de __________ de ______.`;
-  c.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 200 }, children: [new TextRun({ text: data, size: 22 })] }));
+  // Ratificação
+  c.push(secao(n++, 'Considerações Finais e Ratificação'));
+  c.push(par([t(`Esta errata visa sanar apenas os erros materiais de digitação referentes às matrículas dos confrontantes e à inclusão de registro profissional, mantendo-se inalterados os limites físicos, as coordenadas georreferenciadas (SIRGAS2000), os azimutes e a área total de ${area} do imóvel. Esta peça passa a ser parte integrante da documentação técnica para todos os fins de direito.`)]));
 
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300 }, children: [new TextRun({ text: '____________________________________', size: 22 })] }));
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tecnico.nome, size: 22 })] }));
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${tecnico.formacao || 'Responsável Técnico'} — CFT ${tecnico.cft} — INCRA: ${tecnico.credenciamentoIncra}`, size: 22 })] }));
+  // Data e assinatura
+  const data = input.dataExtenso ? `${comarca} - MG, ${input.dataExtenso}.` : `${comarca} - MG, ____ de __________ de ______.`;
+  c.push(new Paragraph({ spacing: { before: 240, after: 320 }, children: [t(data)] }));
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: nomeUpper, bold: true, size: 22 })] }));
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [t('Técnico em Agrimensura')] }));
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [t(`CFT ${tecnico.cft || '—'}`)] }));
 
   const doc = new Document({
     sections: [{ properties: { page: { margin: { top: 1133, bottom: 1133, left: 1133, right: 1133 } } }, children: c }],
