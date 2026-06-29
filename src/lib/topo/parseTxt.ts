@@ -1,15 +1,34 @@
-import type { RawPoint } from './types';
+import type { RawPoint, ImportTxtConfig, CampoTxt } from './types';
+
+/** Converte o separador escolhido em algo que o split entende. */
+function separadorRegex(sep: ImportTxtConfig['separador']): RegExp {
+  if (sep === 'tab') return /\t/;
+  if (sep === 'espaco') return /\s+/;
+  if (sep === ',') return /,/;
+  return /;/;
+}
+
+/** Lê um número respeitando o separador decimal configurado. */
+function numero(s: string | undefined, decimal: '.' | ','): number {
+  if (s == null) return NaN;
+  let t = s.trim();
+  if (decimal === ',') t = t.replace(/\./g, '').replace(',', '.');
+  return parseFloat(t);
+}
 
 /**
- * Lê o TXT do GNSS. Formato observado (separado por ";"):
+ * Lê o TXT do GNSS. Sem configuração, usa o formato observado (separado por ";"):
  *   Nome;Código;Norte(N);Leste(E);Elevação;ErroY;ErroX;ErroVert;Info...
- * A primeira linha é o cabeçalho de colunas.
+ * Com configuração (definida em Ajustes a partir de um exemplo), respeita o separador,
+ * o decimal e a QUAL campo cada coluna corresponde.
  *
  * Regras de classificação:
  *  - Pontos cujo Nome começa com "B_" ou "PPP" são base/apoio -> não entram no perímetro.
  *  - Pontos com STATUS:SINGLE no campo de info são referências de baixa precisão -> fora.
  */
-export function parseTxt(conteudo: string): RawPoint[] {
+export function parseTxt(conteudo: string, config?: ImportTxtConfig | null): RawPoint[] {
+  if (config && config.colunas && config.colunas.length) return parseTxtComConfig(conteudo, config);
+
   const linhas = conteudo.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (linhas.length === 0) return [];
 
@@ -43,6 +62,62 @@ export function parseTxt(conteudo: string): RawPoint[] {
       status,
       isBase,
       isSingle,
+    });
+  }
+  return pontos;
+}
+
+/** Caminho guiado pela configuração do usuário (mapeamento coluna -> campo). */
+function parseTxtComConfig(conteudo: string, cfg: ImportTxtConfig): RawPoint[] {
+  const re = separadorRegex(cfg.separador);
+  const linhas = conteudo.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (linhas.length === 0) return [];
+  const corpo = cfg.temCabecalho ? linhas.slice(1) : linhas;
+
+  const indiceDe = (campo: CampoTxt) => cfg.colunas.indexOf(campo);
+  const iNome = indiceDe('nome');
+  const iCodigo = indiceDe('codigo');
+  const iNorte = indiceDe('norte');
+  const iLeste = indiceDe('leste');
+  const iElev = indiceDe('elevacao');
+  const iSx = indiceDe('sigmaX');
+  const iSy = indiceDe('sigmaY');
+  const iSz = indiceDe('sigmaZ');
+  const iMet = indiceDe('metodo');
+
+  const pontos: RawPoint[] = [];
+  for (const linha of corpo) {
+    const f = linha.split(re);
+    const norte = numero(f[iNorte], cfg.decimal);
+    const leste = numero(f[iLeste], cfg.decimal);
+    if (!isFinite(norte) || !isFinite(leste)) continue;
+
+    const nome = (iNome >= 0 ? f[iNome] ?? '' : '').trim();
+    const codigo = (iCodigo >= 0 ? f[iCodigo] ?? '' : '').trim();
+    const elevacao = numero(f[iElev], cfg.decimal);
+    const sigmaX = iSx >= 0 ? numero(f[iSx], cfg.decimal) : NaN;
+    const sigmaY = iSy >= 0 ? numero(f[iSy], cfg.decimal) : NaN;
+    const sigmaZ = iSz >= 0 ? numero(f[iSz], cfg.decimal) : NaN;
+    const metodo = iMet >= 0 ? (f[iMet] ?? '').trim() : '';
+
+    const statusMatch = linha.match(/STATUS:([A-Z]+)/i);
+    const status = statusMatch ? statusMatch[1].toUpperCase() : '';
+    const isBase = /^B[_-]/i.test(nome) || /^PPP/i.test(nome) || /^BASE/i.test(nome);
+    const isSingle = status === 'SINGLE';
+
+    pontos.push({
+      nome,
+      codigo,
+      norte,
+      leste,
+      elevacao: isFinite(elevacao) ? elevacao : 0,
+      status,
+      isBase,
+      isSingle,
+      ...(isFinite(sigmaX) ? { sigmaX } : {}),
+      ...(isFinite(sigmaY) ? { sigmaY } : {}),
+      ...(isFinite(sigmaZ) ? { sigmaZ } : {}),
+      ...(metodo ? { metodo } : {}),
     });
   }
   return pontos;

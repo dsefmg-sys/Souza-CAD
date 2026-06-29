@@ -2,18 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, FileCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { TecnicoData, EscritorioData } from '@/lib/topo/types';
 import { carregarTecnico, salvarTecnico, TECNICO_PADRAO, carregarEscritorio, salvarEscritorio, ESCRITORIO_PADRAO } from '@/lib/store/settings';
+import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 
 export default function ConfiguracoesPage() {
   const [t, setT] = useState<TecnicoData>(TECNICO_PADRAO);
   const [esc, setEsc] = useState<EscritorioData>(ESCRITORIO_PADRAO);
   const [msg, setMsg] = useState('');
+  const [importTxtAberto, setImportTxtAberto] = useState(false);
 
   useEffect(() => { setT(carregarTecnico()); setEsc(carregarEscritorio()); }, []);
 
@@ -80,6 +82,20 @@ export default function ConfiguracoesPage() {
       </p>
 
       <Card className="mt-4">
+        <CardHeader><CardTitle>Importação de TXT (ordem das colunas)</CardTitle></CardHeader>
+        <CardContent>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Cada equipamento exporta o TXT numa ordem diferente de colunas. Envie um arquivo de
+            exemplo e diga o que cada coluna é (nome do ponto, Norte, Leste, altitude, sigma X, sigma Y,
+            sigma Z, método). O sistema passa a ler todos os TXT seguindo esse mapa.
+          </p>
+          <Button variant="outline" onClick={() => setImportTxtAberto(true)}>
+            <FileCog /> Configurar importação de TXT
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
         <CardHeader><CardTitle>Carimbo do escritório (planta)</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <Campo wide label="Nome do escritório" value={esc.nome} onChange={(v) => setE('nome', v)} />
@@ -99,6 +115,8 @@ export default function ConfiguracoesPage() {
         <Button onClick={salvar}><Save /> Salvar configurações</Button>
         {msg && <span className="text-sm text-primary">{msg}</span>}
       </div>
+
+      <ImportTxtConfigModal open={importTxtAberto} onOpenChange={setImportTxtAberto} />
     </div>
   );
 }

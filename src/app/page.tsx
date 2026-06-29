@@ -42,7 +42,7 @@ import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
-import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario } from '@/lib/store/settings';
+import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
@@ -342,7 +342,7 @@ export default function EditorPage() {
       const buf = await importPendingFile.arrayBuffer();
       // TXT do GNSS costuma vir em Windows-1252 (acentos)
       const texto = new TextDecoder('windows-1252').decode(buf);
-      const pontos = parseTxt(texto);
+      const pontos = parseTxt(texto, carregarImportTxt());
       const perim = pontosDePerimetro(pontos);
       if (perim.length < 3) { aviso('O arquivo não tem pontos de perímetro suficientes.'); return; }
 

@@ -10,6 +10,27 @@ export interface RawPoint {
   status: string;      // FIXED | SINGLE | "" (do GNSS)
   isBase: boolean;     // ponto de apoio/base (B_, PPP) — não entra no perímetro
   isSingle: boolean;   // STATUS:SINGLE — referência de baixa precisão, fora do perímetro
+  sigmaX?: number;     // precisão horizontal X (m)
+  sigmaY?: number;     // precisão horizontal Y (m)
+  sigmaZ?: number;     // precisão vertical Z (m)
+  metodo?: string;     // método de posicionamento informado em campo (ex.: PG6, RTK)
+}
+
+/** Campo que uma coluna do TXT representa (configuração de importação). */
+export type CampoTxt =
+  | 'ignorar' | 'nome' | 'codigo' | 'norte' | 'leste' | 'elevacao'
+  | 'sigmaX' | 'sigmaY' | 'sigmaZ' | 'metodo';
+
+/**
+ * Configuração de como ler o TXT do GNSS: separador de colunas, separador decimal,
+ * se a primeira linha é cabeçalho e a QUAL campo cada coluna corresponde.
+ * Definida pelo usuário em Configurações a partir de um arquivo de exemplo.
+ */
+export interface ImportTxtConfig {
+  separador: ';' | ',' | 'tab' | 'espaco';
+  decimal: '.' | ',';
+  temCabecalho: boolean;
+  colunas: CampoTxt[]; // colunas[i] = papel da coluna i
 }
 
 /** Tipo de vértice na lógica do SIGEF. M = marco (canto de divisa), P = ponto, V = virtual. */
@@ -39,6 +60,9 @@ export interface Vertex {
   codigoSigef: string; // ex.: COIN-M-0017
   isDivisa: boolean;   // verdadeiro quando o código do campo indica troca de divisa
   registrado?: boolean;// já consumiu número do banco de pontos (não pode ser reusado)
+  sigmaX?: number;     // precisão horizontal X (m), lida do TXT
+  sigmaY?: number;     // precisão horizontal Y (m), lida do TXT
+  sigmaZ?: number;     // precisão vertical Z (m), lida do TXT
   posRotulo?: { lat: number; lon: number }; // posição manual do rótulo do vértice (arrastado com F5)
 }
 

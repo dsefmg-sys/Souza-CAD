@@ -43,11 +43,14 @@ export function montarVertices(
       lat,
       lon,
       tipo,
-      metodo,
+      metodo: p.metodo || metodo, // método informado em campo tem prioridade sobre o padrão
       tipoLimite,
       representacao: 'linha-ideal',
       codigoSigef,
       isDivisa,
+      ...(Number.isFinite(p.sigmaX) ? { sigmaX: p.sigmaX } : {}),
+      ...(Number.isFinite(p.sigmaY) ? { sigmaY: p.sigmaY } : {}),
+      ...(Number.isFinite(p.sigmaZ) ? { sigmaZ: p.sigmaZ } : {}),
     };
   });
 }

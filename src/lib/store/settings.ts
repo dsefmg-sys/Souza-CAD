@@ -1,8 +1,34 @@
-import type { TecnicoData, EscritorioData, PlantaConfig } from '../topo/types';
+import type { TecnicoData, EscritorioData, PlantaConfig, ImportTxtConfig } from '../topo/types';
 
 const KEY = 'metrica.tecnico';
 const KEY_ESCRITORIO = 'metrica.escritorio';
 const KEY_PLANTA = 'metrica.plantaPadrao';
+const KEY_IMPORT_TXT = 'metrica.importTxt';
+
+// Mapeamento padrão das colunas do TXT (formato observado do GNSS).
+export const IMPORT_TXT_PADRAO: ImportTxtConfig = {
+  separador: ';',
+  decimal: '.',
+  temCabecalho: true,
+  colunas: ['nome', 'codigo', 'norte', 'leste', 'elevacao', 'sigmaY', 'sigmaX', 'sigmaZ'],
+};
+
+/** Configuração de leitura do TXT, definida pelo usuário a partir de um exemplo. */
+export function carregarImportTxt(): ImportTxtConfig {
+  if (typeof window === 'undefined') return IMPORT_TXT_PADRAO;
+  try {
+    const raw = localStorage.getItem(KEY_IMPORT_TXT);
+    if (!raw) return IMPORT_TXT_PADRAO;
+    return { ...IMPORT_TXT_PADRAO, ...JSON.parse(raw) };
+  } catch {
+    return IMPORT_TXT_PADRAO;
+  }
+}
+
+export function salvarImportTxt(c: ImportTxtConfig): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(KEY_IMPORT_TXT, JSON.stringify(c));
+}
 
 // Dados padrão do responsável técnico (do modelo do dono). Editáveis em /configuracoes.
 export const TECNICO_PADRAO: TecnicoData = {
