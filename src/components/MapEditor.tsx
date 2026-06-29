@@ -8,7 +8,7 @@ import { distanciaCota } from '@/lib/topo/objetos';
 import { corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR } from '@/lib/topo/geometry';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'cota' | 'texto' | 'divisa';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'cota' | 'texto' | 'divisa' | 'confrontante';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; texto: string; }
 
@@ -33,6 +33,7 @@ interface Props {
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onMoverRotulo?: (id: string, lat: number, lon: number) => void;
   onPintarDivisa?: (id: string) => void;
+  onPintarConfrontante?: (id: string) => void;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -98,7 +99,7 @@ export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], objetoSelId = null,
-    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa,
+    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante,
   } = props;
 
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
@@ -212,6 +213,7 @@ export default function MapEditor(props: Props) {
             click() {
               if (modo === 'apagar') onApagar(v.id);
               else if (modo === 'divisa') onPintarDivisa?.(v.id);
+              else if (modo === 'confrontante') onPintarConfrontante?.(v.id);
               else onSelecionar(v.id);
             },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },

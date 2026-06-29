@@ -9,7 +9,7 @@ import {
   Upload, FileText, Map as MapIcon, Printer, Settings, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2,
+  Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,6 +89,7 @@ export default function EditorPage() {
   const [snapAtivo, setSnapAtivo] = useState(false);
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
+  const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   // camada de desenho livre (objetos da gleba ativa)
   const [objetos, setObjetos] = useState<ObjetoDesenho[]>([]);
   const [desenhoBuffer, setDesenhoBuffer] = useState<PontoLL[]>([]);
@@ -401,6 +402,25 @@ export default function EditorPage() {
   function pintarDivisa(id: string) {
     snap();
     setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, representacao: tipoDivisaPincel } : v)));
+  }
+
+  // Pintar confrontante: atribui o lado que SAI do vértice clicado ao confrontante-pincel. Clique os
+  // vértices ao longo do trecho para marcar todos os lados daquele vizinho.
+  function pintarConfrontante(id: string) {
+    if (!confrontantePincelId) { aviso('Escolha (ou crie) um confrontante para pintar.'); return; }
+    const i = vertices.findIndex((v) => v.id === id);
+    if (i < 0) return;
+    snap();
+    setConfrontantePorLado((m) => ({ ...m, [i]: confrontantePincelId }));
+  }
+
+  // Cria um confrontante novo já como pincel ativo (nome preenchível depois na aba Confront.).
+  function novoConfrontantePincel() {
+    const nome = window.prompt('Nome do confrontante (pode completar depois):') ?? '';
+    const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
+    setConfrontantes((cs) => [...cs, { id, nome: nome.trim(), cpf: '', matricula: '', cns: '' }]);
+    setConfrontantePincelId(id);
+    setModo('confrontante');
   }
 
   function detectarConfrontantes() {
@@ -732,6 +752,16 @@ export default function EditorPage() {
                     {REPRESENTACOES.map((r) => <option key={r} value={r}>{REPRES_LABEL[r] || r}</option>)}
                   </select>
                 )}
+                <Button size="sm" variant={modo === 'confrontante' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'confrontante' ? 'navegar' : 'confrontante')} title="Pintar confrontante: escolha o confrontante e clique os vértices do trecho"><Users /></Button>
+                {modo === 'confrontante' && (
+                  <>
+                    <select className="h-8 max-w-[140px] rounded border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
+                      <option value="">— escolher —</option>
+                      {confrontantes.map((c) => <option key={c.id} value={c.id}>{c.nome || '(sem nome)'}</option>)}
+                    </select>
+                    <Button size="sm" variant="ghost" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus /></Button>
+                  </>
+                )}
                 <div className="mx-1 w-px bg-border" />
                 <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Desenhar linha/polilinha (clique os pontos, depois Finalizar)"><PenTool /></Button>
                 <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos"><RotateCcw className="rotate-90" /></Button>
@@ -756,7 +786,7 @@ export default function EditorPage() {
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} objetoSelId={objetoSelId}
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
-                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} />
+                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} />
             </>
           ) : (
             <div id="planta-print" className="relative h-full overflow-auto bg-neutral-200 p-4">
