@@ -133,6 +133,7 @@ export default function EditorPage() {
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
+  const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
   const [toolW, setToolW] = useState(176);
   const toolDrag = useRef(false);
@@ -234,6 +235,11 @@ export default function EditorPage() {
       setTemaCarregadoDaNuvem(true);
     }
   }, [user]);
+
+  // Limpar o primeiro clique de pintura ao mudar de modo de pintura ou pincel
+  useEffect(() => {
+    setPincelInicioId(null);
+  }, [modo, confrontantePincelId, tipoDivisaPincel]);
 
   // Listener para sincronizar automaticamente quando o computador recuperar conexão de internet
   useEffect(() => {
@@ -858,8 +864,16 @@ export default function EditorPage() {
     }
     return { lat, lon, leste, norte };
   }
+  // ponta de linha/polilinha/cota: SEMPRE encaixa no vértice mais próximo (mesmo com o imã
+  // desligado) e com tolerância maior, para a extremidade poder ficar exatamente sobre um vértice.
+  function pontoDesenho(lat: number, lon: number): PontoLL {
+    let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
+    const s = snapUtm(leste, norte, alvosSnap(), { tolVerticeM: snapAtivo ? 12 : 10 });
+    if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
+    return { lat, lon, leste, norte };
+  }
   function onCliqueDesenho(lat: number, lon: number) {
-    const p = pontoLL(lat, lon);
+    const p = pontoDesenho(lat, lon);
     if (modo === 'texto') {
       const t = window.prompt('Texto a inserir:'); if (!t) return;
       setObjetos((os) => [...os, novoTexto(p, t)]);
@@ -963,21 +977,81 @@ export default function EditorPage() {
     setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, ...patch } : v)));
   }
 
-  // Pintar divisa: aplica o tipo escolhido ao trecho que SAI do vértice clicado. Para marcar um
-  // caminho, é só clicar os vértices em sequência ao longo dele.
+  // Pintar divisa: aplica o tipo de divisa aos segmentos do perímetro.
+  // Suporta processo de 2 cliques: seleciona o primeiro vértice e depois o final para pintar todos os segmentos no caminho.
   function pintarDivisa(id: string) {
+    if (!pincelInicioId) {
+      setPincelInicioId(id);
+      aviso('Vértice inicial selecionado. Clique no próximo vértice para pintar o trecho.');
+      return;
+    }
+
+    const start = vertices.findIndex((v) => v.id === pincelInicioId);
+    const end = vertices.findIndex((v) => v.id === id);
+
+    if (start < 0 || end < 0) {
+      setPincelInicioId(null);
+      return;
+    }
+
+    const indices: number[] = [];
+    if (start === end) {
+      indices.push(start);
+    } else {
+      let curr = start;
+      while (curr !== end) {
+        indices.push(curr);
+        curr = (curr + 1) % vertices.length;
+      }
+    }
+
+    const idsToPaint = indices.map((idx) => vertices[idx].id);
     snap();
-    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, representacao: tipoDivisaPincel } : v)));
+    setVertices((vs) => vs.map((v) => idsToPaint.includes(v.id) ? { ...v, representacao: tipoDivisaPincel } : v));
+    setPincelInicioId(null);
+    aviso(`Divisa "${tipoDivisaPincel.toUpperCase()}" pintada em ${indices.length} segmento(s).`);
   }
 
-  // Pintar confrontante: atribui o lado que SAI do vértice clicado ao confrontante-pincel. Clique os
-  // vértices ao longo do trecho para marcar todos os lados daquele vizinho.
+  // Pintar confrontante: aplica o confrontante selecionado aos segmentos do perímetro.
+  // Suporta processo de 2 cliques: seleciona o primeiro vértice e depois o final para pintar todos os segmentos no caminho.
   function pintarConfrontante(id: string) {
     if (!confrontantePincelId) { aviso('Escolha (ou crie) um confrontante para pintar.'); return; }
-    const i = vertices.findIndex((v) => v.id === id);
-    if (i < 0) return;
+    
+    if (!pincelInicioId) {
+      setPincelInicioId(id);
+      aviso('Vértice inicial selecionado. Clique no próximo vértice para pintar o trecho.');
+      return;
+    }
+
+    const start = vertices.findIndex((v) => v.id === pincelInicioId);
+    const end = vertices.findIndex((v) => v.id === id);
+
+    if (start < 0 || end < 0) {
+      setPincelInicioId(null);
+      return;
+    }
+
+    const indices: number[] = [];
+    if (start === end) {
+      indices.push(start);
+    } else {
+      let curr = start;
+      while (curr !== end) {
+        indices.push(curr);
+        curr = (curr + 1) % vertices.length;
+      }
+    }
+
     snap();
-    setConfrontantePorLado((m) => ({ ...m, [i]: confrontantePincelId }));
+    setConfrontantePorLado((m) => {
+      const updated = { ...m };
+      indices.forEach((idx) => {
+        updated[idx] = confrontantePincelId;
+      });
+      return updated;
+    });
+    setPincelInicioId(null);
+    aviso(`Confrontante aplicado em ${indices.length} segmento(s).`);
   }
 
   // Cria um confrontante novo já como pincel ativo (nome preenchível depois na aba Confront.).
@@ -1695,7 +1769,7 @@ export default function EditorPage() {
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice}
                 conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}
-                verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId}
+                verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
                 onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
                 onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
                 onContextMenuMapa={(lat, lon, x, y) => setMenuContexto({ tipo: 'mapa', lat, lon, x, y })} />

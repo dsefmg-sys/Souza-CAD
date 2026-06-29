@@ -564,17 +564,28 @@ export default function Planta({
         const nices = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
         const barM = nices.find((n) => n * escala >= 120) ?? 5000;
         const barPx = barM * escala;
-        const bx = DRAW.x0 + 14, by = DRAW.y1 - 18;
+        const bx = DRAW.x0 + 20, by = DRAW.y1 - 35;
         const seg = barPx / 4;
         return (
-          <g>
-            <text x={bx} y={by - 6} fontSize={fs(9)} fontWeight="bold">Escala Gráfica:</text>
-            {[0, 1, 2, 3].map((k) => <rect key={k} x={bx + k * seg} y={by} width={seg} height={5} fill={k % 2 ? '#fff' : '#000'} stroke="#000" strokeWidth={0.5} />)}
-            {[0, 1, 2, 3, 4].map((k) => <text key={k} x={bx + k * seg} y={by + 13} fontSize={fs(7)} textAnchor="middle">{Math.round((barM * k) / 4)}</text>)}
-            <text x={bx + barPx + 10} y={by + 5} fontSize={fs(7)}>m</text>
+          <g className="no-print" transform={`translate(${bx}, ${by})`}>
+            {/* Fundo translúcido */}
+            <rect x={-8} y={-24} width={barPx + 36} height={46} fill="#ffffff" fillOpacity={0.85} stroke="#d1d5db" strokeWidth={0.6} rx={4} ry={4} />
+            <text x={0} y={-12} fontSize={fs(7.5)} fontWeight="bold" fill="#374151">ESCALA GRÁFICA</text>
+            {[0, 1, 2, 3].map((k) => (
+              <rect key={k} x={k * seg} y={0} width={seg} height={5} fill={k % 2 ? '#ffffff' : '#1c1917'} stroke="#1c1917" strokeWidth={0.6} />
+            ))}
+            {[0, 1, 2, 3, 4].map((k) => (
+              <text key={k} x={k * seg} y={13} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill="#374151">
+                {Math.round((barM * k) / 4)}
+              </text>
+            ))}
+            <text x={barPx + 10} y={6} fontSize={fs(7)} fontWeight="bold" fill="#374151">m</text>
           </g>
         );
       })()}
+
+      {/* Rosa dos Ventos com indicações de Norte no canto superior direito do desenho */}
+      {verNortes && <RosaDosVentos cx={DRAW.x1 - 65} cy={DRAW.y0 + 65} conv={conv} decl={decl} />}
 
       {/* ---------- FAIXA INFERIOR (SITUAÇÃO, CONVENÇÕES, INFOS COORDENADAS) ---------- */}
       <FaixaInferior
@@ -709,6 +720,38 @@ function FaixaInferior(props: {
 }
 
 // ---------------- Nortes modificado ----------------
+// ---------------- RosaDosVentos e Nortes ----------------
+function RosaDosVentos({ cx, cy, conv, decl }: { cx: number; cy: number; conv: number; decl: number }) {
+  const seta = (ang: number, label: string, cor: string, len: number) => {
+    const a = (-ang * Math.PI) / 180;
+    const tx = cx + len * Math.sin(a), ty = cy - len * Math.cos(a);
+    // Calcular a rotação para alinhar o texto com a linha da seta
+    return (
+      <g key={label}>
+        <line x1={cx} y1={cy} x2={tx} y2={ty} stroke={cor} strokeWidth={1.2} />
+        <text x={tx + Math.sin(a) * 6} y={ty - Math.cos(a) * 2 + 3} fontSize={7.5} fontWeight="bold" textAnchor="middle" fill={cor}>{label}</text>
+      </g>
+    );
+  };
+
+  return (
+    <g className="no-print">
+      {/* Círculo graduado de fundo */}
+      <circle cx={cx} cy={cy} r={34} fill="#ffffff" fillOpacity={0.85} stroke="#d1d5db" strokeWidth={0.6} strokeDasharray="2 2" />
+      <circle cx={cx} cy={cy} r={22} fill="none" stroke="#e5e7eb" strokeWidth={0.6} />
+      
+      {/* Setas direcionais */}
+      {seta(0, 'NV', '#1c1917', 38)}
+      {seta(conv, 'NQ', '#1d4ed8', 32)}
+      {seta(decl, 'NM', '#b91c1c', 32)}
+      
+      {/* Mini agulha/polígono para dar um charme cartográfico para o Norte Verdadeiro */}
+      <polygon points={`${cx},${cy - 38} ${cx - 3},${cy - 16} ${cx},${cy - 21} ${cx + 3},${cy - 16}`} fill="#1c1917" />
+      <circle cx={cx} cy={cy} r={2} fill="#1c1917" stroke="#ffffff" strokeWidth={0.6} />
+    </g>
+  );
+}
+
 function Nortes({ cx, cy, conv, decl }: { cx: number; cy: number; conv: number; decl: number }) {
   const seta = (ang: number, label: string, cor: string) => {
     const r = 32;
@@ -745,6 +788,7 @@ function CarimboA3(props: {
     editandoId?: string | null;
     onStartEdit?: (id: string) => void;
     onTerminarEditar?: (id: string, novoTexto: string) => void;
+    onDragStart?: (id: string, e: ReactPointerEvent) => void;
   };
 }) {
   const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, ed } = props;
@@ -807,15 +851,17 @@ function CarimboA3(props: {
   const gap = Math.min(27, Math.floor(255 / (campos.length - 1)));
 
   // Assinatura num intervalo livre (xa..xb): linha + papel + nome + detalhes, centrados no meio.
-  const assina = (xa: number, xb: number, yLine: number, label: string, nome: string, detalhes: string[] = []) => {
+  const assina = (xa: number, xb: number, yLine: number, label: string, nome: string, detalhes: string[] = [], keyPrefix: string) => {
     const m = (xa + xb) / 2;
     return (
       <g>
         <line x1={xa} y1={yLine} x2={xb} y2={yLine} stroke="#000" strokeWidth={0.6} />
         <text x={m} y={yLine - 4} fontSize={fs(7)} fill="#555" textAnchor="middle">{label}</text>
-        <text x={m} y={yLine + 13} fontSize={fs(8.5)} fontWeight="bold" fill="#000" textAnchor="middle">{nome}</text>
+        {T(`${keyPrefix}.nome`, nome, { x: m, y: yLine + 13, size: fs(8.5), bold: true, anchor: 'middle', fill: '#000' })}
         {detalhes.filter(Boolean).map((d, k) => (
-          <text key={k} x={m} y={yLine + 24 + k * 11} fontSize={fs(7)} fill="#222" textAnchor="middle">{d}</text>
+          <g key={k}>
+            {T(`${keyPrefix}.detalhe.${k}`, d, { x: m, y: yLine + 24 + k * 11, size: fs(7), anchor: 'middle', fill: '#222' })}
+          </g>
         ))}
       </g>
     );
@@ -824,27 +870,27 @@ function CarimboA3(props: {
   return (
     <g>
       {/* Linha separadora vertical principal */}
-      <line x1={x0} y1={16} x2={x0} y2={H - 16} stroke="#000" strokeWidth={1.2} />
+      <line x1={x0} y1={26} x2={x0} y2={H - 26} stroke="#000" strokeWidth={1.2} />
 
       {/* --- BOX 1: TÍTULO --- */}
       <g>
-        <rect x={lx} y={24} width={wBox - 72} height={90} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={lx + 10} y={42} fontSize={fs(8)} fontWeight="bold" fill="#4b5563">Título:</text>
-        {T('carimbo.titulo', titulo, { x: lx + (wBox - 72) / 2, y: 74, size: fs(9.5), bold: true, anchor: 'middle', fill: '#000' })}
+        <rect x={lx} y={32} width={wBox - 72} height={90} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={lx + 10} y={50} fontSize={fs(8)} fontWeight="bold" fill="#4b5563">Título:</text>
+        {T('carimbo.titulo', titulo, { x: lx + (wBox - 72) / 2, y: 82, size: fs(9.5), bold: true, anchor: 'middle', fill: '#000' })}
       </g>
 
       {/* --- BOX 2: FOLHA --- */}
       <g>
-        <rect x={rx - 62} y={24} width={62} height={90} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={rx - 54} y={42} fontSize={fs(8)} fill="#4b5563">Folha:</text>
-        <text x={rx - 31} y={74} fontSize={fs(10)} fontWeight="bold" textAnchor="middle" fill="#000">{folha}</text>
+        <rect x={rx - 62} y={32} width={62} height={90} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={rx - 54} y={50} fontSize={fs(8)} fill="#4b5563">Folha:</text>
+        {T('carimbo.folha', folha, { x: rx - 31, y: 82, size: fs(10), bold: true, anchor: 'middle', fill: '#000' })}
       </g>
 
       {/* --- BOX 3: DADOS DO IMÓVEL --- */}
       <g>
-        <rect x={lx} y={126} width={wBox} height={290} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <rect x={lx} y={134} width={wBox} height={290} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         {campos.map(([k, v], i) => {
-          const y = 152 + i * gap;
+          const y = 160 + i * gap;
           return (
             <g key={k}>
               {/* rótulo à esquerda e valor numa coluna fixa, ambos na mesma base */}
@@ -857,53 +903,146 @@ function CarimboA3(props: {
 
       {/* --- CARD A: DECLARAÇÃO DO(S) PROPRIETÁRIO(S) (largura cheia) --- */}
       <g>
-        <rect x={lx} y={428} width={wBox} height={150} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={cxc} y={444} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DO(S) PROPRIETÁRIO(S)</text>
-        <TextoQuebrado x={cxc} y={459} fontSize={fs(7)} larguraChars={84} textAnchor="middle" texto={
-          `Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta e no memorial anexo, e que indicamos em campo, de forma expressa, as divisas, limites e confrontações consideradas verdadeiras.`
-        } />
+        <rect x={lx} y={436} width={wBox} height={150} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={cxc} y={452} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DO(S) PROPRIETÁRIO(S)</text>
+        
+        {(() => {
+          const idProp = 'carimbo.declProprietario';
+          const ovProp = ed?.textos[idProp] || {};
+          const txtProp = ovProp.texto || `Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta e no memorial anexo, e que indicamos em campo, de forma expressa, as divisas, limites e confrontações consideradas verdadeiras.`;
+          const pxProp = cxc + (ovProp.dx ?? 0);
+          const pyProp = 467 + (ovProp.dy ?? 0);
+
+          if (ed?.editandoId === idProp) {
+            return (
+              <foreignObject x={pxProp - 180} y={pyProp - 15} width={360} height={60} style={{ overflow: 'visible' }}>
+                <textarea
+                  autoFocus
+                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1 shadow-md rounded text-[9px]"
+                  value={txtProp}
+                  onChange={(e) => ed.onEditar?.(idProp, e.target.value)}
+                  onBlur={() => ed.onTerminarEditar?.(idProp, txtProp)}
+                />
+              </foreignObject>
+            );
+          }
+
+          return (
+            <g key={idProp}
+               style={ed?.ativo ? { cursor: 'move' } : undefined}
+               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
+               onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
+               onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
+              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fs(7)} larguraChars={84} textAnchor="middle" texto={txtProp} />
+            </g>
+          );
+        })()}
+        
         {imovel.comprador
           ? (<g>
-              {assina(lx + 16, cxc - 12, 552, 'Transmitente', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`])}
-              {assina(cxc + 12, rx - 16, 552, 'Comprador', imovel.comprador, [`CPF: ${imovel.cpfComprador || '—'}`])}
+              {assina(lx + 16, cxc - 12, 560, 'Transmitente', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`], 'proprietario')}
+              {assina(cxc + 12, rx - 16, 560, 'Comprador', imovel.comprador, [`CPF: ${imovel.cpfComprador || '—'}`], 'comprador')}
             </g>)
-          : assina(lx + 90, rx - 90, 552, 'Assinatura do(s) Proprietário(s)', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`])}
+          : assina(lx + 90, rx - 90, 560, 'Assinatura do(s) Proprietário(s)', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`], 'proprietario')}
       </g>
 
       {/* --- CARD B: LAUDO TÉCNICO / RESPONSÁVEL TÉCNICO (largura cheia) --- */}
       <g>
-        <rect x={lx} y={586} width={wBox} height={160} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={cxc} y={602} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">LAUDO TÉCNICO</text>
-        <TextoQuebrado x={cxc} y={617} fontSize={fs(7)} larguraChars={84} textAnchor="middle" texto={textoLaudo} />
-        {assina(lx + 90, rx - 90, 712, 'Assinatura do Responsável Técnico', tecnico.nome, [tecnico.formacao || '', `CFT: ${tecnico.cft || '—'} — INCRA: ${tecnico.credenciamentoIncra || '—'}`])}
+        <rect x={lx} y={598} width={wBox} height={160} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={cxc} y={614} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">LAUDO TÉCNICO</text>
+        
+        {(() => {
+          const idLaudo = 'carimbo.laudoTécnico';
+          const ovLaudo = ed?.textos[idLaudo] || {};
+          const txtLaudo = ovLaudo.texto || textoLaudo;
+          const pxLaudo = cxc + (ovLaudo.dx ?? 0);
+          const pyLaudo = 629 + (ovLaudo.dy ?? 0);
+
+          if (ed?.editandoId === idLaudo) {
+            return (
+              <foreignObject x={pxLaudo - 180} y={pyLaudo - 15} width={360} height={60} style={{ overflow: 'visible' }}>
+                <textarea
+                  autoFocus
+                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1 shadow-md rounded text-[9px]"
+                  value={txtLaudo}
+                  onChange={(e) => ed.onEditar?.(idLaudo, e.target.value)}
+                  onBlur={() => ed.onTerminarEditar?.(idLaudo, txtLaudo)}
+                />
+              </foreignObject>
+            );
+          }
+
+          return (
+            <g key={idLaudo}
+               style={ed?.ativo ? { cursor: 'move' } : undefined}
+               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
+               onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
+               onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
+              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fs(7)} larguraChars={84} textAnchor="middle" texto={txtLaudo} />
+            </g>
+          );
+        })()}
+        
+        {assina(lx + 90, rx - 90, 724, 'Assinatura do Responsável Técnico', tecnico.nome, [tecnico.formacao || '', `CFT: ${tecnico.cft || '—'} — INCRA: ${tecnico.credenciamentoIncra || '—'}`], 'responsavel')}
       </g>
 
       {/* --- CARD C: DECLARAÇÃO DOS CONFRONTANTES (largura cheia) --- */}
       <g>
-        <rect x={lx} y={754} width={wBox} height={120} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={cxc} y={770} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DOS CONFRONTANTES</text>
-        <TextoQuebrado x={cxc} y={786} fontSize={fs(8)} larguraChars={70} textAnchor="middle" texto={textoConfront} />
+        <rect x={lx} y={770} width={wBox} height={120} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={cxc} y={786} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DOS CONFRONTANTES</text>
+        
+        {(() => {
+          const idConf = 'carimbo.declConfrontantes';
+          const ovConf = ed?.textos[idConf] || {};
+          const txtConf = ovConf.texto || textoConfront;
+          const pxConf = cxc + (ovConf.dx ?? 0);
+          const pyConf = 802 + (ovConf.dy ?? 0);
+
+          if (ed?.editandoId === idConf) {
+            return (
+              <foreignObject x={pxConf - 180} y={pyConf - 15} width={360} height={60} style={{ overflow: 'visible' }}>
+                <textarea
+                  autoFocus
+                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1 shadow-md rounded text-[9px]"
+                  value={txtConf}
+                  onChange={(e) => ed.onEditar?.(idConf, e.target.value)}
+                  onBlur={() => ed.onTerminarEditar?.(idConf, txtConf)}
+                />
+              </foreignObject>
+            );
+          }
+
+          return (
+            <g key={idConf}
+               style={ed?.ativo ? { cursor: 'move' } : undefined}
+               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf); } : undefined}
+               onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
+               onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idConf, e); } : undefined}>
+              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fs(8)} larguraChars={70} textAnchor="middle" texto={txtConf} />
+            </g>
+          );
+        })()}
       </g>
 
       {/* --- CARD D: CARIMBO DO ESCRITÓRIO (largura cheia) --- */}
       <g>
-        <rect x={lx} y={882} width={wBox} height={H - 882 - 24} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <rect x={lx} y={902} width={wBox} height={H - 902 - 26} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         {temLogo ? (
           <g>
-            <image href={escritorio.logoDataUrl} x={lx + 12} y={896} width={wBox - 24} height={56} preserveAspectRatio="xMidYMid meet" />
-            {T('esc.nome', escritorio.nome, { x: cxc, y: 978, size: fs(11), bold: true, anchor: 'middle' })}
-            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 994, size: fs(8), anchor: 'middle' })}
-            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 1009, size: fs(8), anchor: 'middle' })}
-            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1024, size: fs(8), anchor: 'middle', slice: 64 })}
-            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1039, size: fs(8), anchor: 'middle' })}
+            <image href={escritorio.logoDataUrl} x={lx + 12} y={910} width={wBox - 24} height={56} preserveAspectRatio="xMidYMid meet" />
+            {T('esc.nome', escritorio.nome, { x: cxc, y: 986, size: fs(11), bold: true, anchor: 'middle' })}
+            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 1002, size: fs(8), anchor: 'middle' })}
+            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 1017, size: fs(8), anchor: 'middle' })}
+            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1032, size: fs(8), anchor: 'middle', slice: 64 })}
+            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1047, size: fs(8), anchor: 'middle' })}
           </g>
         ) : (
           <g>
-            {T('esc.nome', escritorio.nome, { x: cxc, y: 950, size: fs(12), bold: true, anchor: 'middle' })}
-            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 972, size: fs(8.5), anchor: 'middle' })}
-            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 990, size: fs(8.5), anchor: 'middle' })}
-            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1008, size: fs(8.5), anchor: 'middle' })}
-            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1026, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.nome', escritorio.nome, { x: cxc, y: 965, size: fs(12), bold: true, anchor: 'middle' })}
+            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 987, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 1005, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1023, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1041, size: fs(8.5), anchor: 'middle' })}
           </g>
         )}
       </g>
