@@ -1204,6 +1204,42 @@ export default function EditorPage() {
     } catch { aviso('Não consegui ler o arquivo de parcelas certificadas.'); }
   }
 
+  // Importa automaticamente os vizinhos certificados do INCRA (por bbox, via rota de servidor).
+  // Consulta MG e ES (região de fronteira) e fica só com os que ENCOSTAM no nosso imóvel.
+  async function importarVizinhosAuto() {
+    if (vertices.length < 3) { aviso('Importe os pontos do imóvel primeiro, depois busque os vizinhos.'); return; }
+    setProcessando(true);
+    aviso('Buscando imóveis vizinhos certificados no INCRA…');
+    try {
+      const lats = vertices.map((v) => v.lat), lons = vertices.map((v) => v.lon);
+      const m = 0.01; // ~1 km de folga ao redor do imóvel
+      const bbox = `${Math.min(...lons) - m},${Math.min(...lats) - m},${Math.max(...lons) + m},${Math.max(...lats) + m}`;
+      const todas: import('@/lib/io/sigefVizinhos').ParcelaSigef[] = [];
+      for (const uf of ['mg', 'es']) {
+        try {
+          const r = await fetch(`/api/vizinhos-sigef?uf=${uf}&bbox=${encodeURIComponent(bbox)}`);
+          const j = await r.json();
+          if (Array.isArray(j.parcelas)) todas.push(...j.parcelas);
+        } catch { /* tenta a próxima UF */ }
+      }
+      if (!todas.length) { aviso('Nenhuma parcela certificada na região (ou INCRA indisponível). Tente o import manual.'); return; }
+      const meuAnel = vertices.map((v) => ({ lat: v.lat, lon: v.lon }));
+      const vizinhas = parcelasVizinhas(meuAnel, todas, 15);
+      if (!vizinhas.length) { aviso(`${todas.length} parcela(s) na região, mas nenhuma encostando no imóvel.`); return; }
+      setReferencias((prev) => [...prev, ...parcelasParaReferencias(vizinhas, zona, hemisferio)]);
+      const novos = confrontantesDeVizinhas(vizinhas);
+      snap();
+      setConfrontantes((cs) => {
+        const nomes = new Set(cs.map((c) => c.nome.trim().toUpperCase()).filter(Boolean));
+        return [...cs, ...novos.filter((c) => !nomes.has(c.nome.trim().toUpperCase()))];
+      });
+      setSnapAtivo(true);
+      aviso(`${vizinhas.length} vizinho(s) certificado(s) encontrado(s) e desenhado(s). Use "pintar confrontante" para marcar os lados.`);
+    } catch {
+      aviso('Não consegui consultar o INCRA agora. Use o import manual (arquivo GeoJSON).');
+    } finally { setProcessando(false); }
+  }
+
   async function gerarSituacaoPlanta() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     aviso('Buscando satélite da situação…');
@@ -1567,7 +1603,7 @@ export default function EditorPage() {
 
         {/* 1) Importar e checar vizinhos */}
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: importa parcelas do SIGEF e cria confrontantes das que encostam" onClick={() => vizinhosRef.current?.click()}><Users /><Upload className="size-3.5" /> SIGEF</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Users /><Upload className="size-3.5" /> SIGEF</Button>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 2) Dados do projeto atual */}

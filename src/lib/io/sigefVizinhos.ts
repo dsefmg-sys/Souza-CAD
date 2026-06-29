@@ -74,6 +74,39 @@ export function parseParcelasSigef(geojsonText: string): ParcelaSigef[] {
   return out;
 }
 
+/**
+ * Lê o GML2 do WFS do INCRA (MapServer) e devolve as parcelas com atributos + anel exterior.
+ * O serviço entrega coordenadas como "lon,lat lon,lat ..." (pares separados por espaço; vírgula
+ * entre lon e lat). Não expõe o nome do detentor (privacidade) — usamos a denominação/área.
+ */
+export function parseGmlParcelas(gml: string): ParcelaSigef[] {
+  const out: ParcelaSigef[] = [];
+  const membros = gml.split('<gml:featureMember>').slice(1);
+  for (const m of membros) {
+    const anelM = m.match(/<gml:outerBoundaryIs>\s*<gml:LinearRing>\s*<gml:coordinates>([^<]+)<\/gml:coordinates>/);
+    if (!anelM) continue;
+    const anel = anelM[1].trim().split(/\s+/).map((par) => {
+      const [lon, lat] = par.split(',').map(Number);
+      return { lat, lon };
+    }).filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+    if (anel.length < 3) continue;
+    const campo = (tag: string): string | undefined => {
+      const mm = m.match(new RegExp(`<ms:${tag}>([^<]*)</ms:${tag}>`));
+      const v = mm ? mm[1].trim() : '';
+      return v ? v.replace(/&amp;/g, '&').replace(/&quot;/g, '"') : undefined;
+    };
+    out.push({
+      codigoImovel: campo('codigo_imovel'),
+      denominacao: campo('nome_area'),
+      detentor: undefined,
+      municipio: campo('codigo_municipio'),
+      matricula: campo('registro_matricula'),
+      anel,
+    });
+  }
+  return out;
+}
+
 // ---- adjacência em metros (equirretangular ao redor de uma latitude de referência) ----
 function paraMetros(p: PontoLatLon, lat0: number): { x: number; y: number } {
   const k = Math.cos((lat0 * Math.PI) / 180);
