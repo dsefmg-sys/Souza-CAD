@@ -2,7 +2,7 @@ import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   Table, TableRow, TableCell, WidthType, BorderStyle,
 } from 'docx';
-import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex } from '../topo/types';
+import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex, PessoaQualificada } from '../topo/types';
 import { grausParaDMS } from '../topo/coords';
 import { azimuteDMS, numBR, numBRmilhar, formatMatricula } from '../topo/geometry';
 import { valoresEfetivos } from '../topo/conferencia';
@@ -215,10 +215,12 @@ export interface MemorialInput {
   confrontantes: Confrontante[];
   confrontantePorLado: Record<number, string>;
   dataExtenso?: string; // ex.: "Sábado, 20 de Dezembro de 2025"
+  requerente?: PessoaQualificada;
+  transmitente?: PessoaQualificada;
 }
 
 export async function gerarMemorialDocx(input: MemorialInput): Promise<Blob> {
-  const { res, imovel, tecnico, confrontantes, confrontantePorLado } = input;
+  const { res, imovel, tecnico, confrontantes, confrontantePorLado, requerente, transmitente } = input;
   // Defesa final: nunca gerar memorial com lacuna de código de vértice.
   const semCodigo = res.vertices.filter((v) => !v.codigoSigef).length;
   if (semCodigo > 0) throw new Error(`${semCodigo} vértice(s) sem código. Renumere os vértices antes de gerar o memorial.`);
@@ -259,11 +261,39 @@ export async function gerarMemorialDocx(input: MemorialInput): Promise<Blob> {
   // Bloco proprietários (com cônjuge, se houver)
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'PROPRIETÁRIOS', bold: true, size: 24 })] }));
   children.push(p('Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas neste memorial e na planta que o acompanha.'));
-  assinaturaComConjuge([
+  
+  const propLinhas = [
     `Nome: ${imovel.proprietario}`,
     `CPF: ${imovel.cpfProprietario}`,
-    `Imóvel de Matrícula: ${imovel.matricula}`,
-  ], imovel.conjugeProprietario, imovel.cpfConjugeProprietario).forEach((c) => children.push(c));
+  ];
+  if (transmitente?.rg) {
+    propLinhas.push(`RG: ${transmitente.rg}`);
+  }
+  propLinhas.push(`Imóvel de Matrícula: ${imovel.matricula}`);
+
+  const conjugePropNome = imovel.conjugeProprietario || transmitente?.conjugeNome || undefined;
+  const conjugePropCpf = imovel.cpfConjugeProprietario || transmitente?.conjugeCpf || undefined;
+
+  assinaturaComConjuge(propLinhas, conjugePropNome, conjugePropCpf).forEach((c) => children.push(c));
+
+  // Bloco comprador (se houver)
+  if (imovel.comprador) {
+    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'COMPRADORES', bold: true, size: 24 })] }));
+    children.push(p('Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas neste memorial e na planta que o acompanha.'));
+    
+    const compLinhas = [
+      `Nome: ${imovel.comprador}`,
+      `CPF: ${imovel.cpfComprador || '—'}`,
+    ];
+    if (requerente?.rg) {
+      compLinhas.push(`RG: ${requerente.rg}`);
+    }
+
+    const conjugeCompNome = requerente?.conjugeNome || undefined;
+    const conjugeCompCpf = requerente?.conjugeCpf || undefined;
+
+    assinaturaComConjuge(compLinhas, conjugeCompNome, conjugeCompCpf).forEach((c) => children.push(c));
+  }
 
   // Bloco confrontantes (respeita posseiro/espólio e cônjuge)
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'CONFRONTANTES', bold: true, size: 24 })] }));

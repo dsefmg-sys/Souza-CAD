@@ -193,6 +193,8 @@ export interface ImovelData {
   proprietario: string;       // "Juraci Francisco de Sales"
   cpfProprietario: string;
   tipoPessoa: 'Física' | 'Jurídica';
+  comprador?: string;
+  cpfComprador?: string;
   // cônjuge do proprietário — qualifica e assina junto nas peças
   conjugeProprietario?: string;
   cpfConjugeProprietario?: string;

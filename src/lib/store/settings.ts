@@ -76,3 +76,30 @@ export function salvarPlantaPadrao(c: PlantaConfig): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(KEY_PLANTA, JSON.stringify(c));
 }
+
+import { db as fdb } from '../firebase/client';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+export async function salvarTemaUsuario(uid: string, tema: 'claro' | 'escuro'): Promise<void> {
+  const d = fdb();
+  if (!d) return;
+  try {
+    await setDoc(doc(d, 'users', uid), { tema }, { merge: true });
+  } catch {
+    // ignore
+  }
+}
+
+export async function carregarTemaUsuario(uid: string): Promise<'claro' | 'escuro' | null> {
+  const d = fdb();
+  if (!d) return null;
+  try {
+    const s = await getDoc(doc(d, 'users', uid));
+    if (s.exists()) {
+      return (s.data() as any).tema ?? null;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}

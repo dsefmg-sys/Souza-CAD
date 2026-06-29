@@ -32,13 +32,14 @@ import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo } from '@/l
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
-import { ancoraMunicipio } from '@/lib/topo/municipios';
+import { ancoraMunicipio, MUNICIPIOS } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema } from '@/lib/topo/conferencia';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
-import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao } from '@/lib/store/settings';
+import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario } from '@/lib/store/settings';
+import { useAuth } from '@/lib/firebase/auth';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart } from '@/lib/store/cadastros';
@@ -52,9 +53,21 @@ const MapEditor = dynamic(() => import('@/components/MapEditor'), {
 
 const IMOVEL_VAZIO: ImovelData = {
   denominacao: '', matricula: '', cns: '', codigoImovelIncra: '', proprietario: '',
-  cpfProprietario: '', tipoPessoa: 'Física', municipio: '', local: '',
+  cpfProprietario: '', tipoPessoa: 'Física', comprador: '', cpfComprador: '', municipio: '', local: '',
   naturezaServico: 'Particular', situacao: 'Imóvel Registrado', naturezaArea: 'Particular',
 };
+
+function gerarTituloAutomatico(im: ImovelData): string {
+  const partes: string[] = [];
+  let propComp = (im.proprietario || '').trim();
+  if (im.comprador && im.comprador.trim()) {
+    propComp = propComp ? `${propComp} / ${im.comprador.trim()}` : im.comprador.trim();
+  }
+  if (propComp) partes.push(propComp);
+  if (im.denominacao && im.denominacao.trim()) partes.push(im.denominacao.trim());
+  if (im.local && im.local.trim()) partes.push(im.local.trim());
+  return partes.join(' — ');
+}
 
 type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'planta' | 'conferencia' | 'projetos';
 
@@ -67,6 +80,7 @@ const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover
 const COR_PLANTA = 'bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20 border-violet-500/30';
 
 export default function EditorPage() {
+  const { user } = useAuth();
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
   const [vertices, setVertices] = useState<Vertex[]>([]);
@@ -111,6 +125,7 @@ export default function EditorPage() {
   const [aba, setAba] = useState<Aba>('imovel');
   const [projetoId, setProjetoId] = useState<string | null>(null);
   const [nomeProjeto, setNomeProjeto] = useState('');
+  const [nomeProjetoManual, setNomeProjetoManual] = useState(false);
   const [reqAberto, setReqAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
   const [requerente, setRequerente] = useState<PessoaQualificada | undefined>(undefined);
@@ -150,13 +165,36 @@ export default function EditorPage() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', tema === 'escuro');
     try { localStorage.setItem('metrica.tema', tema); } catch { /* ignore */ }
-  }, [tema]);
+    if (user?.uid) {
+      salvarTemaUsuario(user.uid, tema);
+    }
+  }, [tema, user]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      carregarTemaUsuario(user.uid).then((t) => {
+        if (t && (t === 'claro' || t === 'escuro') && t !== tema) {
+          setTema(t);
+        }
+      });
+    }
+  }, [user]);
 
   // salva posição/altura da barra de ferramentas
   useEffect(() => {
     try { localStorage.setItem('metrica.toolbar', JSON.stringify({ x: tbPos.x, y: tbPos.y, h: tbH })); } catch { /* ignore */ }
   }, [tbPos, tbH]);
   useEffect(() => { try { localStorage.setItem('metrica.asideW', String(asideW)); } catch { /* ignore */ } }, [asideW]);
+
+  // Atualiza automaticamente o nome do projeto se não foi modificado manualmente
+  useEffect(() => {
+    if (!nomeProjetoManual && imovel) {
+      const auto = gerarTituloAutomatico(imovel);
+      if (auto) {
+        setNomeProjeto(auto);
+      }
+    }
+  }, [imovel, nomeProjetoManual]);
 
   // atalhos: F3 = imã (snap), F4 = nomes dos vértices, F5 = ferramenta mover (navegar)
   useEffect(() => {
@@ -256,6 +294,8 @@ export default function EditorPage() {
 
   async function importarArquivo(file: File) {
     if (processando) return;
+    const numGlebasStr = window.prompt('Número de glebas a criar (padrão 1):', '1') || '1';
+    const numGlebas = Math.max(1, parseInt(numGlebasStr) || 1);
     setProcessando(true);
     try {
       const buf = await file.arrayBuffer();
@@ -277,14 +317,25 @@ export default function EditorPage() {
       // praxe: começa no vértice mais ao norte e segue no sentido horário; renumera nessa ordem
       const vs = recodificar(iniciarDoNorteHorario(vs0), tec.credenciamentoIncra, cont.M, cont.P);
       const { confrontantes: cs, confrontantePorLado: mapa } = montarConfrontantes(vs);
-      // grava a importação NA gleba ativa (em glebas) e no estado de trabalho, juntos.
-      const alvoId = glebaAtivaId;
-      setGlebas((prev) => prev.map((g) => (g.id === alvoId ? { ...g, vertices: vs, confrontantes: cs, confrontantePorLado: mapa } : g)));
-      setVertices(vs);
-      setConfrontantes(cs);
-      setConfrontantePorLado(mapa);
-      if (!nomeProjeto) setNomeProjeto(file.name.replace(/\.[^.]+$/, ''));
-      aviso(`${vs.length} vértices importados na ${glebaAtivaNome} — fuso ${z}${hemisferio}.`);
+      
+      const gs: Gleba[] = [];
+      for (let i = 1; i <= numGlebas; i++) {
+        if (i === 1) {
+          gs.push(glebaDe(1, vs, cs, mapa, 'Parcela 1'));
+        } else {
+          gs.push(novaGlebaVazia(i));
+        }
+      }
+      
+      setGlebas(gs);
+      carregarGleba(gs[0]);
+      
+      if (!nomeProjeto) {
+        const auto = gerarTituloAutomatico(imovel);
+        setNomeProjeto(auto || file.name.replace(/\.[^.]+$/, ''));
+        setNomeProjetoManual(false);
+      }
+      aviso(`${vs.length} vértices importados na Parcela 1 — fuso ${z}${hemisferio}. Criada(s) ${numGlebas} gleba(s).`);
     } finally { setProcessando(false); }
   }
 
@@ -292,6 +343,19 @@ export default function EditorPage() {
     if (!Number.isFinite(z) || z < 1 || z > 60) { setZona(z); return; }
     setZona(z);
     setVertices((vs) => reprojetar(vs, z, hemisferio));
+    setGlebas((prev) => prev.map((g) => ({
+      ...g,
+      vertices: reprojetar(g.vertices, z, hemisferio)
+    })));
+  }
+
+  function trocarHemisferio(h: 'N' | 'S') {
+    setHemisferio(h);
+    setVertices((vs) => reprojetar(vs, zona, h));
+    setGlebas((prev) => prev.map((g) => ({
+      ...g,
+      vertices: reprojetar(g.vertices, zona, h)
+    })));
   }
 
   // Ao informar o município, tenta acertar o fuso pela âncora (resolve a divisa 23/24).
@@ -302,6 +366,36 @@ export default function EditorPage() {
       const tec = tecnico ?? carregarTecnico();
       const z = escolherZonaPorAncora(vertices[0].leste, vertices[0].norte, hemisferio, anc, tec.fusosPermitidos ?? [22, 23, 24, 25]);
       if (z !== zona) { trocarZona(z); aviso(`Fuso ajustado para ${z}${hemisferio} pelo município.`); }
+    }
+  }
+
+  // Ao alterar a localidade (local), tenta adivinhar o município pelo texto
+  // e reusa a lógica de aoMudarMunicipio se encontrar um correspondente.
+  function aoMudarLocalidade(novaLocalidade: string) {
+    setImovel((im) => ({ ...im, local: novaLocalidade }));
+    const n = novaLocalidade.toLowerCase();
+    const mapCapitalizado: Record<string, string> = {
+      'espera feliz-mg': 'Espera Feliz-MG',
+      'caparaó-mg': 'Caparaó-MG',
+      'alto caparaó-mg': 'Alto Caparaó-MG',
+      'caiana-mg': 'Caiana-MG',
+      'carangola-mg': 'Carangola-MG',
+      'fervedouro-mg': 'Fervedouro-MG',
+      'manhuaçu-mg': 'Manhuaçu-MG',
+      'manhumirim-mg': 'Manhumirim-MG',
+      'tombos-mg': 'Tombos-MG',
+      'dores do rio preto-es': 'Dores do Rio Preto-ES',
+      'guaçuí-es': 'Guaçuí-ES',
+      'ibitirama-es': 'Ibitirama-ES',
+      'divino-mg': 'Divino-MG'
+    };
+    for (const muni of Object.keys(MUNICIPIOS)) {
+      const nomeMuni = muni.replace(/-[a-z]{2}$/, '');
+      if (n.includes(muni) || n.includes(nomeMuni)) {
+        const muniCapitalizado = mapCapitalizado[muni] || muni;
+        aoMudarMunicipio(muniCapitalizado);
+        break;
+      }
     }
   }
 
@@ -507,7 +601,7 @@ export default function EditorPage() {
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
-      const blob = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso() });
+      const blob = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente });
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
       saveAs(blob, `Memorial - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`);
     } catch (e) { aviso((e as Error).message || 'Erro ao gerar o memorial.'); }
@@ -649,6 +743,12 @@ export default function EditorPage() {
       const alvoId = glebaAtivaId;
       setGlebas((prev) => prev.map((g) => (g.id === alvoId ? { ...g, vertices: vs, confrontantes: cs, confrontantePorLado: mapa } : g)));
       setVertices(vs); setConfrontantes(cs); setConfrontantePorLado(mapa);
+      
+      if (!nomeProjeto) {
+        const auto = gerarTituloAutomatico(imovel);
+        setNomeProjeto(auto || file.name.replace(/\.[^.]+$/, ''));
+        setNomeProjetoManual(false);
+      }
       aviso(`${vs.length} vértices importados do DXF na ${glebaAtivaNome} (fuso ${zona}${hemisferio}).`);
     } finally { setProcessando(false); }
   }
@@ -705,7 +805,7 @@ export default function EditorPage() {
   }
   async function salvarPropCadastro() {
     if (!imovel.proprietario) { aviso('Preencha o proprietário primeiro.'); return; }
-    await cadProp.salvar({ id: '', nome: imovel.proprietario, cpf: imovel.cpfProprietario, tipoPessoa: imovel.tipoPessoa });
+    await cadProp.salvar({ id: '', nome: imovel.proprietario, cpf: imovel.cpfProprietario, tipoPessoa: imovel.tipoPessoa, projetoId: projetoId || undefined });
     cadProp.listar().then(setSugProp).catch(() => {});
     aviso('Proprietário salvo no cadastro.');
   }
@@ -715,6 +815,7 @@ export default function EditorPage() {
       id: '', nome: c.nome, cpf: c.cpf, matricula: c.matricula, cns: c.cns, descricaoExtra: c.descricaoExtra,
       condicao: c.condicao, conjugeNome: c.conjugeNome, conjugeCpf: c.conjugeCpf,
       inventarianteNome: c.inventarianteNome, inventarianteCpf: c.inventarianteCpf,
+      projetoId: projetoId || undefined
     });
     cadConf.listar().then(setSugConf).catch(() => {});
     aviso('Confrontante salvo no cadastro.');
@@ -725,6 +826,7 @@ export default function EditorPage() {
     if (!p0) return;
     const p = migrarProjeto(p0); // projetos antigos (sem glebas) viram glebas[0]
     setProjetoId(p.id); setNomeProjeto(p.nome); setImovel(p.imovel);
+    setNomeProjetoManual(true);
     setZona(p.zonaUtm); setHemisferio(p.hemisferio);
     setRequerente(p.requerente); setTransmitente(p.transmitente);
     setPlantaConfig(p.plantaConfig ?? {});
@@ -797,7 +899,7 @@ export default function EditorPage() {
           {msg && <span className="text-xs text-primary">{msg}</span>}
           <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /> Salvar</Button>
           <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
-          <Link href="/cadastros"><Button size="sm" variant="ghost" title="Dados de proprietários, confrontantes, imóveis e cartórios"><BookUser /> Dados</Button></Link>
+          <Link href={projetoId ? `/cadastros?projetoId=${projetoId}` : "/cadastros"}><Button size="sm" variant="ghost" title="Dados de proprietários, confrontantes, imóveis e cartórios"><BookUser /> Dados</Button></Link>
         </div>
       </header>
 
@@ -876,6 +978,7 @@ export default function EditorPage() {
                   <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                     confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
                     glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
+                    requerente={requerente} transmitente={transmitente}
                     outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))} />
                 </div>
               )}
@@ -920,7 +1023,7 @@ export default function EditorPage() {
 
           <div className="min-h-0 flex-1 overflow-auto p-3">
             <datalist id="lista-cns">{sugCns.map((c) => <option key={c} value={c} />)}</datalist>
-            {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} nome={nomeProjeto} onNome={setNomeProjeto} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={setHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} />}
+            {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} />}
             {aba === 'vertices' && (
               <div className="space-y-1">
                 <div className="mb-2 flex flex-wrap gap-1">
@@ -1042,8 +1145,8 @@ function Campo({ label, value, onChange, placeholder, list }: { label: string; v
   );
 }
 
-function PainelImovel({ imovel, onChange, onMunicipio, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp }: {
-  imovel: ImovelData; onChange: (i: ImovelData) => void; onMunicipio: (s: string) => void;
+function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp }: {
+  imovel: ImovelData; onChange: (i: ImovelData) => void; onMunicipio: (s: string) => void; onLocal: (s: string) => void;
   nome: string; onNome: (s: string) => void;
   zona: number; hemisferio: 'N' | 'S'; onZona: (z: number) => void; onHemisferio: (h: 'N' | 'S') => void;
   sugProp: ProprietarioCad[]; onSalvarProp: () => void;
@@ -1073,6 +1176,13 @@ function PainelImovel({ imovel, onChange, onMunicipio, nome, onNome, zona, hemis
         </datalist>
       </div>
       <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} />
+      
+      {/* Comprador (para compra e venda / transferências) */}
+      <div className="grid grid-cols-2 gap-2">
+        <Campo label="Comprador (se houver)" value={imovel.comprador ?? ''} onChange={(v) => set('comprador', v)} placeholder="Se houver..." />
+        <Campo label="CPF/CNPJ do comprador" value={imovel.cpfComprador ?? ''} onChange={(v) => set('cpfComprador', v)} />
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
         <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} />
@@ -1088,7 +1198,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, nome, onNome, zona, hemis
           ))}
         </div>
       </div>
-      <Campo label="Local (memorial)" value={imovel.local} onChange={(v) => set('local', v)} placeholder="Córrego ..., Cidade-UF" />
+      <Campo label="Local (memorial)" value={imovel.local} onChange={onLocal} placeholder="Córrego ..., Cidade-UF" />
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
           <Label>Fuso UTM</Label>
