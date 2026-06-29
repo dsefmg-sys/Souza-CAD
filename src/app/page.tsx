@@ -24,7 +24,7 @@ import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
 import ConsultarModal from '@/components/ConsultarModal';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
-import ImportPreviewModal from '@/components/ImportPreviewModal';
+import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -555,6 +555,9 @@ export default function EditorPage() {
         fuso,
         z,
         novoImovel,
+        contM: cont.M,
+        contP: cont.P,
+        prefixo: tec.credenciamentoIncra,
       });
 
     } catch (e) {
@@ -564,53 +567,51 @@ export default function EditorPage() {
     }
   }
 
-  function concluirImportacao(gerarPoligono: boolean, zonaEscolhida?: number) {
+  function concluirImportacao(gerarPoligono: boolean, zonaEscolhida: number | undefined, selecao?: ImportSelecao) {
     if (!previewData) return;
-    const { perim, vs: vs0, numGlebas, municipio, z: z0, novoImovel } = previewData;
+    const { vs: vs0, numGlebas, municipio, z: z0, novoImovel, contM, contP, prefixo } = previewData;
     // se o usuário corrigiu o fuso na prévia, reprojeta os vértices (E/N iguais, lat/lon novos)
     const z = (zonaEscolhida && zonaEscolhida !== z0) ? zonaEscolhida : z0;
-    const vs = z !== z0 ? reprojetar(vs0, z, hemisferio) : vs0;
+    const vsRepro: Vertex[] = z !== z0 ? reprojetar(vs0, z, hemisferio) : vs0;
+
+    // aplica a seleção da prévia: ordem (arrastar), importar (traz?) e noPoligono (perímetro passa?)
+    const ordem = selecao?.ordem ?? vsRepro.map((_, i) => i);
+    const importar = selecao?.importar ?? vsRepro.map(() => true);
+    const noPoligono = selecao?.noPoligono ?? vsRepro.map(() => true);
+    const importados = ordem.filter((i) => importar[i]).map((i) => ({ v: vsRepro[i], poligono: noPoligono[i] !== false }));
+    // vértices do anel = importados marcados "no polígono"; ignorados = importados fora do polígono
+    const anel = importados.filter((p) => p.poligono).map((p) => p.v);
+    const ignorados = importados.filter((p) => !p.poligono).map((p) => p.v);
+    // renumera o anel na ordem final (M/P sequenciais a partir do contador do banco)
+    const vs = recodificar(anel, prefixo || 'COIN', contM, contP);
 
     setImovel(novoImovel);
     setZona(z);
 
     const gs: Gleba[] = [];
-    if (gerarPoligono) {
-      const { confrontantes: cs, confrontantePorLado: mapa } = montarConfrontantes(vs);
-      for (let i = 1; i <= numGlebas; i++) {
-        if (i === 1) {
-          gs.push(glebaDe(1, vs, cs, mapa, 'Parcela 1'));
-        } else {
-          gs.push(novaGlebaVazia(i));
-        }
-      }
-    } else {
-      // Importa apenas como referências
-      setReferencias([perim.map((p: any) => {
-        const g = utmParaGeo(p.leste, p.norte, z, hemisferio);
-        return { lat: g.lat, lon: g.lon, leste: p.leste, norte: p.norte };
-      })]);
-      for (let i = 1; i <= numGlebas; i++) {
-        if (i === 1) {
-          gs.push(glebaDe(1, [], [], {}, 'Parcela 1'));
-        } else {
-          gs.push(novaGlebaVazia(i));
-        }
-      }
+    const { confrontantes: cs, confrontantePorLado: mapa } = gerarPoligono && vs.length >= 3
+      ? montarConfrontantes(vs)
+      : { confrontantes: [], confrontantePorLado: {} };
+    for (let i = 1; i <= numGlebas; i++) {
+      gs.push(i === 1 ? glebaDe(1, vs, cs, mapa, 'Parcela 1') : novaGlebaVazia(i));
     }
-    
+
     setProjetoId(null); // importar um TXT começa um projeto novo (não sobrescreve o salvo anterior)
+    setReferencias([]); // não deixa mais referência tracejada de importação anterior
     setGlebas(gs);
     carregarGleba(gs[0]);
+    // carregarGleba zera os ignorados; reaplica os que o usuário tirou do polígono
+    if (ignorados.length) setVerticesIgnorados(ignorados);
 
     if (!nomeProjeto || !nomeProjetoManual) {
       const auto = gerarTituloAutomatico(novoImovel);
       setNomeProjeto(auto || importPendingFile?.name.replace(/\.[^.]+$/, '') || '');
     }
+    const extra = ignorados.length ? ` (${ignorados.length} fora do polígono)` : '';
     if (gerarPoligono) {
-      aviso(`${vs.length} vértices importados e perímetro gerado na Parcela 1 — fuso ${z}${hemisferio} (${municipio}).`);
+      aviso(`${vs.length} vértices importados e perímetro gerado na Parcela 1${extra} — fuso ${z}${hemisferio} (${municipio}).`);
     } else {
-      aviso(`${perim.length} pontos importados como referências de snap na Parcela 1 — fuso ${z}${hemisferio} (${municipio}).`);
+      aviso(`${vs.length} vértices importados na Parcela 1${extra} — fuso ${z}${hemisferio} (${municipio}). Pinte as divisas/confrontantes manualmente.`);
     }
     setPreviewData(null);
     setImportPendingFile(null);
@@ -2253,7 +2254,7 @@ export default function EditorPage() {
       <ImportPreviewModal
         open={!!previewData}
         onOpenChange={(open) => { if (!open) setPreviewData(null); }}
-        perim={previewData?.perim || []}
+        pontos={(previewData?.vs || []).map((v: Vertex) => ({ nome: v.codigoSigef || v.nome || '', leste: v.leste, norte: v.norte }))}
         zona={previewData?.z ?? zona} hemisferio={hemisferio} fusosPermitidos={tecnico?.fusosPermitidos}
         onConfirm={concluirImportacao}
       />
