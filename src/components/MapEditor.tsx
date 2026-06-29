@@ -35,6 +35,7 @@ interface Props {
   onPintarDivisa?: (id: string) => void;
   onPintarConfrontante?: (id: string) => void;
   onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
+  centralizarSig?: number;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -100,6 +101,20 @@ function AjustarLimites({ vertices }: { vertices: Vertex[] }) {
   return null;
 }
 
+function Centralizar({ sig, vertices }: { sig?: number; vertices: Vertex[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!sig) return;
+    const validos = vertices.filter(valido);
+    if (validos.length < 2) return;
+    try {
+      const b = L.latLngBounds(validos.map((v) => [v.lat, v.lon] as [number, number]));
+      if (b.isValid()) map.fitBounds(b, { padding: [50, 50] });
+    } catch { /* ignore */ }
+  }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
 function CliqueMapa({ modo, onInserir, onCliqueDesenho }: { modo: ModoEdicao; onInserir: (lat: number, lon: number) => void; onCliqueDesenho?: (lat: number, lon: number) => void }) {
   useMapEvents({
     click(e) {
@@ -114,7 +129,7 @@ export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], objetoSelId = null,
-    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice,
+    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
   } = props;
 
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
@@ -136,6 +151,7 @@ export default function MapEditor(props: Props) {
       </LayersControl>
 
       <AjustarLimites vertices={validos} />
+      <Centralizar sig={centralizarSig} vertices={vertices} />
       <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} />
 
       {/* referências certificadas (snap) */}

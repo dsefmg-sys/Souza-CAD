@@ -10,6 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Users,
+  Maximize, Settings, LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
 import RequerimentoModal from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
-import ConfigGear from '@/components/ConfigGear';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -39,7 +39,7 @@ import { conferir, valoresEfetivos, type Problema } from '@/lib/topo/conferencia
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
 import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario } from '@/lib/store/settings';
-import { useAuth } from '@/lib/firebase/auth';
+import { useAuth, sair } from '@/lib/firebase/auth';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart } from '@/lib/store/cadastros';
@@ -80,7 +80,7 @@ const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover
 const COR_PLANTA = 'bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20 border-violet-500/30';
 
 export default function EditorPage() {
-  const { user } = useAuth();
+  const { user, disponivel: nuvemDisponivel } = useAuth();
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
   const [vertices, setVertices] = useState<Vertex[]>([]);
@@ -104,11 +104,10 @@ export default function EditorPage() {
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
-  // barra de ferramentas flutuante (posição/altura salvas por usuário)
-  const [tbPos, setTbPos] = useState<{ x: number; y: number }>({ x: 12, y: 12 });
-  const [tbH, setTbH] = useState<number | null>(null);
-  const tbRef = useRef<HTMLDivElement>(null);
-  const tbDrag = useRef<{ dx: number; dy: number } | null>(null);
+  // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
+  const [toolW, setToolW] = useState(176);
+  const toolDrag = useRef(false);
+  const [centralizarSig, setCentralizarSig] = useState(0); // incrementa para enquadrar o desenho
   // largura do painel da direita (redimensionável, salva por usuário)
   const [asideW, setAsideW] = useState(380);
   const asideDrag = useRef(false);
@@ -151,10 +150,7 @@ export default function EditorPage() {
     const t = (localStorage.getItem('metrica.tema') as 'claro' | 'escuro') || 'claro';
     setTema(t);
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
-    try {
-      const raw = localStorage.getItem('metrica.toolbar');
-      if (raw) { const p = JSON.parse(raw); if (typeof p.x === 'number') setTbPos({ x: p.x, y: p.y }); if (typeof p.h === 'number') setTbH(p.h); }
-    } catch { /* ignore */ }
+    try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 320) setToolW(w); } catch { /* ignore */ }
     try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680) setAsideW(w); } catch { /* ignore */ }
     // começa com uma gleba
     const g = glebaDe(1, [], [], {}, 'Parcela 1');
@@ -181,9 +177,7 @@ export default function EditorPage() {
   }, [user]);
 
   // salva posição/altura da barra de ferramentas
-  useEffect(() => {
-    try { localStorage.setItem('metrica.toolbar', JSON.stringify({ x: tbPos.x, y: tbPos.y, h: tbH })); } catch { /* ignore */ }
-  }, [tbPos, tbH]);
+  useEffect(() => { try { localStorage.setItem('metrica.toolW', String(toolW)); } catch { /* ignore */ } }, [toolW]);
   useEffect(() => { try { localStorage.setItem('metrica.asideW', String(asideW)); } catch { /* ignore */ } }, [asideW]);
 
   // Atualiza automaticamente o nome do projeto se não foi modificado manualmente
@@ -227,19 +221,13 @@ export default function EditorPage() {
     aviso('Última ação desfeita.');
   }
 
-  // arrastar a barra de ferramentas
-  function tbDown(e: ReactPointerEvent) {
-    tbDrag.current = { dx: e.clientX - tbPos.x, dy: e.clientY - tbPos.y };
-    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ }
-  }
-  function tbMove(e: ReactPointerEvent) {
-    if (!tbDrag.current) return;
-    setTbPos({ x: Math.max(0, e.clientX - tbDrag.current.dx), y: Math.max(0, e.clientY - tbDrag.current.dy) });
-  }
-  function tbUp(e: ReactPointerEvent) {
-    tbDrag.current = null;
-    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
-  }
+  // redimensionar a barra de ferramentas (largura, arrastando a borda direita)
+  function toolDown(e: ReactPointerEvent) { toolDrag.current = true; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
+  function toolMove(e: ReactPointerEvent) { if (toolDrag.current) setToolW(Math.min(320, Math.max(52, e.clientX))); }
+  function toolUp(e: ReactPointerEvent) { toolDrag.current = false; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ } }
+
+  // centraliza/enquadra o desenho atual no mapa
+  function centralizar() { setCentralizarSig((n) => n + 1); }
 
   // redimensionar o painel da direita
   function asideDown(e: ReactPointerEvent) { asideDrag.current = true; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
@@ -895,77 +883,90 @@ export default function EditorPage() {
         <Button size="sm" variant="outline" className={COR_PLANTA} title={vista === 'mapa' ? 'Abrir a prévia da planta' : 'Voltar ao mapa'} onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
           {vista === 'mapa' ? <><Eye /> Planta</> : <><MapIcon /> Mapa</>}
         </Button>
+        {vista === 'mapa' && (
+          <>
+            <div className="mx-1 h-6 w-px bg-border" />
+            <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /></Button>
+            <Button size="sm" variant="ghost" title="Centralizar/enquadrar o desenho" onClick={centralizar}><Maximize /></Button>
+            <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /></Button>
+            <Button size="sm" variant="ghost" title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
+            <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} title={bloqueado ? 'Vértices travados (clique para liberar)' : 'Vértices liberados'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
+          </>
+        )}
         <div className="ml-auto flex items-center gap-2">
           {msg && <span className="text-xs text-primary">{msg}</span>}
           <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /> Salvar</Button>
           <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
           <Link href={projetoId ? `/cadastros?projetoId=${projetoId}` : "/cadastros"}><Button size="sm" variant="ghost" title="Dados de proprietários, confrontantes, imóveis e cartórios"><BookUser /> Dados</Button></Link>
+          <Link href="/configuracoes"><Button size="sm" variant="ghost" title="Configurações"><Settings /></Button></Link>
+          {nuvemDisponivel && user && (
+            <Button size="sm" variant="ghost" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
+          )}
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
         {/* Área principal: mapa ou planta */}
-        <main className="relative min-w-0 flex-1">
-          {vista === 'mapa' ? (
+        {vista === 'mapa' && (() => {
+          const rotulo = toolW >= 104;
+          const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t}</span> : null);
+          return (
             <>
-              <div ref={tbRef} onMouseUp={() => { if (tbRef.current && !tbDrag.current) setTbH(tbRef.current.offsetHeight); }}
-                style={{ left: tbPos.x, top: tbPos.y, height: tbH ?? undefined, resize: 'vertical', overflow: 'auto' }}
-                className="no-print absolute z-[1000] flex max-h-[88vh] w-auto min-w-[48px] flex-col items-stretch gap-1 rounded-md border bg-background/95 p-1 shadow [&>button]:h-9 [&>button]:min-w-9">
-                <div onPointerDown={tbDown} onPointerMove={tbMove} onPointerUp={tbUp}
-                  className="-mx-1 -mt-1 mb-0.5 flex h-5 shrink-0 cursor-move touch-none items-center justify-center rounded-t bg-muted text-[10px] tracking-widest text-muted-foreground" title="Arraste para mover a barra">⋮⋮</div>
-                <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F5)"><MousePointer2 /></Button>
-                <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice"><Plus /></Button>
-                <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /></Button>
+              <aside style={{ width: toolW }} className="no-print flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-9 [&_button]:w-full [&_button]:justify-start [&_button]:gap-2">
+                <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F5)"><MousePointer2 /> {L('Mover')}</Button>
+                <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice"><Plus /> {L('Inserir vértice')}</Button>
+                <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
+                <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => { if (selecionadoId) { snap(); setVertices((vs) => definirInicio(vs, selecionadoId)); } }} title="Definir início no vértice selecionado"><Flag /> {L('Definir início')}</Button>
+                <Button size="sm" variant="ghost" onClick={renumerar} title="Renumerar vértices"><Crosshair /> {L('Renumerar')}</Button>
                 <div className="my-0.5 h-px w-full bg-border" />
-                <Button size="sm" variant="ghost" onClick={desfazer} title="Desfazer última ação"><Undo2 /></Button>
-                <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => { if (selecionadoId) { snap(); setVertices((vs) => definirInicio(vs, selecionadoId)); } }} title="Definir início no vértice selecionado"><Flag /></Button>
-                <Button size="sm" variant="ghost" onClick={renumerar} title="Renumerar vértices"><Crosshair /></Button>
-                <Button size="sm" variant="ghost" onClick={() => setMostrarRotulos((m) => !m)} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
-                <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} onClick={() => setSnapAtivo((s) => !s)} title="Imã: encaixar em vértices existentes (F3)"><Magnet /></Button>
-                <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} onClick={() => setBloqueado((b) => !b)} title={bloqueado ? 'Vértices travados (clique para liberar a edição)' : 'Vértices liberados — cuidado para não mover sem querer'}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
-                <div className="my-0.5 h-px w-full bg-border" />
-                <Button size="sm" variant={modo === 'divisa' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'divisa' ? 'navegar' : 'divisa')} title="Pintar divisa: escolha o tipo e clique os vértices ao longo do caminho"><Brush /></Button>
+                <Button size="sm" variant={modo === 'divisa' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'divisa' ? 'navegar' : 'divisa')} title="Pintar divisa: escolha o tipo e clique os vértices ao longo do caminho"><Brush /> {L('Pintar divisa')}</Button>
                 {modo === 'divisa' && (
                   <select className="h-8 rounded border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
                     {REPRESENTACOES.map((r) => <option key={r} value={r}>{REPRES_LABEL[r] || r}</option>)}
                   </select>
                 )}
-                <Button size="sm" variant={modo === 'confrontante' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'confrontante' ? 'navegar' : 'confrontante')} title="Pintar confrontante: escolha o confrontante e clique os vértices do trecho"><Users /></Button>
+                <Button size="sm" variant={modo === 'confrontante' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'confrontante' ? 'navegar' : 'confrontante')} title="Pintar confrontante: escolha o confrontante e clique os vértices do trecho"><Users /> {L('Pintar confront.')}</Button>
                 {modo === 'confrontante' && (
                   <>
-                    <select className="h-8 max-w-[140px] rounded border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
+                    <select className="h-8 rounded border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
                       <option value="">— escolher —</option>
                       {confrontantes.map((c) => <option key={c.id} value={c.id}>{c.nome || '(sem nome)'}</option>)}
                     </select>
-                    <Button size="sm" variant="ghost" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus /></Button>
+                    <Button size="sm" variant="ghost" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus /> {L('Novo confront.')}</Button>
                   </>
                 )}
                 <div className="my-0.5 h-px w-full bg-border" />
-                <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Desenhar linha/polilinha (clique os pontos, depois Finalizar)"><PenTool /></Button>
-                <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos"><RotateCcw className="rotate-90" /></Button>
-                <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir"><FileText /></Button>
-                {modo === 'linha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}>Finalizar</Button>}
+                <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Desenhar linha/polilinha (clique os pontos, depois Finalizar)"><PenTool /> {L('Linha')}</Button>
+                <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos"><RotateCcw className="rotate-90" /> {L('Cota')}</Button>
+                <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir"><FileText /> {L('Texto')}</Button>
+                {modo === 'linha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
                 {objSel?.tipo === 'texto' && (
                   <>
-                    <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir">A-</Button>
-                    <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar">A+</Button>
-                    <Button size="sm" variant="ghost" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold">A-</span> {L('Diminuir')}</Button>
+                    <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold">A+</span> {L('Aumentar')}</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil /> {L('Editar texto')}</Button>
                   </>
                 )}
                 {objSel?.tipo === 'polilinha' && (
-                  <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher (ex.: lago)">Preencher</Button>
+                  <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher (ex.: lago)"><Brush /> {L('Preencher')}</Button>
                 )}
-                {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /></Button>}
+                {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /> {L('Apagar objeto')}</Button>}
                 <div className="my-0.5 h-px w-full bg-border" />
-                <Button size="sm" variant="ghost" onClick={() => geojsonRef.current?.click()} title="Ref. SIGEF: importar confrontante certificado (GeoJSON do SIGEF/QGIS)"><Upload /></Button>
-              </div>
-              <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado}
+                <Button size="sm" variant="ghost" onClick={() => geojsonRef.current?.click()} title="Ref. SIGEF: importar confrontante certificado (GeoJSON do SIGEF/QGIS)"><Upload /> {L('Ref. SIGEF')}</Button>
+              </aside>
+              <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
+                className="no-print w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar a barra" />
+            </>
+          );
+        })()}
+        <main className="relative min-w-0 flex-1">
+          {vista === 'mapa' ? (
+              <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} objetoSelId={objetoSelId}
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} />
-            </>
           ) : (
             <div id="planta-print" className="relative h-full overflow-auto bg-neutral-200 p-4">
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
@@ -1117,8 +1118,6 @@ export default function EditorPage() {
         <div className="absolute bottom-0 left-0 w-full bg-primary transition-all" style={{ height: `${Math.round(progresso * 100)}%` }} />
       </div>
 
-      {/* Configurações + conta: engrenagem flutuante no canto inferior esquerdo */}
-      <ConfigGear />
     </div>
   );
 }
