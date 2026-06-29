@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ModalSpreadsheet from '@/components/ModalSpreadsheet';
+import ModalImport from '@/components/ModalImport';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
@@ -128,6 +129,8 @@ export default function EditorPage() {
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro');
   const [planilhaAberta, setPlanilhaAberta] = useState(false);
   const [contadorSugerido, setContadorSugerido] = useState<Contadores | null>(null);
+  const [importModalAberto, setImportModalAberto] = useState(false);
+  const [importPendingFile, setImportPendingFile] = useState<File | null>(null);
   const [vista, setVista] = useState<'mapa' | 'planta'>('mapa');
   const [aba, setAba] = useState<Aba>('imovel');
   const [projetoId, setProjetoId] = useState<string | null>(null);
@@ -297,23 +300,35 @@ export default function EditorPage() {
 
   async function importarArquivo(file: File) {
     if (processando) return;
-    const numGlebasStr = window.prompt('Número de glebas a criar (padrão 1):', '1') || '1';
-    const numGlebas = Math.max(1, parseInt(numGlebasStr) || 1);
+    setImportPendingFile(file);
+    setImportModalAberto(true);
+  }
+
+  async function processarImportacao(data: { numGlebas: number; municipio: string; fuso: number }) {
+    if (!importPendingFile || processando) return;
+    const { numGlebas, municipio, fuso } = data;
     setProcessando(true);
     try {
-      const buf = await file.arrayBuffer();
+      const buf = await importPendingFile.arrayBuffer();
       // TXT do GNSS costuma vir em Windows-1252 (acentos)
       const texto = new TextDecoder('windows-1252').decode(buf);
       const pontos = parseTxt(texto);
       const perim = pontosDePerimetro(pontos);
       if (perim.length < 3) { aviso('O arquivo não tem pontos de perímetro suficientes.'); return; }
+
+      // Define o município no imóvel
+      const novoImovel = { ...imovel, municipio, local: `${municipio}` };
+      setImovel(novoImovel);
+
       const tec = tecnico ?? carregarTecnico();
       const fusos = tec.fusosPermitidos ?? [22, 23, 24, 25];
-      // Fuso: âncora do município se conhecido; senão o fuso-base configurado.
-      let z = detectarZona(perim[0].leste, perim[0].norte, hemisferio, tec.zonaBase ?? zona, fusos);
-      const anc = ancoraMunicipio(imovel.municipio);
+      
+      // Escolhe o fuso usando a âncora do município recém-selecionado
+      let z = fuso;
+      const anc = ancoraMunicipio(municipio);
       if (anc) z = escolherZonaPorAncora(perim[0].leste, perim[0].norte, hemisferio, anc, fusos);
       setZona(z);
+
       // numeração provisória a partir do banco de pontos (para não colidir com o já usado)
       const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
       const vs0 = montarVertices(perim, z, hemisferio, { credenciamentoIncra: tec.credenciamentoIncra, contadorMarco: cont.M, contadorPonto: cont.P });
@@ -333,13 +348,17 @@ export default function EditorPage() {
       setGlebas(gs);
       carregarGleba(gs[0]);
       
-      if (!nomeProjeto) {
-        const auto = gerarTituloAutomatico(imovel);
-        setNomeProjeto(auto || file.name.replace(/\.[^.]+$/, ''));
-        setNomeProjetoManual(false);
+      if (!nomeProjeto || !nomeProjetoManual) {
+        const auto = gerarTituloAutomatico(novoImovel);
+        setNomeProjeto(auto || importPendingFile.name.replace(/\.[^.]+$/, ''));
       }
-      aviso(`${vs.length} vértices importados na Parcela 1 — fuso ${z}${hemisferio}. Criada(s) ${numGlebas} gleba(s).`);
-    } finally { setProcessando(false); }
+      aviso(`${vs.length} vértices importados na Parcela 1 — fuso ${z}${hemisferio} (${municipio}).`);
+    } catch (e) {
+      aviso('Erro na importação: ' + (e as Error).message);
+    } finally {
+      setProcessando(false);
+      setImportPendingFile(null);
+    }
   }
 
   function trocarZona(z: number) {
@@ -1320,6 +1339,11 @@ export default function EditorPage() {
         vertices={vertices}
         onSave={salvarAlteracoesPlanilha}
         contadorSugerido={contadorSugerido}
+      />
+      <ModalImport
+        isOpen={importModalAberto}
+        onClose={() => setImportModalAberto(false)}
+        onConfirm={processarImportacao}
       />
 
       {/* Barra de progresso do trabalho (lateral esquerda) */}
