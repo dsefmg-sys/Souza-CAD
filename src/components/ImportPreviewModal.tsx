@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Check, Eye, Satellite, AlertTriangle, GripVertical } from 'lucide-react';
 import { utmParaGeo } from '@/lib/topo/coords';
+import ErrorBoundary from './ErrorBoundary';
 
 const PreviaSatelite = dynamic(() => import('./PreviaSatelite'), {
   ssr: false,
@@ -19,6 +20,32 @@ export interface SelecaoImport {
 }
 
 interface PontoPrev { nome: string; leste: number; norte: number }
+
+// dois segmentos AB e CD se cruzam? (teste de orientação)
+function orient(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
+  return Math.sign((bx - ax) * (cy - ay) - (by - ay) * (cx - ax));
+}
+function segCruza(a: [number, number], b: [number, number], c: [number, number], d: [number, number]): boolean {
+  const o1 = orient(a[0], a[1], b[0], b[1], c[0], c[1]);
+  const o2 = orient(a[0], a[1], b[0], b[1], d[0], d[1]);
+  const o3 = orient(c[0], c[1], d[0], d[1], a[0], a[1]);
+  const o4 = orient(c[0], c[1], d[0], d[1], b[0], b[1]);
+  return o1 !== o2 && o3 !== o4;
+}
+// o anel fechado cruza consigo mesmo? (polígono em "8"), ignorando arestas vizinhas
+function anelCruzado(ring: [number, number][]): boolean {
+  const n = ring.length;
+  if (n < 4) return false;
+  for (let i = 0; i < n; i++) {
+    const a = ring[i], b = ring[(i + 1) % n];
+    for (let j = i + 1; j < n; j++) {
+      if ((i + 1) % n === j || (j + 1) % n === i || i === j) continue; // vizinhas compartilham vértice
+      const c = ring[j], d = ring[(j + 1) % n];
+      if (segCruza(a, b, c, d)) return true;
+    }
+  }
+  return false;
+}
 
 interface Props {
   open: boolean;
@@ -66,6 +93,8 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
 
   const qtdImportar = importar.filter(Boolean).length;
   const qtdPoligono = importadosNaOrdem.filter((i) => noPoligono[i]).length;
+  // polígono em "8": a ordem dos pontos faz a divisa cruzar consigo mesma (área sai errada)
+  const cruzado = poligono.length >= 4 && anelCruzado(poligono);
 
   function moverPara(alvo: number) {
     if (arrastando == null || arrastando === alvo) return;
@@ -109,6 +138,13 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
           <span className="ml-auto text-xs text-muted-foreground">{qtdImportar}/{n} a importar · {qtdPoligono} no polígono</span>
         </div>
 
+        {cruzado && (
+          <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="size-4 shrink-0" />
+            A divisa está cruzando consigo mesma (forma de &quot;8&quot;) — a área sairia errada. Arraste os pontos para corrigir a ordem, ou tire do polígono o ponto fora de sequência.
+          </div>
+        )}
+
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
           {/* ESQUERDA: lista completa de pontos */}
           <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-background">
@@ -149,7 +185,15 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
           <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border">
             <div className="flex items-center gap-1.5 border-b bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground"><Satellite className="size-3.5" /> Localização no satélite (fuso {zonaSel}{hemisferio})</div>
             <div className="min-h-0 flex-1">
-              <PreviaSatelite poligono={poligono} marcadores={marcadores} destaque={destaqueLL} />
+              <ErrorBoundary fallback={
+                <div className="flex h-full flex-col items-center justify-center gap-1 p-4 text-center text-sm text-muted-foreground">
+                  <Satellite className="size-6 opacity-50" />
+                  <span>Não deu para abrir o satélite agora.</span>
+                  <span className="text-xs">A lista de pontos ao lado funciona normalmente — pode importar mesmo assim.</span>
+                </div>
+              }>
+                <PreviaSatelite poligono={poligono} marcadores={marcadores} destaque={destaqueLL} />
+              </ErrorBoundary>
             </div>
           </div>
         </div>
