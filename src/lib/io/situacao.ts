@@ -35,26 +35,34 @@ function escolherZoom(spanLon: number, alvoPx: number): number {
   return 8;
 }
 
-export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number; padding?: number } = {}): Promise<string | null> {
+export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number; padding?: number; aspecto?: number } = {}): Promise<string | null> {
   const rings = aneis.filter((a) => a.length >= 3);
   const pts = rings.flat();
   if (typeof document === 'undefined' || pts.length < 3) return null;
-  const alvoPx = opts.alvoPx ?? 460;
-  const pad = opts.padding ?? 0.6;
+  const alvoPx = opts.alvoPx ?? 1024;     // resolução-alvo (nitidez)
+  const pad = opts.padding ?? 0.35;       // folga ao redor do imóvel (enquadramento)
+  const aspecto = opts.aspecto ?? 232 / 168; // mesma proporção do quadro na planta (sem cortar)
 
   let minLat = Math.min(...pts.map((p) => p.lat));
   let maxLat = Math.max(...pts.map((p) => p.lat));
   let minLon = Math.min(...pts.map((p) => p.lon));
   let maxLon = Math.max(...pts.map((p) => p.lon));
-  const dLat = (maxLat - minLat) * pad || 0.001;
-  const dLon = (maxLon - minLon) * pad || 0.001;
-  minLat -= dLat; maxLat += dLat; minLon -= dLon; maxLon += dLon;
+  // centro e meias-extensões com folga
+  const cLat = (minLat + maxLat) / 2, cLon = (minLon + maxLon) / 2;
+  const latRad = (cLat * Math.PI) / 180;
+  let halfLon = ((maxLon - minLon) / 2) * (1 + pad) || 0.0008;
+  let halfLat = ((maxLat - minLat) / 2) * (1 + pad) || 0.0008;
+  // ajusta para a proporção do quadro (em metros aprox.: 1° lon ~ cos(lat)·1° lat)
+  const wM = halfLon * Math.cos(latRad), hM = halfLat;
+  if (wM / hM < aspecto) halfLon = (aspecto * hM) / Math.cos(latRad); else halfLat = (wM / aspecto);
+  minLon = cLon - halfLon; maxLon = cLon + halfLon;
+  minLat = cLat - halfLat; maxLat = cLat + halfLat;
 
   const z = escolherZoom(maxLon - minLon, alvoPx);
   const pxMin = lonToGlobalPx(minLon, z), pxMax = lonToGlobalPx(maxLon, z);
   const pyMin = latToGlobalPx(maxLat, z), pyMax = latToGlobalPx(minLat, z); // lat maior = py menor
-  const w = Math.min(1400, Math.ceil(pxMax - pxMin));
-  const h = Math.min(1400, Math.ceil(pyMax - pyMin));
+  const w = Math.min(2000, Math.ceil(pxMax - pxMin));
+  const h = Math.min(2000, Math.ceil(pyMax - pyMin));
   if (w < 8 || h < 8) return null;
 
   const canvas = document.createElement('canvas');
@@ -66,7 +74,7 @@ export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number
   const tx0 = Math.floor(pxMin / TILE), tx1 = Math.floor(pxMax / TILE);
   const ty0 = Math.floor(pyMin / TILE), ty1 = Math.floor(pyMax / TILE);
   const nTiles = Math.max(0, (tx1 - tx0 + 1) * (ty1 - ty0 + 1));
-  if (nTiles === 0 || nTiles > 80) return null; // proteção
+  if (nTiles === 0 || nTiles > 160) return null; // proteção
 
   let carregados = 0;
   const cargas: Promise<void>[] = [];
@@ -80,26 +88,24 @@ export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number
   await Promise.all(cargas);
   if (carregados === 0) return null; // nenhum tile de satélite carregou (rede/CORS)
 
-  // contorno de cada gleba destacado em BRANCO com linha forte (e um halo escuro atrás para
-  // contraste sobre o satélite) — mostra ao cartório onde o imóvel está.
+  // contorno de cada gleba em BRANCO com linha forte (halo escuro + leve preenchimento) e os
+  // vértices marcados — mostra ao cartório, com nitidez, onde o imóvel está.
+  const esc = w / 1000; // espessuras proporcionais à resolução
   rings.forEach((anel) => {
-    const traco = () => {
-      ctx.beginPath();
-      anel.forEach((p, i) => {
-        const x = lonToGlobalPx(p.lon, z) - pxMin;
-        const y = latToGlobalPx(p.lat, z) - pyMin;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      ctx.closePath();
-    };
-    traco();
-    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 6; ctx.stroke();   // halo
-    traco();
-    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();            // linha branca forte
+    const xy = anel.map((p) => [lonToGlobalPx(p.lon, z) - pxMin, latToGlobalPx(p.lat, z) - pyMin] as const);
+    const traco = () => { ctx.beginPath(); xy.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y))); ctx.closePath(); };
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    traco(); ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fill();
+    traco(); ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 7 * esc; ctx.stroke();   // halo
+    traco(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3.2 * esc; ctx.stroke();          // branco forte
+    // vértices
+    xy.forEach(([x, y]) => {
+      ctx.beginPath(); ctx.arc(x, y, 3.2 * esc, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.lineWidth = 1.2 * esc; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.stroke();
+    });
   });
 
-  try { return canvas.toDataURL('image/jpeg', 0.85); }
+  try { return canvas.toDataURL('image/jpeg', 0.9); }
   catch { return null; } // canvas tainted (CORS) — sai sem situação
 }

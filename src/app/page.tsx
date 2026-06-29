@@ -39,7 +39,7 @@ import { conferir, valoresEfetivos, type Problema } from '@/lib/topo/conferencia
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
 import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao } from '@/lib/store/settings';
-import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId } from '@/lib/store/projects';
+import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart } from '@/lib/store/cadastros';
 import { gerarMemorialDocx } from '@/lib/export/memorial';
@@ -688,9 +688,18 @@ export default function EditorPage() {
         id, nome: nomeProjeto || imovel.denominacao || 'Sem nome', criadoEm: Date.now(), atualizadoEm: Date.now(),
         imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, plantaConfig,
       };
-      await salvarProjeto(p);
-      setProjetoId(id);
-      aviso(registrou ? 'Projeto salvo e pontos registrados.' : 'Projeto salvo, mas falhou registrar os pontos — tente salvar de novo.');
+      try {
+        await salvarProjeto(p);
+        setProjetoId(id);
+        aviso(registrou ? 'Projeto salvo e pontos registrados.' : 'Projeto salvo, mas falhou registrar os pontos — tente salvar de novo.');
+      } catch (e) {
+        setProjetoId(id);
+        if (e instanceof NuvemSemPermissao) {
+          aviso('Salvo localmente. A nuvem negou: publique as regras do Firestore (firebase deploy --only firestore:rules).');
+        } else {
+          aviso('Não consegui salvar na nuvem: ' + ((e as Error).message || 'erro'));
+        }
+      }
       atualizarLista();
     } finally { setProcessando(false); }
   }

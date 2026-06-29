@@ -13,14 +13,20 @@ function uidNuvem(): string | null {
 
 async function listar<T>(store: Store): Promise<T[]> {
   const uid = uidNuvem();
-  if (uid) return (await getDocs(collection(fdb()!, 'users', uid, store))).docs.map((d) => d.data() as T);
+  if (uid) {
+    try { return (await getDocs(collection(fdb()!, 'users', uid, store))).docs.map((d) => d.data() as T); }
+    catch { /* nuvem negada/indisponível → local */ }
+  }
   const d = await db();
   return (await d.getAll(store)) as T[];
 }
 async function gravar<T extends { id: string }>(store: Store, item: T): Promise<T> {
   const comId = (item.id ? item : { ...item, id: novoId('c') }) as T;
   const uid = uidNuvem();
-  if (uid) { await setDoc(doc(collection(fdb()!, 'users', uid, store), comId.id), comId as Record<string, unknown>); return comId; }
+  if (uid) {
+    try { await setDoc(doc(collection(fdb()!, 'users', uid, store), comId.id), comId as Record<string, unknown>); return comId; }
+    catch { /* nuvem negada/indisponível → guarda local como reserva */ }
+  }
   const d = await db();
   await d.put(store, comId as never);
   return comId;

@@ -13,10 +13,28 @@ function colProjetos(uid: string): CollectionReference {
   return collection(fdb()!, 'users', uid, 'projetos');
 }
 
+/** Erro sinalizando que a nuvem negou e o projeto foi guardado localmente como reserva. */
+export class NuvemSemPermissao extends Error {
+  constructor() { super('NUVEM_SEM_PERMISSAO'); this.name = 'NuvemSemPermissao'; }
+}
+
 export async function salvarProjeto(p: Projeto): Promise<void> {
   const reg = { ...p, atualizadoEm: Date.now() };
   const uid = uidNuvem();
-  if (uid) { await setDoc(doc(colProjetos(uid), p.id), reg); return; }
+  if (uid) {
+    try {
+      await setDoc(doc(colProjetos(uid), p.id), reg);
+      return;
+    } catch (e) {
+      // Sem permissão (regras não publicadas) ou offline: guarda local como reserva e sinaliza,
+      // para o usuário não perder o trabalho nem ver um erro cru.
+      try { const d = await db(); await d.put('projetos', reg); } catch { /* ignore */ }
+      if (String((e as { code?: string }).code) === 'permission-denied' || /permission/i.test((e as Error).message)) {
+        throw new NuvemSemPermissao();
+      }
+      throw e;
+    }
+  }
   const d = await db();
   await d.put('projetos', reg);
 }
@@ -24,8 +42,10 @@ export async function salvarProjeto(p: Projeto): Promise<void> {
 export async function listarProjetos(): Promise<Projeto[]> {
   const uid = uidNuvem();
   if (uid) {
-    const snap = await getDocs(colProjetos(uid));
-    return snap.docs.map((d) => d.data() as Projeto).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+    try {
+      const snap = await getDocs(colProjetos(uid));
+      return snap.docs.map((d) => d.data() as Projeto).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+    } catch { /* nuvem indisponível/negada → cai para o local */ }
   }
   const d = await db();
   return (await d.getAll('projetos')).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
