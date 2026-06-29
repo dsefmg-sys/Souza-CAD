@@ -1200,6 +1200,22 @@ export default function EditorPage() {
     return { pct: feitos / passos.length, faltam, passos };
   }, [imovel, vertices, res, confrontantes, situacaoUrl]);
 
+  // Fluxo de trabalho (ordem do cabeçalho, esquerda→direita) para a linha fina sob os botões.
+  // Estado de cada etapa: feito | falha (pulada: incompleta mas uma etapa posterior já foi feita) | pendente.
+  const fluxo = useMemo(() => {
+    const steps: { label: string; ok: boolean }[] = [
+      { label: 'Importar pontos (TXT)', ok: vertices.length >= 3 },
+      { label: 'Dados do imóvel', ok: !!(imovel.denominacao && imovel.matricula && imovel.proprietario && imovel.municipio) },
+      { label: 'Confrontantes', ok: confrontantes.some((c) => c.nome) && Object.keys(confrontantePorLado).length > 0 },
+      { label: 'Divisas pintadas', ok: vertices.some((v) => v.representacao && v.representacao !== 'linha-ideal') },
+      { label: 'Área calculada (planta)', ok: !!res },
+      { label: 'Planta de situação', ok: !!situacaoUrl },
+    ];
+    const ultimoFeito = steps.reduce((acc, s, i) => (s.ok ? i : acc), -1);
+    const estados = steps.map((s, i) => (s.ok ? 'feito' : i < ultimoFeito ? 'falha' : 'pendente'));
+    return { steps, estados };
+  }, [vertices, imovel, confrontantes, confrontantePorLado, res, situacaoUrl]);
+
   // rótulos de confrontante arrastáveis no mapa (posRotulo manual ou centróide dos lados)
   const rotulosConf: RotuloMapa[] = useMemo(() => {
     const out: RotuloMapa[] = [];
@@ -1249,32 +1265,42 @@ export default function EditorPage() {
 
         {/* 1) Importar e checar vizinhos */}
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: importa parcelas do SIGEF e cria confrontantes das que encostam" onClick={() => vizinhosRef.current?.click()}><Users /> Vizinhos cert.</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: importa parcelas do SIGEF e cria confrontantes das que encostam" onClick={() => vizinhosRef.current?.click()}><Users /> SIGEF</Button>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 2) Dados do projeto atual */}
-        <Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório"><BookUser /> Dados</Button></Link>
-        <Button size="sm" variant="outline" className="shrink-0" title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /> Consultar</Button>
+        <Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório"><BookUser /> DADOS</Button></Link>
+        <Button size="sm" variant="outline" className="shrink-0 px-2" title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /></Button>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
-        <Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className="shrink-0" title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> Pintar confront.</Button>
-        <Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className="shrink-0" title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> Pintar divisas</Button>
+        <Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className="shrink-0" title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> CONFRO</Button>
+        <Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className="shrink-0" title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> DIVISAS</Button>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 4) Ver planta */}
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PLANTA}`} title={vista === 'mapa' ? 'Abrir a prévia da planta' : 'Voltar ao mapa'} onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
-          {vista === 'mapa' ? <><Eye /> Planta</> : <><MapIcon /> Mapa</>}
+          {vista === 'mapa' ? <><Eye /> PLANTA</> : <><MapIcon /> MAPA</>}
         </Button>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 5) Peças */}
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> Memorial</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEMORIAL</Button>
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> Requerimento</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Gerar uma errata formal ao cartório (corrigir dados)" onClick={() => setErrataAberto(true)}><FileWarning /> Errata</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQUERIMENTO</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Gerar uma errata formal ao cartório (corrigir dados)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button>
       </header>
+
+      {/* Linha fina de progresso por etapa do fluxo (verde = feito, vermelho = pulado, cinza = pendente) */}
+      <div className="no-print flex gap-px border-b bg-border/30">
+        {fluxo.steps.map((s, i) => {
+          const st = fluxo.estados[i];
+          const cor = st === 'feito' ? 'bg-green-500' : st === 'falha' ? 'bg-red-500' : 'bg-muted';
+          const rotuloEstado = st === 'feito' ? 'feito' : st === 'falha' ? 'FALTOU (etapa pulada)' : 'pendente';
+          return <div key={i} className={`h-1 flex-1 ${cor}`} title={`${s.label}: ${rotuloEstado}`} />;
+        })}
+      </div>
 
       {/* Faixa de status + controles contextuais (abaixo do cabeçalho, sem quebrar linha no topo) */}
       <div className="no-print flex min-h-[28px] items-center gap-2 border-b px-3 py-1 text-xs">
