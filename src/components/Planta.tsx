@@ -1,6 +1,6 @@
 'use client';
 
-import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante } from '@/lib/topo/types';
+import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante, PlantaConfig } from '@/lib/topo/types';
 import { numBR, formatMatricula } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm } from '@/lib/topo/coords';
@@ -23,7 +23,11 @@ interface Props {
   situacaoUrl?: string;
   outrasGlebas?: { nome: string; pts: { leste: number; norte: number }[] }[];
   objetos?: ObjetoDesenho[];
+  config?: PlantaConfig;
 }
+
+const LAUDO_PADRAO = 'LAUDO TÉCNICO: Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.';
+const CONFRONT_PADRAO = 'Concordamos com as medidas apresentadas nesta planta e no memorial anexo, no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade (§10 do art. 213 da LRP).';
 
 // A3 paisagem @96dpi: 420x297mm
 const W = 1587;
@@ -57,10 +61,17 @@ function intervaloGrade(extent: number): number {
   return pot * 10;
 }
 
-export default function Planta({ vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado, zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], objetos = [] }: Props) {
+export default function Planta({ vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado, zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], objetos = [], config = {} }: Props) {
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
   }
+  // padrões: vazio = comportamento de sempre (plantas antigas idênticas)
+  const verGrade = config.mostrarGrade !== false;
+  const verNortes = config.mostrarNortes !== false;
+  const verConv = config.mostrarConvencoes !== false;
+  const verEscalaG = config.mostrarEscalaGrafica !== false;
+  const verSituacao = config.mostrarSituacao !== false;
+  const fonteRot = config.fonteRotulos ?? 8.5;
   const ef = valoresEfetivos(res, imovel);
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
 
@@ -80,7 +91,9 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
   const denomNatural = 1 / (escalaFit * 0.0002645);
   // escala da tabela cartográfica padrão (1:250, 500, 1000, 2000, 2500, 4000, 5000...)
   const TABELA = [250, 500, 750, 1000, 1500, 2000, 2500, 4000, 5000, 7500, 10000, 15000, 20000, 25000, 50000, 100000];
-  const escalaDenom = TABELA.find((d) => d >= denomNatural) ?? Math.ceil(denomNatural / 10000) * 10000;
+  const escalaDenom = (config.escalaManual && config.escalaManual > 0)
+    ? config.escalaManual
+    : (TABELA.find((d) => d >= denomNatural) ?? Math.ceil(denomNatural / 10000) * 10000);
   const escala = 1 / (escalaDenom * 0.0002645);
   const desW = (maxX - minX) * escala, desH = (maxY - minY) * escala;
   const offX = DRAW.x0 + (areaW - desW) / 2;
@@ -148,13 +161,13 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
       <rect x={8} y={8} width={W - 16} height={H - 16} fill="none" stroke="#000" strokeWidth={1.5} />
 
       {/* ---------- GRADE ---------- */}
-      {linhasX.map((x) => (
+      {verGrade && linhasX.map((x) => (
         <g key={`x${x}`}>
           <line x1={sx(x)} y1={DRAW.y0} x2={sx(x)} y2={DRAW.y1} stroke="#bbb" strokeWidth={0.4} strokeDasharray="4 4" />
           <text x={sx(x)} y={DRAW.y1 + 12} fontSize={9} textAnchor="middle" fill="#333">{`E ${x.toFixed(0)}`}</text>
         </g>
       ))}
-      {linhasY.map((y) => (
+      {verGrade && linhasY.map((y) => (
         <g key={`y${y}`}>
           <line x1={DRAW.x0} y1={sy(y)} x2={DRAW.x1} y2={sy(y)} stroke="#bbb" strokeWidth={0.4} strokeDasharray="4 4" />
           <text x={DRAW.x0 - 4} y={sy(y) + 3} fontSize={9} textAnchor="end" fill="#333" transform={`rotate(-90 ${DRAW.x0 - 4} ${sy(y)})`}>{`N ${y.toFixed(0)}`}</text>
@@ -229,7 +242,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
           <g key={i}>
             <line x1={r.x - 72} y1={r.y - 13} x2={r.x + 72} y2={r.y - 13} stroke="#000" strokeWidth={0.6} />
             {linhas.map((t, k) => (
-              <text key={k} x={r.x} y={r.y - 2 + k * 10} fontSize={8.5} textAnchor="middle" fill="#000">{t}</text>
+              <text key={k} x={r.x} y={r.y - 2 + k * (fonteRot + 1.5)} fontSize={fonteRot} textAnchor="middle" fill="#000">{t}</text>
             ))}
           </g>
         );
@@ -240,7 +253,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
         <g key={v.id}>
           <circle cx={sx(v.leste)} cy={sy(v.norte)} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6}
             fill={v.tipo === 'M' ? '#b45309' : v.tipo === 'V' ? '#7c3aed' : '#15803d'} stroke="#000" strokeWidth={0.5} />
-          <text x={sx(v.leste) + 5} y={sy(v.norte) - 4} fontSize={8} fill="#000">{v.codigoSigef || 'S/N'}</text>
+          <text x={sx(v.leste) + 5} y={sy(v.norte) - 4} fontSize={Math.max(6, fonteRot - 0.5)} fill="#000">{v.codigoSigef || 'S/N'}</text>
         </g>
       ))}
 
@@ -256,7 +269,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
       </g>
 
       {/* ---------- PLANTA DE SITUAÇÃO (recorte sobre satélite) ---------- */}
-      {situacaoUrl ? (
+      {situacaoUrl && verSituacao ? (
         <g>
           <image href={situacaoUrl} x={DRAW.x0 + 6} y={DRAW.y0 + 6} width={232} height={168} preserveAspectRatio="xMidYMid slice" />
           <rect x={DRAW.x0 + 6} y={DRAW.y0 + 6} width={232} height={168} fill="none" stroke="#000" strokeWidth={1} />
@@ -266,7 +279,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
       ) : null}
 
       {/* ---------- BARRA DE ESCALA GRÁFICA ---------- */}
-      {(() => {
+      {verEscalaG && (() => {
         const nices = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
         const barM = nices.find((n) => n * escala >= 120) ?? 5000;
         const barPx = barM * escala;
@@ -286,12 +299,15 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
       <Faixa
         imovel={imovel} res={res} ef={ef} tecnico={tecnico} zona={zona} hemisferio={hemisferio}
         vref={vref} conv={conv} decl={decl} represUsadas={represUsadas} ix={ix} fatorK={fatorK}
+        verConv={verConv} verNortes={verNortes}
       />
 
       {/* ---------- CARIMBO (coluna direita) ---------- */}
       <Carimbo
         imovel={imovel} ef={ef} tecnico={tecnico} escritorio={escritorio} glebaNome={glebaNome}
         confrontantes={confrontantes} escalaDenom={escalaDenominador} dataExtenso={dataExtenso}
+        titulo={config.titulo || 'Levantamento Planimétrico Georreferenciado'} folha={config.folha || 'Única'}
+        textoLaudo={config.textoLaudo || LAUDO_PADRAO} textoConfront={config.textoConfrontantes || CONFRONT_PADRAO}
       />
     </svg>
   );
@@ -301,8 +317,9 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
 function Faixa(props: {
   imovel: ImovelData; res: ResultadoCalculo; ef: ReturnType<typeof valoresEfetivos>; tecnico: TecnicoData;
   zona: number; hemisferio: 'N' | 'S'; vref: Vertex; conv: number; decl: number; represUsadas: string[]; ix: number; fatorK: number;
+  verConv: boolean; verNortes: boolean;
 }) {
-  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK } = props;
+  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes } = props;
   const y0 = H - STRIP - 4;
   const x0 = DRAW.x0, x1 = DRAW.x1;
   const w = x1 - x0;
@@ -341,8 +358,8 @@ function Faixa(props: {
       ))}
 
       {/* Convenções */}
-      <text x={c2 + 8} y={y0 + 16} fontSize={10} fontWeight="bold">CONVENÇÕES</text>
-      <g>
+      {verConv && <text x={c2 + 8} y={y0 + 16} fontSize={10} fontWeight="bold">CONVENÇÕES</text>}
+      {verConv && <g>
         <circle cx={c2 + 16} cy={y0 + 32} r={3.6} fill="#b45309" stroke="#000" strokeWidth={0.5} />
         <text x={c2 + 26} y={y0 + 35} fontSize={9}>Vértice tipo M</text>
         <circle cx={c2 + 16} cy={y0 + 48} r={2.6} fill="#15803d" stroke="#000" strokeWidth={0.5} />
@@ -355,12 +372,12 @@ function Faixa(props: {
             <text x={c2 + 26} y={y0 + 85 + i * 16} fontSize={9}>{REPRES_LABEL[r] || r}</text>
           </g>
         ))}
-      </g>
+      </g>}
 
       {/* Projeção + Nortes */}
       <text x={c3 + 8} y={y0 + 16} fontSize={9} fontWeight="bold">PROJEÇÃO UTM</text>
       <text x={c3 + 8} y={y0 + 30} fontSize={8}>Univ. Transversa de Mercator</text>
-      <Nortes cx={(c3 + x1) / 2} cy={y0 + STRIP - 55} conv={conv} decl={decl} />
+      {verNortes && <Nortes cx={(c3 + x1) / 2} cy={y0 + STRIP - 55} conv={conv} decl={decl} />}
     </g>
   );
 }
@@ -400,8 +417,9 @@ function Nortes({ cx, cy, conv, decl }: { cx: number; cy: number; conv: number; 
 function Carimbo(props: {
   imovel: ImovelData; ef: ReturnType<typeof valoresEfetivos>; tecnico: TecnicoData; escritorio: EscritorioData;
   glebaNome?: string; confrontantes: Confrontante[]; escalaDenom: number; dataExtenso?: string;
+  titulo: string; folha: string; textoLaudo: string; textoConfront: string;
 }) {
-  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso } = props;
+  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront } = props;
   const x0 = W - CARW;
   let y = 24;
   const linha = (label: string, valor: string) => {
@@ -415,8 +433,8 @@ function Carimbo(props: {
     return el;
   };
   const campos = [
-    ['Título:', 'Levantamento Planimétrico Georreferenciado'],
-    ['Folha:', 'Única'],
+    ['Título:', titulo],
+    ['Folha:', folha],
     ['PROPRIEDADE:', glebaNome || imovel.denominacao || '—'],
     ['PROPRIETÁRIO(S):', imovel.proprietario || '—'],
     ['MUNICÍPIO(S):', imovel.municipio || '—'],
@@ -448,13 +466,11 @@ function Carimbo(props: {
       <text x={(x0 + W) / 2} y={yAssin + 142} fontSize={8} textAnchor="middle" fill="#555">Assinatura do Responsável Técnico</text>
 
       {/* laudo técnico (resumido) */}
-      <TextoQuebrado x={x0 + 10} y={yAssin + 158} fontSize={7.5} larguraChars={66}
-        texto="LAUDO TÉCNICO: Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha." />
+      <TextoQuebrado x={x0 + 10} y={yAssin + 158} fontSize={7.5} larguraChars={66} texto={textoLaudo} />
 
       {/* declaração confrontantes (resumida) */}
       <text x={x0 + 10} y={yAssin + 196} fontSize={8.5} fontWeight="bold">CONFRONTANTES</text>
-      <TextoQuebrado x={x0 + 10} y={yAssin + 208} fontSize={7.5} larguraChars={66}
-        texto="Concordamos com as medidas apresentadas nesta planta e no memorial anexo, no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade (§10 do art. 213 da LRP)." />
+      <TextoQuebrado x={x0 + 10} y={yAssin + 208} fontSize={7.5} larguraChars={66} texto={textoConfront} />
 
       {/* carimbo do escritório */}
       <rect x={x0 + 8} y={H - 110} width={CARW - 16} height={94} fill="none" stroke="#000" strokeWidth={1} />

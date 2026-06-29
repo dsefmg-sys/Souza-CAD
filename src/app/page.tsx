@@ -20,7 +20,7 @@ import RequerimentoModal from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
 import AuthBar from '@/components/AuthBar';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
@@ -56,7 +56,7 @@ const IMOVEL_VAZIO: ImovelData = {
   naturezaServico: 'Particular', situacao: 'Imóvel Registrado', naturezaArea: 'Particular',
 };
 
-type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'conferencia' | 'projetos';
+type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'planta' | 'conferencia' | 'projetos';
 
 export default function EditorPage() {
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
@@ -98,6 +98,7 @@ export default function EditorPage() {
   const [trtAberto, setTrtAberto] = useState(false);
   const [requerente, setRequerente] = useState<PessoaQualificada | undefined>(undefined);
   const [transmitente, setTransmitente] = useState<PessoaQualificada | undefined>(undefined);
+  const [plantaConfig, setPlantaConfig] = useState<PlantaConfig>({});
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [sugProp, setSugProp] = useState<ProprietarioCad[]>([]);
   const [sugConf, setSugConf] = useState<ConfrontanteCad[]>([]);
@@ -569,7 +570,7 @@ export default function EditorPage() {
       } catch { registrou = false; }
       const p: Projeto = {
         id, nome: nomeProjeto || imovel.denominacao || 'Sem nome', criadoEm: Date.now(), atualizadoEm: Date.now(),
-        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente,
+        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, plantaConfig,
       };
       await salvarProjeto(p);
       setProjetoId(id);
@@ -601,6 +602,7 @@ export default function EditorPage() {
     setProjetoId(p.id); setNomeProjeto(p.nome); setImovel(p.imovel);
     setZona(p.zonaUtm); setHemisferio(p.hemisferio);
     setRequerente(p.requerente); setTransmitente(p.transmitente);
+    setPlantaConfig(p.plantaConfig ?? {});
     setGlebas(p.glebas);
     carregarGleba(p.glebas[0]);
     aviso(`Projeto carregado (${p.glebas.length} gleba(s)).`);
@@ -727,7 +729,7 @@ export default function EditorPage() {
                 <div className="mx-auto max-w-[1587px] bg-white shadow">
                   <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                     confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
-                    glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos}
+                    glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
                     outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))} />
                 </div>
               )}
@@ -758,10 +760,10 @@ export default function EditorPage() {
 
           {/* abas */}
           <div className="flex border-b text-xs">
-            {(['imovel', 'vertices', 'confrontantes', 'conferencia', 'projetos'] as Aba[]).map((a) => (
+            {(['imovel', 'vertices', 'confrontantes', 'planta', 'conferencia', 'projetos'] as Aba[]).map((a) => (
               <button key={a} onClick={() => setAba(a)}
                 className={`flex-1 px-1 py-2 ${aba === a ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground'}`}>
-                {a === 'imovel' ? 'Imóvel' : a === 'vertices' ? 'Vértices' : a === 'confrontantes' ? 'Confront.' : a === 'conferencia' ? 'Conferir' : 'Projetos'}
+                {a === 'imovel' ? 'Imóvel' : a === 'vertices' ? 'Vértices' : a === 'confrontantes' ? 'Confront.' : a === 'planta' ? 'Planta' : a === 'conferencia' ? 'Conferir' : 'Projetos'}
               </button>
             ))}
           </div>
@@ -814,6 +816,9 @@ export default function EditorPage() {
             )}
             {aba === 'confrontantes' && (
               <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} onDetectar={detectarConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} />
+            )}
+            {aba === 'planta' && (
+              <PainelPlanta config={plantaConfig} onChange={setPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} onVerPlanta={() => setVista('planta')} />
             )}
             {aba === 'conferencia' && (
               <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} onChange={setImovel} />
@@ -1045,6 +1050,61 @@ function PainelConfrontantes({ confrontantes, onChange, onDetectar, mapa, lados,
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta }: {
+  config: PlantaConfig; onChange: (c: PlantaConfig) => void; temSituacao: boolean; temLogo: boolean; onVerPlanta: () => void;
+}) {
+  const set = (patch: Partial<PlantaConfig>) => onChange({ ...config, ...patch });
+  type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao';
+  const chk = (label: string, key: BoolKey) => (
+    <label className="flex items-center gap-2 text-xs">
+      <input type="checkbox" checked={config[key] !== false} onChange={(e) => set({ [key]: e.target.checked } as Partial<PlantaConfig>)} />
+      {label}
+    </label>
+  );
+  return (
+    <div className="space-y-3">
+      <Button size="sm" variant="outline" className="w-full" onClick={onVerPlanta}><Printer /> Ver / atualizar planta</Button>
+      <p className="text-[10px] text-muted-foreground">Tudo aqui é opcional: em branco usa o padrão. O layout A3 e o carimbo continuam padronizados.</p>
+      <Campo label="Título" value={config.titulo ?? ''} onChange={(v) => set({ titulo: v })} placeholder="Levantamento Planimétrico Georreferenciado" />
+      <div className="grid grid-cols-2 gap-2">
+        <Campo label="Folha" value={config.folha ?? ''} onChange={(v) => set({ folha: v })} placeholder="Única" />
+        <div className="space-y-1">
+          <Label>Escala (1 : …)</Label>
+          <Input type="number" placeholder="automática" value={config.escalaManual ? String(config.escalaManual) : ''}
+            onChange={(e) => set({ escalaManual: e.target.value ? Number(e.target.value) : undefined })} />
+        </div>
+      </div>
+      <div className="space-y-1">
+        <Label>Tamanho da fonte dos rótulos</Label>
+        <Input type="number" step="0.5" placeholder="8.5" value={config.fonteRotulos ? String(config.fonteRotulos) : ''}
+          onChange={(e) => set({ fonteRotulos: e.target.value ? Number(e.target.value) : undefined })} />
+      </div>
+      <div className="space-y-1 rounded border p-2">
+        <div className="text-[10px] uppercase text-muted-foreground">Mostrar na planta</div>
+        {chk('Grade de coordenadas', 'mostrarGrade')}
+        {chk('Nortes (rosa dos ventos)', 'mostrarNortes')}
+        {chk('Convenções (legenda)', 'mostrarConvencoes')}
+        {chk('Escala gráfica', 'mostrarEscalaGrafica')}
+        {chk('Planta de situação', 'mostrarSituacao')}
+      </div>
+      <div className="space-y-1">
+        <Label>Laudo técnico (carimbo)</Label>
+        <textarea className="min-h-[84px] w-full rounded border border-input bg-background p-2 text-xs" placeholder="(texto padrão)"
+          value={config.textoLaudo ?? ''} onChange={(e) => set({ textoLaudo: e.target.value })} />
+      </div>
+      <div className="space-y-1">
+        <Label>Declaração dos confrontantes (carimbo)</Label>
+        <textarea className="min-h-[84px] w-full rounded border border-input bg-background p-2 text-xs" placeholder="(texto padrão)"
+          value={config.textoConfrontantes ?? ''} onChange={(e) => set({ textoConfrontantes: e.target.value })} />
+      </div>
+      <div className="space-y-1 rounded border bg-muted/40 p-2 text-[11px] text-muted-foreground">
+        <div>{temLogo ? 'Logotipo carregado (aparece no carimbo).' : 'Sem logotipo — suba a imagem em Config para preencher o carimbo.'}</div>
+        <div>{temSituacao ? 'Planta de situação pronta.' : 'Situação não gerada — use "Gerar situação" na visão da planta.'}</div>
+      </div>
     </div>
   );
 }

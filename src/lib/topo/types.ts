@@ -211,6 +211,25 @@ export interface ImovelData {
   variacaoAnual?: number;       // minutos/ano
 }
 
+/**
+ * Configuração editável da planta (por projeto). Tudo é opcional: vazio = usa o padrão, então
+ * plantas antigas continuam idênticas. Permite ao usuário editar textos, escala, tipografia e
+ * ligar/desligar blocos sem quebrar o layout A3 padronizado que os órgãos exigem.
+ */
+export interface PlantaConfig {
+  titulo?: string;             // padrão "Levantamento Planimétrico Georreferenciado"
+  folha?: string;              // padrão "Única"
+  escalaManual?: number;       // denominador fixo (ex.: 2000); 0/ausente = automática
+  mostrarGrade?: boolean;      // padrão true
+  mostrarNortes?: boolean;     // padrão true
+  mostrarConvencoes?: boolean; // padrão true
+  mostrarEscalaGrafica?: boolean; // padrão true
+  mostrarSituacao?: boolean;   // padrão true (quando há imagem de situação)
+  fonteRotulos?: number;       // tamanho da fonte dos rótulos (vértices/confrontantes), padrão 8.5
+  textoLaudo?: string;         // texto do laudo técnico (carimbo)
+  textoConfrontantes?: string; // declaração dos confrontantes (carimbo)
+}
+
 /** Dados fixos do escritório (carimbo da planta). */
 export interface EscritorioData {
   nome: string;        // "SOUZA GESTÃO FUNDIÁRIA"
@@ -270,6 +289,8 @@ export interface Projeto {
   // Requerimento cartorial (opcional)
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
+  // Configuração editável da planta (opcional)
+  plantaConfig?: PlantaConfig;
   // Campos legados (projetos salvos antes do multi-gleba) — migrados ao abrir.
   vertices?: Vertex[];
   confrontantes?: Confrontante[];
