@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import 'leaflet/dist/leaflet.css';
+import AuthGate from '@/components/AuthGate';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className={inter.variable}>
-      <body>{children}</body>
+      <body><AuthGate>{children}</AuthGate></body>
     </html>
   );
 }

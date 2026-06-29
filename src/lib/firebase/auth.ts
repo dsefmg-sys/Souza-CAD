@@ -29,6 +29,26 @@ export async function sair(): Promise<void> {
   if (a) await fbSignOut(a);
 }
 
+/** Traduz os erros mais comuns do Firebase Auth em dicas acionáveis. */
+export function traduzErroAuth(msg: string): string {
+  const m = (msg || '').toLowerCase();
+  if (m.includes('operation-not-allowed') || m.includes('configuration-not-found') || m.includes('identitytoolkit'))
+    return 'Login ainda não ativado no Firebase. No console: Authentication → Sign-in method → ative E-mail/senha e Google.';
+  if (m.includes('unauthorized-domain'))
+    return 'Este endereço não está autorizado. No console: Authentication → Settings → Authorized domains, adicione o domínio.';
+  if (m.includes('popup-blocked') || m.includes('popup-closed'))
+    return 'O navegador bloqueou a janela do Google. Libere os pop-ups e tente de novo.';
+  if (m.includes('invalid-credential') || m.includes('wrong-password') || m.includes('user-not-found'))
+    return 'E-mail ou senha incorretos.';
+  if (m.includes('email-already-in-use'))
+    return 'Esse e-mail já tem conta. Use "Entrar".';
+  if (m.includes('weak-password'))
+    return 'A senha precisa ter ao menos 6 caracteres.';
+  if (m.includes('invalid-email'))
+    return 'E-mail inválido.';
+  return msg.replace('Firebase: ', '');
+}
+
 /** Hook do usuário atual. `carregando` enquanto o Firebase resolve a sessão inicial. */
 export function useAuth(): { user: User | null; carregando: boolean; disponivel: boolean } {
   const [user, setUser] = useState<User | null>(null);

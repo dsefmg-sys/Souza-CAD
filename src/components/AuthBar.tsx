@@ -6,27 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth, entrarGoogle, entrarEmail, cadastrarEmail, sair } from '@/lib/firebase/auth';
-
-/** Traduz os erros mais comuns do Firebase Auth em dicas acionáveis. */
-function traduzErroAuth(msg: string): string {
-  const m = (msg || '').toLowerCase();
-  if (m.includes('operation-not-allowed') || m.includes('configuration-not-found') || m.includes('identitytoolkit'))
-    return 'Login ainda não ativado no Firebase. No console: Authentication → Sign-in method → ative E-mail/senha e Google.';
-  if (m.includes('unauthorized-domain'))
-    return 'Este endereço não está autorizado. No console: Authentication → Settings → Authorized domains, adicione o domínio.';
-  if (m.includes('popup-blocked') || m.includes('popup-closed'))
-    return 'O navegador bloqueou a janela do Google. Libere os pop-ups e tente de novo.';
-  if (m.includes('invalid-credential') || m.includes('wrong-password') || m.includes('user-not-found'))
-    return 'E-mail ou senha incorretos.';
-  if (m.includes('email-already-in-use'))
-    return 'Esse e-mail já tem conta. Use "Entrar".';
-  if (m.includes('weak-password'))
-    return 'A senha precisa ter ao menos 6 caracteres.';
-  if (m.includes('invalid-email'))
-    return 'E-mail inválido.';
-  return msg.replace('Firebase: ', '');
-}
+import { useAuth, entrarGoogle, entrarEmail, cadastrarEmail, sair, traduzErroAuth } from '@/lib/firebase/auth';
 
 export default function AuthBar({ onMudou }: { onMudou?: () => void }) {
   const { user, carregando, disponivel } = useAuth();
