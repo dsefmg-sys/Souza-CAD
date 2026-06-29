@@ -365,6 +365,10 @@ export default function EditorPage() {
       const vs0 = montarVertices(perim, z, hemisferio, { credenciamentoIncra: tec.credenciamentoIncra, contadorMarco: cont.M, contadorPonto: cont.P });
       // praxe: começa no vértice mais ao norte e segue no sentido horário; renumera nessa ordem
       const vs = recodificar(iniciarDoNorteHorario(vs0), tec.credenciamentoIncra, cont.M, cont.P);
+      // defesa: não importar coordenadas que viraram inválidas (NaN/fora de faixa) — protege a peça
+      if (vs.some((v) => !Number.isFinite(v.lat) || !Number.isFinite(v.lon) || Math.abs(v.lat) > 90 || Math.abs(v.lon) > 180)) {
+        aviso('Coordenadas inválidas após a conversão — confira o fuso/hemisfério e o arquivo.'); return;
+      }
       const { confrontantes: cs, confrontantePorLado: mapa } = montarConfrontantes(vs);
       
       const gs: Gleba[] = [];
@@ -1723,7 +1727,12 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
               <div className="space-y-1">
                 <Label>Condição</Label>
                 <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                  value={c.condicao ?? 'proprietario'} onChange={(e) => set(c.id, 'condicao', e.target.value)}>
+                  value={c.condicao ?? 'proprietario'} onChange={(e) => {
+                    const cond = e.target.value as Confrontante['condicao'];
+                    // limpa campos incompatíveis ao trocar a condição (evita dados órfãos na peça)
+                    const limpa = cond === 'espolio' ? { conjugeNome: '', conjugeCpf: '' } : { inventarianteNome: '', inventarianteCpf: '' };
+                    onChange(confrontantes.map((x) => (x.id === c.id ? { ...x, condicao: cond, ...limpa } : x)));
+                  }}>
                   <option value="proprietario">Proprietário</option>
                   <option value="posseiro">Posseiro (sem matrícula)</option>
                   <option value="espolio">Espólio (assina inventariante)</option>
