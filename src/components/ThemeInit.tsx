@@ -10,8 +10,9 @@ export default function ThemeInit() {
   useEffect(() => {
     try {
       const t = localStorage.getItem('metrica.tema');
-      document.documentElement.classList.toggle('dark', t === 'escuro');
-    } catch { /* ignore */ }
+      // padrão é ESCURO: só fica claro se o usuário escolheu explicitamente "claro"
+      document.documentElement.classList.toggle('dark', t !== 'claro');
+    } catch { document.documentElement.classList.add('dark'); }
   }, []);
   return null;
 }
