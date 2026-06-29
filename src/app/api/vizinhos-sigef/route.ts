@@ -1,23 +1,18 @@
 import { NextResponse } from 'next/server';
 import { parseGmlParcelas } from '@/lib/io/sigefVizinhos';
+import { INCRA_TEMAS_VALIDOS } from '@/lib/io/incraTemas';
 
-// Proxy de servidor para o WFS de parcelas certificadas do INCRA (Acervo Fundiário).
+// Proxy de servidor para o WFS do Acervo Fundiário do INCRA.
 // O navegador não pode chamar o INCRA direto (sem CORS); o servidor faz a ponte.
 // Busca SOMENTE por bounding box (área ao redor do imóvel) para não sobrecarregar o serviço.
-
-const TEMAS: Record<string, string> = {
-  mg: 'certificada_sigef_particular_mg',
-  es: 'certificada_sigef_particular_es',
-};
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const uf = (searchParams.get('uf') || 'mg').toLowerCase();
+  const tema = (searchParams.get('tema') || '').toLowerCase();
   const bbox = searchParams.get('bbox'); // minLon,minLat,maxLon,maxLat (EPSG:4326)
-  const tema = TEMAS[uf];
-  if (!tema || !bbox) return NextResponse.json({ erro: 'Parâmetros inválidos (uf/bbox).' }, { status: 400 });
+  if (!INCRA_TEMAS_VALIDOS.has(tema) || !bbox) return NextResponse.json({ erro: 'Parâmetros inválidos (tema/bbox).' }, { status: 400 });
 
   const partes = bbox.split(',').map(Number);
   if (partes.length !== 4 || !partes.every(Number.isFinite)) {

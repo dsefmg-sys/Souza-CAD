@@ -100,7 +100,7 @@ export default function ImportTxtConfigModal({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="w-[95vw] max-w-[1040px]">
         <DialogHeader>
           <DialogTitle>Configurar importação de TXT</DialogTitle>
         </DialogHeader>
@@ -145,32 +145,29 @@ export default function ImportTxtConfigModal({ open, onOpenChange }: Props) {
         </div>
 
         {amostra.length > 0 ? (
-          <div className="overflow-auto rounded border">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-muted/50">
-                  {cfg.colunas.map((c, i) => (
-                    <th key={i} className="border-b p-1 text-left align-top">
-                      <div className="mb-1 text-[10px] text-muted-foreground">Coluna {i + 1}</div>
-                      <select className="w-full rounded border bg-background px-1 py-1 text-xs"
+          <>
+            <p className="text-xs text-muted-foreground">Diga o papel de cada coluna. Os valores de exemplo aparecem abaixo de cada uma.</p>
+            <div className="grid max-h-[55vh] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
+              {cfg.colunas.map((c, i) => {
+                const valores = amostra.filter((_, r) => !(cfg.temCabecalho && r === 0)).map((l) => l[i]).filter((v) => v != null && v !== '').slice(0, 3);
+                const usado = c !== 'ignorar';
+                return (
+                  <div key={i} className={`rounded-md border p-2 ${usado ? 'bg-card' : 'bg-muted/30'}`}>
+                    <div className="mb-1 flex items-center gap-2">
+                      <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-bold text-secondary-foreground">COL {i + 1}</span>
+                      <select className="h-7 min-w-0 flex-1 rounded border border-input bg-background px-1.5 text-xs"
                         value={c} onChange={(e) => setColuna(i, e.target.value as CampoTxt)}>
                         {CAMPOS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
                       </select>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {amostra.map((linha, r) => (
-                  <tr key={r} className={cfg.temCabecalho && r === 0 ? 'text-muted-foreground line-through' : ''}>
-                    {cfg.colunas.map((_, i) => (
-                      <td key={i} className="border-b px-1 py-0.5 font-mono">{linha[i] ?? ''}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                    <div className="truncate font-mono text-[10px] text-muted-foreground" title={valores.join('  ·  ')}>
+                      {valores.length ? valores.join('  ·  ') : '—'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         ) : (
           <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
             Nenhum exemplo carregado ainda. Envie um TXT para ver as colunas.

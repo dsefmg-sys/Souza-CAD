@@ -39,6 +39,7 @@ import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
 import { parseParcelasSigef, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas } from '@/lib/io/sigefVizinhos';
+import { ufsNoBbox, temaIncra, TEMAS_CONFRONTANTE, INCRA_UFS } from '@/lib/io/incraTemas';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
 import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
@@ -1212,15 +1213,22 @@ export default function EditorPage() {
     aviso('Buscando imóveis vizinhos certificados no INCRA…');
     try {
       const lats = vertices.map((v) => v.lat), lons = vertices.map((v) => v.lon);
-      const m = 0.01; // ~1 km de folga ao redor do imóvel
-      const bbox = `${Math.min(...lons) - m},${Math.min(...lats) - m},${Math.max(...lons) + m},${Math.max(...lats) + m}`;
+      const mrg = 0.01; // ~1 km de folga ao redor do imóvel
+      const minLon = Math.min(...lons) - mrg, minLat = Math.min(...lats) - mrg;
+      const maxLon = Math.max(...lons) + mrg, maxLat = Math.max(...lats) + mrg;
+      const bbox = `${minLon},${minLat},${maxLon},${maxLat}`;
+      // só consulta as UFs (MG/ES/RJ) cujo retângulo cobre a região, e os temas certificados
+      const ufs = ufsNoBbox(minLon, minLat, maxLon, maxLat);
+      const ufsAlvo = ufs.length ? ufs : INCRA_UFS.slice();
       const todas: import('@/lib/io/sigefVizinhos').ParcelaSigef[] = [];
-      for (const uf of ['mg', 'es']) {
-        try {
-          const r = await fetch(`/api/vizinhos-sigef?uf=${uf}&bbox=${encodeURIComponent(bbox)}`);
-          const j = await r.json();
-          if (Array.isArray(j.parcelas)) todas.push(...j.parcelas);
-        } catch { /* tenta a próxima UF */ }
+      for (const uf of ufsAlvo) {
+        for (const base of TEMAS_CONFRONTANTE) {
+          try {
+            const r = await fetch(`/api/vizinhos-sigef?tema=${temaIncra(base, uf)}&bbox=${encodeURIComponent(bbox)}`);
+            const j = await r.json();
+            if (Array.isArray(j.parcelas)) todas.push(...j.parcelas);
+          } catch { /* tenta o próximo tema/UF */ }
+        }
       }
       if (!todas.length) { aviso('Nenhuma parcela certificada na região (ou INCRA indisponível). Tente o import manual.'); return; }
       const meuAnel = vertices.map((v) => ({ lat: v.lat, lon: v.lon }));
