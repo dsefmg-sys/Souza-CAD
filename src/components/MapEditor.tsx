@@ -103,9 +103,10 @@ const iconeRotulo = (r: RotuloMapa) => {
 // Não captura clique (pointer-events:none) para não atrapalhar a edição embaixo dele.
 const iconeCentro = (linhas: string[]) => {
   const corpo = linhas.map((l, i) => `<div style="font-weight:${i === 0 ? 700 : 600};font-size:${i === 0 ? 13 : 11}px">${(l || '').replace(/</g, '&lt;')}</div>`).join('');
+  // caixa branca sólida e centrada no ponto (legível sobre o satélite); não captura clique
   return L.divIcon({
     className: 'gleba-centro',
-    html: `<div style="pointer-events:none;color:#1c1917;text-align:center;line-height:1.3;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap">${corpo}</div>`,
+    html: `<div style="transform:translate(-50%,-50%);display:inline-block;pointer-events:none;color:#000;background:#fff;border:1.5px solid #222;border-radius:5px;padding:3px 9px;text-align:center;line-height:1.3;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.5)">${corpo}</div>`,
     iconSize: [1, 1], iconAnchor: [0, 0],
   });
 };
