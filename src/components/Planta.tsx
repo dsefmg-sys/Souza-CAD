@@ -284,17 +284,19 @@ export default function Planta({
       {/* superfície de captura para edição (transparente; não aparece no PDF) */}
       {editavel && <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="transparent" style={{ pointerEvents: 'all' }} />}
 
-      {/* ---------- GRADE ---------- */}
+      {/* ---------- GRADE (linhas com visibilidade intermediária; números nos 4 lados) ---------- */}
       {verGrade && linhasX.map((x) => (
         <g key={`x${x}`}>
-          <line x1={sx(x)} y1={DRAW.y0} x2={sx(x)} y2={DRAW.y1} stroke="#bbb" strokeWidth={0.4} strokeDasharray="4 4" />
-          <text x={sx(x)} y={DRAW.y1 + 12} fontSize={fs(9)} textAnchor="middle" fill="#333">{`E ${numBR(x, 4)} m`}</text>
+          <line x1={sx(x)} y1={DRAW.y0} x2={sx(x)} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.55} strokeDasharray="5 4" />
+          <text x={sx(x)} y={DRAW.y0 - 4} fontSize={fs(9)} textAnchor="middle" fill="#1f2937">{`E ${numBR(x, 4)} m`}</text>
+          <text x={sx(x)} y={DRAW.y1 + 12} fontSize={fs(9)} textAnchor="middle" fill="#1f2937">{`E ${numBR(x, 4)} m`}</text>
         </g>
       ))}
       {verGrade && linhasY.map((y) => (
         <g key={`y${y}`}>
-          <line x1={DRAW.x0} y1={sy(y)} x2={DRAW.x1} y2={sy(y)} stroke="#bbb" strokeWidth={0.4} strokeDasharray="4 4" />
-          <text x={DRAW.x0 - 4} y={sy(y) + 3} fontSize={fs(9)} textAnchor="end" fill="#333" transform={`rotate(-90 ${DRAW.x0 - 4} ${sy(y)})`}>{`N ${numBR(y, 4)} m`}</text>
+          <line x1={DRAW.x0} y1={sy(y)} x2={DRAW.x1} y2={sy(y)} stroke="#8a94a6" strokeWidth={0.55} strokeDasharray="5 4" />
+          <text x={DRAW.x0 - 4} y={sy(y) + 3} fontSize={fs(9)} textAnchor="end" fill="#1f2937" transform={`rotate(-90 ${DRAW.x0 - 4} ${sy(y)})`}>{`N ${numBR(y, 4)} m`}</text>
+          <text x={DRAW.x1 + 4} y={sy(y) + 3} fontSize={fs(9)} textAnchor="start" fill="#1f2937" transform={`rotate(-90 ${DRAW.x1 + 4} ${sy(y)})`}>{`N ${numBR(y, 4)} m`}</text>
         </g>
       ))}
 
@@ -630,15 +632,19 @@ function CarimboA3(props: {
 
   const gap = Math.min(27, Math.floor(255 / (campos.length - 1)));
 
-  // Estrutura de Assinatura
-  const renderAssinatura = (yLine: number, label: string, nome: string, detalhe1?: string, detalhe2?: string, detalhe3?: string) => (
+  // Caixas de assinatura lado a lado (cada uma com seu centro e seus limites de linha)
+  const bcx1 = lx + 107.5, bxa1 = lx + 12, bxb1 = lx + 203; // proprietário (esquerda)
+  const bcx2 = lx + 334.5, bxa2 = lx + 239, bxb2 = lx + 430; // responsável técnico (direita)
+
+  // Assinatura: linha + papel + nome + detalhes, tudo CENTRADO na própria caixa (xa..xb).
+  const renderAssinatura = (cxBox: number, xa: number, xb: number, yLine: number, label: string, nome: string, detalhe1?: string, detalhe2?: string, detalhe3?: string) => (
     <g>
-      <line x1={lx + 10} y1={yLine} x2={rx - 10} y2={yLine} stroke="#000" strokeWidth={0.6} />
-      <text x={cxc} y={yLine - 4} fontSize={fs(7)} fill="#666" textAnchor="middle">{label}</text>
-      <text x={cxc} y={yLine + 13} fontSize={fs(8.5)} fontWeight="bold" fill="#000" textAnchor="middle">{nome}</text>
-      {detalhe1 && <text x={cxc} y={yLine + 24} fontSize={fs(7.5)} fill="#222" textAnchor="middle">{detalhe1}</text>}
-      {detalhe2 && <text x={cxc} y={yLine + 35} fontSize={fs(7.5)} fill="#222" textAnchor="middle">{detalhe2}</text>}
-      {detalhe3 && <text x={cxc} y={yLine + 46} fontSize={fs(7.5)} fill="#222" textAnchor="middle">{detalhe3}</text>}
+      <line x1={xa} y1={yLine} x2={xb} y2={yLine} stroke="#000" strokeWidth={0.6} />
+      <text x={cxBox} y={yLine - 4} fontSize={fs(7.5)} fill="#555" textAnchor="middle">{label}</text>
+      <text x={cxBox} y={yLine + 14} fontSize={fs(9)} fontWeight="bold" fill="#000" textAnchor="middle">{nome}</text>
+      {detalhe1 && <text x={cxBox} y={yLine + 26} fontSize={fs(7.5)} fill="#222" textAnchor="middle">{detalhe1}</text>}
+      {detalhe2 && <text x={cxBox} y={yLine + 37} fontSize={fs(7.5)} fill="#222" textAnchor="middle">{detalhe2}</text>}
+      {detalhe3 && <text x={cxBox} y={yLine + 48} fontSize={fs(7.5)} fill="#222" textAnchor="middle">{detalhe3}</text>}
     </g>
   );
 
@@ -676,37 +682,34 @@ function CarimboA3(props: {
         })}
       </g>
 
-      {/* --- BOXES 4 & 5: ASSINATURAS DO PROPRIETÁRIO E DO RESPONSÁVEL TÉCNICO (Lado a Lado!) --- */}
-      {/* Assinatura Proprietário */}
+      {/* --- BOXES 4 & 5: ASSINATURAS DO PROPRIETÁRIO E DO RESPONSÁVEL TÉCNICO (lado a lado) --- */}
+      {/* Assinatura Proprietário (esquerda) */}
       <g>
         <rect x={lx} y={428} width={215} height={240} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={lx + 107.5} y={444} fontSize={fs(7)} fontWeight="bold" textAnchor="middle" fill="#4b5563">Assinatura do Proprietário</text>
-        <text x={lx + 107.5} y={466} fontSize={fs(8)} fontWeight="bold" textAnchor="middle">PROPRIETÁRIO(S)</text>
-        <TextoQuebrado x={lx + 10} y={478} fontSize={fs(6.5)} larguraChars={34} textAnchor="middle" texto={
-          `Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta e no memorial anexo. Declaramos, sob as penas da lei que indicamos em campo, de forma expressa, as divisas, limites e confrontações consideradas verdadeiras.`
+        <text x={bcx1} y={444} fontSize={fs(7.5)} fontWeight="bold" textAnchor="middle" fill="#4b5563">Assinatura do Proprietário</text>
+        <text x={bcx1} y={464} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">PROPRIETÁRIO(S)</text>
+        <TextoQuebrado x={bcx1} y={478} fontSize={fs(6.5)} larguraChars={36} textAnchor="middle" texto={
+          `Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta e no memorial anexo. Declaramos que indicamos em campo, de forma expressa, as divisas, limites e confrontações consideradas verdadeiras.`
         } />
-        
-        {/* Assinaturas dinâmicas dependendo se há comprador */}
+
         {imovel.comprador ? (
           <g>
-            {renderAssinatura(545, 'Assinatura do Transmitente', imovel.proprietario, `CPF: ${imovel.cpfProprietario}`, transmitente?.rg ? `RG: ${transmitente.rg}` : undefined)}
-            {renderAssinatura(615, 'Assinatura do Comprador', imovel.comprador, `CPF: ${imovel.cpfComprador || '—'}`, requerente?.rg ? `RG: ${requerente.rg}` : undefined)}
+            {renderAssinatura(bcx1, bxa1, bxb1, 548, 'Assinatura do Transmitente', imovel.proprietario, `CPF: ${imovel.cpfProprietario}`, transmitente?.rg ? `RG: ${transmitente.rg}` : undefined)}
+            {renderAssinatura(bcx1, bxa1, bxb1, 608, 'Assinatura do Comprador', imovel.comprador, `CPF: ${imovel.cpfComprador || '—'}`, requerente?.rg ? `RG: ${requerente.rg}` : undefined)}
           </g>
         ) : (
-          <g>
-            {renderAssinatura(610, 'Assinatura do Proprietário', imovel.proprietario, `CPF: ${imovel.cpfProprietario}`, transmitente?.rg ? `RG: ${transmitente.rg}` : undefined)}
-          </g>
+          renderAssinatura(bcx1, bxa1, bxb1, 612, 'Assinatura do Proprietário', imovel.proprietario, `CPF: ${imovel.cpfProprietario}`, transmitente?.rg ? `RG: ${transmitente.rg}` : undefined)
         )}
       </g>
 
-      {/* Assinatura Responsável Técnico */}
+      {/* Assinatura Responsável Técnico (direita) */}
       <g>
         <rect x={lx + 227} y={428} width={215} height={240} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={lx + 334.5} y={444} fontSize={fs(7)} fontWeight="bold" textAnchor="middle" fill="#4b5563">Assinatura do Responsável Técnico</text>
-        <text x={lx + 334.5} y={466} fontSize={fs(8)} fontWeight="bold" textAnchor="middle">LAUDO TÉCNICO</text>
-        <TextoQuebrado x={lx + 237} y={478} fontSize={fs(6.5)} larguraChars={34} textAnchor="middle" texto={textoLaudo} />
-        
-        {renderAssinatura(615, 'Assinatura do Responsável Técnico', tecnico.nome, tecnico.formacao, `CFT: ${tecnico.cft}`, `INCRA: ${tecnico.credenciamentoIncra}`)}
+        <text x={bcx2} y={444} fontSize={fs(7.5)} fontWeight="bold" textAnchor="middle" fill="#4b5563">Assinatura do Responsável Técnico</text>
+        <text x={bcx2} y={464} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">LAUDO TÉCNICO</text>
+        <TextoQuebrado x={bcx2} y={478} fontSize={fs(6.5)} larguraChars={36} textAnchor="middle" texto={textoLaudo} />
+
+        {renderAssinatura(bcx2, bxa2, bxb2, 612, 'Assinatura do Responsável Técnico', tecnico.nome, tecnico.formacao, `CFT: ${tecnico.cft}`, `INCRA: ${tecnico.credenciamentoIncra}`)}
       </g>
 
       {/* --- BOX 6: DECLARAÇÃO DOS CONFRONTANTES --- */}
