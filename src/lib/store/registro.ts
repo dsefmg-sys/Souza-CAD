@@ -1,8 +1,24 @@
 import type { Vertex, Contadores, PontoRegistro, TecnicoData } from '../topo/types';
 import { db } from './db';
 import { semente, atribuirDefinitivo } from '../topo/registroCore';
+import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
+import { doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
 
 export async function lerContadores(prefixo: string, tec: TecnicoData): Promise<Contadores> {
+  const uid = auth()?.currentUser?.uid ?? null;
+  if (firebaseConfigurado && uid) {
+    try {
+      const snap = await getDoc(doc(fdb()!, 'credenciados', prefixo));
+      if (snap.exists()) {
+        const c = snap.data() as Contadores;
+        const d = await db();
+        await d.put('contadores', c);
+        return c;
+      }
+    } catch (e) {
+      console.warn('Erro ao ler contadores do Firestore:', e);
+    }
+  }
   const d = await db();
   const c = await d.get('contadores', prefixo);
   return c ?? semente(prefixo, tec);
@@ -21,6 +37,40 @@ export async function registrarPontos(
   hemisferio: 'N' | 'S',
   tec: TecnicoData
 ): Promise<{ vertices: Vertex[]; pontos: PontoRegistro[] }> {
+  const uid = auth()?.currentUser?.uid ?? null;
+  if (firebaseConfigurado && uid) {
+    try {
+      const result = await runTransaction(fdb()!, async (transaction) => {
+        const counterDocRef = doc(fdb()!, 'credenciados', prefixo);
+        const counterSnap = await transaction.get(counterDocRef);
+        const atual = counterSnap.exists()
+          ? (counterSnap.data() as Contadores)
+          : semente(prefixo, tec);
+
+        const r = atribuirDefinitivo(vertices, atual, imovelId, zonaUtm, hemisferio, Date.now());
+
+        transaction.set(counterDocRef, r.contadores);
+
+        for (const p of r.pontos) {
+          const pointDocRef = doc(fdb()!, 'credenciados', prefixo, 'pontos', p.codigo);
+          transaction.set(pointDocRef, p);
+        }
+
+        return r;
+      });
+
+      const d = await db();
+      const tx = d.transaction(['contadores', 'pontos'], 'readwrite');
+      await tx.objectStore('contadores').put(result.contadores);
+      for (const p of result.pontos) await tx.objectStore('pontos').put(p);
+      await tx.done;
+
+      return { vertices: result.vertices, pontos: result.pontos };
+    } catch (e) {
+      console.warn('Erro ao registrar pontos via transação do Firestore:', e);
+    }
+  }
+
   const d = await db();
   const tx = d.transaction(['contadores', 'pontos'], 'readwrite');
   const atual = (await tx.objectStore('contadores').get(prefixo)) ?? semente(prefixo, tec);
@@ -48,6 +98,14 @@ export async function totalPontosRegistrados(): Promise<number> {
 
 /** Ajuste manual dos contadores (Configurações), respeitando o que já foi usado. */
 export async function definirContadores(c: Contadores): Promise<void> {
+  const uid = auth()?.currentUser?.uid ?? null;
+  if (firebaseConfigurado && uid) {
+    try {
+      await setDoc(doc(fdb()!, 'credenciados', c.prefixo), c);
+    } catch (e) {
+      console.warn('Erro ao definir contadores no Firestore:', e);
+    }
+  }
   const d = await db();
   await d.put('contadores', c);
 }

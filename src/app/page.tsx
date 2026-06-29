@@ -10,23 +10,24 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Users,
-  Maximize, Settings, LogOut,
+  Maximize, Settings, LogOut, Table,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import ModalSpreadsheet from '@/components/ModalSpreadsheet';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
 import RequerimentoModal from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
 import { montarVertices, reordenar, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
-import { novaGlebaVazia, glebaDe, migrarProjeto } from '@/lib/topo/glebas';
+import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas } from '@/lib/topo/glebas';
 import { calcular } from '@/lib/topo/calcular';
 import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
@@ -35,7 +36,7 @@ import { importarGeoJsonAneis } from '@/lib/io/geojson';
 import { ancoraMunicipio, MUNICIPIOS } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
-import { conferir, valoresEfetivos, type Problema } from '@/lib/topo/conferencia';
+import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
 import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario } from '@/lib/store/settings';
@@ -116,11 +117,17 @@ export default function EditorPage() {
   const [objetos, setObjetos] = useState<ObjetoDesenho[]>([]);
   const [desenhoBuffer, setDesenhoBuffer] = useState<PontoLL[]>([]);
   const [objetoSelId, setObjetoSelId] = useState<string | null>(null);
+  const [vSplitInicioId, setVSplitInicioId] = useState<string | null>(null);
+  const [vSplitFimId, setVSplitFimId] = useState<string | null>(null);
+  const [focoLatLng, setFocoLatLng] = useState<[number, number] | null>(null);
   const [dragVtxIdx, setDragVtxIdx] = useState<number | null>(null);
   const [situacaoUrl, setSituacaoUrl] = useState<string | undefined>(undefined);
   // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
   const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
+  const conflitos = useMemo(() => detectarConflitosDivisas(vertices, referencias), [vertices, referencias]);
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro');
+  const [planilhaAberta, setPlanilhaAberta] = useState(false);
+  const [contadorSugerido, setContadorSugerido] = useState<Contadores | null>(null);
   const [vista, setVista] = useState<'mapa' | 'planta'>('mapa');
   const [aba, setAba] = useState<Aba>('imovel');
   const [projetoId, setProjetoId] = useState<string | null>(null);
@@ -192,7 +199,7 @@ export default function EditorPage() {
     }
   }, [imovel, nomeProjetoManual]);
 
-  // atalhos: F3 = imã (snap), F4 = nomes dos vértices, F5 = ferramenta mover (navegar)
+  // atalhos: F3 = imã (snap), F4 = nomes dos vértices, F5 = ferramenta mover (navegar), Esc = desfazer desenho
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;
@@ -200,10 +207,16 @@ export default function EditorPage() {
       if (e.key === 'F3') { e.preventDefault(); setSnapAtivo((s) => !s); }
       else if (e.key === 'F4') { e.preventDefault(); setMostrarRotulos((m) => !m); }
       else if (e.key === 'F5') { e.preventDefault(); setModo('navegar'); }
+      else if (e.key === 'Escape') {
+        if (modo === 'linha' || modo === 'cota' || modo === 'texto') {
+          e.preventDefault();
+          cancelarDesenho();
+        }
+      }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [modo, desenhoBuffer]);
 
   const res = useMemo(() => (vertices.length >= 3 ? calcular(vertices, confrontantePorLado) : null), [vertices, confrontantePorLado]);
 
@@ -413,6 +426,76 @@ export default function EditorPage() {
     if (selecionadoId === id) setSelecionadoId(null);
   }
 
+  function executarDivisaoGleba() {
+    if (!vSplitInicioId || !vSplitFimId) return;
+    try {
+      const { verticesA, confrontantePorLadoA, verticesB, confrontantePorLadoB } = dividirGleba(
+        vertices,
+        confrontantes,
+        confrontantePorLado,
+        vSplitInicioId,
+        vSplitFimId
+      );
+
+      const gAtiva = glebas.find(g => g.id === glebaAtivaId);
+      if (!gAtiva) return;
+
+      const nomeA = window.prompt("Nome da Parcela A:", `${gAtiva.denominacao} - Parte A`) || `${gAtiva.denominacao} - Parte A`;
+      const nomeB = window.prompt("Nome da Parcela B:", `${gAtiva.denominacao} - Parte B`) || `${gAtiva.denominacao} - Parte B`;
+
+      const gA = glebaDe(glebas.length + 1, verticesA, confrontantes, confrontantePorLadoA, nomeA);
+      const gB = glebaDe(glebas.length + 2, verticesB, confrontantes, confrontantePorLadoB, nomeB);
+
+      const novasGlebas = glebas.filter(g => g.id !== glebaAtivaId).concat(gA, gB);
+      setGlebas(novasGlebas);
+      setGlebaAtivaId(gA.id);
+
+      setVertices(verticesA);
+      setConfrontantePorLado(confrontantePorLadoA);
+
+      setVSplitInicioId(null);
+      setVSplitFimId(null);
+      setSelecionadoId(null);
+
+      alert("Gleba desmembrada com sucesso!");
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  }
+
+  function executarFusaoGlebas(gAlvoId: string) {
+    const gAtiva = glebas.find(g => g.id === glebaAtivaId);
+    const gAlvo = glebas.find(g => g.id === gAlvoId);
+    if (!gAtiva || !gAlvo) return;
+
+    if (confirm(`Deseja unir a gleba ativa "${gAtiva.denominacao}" com a gleba "${gAlvo.denominacao}"?`)) {
+      try {
+        const { vertices: vFuso, confrontantePorLado: cFuso } = unirGlebas(
+          vertices,
+          gAlvo.vertices,
+          confrontantePorLado,
+          gAlvo.confrontantePorLado
+        );
+
+        const novoNome = window.prompt("Nome da Gleba Unificada:", `${gAtiva.denominacao} + ${gAlvo.denominacao}`) || `${gAtiva.denominacao} + ${gAlvo.denominacao}`;
+
+        const gUnida = glebaDe(glebas.length + 1, vFuso, confrontantes, cFuso, novoNome);
+        const novasGlebas = glebas.filter(g => g.id !== glebaAtivaId && g.id !== gAlvoId).concat(gUnida);
+        
+        setGlebas(novasGlebas);
+        setGlebaAtivaId(gUnida.id);
+
+        setVertices(vFuso);
+        setConfrontantePorLado(cFuso);
+        setSelecionadoId(null);
+
+        alert("Glebas unificadas com sucesso!");
+      } catch (e) {
+        alert((e as Error).message);
+      }
+    }
+  }
+
   // Aplica códigos provisórios (renumeração) a uma lista, lendo os contadores do banco.
   async function aplicarCodigos(lista: Vertex[]) {
     const tec = tecnico ?? carregarTecnico();
@@ -505,6 +588,34 @@ export default function EditorPage() {
   function finalizarLinha() {
     if (desenhoBuffer.length >= 2) setObjetos((os) => [...os, novaPolilinha(desenhoBuffer)]);
     setDesenhoBuffer([]);
+  }
+  function cancelarDesenho() {
+    setDesenhoBuffer((buf) => {
+      if (buf.length > 0) {
+        return buf.slice(0, -1);
+      }
+      setModo('navegar');
+      return buf;
+    });
+  }
+  function salvarAlteracoesPlanilha(novos: Vertex[]) {
+    snap();
+    const atualizados = novos.map((v) => {
+      const { lat, lon } = utmParaGeo(v.leste, v.norte, zona, hemisferio);
+      return { ...v, lat, lon };
+    });
+    setVertices(atualizados);
+  }
+  async function abrirPlanilha() {
+    if (tecnico) {
+      try {
+        const cont = await lerContadores(tecnico.credenciamentoIncra, tecnico);
+        setContadorSugerido(cont);
+      } catch (e) {
+        console.warn('Erro ao ler contadores para a planilha:', e);
+      }
+    }
+    setPlanilhaAberta(true);
   }
   function onMoverPontoObjeto(id: string, idx: number, lat: number, lon: number) {
     const p = pontoLL(lat, lon);
@@ -972,7 +1083,8 @@ export default function EditorPage() {
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} objetoSelId={objetoSelId}
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
-                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} />
+                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice}
+                conflitos={conflitos} focoLatLng={focoLatLng} />
           ) : (
             <div id="planta-print" className="relative h-full overflow-auto bg-neutral-200 p-4">
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
@@ -1033,10 +1145,78 @@ export default function EditorPage() {
             {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} />}
             {aba === 'vertices' && (
               <div className="space-y-1">
+                {/* Painel de Desmembramento */}
+                <div className="mb-3 rounded-md border border-dashed p-2 bg-muted/20 text-xs">
+                  <div className="font-semibold text-foreground text-[11px] mb-1 flex items-center justify-between">
+                    <span>Desmembramento (Divisão)</span>
+                    {(vSplitInicioId || vSplitFimId) && (
+                      <button className="text-[10px] text-muted-foreground hover:text-foreground" onClick={() => { setVSplitInicioId(null); setVSplitFimId(null); }}>limpar</button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mb-2">Selecione dois vértices (ou clique neles e use os botões abaixo) para dividir.</p>
+                  
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                      <span className="text-[9px] block text-muted-foreground uppercase font-medium">De:</span>
+                      <select 
+                        value={vSplitInicioId ?? ''} 
+                        onChange={(e) => setVSplitInicioId(e.target.value || null)}
+                        className="h-7 w-full rounded border bg-background px-1 text-[11px]"
+                      >
+                        <option value="">(Selecione)</option>
+                        {vertices.map(v => <option key={v.id} value={v.id}>{v.codigoSigef || v.codigoCampo || v.nome}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <span className="text-[9px] block text-muted-foreground uppercase font-medium">Até:</span>
+                      <select 
+                        value={vSplitFimId ?? ''} 
+                        onChange={(e) => setVSplitFimId(e.target.value || null)}
+                        className="h-7 w-full rounded border bg-background px-1 text-[11px]"
+                      >
+                        <option value="">(Selecione)</option>
+                        {vertices.map(v => <option key={v.id} value={v.id}>{v.codigoSigef || v.codigoCampo || v.nome}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    size="sm" 
+                    variant="default"
+                    className="w-full h-7 text-xs font-semibold" 
+                    disabled={!vSplitInicioId || !vSplitFimId || vSplitInicioId === vSplitFimId}
+                    onClick={executarDivisaoGleba}
+                  >
+                    Dividir Gleba por esta Linha
+                  </Button>
+                </div>
+
+                {/* Painel de Fusão (Remembramento) - exibe apenas se houver outras glebas */}
+                {glebas.length > 1 && (
+                  <div className="mb-3 rounded-md border border-dashed p-2 bg-muted/20 text-xs">
+                    <div className="font-semibold text-foreground text-[11px] mb-1">Fusão (Remembramento)</div>
+                    <p className="text-[10px] text-muted-foreground mb-2">Una a gleba ativa com outra que compartilhe a mesma divisa.</p>
+                    <div className="flex flex-wrap gap-1">
+                      {glebas.filter(g => g.id !== glebaAtivaId).map(g => (
+                        <Button 
+                          key={g.id}
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[10px] py-0 px-2"
+                          onClick={() => executarFusaoGlebas(g.id)}
+                        >
+                          Unir com {g.denominacao}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mb-2 flex flex-wrap gap-1">
                   <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer última ação"><Undo2 /> Desfazer</Button>
                   <Button size="sm" variant="outline" onClick={ordenarNorteHorario} title="Começa no vértice mais ao norte e segue no sentido horário">Norte ↻</Button>
                   <Button size="sm" variant="outline" onClick={renumerar}>Renumerar</Button>
+                  <Button size="sm" variant="default" onClick={abrirPlanilha} title="Editar todos os vértices em uma planilha" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"><Table className="size-4 mr-1" /> Editar em Tabela</Button>
                 </div>
                 <p className="mb-1 text-[10px] text-muted-foreground">Arraste um vértice para reordenar o polígono (renumera automático).</p>
                 {vertices.map((v, i) => {
@@ -1068,6 +1248,22 @@ export default function EditorPage() {
                             <Label>Altitude (m)</Label>
                             <Input type="number" step="0.01" value={String(v.elevacao)} onChange={(e) => editarVertice(v.id, { elevacao: Number(e.target.value) })} />
                           </div>
+                          <div className="col-span-2 grid grid-cols-2 gap-1 mt-1">
+                            <button
+                              type="button"
+                              onClick={() => { setVSplitInicioId(v.id); alert(`Vértice ${v.codigoSigef || v.nome} definido como Início da divisão.`); }}
+                              className="rounded border border-input bg-background h-6 px-1 text-[9px] hover:bg-accent font-medium text-foreground transition-colors"
+                            >
+                              Definir como Início
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setVSplitFimId(v.id); alert(`Vértice ${v.codigoSigef || v.nome} definido como Fim da divisão.`); }}
+                              className="rounded border border-input bg-background h-6 px-1 text-[9px] hover:bg-accent font-medium text-foreground transition-colors"
+                            >
+                              Definir como Fim
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1083,7 +1279,7 @@ export default function EditorPage() {
                 onVerPlanta={() => setVista('planta')} onSalvarPadrao={() => { salvarPlantaPadrao(plantaConfig); aviso('Ajustes da planta salvos como padrão para os próximos trabalhos.'); }} />
             )}
             {aba === 'conferencia' && (
-              <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} onChange={setImovel} />
+              <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} onChange={setImovel} conflitos={conflitos} onIrParaConflito={(lat, lon) => setFocoLatLng([lat, lon])} />
             )}
             {aba === 'projetos' && (
               <div className="space-y-2">
@@ -1118,6 +1314,13 @@ export default function EditorPage() {
       />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
+      <ModalSpreadsheet
+        isOpen={planilhaAberta}
+        onClose={() => setPlanilhaAberta(false)}
+        vertices={vertices}
+        onSave={salvarAlteracoesPlanilha}
+        contadorSugerido={contadorSugerido}
+      />
 
       {/* Barra de progresso do trabalho (lateral esquerda) */}
       <div className="no-print fixed left-0 top-0 z-[1050] h-screen w-1 bg-muted" title={`${Math.round(progresso * 100)}% do trabalho preenchido/gerado`}>
@@ -1265,8 +1468,10 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
   );
 }
 
-function PainelConferencia({ vertices, res, imovel, confrontantes, onChange }: {
+function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, conflitos, onIrParaConflito }: {
   vertices: Vertex[]; res: ReturnType<typeof calcular> | null; imovel: ImovelData; confrontantes: Confrontante[]; onChange: (i: ImovelData) => void;
+  conflitos: ConflitoDivisa[];
+  onIrParaConflito: (lat: number, lon: number) => void;
 }) {
   const problemas: Problema[] = conferir(vertices, res, imovel, confrontantes);
   const Icone = ({ n }: { n: Problema['nivel'] }) =>
@@ -1275,6 +1480,41 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange }: {
   const num = (v: number | undefined) => (v == null ? '' : String(v));
   return (
     <div className="space-y-3">
+      {conflitos.length > 0 && (
+        <Card className="border-pink-500/20 bg-pink-500/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-pink-700 dark:text-pink-300 font-bold flex items-center gap-1.5">
+              <AlertTriangle className="size-4 text-pink-500" />
+              Conflitos de Divisa (SIGEF)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5">
+            <p className="text-[10px] text-muted-foreground mb-1">
+              Detectados desvios em relação aos confrontantes certificados importados. Clique para focar no mapa.
+            </p>
+            {conflitos.map((c, i) => {
+              const label = c.tipo === 'sobreposicao' ? 'Sobreposição' : 'Vão';
+              const corLabel = c.tipo === 'sobreposicao' ? 'text-pink-600 dark:text-pink-400 font-semibold' : 'text-cyan-600 dark:text-cyan-400 font-semibold';
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onIrParaConflito(c.pontoConflito.lat, c.pontoConflito.lon)}
+                  className="w-full text-left flex items-center justify-between text-[11px] rounded border border-border bg-background p-1.5 hover:bg-accent transition-colors"
+                >
+                  <span>
+                    Lado {c.ladoIdx + 1} ({vertices[c.ladoIdx]?.codigoSigef || c.ladoIdx + 1} → {vertices[(c.ladoIdx + 1) % vertices.length]?.codigoSigef || c.ladoIdx + 2}): <span className={corLabel}>{label}</span>
+                  </span>
+                  <span className="font-mono text-muted-foreground text-[10px]">
+                    {numBR(c.distancia)} m
+                  </span>
+                </button>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="space-y-1">
         {problemas.map((p, i) => (
           <div key={i} className="flex items-start gap-2 rounded border p-2 text-xs">

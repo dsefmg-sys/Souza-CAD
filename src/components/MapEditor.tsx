@@ -36,6 +36,9 @@ interface Props {
   onPintarConfrontante?: (id: string) => void;
   onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
   centralizarSig?: number;
+  conflitos?: { ladoIdx: number; tipo: 'sobreposicao' | 'vao'; distancia: number }[];
+  focoLatLng?: [number, number] | null;
+  onCancelDesenho?: () => void;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -115,13 +118,34 @@ function Centralizar({ sig, vertices }: { sig?: number; vertices: Vertex[] }) {
   return null;
 }
 
-function CliqueMapa({ modo, onInserir, onCliqueDesenho }: { modo: ModoEdicao; onInserir: (lat: number, lon: number) => void; onCliqueDesenho?: (lat: number, lon: number) => void }) {
+function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho }: {
+  modo: ModoEdicao;
+  onInserir: (lat: number, lon: number) => void;
+  onCliqueDesenho?: (lat: number, lon: number) => void;
+  onCancelDesenho?: () => void;
+}) {
   useMapEvents({
     click(e) {
       if (modo === 'inserir') onInserir(e.latlng.lat, e.latlng.lng);
       else if ((modo === 'linha' || modo === 'cota' || modo === 'texto') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
     },
+    contextmenu(e) {
+      if (modo === 'linha' || modo === 'cota' || modo === 'texto') {
+        e.originalEvent.preventDefault();
+        onCancelDesenho?.();
+      }
+    }
   });
+  return null;
+}
+
+function FocoMap({ latLng }: { latLng: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (latLng) {
+      map.setView(latLng, 18, { animate: true });
+    }
+  }, [latLng, map]);
   return null;
 }
 
@@ -130,6 +154,9 @@ export default function MapEditor(props: Props) {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
+    conflitos = [],
+    focoLatLng = null,
+    onCancelDesenho,
   } = props;
 
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
@@ -152,7 +179,8 @@ export default function MapEditor(props: Props) {
 
       <AjustarLimites vertices={validos} />
       <Centralizar sig={centralizarSig} vertices={vertices} />
-      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} />
+      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} />
+      <FocoMap latLng={focoLatLng} />
 
       {/* referências certificadas (snap) */}
       {referencias.filter((r) => r.length >= 2).map((r, i) => (
@@ -181,6 +209,23 @@ export default function MapEditor(props: Props) {
         return <Polyline key={`div${v.id}`} positions={[a, [prox.lat, prox.lon]]} pathOptions={{ color: cor, weight: 6, opacity: 0.65 }} />;
       })}
 
+      {/* Realce de conflitos (sobreposição/vãos) */}
+      {conflitos.map((conf) => {
+        const v = validos[conf.ladoIdx];
+        if (!v) return null;
+        const a: [number, number] = [v.lat, v.lon];
+        const prox = validos[(conf.ladoIdx + 1) % validos.length];
+        if (!prox) return null;
+        const cor = conf.tipo === 'sobreposicao' ? '#ec4899' : '#06b6d4';
+        return (
+          <Polyline 
+            key={`conf-${conf.ladoIdx}`} 
+            positions={[a, [prox.lat, prox.lon]]} 
+            pathOptions={{ color: cor, weight: 10, opacity: 0.9 }} 
+          />
+        );
+      })}
+
       {/* objetos de desenho */}
       {objetos.map((o) => {
         const pos = o.pontos.map((p) => [p.lat, p.lon] as [number, number]);
@@ -198,7 +243,10 @@ export default function MapEditor(props: Props) {
               ))}
               {sel && pos.map((p, idx) => (
                 <Marker key={`h${idx}`} position={p} draggable opacity={0}
-                  eventHandlers={{ dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); } }} />
+                  eventHandlers={{
+                    drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); },
+                    dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); }
+                  }} />
               ))}
             </Fragment>
           );
@@ -211,7 +259,10 @@ export default function MapEditor(props: Props) {
               <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:#b91c1c;background:#fff;padding:0 2px;border:1px solid #b91c1c;border-radius:2px">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })} />
               {sel && pos.map((p, idx) => (
                 <Marker key={`hc${idx}`} position={p} draggable opacity={0}
-                  eventHandlers={{ dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); } }} />
+                  eventHandlers={{
+                    drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); },
+                    dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); }
+                  }} />
               ))}
             </Fragment>
           );
@@ -219,7 +270,11 @@ export default function MapEditor(props: Props) {
         // texto
         return (
           <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable icon={iconeTexto(o, sel)}
-            eventHandlers={{ click: () => onSelecObjeto?.(o.id), dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); } }} />
+            eventHandlers={{
+              click: () => onSelecObjeto?.(o.id),
+              drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); },
+              dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
+            }} />
         );
       })}
 
@@ -230,7 +285,10 @@ export default function MapEditor(props: Props) {
       {/* rótulos de confrontante (arrastáveis) */}
       {rotulos.map((r) => (
         <Marker key={r.id} position={[r.lat, r.lon]} draggable icon={iconeRotulo(r)}
-          eventHandlers={{ dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverRotulo?.(r.id, ll.lat, ll.lng); } }} />
+          eventHandlers={{
+            drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverRotulo?.(r.id, ll.lat, ll.lng); },
+            dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverRotulo?.(r.id, ll.lat, ll.lng); }
+          }} />
       ))}
 
       {/* vértices */}
@@ -247,6 +305,7 @@ export default function MapEditor(props: Props) {
               else if (modo === 'confrontante') onPintarConfrontante?.(v.id);
               else onSelecionar(v.id);
             },
+            drag(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
           }}
         />
@@ -261,6 +320,7 @@ export default function MapEditor(props: Props) {
           icon={iconeNomeVertice(v.codigoSigef || v.nome, i % 2 === 1)}
           eventHandlers={{
             click() { onSelecionar(v.id); },
+            drag(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },
           }}
         />

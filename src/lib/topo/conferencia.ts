@@ -129,3 +129,91 @@ export function valoresEfetivos(res: ResultadoCalculo, imovel: ImovelData): {
   }
   return { areaHa: res.areaHa, areaM2: res.areaM2, perimetro: res.perimetro, fonte: 'calculado', fonteArea: 'calculado', fontePerimetro: 'calculado' };
 }
+
+export interface ConflitoDivisa {
+  ladoIdx: number;
+  tipo: 'sobreposicao' | 'vao';
+  distancia: number;
+  referenciaIdx: number;
+  pontoConflito: { leste: number; norte: number; lat: number; lon: number };
+}
+
+export function detectarConflitosDivisas(
+  vertices: Vertex[],
+  referencias: { leste: number; norte: number; lat: number; lon: number }[][]
+): ConflitoDivisa[] {
+  const conflitos: ConflitoDivisa[] = [];
+  const n = vertices.length;
+  if (n < 3 || referencias.length === 0) return [];
+
+  const pointInPolygon = (x: number, y: number, poly: { leste: number; norte: number }[]): boolean => {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i].leste, yi = poly[i].norte;
+      const xj = poly[j].leste, yj = poly[j].norte;
+      const intersect = ((yi > y) !== (yj > y))
+          && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  };
+
+  const distToSegment = (mx: number, my: number, cx: number, cy: number, dx: number, dy: number) => {
+    const l2 = Math.pow(cx - dx, 2) + Math.pow(cy - dy, 2);
+    if (l2 === 0) return { dist: Math.hypot(mx - cx, my - cy), px: cx, py: cy };
+    let t = ((mx - cx) * (dx - cx) + (my - cy) * (dy - cy)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    const px = cx + t * (dx - cx);
+    const py = cy + t * (dy - cy);
+    return { dist: Math.hypot(mx - px, my - py), px, py };
+  };
+
+  for (let i = 0; i < n; i++) {
+    const v1 = vertices[i];
+    const v2 = vertices[(i + 1) % n];
+    
+    const mx = (v1.leste + v2.leste) / 2;
+    const my = (v1.norte + v2.norte) / 2;
+    const mlat = (v1.lat + v2.lat) / 2;
+    const mlon = (v1.lon + v2.lon) / 2;
+
+    let melhorDist = Infinity;
+    let refIdxConflict = -1;
+    let refPtConflict = { leste: mx, norte: my };
+
+    referencias.forEach((refRing, rIdx) => {
+      const lenR = refRing.length;
+      for (let j = 0; j < lenR; j++) {
+        const p1 = refRing[j];
+        const p2 = refRing[(j + 1) % lenR];
+        
+        const { dist, px, py } = distToSegment(mx, my, p1.leste, p1.norte, p2.leste, p2.norte);
+        if (dist < melhorDist) {
+          melhorDist = dist;
+          refIdxConflict = rIdx;
+          refPtConflict = { leste: px, norte: py };
+        }
+      }
+    });
+
+    if (melhorDist >= 0.05 && melhorDist <= 3.0 && refIdxConflict !== -1) {
+      const refRing = referencias[refIdxConflict];
+      const isInside = pointInPolygon(mx, my, refRing);
+      
+      conflitos.push({
+        ladoIdx: i,
+        tipo: isInside ? 'sobreposicao' : 'vao',
+        distancia: melhorDist,
+        referenciaIdx: refIdxConflict,
+        pontoConflito: {
+          leste: (mx + refPtConflict.leste) / 2,
+          norte: (my + refPtConflict.norte) / 2,
+          lat: mlat,
+          lon: mlon,
+        }
+      });
+    }
+  }
+
+  return conflitos;
+}

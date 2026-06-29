@@ -34,12 +34,12 @@ describe('glebas', () => {
   });
 
   it('dividirGleba divide polígono em duas glebas por dois vértices', () => {
-    const v: Vertex[] = [
-      { id: 'v0', nome: 'V0', leste: 0, norte: 0, latitude: 0, longitude: 0 },
-      { id: 'v1', nome: 'V1', leste: 10, norte: 0, latitude: 0, longitude: 0 },
-      { id: 'v2', nome: 'V2', leste: 10, norte: 10, latitude: 0, longitude: 0 },
-      { id: 'v3', nome: 'V3', leste: 0, norte: 10, latitude: 0, longitude: 0 },
-    ];
+    const v = [
+      { id: 'v0', nome: 'V0', leste: 0, norte: 0, lat: 0, lon: 0 },
+      { id: 'v1', nome: 'V1', leste: 10, norte: 0, lat: 0, lon: 0 },
+      { id: 'v2', nome: 'V2', leste: 10, norte: 10, lat: 0, lon: 0 },
+      { id: 'v3', nome: 'V3', leste: 0, norte: 10, lat: 0, lon: 0 },
+    ] as unknown as Vertex[];
     const confPorLado = { 0: 'c0', 1: 'c1', 2: 'c2', 3: 'c3' };
 
     // Divide conectando v1 e v3
@@ -58,19 +58,19 @@ describe('glebas', () => {
   });
 
   it('unirGlebas funde duas glebas adjacentes pela divisa comum', () => {
-    const va: Vertex[] = [
-      { id: 'va0', nome: 'A0', leste: 0, norte: 0, latitude: 0, longitude: 0 },
-      { id: 'va1', nome: 'A1', leste: 10, norte: 0, latitude: 0, longitude: 0 },
-      { id: 'va2', nome: 'A2', leste: 10, norte: 10, latitude: 0, longitude: 0 },
-      { id: 'va3', nome: 'A3', leste: 0, norte: 10, latitude: 0, longitude: 0 },
-    ];
+    const va = [
+      { id: 'va0', nome: 'A0', leste: 0, norte: 0, lat: 0, lon: 0 },
+      { id: 'va1', nome: 'A1', leste: 10, norte: 0, lat: 0, lon: 0 },
+      { id: 'va2', nome: 'A2', leste: 10, norte: 10, lat: 0, lon: 0 },
+      { id: 'va3', nome: 'A3', leste: 0, norte: 10, lat: 0, lon: 0 },
+    ] as unknown as Vertex[];
     // Gleba B ao lado direito de A: compartilha a divisa A1->A2
-    const vb: Vertex[] = [
-      { id: 'vb0', nome: 'B0', leste: 10, norte: 0, latitude: 0, longitude: 0 },
-      { id: 'vb1', nome: 'B1', leste: 20, norte: 0, latitude: 0, longitude: 0 },
-      { id: 'vb2', nome: 'B2', leste: 20, norte: 10, latitude: 0, longitude: 0 },
-      { id: 'vb3', nome: 'B3', leste: 10, norte: 10, latitude: 0, longitude: 0 },
-    ];
+    const vb = [
+      { id: 'vb0', nome: 'B0', leste: 10, norte: 0, lat: 0, lon: 0 },
+      { id: 'vb1', nome: 'B1', leste: 20, norte: 0, lat: 0, lon: 0 },
+      { id: 'vb2', nome: 'B2', leste: 20, norte: 10, lat: 0, lon: 0 },
+      { id: 'vb3', nome: 'B3', leste: 10, norte: 10, lat: 0, lon: 0 },
+    ] as unknown as Vertex[];
 
     const confA = { 0: 'c_sul_A', 1: 'c_divisa', 2: 'c_norte_A', 3: 'c_oeste_A' };
     const confB = { 0: 'c_sul_B', 1: 'c_leste_B', 2: 'c_norte_B', 3: 'c_divisa' };
