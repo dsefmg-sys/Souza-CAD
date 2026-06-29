@@ -34,6 +34,11 @@ function descritivoConfrontante(c: Confrontante | undefined): string {
   return `${c.nome}${cpf}`;
 }
 
+// Sigma lido do TXT (precisão do vértice); se não veio, usa o padrão do template.
+function sigmaBR(s: number | undefined, padrao: string): string {
+  return (typeof s === 'number' && Number.isFinite(s)) ? numBR(Number(s.toFixed(2))) : padrao;
+}
+
 function linhaVertice(
   v: Vertex,
   conf: Confrontante | undefined,
@@ -47,11 +52,11 @@ function linhaVertice(
   const cels =
     celStr('ce40', v.codigoSigef) +
     celStr('ce40', eLong) +
-    celStr('ce40', '0,00') +
+    celStr('ce40', sigmaBR(v.sigmaX, '0,00')) +
     celStr('ce40', nLat) +
-    celStr('ce40', '0,00') +
+    celStr('ce40', sigmaBR(v.sigmaY, '0,00')) +
     celFloat('ce40', Number(v.elevacao.toFixed(2)), numBR(v.elevacao)) +
-    celStr('ce40', '0,01') +
+    celStr('ce40', sigmaBR(v.sigmaZ, '0,01')) +
     celStr('ce40', v.metodo || tec.metodoPosicionamento || 'PG6') +
     // ce40 é o estilo de célula de dado presente no template (o antigo ce93 não existe no modelo
     // em branco; manter referência válida evita estilo pendente)
