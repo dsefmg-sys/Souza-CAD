@@ -1567,7 +1567,7 @@ export default function EditorPage() {
 
         {/* 1) Importar e checar vizinhos */}
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: importa parcelas do SIGEF e cria confrontantes das que encostam" onClick={() => vizinhosRef.current?.click()}><Users /> SIGEF</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: importa parcelas do SIGEF e cria confrontantes das que encostam" onClick={() => vizinhosRef.current?.click()}><Users /><Upload className="size-3.5" /> SIGEF</Button>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 2) Dados do projeto atual */}
@@ -1580,12 +1580,6 @@ export default function EditorPage() {
         <Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className="shrink-0" title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> DIVISAS</Button>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
-        {/* 4) Ver planta */}
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PLANTA}`} title={vista === 'mapa' ? 'Abrir a prévia da planta (F12)' : 'Voltar ao mapa (F12)'} onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
-          {vista === 'mapa' ? <><Eye /> PLANTA</> : <><MapIcon /> MAPA</>}<span className="ml-1 text-[9px] font-bold text-amber-400">F12</span>
-        </Button>
-        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
-
         {/* 5) Peças */}
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEMORIAL</Button>
@@ -1596,6 +1590,11 @@ export default function EditorPage() {
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERTIFICAR</Button>
         </a>
         <Button size="sm" variant="outline" className="shrink-0 bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500 hover:text-black dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/30 dark:hover:bg-amber-400 dark:hover:text-black font-semibold" title="Gerar uma errata formal ao cartório (corrigir dados)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button>
+        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+        {/* Alternar mapa/planta — fica à direita por não seguir a lógica de etapas */}
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PLANTA}`} title={vista === 'mapa' ? 'Abrir a prévia da planta' : 'Voltar ao mapa'} onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
+          {vista === 'mapa' ? <><Eye /> PLANTA</> : <><MapIcon /> MAPA</>}
+        </Button>
        </div>
        {/* Conta/sistema fixos no canto superior direito */}
        <div className="flex shrink-0 items-center gap-1 border-l px-2">
