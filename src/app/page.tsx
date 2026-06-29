@@ -46,9 +46,9 @@ import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, RE
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
 import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
-import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao } from '@/lib/store/projects';
+import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
-import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart } from '@/lib/store/cadastros';
+import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
 import { gerarMemorialDocx } from '@/lib/export/memorial';
 import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
 
@@ -189,7 +189,7 @@ export default function EditorPage() {
     setGlebaAtivaId(g.id);
   }, []);
 
-  // 1. Ao logar, carrega o tema da nuvem primeiro
+  // 1. Ao logar, carrega o tema da nuvem primeiro e sincroniza dados locais offline
   useEffect(() => {
     if (user?.uid) {
       setTemaCarregadoDaNuvem(false);
@@ -201,9 +201,36 @@ export default function EditorPage() {
       }).catch(() => {
         setTemaCarregadoDaNuvem(true);
       });
+
+      // Sincroniza dados locais (salvos enquanto offline/sem permissão) com a nuvem
+      sincronizarProjetosLocalParaNuvem().then(() => {
+        atualizarLista();
+      }).catch(() => {});
+      sincronizarCadastrosLocalParaNuvem().then(() => {
+        cadProp.listar().then(setSugProp).catch(() => {});
+        cadConf.listar().then(setSugConf).catch(() => {});
+        cadCart.listar().then((cs) => { setSugCns(cs.map((c) => c.cns).filter(Boolean)); setSugCartorios(cs); }).catch(() => {});
+      }).catch(() => {});
     } else {
       setTemaCarregadoDaNuvem(true);
     }
+  }, [user]);
+
+  // Listener para sincronizar automaticamente quando o computador recuperar conexão de internet
+  useEffect(() => {
+    if (!user?.uid) return;
+    function aoVoltarOnline() {
+      sincronizarProjetosLocalParaNuvem().then(() => {
+        atualizarLista();
+      }).catch(() => {});
+      sincronizarCadastrosLocalParaNuvem().then(() => {
+        cadProp.listar().then(setSugProp).catch(() => {});
+        cadConf.listar().then(setSugConf).catch(() => {});
+        cadCart.listar().then((cs) => { setSugCns(cs.map((c) => c.cns).filter(Boolean)); setSugCartorios(cs); }).catch(() => {});
+      }).catch(() => {});
+    }
+    window.addEventListener('online', aoVoltarOnline);
+    return () => window.removeEventListener('online', aoVoltarOnline);
   }, [user]);
 
   // 2. Aplica localmente e salva na nuvem apenas após carregar para evitar sobrescrever dados do Firestore

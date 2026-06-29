@@ -68,4 +68,28 @@ export async function excluirProjeto(id: string): Promise<void> {
   await d.delete('projetos', id);
 }
 
+export async function sincronizarProjetosLocalParaNuvem(): Promise<void> {
+  const uid = uidNuvem();
+  if (!uid) return;
+  try {
+    const d = await db();
+    const localProjects = await d.getAll('projetos');
+    if (localProjects.length === 0) return;
+    
+    const snap = await getDocs(colProjetos(uid));
+    const cloudProjectsMap = new Map(snap.docs.map((doc) => [doc.id, doc.data() as Projeto]));
+    
+    for (const p of localProjects) {
+      const cloudP = cloudProjectsMap.get(p.id);
+      if (!cloudP || p.atualizadoEm > cloudP.atualizadoEm) {
+        await setDoc(doc(colProjetos(uid), p.id), p);
+      }
+      await d.delete('projetos', p.id);
+    }
+  } catch (e) {
+    console.error('Falha ao sincronizar projetos local para nuvem:', e);
+  }
+}
+
 export { novoId };
+

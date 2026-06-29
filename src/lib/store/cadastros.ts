@@ -59,4 +59,26 @@ export const cartoriosCad = {
   excluir: (id: string) => remover('cartorios', id),
 };
 
+export async function sincronizarCadastrosLocalParaNuvem(): Promise<void> {
+  const uid = uidNuvem();
+  if (!uid) return;
+  try {
+    const d = await db();
+    const stores: Store[] = ['proprietarios', 'confrontantes', 'imoveis', 'cartorios'];
+    for (const store of stores) {
+      const localItems = (await d.getAll(store)) as { id: string }[];
+      if (localItems.length === 0) continue;
+      
+      const colRef = collection(fdb()!, 'users', uid, store);
+      for (const item of localItems) {
+        await setDoc(doc(colRef, item.id), item as Record<string, unknown>);
+        await d.delete(store, item.id);
+      }
+    }
+  } catch (e) {
+    console.error('Falha ao sincronizar cadastros local para nuvem:', e);
+  }
+}
+
 export { novoId };
+
