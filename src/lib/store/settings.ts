@@ -30,6 +30,40 @@ export function salvarImportTxt(c: ImportTxtConfig): void {
   localStorage.setItem(KEY_IMPORT_TXT, JSON.stringify(c));
 }
 
+// ----- Modelo de planilha SIGEF (.ods) personalizado pelo usuário -----
+const KEY_MODELO_SIGEF = 'metrica.modeloSigef';
+
+function abParaBase64(ab: ArrayBuffer): string {
+  const b = new Uint8Array(ab);
+  let s = '';
+  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s);
+}
+function base64ParaAb(b64: string): ArrayBuffer {
+  const s = atob(b64);
+  const u = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+  return u.buffer;
+}
+
+/** Substitui o modelo de planilha SIGEF do sistema por um .ods enviado pelo usuário. */
+export function salvarModeloSigef(ab: ArrayBuffer): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(KEY_MODELO_SIGEF, abParaBase64(ab));
+}
+/** Modelo SIGEF personalizado, se houver (senão null → usa o modelo embutido). */
+export function carregarModeloSigef(): ArrayBuffer | null {
+  if (typeof window === 'undefined') return null;
+  try { const raw = localStorage.getItem(KEY_MODELO_SIGEF); return raw ? base64ParaAb(raw) : null; } catch { return null; }
+}
+export function temModeloSigefProprio(): boolean {
+  return typeof window !== 'undefined' && !!localStorage.getItem(KEY_MODELO_SIGEF);
+}
+export function limparModeloSigef(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(KEY_MODELO_SIGEF);
+}
+
 // Dados padrão do responsável técnico (do modelo do dono). Editáveis em /configuracoes.
 export const TECNICO_PADRAO: TecnicoData = {
   nome: 'Darlan Gonçalves de Souza',

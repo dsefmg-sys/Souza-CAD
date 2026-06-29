@@ -44,7 +44,7 @@ import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
-import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt } from '@/lib/store/settings';
+import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
@@ -869,7 +869,9 @@ export default function EditorPage() {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     const tec = tecnico;
     try {
-      const tpl = await fetch('/templates/sigef.ods').then((rr) => rr.arrayBuffer());
+      // usa o modelo SIGEF do usuário, se ele substituiu; senão, o modelo embutido do sistema
+      const modeloProprio = carregarModeloSigef();
+      const tpl: ArrayBuffer = modeloProprio !== null ? modeloProprio : await fetch('/templates/sigef.ods').then((rr) => rr.arrayBuffer());
       if (glebas.length > 1) {
         // Multi-gleba: registra os pontos de todas (códigos únicos entre parcelas) e gera uma
         // aba perimetro_N por gleba.

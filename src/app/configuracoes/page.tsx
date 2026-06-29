@@ -1,23 +1,42 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Save, FileCog } from 'lucide-react';
+import { ArrowLeft, Save, FileCog, FileSpreadsheet, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { TecnicoData, EscritorioData } from '@/lib/topo/types';
-import { carregarTecnico, salvarTecnico, TECNICO_PADRAO, carregarEscritorio, salvarEscritorio, ESCRITORIO_PADRAO } from '@/lib/store/settings';
+import { carregarTecnico, salvarTecnico, TECNICO_PADRAO, carregarEscritorio, salvarEscritorio, ESCRITORIO_PADRAO, salvarModeloSigef, temModeloSigefProprio, limparModeloSigef } from '@/lib/store/settings';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 
+type AbaConfig = 'tecnico' | 'escritorio' | 'modelos';
+
 export default function ConfiguracoesPage() {
+  const [aba, setAba] = useState<AbaConfig>('tecnico');
   const [t, setT] = useState<TecnicoData>(TECNICO_PADRAO);
   const [esc, setEsc] = useState<EscritorioData>(ESCRITORIO_PADRAO);
   const [msg, setMsg] = useState('');
   const [importTxtAberto, setImportTxtAberto] = useState(false);
+  const [modeloProprio, setModeloProprio] = useState(false);
+  const sigefRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setT(carregarTecnico()); setEsc(carregarEscritorio()); }, []);
+  useEffect(() => { setT(carregarTecnico()); setEsc(carregarEscritorio()); setModeloProprio(temModeloSigefProprio()); }, []);
+
+  const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+  async function atualizarModeloSigef(file: File) {
+    if (!window.confirm('Deseja realmente substituir a planilha SIGEF do sistema por este arquivo?\n\nEle passará a ser usado em TODAS as exportações de planilha (.ods), no lugar do modelo embutido.')) return;
+    salvarModeloSigef(await file.arrayBuffer());
+    setModeloProprio(true);
+    flash('Modelo de planilha SIGEF atualizado.');
+  }
+  function restaurarModeloSigef() {
+    if (!window.confirm('Voltar a usar o modelo de planilha SIGEF embutido do sistema?')) return;
+    limparModeloSigef();
+    setModeloProprio(false);
+    flash('Modelo SIGEF restaurado para o padrão do sistema.');
+  }
 
   const set = (k: keyof TecnicoData, v: string | number) => setT((p) => ({ ...p, [k]: v }));
   const setE = (k: keyof EscritorioData, v: string) => setEsc((p) => ({ ...p, [k]: v }));
@@ -39,9 +58,17 @@ export default function ConfiguracoesPage() {
     <div className="mx-auto max-w-2xl p-6">
       <div className="mb-4 flex items-center gap-2">
         <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft /> Voltar</Button></Link>
-        <h1 className="text-xl font-semibold">Configurações do responsável técnico</h1>
+        <h1 className="text-xl font-semibold">Configurações</h1>
       </div>
 
+      <div className="mb-4 flex gap-1 overflow-x-auto whitespace-nowrap border-b">
+        {([['tecnico', 'Responsável Técnico'], ['escritorio', 'Escritório / Carimbo'], ['modelos', 'Importação e Modelos']] as [AbaConfig, string][]).map(([a, rotulo]) => (
+          <button key={a} onClick={() => setAba(a)}
+            className={`px-3 py-2 text-sm ${aba === a ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground'}`}>{rotulo}</button>
+        ))}
+      </div>
+
+      {aba === 'tecnico' && (<>
       <Card>
         <CardHeader><CardTitle>Dados que aparecem no memorial e na planilha</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
@@ -80,22 +107,10 @@ export default function ConfiguracoesPage() {
         Os contadores aqui são apenas a semente inicial. Depois que você salva projetos, o banco
         de pontos passa a controlar a numeração para nunca repetir um vértice já usado.
       </p>
+      </>)}
 
-      <Card className="mt-4">
-        <CardHeader><CardTitle>Importação de TXT (ordem das colunas)</CardTitle></CardHeader>
-        <CardContent>
-          <p className="mb-3 text-sm text-muted-foreground">
-            Cada equipamento exporta o TXT numa ordem diferente de colunas. Envie um arquivo de
-            exemplo e diga o que cada coluna é (nome do ponto, Norte, Leste, altitude, sigma X, sigma Y,
-            sigma Z, método). O sistema passa a ler todos os TXT seguindo esse mapa.
-          </p>
-          <Button variant="outline" onClick={() => setImportTxtAberto(true)}>
-            <FileCog /> Configurar importação de TXT
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="mt-4">
+      {aba === 'escritorio' && (
+      <Card>
         <CardHeader><CardTitle>Carimbo do escritório (planta)</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <Campo wide label="Nome do escritório" value={esc.nome} onChange={(v) => setE('nome', v)} />
@@ -110,11 +125,48 @@ export default function ConfiguracoesPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
+      {aba === 'modelos' && (<>
+      <Card>
+        <CardHeader><CardTitle>Importação de TXT (ordem das colunas)</CardTitle></CardHeader>
+        <CardContent>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Cada equipamento exporta o TXT numa ordem diferente de colunas. Envie um arquivo de
+            exemplo e diga o que cada coluna é (nome do ponto, Norte, Leste, altitude, sigma X, sigma Y,
+            sigma Z, método). O sistema passa a ler todos os TXT seguindo esse mapa.
+          </p>
+          <Button variant="outline" onClick={() => setImportTxtAberto(true)}>
+            <FileCog /> Configurar importação de TXT
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>Modelo de planilha SIGEF (.ods)</CardTitle></CardHeader>
+        <CardContent>
+          <p className="mb-3 text-sm text-muted-foreground">
+            O sistema já vem com o modelo oficial. Se você usa um modelo próprio, substitua aqui — ele
+            passa a ser usado em TODAS as exportações de planilha SIGEF, no lugar do embutido.
+          </p>
+          <input ref={sigefRef} type="file" accept=".ods" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) atualizarModeloSigef(f); e.currentTarget.value = ''; }} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => sigefRef.current?.click()}><FileSpreadsheet /> Atualizar modelo de planilha SIGEF</Button>
+            {modeloProprio && <Button variant="ghost" onClick={restaurarModeloSigef}><RotateCcw /> Restaurar modelo do sistema</Button>}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">{modeloProprio ? 'Em uso: um modelo personalizado seu.' : 'Em uso: o modelo embutido do sistema.'}</p>
+        </CardContent>
+      </Card>
+      </>)}
+
+      {(aba === 'tecnico' || aba === 'escritorio') && (
       <div className="mt-4 flex items-center gap-3">
         <Button onClick={salvar}><Save /> Salvar configurações</Button>
         {msg && <span className="text-sm text-primary">{msg}</span>}
       </div>
+      )}
+      {aba === 'modelos' && msg && <div className="mt-3 text-sm text-primary">{msg}</div>}
 
       <ImportTxtConfigModal open={importTxtAberto} onOpenChange={setImportTxtAberto} />
     </div>
