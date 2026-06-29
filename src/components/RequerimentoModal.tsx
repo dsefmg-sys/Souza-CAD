@@ -28,6 +28,7 @@ interface Props {
   transmitente?: PessoaQualificada;
   onChangePessoas: (req: PessoaQualificada, trans: PessoaQualificada) => void;
   sugProp: ProprietarioCad[];
+  onBaixar?: () => void;
 }
 
 const CAMPOS: { k: keyof PessoaQualificada; label: string; wide?: boolean }[] = [
@@ -69,7 +70,7 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
   );
 }
 
-export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, onChangePessoas, sugProp }: Props) {
+export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, onChangePessoas, sugProp, onBaixar }: Props) {
   const [req, setReq] = useState<PessoaQualificada>(requerente ?? PESSOA_VAZIA);
   const [trans, setTrans] = useState<PessoaQualificada>(transmitente ?? { ...PESSOA_VAZIA, nome: imovel.proprietario, cpf: imovel.cpfProprietario });
   const [msg, setMsg] = useState('');
@@ -89,6 +90,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     onChangePessoas(req, trans);
     const blob = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje() });
     saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);
+    onBaixar?.();
     setMsg('Requerimento gerado.');
   }
 

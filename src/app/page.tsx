@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
@@ -89,6 +89,19 @@ const COR_IMPORT = 'bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-50
 const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30';
 const COR_PLANTA = 'bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20 border-violet-500/30';
 
+type EtapaEstado = 'feito' | 'andamento' | 'pendente';
+// Envolve um botão do fluxo com uma barrinha de progresso COLADA embaixo dele
+// (verde = feito, azul = em andamento, cinza = pendente).
+function Etapa({ st, children }: { st: EtapaEstado; children: ReactNode }) {
+  const cor = st === 'feito' ? 'bg-green-500' : st === 'andamento' ? 'bg-blue-500' : 'bg-foreground/15';
+  return (
+    <div className="flex shrink-0 flex-col items-stretch">
+      {children}
+      <div className={`mt-0.5 h-1 w-full rounded-full ${cor}`} />
+    </div>
+  );
+}
+
 export default function EditorPage() {
   const { user, disponivel: nuvemDisponivel } = useAuth();
   // zoom/pan da PRÉVIA da planta (não afeta o PDF exportado, que lê o SVG original)
@@ -171,6 +184,10 @@ export default function EditorPage() {
   const [nomeProjetoManual, setNomeProjetoManual] = useState(false);
   const [reqAberto, setReqAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
+  // progresso por etapa (ações do usuário que não se completam sozinhas)
+  const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
+  const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean }>({});
+  const [salvoOk, setSalvoOk] = useState(false);
   const [errataAberto, setErrataAberto] = useState(false);
   const [consultarAberto, setConsultarAberto] = useState(false);
   const [configAberta, setConfigAberta] = useState(false);
@@ -1089,6 +1106,7 @@ export default function EditorPage() {
       const blob = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente });
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
       saveAs(blob, `Memorial - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`);
+      setBaixou((b) => ({ ...b, memorial: true }));
     } catch (e) { aviso((e as Error).message || 'Erro ao gerar o memorial.'); }
   }
 
@@ -1137,6 +1155,7 @@ export default function EditorPage() {
         const blob = await gerarSigefOds({ templateBytes: tpl, res: r, imovel, tecnico: tec, confrontantes, confrontantePorLado });
         saveAs(blob, `SIGEF - ${imovel.denominacao || nomeProjeto || 'imovel'}.ods`);
       }
+      setBaixou((b) => ({ ...b, ods: true }));
     } catch (e) { aviso((e as Error).message || 'Erro ao gerar a planilha.'); }
     finally { setProcessando(false); }
   }
@@ -1165,6 +1184,7 @@ export default function EditorPage() {
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 420, 297);
         const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
         pdf.save(`Planta - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.pdf`);
+        setBaixou((b) => ({ ...b, planta: true }));
         aviso('PDF da planta gerado.');
       };
       img.onerror = () => { URL.revokeObjectURL(url); aviso('Não consegui rasterizar a planta.'); };
@@ -1205,6 +1225,7 @@ export default function EditorPage() {
         });
         setSnapAtivo(true);
       }
+      setSigefStatus('enviado');
       aviso(`${parcelas.length} parcela(s) desenhada(s) ao lado; ${novos.length} vizinho(s) viraram confrontantes. Use "pintar confrontante" para marcar os lados.`);
     } catch { aviso('Não consegui ler o arquivo de parcelas certificadas.'); }
   }
@@ -1213,6 +1234,7 @@ export default function EditorPage() {
   // Consulta MG e ES (região de fronteira) e fica só com os que ENCOSTAM no nosso imóvel.
   async function importarVizinhosAuto() {
     if (vertices.length < 3) { aviso('Importe os pontos do imóvel primeiro, depois busque os vizinhos.'); return; }
+    setSigefStatus((s) => (s === 'enviado' ? s : 'clicado'));
     setProcessando(true);
     aviso('Buscando imóveis vizinhos certificados no INCRA…');
     try {
@@ -1257,6 +1279,7 @@ export default function EditorPage() {
         return [...cs, ...novos.filter((c) => !nomes.has(c.nome.trim().toUpperCase()))];
       });
       setSnapAtivo(true);
+      setSigefStatus('enviado');
       aviso(`${vizinhas.length} vizinho(s) certificado(s) encontrado(s) e desenhado(s). Use "pintar confrontante" para marcar os lados.`);
     } catch {
       aviso('Não consegui consultar o INCRA agora. Use o import manual (arquivo GeoJSON).');
@@ -1365,6 +1388,7 @@ export default function EditorPage() {
       try {
         await salvarProjeto(p);
         setProjetoId(id);
+        setSalvoOk(true);
         aviso(registrou ? 'Projeto salvo e pontos registrados.' : 'Projeto salvo, mas falhou registrar os pontos — tente salvar de novo.');
       } catch (e) {
         setProjetoId(id);
@@ -1482,6 +1506,7 @@ export default function EditorPage() {
     setObjetos([]);
     setPlantaConfig({});
     setObjetoSelId(null);
+    setSigefStatus('idle'); setBaixou({}); setSalvoOk(false);
     localStorage.removeItem(rascunhoKey());
     aviso('Novo projeto iniciado. Importe pontos para começar.');
     setTimeout(() => {
@@ -1561,21 +1586,27 @@ export default function EditorPage() {
 
   // Fluxo de trabalho (ordem do cabeçalho, esquerda→direita) para a linha fina sob os botões.
   // Estado de cada etapa: feito | falha (pulada: incompleta mas uma etapa posterior já foi feita) | pendente.
-  const fluxo = useMemo(() => {
-    // Só AÇÕES do usuário, na ordem do processo. Nada que se complete sozinho ao importar
-    // (a área, por ex., é automática) — senão o fim acende e o meio vira "pulado" cedo demais.
-    const steps: { label: string; ok: boolean }[] = [
-      { label: 'Importar pontos (TXT)', ok: vertices.length >= 3 },
-      { label: 'Dados do imóvel', ok: !!(imovel.denominacao && imovel.matricula && imovel.proprietario && imovel.municipio) },
-      // confrontante "feito" = tem dado real (não o rascunho automático do TXT) e está atribuído a um lado
-      { label: 'Confrontantes', ok: confrontantes.some((c) => c.nome && (c.cpf || c.matricula)) && Object.keys(confrontantePorLado).length > 0 },
-      { label: 'Divisas pintadas', ok: vertices.some((v) => v.representacao && v.representacao !== 'linha-ideal') },
-      { label: 'Planta de situação', ok: !!situacaoUrl },
-    ];
-    const ultimoFeito = steps.reduce((acc, s, i) => (s.ok ? i : acc), -1);
-    const estados = steps.map((s, i) => (s.ok ? 'feito' : i < ultimoFeito ? 'falha' : 'pendente'));
-    return { steps, estados };
-  }, [vertices, imovel, confrontantes, confrontantePorLado, situacaoUrl]);
+  // Estado de cada ETAPA do cabeçalho (a barrinha cola embaixo do botão correspondente).
+  // Só conta AÇÃO do usuário; "andamento" (azul) = começou mas não terminou.
+  const etapas = useMemo<Record<string, EtapaEstado>>(() => {
+    const nLados = Object.keys(confrontantePorLado).length;
+    const todosLados = vertices.length > 0 && nLados >= vertices.length;
+    const todasDivisas = vertices.length > 0 && vertices.every((v) => v.representacao && v.representacao !== 'linha-ideal');
+    const algumasDivisas = vertices.some((v) => v.representacao && v.representacao !== 'linha-ideal');
+    return {
+      txt: vertices.length >= 3 ? 'feito' : 'pendente',
+      sigef: sigefStatus === 'enviado' ? 'feito' : sigefStatus === 'clicado' ? 'andamento' : 'pendente',
+      dados: (imovel.denominacao && imovel.matricula && imovel.proprietario && imovel.municipio) ? 'feito' : 'pendente',
+      confro: todosLados ? 'feito' : nLados > 0 ? 'andamento' : 'pendente',
+      divisas: todasDivisas ? 'feito' : algumasDivisas ? 'andamento' : 'pendente',
+      trt: imovel.numeroTrt?.trim() ? 'feito' : 'pendente',
+      memorial: baixou.memorial ? 'feito' : 'pendente',
+      ods: baixou.ods ? 'feito' : 'pendente',
+      planta: baixou.planta ? 'feito' : 'pendente',
+      req: baixou.req ? 'feito' : 'pendente',
+      salvo: salvoOk ? 'feito' : 'pendente',
+    };
+  }, [vertices, imovel, confrontantePorLado, sigefStatus, baixou, salvoOk]);
 
   // rótulos de confrontante arrastáveis no mapa (posRotulo manual ou centróide dos lados)
   const rotulosConf: RotuloMapa[] = useMemo(() => {
@@ -1615,7 +1646,7 @@ export default function EditorPage() {
       {/* Topo */}
       {/* Cabeçalho = FLUXO DO TRABALHO (esquerda → direita) + conta fixa à direita */}
       <header className="no-print flex items-stretch border-b">
-       <div className="flex flex-1 items-center gap-1.5 overflow-x-auto px-3 py-2">
+       <div className="flex flex-1 items-start gap-1.5 overflow-x-auto px-3 py-2">
         <input ref={fileRef} type="file" accept=".txt,.csv" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
@@ -1626,26 +1657,26 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
 
         {/* 1) Importar e checar vizinhos */}
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Users /><Upload className="size-3.5" /> SIGEF</Button>
+        <Etapa st={etapas.txt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
+        <Etapa st={etapas.sigef}><Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Users /><Upload className="size-3.5" /> SIGEF</Button></Etapa>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 2) Dados do projeto atual */}
-        <Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório"><BookUser /> DADOS</Button></Link>
+        <Etapa st={etapas.dados}><Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório"><BookUser /> DADOS</Button></Link></Etapa>
         <Button size="sm" variant="outline" className="shrink-0 px-2" title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /></Button>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
-        <Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className="shrink-0" title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> CONFRO</Button>
-        <Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className="shrink-0" title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> DIVISAS</Button>
+        <Etapa st={etapas.confro}><Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className="shrink-0" title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> CONFRO</Button></Etapa>
+        <Etapa st={etapas.divisas}><Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className="shrink-0" title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> DIVISAS</Button></Etapa>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
         {/* 5) Peças */}
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEMORIAL</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQUERIMENTO</Button>
+        <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button></Etapa>
+        <Etapa st={etapas.memorial}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEMORIAL</Button></Etapa>
+        <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button></Etapa>
+        <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
+        <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQUERIMENTO</Button></Etapa>
         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERTIFICAR</Button>
         </a>
@@ -1693,9 +1724,11 @@ export default function EditorPage() {
          <Button size="sm" variant="outline" className="gap-1 font-semibold shrink-0 h-8" disabled={processando} title="Iniciar um novo projeto (TXT)" onClick={criarNovoProjeto}>
            <Plus className="size-4" /> NOVO
          </Button>
-         <Button size="sm" variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1 shrink-0 h-8 mr-1" disabled={processando} title="Projeto salvo (cor sólida = salvo com sucesso). Tudo é salvo automaticamente; este botão força e confirma o salvamento." onClick={salvar}>
-           <Save className="size-4" /> SALVO
-         </Button>
+         <Etapa st={etapas.salvo}>
+           <Button size="sm" variant="default" className={`font-bold gap-1 shrink-0 h-8 mr-1 text-white ${salvoOk ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-600/50 hover:bg-emerald-600/70'}`} disabled={processando} title="Salvar o projeto (cor sólida = salvo com sucesso). Tudo é salvo automaticamente; este botão força e confirma o salvamento." onClick={salvar}>
+             <Save className="size-4" /> SALVO
+           </Button>
+         </Etapa>
 
          <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
          <Button size="sm" variant="ghost" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
@@ -1704,16 +1737,6 @@ export default function EditorPage() {
          )}
        </div>
       </header>
-
-      {/* Linha fina de progresso por etapa do fluxo (verde = feito, vermelho = pulado, cinza = pendente) */}
-      <div className="no-print flex gap-px border-b bg-border/30">
-        {fluxo.steps.map((s, i) => {
-          const st = fluxo.estados[i];
-          const cor = st === 'feito' ? 'bg-green-500' : st === 'falha' ? 'bg-red-500' : 'bg-muted';
-          const rotuloEstado = st === 'feito' ? 'feito' : st === 'falha' ? 'FALTOU (etapa pulada)' : 'pendente';
-          return <div key={i} className={`h-1 flex-1 ${cor}`} title={`${s.label}: ${rotuloEstado}`} />;
-        })}
-      </div>
 
       <div className="relative flex min-h-0 flex-1">
         {/* Faixa de status/controles — sobreposta (não empurra o mapa/planta); some sozinha */}
@@ -2099,8 +2122,9 @@ export default function EditorPage() {
         requerente={requerente} transmitente={transmitente}
         onChangePessoas={(r, t) => { setRequerente(r); setTransmitente(t); }}
         sugProp={sugProp}
+        onBaixar={() => setBaixou((b) => ({ ...b, req: true }))}
       />
-      <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico}
+      <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
       <ConsultarModal open={consultarAberto} onOpenChange={setConsultarAberto}

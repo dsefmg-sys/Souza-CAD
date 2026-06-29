@@ -14,9 +14,10 @@ interface Props {
   tecnico: TecnicoData | null;
   areaHa: number;
   perimetro: number;
+  onChangeImovel?: (im: ImovelData) => void;
 }
 
-export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, perimetro }: Props) {
+export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, perimetro, onChangeImovel }: Props) {
   const [copiado, setCopiado] = useState<string | null>(null);
 
   const linhas: [string, string][] = [
@@ -61,6 +62,15 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
           <DialogTitle>Dados para o TRT</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">Confira e copie os campos para preencher o Termo de Responsabilidade Técnica no conselho.</p>
+        <div className="flex items-center gap-2 rounded border p-3 bg-background">
+          <label className="text-sm font-semibold whitespace-nowrap">Nº do TRT/ART emitido</label>
+          <input
+            className="flex-1 rounded border bg-background px-2 py-1 text-sm"
+            placeholder="Cole aqui o número depois de emitir (conclui a etapa TRT)"
+            value={imovel.numeroTrt ?? ''}
+            onChange={(e) => onChangeImovel?.({ ...imovel, numeroTrt: e.target.value })}
+          />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded border p-3 bg-muted/20 overflow-y-auto">
           {linhas.map(([k, v]) => (
             <div key={k} className="flex items-center justify-between gap-2 p-2 border rounded bg-background text-sm">

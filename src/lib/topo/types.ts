@@ -247,6 +247,7 @@ export interface ImovelData {
   fundosM?: number;
   distanciaEsquinaM?: number;
   esquinaRua?: string;
+  numeroTrt?: string;          // nº do TRT/ART emitido no conselho (por projeto)
 }
 
 /**
