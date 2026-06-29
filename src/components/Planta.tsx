@@ -39,6 +39,7 @@ interface Props {
   onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
   onTextoEditar?: (id: string, atual: string) => void;            // clique duplo: editar conteúdo
   onTextoMenu?: (id: string, atual: string, x: number, y: number) => void; // clique direito: formatar
+  onMoverFolha?: (dx: number, dy: number) => void;                // arrastar o vazio: reposiciona a folha
 }
 
 /** Ajuste salvo de um texto (conteúdo/escala/negrito). */
@@ -111,11 +112,12 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onMoverRotuloConf, onMoverRotuloVertice,
-  onTextoEditar, onTextoMenu,
+  onTextoEditar, onTextoMenu, onMoverFolha,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert'; id: string; idx?: number }>(null);
+  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha'; id: string; idx?: number }>(null);
+  const folhaLast = useRef<{ x: number; y: number } | null>(null);
 
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
@@ -153,8 +155,9 @@ export default function Planta({
     : (TABELA.find((d) => d >= denomNatural) ?? Math.ceil(denomNatural / 10000) * 10000);
   const escala = 1 / (escalaDenom * 0.0002645);
   const desW = (maxX - minX) * escala, desH = (maxY - minY) * escala;
-  const offX = DRAW.x0 + (areaW - desW) / 2;
-  const offY = DRAW.y0 + (areaH - desH) / 2;
+  // deslocamento manual da folha (o polígono é georreferenciado e não se move; a prancha sim)
+  const offX = DRAW.x0 + (areaW - desW) / 2 + (config.offsetX ?? 0);
+  const offY = DRAW.y0 + (areaH - desH) / 2 + (config.offsetY ?? 0);
   const sx = (e: number) => offX + (e - minX) * escala;
   const sy = (n: number) => offY + (maxY - n) * escala;
 
@@ -244,19 +247,28 @@ export default function Planta({
         dragRef.current = { kind: 'rotVert', id: rv.v.id }; captura(e); return;
       }
     }
-    // clique no vazio com objeto selecionado: desseleciona
+    // clique/arrasto no vazio: desseleciona e permite reposicionar a FOLHA inteira
     onSelecObjeto?.(null);
+    dragRef.current = { kind: 'folha', id: '' };
+    folhaLast.current = u;
+    captura(e);
   }
   function plantaMove(e: ReactPointerEvent) {
     if (!editavel || !dragRef.current) return;
     const u = svgPonto(e); if (!u) return;
-    const g = paraGeo(u); const d = dragRef.current;
+    const d = dragRef.current;
+    if (d.kind === 'folha') {
+      if (folhaLast.current) onMoverFolha?.(u.x - folhaLast.current.x, u.y - folhaLast.current.y);
+      folhaLast.current = u;
+      return;
+    }
+    const g = paraGeo(u);
     if (d.kind === 'objPonto') onMoverPontoObjeto?.(d.id, d.idx!, g.lat, g.lon);
     else if (d.kind === 'rotConf') onMoverRotuloConf?.(d.id, g.lat, g.lon);
     else if (d.kind === 'rotVert') onMoverRotuloVertice?.(d.id, g.lat, g.lon);
   }
   function plantaUp(e: ReactPointerEvent) {
-    dragRef.current = null;
+    dragRef.current = null; folhaLast.current = null;
     try { svgRef.current?.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
   }
   function captura(e: ReactPointerEvent) { try { svgRef.current?.setPointerCapture(e.pointerId); } catch { /* ignore */ } }
@@ -466,7 +478,7 @@ function FaixaInferior(props: {
       {/* --- BOX 1: SITUAÇÃO --- */}
       <g>
         <rect x={x1} y={y0} width={w1} height={hBox} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <rect x={x1} y={y0} width={w1} height={18} fill="#000" rx={2} ry={2} />
+        <rect x={x1} y={y0} width={w1} height={18} fill="#009739" rx={2} ry={2} />
         <text x={x1 + w1 / 2} y={y0 + 13} fontSize={fs(9)} fontWeight="bold" fill="#fff" textAnchor="middle">Situação</text>
         {situacaoUrl && verSituacao ? (
           <image href={situacaoUrl} x={x1 + 6} y={y0 + 24} width={w1 - 12} height={hBox - 30} preserveAspectRatio="xMidYMid slice" />
@@ -514,14 +526,14 @@ function FaixaInferior(props: {
 
         {/* Lado Esquerdo do Box 3 (Projeção e Diagrama) */}
         <g>
-          <text x={x3 + 12} y={y0 + 38} fontSize={fs(8)} fontWeight="bold">PROJEÇÃO UNIVERSAL TRANSVERSA DE MERCATOR - UTM</text>
-          <text x={x3 + 12} y={y0 + 52} fontSize={fs(8)} fontWeight="bold">SGR - SIRGAS2000</text>
-          <text x={x3 + 12} y={y0 + 66} fontSize={fs(8)}>MC: {meridianoCentral(zona)}° · Fuso {zona}{hemisferio}</text>
-          {verNortes && <Nortes cx={x3 + 80} cy={y0 + 144} conv={conv} decl={decl} />}
+          <text x={x3 + 12} y={y0 + 38} fontSize={fs(7)} fontWeight="bold">PROJEÇÃO UNIVERSAL TRANSVERSA DE MERCATOR (UTM)</text>
+          <text x={x3 + 12} y={y0 + 51} fontSize={fs(7)} fontWeight="bold">SGR - SIRGAS2000</text>
+          <text x={x3 + 12} y={y0 + 64} fontSize={fs(7)}>MC: {meridianoCentral(zona)}° · Fuso {zona}{hemisferio}</text>
+          {verNortes && <Nortes cx={x3 + 70} cy={y0 + 148} conv={conv} decl={decl} />}
         </g>
 
         {/* Lado Direito do Box 3 (Valores do Vértice de Referência) */}
-        <g transform="translate(230, 0)">
+        <g transform="translate(300, 0)">
           <text x={x3 + 12} y={y0 + 38} fontSize={fs(8)} fontWeight="bold">Vértice: {vref.codigoSigef || vref.nome}</text>
           {[
             ['Lat:', lat],

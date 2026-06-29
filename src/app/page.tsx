@@ -91,7 +91,7 @@ export default function EditorPage() {
   // zoom/pan da PRÉVIA da planta (não afeta o PDF exportado, que lê o SVG original)
   const [plantaZoom, setPlantaZoom] = useState(1);
   const [plantaPan, setPlantaPan] = useState({ x: 0, y: 0 });
-  const [editarPlanta, setEditarPlanta] = useState(false);
+  const [editarPlanta, setEditarPlanta] = useState(true); // planta abre já no modo edição
   const [menuTexto, setMenuTexto] = useState<{ id: string; atual: string; x: number; y: number } | null>(null);
   const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
@@ -316,7 +316,11 @@ export default function EditorPage() {
   function plantaPanDown(e: ReactPointerEvent) { plantaPanRef.current = { px: e.clientX, py: e.clientY, ox: plantaPan.x, oy: plantaPan.y }; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
   function plantaPanMove(e: ReactPointerEvent) { const d = plantaPanRef.current; if (d) setPlantaPan({ x: d.ox + (e.clientX - d.px), y: d.oy + (e.clientY - d.py) }); }
   function plantaPanUp(e: ReactPointerEvent) { plantaPanRef.current = null; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ } }
-  function ajustarPlanta() { setPlantaZoom(1); setPlantaPan({ x: 0, y: 0 }); }
+  function ajustarPlanta() { setPlantaZoom(1); setPlantaPan({ x: 0, y: 0 }); setPlantaConfig((c) => ({ ...c, offsetX: 0, offsetY: 0 })); }
+  // reposiciona a folha A3 em relação ao polígono (que é georreferenciado e fixo)
+  function moverFolhaPlanta(dx: number, dy: number) {
+    setPlantaConfig((c) => ({ ...c, offsetX: +(((c.offsetX ?? 0) + dx).toFixed(1)), offsetY: +(((c.offsetY ?? 0) + dy).toFixed(1)) }));
+  }
 
   // ---- edição de textos da planta (conteúdo/escala/negrito por id) ----
   function patchTextoPlanta(id: string, patch: { texto?: string; escala?: number; negrito?: boolean }) {
@@ -912,7 +916,7 @@ export default function EditorPage() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     await comCodigos();
     setVista('planta');
-    setEditarPlanta(false); setObjetoSelId(null); // não levar realces de edição para o PDF
+    setObjetoSelId(null); setDesenhoBuffer([]); // limpa realces de edição (a superfície de captura é invisível no PDF)
     aviso('Gerando PDF da planta…');
     setTimeout(() => {
       const svg = document.getElementById('planta-svg') as SVGSVGElement | null;
@@ -1445,6 +1449,13 @@ export default function EditorPage() {
                 <Button size="sm" variant={editarPlanta ? 'default' : 'outline'} title={editarPlanta ? 'Editando: arraste itens; com uma ferramenta ativa, clique para desenhar' : 'Editar a planta (mover itens e desenhar, como no mapa)'} onClick={() => setEditarPlanta((v) => !v)}><Pencil /> Editar</Button>
                 <Button size="sm" variant="outline" className="px-2" title="Diminuir todos os textos da planta" onClick={() => setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.5) - 0.05).toFixed(2))) }))}>A-</Button>
                 <Button size="sm" variant="outline" className="px-2" title="Aumentar todos os textos da planta" onClick={() => setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) }))}>A+</Button>
+                {/* Escala do desenho em passos de 250 (padrão de trabalho) */}
+                <div className="flex items-center gap-0.5 rounded-md border bg-background px-1 text-xs">
+                  <Button size="sm" variant="ghost" className="size-7 p-0" title="Desenho maior (denominador −250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: Math.max(250, (c.escalaManual ?? 1000) - 250) }))}>−</Button>
+                  <span className="min-w-[52px] text-center font-medium" title="Escala do desenho">1 / {plantaConfig.escalaManual ?? 'auto'}</span>
+                  <Button size="sm" variant="ghost" className="size-7 p-0" title="Desenho menor (denominador +250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: (c.escalaManual ?? 1000) + 250 }))}>+</Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-1" title="Escala automática" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>auto</Button>
+                </div>
                 <Button size="sm" variant="default" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> Baixar PDF</Button>
                 <Button size="sm" variant="secondary" title="Gerar a planta de situação (recorte de satélite)" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
                 {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }}>Remover</Button>}
@@ -1452,7 +1463,7 @@ export default function EditorPage() {
               </div>
               <div className={`absolute inset-0 overflow-hidden p-4 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
                 onPointerDown={editarPlanta ? undefined : plantaPanDown} onPointerMove={editarPlanta ? undefined : plantaPanMove} onPointerUp={editarPlanta ? undefined : plantaPanUp}
-                title={editarPlanta ? 'Modo edição: arraste itens; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
+                title={editarPlanta ? 'Modo edição: arraste itens; arraste uma área vazia para reposicionar a folha; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
                 {res && tecnico && escritorio && (
                   <div className="mx-auto max-w-[1587px] bg-white shadow" style={{ transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'center top' }}>
                     <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
@@ -1463,7 +1474,8 @@ export default function EditorPage() {
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
-                      onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuTexto({ id, atual, x, y })} />
+                      onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuTexto({ id, atual, x, y })}
+                      onMoverFolha={moverFolhaPlanta} />
                   </div>
                 )}
               </div>

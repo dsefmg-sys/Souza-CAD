@@ -258,6 +258,8 @@ export interface PlantaConfig {
   titulo?: string;             // padrão "Levantamento Planimétrico Georreferenciado"
   folha?: string;              // padrão "Única"
   escalaManual?: number;       // denominador fixo (ex.: 2000); 0/ausente = automática
+  offsetX?: number;            // deslocamento da folha em relação ao polígono (px da prancha A3)
+  offsetY?: number;
   mostrarGrade?: boolean;      // padrão true
   mostrarNortes?: boolean;     // padrão true
   mostrarConvencoes?: boolean; // padrão true
