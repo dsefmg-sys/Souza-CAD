@@ -100,18 +100,21 @@ const iconeRotulo = (r: RotuloMapa) => {
 
 function AjustarLimites({ vertices }: { vertices: Vertex[] }) {
   const map = useMap();
-  const ultimoN = useRef(0);
+  // Enquadra UMA vez, quando o primeiro polígono aparece. NÃO reenquadra a cada edição (ignorar/
+  // apagar/inserir vértice) — isso resetava o zoom do usuário. Reenquadrar de propósito = botão
+  // "Centralizar" (via centralizarSig) e nos eventos de importação/troca de gleba.
+  const jaAjustou = useRef(false);
   useEffect(() => {
+    if (jaAjustou.current) return;
     const validos = vertices.filter(valido);
-    if (validos.length >= 2 && validos.length !== ultimoN.current) {
-      try {
-        const b = L.latLngBounds(validos.map((v) => [v.lat, v.lon] as [number, number]));
-        if (b.isValid()) {
-          map.whenReady(() => { try { map.fitBounds(b, { padding: [40, 40] }); } catch { /* sem tamanho */ } });
-          ultimoN.current = validos.length;
-        }
-      } catch { /* coords inválidas */ }
-    }
+    if (validos.length < 2) return;
+    try {
+      const b = L.latLngBounds(validos.map((v) => [v.lat, v.lon] as [number, number]));
+      if (b.isValid()) {
+        map.whenReady(() => { try { map.fitBounds(b, { padding: [40, 40] }); } catch { /* sem tamanho */ } });
+        jaAjustou.current = true;
+      }
+    } catch { /* coords inválidas */ }
   }, [vertices, map]);
   return null;
 }

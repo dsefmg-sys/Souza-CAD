@@ -301,6 +301,7 @@ export default function EditorPage() {
     setVerticesIgnorados([]);
     setGlebaAtivaId(g.id);
     setSelecionadoId(null);
+    if (g.vertices.length >= 2) setCentralizarSig((n) => n + 1); // enquadra a gleba carregada
   }
   function trocarGleba(id: string) {
     if (id === glebaAtivaId) return;
@@ -950,7 +951,8 @@ export default function EditorPage() {
       const alvoId = glebaAtivaId;
       setGlebas((prev) => prev.map((g) => (g.id === alvoId ? { ...g, vertices: vs, confrontantes: cs, confrontantePorLado: mapa } : g)));
       setVertices(vs); setConfrontantes(cs); setConfrontantePorLado(mapa);
-      
+      setCentralizarSig((n) => n + 1); // enquadra o desenho importado do DXF
+
       if (!nomeProjeto) {
         const auto = gerarTituloAutomatico(imovel);
         setNomeProjeto(auto || file.name.replace(/\.[^.]+$/, ''));
