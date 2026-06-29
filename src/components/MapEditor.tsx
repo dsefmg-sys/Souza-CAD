@@ -23,6 +23,7 @@ interface Props {
   objetos?: ObjetoDesenho[];
   desenhoAtual?: [number, number][];
   rotulos?: RotuloMapa[];
+  centroGleba?: { linhas: string[] } | null;
   objetoSelId?: string | null;
   onMover: (id: string, lat: number, lon: number) => void;
   onSelecionar: (id: string) => void;
@@ -89,12 +90,23 @@ function iconeTexto(o: ObjetoDesenho, sel: boolean) {
 // rótulo/assinatura do confrontante: bloco branco com texto preto (legível no claro e no escuro),
 // multilinha (Nome/CPF/Matrícula…) e uma linha de assinatura embaixo. Movível e redimensionável.
 const iconeRotulo = (r: RotuloMapa) => {
-  const fs = r.tam && r.tam > 0 ? r.tam : 10;
+  const fs = r.tam && r.tam > 0 ? r.tam : 11;
   const linhas = r.linhas.map((l) => `<div>${(l || '').replace(/</g, '&lt;')}</div>`).join('');
   return L.divIcon({
     className: 'objeto-rotulo',
-    html: `<div style="font-size:${fs}px;line-height:1.25;color:#000;background:rgba(255,255,255,0.92);border:1px solid #555;border-radius:3px;padding:2px 6px;white-space:nowrap;text-align:center;box-shadow:0 0 2px rgba(0,0,0,.35)">${linhas}<div style="border-top:1px solid #000;margin-top:7px;padding-top:1px;font-size:${Math.max(7, fs - 2)}px;color:#444">Assinatura</div></div>`,
+    html: `<div style="font-size:${fs}px;line-height:1.3;color:#000;background:#fff;border:1.5px solid #222;border-radius:4px;padding:3px 7px;white-space:nowrap;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.5)">${linhas}<div style="border-top:1px solid #000;margin-top:8px;padding-top:1px;font-size:${Math.max(8, fs - 2)}px;color:#333">Assinatura</div></div>`,
     iconSize: [1, 1], iconAnchor: [0, 8],
+  });
+};
+
+// rótulo central da gleba: dados-chave (denominação, proprietário, matrícula, área) no meio do polígono.
+// Não captura clique (pointer-events:none) para não atrapalhar a edição embaixo dele.
+const iconeCentro = (linhas: string[]) => {
+  const corpo = linhas.map((l, i) => `<div style="font-weight:${i === 0 ? 700 : 600};font-size:${i === 0 ? 13 : 11}px">${(l || '').replace(/</g, '&lt;')}</div>`).join('');
+  return L.divIcon({
+    className: 'gleba-centro',
+    html: `<div style="pointer-events:none;color:#1c1917;text-align:center;line-height:1.3;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap">${corpo}</div>`,
+    iconSize: [1, 1], iconAnchor: [0, 0],
   });
 };
 
@@ -167,7 +179,7 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], outrasGlebas = [],
-    objetos = [], desenhoAtual = [], rotulos = [], objetoSelId = null,
+    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     conflitos = [],
     focoLatLng = null,
@@ -181,6 +193,12 @@ export default function MapEditor(props: Props) {
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
   const centro = useMemo<[number, number]>(() => (validos.length ? [validos[0].lat, validos[0].lon] : ESPERA_FELIZ), [validos]);
   const anel = validos.map((v) => [v.lat, v.lon] as [number, number]);
+  const centroideGleba = useMemo<[number, number] | null>(() => {
+    if (validos.length < 3) return null;
+    const la = validos.reduce((s, v) => s + v.lat, 0) / validos.length;
+    const lo = validos.reduce((s, v) => s + v.lon, 0) / validos.length;
+    return [la, lo];
+  }, [validos]);
 
   return (
     <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={22} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false}>
@@ -300,6 +318,11 @@ export default function MapEditor(props: Props) {
       {/* desenho em andamento */}
       {desenhoAtual.length >= 2 && <Polyline positions={desenhoAtual} pathOptions={{ color: '#2563eb', weight: 1.5, dashArray: '4 3' }} />}
       {desenhoAtual.map((p, i) => <CircleMarker key={`da${i}`} center={p} radius={3} pathOptions={{ color: '#2563eb', fillColor: '#fff', fillOpacity: 1 }} />)}
+
+      {/* dados-chave no centro da gleba (não interativo) */}
+      {centroGleba && centroideGleba && centroGleba.linhas.length > 0 && (
+        <Marker position={centroideGleba} interactive={false} icon={iconeCentro(centroGleba.linhas)} />
+      )}
 
       {/* rótulos de confrontante (arrastáveis) */}
       {rotulos.map((r) => (

@@ -1114,6 +1114,21 @@ export default function EditorPage() {
     }
     return out;
   }, [confrontantes, confrontantePorLado, vertices]);
+
+  // dados-chave para mostrar no centro da gleba (mapa e planta): denominação, matrícula, prop., área
+  const centroGlebaInfo = useMemo(() => {
+    if (vertices.length < 3) return null;
+    const ef = res ? valoresEfetivos(res, imovel) : null;
+    const linhas = [
+      glebas.length > 1 && glebaAtivaNome ? glebaAtivaNome : (imovel.denominacao || 'Imóvel'),
+      imovel.matricula ? `Matrícula nº ${imovel.matricula}` : '',
+      imovel.proprietario ? `Prop.: ${imovel.proprietario}` : '',
+      ef ? `Área: ${numBR(ef.areaHa, 4)} ha` : '',
+    ].filter(Boolean);
+    return { linhas };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vertices.length, res, imovel, glebaAtivaNome, glebas.length]);
+
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
 
   return (
@@ -1275,7 +1290,7 @@ export default function EditorPage() {
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
-                objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} objetoSelId={objetoSelId}
+                objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} objetoSelId={objetoSelId}
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice}
                 conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}

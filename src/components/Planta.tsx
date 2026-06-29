@@ -360,8 +360,9 @@ export default function Planta({
       <g>
         {[
           glebaNome || imovel.denominacao || 'Imóvel',
-          `Área: ${numBR(ef.areaHa, 4)} ha`,
+          imovel.matricula ? `Matrícula nº ${formatMatricula(imovel.matricula)}` : '',
           imovel.proprietario ? `Prop.: ${imovel.proprietario}` : '',
+          `Área: ${numBR(ef.areaHa, 4)} ha`,
         ].filter(Boolean).map((t, i) => (
           <text key={i} x={cx} y={cy + i * 14} fontSize={fs(i === 0 ? 13 : 11)} fontWeight={i === 0 ? 'bold' : 'normal'} textAnchor="middle" fill="#1c1917">{t}</text>
         ))}
