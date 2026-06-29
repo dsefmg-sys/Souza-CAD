@@ -1,9 +1,10 @@
 'use client';
 
-import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante, PlantaConfig, PessoaQualificada } from '@/lib/topo/types';
+import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante, PlantaConfig, PessoaQualificada, PontoLL } from '@/lib/topo/types';
 import { numBR, formatMatricula } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
-import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm } from '@/lib/topo/coords';
+import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { distanciaCota } from '@/lib/topo/objetos';
 import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import type { ObjetoDesenho } from '@/lib/topo/types';
@@ -26,6 +27,16 @@ interface Props {
   config?: PlantaConfig;
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
+  // --- edição na própria planta (opcional; quando ausente, a planta é só visual) ---
+  editavel?: boolean;
+  modo?: string;
+  objetoSelId?: string | null;
+  desenhoAtual?: PontoLL[];
+  onCliquePlanta?: (lat: number, lon: number) => void;
+  onSelecObjeto?: (id: string | null) => void;
+  onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
+  onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
+  onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
 }
 
 const LAUDO_PADRAO = 'LAUDO TÉCNICO: Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.';
@@ -68,8 +79,14 @@ function intervaloGrade(extent: number): number {
 export default function Planta({
   vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado,
   zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], objetos = [], config = {},
-  requerente, transmitente
+  requerente, transmitente,
+  editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
+  onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onMoverRotuloConf, onMoverRotuloVertice,
 }: Props) {
+  // hooks antes de qualquer retorno condicional
+  const svgRef = useRef<SVGSVGElement>(null);
+  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert'; id: string; idx?: number }>(null);
+
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
   }
@@ -146,6 +163,74 @@ export default function Planta({
     return { c, x: clampX(mx + dx * 60), y: clampY(my + dy * 60) };
   });
 
+  // posição do rótulo de cada vértice (honra posRotulo arrastado; senão, deslocado do ponto)
+  const rotuloVert = vertices.map((v) => {
+    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, x: sx(u.leste), y: sy(u.norte) }; }
+    return { v, x: sx(v.leste) + 5, y: sy(v.norte) - 4 };
+  });
+
+  // ---- EDIÇÃO NA PLANTA: converte pixel do SVG -> terreno e arrasta itens ----
+  function svgPonto(e: ReactPointerEvent): { x: number; y: number } | null {
+    const svg = svgRef.current; const ctm = svg?.getScreenCTM();
+    if (!svg || !ctm) return null;
+    const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+    const u = p.matrixTransform(ctm.inverse());
+    return { x: u.x, y: u.y };
+  }
+  function paraGeo(u: { x: number; y: number }) {
+    const leste = minX + (u.x - offX) / escala;
+    const norte = maxY - (u.y - offY) / escala;
+    return utmParaGeo(leste, norte, zona, hemisferio);
+  }
+  function plantaDown(e: ReactPointerEvent) {
+    if (!editavel) return;
+    const u = svgPonto(e); if (!u) return;
+    // modos de desenho: o clique cria/continua o objeto (mesma lógica do mapa)
+    if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
+      const g = paraGeo(u); onCliquePlanta?.(g.lat, g.lon); return;
+    }
+    // navegar: arrastar item mais próximo (prioridade: ponto de objeto > rótulo conf > nome de vértice)
+    for (const o of objetos) {
+      for (let i = 0; i < o.pontos.length; i++) {
+        if (Math.hypot(sx(o.pontos[i].leste) - u.x, sy(o.pontos[i].norte) - u.y) < 7) {
+          dragRef.current = { kind: 'objPonto', id: o.id, idx: i }; onSelecObjeto?.(o.id); captura(e); return;
+        }
+      }
+    }
+    for (const r of rotulosConf) {
+      if (!r.c) continue;
+      const fz = r.c.tamRotulo && r.c.tamRotulo > 0 ? r.c.tamRotulo * escTxt : fonteRot;
+      const half = Math.max(60, fz * 8);
+      const nLinhas = rotuloConfrontanteLinhas(r.c).length;
+      if (Math.abs(u.x - r.x) < half && u.y > r.y - 16 && u.y < r.y + nLinhas * (fz + 1.5)) {
+        dragRef.current = { kind: 'rotConf', id: r.c.id }; captura(e); return;
+      }
+    }
+    for (const rv of rotuloVert) {
+      if (Math.abs(u.x - rv.x) < 26 && Math.abs(u.y - rv.y) < 9) {
+        dragRef.current = { kind: 'rotVert', id: rv.v.id }; captura(e); return;
+      }
+    }
+    // clique no vazio com objeto selecionado: desseleciona
+    onSelecObjeto?.(null);
+  }
+  function plantaMove(e: ReactPointerEvent) {
+    if (!editavel || !dragRef.current) return;
+    const u = svgPonto(e); if (!u) return;
+    const g = paraGeo(u); const d = dragRef.current;
+    if (d.kind === 'objPonto') onMoverPontoObjeto?.(d.id, d.idx!, g.lat, g.lon);
+    else if (d.kind === 'rotConf') onMoverRotuloConf?.(d.id, g.lat, g.lon);
+    else if (d.kind === 'rotVert') onMoverRotuloVertice?.(d.id, g.lat, g.lon);
+  }
+  function plantaUp(e: ReactPointerEvent) {
+    dragRef.current = null;
+    try { svgRef.current?.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+  }
+  function captura(e: ReactPointerEvent) { try { svgRef.current?.setPointerCapture(e.pointerId); } catch { /* ignore */ } }
+
+  // pré-visualização do desenho em andamento (linha/polilinha/cota)
+  const desenhoPts = desenhoAtual.map((p) => { const u = geoParaUtm(p.lat, p.lon, zona, hemisferio); return { x: sx(u.leste), y: sy(u.norte) }; });
+
   // ---- cálculo de nortes e coordenadas ----
   const vref = vertices[0];
   const conv = convergenciaMeridiana(vref.lat, vref.lon, zona);
@@ -156,10 +241,15 @@ export default function Planta({
   const represUsadas = Array.from(new Set(vertices.map((v) => v.representacao || 'linha-ideal')));
 
   return (
-    <svg id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%" style={{ background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif' }} xmlns="http://www.w3.org/2000/svg">
+    <svg ref={svgRef} id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%"
+      style={{ background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'crosshair') : 'default', touchAction: editavel ? 'none' : undefined }}
+      onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
+      xmlns="http://www.w3.org/2000/svg">
       {/* Moldura externa */}
       <rect x={0} y={0} width={W} height={H} fill="#fff" />
       <rect x={8} y={8} width={W - 16} height={H - 16} fill="none" stroke="#000" strokeWidth={1.5} />
+      {/* superfície de captura para edição (transparente; não aparece no PDF) */}
+      {editavel && <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="transparent" style={{ pointerEvents: 'all' }} />}
 
       {/* ---------- GRADE ---------- */}
       {verGrade && linhasX.map((x) => (
@@ -250,13 +340,21 @@ export default function Planta({
         );
       })}
 
-      {/* vértices + códigos */}
-      {vertices.map((v) => (
+      {/* vértices + códigos (rótulo na posição arrastada, se houver) */}
+      {rotuloVert.map(({ v, x, y }) => (
         <g key={v.id}>
           <SimboloVertice tipo={v.tipo} cx={sx(v.leste)} cy={sy(v.norte)} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6} />
-          <text x={sx(v.leste) + 5} y={sy(v.norte) - 4} fontSize={Math.max(6, fonteRot - 0.5)} fill="#000">{v.codigoSigef || 'S/N'}</text>
+          <text x={x} y={y} fontSize={Math.max(6, fonteRot - 0.5)} fill="#000">{v.codigoSigef || 'S/N'}</text>
         </g>
       ))}
+
+      {/* edição: prévia do desenho em andamento + realce dos pontos do objeto selecionado */}
+      {editavel && desenhoPts.length > 0 && (
+        <polyline points={desenhoPts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} fill="none" stroke="#2563eb" strokeWidth={1.2} strokeDasharray="4 3" />
+      )}
+      {editavel && objetoSelId && objetos.filter((o) => o.id === objetoSelId).flatMap((o) =>
+        o.pontos.map((p, i) => <circle key={`h${o.id}-${i}`} cx={sx(p.leste)} cy={sy(p.norte)} r={3.5} fill="#2563eb" stroke="#fff" strokeWidth={1} />)
+      )}
 
       {/* texto central com dados da gleba */}
       <g>

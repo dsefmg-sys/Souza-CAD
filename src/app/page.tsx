@@ -90,6 +90,7 @@ export default function EditorPage() {
   // zoom/pan da PRÉVIA da planta (não afeta o PDF exportado, que lê o SVG original)
   const [plantaZoom, setPlantaZoom] = useState(1);
   const [plantaPan, setPlantaPan] = useState({ x: 0, y: 0 });
+  const [editarPlanta, setEditarPlanta] = useState(false);
   const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
@@ -867,6 +868,7 @@ export default function EditorPage() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     await comCodigos();
     setVista('planta');
+    setEditarPlanta(false); setObjetoSelId(null); // não levar realces de edição para o PDF
     aviso('Gerando PDF da planta…');
     setTimeout(() => {
       const svg = document.getElementById('planta-svg') as SVGSVGElement | null;
@@ -1203,8 +1205,8 @@ export default function EditorPage() {
                   </>
                 )}
 
-                {/* FERRAMENTAS DE EDIÇÃO (só no mapa) */}
-                {vista === 'mapa' && (
+                {/* FERRAMENTAS DE EDIÇÃO (mapa, ou planta no modo Editar) */}
+                {(vista === 'mapa' || editarPlanta) && (
                   <>
                     <div className="my-0.5 h-px w-full bg-border" />
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
@@ -1281,21 +1283,25 @@ export default function EditorPage() {
           ) : (
             <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
+                <Button size="sm" variant={editarPlanta ? 'default' : 'outline'} title={editarPlanta ? 'Editando: arraste itens; com uma ferramenta ativa, clique para desenhar' : 'Editar a planta (mover itens e desenhar, como no mapa)'} onClick={() => setEditarPlanta((v) => !v)}><Pencil /> Editar</Button>
                 <Button size="sm" variant="default" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> Baixar PDF</Button>
                 <Button size="sm" variant="secondary" title="Gerar a planta de situação (recorte de satélite)" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
                 {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }}>Remover</Button>}
                 <Button size="sm" variant="outline" title="Ajustar (zoom 100%)" onClick={ajustarPlanta}><Maximize /> {Math.round(plantaZoom * 100)}%</Button>
               </div>
-              <div className="absolute inset-0 cursor-grab touch-none overflow-hidden p-4 active:cursor-grabbing"
-                onPointerDown={plantaPanDown} onPointerMove={plantaPanMove} onPointerUp={plantaPanUp}
-                title="Role para dar zoom; arraste para mover">
+              <div className={`absolute inset-0 overflow-hidden p-4 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
+                onPointerDown={editarPlanta ? undefined : plantaPanDown} onPointerMove={editarPlanta ? undefined : plantaPanMove} onPointerUp={editarPlanta ? undefined : plantaPanUp}
+                title={editarPlanta ? 'Modo edição: arraste itens; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
                 {res && tecnico && escritorio && (
                   <div className="mx-auto max-w-[1587px] bg-white shadow" style={{ transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'center top' }}>
                     <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                       confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
                       glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
                       requerente={requerente} transmitente={transmitente}
-                      outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))} />
+                      outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))}
+                      editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
+                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
+                      onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice} />
                   </div>
                 )}
               </div>
