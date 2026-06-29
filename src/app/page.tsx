@@ -1314,8 +1314,8 @@ export default function EditorPage() {
             <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
                 <Button size="sm" variant={editarPlanta ? 'default' : 'outline'} title={editarPlanta ? 'Editando: arraste itens; com uma ferramenta ativa, clique para desenhar' : 'Editar a planta (mover itens e desenhar, como no mapa)'} onClick={() => setEditarPlanta((v) => !v)}><Pencil /> Editar</Button>
-                <Button size="sm" variant="outline" className="px-2" title="Diminuir todos os textos da planta" onClick={() => setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.08) - 0.05).toFixed(2))) }))}>A-</Button>
-                <Button size="sm" variant="outline" className="px-2" title="Aumentar todos os textos da planta" onClick={() => setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2, +(((c.escalaTextos ?? 1.08) + 0.05).toFixed(2))) }))}>A+</Button>
+                <Button size="sm" variant="outline" className="px-2" title="Diminuir todos os textos da planta" onClick={() => setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.5) - 0.05).toFixed(2))) }))}>A-</Button>
+                <Button size="sm" variant="outline" className="px-2" title="Aumentar todos os textos da planta" onClick={() => setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) }))}>A+</Button>
                 <Button size="sm" variant="default" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> Baixar PDF</Button>
                 <Button size="sm" variant="secondary" title="Gerar a planta de situação (recorte de satélite)" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
                 {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }}>Remover</Button>}

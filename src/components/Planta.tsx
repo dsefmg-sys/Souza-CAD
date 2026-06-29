@@ -126,7 +126,7 @@ export default function Planta({
   const verConv = config.mostrarConvencoes !== false;
   const verEscalaG = config.mostrarEscalaGrafica !== false;
   const verSituacao = config.mostrarSituacao !== false;
-  const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1.08;
+  const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1.5;
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
   const fonteRot = fs(config.fonteRotulos ?? 10);
   const textosOv = config.textos ?? {};
@@ -657,14 +657,14 @@ function CarimboA3(props: {
       <g>
         <rect x={lx} y={24} width={wBox - 72} height={90} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         <text x={lx + 10} y={42} fontSize={fs(8)} fontWeight="bold" fill="#4b5563">Título:</text>
-        {T('carimbo.titulo', titulo, { x: lx + (wBox - 72) / 2, y: 76, size: fs(14.5), bold: true, anchor: 'middle', fill: '#000' })}
+        {T('carimbo.titulo', titulo, { x: lx + (wBox - 72) / 2, y: 74, size: fs(9.5), bold: true, anchor: 'middle', fill: '#000' })}
       </g>
 
       {/* --- BOX 2: FOLHA --- */}
       <g>
         <rect x={rx - 62} y={24} width={62} height={90} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         <text x={rx - 54} y={42} fontSize={fs(8)} fill="#4b5563">Folha:</text>
-        <text x={rx - 31} y={76} fontSize={fs(14.5)} fontWeight="bold" textAnchor="middle" fill="#000">{folha}</text>
+        <text x={rx - 31} y={74} fontSize={fs(10)} fontWeight="bold" textAnchor="middle" fill="#000">{folha}</text>
       </g>
 
       {/* --- BOX 3: DADOS DO IMÓVEL --- */}
@@ -675,8 +675,8 @@ function CarimboA3(props: {
           return (
             <g key={k}>
               {/* rótulo à esquerda e valor numa coluna fixa, ambos na mesma base */}
-              <text x={lx + 12} y={y} fontSize={fs(9.5)} fontWeight="bold" fill="#1f2937">{k}</text>
-              {T(`dado.${i}`, v, { x: lx + 150, y, size: fs(11), bold: true, fill: '#000', slice: 44 })}
+              <text x={lx + 12} y={y} fontSize={fs(9)} fontWeight="bold" fill="#1f2937">{k}</text>
+              {T(`dado.${i}`, v, { x: lx + 148, y, size: fs(10), bold: true, fill: '#000', slice: 40 })}
             </g>
           );
         })}
@@ -715,9 +715,9 @@ function CarimboA3(props: {
       {/* --- BOX 6: DECLARAÇÃO DOS CONFRONTANTES --- */}
       <g>
         <rect x={lx} y={680} width={wBox} height={160} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={lx + 10} y={696} fontSize={fs(7)} fontWeight="bold" fill="#4b5563">Declaração dos Confrontantes:</text>
-        <text x={cxc} y={716} fontSize={fs(8)} fontWeight="bold" textAnchor="middle">CONFRONTANTES</text>
-        <TextoQuebrado x={lx + 12} y={729} fontSize={fs(7)} larguraChars={75} textAnchor="middle" texto={textoConfront} />
+        <text x={lx + 10} y={695} fontSize={fs(7)} fontWeight="bold" fill="#4b5563">Declaração dos Confrontantes:</text>
+        <text x={cxc} y={714} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">CONFRONTANTES</text>
+        <TextoQuebrado x={cxc} y={728} fontSize={fs(8.5)} larguraChars={58} textAnchor="middle" texto={textoConfront} />
       </g>
 
       {/* --- BOX 7: CARIMBO DO ESCRITÓRIO --- */}
