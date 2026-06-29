@@ -355,18 +355,18 @@ export default function EditorPage() {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       const k = e.key;
-      if (k === 'F1') { e.preventDefault(); setModo('texto'); }
-      else if (k === 'F2') { e.preventDefault(); setVista((v) => (v === 'mapa' ? 'planta' : 'mapa')); }
+      if (k === 'F1') { e.preventDefault(); setVista((v) => (v === 'mapa' ? 'planta' : 'mapa')); }
+      else if (k === 'F2') { e.preventDefault(); setModo('navegar'); }
       else if (k === 'F3') { e.preventDefault(); setSnapAtivo((s) => !s); }
       else if (k === 'F4') { e.preventDefault(); setMostrarRotulos((m) => !m); }
-      else if (k === 'F5') { e.preventDefault(); setModo('navegar'); }
-      else if (k === 'F6') { e.preventDefault(); setModo('linha'); setDesenhoBuffer([]); }
-      else if (k === 'F7') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
+      else if (k === 'F5') { e.preventDefault(); setBloqueado((b) => !b); }
+      else if (k === 'F6') { e.preventDefault(); setModo('texto'); }
+      else if (k === 'F7') { e.preventDefault(); setModo('linha'); setDesenhoBuffer([]); }
       else if (k === 'F8') { e.preventDefault(); setModo('polilinha'); setDesenhoBuffer([]); }
-      else if (k === 'F9') { e.preventDefault(); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
+      else if (k === 'F9') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
       else if (k === 'F10') { e.preventDefault(); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
-      else if (k === 'F11') { e.preventDefault(); setModo('inserir'); }
-      else if (k === 'F12') { e.preventDefault(); setModo('apagar'); }
+      else if (k === 'F11') { e.preventDefault(); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
+      else if (k === 'F12') { e.preventDefault(); setModo('inserir'); }
       else if (k === 'Escape') {
         if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
           e.preventDefault();
@@ -1777,6 +1777,8 @@ export default function EditorPage() {
                       <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /> <span className="truncate text-xs font-semibold">DESFAZER</span></Button>
                       <Button size="sm" variant="ghost" title="Refazer a ação desfeita" onClick={refazer}><Redo2 /> <span className="truncate text-xs font-semibold">REFAZER</span></Button>
                       <Button size="sm" variant="ghost" title="Focalizar/enquadrar o desenho atual" onClick={centralizar}><Target /> <span className="truncate text-xs font-semibold">FOCALIZAR</span></Button>
+                      <Button size="sm" variant="ghost" title="Abrir a prévia da planta (F1)" onClick={() => setVista('planta')}><Eye /> <span className="truncate text-xs font-semibold">PLANTA</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
+                      <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER</span><span className="ml-auto text-[9px] font-bold text-amber-400">F2</span></Button>
                     </div>
                     <div className="flex flex-wrap gap-1 [&_button]:h-9 [&_button]:justify-center [&_button]:gap-0.5 [&_button]:px-1.5">
                       <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /><span className="text-[9px] font-bold text-amber-400">F3</span></Button>
@@ -1811,15 +1813,14 @@ export default function EditorPage() {
                   <>
                     <div className="my-0.5 h-px w-full bg-border" />
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                      <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F1)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
-                      <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F5)"><MousePointer2 /> {L('Mover')}<span className="ml-auto text-[9px] font-bold text-amber-400">F5</span></Button>
-                      <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)"><PenTool /> {L('Linha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F6</span></Button>
-                      <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F7)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F7</span></Button>
+                      <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F6)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F6</span></Button>
+                      <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F7)"><PenTool /> {L('Linha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F7</span></Button>
                       <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos e depois Finalizar (F8; botão direito cancela)"><PenTool /> {L('Polilinha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F8</span></Button>
-                      <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'considerar' ? 'navegar' : 'considerar')} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo (F9)"><Plus /> {L('Considerar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
+                      <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F9)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
                       <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'ignorar' ? 'navegar' : 'ignorar')} title="Ignorar vértice (F10): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
-                      <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice (F11)"><Plus /> {L('Inserir vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
-                      <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice (F12)"><Trash2 /> {L('Apagar vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
+                      <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'considerar' ? 'navegar' : 'considerar')} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo (F11)"><Plus /> {L('Considerar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
+                      <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice (F12)"><Plus /> {L('Inserir vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
+                      <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
 
                       {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
                       {modo === 'polilinha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
