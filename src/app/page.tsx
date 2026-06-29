@@ -91,6 +91,7 @@ export default function EditorPage() {
   const [plantaZoom, setPlantaZoom] = useState(1);
   const [plantaPan, setPlantaPan] = useState({ x: 0, y: 0 });
   const [editarPlanta, setEditarPlanta] = useState(false);
+  const [menuTexto, setMenuTexto] = useState<{ id: string; atual: string; x: number; y: number } | null>(null);
   const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
@@ -288,6 +289,20 @@ export default function EditorPage() {
   function plantaPanMove(e: ReactPointerEvent) { const d = plantaPanRef.current; if (d) setPlantaPan({ x: d.ox + (e.clientX - d.px), y: d.oy + (e.clientY - d.py) }); }
   function plantaPanUp(e: ReactPointerEvent) { plantaPanRef.current = null; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ } }
   function ajustarPlanta() { setPlantaZoom(1); setPlantaPan({ x: 0, y: 0 }); }
+
+  // ---- edição de textos da planta (conteúdo/escala/negrito por id) ----
+  function patchTextoPlanta(id: string, patch: { texto?: string; escala?: number; negrito?: boolean }) {
+    setPlantaConfig((c) => ({ ...c, textos: { ...(c.textos ?? {}), [id]: { ...(c.textos?.[id] ?? {}), ...patch } } }));
+  }
+  function editarTextoPlanta(id: string, atual: string) {
+    const t = window.prompt('Editar texto:', atual);
+    if (t == null) return;
+    patchTextoPlanta(id, { texto: t });
+  }
+  function restaurarTextoPlanta(id: string) {
+    setPlantaConfig((c) => { const m = { ...(c.textos ?? {}) }; delete m[id]; return { ...c, textos: m }; });
+  }
+  const escTextoAtual = (id: string) => plantaConfig.textos?.[id]?.escala ?? 1;
 
   // redimensionar o painel da direita
   function asideDown(e: ReactPointerEvent) { asideDrag.current = true; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
@@ -1299,6 +1314,8 @@ export default function EditorPage() {
             <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
                 <Button size="sm" variant={editarPlanta ? 'default' : 'outline'} title={editarPlanta ? 'Editando: arraste itens; com uma ferramenta ativa, clique para desenhar' : 'Editar a planta (mover itens e desenhar, como no mapa)'} onClick={() => setEditarPlanta((v) => !v)}><Pencil /> Editar</Button>
+                <Button size="sm" variant="outline" className="px-2" title="Diminuir todos os textos da planta" onClick={() => setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.08) - 0.05).toFixed(2))) }))}>A-</Button>
+                <Button size="sm" variant="outline" className="px-2" title="Aumentar todos os textos da planta" onClick={() => setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2, +(((c.escalaTextos ?? 1.08) + 0.05).toFixed(2))) }))}>A+</Button>
                 <Button size="sm" variant="default" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> Baixar PDF</Button>
                 <Button size="sm" variant="secondary" title="Gerar a planta de situação (recorte de satélite)" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
                 {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }}>Remover</Button>}
@@ -1316,7 +1333,8 @@ export default function EditorPage() {
                       outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))}
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
-                      onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice} />
+                      onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
+                      onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuTexto({ id, atual, x, y })} />
                   </div>
                 )}
               </div>
@@ -1536,6 +1554,21 @@ export default function EditorPage() {
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} />
+
+      {/* menu de formatação de texto da planta (clique direito) */}
+      {menuTexto && (
+        <>
+          <div className="fixed inset-0 z-[1190]" onClick={() => setMenuTexto(null)} onContextMenu={(e) => { e.preventDefault(); setMenuTexto(null); }} />
+          <div className="fixed z-[1200] w-44 overflow-hidden rounded-md border bg-background text-sm shadow-lg"
+            style={{ left: Math.min(menuTexto.x, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 190), top: menuTexto.y }}>
+            <button className="block w-full px-3 py-1.5 text-left hover:bg-accent" onClick={() => { const m = menuTexto; setMenuTexto(null); editarTextoPlanta(m.id, m.atual); }}>Editar texto…</button>
+            <button className="block w-full px-3 py-1.5 text-left hover:bg-accent" onClick={() => patchTextoPlanta(menuTexto.id, { negrito: !(plantaConfig.textos?.[menuTexto.id]?.negrito) })}>Negrito (liga/desliga)</button>
+            <button className="block w-full px-3 py-1.5 text-left hover:bg-accent" onClick={() => patchTextoPlanta(menuTexto.id, { escala: Math.min(3, +(escTextoAtual(menuTexto.id) + 0.1).toFixed(2)) })}>Aumentar este texto</button>
+            <button className="block w-full px-3 py-1.5 text-left hover:bg-accent" onClick={() => patchTextoPlanta(menuTexto.id, { escala: Math.max(0.4, +(escTextoAtual(menuTexto.id) - 0.1).toFixed(2)) })}>Diminuir este texto</button>
+            <button className="block w-full border-t px-3 py-1.5 text-left hover:bg-accent" onClick={() => { restaurarTextoPlanta(menuTexto.id); setMenuTexto(null); }}>Restaurar padrão</button>
+          </div>
+        </>
+      )}
       <ModalSpreadsheet
         isOpen={planilhaAberta}
         onClose={() => setPlanilhaAberta(false)}

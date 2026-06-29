@@ -267,6 +267,8 @@ export interface PlantaConfig {
   escalaTextos?: number;       // multiplicador de TODOS os textos da planta (1 = padrão)
   textoLaudo?: string;         // texto do laudo técnico (carimbo)
   textoConfrontantes?: string; // declaração dos confrontantes (carimbo)
+  // ajustes por texto (chave = id do texto na planta): conteúdo, escala própria e negrito
+  textos?: Record<string, { texto?: string; escala?: number; negrito?: boolean }>;
 }
 
 /** Dados fixos do escritório (carimbo da planta). */

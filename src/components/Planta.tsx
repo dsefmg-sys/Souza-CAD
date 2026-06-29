@@ -37,7 +37,12 @@ interface Props {
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
   onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
+  onTextoEditar?: (id: string, atual: string) => void;            // clique duplo: editar conteúdo
+  onTextoMenu?: (id: string, atual: string, x: number, y: number) => void; // clique direito: formatar
 }
+
+/** Ajuste salvo de um texto (conteúdo/escala/negrito). */
+export type TextoOverride = { texto?: string; escala?: number; negrito?: boolean };
 
 const LAUDO_PADRAO = 'LAUDO TÉCNICO: Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.';
 const CONFRONT_PADRAO = 'Concordamos com as medidas apresentadas nesta planta e no memorial anexo, no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade (§10 do art. 213 da LRP).';
@@ -69,6 +74,30 @@ function rotuloConfrontanteLinhas(c: Confrontante): string[] {
   return linhas;
 }
 
+// Texto editável da planta: aplica override (conteúdo/escala/negrito) e, no modo edição,
+// permite clique duplo (editar conteúdo) e clique direito (menu de formato).
+function Ted(props: {
+  id: string; x: number; y: number; base: string; size: number;
+  bold?: boolean; anchor?: 'start' | 'middle' | 'end'; fill?: string; slice?: number;
+  ov?: TextoOverride; ed?: boolean;
+  onEditar?: (id: string, atual: string) => void;
+  onMenu?: (id: string, atual: string, x: number, y: number) => void;
+}) {
+  const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onEditar, onMenu } = props;
+  const conteudo = ov?.texto ?? base;
+  const texto = slice ? conteudo.slice(0, slice) : conteudo;
+  const fz = +(size * (ov?.escala ?? 1)).toFixed(2);
+  const peso = (ov?.negrito ?? bold) ? 'bold' : 'normal';
+  return (
+    <text x={x} y={y} fontSize={fz} fontWeight={peso} textAnchor={anchor} fill={fill}
+      style={ed ? { cursor: 'text' } : undefined}
+      onDoubleClick={ed ? (e) => { e.stopPropagation(); onEditar?.(id, conteudo); } : undefined}
+      onContextMenu={ed ? (e) => { e.preventDefault(); e.stopPropagation(); onMenu?.(id, conteudo, e.clientX, e.clientY); } : undefined}>
+      {texto}
+    </text>
+  );
+}
+
 function intervaloGrade(extent: number): number {
   const alvo = extent / 6;
   const pot = Math.pow(10, Math.floor(Math.log10(alvo)));
@@ -82,6 +111,7 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onMoverRotuloConf, onMoverRotuloVertice,
+  onTextoEditar, onTextoMenu,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
@@ -99,6 +129,8 @@ export default function Planta({
   const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1.08;
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
   const fonteRot = fs(config.fonteRotulos ?? 10);
+  const textosOv = config.textos ?? {};
+  const tedComum = { ed: editavel, onEditar: onTextoEditar, onMenu: onTextoMenu };
   const ef = valoresEfetivos(res, imovel);
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
 
@@ -185,8 +217,9 @@ export default function Planta({
   function plantaDown(e: ReactPointerEvent) {
     if (!editavel) return;
     const u = svgPonto(e); if (!u) return;
-    // modos de desenho: o clique cria/continua o objeto (mesma lógica do mapa)
+    // modos de desenho: o clique cria/continua o objeto (só dentro da área de desenho, nunca no carimbo)
     if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
+      if (u.x < DRAW.x0 || u.x > DRAW.x1 || u.y < DRAW.y0 || u.y > DRAW.y1) return;
       const g = paraGeo(u); onCliquePlanta?.(g.lat, g.lon); return;
     }
     // navegar: arrastar item mais próximo (prioridade: ponto de objeto > rótulo conf > nome de vértice)
@@ -340,11 +373,11 @@ export default function Planta({
         );
       })}
 
-      {/* vértices + códigos (rótulo na posição arrastada, se houver) */}
+      {/* vértices + códigos (rótulo na posição arrastada, se houver; editável) */}
       {rotuloVert.map(({ v, x, y }) => (
         <g key={v.id}>
           <SimboloVertice tipo={v.tipo} cx={sx(v.leste)} cy={sy(v.norte)} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6} />
-          <text x={x} y={y} fontSize={Math.max(6, fonteRot - 0.5)} fill="#000">{v.codigoSigef || 'S/N'}</text>
+          <Ted id={`vert.${v.id}`} x={x} y={y} base={v.codigoSigef || 'S/N'} size={Math.max(6, fonteRot - 0.5)} fill="#000" ov={textosOv[`vert.${v.id}`]} {...tedComum} />
         </g>
       ))}
 
@@ -364,7 +397,7 @@ export default function Planta({
           imovel.proprietario ? `Prop.: ${imovel.proprietario}` : '',
           `Área: ${numBR(ef.areaHa, 4)} ha`,
         ].filter(Boolean).map((t, i) => (
-          <text key={i} x={cx} y={cy + i * 14} fontSize={fs(i === 0 ? 13 : 11)} fontWeight={i === 0 ? 'bold' : 'normal'} textAnchor="middle" fill="#1c1917">{t}</text>
+          <Ted key={i} id={`centro.${i}`} x={cx} y={cy + i * 14} base={t} size={fs(i === 0 ? 13 : 11)} bold={i === 0} anchor="middle" fill="#1c1917" ov={textosOv[`centro.${i}`]} {...tedComum} />
         ))}
       </g>
 
@@ -399,6 +432,7 @@ export default function Planta({
         titulo={config.titulo || 'Levantamento Planimétrico Georreferenciado'} folha={config.folha || 'Única'}
         textoLaudo={config.textoLaudo || LAUDO_PADRAO} textoConfront={config.textoConfrontantes || CONFRONT_PADRAO} escala={escTxt}
         requerente={requerente} transmitente={transmitente}
+        ed={{ ativo: editavel, textos: textosOv, onEditar: onTextoEditar, onMenu: onTextoMenu }}
       />
     </svg>
   );
@@ -536,9 +570,15 @@ function CarimboA3(props: {
   glebaNome?: string; escalaDenom: number; dataExtenso?: string;
   titulo: string; folha: string; textoLaudo: string; textoConfront: string; escala: number;
   requerente?: PessoaQualificada; transmitente?: PessoaQualificada;
+  ed?: { ativo: boolean; textos: Record<string, TextoOverride>; onEditar?: (id: string, atual: string) => void; onMenu?: (id: string, atual: string, x: number, y: number) => void };
 }) {
-  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, requerente, transmitente } = props;
+  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, requerente, transmitente, ed } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
+  // texto editável do carimbo (atalho para o helper Ted, já ligado ao modo edição)
+  const T = (id: string, base: string, o: { x: number; y: number; size: number; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; fill?: string; slice?: number }) => (
+    <Ted id={id} base={base} x={o.x} y={o.y} size={o.size} bold={o.bold} anchor={o.anchor} fill={o.fill} slice={o.slice}
+      ov={ed?.textos[id]} ed={ed?.ativo} onEditar={ed?.onEditar} onMenu={ed?.onMenu} />
+  );
   const x0 = W - CARW; // 1117
   const padX = 10;
   const lx = x0 + padX; // 1127
@@ -611,7 +651,7 @@ function CarimboA3(props: {
       <g>
         <rect x={lx} y={24} width={wBox - 72} height={90} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         <text x={lx + 10} y={42} fontSize={fs(8)} fontWeight="bold" fill="#4b5563">Título:</text>
-        <text x={lx + (wBox - 72) / 2} y={76} fontSize={fs(14.5)} fontWeight="bold" textAnchor="middle" fill="#000">{titulo}</text>
+        {T('carimbo.titulo', titulo, { x: lx + (wBox - 72) / 2, y: 76, size: fs(14.5), bold: true, anchor: 'middle', fill: '#000' })}
       </g>
 
       {/* --- BOX 2: FOLHA --- */}
@@ -630,7 +670,7 @@ function CarimboA3(props: {
             <g key={k}>
               {/* rótulo à esquerda e valor numa coluna fixa, ambos na mesma base */}
               <text x={lx + 12} y={y} fontSize={fs(9.5)} fontWeight="bold" fill="#1f2937">{k}</text>
-              <text x={lx + 150} y={y} fontSize={fs(11)} fontWeight="600" fill="#000">{v.slice(0, 44)}</text>
+              {T(`dado.${i}`, v, { x: lx + 150, y, size: fs(11), bold: true, fill: '#000', slice: 44 })}
             </g>
           );
         })}
@@ -684,19 +724,19 @@ function CarimboA3(props: {
         {temLogo ? (
           <g>
             <image href={escritorio.logoDataUrl} x={lx + 12} y={864} width={wBox - 24} height={50} preserveAspectRatio="xMidYMid meet" />
-            <text x={cxc} y={938} fontSize={fs(11)} fontWeight="bold" textAnchor="middle">{escritorio.nome}</text>
-            <text x={cxc} y={953} fontSize={fs(8)} textAnchor="middle">{escritorio.ramo}</text>
-            <text x={cxc} y={967} fontSize={fs(8)} textAnchor="middle">CNPJ {escritorio.cnpj}</text>
-            <text x={cxc} y={981} fontSize={fs(8)} textAnchor="middle">{escritorio.endereco.slice(0, 60)}</text>
-            <text x={cxc} y={995} fontSize={fs(8)} textAnchor="middle">Tel./WhatsApp: {escritorio.telefone}</text>
+            {T('esc.nome', escritorio.nome, { x: cxc, y: 938, size: fs(11), bold: true, anchor: 'middle' })}
+            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 953, size: fs(8), anchor: 'middle' })}
+            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 967, size: fs(8), anchor: 'middle' })}
+            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 981, size: fs(8), anchor: 'middle', slice: 60 })}
+            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 995, size: fs(8), anchor: 'middle' })}
           </g>
         ) : (
           <g>
-            <text x={cxc} y={895} fontSize={fs(12)} fontWeight="bold" textAnchor="middle">{escritorio.nome}</text>
-            <text x={cxc} y={915} fontSize={fs(8.5)} textAnchor="middle">{escritorio.ramo}</text>
-            <text x={cxc} y={935} fontSize={fs(8.5)} textAnchor="middle">CNPJ {escritorio.cnpj}</text>
-            <text x={cxc} y={955} fontSize={fs(8.5)} textAnchor="middle">{escritorio.endereco}</text>
-            <text x={cxc} y={975} fontSize={fs(8.5)} textAnchor="middle">Tel./WhatsApp: {escritorio.telefone}</text>
+            {T('esc.nome', escritorio.nome, { x: cxc, y: 895, size: fs(12), bold: true, anchor: 'middle' })}
+            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 915, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 935, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 955, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 975, size: fs(8.5), anchor: 'middle' })}
           </g>
         )}
       </g>
