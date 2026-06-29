@@ -1,0 +1,131 @@
+// Confrontantes certificados do SIGEF: a partir de parcelas certificadas (GeoJSON do INCRA/SIGEF,
+// importadas pelo "Ref. SIGEF"), descobre quais fazem fronteira com o nosso imóvel e as transforma
+// em confrontantes automaticamente.
+//
+// Por que assim, e não consultando o INCRA direto: os serviços públicos do INCRA não expõem uma
+// consulta por bounding box estável e liberam CORS para o navegador. O fluxo robusto é o usuário
+// baixar/exportar as parcelas da região (shapefile → GeoJSON no QGIS, ou direto do SIGEF) e o app
+// casar os vizinhos. Toda a lógica abaixo é pura e testável.
+
+import type { Confrontante } from '../topo/types';
+
+export interface PontoLatLon { lat: number; lon: number }
+
+export interface ParcelaSigef {
+  codigoImovel?: string;
+  denominacao?: string;
+  detentor?: string;
+  municipio?: string;
+  matricula?: string;
+  anel: PontoLatLon[]; // anel exterior em lat/lon
+}
+
+/** Primeiro valor não-vazio dentre várias chaves possíveis (nomes truncados de shapefile variam). */
+function prop(props: Record<string, unknown>, chaves: string[]): string | undefined {
+  const lower = new Map(Object.entries(props).map(([k, v]) => [k.toLowerCase(), v]));
+  for (const c of chaves) {
+    const v = lower.get(c.toLowerCase());
+    if (v != null && String(v).trim() !== '') return String(v).trim();
+  }
+  return undefined;
+}
+
+/** Extrai o anel exterior (lat/lon) de uma geometria Polygon/MultiPolygon do GeoJSON. */
+function anelExterior(geom: { type?: string; coordinates?: unknown }): PontoLatLon[] | null {
+  if (!geom || !geom.coordinates) return null;
+  const toRing = (ring: unknown): PontoLatLon[] | null => {
+    if (!Array.isArray(ring)) return null;
+    const pts = ring
+      .map((c) => (Array.isArray(c) && c.length >= 2 ? { lat: Number(c[1]), lon: Number(c[0]) } : null))
+      .filter((p): p is PontoLatLon => !!p && Number.isFinite(p.lat) && Number.isFinite(p.lon));
+    return pts.length >= 3 ? pts : null;
+  };
+  if (geom.type === 'Polygon') {
+    const polys = geom.coordinates as unknown[];
+    return toRing(polys[0]);
+  }
+  if (geom.type === 'MultiPolygon') {
+    const multi = geom.coordinates as unknown[];
+    return toRing((multi[0] as unknown[])?.[0]);
+  }
+  return null;
+}
+
+/** Lê um GeoJSON de parcelas certificadas e devolve as parcelas com atributos + anel. */
+export function parseParcelasSigef(geojsonText: string): ParcelaSigef[] {
+  let gj: { features?: unknown[] };
+  try { gj = JSON.parse(geojsonText); } catch { return []; }
+  const feats = Array.isArray(gj.features) ? gj.features : [];
+  const out: ParcelaSigef[] = [];
+  for (const f of feats as { properties?: Record<string, unknown>; geometry?: { type?: string; coordinates?: unknown } }[]) {
+    const anel = anelExterior(f.geometry ?? {});
+    if (!anel) continue;
+    const p = f.properties ?? {};
+    out.push({
+      codigoImovel: prop(p, ['codigo_imo', 'cod_imovel', 'codigo', 'codigo_imovel', 'cod_imo']),
+      denominacao: prop(p, ['nome_area', 'denominaca', 'denominacao', 'imovel', 'nome_imove']),
+      detentor: prop(p, ['detentor', 'nome_deten', 'proprietar', 'nome', 'titular']),
+      municipio: prop(p, ['municipio', 'municipio_', 'nome_munic']),
+      matricula: prop(p, ['matricula', 'num_matric', 'matricula_']),
+      anel,
+    });
+  }
+  return out;
+}
+
+// ---- adjacência em metros (equirretangular ao redor de uma latitude de referência) ----
+function paraMetros(p: PontoLatLon, lat0: number): { x: number; y: number } {
+  const k = Math.cos((lat0 * Math.PI) / 180);
+  return { x: p.lon * 111320 * k, y: p.lat * 110540 };
+}
+function distPontoSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy || 1;
+  let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+/** Menor distância (m) entre dois anéis (fronteira a fronteira). */
+function distanciaAneis(a: PontoLatLon[], b: PontoLatLon[], lat0: number): number {
+  const A = a.map((p) => paraMetros(p, lat0));
+  const B = b.map((p) => paraMetros(p, lat0));
+  let min = Infinity;
+  // pontos de A contra segmentos de B
+  for (const pa of A) for (let i = 0; i < B.length; i++) {
+    const c = B[i], d = B[(i + 1) % B.length];
+    min = Math.min(min, distPontoSeg(pa.x, pa.y, c.x, c.y, d.x, d.y));
+    if (min === 0) return 0;
+  }
+  // pontos de B contra segmentos de A (pega o caso de A ter vértices esparsos)
+  for (const pb of B) for (let i = 0; i < A.length; i++) {
+    const c = A[i], d = A[(i + 1) % A.length];
+    min = Math.min(min, distPontoSeg(pb.x, pb.y, c.x, c.y, d.x, d.y));
+  }
+  return min;
+}
+
+/**
+ * Parcelas que fazem FRONTEIRA com o nosso imóvel: a distância entre as bordas é menor que `tolM`
+ * (coincidência de divisa, considerando precisão de GNSS). Ignora a própria parcela, se vier junto.
+ */
+export function parcelasVizinhas(meuAnel: PontoLatLon[], parcelas: ParcelaSigef[], tolM = 15): ParcelaSigef[] {
+  if (meuAnel.length < 3) return [];
+  const lat0 = meuAnel.reduce((s, p) => s + p.lat, 0) / meuAnel.length;
+  return parcelas.filter((par) => {
+    if (par.anel.length < 3) return false;
+    const d = distanciaAneis(meuAnel, par.anel, lat0);
+    return d <= tolM && d > 0.0001 ? true : d <= tolM; // adjacente (encosta) mas não idêntica
+  });
+}
+
+/** Cria confrontantes a partir das parcelas vizinhas (nome = detentor; descrição = código). */
+export function confrontantesDeVizinhas(parcelas: ParcelaSigef[]): Confrontante[] {
+  return parcelas.map((p, i) => ({
+    id: `cv_${i}_${(p.codigoImovel || p.detentor || 'sigef').replace(/\s+/g, '').slice(0, 16)}`,
+    nome: p.detentor || p.denominacao || 'Confrontante certificado',
+    cpf: '',
+    matricula: p.matricula || '',
+    cns: '',
+    descricaoExtra: p.codigoImovel ? `Imóvel certificado SIGEF (código ${p.codigoImovel})` : undefined,
+  }));
+}
