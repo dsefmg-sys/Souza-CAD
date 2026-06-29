@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Users,
-  Maximize, Settings, LogOut, Table,
+  Maximize, Settings, LogOut, Table, FileWarning,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
 import RequerimentoModal from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
+import ErrataModal from '@/components/ErrataModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -148,6 +149,7 @@ export default function EditorPage() {
   const [nomeProjetoManual, setNomeProjetoManual] = useState(false);
   const [reqAberto, setReqAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
+  const [errataAberto, setErrataAberto] = useState(false);
   const [requerente, setRequerente] = useState<PessoaQualificada | undefined>(undefined);
   const [transmitente, setTransmitente] = useState<PessoaQualificada | undefined>(undefined);
   const [plantaConfig, setPlantaConfig] = useState<PlantaConfig>({});
@@ -1104,7 +1106,8 @@ export default function EditorPage() {
   return (
     <div className="flex h-screen flex-col">
       {/* Topo */}
-      <header className="no-print flex items-center gap-1.5 border-b px-3 py-2">
+      {/* Cabeçalho = FLUXO DO TRABALHO (esquerda → direita) */}
+      <header className="no-print flex items-center gap-1.5 overflow-x-auto border-b px-3 py-2">
         <input ref={fileRef} type="file" accept=".txt,.csv" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
@@ -1113,106 +1116,137 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarReferenciaGeoJson(f); e.currentTarget.value = ''; }} />
         <input ref={vizinhosRef} type="file" accept=".geojson,.json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
-        <Button size="sm" variant="outline" className={COR_IMPORT} disabled={processando} title="Importar pontos de um arquivo TXT" onClick={() => fileRef.current?.click()}><Upload /> TXT</Button>
-        {/* DXF: baixar e enviar num grupo só, com a palavra DXF uma vez */}
-        <div className={`flex items-center gap-0.5 rounded-md border px-1.5 ${COR_IMPORT}`}>
-          <span className="text-xs font-medium">DXF</span>
-          <Button size="sm" variant="ghost" className="size-7 p-0" title="Baixar o desenho em DXF" onClick={exportarDxf}><Download className="size-4" /></Button>
-          <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Enviar/importar um DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-4" /></Button>
-        </div>
-        <div className="mx-1 h-6 w-px bg-border" />
-        <Button size="sm" variant="outline" className={COR_PECA} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> Memorial</Button>
-        <Button size="sm" variant="outline" className={COR_PECA} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button>
-        <Button size="sm" variant="outline" className={COR_PECA} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> Requerimento</Button>
-        <Button size="sm" variant="outline" className={COR_PECA} title="Abrir os dados do TRT" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
-        <div className="mx-1 h-6 w-px bg-border" />
-        <Button size="sm" variant="outline" className={COR_PLANTA} title={vista === 'mapa' ? 'Abrir a prévia da planta' : 'Voltar ao mapa'} onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
+
+        {/* 1) Importar e checar vizinhos */}
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT" onClick={() => fileRef.current?.click()}><Upload /> TXT</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: importa parcelas do SIGEF e cria confrontantes das que encostam" onClick={() => vizinhosRef.current?.click()}><Users /> Vizinhos cert.</Button>
+        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+
+        {/* 2) Dados do projeto atual */}
+        <Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Inserir/consultar dados: proprietário, confrontantes, imóvel, cartório"><BookUser /> Dados</Button></Link>
+        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+
+        {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
+        <Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className="shrink-0" title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> Pintar confront.</Button>
+        <Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className="shrink-0" title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> Pintar divisas</Button>
+        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+
+        {/* 4) Ver planta */}
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PLANTA}`} title={vista === 'mapa' ? 'Abrir a prévia da planta' : 'Voltar ao mapa'} onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
           {vista === 'mapa' ? <><Eye /> Planta</> : <><MapIcon /> Mapa</>}
         </Button>
-        {vista === 'mapa' && (
+        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
+
+        {/* 5) Peças */}
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> Memorial</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> Requerimento</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Gerar uma errata formal ao cartório (corrigir dados)" onClick={() => setErrataAberto(true)}><FileWarning /> Errata</Button>
+      </header>
+
+      {/* Faixa de status + controles contextuais (abaixo do cabeçalho, sem quebrar linha no topo) */}
+      <div className="no-print flex min-h-[28px] items-center gap-2 border-b px-3 py-1 text-xs">
+        {vista === 'mapa' && modo === 'divisa' && (
           <>
-            <div className="mx-1 h-6 w-px bg-border" />
-            <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /></Button>
-            <Button size="sm" variant="ghost" title="Centralizar/enquadrar o desenho" onClick={centralizar}><Maximize /></Button>
-            <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /></Button>
-            <Button size="sm" variant="ghost" title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
-            {mostrarRotulos && (
-              <>
-                <Button size="sm" variant="ghost" className="px-1.5" title="Diminuir os nomes dos vértices" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}>A-</Button>
-                <Button size="sm" variant="ghost" className="px-1.5" title="Aumentar os nomes dos vértices" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}>A+</Button>
-              </>
-            )}
-            <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} title={bloqueado ? 'Vértices travados (clique para liberar)' : 'Vértices liberados'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
+            <span className="text-muted-foreground">Pintando divisa:</span>
+            <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
+              {REPRESENTACOES.map((r) => <option key={r} value={r}>{REPRES_LABEL[r] || r}</option>)}
+            </select>
           </>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          {msg && <span className="text-xs text-primary">{msg}</span>}
-          <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /> Salvar</Button>
-          <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
-          <Link href={projetoId ? `/cadastros?projetoId=${projetoId}` : "/cadastros"}><Button size="sm" variant="ghost" title="Dados de proprietários, confrontantes, imóveis e cartórios"><BookUser /> Dados</Button></Link>
-          <Link href="/configuracoes"><Button size="sm" variant="ghost" title="Configurações"><Settings /></Button></Link>
-          {nuvemDisponivel && user && (
-            <Button size="sm" variant="ghost" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
-          )}
-        </div>
-      </header>
+        {vista === 'mapa' && modo === 'confrontante' && (
+          <>
+            <span className="text-muted-foreground">Pintando confrontante:</span>
+            <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
+              <option value="">— escolher —</option>
+              {confrontantes.map((c) => <option key={c.id} value={c.id}>{c.nome || '(sem nome)'}</option>)}
+            </select>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus className="size-3" /> Novo confront.</Button>
+          </>
+        )}
+        {msg && <span className="ml-auto text-primary">{msg}</span>}
+      </div>
 
       <div className="flex min-h-0 flex-1">
         {/* Área principal: mapa ou planta */}
-        {vista === 'mapa' && (() => {
+        {(() => {
           const rotulo = toolW >= 104;
           const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t}</span> : null);
           return (
             <>
-              <aside style={{ width: toolW }} className="no-print flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-9 [&_button]:w-full [&_button]:justify-start [&_button]:gap-2">
-                <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F5)"><MousePointer2 /> {L('Mover')}</Button>
-                <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice"><Plus /> {L('Inserir vértice')}</Button>
-                <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
-                <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'ignorar' ? 'navegar' : 'ignorar')} title="Ignorar vértice: clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar vértice')}</Button>
-                <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'considerar' ? 'navegar' : 'considerar')} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo no segmento mais próximo"><Plus /> {L('Considerar vértice')}</Button>
-                {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
-                <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => { if (selecionadoId) { snap(); setVertices((vs) => definirInicio(vs, selecionadoId)); } }} title="Definir início no vértice selecionado"><Flag /> {L('Definir início')}</Button>
-                <Button size="sm" variant="ghost" onClick={renumerar} title="Renumerar vértices"><Crosshair /> {L('Renumerar')}</Button>
-                <div className="my-0.5 h-px w-full bg-border" />
-                <Button size="sm" variant={modo === 'divisa' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'divisa' ? 'navegar' : 'divisa')} title="Pintar divisa: escolha o tipo e clique os vértices ao longo do caminho"><Brush /> {L('Pintar divisa')}</Button>
-                {modo === 'divisa' && (
-                  <select className="h-8 rounded border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
-                    {REPRESENTACOES.map((r) => <option key={r} value={r}>{REPRES_LABEL[r] || r}</option>)}
-                  </select>
-                )}
-                <Button size="sm" variant={modo === 'confrontante' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'confrontante' ? 'navegar' : 'confrontante')} title="Pintar confrontante: escolha o confrontante e clique os vértices do trecho"><Users /> {L('Pintar confront.')}</Button>
-                {modo === 'confrontante' && (
+              <aside style={{ width: toolW }} className="no-print flex shrink-0 flex-col gap-1 overflow-y-auto border-r bg-background p-1.5">
+                {/* SISTEMA (topo, sempre acessível) */}
+                <div className="flex flex-wrap gap-1 [&_button]:h-9 [&_button]:w-9 [&_button]:justify-center [&_button]:p-0">
+                  {vista === 'mapa' && (
+                    <>
+                      <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /></Button>
+                      <Button size="sm" variant="ghost" title="Centralizar/enquadrar o desenho" onClick={centralizar}><Maximize /></Button>
+                      <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /></Button>
+                      <Button size="sm" variant="ghost" title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
+                      {mostrarRotulos && (
+                        <>
+                          <Button size="sm" variant="ghost" title="Diminuir os nomes dos vértices" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-xs font-bold">A-</span></Button>
+                          <Button size="sm" variant="ghost" title="Aumentar os nomes dos vértices" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-xs font-bold">A+</span></Button>
+                        </>
+                      )}
+                      <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} title={bloqueado ? 'Vértices travados (clique para liberar)' : 'Vértices liberados'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
+                    </>
+                  )}
+                  <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
+                  <Link href="/configuracoes"><Button size="sm" variant="ghost" title="Configurações"><Settings /></Button></Link>
+                  {nuvemDisponivel && user && (
+                    <Button size="sm" variant="ghost" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
+                  )}
+                </div>
+
+                {/* FERRAMENTAS DE EDIÇÃO (só no mapa) */}
+                {vista === 'mapa' && (
                   <>
-                    <select className="h-8 rounded border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
-                      <option value="">— escolher —</option>
-                      {confrontantes.map((c) => <option key={c.id} value={c.id}>{c.nome || '(sem nome)'}</option>)}
-                    </select>
-                    <Button size="sm" variant="ghost" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus /> {L('Novo confront.')}</Button>
+                    <div className="my-0.5 h-px w-full bg-border" />
+                    <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
+                      <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F5)"><MousePointer2 /> {L('Mover')}</Button>
+                      <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice"><Plus /> {L('Inserir vértice')}</Button>
+                      <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
+                      <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'ignorar' ? 'navegar' : 'ignorar')} title="Ignorar vértice: clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar vértice')}</Button>
+                      <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'considerar' ? 'navegar' : 'considerar')} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo no segmento mais próximo"><Plus /> {L('Considerar vértice')}</Button>
+                      {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
+                      <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => { if (selecionadoId) { snap(); setVertices((vs) => definirInicio(vs, selecionadoId)); } }} title="Definir início no vértice selecionado"><Flag /> {L('Definir início')}</Button>
+                      <Button size="sm" variant="ghost" onClick={renumerar} title="Renumerar vértices"><Crosshair /> {L('Renumerar')}</Button>
+                      <div className="my-0.5 h-px w-full bg-border" />
+                      <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos"><PenTool /> {L('Linha')}</Button>
+                      <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos e depois Finalizar (botão direito cancela)"><PenTool /> {L('Polilinha')}</Button>
+                      <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos"><RotateCcw className="rotate-90" /> {L('Cota')}</Button>
+                      <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir"><FileText /> {L('Texto')}</Button>
+                      {modo === 'polilinha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
+                      {objSel?.tipo === 'texto' && (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold">A-</span> {L('Diminuir')}</Button>
+                          <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold">A+</span> {L('Aumentar')}</Button>
+                          <Button size="sm" variant="ghost" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil /> {L('Editar texto')}</Button>
+                        </>
+                      )}
+                      {objSel?.tipo === 'polilinha' && (
+                        <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher (ex.: lago)"><Brush /> {L('Preencher')}</Button>
+                      )}
+                      {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /> {L('Apagar objeto')}</Button>}
+                      <div className="my-0.5 h-px w-full bg-border" />
+                      <Button size="sm" variant="ghost" onClick={() => geojsonRef.current?.click()} title="Ref. SIGEF: importar parcela certificada como referência (GeoJSON do SIGEF/QGIS)"><Upload /> {L('Ref. SIGEF')}</Button>
+                      {/* DXF: baixar e enviar logo abaixo do Ref. SIGEF */}
+                      <div className={`flex items-center gap-0.5 rounded-md border px-1.5 ${COR_IMPORT}`}>
+                        <span className="text-xs font-medium">DXF</span>
+                        <Button size="sm" variant="ghost" className="size-7 p-0" title="Baixar o desenho em DXF" onClick={exportarDxf}><Download className="size-4" /></Button>
+                        <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Enviar/importar um DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-4" /></Button>
+                      </div>
+                    </div>
                   </>
                 )}
-                <div className="my-0.5 h-px w-full bg-border" />
-                <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos"><PenTool /> {L('Linha')}</Button>
-                <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos e depois Finalizar (botão direito cancela)"><PenTool /> {L('Polilinha')}</Button>
-                <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos"><RotateCcw className="rotate-90" /> {L('Cota')}</Button>
-                <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir"><FileText /> {L('Texto')}</Button>
-                {modo === 'polilinha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
-                {objSel?.tipo === 'texto' && (
-                  <>
-                    <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold">A-</span> {L('Diminuir')}</Button>
-                    <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold">A+</span> {L('Aumentar')}</Button>
-                    <Button size="sm" variant="ghost" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil /> {L('Editar texto')}</Button>
-                  </>
-                )}
-                {objSel?.tipo === 'polilinha' && (
-                  <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher (ex.: lago)"><Brush /> {L('Preencher')}</Button>
-                )}
-                {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /> {L('Apagar objeto')}</Button>}
-                <div className="my-0.5 h-px w-full bg-border" />
-                <Button size="sm" variant="ghost" onClick={() => geojsonRef.current?.click()} title="Ref. SIGEF: importar parcela certificada como referência (GeoJSON do SIGEF/QGIS)"><Upload /> {L('Ref. SIGEF')}</Button>
-                <Button size="sm" variant="ghost" onClick={() => vizinhosRef.current?.click()} title="Vizinhos certificados: importa parcelas e cria confrontantes das que encostam na divisa"><Users /> {L('Vizinhos cert.')}</Button>
               </aside>
-              <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
-                className="no-print w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar a barra" />
+              {vista === 'mapa' && (
+                <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
+                  className="no-print w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar a barra" />
+              )}
             </>
           );
         })()}
@@ -1462,6 +1496,7 @@ export default function EditorPage() {
       />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
+      <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} />
       <ModalSpreadsheet
         isOpen={planilhaAberta}
         onClose={() => setPlanilhaAberta(false)}
