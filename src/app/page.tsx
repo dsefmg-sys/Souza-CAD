@@ -142,6 +142,7 @@ export default function EditorPage() {
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [realceId, setRealceId] = useState<string | null>(null); // vértice destacado ao passar o mouse na lista
   const [modo, setModo] = useState<ModoEdicao>('navegar');
+  const [selMulti, setSelMulti] = useState<Set<string>>(new Set()); // vértices marcados no modo "triângulo"
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [tamNomes, setTamNomes] = useState(11); // tamanho da fonte dos nomes dos vértices no mapa
   const [snapAtivo, setSnapAtivo] = useState(false);
@@ -370,8 +371,13 @@ export default function EditorPage() {
       else if (k === 'F10') { e.preventDefault(); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
       else if (k === 'F11') { e.preventDefault(); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
       else if (k === 'F12') { e.preventDefault(); setModo('inserir'); }
+      else if ((k === 'Delete' || k === 'Backspace') && modo === 'multi') {
+        e.preventDefault();
+        apagarMultiSelecionados();
+      }
       else if (k === 'Escape') {
-        if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
+        if (modo === 'multi' && selMulti.size > 0) { e.preventDefault(); setSelMulti(new Set()); }
+        else if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
           e.preventDefault();
           cancelarDesenho();
         }
@@ -379,7 +385,11 @@ export default function EditorPage() {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [modo, desenhoBuffer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modo, desenhoBuffer, selMulti, vertices, confrontantePorLado]);
+
+  // ao sair do modo "triângulo", esvazia a seleção múltipla
+  useEffect(() => { if (modo !== 'multi') setSelMulti((s) => (s.size ? new Set() : s)); }, [modo]);
 
   const res = useMemo(() => (vertices.length >= 3 ? calcular(vertices, confrontantePorLado) : null), [vertices, confrontantePorLado]);
 
@@ -704,6 +714,21 @@ export default function EditorPage() {
     snap();
     setVertices((vs) => reordenar(vs.filter((v) => v.id !== id)));
     if (selecionadoId === id) setSelecionadoId(null);
+  }
+
+  // --- multi-seleção de vértices (modo "triângulo") ---
+  function alternarMulti(id: string) {
+    setSelMulti((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+  function adicionarMulti(ids: string[]) {
+    setSelMulti((s) => { const n = new Set(s); ids.forEach((i) => n.add(i)); return n; });
+  }
+  function apagarMultiSelecionados() {
+    if (selMulti.size === 0) return;
+    if (!window.confirm(`Apagar ${selMulti.size} vértice(s) selecionado(s)?`)) return;
+    snap();
+    setVertices((vs) => reordenar(vs.filter((v) => !selMulti.has(v.id))));
+    setSelMulti(new Set());
   }
 
   // Apaga TODO o polígono (vértices + ignorados + trechos), para redesenhar à mão depois.
@@ -1824,6 +1849,21 @@ export default function EditorPage() {
                       <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'considerar' ? 'navegar' : 'considerar')} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo (F11)"><Plus /> {L('Considerar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
                       <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice (F12)"><Plus /> {L('Inserir vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
                       <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
+                      <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'multi' ? 'navegar' : 'multi')} title="Selecionar vários vértices: clique um a um ou arraste uma caixa; Delete apaga os marcados">
+                        <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
+                          <circle cx="12" cy="5" r="2.4" fill="currentColor" />
+                          <circle cx="5" cy="18" r="2.4" fill="currentColor" />
+                          <circle cx="19" cy="18" r="2.4" fill="currentColor" />
+                        </svg>
+                        {L('Selecionar vários')}
+                      </Button>
+                      {modo === 'multi' && (
+                        <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-600 dark:text-amber-400">
+                          {selMulti.size > 0
+                            ? <button className="w-full text-left font-semibold" onClick={apagarMultiSelecionados}>Apagar {selMulti.size} selecionado(s) — Delete</button>
+                            : 'Clique vértices ou arraste uma caixa para selecioná-los.'}
+                        </div>
+                      )}
 
                       {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
                       {modo === 'polilinha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
@@ -1868,6 +1908,7 @@ export default function EditorPage() {
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 parcelasCert={parcelasCert} onAdotarVertice={inserirVertice}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
+                selMulti={selMulti} onToggleMulti={alternarMulti} onBoxSelect={adicionarMulti}
                 onDblClick={(lat, lon) => { const t = window.prompt('Texto a inserir:'); if (t) setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} objetoSelId={objetoSelId}
@@ -1879,6 +1920,15 @@ export default function EditorPage() {
                 onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
                 onContextMenuMapa={(lat, lon, x, y) => setMenuContexto({ tipo: 'mapa', lat, lon, x, y })} />
           ) : null}
+
+          {/* MULTI-SELEÇÃO: ação flutuante para apagar os vértices marcados */}
+          {vista === 'mapa' && modo === 'multi' && selMulti.size > 0 && (
+            <div className="absolute left-1/2 top-3 z-[1000] -translate-x-1/2">
+              <button className="flex items-center gap-2 rounded-full border border-red-500/40 bg-background/95 px-4 py-1.5 text-sm font-semibold text-red-600 shadow-lg backdrop-blur hover:bg-red-500 hover:text-white" onClick={apagarMultiSelecionados}>
+                <Trash2 className="size-4" /> Apagar {selMulti.size} vértice(s) selecionado(s)
+              </button>
+            </div>
+          )}
 
           {/* CAMADA INCRA: controle de visibilidade/opacidade (canto inferior esquerdo do mapa) */}
           {vista === 'mapa' && parcelasCert.length > 0 && (

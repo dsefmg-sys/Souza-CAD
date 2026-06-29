@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, LayersControl, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho } from '@/lib/topo/types';
 import { distanciaCota } from '@/lib/topo/objetos';
 import { corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR } from '@/lib/topo/geometry';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'cota' | 'texto' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'cota' | 'texto' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
@@ -24,6 +24,9 @@ interface Props {
   opacidadeCert?: number;
   parcelaCertSel?: number | null;
   onSelParcelaCert?: (i: number | null) => void;
+  selMulti?: Set<string>;
+  onToggleMulti?: (id: string) => void;
+  onBoxSelect?: (ids: string[]) => void;
   onAdotarVertice?: (lat: number, lon: number) => void;
   onDblClick?: (lat: number, lon: number) => void;
   outrasGlebas?: [number, number][][];
@@ -172,6 +175,36 @@ function VerZoom({ onZoom }: { onZoom: (z: number) => void }) {
   return null;
 }
 
+// Caixa de seleção por arrasto (modo multi): desenha um retângulo e seleciona os vértices dentro.
+function CaixaSelecao({ ativo, vertices, onBoxSelect }: { ativo: boolean; vertices: Vertex[]; onBoxSelect?: (ids: string[]) => void }) {
+  const [inicio, setInicio] = useState<L.LatLng | null>(null);
+  const [atual, setAtual] = useState<L.LatLng | null>(null);
+  const map = useMap();
+  // no modo multi, desliga o arrasto do mapa para o arrasto virar caixa de seleção
+  useEffect(() => {
+    if (!ativo) return;
+    map.dragging.disable();
+    return () => { map.dragging.enable(); };
+  }, [ativo, map]);
+  useMapEvents({
+    mousedown(e) { if (!ativo) return; setInicio(e.latlng); setAtual(e.latlng); },
+    mousemove(e) { if (!ativo || !inicio) return; setAtual(e.latlng); },
+    mouseup(e) {
+      if (!ativo || !inicio) return;
+      const b = L.latLngBounds(inicio, e.latlng);
+      // só conta como caixa se arrastou um mínimo (senão é clique simples num vértice)
+      const arrastou = inicio.distanceTo(e.latlng) > 3;
+      if (arrastou) {
+        const dentro = vertices.filter((v) => Number.isFinite(v.lat) && b.contains([v.lat, v.lon])).map((v) => v.id);
+        if (dentro.length) onBoxSelect?.(dentro);
+      }
+      setInicio(null); setAtual(null);
+    },
+  });
+  if (!ativo || !inicio || !atual) return null;
+  return <Rectangle bounds={L.latLngBounds(inicio, atual)} pathOptions={{ color: '#f59e0b', weight: 1.5, dashArray: '4 3', fillColor: '#f59e0b', fillOpacity: 0.12 }} />;
+}
+
 function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblClick }: {
   modo: ModoEdicao;
   onInserir: (lat: number, lon: number) => void;
@@ -210,7 +243,7 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 
 export default function MapEditor(props: Props) {
   const {
-    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, onAdotarVertice, onDblClick, outrasGlebas = [],
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     conflitos = [],
@@ -250,6 +283,7 @@ export default function MapEditor(props: Props) {
       <AjustarLimites vertices={validos} referencias={referencias} />
       <Centralizar sig={centralizarSig} vertices={vertices} />
       <VerZoom onZoom={setZoom} />
+      <CaixaSelecao ativo={modo === 'multi'} vertices={validos} onBoxSelect={onBoxSelect} />
       <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} />
       <FocoMap latLng={focoLatLng} />
 
@@ -392,6 +426,12 @@ export default function MapEditor(props: Props) {
           }} />
       ))}
 
+      {/* anel de destaque dos vértices multi-selecionados (modo "triângulo") */}
+      {modo === 'multi' && selMulti && validos.filter((v) => selMulti.has(v.id)).map((v) => (
+        <CircleMarker key={`ms${v.id}`} center={[v.lat, v.lon]} radius={9}
+          pathOptions={{ color: '#f59e0b', weight: 2.5, fillColor: '#fde047', fillOpacity: 0.5 }} />
+      ))}
+
       {/* vértices */}
       {validos.map((v) => (
         <Marker
@@ -405,6 +445,7 @@ export default function MapEditor(props: Props) {
               else if (modo === 'divisa') onPintarDivisa?.(v.id);
               else if (modo === 'confrontante') onPintarConfrontante?.(v.id);
               else if (modo === 'ignorar') onIgnorarVertice?.(v.id);
+              else if (modo === 'multi') onToggleMulti?.(v.id);
               else onSelecionar(v.id);
             },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
