@@ -36,7 +36,7 @@ import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
 import { parseParcelasSigef, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas } from '@/lib/io/sigefVizinhos';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
-import { ancoraMunicipio, MUNICIPIOS } from '@/lib/topo/municipios';
+import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
@@ -351,8 +351,10 @@ export default function EditorPage() {
       const tec = tecnico ?? carregarTecnico();
       const fusos = tec.fusosPermitidos ?? [22, 23, 24, 25];
       
-      // Escolhe o fuso usando a âncora do município recém-selecionado
-      let z = fuso;
+      // Fuso AUTOMÁTICO pela região (não precisa do município): testa cada fuso e fica com o que
+      // coloca o ponto dentro da nossa área de trabalho (resolve a divisa 23/24 sozinho).
+      let z = detectarFusoPorRegiao(perim[0].leste, perim[0].norte, hemisferio, fusos).zona;
+      // Se o município foi informado, sua âncora confirma/refina (mais específica).
       const anc = ancoraMunicipio(municipio);
       if (anc) z = escolherZonaPorAncora(perim[0].leste, perim[0].norte, hemisferio, anc, fusos);
       setZona(z);
@@ -749,17 +751,6 @@ export default function EditorPage() {
     setModo('confrontante');
   }
 
-  function detectarConfrontantes() {
-    snap();
-    const { confrontantes: cs, confrontantePorLado: mapa } = montarConfrontantes(vertices);
-    // preserva dados já preenchidos por nome
-    setConfrontantes((old) => cs.map((c) => {
-      const igual = old.find((o) => o.nome && o.nome.toUpperCase() === c.nome.toUpperCase());
-      return igual ? { ...igual, id: c.id } : c;
-    }));
-    setConfrontantePorLado(mapa);
-    aviso(`${cs.length} trechos de confrontante detectados.`);
-  }
 
   // ---------- exportações ----------
   // Garante que todos os vértices tenham código SIGEF antes de exportar (peça sem código é
@@ -1188,7 +1179,7 @@ export default function EditorPage() {
             </>
           );
         })()}
-        <main className="relative min-w-0 flex-1">
+        <main className="relative isolate min-w-0 flex-1">
           {vista === 'mapa' ? (
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
@@ -1228,7 +1219,7 @@ export default function EditorPage() {
           className="no-print w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar o painel" />
 
         {/* Painel direito */}
-        <aside style={{ width: asideW }} className="no-print flex shrink-0 flex-col border-l">
+        <aside style={{ width: asideW }} className="no-print relative z-20 flex shrink-0 flex-col border-l bg-background">
           {/* glebas */}
           <div className="flex items-center gap-1 overflow-x-auto border-b p-1">
             {glebas.map((g) => (
@@ -1390,7 +1381,7 @@ export default function EditorPage() {
               </div>
             )}
             {aba === 'confrontantes' && (
-              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} onDetectar={detectarConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} />
+              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} />
             )}
             {aba === 'planta' && (
               <PainelPlanta config={plantaConfig} onChange={setPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl}
@@ -1672,8 +1663,8 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
   );
 }
 
-function PainelConfrontantes({ confrontantes, onChange, onDetectar, mapa, lados, sugConf, onSalvarCadastro }: {
-  confrontantes: Confrontante[]; onChange: (c: Confrontante[]) => void; onDetectar: () => void;
+function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro }: {
+  confrontantes: Confrontante[]; onChange: (c: Confrontante[]) => void;
   mapa: Record<number, string>; lados: { de: Vertex; para: Vertex }[];
   sugConf: ConfrontanteCad[]; onSalvarCadastro: (c: Confrontante) => void;
 }) {
@@ -1692,8 +1683,7 @@ function PainelConfrontantes({ confrontantes, onChange, onDetectar, mapa, lados,
   const ladosDe = (id: string) => Object.entries(mapa).filter(([, cid]) => cid === id).map(([i]) => Number(i));
   return (
     <div className="space-y-3">
-      <Button size="sm" variant="outline" className="w-full" onClick={onDetectar}>Detectar trechos pelas divisas</Button>
-      {confrontantes.length === 0 && <p className="text-xs text-muted-foreground">Importe pontos e detecte os trechos.</p>}
+      {confrontantes.length === 0 && <p className="text-xs text-muted-foreground">Use “pintar confrontante” no mapa, ou importe os vizinhos certificados, para criar os confrontantes.</p>}
       <datalist id="lista-confrontantes">
         {sugConf.map((s) => <option key={s.id} value={s.nome} />)}
       </datalist>

@@ -1,6 +1,8 @@
 // Âncoras aproximadas (lat/lon) de municípios da região de trabalho, para desambiguar o fuso
 // UTM na divisa 23/24. Não precisa de precisão — basta estar a menos de ~3° do local real,
 // já que um fuso errado desloca o ponto 6°. Ampliável com a base completa do IBGE depois.
+import { utmParaGeo } from './coords';
+
 export const MUNICIPIOS: Record<string, { lat: number; lon: number }> = {
   'espera feliz-mg': { lat: -20.6506, lon: -41.9094 },
   'caparaó-mg': { lat: -20.5269, lon: -41.9050 },
@@ -19,6 +21,29 @@ export const MUNICIPIOS: Record<string, { lat: number; lon: number }> = {
 
 function normaliza(s: string): string {
   return (s || '').trim().toLowerCase();
+}
+
+/**
+ * Detecta o fuso UTM da coordenada SEM precisar do município: testa cada fuso permitido, converte
+ * (E,N) para lat/lon e fica com o fuso cujo ponto cai mais perto de QUALQUER âncora da região de
+ * trabalho. Como o fuso errado joga o ponto ~6° (centenas de km) para fora, a escolha é segura.
+ * Resolve a divisa 23/24 (Espera Feliz e vizinhos) no momento da importação.
+ */
+export function detectarFusoPorRegiao(
+  leste: number, norte: number, hemisferio: 'N' | 'S', fusosPermitidos: number[] = [23, 24]
+): { zona: number; distancia: number } {
+  const anchors = Object.values(MUNICIPIOS);
+  let melhor = fusosPermitidos[0] ?? 23;
+  let melhorD = Infinity;
+  for (const z of fusosPermitidos) {
+    if (z < 1 || z > 60) continue;
+    const { lat, lon } = utmParaGeo(leste, norte, z, hemisferio);
+    for (const a of anchors) {
+      const d = Math.hypot(lon - a.lon, lat - a.lat);
+      if (d < melhorD) { melhorD = d; melhor = z; }
+    }
+  }
+  return { zona: melhor, distancia: melhorD };
 }
 
 /** Devolve a âncora do município (se conhecido). Aceita com ou sem UF. */
