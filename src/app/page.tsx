@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
@@ -34,6 +34,7 @@ import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo } from '@/l
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
+import { parseParcelasSigef, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas } from '@/lib/io/sigefVizinhos';
 import { ancoraMunicipio, MUNICIPIOS } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
@@ -84,6 +85,10 @@ const COR_PLANTA = 'bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:
 
 export default function EditorPage() {
   const { user, disponivel: nuvemDisponivel } = useAuth();
+  // zoom/pan da PRÉVIA da planta (não afeta o PDF exportado, que lê o SVG original)
+  const [plantaZoom, setPlantaZoom] = useState(1);
+  const [plantaPan, setPlantaPan] = useState({ x: 0, y: 0 });
+  const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
   const [vertices, setVertices] = useState<Vertex[]>([]);
@@ -126,7 +131,8 @@ export default function EditorPage() {
   // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
   const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
   const conflitos = useMemo(() => detectarConflitosDivisas(vertices, referencias), [vertices, referencias]);
-  const [tema, setTema] = useState<'claro' | 'escuro'>('claro');
+  const [tema, setTema] = useState<'claro' | 'escuro'>('escuro');
+  const [temaCarregadoDaNuvem, setTemaCarregadoDaNuvem] = useState(false);
   const [planilhaAberta, setPlanilhaAberta] = useState(false);
   const [contadorSugerido, setContadorSugerido] = useState<Contadores | null>(null);
   const [importModalAberto, setImportModalAberto] = useState(false);
@@ -151,6 +157,7 @@ export default function EditorPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const dxfRef = useRef<HTMLInputElement>(null);
   const geojsonRef = useRef<HTMLInputElement>(null);
+  const vizinhosRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTecnico(carregarTecnico());
@@ -159,7 +166,7 @@ export default function EditorPage() {
     cadConf.listar().then(setSugConf).catch(() => {});
     cadCart.listar().then((cs) => { setSugCns(cs.map((c) => c.cns).filter(Boolean)); setSugCartorios(cs); }).catch(() => {});
     totalPontosRegistrados().then(setTotalPontos).catch(() => {});
-    const t = (localStorage.getItem('metrica.tema') as 'claro' | 'escuro') || 'claro';
+    const t = (localStorage.getItem('metrica.tema') as 'claro' | 'escuro') || 'escuro';
     setTema(t);
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
     try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 320) setToolW(w); } catch { /* ignore */ }
@@ -170,23 +177,31 @@ export default function EditorPage() {
     setGlebaAtivaId(g.id);
   }, []);
 
+  // 1. Ao logar, carrega o tema da nuvem primeiro
+  useEffect(() => {
+    if (user?.uid) {
+      setTemaCarregadoDaNuvem(false);
+      carregarTemaUsuario(user.uid).then((t) => {
+        if (t === 'claro' || t === 'escuro') {
+          setTema(t);
+        }
+        setTemaCarregadoDaNuvem(true);
+      }).catch(() => {
+        setTemaCarregadoDaNuvem(true);
+      });
+    } else {
+      setTemaCarregadoDaNuvem(true);
+    }
+  }, [user]);
+
+  // 2. Aplica localmente e salva na nuvem apenas após carregar para evitar sobrescrever dados do Firestore
   useEffect(() => {
     document.documentElement.classList.toggle('dark', tema === 'escuro');
     try { localStorage.setItem('metrica.tema', tema); } catch { /* ignore */ }
-    if (user?.uid) {
+    if (user?.uid && temaCarregadoDaNuvem) {
       salvarTemaUsuario(user.uid, tema);
     }
-  }, [tema, user]);
-
-  useEffect(() => {
-    if (user?.uid) {
-      carregarTemaUsuario(user.uid).then((t) => {
-        if (t && (t === 'claro' || t === 'escuro') && t !== tema) {
-          setTema(t);
-        }
-      });
-    }
-  }, [user]);
+  }, [tema, user, temaCarregadoDaNuvem]);
 
   // salva posição/altura da barra de ferramentas
   useEffect(() => { try { localStorage.setItem('metrica.toolW', String(toolW)); } catch { /* ignore */ } }, [toolW]);
@@ -246,6 +261,13 @@ export default function EditorPage() {
 
   // centraliza/enquadra o desenho atual no mapa
   function centralizar() { setCentralizarSig((n) => n + 1); }
+
+  // zoom/pan da prévia da planta
+  function onPlantaWheel(e: ReactWheelEvent) { setPlantaZoom((z) => Math.min(6, Math.max(0.3, +(z * (e.deltaY < 0 ? 1.12 : 0.89)).toFixed(3)))); }
+  function plantaPanDown(e: ReactPointerEvent) { plantaPanRef.current = { px: e.clientX, py: e.clientY, ox: plantaPan.x, oy: plantaPan.y }; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
+  function plantaPanMove(e: ReactPointerEvent) { const d = plantaPanRef.current; if (d) setPlantaPan({ x: d.ox + (e.clientX - d.px), y: d.oy + (e.clientY - d.py) }); }
+  function plantaPanUp(e: ReactPointerEvent) { plantaPanRef.current = null; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ } }
+  function ajustarPlanta() { setPlantaZoom(1); setPlantaPan({ x: 0, y: 0 }); }
 
   // redimensionar o painel da direita
   function asideDown(e: ReactPointerEvent) { asideDrag.current = true; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
@@ -818,6 +840,29 @@ export default function EditorPage() {
     } catch { aviso('GeoJSON inválido.'); }
   }
 
+  // Importa parcelas certificadas (GeoJSON do INCRA/SIGEF): desenha ao lado, e as que ENCOSTAM na
+  // nossa divisa viram confrontantes automaticamente (dados + vértices encaixados).
+  async function importarVizinhosCertificados(file: File) {
+    try {
+      const texto = await file.text();
+      const parcelas = parseParcelasSigef(texto);
+      if (!parcelas.length) { aviso('Nenhuma parcela certificada encontrada no arquivo.'); return; }
+      setReferencias(parcelasParaReferencias(parcelas, zona, hemisferio));
+      const meuAnel = vertices.map((v) => ({ lat: v.lat, lon: v.lon }));
+      const vizinhas = vertices.length >= 3 ? parcelasVizinhas(meuAnel, parcelas, 15) : [];
+      const novos = confrontantesDeVizinhas(vizinhas);
+      if (novos.length) {
+        snap();
+        setConfrontantes((cs) => {
+          const nomes = new Set(cs.map((c) => c.nome.trim().toUpperCase()).filter(Boolean));
+          return [...cs, ...novos.filter((c) => !nomes.has(c.nome.trim().toUpperCase()))];
+        });
+        setSnapAtivo(true);
+      }
+      aviso(`${parcelas.length} parcela(s) desenhada(s) ao lado; ${novos.length} vizinho(s) viraram confrontantes. Use "pintar confrontante" para marcar os lados.`);
+    } catch { aviso('Não consegui ler o arquivo de parcelas certificadas.'); }
+  }
+
   async function gerarSituacaoPlanta() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     aviso('Buscando satélite da situação…');
@@ -1003,6 +1048,8 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarDxfArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={geojsonRef} type="file" accept=".geojson,.json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarReferenciaGeoJson(f); e.currentTarget.value = ''; }} />
+        <input ref={vizinhosRef} type="file" accept=".geojson,.json" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
         <Button size="sm" variant="outline" className={COR_IMPORT} disabled={processando} title="Importar pontos de um arquivo TXT" onClick={() => fileRef.current?.click()}><Upload /> TXT</Button>
         {/* DXF: baixar e enviar num grupo só, com a palavra DXF uma vez */}
         <div className={`flex items-center gap-0.5 rounded-md border px-1.5 ${COR_IMPORT}`}>
@@ -1088,7 +1135,8 @@ export default function EditorPage() {
                 )}
                 {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /> {L('Apagar objeto')}</Button>}
                 <div className="my-0.5 h-px w-full bg-border" />
-                <Button size="sm" variant="ghost" onClick={() => geojsonRef.current?.click()} title="Ref. SIGEF: importar confrontante certificado (GeoJSON do SIGEF/QGIS)"><Upload /> {L('Ref. SIGEF')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => geojsonRef.current?.click()} title="Ref. SIGEF: importar parcela certificada como referência (GeoJSON do SIGEF/QGIS)"><Upload /> {L('Ref. SIGEF')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => vizinhosRef.current?.click()} title="Vizinhos certificados: importa parcelas e cria confrontantes das que encostam na divisa"><Users /> {L('Vizinhos cert.')}</Button>
               </aside>
               <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
                 className="no-print w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar a barra" />
@@ -1105,21 +1153,26 @@ export default function EditorPage() {
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice}
                 conflitos={conflitos} focoLatLng={focoLatLng} />
           ) : (
-            <div id="planta-print" className="relative h-full overflow-auto bg-neutral-200 p-4">
+            <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200" onWheel={onPlantaWheel}>
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
                 <Button size="sm" variant="default" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> Baixar PDF</Button>
                 <Button size="sm" variant="secondary" title="Gerar a planta de situação (recorte de satélite)" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
                 {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => setSituacaoUrl(undefined)}>Remover</Button>}
+                <Button size="sm" variant="outline" title="Ajustar (zoom 100%)" onClick={ajustarPlanta}><Maximize /> {Math.round(plantaZoom * 100)}%</Button>
               </div>
-              {res && tecnico && escritorio && (
-                <div className="mx-auto max-w-[1587px] bg-white shadow">
-                  <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
-                    confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
-                    glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
-                    requerente={requerente} transmitente={transmitente}
-                    outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))} />
-                </div>
-              )}
+              <div className="absolute inset-0 cursor-grab touch-none overflow-hidden p-4 active:cursor-grabbing"
+                onPointerDown={plantaPanDown} onPointerMove={plantaPanMove} onPointerUp={plantaPanUp}
+                title="Role para dar zoom; arraste para mover">
+                {res && tecnico && escritorio && (
+                  <div className="mx-auto max-w-[1587px] bg-white shadow" style={{ transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'center top' }}>
+                    <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
+                      confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
+                      glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
+                      requerente={requerente} transmitente={transmitente}
+                      outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))} />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </main>
