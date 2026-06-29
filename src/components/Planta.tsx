@@ -1029,12 +1029,12 @@ function CarimboA3(props: {
         <rect x={lx} y={902} width={wBox} height={H - 902 - 26} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         {temLogo ? (
           <g>
-            <image href={escritorio.logoDataUrl} x={lx + 12} y={910} width={wBox - 24} height={56} preserveAspectRatio="xMidYMid meet" />
-            {T('esc.nome', escritorio.nome, { x: cxc, y: 986, size: fs(11), bold: true, anchor: 'middle' })}
-            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 1002, size: fs(8), anchor: 'middle' })}
-            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 1017, size: fs(8), anchor: 'middle' })}
-            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1032, size: fs(8), anchor: 'middle', slice: 64 })}
-            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1047, size: fs(8), anchor: 'middle' })}
+            <image href={escritorio.logoDataUrl} x={lx + 12} y={907} width={wBox - 24} height={86} preserveAspectRatio="xMidYMid meet" />
+            {T('esc.nome', escritorio.nome, { x: cxc, y: 1009, size: fs(11), bold: true, anchor: 'middle' })}
+            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 1024, size: fs(8), anchor: 'middle' })}
+            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 1038, size: fs(8), anchor: 'middle' })}
+            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1052, size: fs(8), anchor: 'middle', slice: 64 })}
+            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1066, size: fs(8), anchor: 'middle' })}
           </g>
         ) : (
           <g>

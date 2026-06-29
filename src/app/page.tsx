@@ -1590,6 +1590,7 @@ export default function EditorPage() {
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEMORIAL</Button>
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button>
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQUERIMENTO</Button>
         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERTIFICAR</Button>
@@ -1704,6 +1705,26 @@ export default function EditorPage() {
                   </>
                 )}
 
+                {/* CONTROLES DA PLANTA (na visão da planta) — deixa a folha limpa */}
+                {vista === 'planta' && (
+                  <div className="flex flex-col gap-1 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
+                    <Button size="sm" variant={editarPlanta ? 'default' : 'outline'} title="Alternar modo de edição na planta (arrastar textos/folha)" onClick={() => setEditarPlanta(!editarPlanta)}>{editarPlanta ? <Check /> : <Pencil />} <span className="truncate text-xs font-semibold">{editarPlanta ? 'FINALIZAR EDIÇÃO' : 'EDITAR'}</span></Button>
+                    {editarPlanta && (
+                      <Button size="sm" variant={folhaTravada ? 'outline' : 'default'} className={folhaTravada ? '' : 'bg-amber-600 text-white hover:bg-amber-700'} title={folhaTravada ? 'Folha travada — clique para poder arrastá-la' : 'Folha destravada — arraste o fundo para reposicioná-la'} onClick={() => setFolhaTravada((v) => !v)}>{folhaTravada ? <Lock /> : <LockOpen />} <span className="truncate text-xs font-semibold">{folhaTravada ? 'FOLHA TRAVADA' : 'MOVER FOLHA'}</span></Button>
+                    )}
+                    {/* escala em passos de 250 */}
+                    <div className="flex items-center gap-0.5 rounded-md border bg-background px-1 text-xs [&>button]:h-7 [&>button]:w-7 [&>button]:p-0">
+                      <Button size="sm" variant="ghost" title="Desenho maior (denominador −250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: Math.max(250, (c.escalaManual ?? 1000) - 250) }))}>−</Button>
+                      <span className="flex-1 text-center font-bold">1 / {plantaConfig.escalaManual ?? 'auto'}</span>
+                      <Button size="sm" variant="ghost" title="Desenho menor (denominador +250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: (c.escalaManual ?? 1000) + 250 }))}>+</Button>
+                      <Button size="sm" variant="ghost" className="!w-auto px-1 font-bold" title="Escala automática" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>AUTO</Button>
+                    </div>
+                    <Button size="sm" variant="secondary" title="Gerar/atualizar a planta de situação (recorte de satélite)" onClick={gerarSituacaoPlanta}><MapIcon /> <span className="truncate text-xs font-semibold">{situacaoUrl ? 'ATUALIZAR SITUAÇÃO' : 'GERAR SITUAÇÃO'}</span></Button>
+                    {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }}><X /> <span className="truncate text-xs">Remover situação</span></Button>}
+                    <Button size="sm" variant="outline" title="Ajustar (zoom 100%)" onClick={ajustarPlanta}><Maximize /> <span className="truncate text-xs font-semibold">AJUSTAR ({Math.round(plantaZoom * 100)}%)</span></Button>
+                  </div>
+                )}
+
                 {/* FERRAMENTAS DE EDIÇÃO (mapa, ou planta no modo Editar) */}
                 {(vista === 'mapa' || editarPlanta) && (
                   <>
@@ -1775,64 +1796,7 @@ export default function EditorPage() {
                 onContextMenuMapa={(lat, lon, x, y) => setMenuContexto({ tipo: 'mapa', lat, lon, x, y })} />
           ) : (
             <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
-              <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
-                <Button size="sm" variant={editarPlanta ? 'default' : 'secondary'} className={editarPlanta ? 'bg-primary text-primary-foreground font-bold' : 'font-bold'} title="Alternar modo de edição na planta (arrastar textos/folha)" onClick={() => setEditarPlanta(!editarPlanta)}>
-                  {editarPlanta ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
-                  {editarPlanta ? 'FINALIZAR' : 'EDITAR'}
-                </Button>
-                {editarPlanta && (
-                  <Button
-                    size="sm"
-                    variant={folhaTravada ? 'outline' : 'default'}
-                    className={folhaTravada ? 'font-bold' : 'bg-amber-600 hover:bg-amber-700 text-white font-bold animate-pulse'}
-                    title={folhaTravada ? 'Folha está travada — clique para poder arrastá-la' : 'Folha está destravada — arraste o fundo para reposicioná-la'}
-                    onClick={() => setFolhaTravada((v) => !v)}
-                  >
-                    {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
-                    {folhaTravada ? 'FOLHA TRAVADA' : 'MOVER FOLHA'}
-                  </Button>
-                )}
-
-                {/* Escala do desenho em passos de 250 (padrão de trabalho) */}
-                <div className="flex items-center gap-0.5 rounded-md border bg-background px-1 text-xs">
-                  <Button size="sm" variant="ghost" className="size-7 p-0" title="Desenho maior (denominador −250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: Math.max(250, (c.escalaManual ?? 1000) - 250) }))}>−</Button>
-                  <span className="min-w-[52px] text-center font-bold" title="Escala do desenho">1 / {plantaConfig.escalaManual ?? 'auto'}</span>
-                  <Button size="sm" variant="ghost" className="size-7 p-0" title="Desenho menor (denominador +250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: (c.escalaManual ?? 1000) + 250 }))}>+</Button>
-                  <Button size="sm" variant="ghost" className="h-7 px-1 font-bold" title="Escala automática" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>AUTO</Button>
-                </div>
-                <Button size="sm" variant="default" className="font-bold gap-1" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> BAIXAR PDF</Button>
-                
-                {(() => {
-                  const situacaoDesatualizada = !!situacaoUrl && (situacaoVersSnapshot !== JSON.stringify(vertices));
-                  return (
-                    <div className="flex items-center shrink-0">
-                      <Button
-                        size="sm"
-                        variant={situacaoDesatualizada ? 'default' : 'secondary'}
-                        className={situacaoDesatualizada ? 'bg-orange-500 hover:bg-orange-600 text-white font-bold gap-1 rounded-r-none border-r border-orange-600/30' : situacaoUrl ? 'rounded-r-none border-r border-border font-bold gap-1' : 'font-bold gap-1'}
-                        title={situacaoDesatualizada ? 'Atualizar a planta de situação com o perímetro editado' : 'Gerar a planta de situação (recorte de satélite)'}
-                        onClick={gerarSituacaoPlanta}
-                      >
-                        <MapIcon className="size-3.5" />
-                        {situacaoDesatualizada ? 'ATUALIZAR SITUAÇÃO' : 'GERAR SITUAÇÃO'}
-                      </Button>
-                      {situacaoUrl && (
-                        <Button
-                          size="sm"
-                          variant={situacaoDesatualizada ? 'default' : 'secondary'}
-                          className={situacaoDesatualizada ? 'bg-orange-500 hover:bg-orange-600 text-white font-bold px-2 rounded-l-none' : 'px-2 rounded-l-none'}
-                          title="Remover a planta de situação"
-                          onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }}
-                        >
-                          <X className="size-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                <Button size="sm" variant="outline" className="font-bold gap-1" title="Ajustar (zoom 100%)" onClick={ajustarPlanta}><Maximize className="size-3.5" /> AJUSTAR ({Math.round(plantaZoom * 100)}%)</Button>
-              </div>
+              {/* controles da planta movidos para a coluna esquerda; aqui a folha fica limpa */}
               <div className={`absolute inset-0 overflow-hidden p-4 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
                 onPointerDown={editarPlanta ? undefined : plantaPanDown} onPointerMove={editarPlanta ? undefined : plantaPanMove} onPointerUp={editarPlanta ? undefined : plantaPanUp}
                 title={editarPlanta ? 'Modo edição: arraste itens; arraste uma área vazia para reposicionar a folha; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
