@@ -8,6 +8,7 @@
 // casar os vizinhos. Toda a lógica abaixo é pura e testável.
 
 import type { Confrontante } from '../topo/types';
+import { geoParaUtm } from '../topo/coords';
 
 export interface PontoLatLon { lat: number; lon: number }
 
@@ -116,6 +117,21 @@ export function parcelasVizinhas(meuAnel: PontoLatLon[], parcelas: ParcelaSigef[
     const d = distanciaAneis(meuAnel, par.anel, lat0);
     return d <= tolM && d > 0.0001 ? true : d <= tolM; // adjacente (encosta) mas não idêntica
   });
+}
+
+/**
+ * Converte os anéis das parcelas para o formato de referência (lat/lon + Leste/Norte no fuso do
+ * trabalho), prontos para DESENHAR ao lado do imóvel e servir de alvo de snap (encaixe das divisas).
+ */
+export function parcelasParaReferencias(
+  parcelas: ParcelaSigef[], zona: number, hemisferio: 'N' | 'S'
+): { lat: number; lon: number; leste: number; norte: number }[][] {
+  return parcelas
+    .filter((p) => p.anel.length >= 3)
+    .map((p) => p.anel.map((q) => {
+      const u = geoParaUtm(q.lat, q.lon, zona, hemisferio);
+      return { lat: q.lat, lon: q.lon, leste: u.leste, norte: u.norte };
+    }));
 }
 
 /** Cria confrontantes a partir das parcelas vizinhas (nome = detentor; descrição = código). */

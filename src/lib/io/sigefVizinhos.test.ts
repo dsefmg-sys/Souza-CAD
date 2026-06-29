@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseParcelasSigef, parcelasVizinhas, confrontantesDeVizinhas, type ParcelaSigef } from './sigefVizinhos';
+import { parseParcelasSigef, parcelasVizinhas, confrontantesDeVizinhas, parcelasParaReferencias, type ParcelaSigef } from './sigefVizinhos';
 
 // quadrado ~100m de lado perto de Espera Feliz (graus aproximados)
 const d = 0.001; // ~110 m em latitude
@@ -45,5 +45,15 @@ describe('sigefVizinhos', () => {
     expect(cs[0].nome).toBe('Vizinho A');
     expect(cs[0].matricula).toBe('4919');
     expect(cs[0].descricaoExtra).toContain('ABC123');
+  });
+
+  it('converte os vértices das parcelas para Leste/Norte (encaixar ao lado do desenho)', () => {
+    const refs = parcelasParaReferencias([{ detentor: 'Vizinho A', anel: quadrado(base.lat, base.lon + d) }], 23, 'S');
+    expect(refs.length).toBe(1);
+    expect(refs[0].length).toBeGreaterThanOrEqual(3);
+    for (const p of refs[0]) {
+      expect(Number.isFinite(p.leste)).toBe(true);
+      expect(Number.isFinite(p.norte)).toBe(true);
+    }
   });
 });
