@@ -154,6 +154,7 @@ export default function EditorPage() {
   const [trtAberto, setTrtAberto] = useState(false);
   const [errataAberto, setErrataAberto] = useState(false);
   const [consultarAberto, setConsultarAberto] = useState(false);
+  const rascunhoRestaurado = useRef(false); // garante restaurar o rascunho só uma vez
   const [requerente, setRequerente] = useState<PessoaQualificada | undefined>(undefined);
   const [transmitente, setTransmitente] = useState<PessoaQualificada | undefined>(undefined);
   const [plantaConfig, setPlantaConfig] = useState<PlantaConfig>({});
@@ -213,6 +214,31 @@ export default function EditorPage() {
       salvarTemaUsuario(user.uid, tema);
     }
   }, [tema, user, temaCarregadoDaNuvem]);
+
+  // restaura o rascunho UMA vez, quando a autenticação já resolveu (para usar a chave do usuário certo)
+  useEffect(() => {
+    if (rascunhoRestaurado.current || !temaCarregadoDaNuvem) return;
+    rascunhoRestaurado.current = true;
+    try {
+      if (new URLSearchParams(window.location.search).get('projetoId')) return; // abrindo projeto específico
+      const raw = localStorage.getItem(rascunhoKey());
+      if (raw && aplicarRascunho(JSON.parse(raw))) aviso('Trabalho anterior restaurado automaticamente.');
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [temaCarregadoDaNuvem]);
+
+  // salva o rascunho automaticamente (com atraso), depois de já ter restaurado
+  useEffect(() => {
+    if (!rascunhoRestaurado.current) return;
+    const t = setTimeout(() => {
+      try {
+        if (!temConteudoTrabalho()) { localStorage.removeItem(rascunhoKey()); return; }
+        localStorage.setItem(rascunhoKey(), JSON.stringify(montarRascunho()));
+      } catch { /* cota cheia/indisponível — ignora */ }
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vertices, confrontantes, confrontantePorLado, objetos, glebas, imovel, zona, hemisferio, requerente, transmitente, plantaConfig, nomeProjeto, projetoId, glebaAtivaId]);
 
   // salva posição/altura da barra de ferramentas
   useEffect(() => { try { localStorage.setItem('metrica.toolW', String(toolW)); } catch { /* ignore */ } }, [toolW]);
@@ -412,9 +438,10 @@ export default function EditorPage() {
         }
       }
       
+      setProjetoId(null); // importar um TXT começa um projeto novo (não sobrescreve o salvo anterior)
       setGlebas(gs);
       carregarGleba(gs[0]);
-      
+
       if (!nomeProjeto || !nomeProjetoManual) {
         const auto = gerarTituloAutomatico(novoImovel);
         setNomeProjeto(auto || importPendingFile.name.replace(/\.[^.]+$/, ''));
@@ -1100,6 +1127,39 @@ export default function EditorPage() {
     aviso(`Cartório "${c.nome}" (CNS ${c.cns}) inserido.`);
   }
 
+  // ---- rascunho automático: não perder o trabalho ao recarregar (por usuário) ----
+  function rascunhoKey() { return `metrica.rascunho:${user?.uid ?? 'local'}`; }
+  function temConteudoTrabalho() {
+    return vertices.length > 0 || glebas.some((g) => g.vertices.length > 0) || !!imovel.denominacao || !!imovel.proprietario || !!imovel.matricula;
+  }
+  function montarRascunho() {
+    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, plantaConfig, glebaAtivaId };
+  }
+  function aplicarRascunho(d: ReturnType<typeof montarRascunho>): boolean {
+    if (!d || !Array.isArray(d.glebas) || d.glebas.length === 0) return false;
+    setProjetoId(d.projetoId ?? null);
+    setNomeProjeto(d.nome ?? '');
+    setNomeProjetoManual(!!d.nomeProjetoManual);
+    if (d.imovel) setImovel(d.imovel);
+    if (typeof d.zona === 'number') setZona(d.zona);
+    if (d.hemisferio) setHemisferio(d.hemisferio);
+    setRequerente(d.requerente);
+    setTransmitente(d.transmitente);
+    setPlantaConfig(d.plantaConfig ?? {});
+    setGlebas(d.glebas);
+    carregarGleba(d.glebas.find((g) => g.id === d.glebaAtivaId) ?? d.glebas[0]);
+    return true;
+  }
+
+  // antes de importar um novo TXT, oferece salvar o trabalho atual (que será substituído)
+  async function iniciarImportTxt() {
+    if (temConteudoTrabalho()) {
+      const ok = window.confirm('Há um trabalho em andamento. Deseja SALVÁ-LO como projeto antes de importar um novo arquivo?\n\nOK = salvar e importar  ·  Cancelar = importar sem salvar');
+      if (ok) { await salvar(); }
+    }
+    fileRef.current?.click();
+  }
+
   async function atualizarLista() { setProjetos(await listarProjetos()); totalPontosRegistrados().then(setTotalPontos).catch(() => {}); }
   async function abrir(id: string) {
     const p0 = await carregarProjeto(id);
@@ -1137,7 +1197,7 @@ export default function EditorPage() {
     ];
     const feitos = passos.filter(([, ok]) => ok).length;
     const faltam = passos.filter(([, ok]) => !ok).map(([n]) => n);
-    return { pct: feitos / passos.length, faltam };
+    return { pct: feitos / passos.length, faltam, passos };
   }, [imovel, vertices, res, confrontantes, situacaoUrl]);
 
   // rótulos de confrontante arrastáveis no mapa (posRotulo manual ou centróide dos lados)
@@ -1188,7 +1248,7 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
 
         {/* 1) Importar e checar vizinhos */}
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT" onClick={() => fileRef.current?.click()}><Upload /> TXT</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button>
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: importa parcelas do SIGEF e cria confrontantes das que encostam" onClick={() => vizinhosRef.current?.click()}><Users /> Vizinhos cert.</Button>
         <div className="mx-1 h-6 w-px shrink-0 bg-border" />
 
@@ -1305,8 +1365,20 @@ export default function EditorPage() {
                   </>
                 )}
 
-                {/* BASE: botões globais só de ícone (auto-explicativos) */}
-                <div className="mt-auto flex flex-wrap gap-1 border-t pt-1 [&_button]:h-9 [&_button]:w-9 [&_button]:justify-center [&_button]:p-0">
+                {/* BASE: bateria de progresso do projeto + botões globais só de ícone */}
+                <div className="mt-auto pt-1">
+                  {/* "bateria" do projeto: cada etapa concluída preenche um gomo */}
+                  <div className="px-0.5 pb-1.5" title={`${Math.round(progresso.pct * 100)}% concluído${progresso.faltam.length ? ` — faltam: ${progresso.faltam.join(', ')}` : ' — tudo pronto'}`}>
+                    <div className="mb-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>Progresso</span><span>{Math.round(progresso.pct * 100)}%</span>
+                    </div>
+                    <div className="flex gap-0.5">
+                      {progresso.passos.map(([label, ok], i) => (
+                        <div key={i} className={`h-2.5 flex-1 rounded-sm transition-colors ${ok ? 'bg-primary' : 'bg-muted'}`} title={`${label}: ${ok ? 'feito' : 'falta'}`} />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 border-t pt-1 [&_button]:h-9 [&_button]:w-9 [&_button]:justify-center [&_button]:p-0">
                   <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /></Button>
                   {vista === 'mapa' && mostrarRotulos && (
                     <>
@@ -1319,6 +1391,7 @@ export default function EditorPage() {
                   {nuvemDisponivel && user && (
                     <Button size="sm" variant="ghost" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
                   )}
+                  </div>
                 </div>
               </aside>
               {vista === 'mapa' && (
@@ -1612,11 +1685,6 @@ export default function EditorPage() {
         onClose={() => setImportModalAberto(false)}
         onConfirm={processarImportacao}
       />
-
-      {/* Barra de progresso do trabalho (lateral esquerda) */}
-      <div className="no-print fixed left-0 top-0 z-[1050] h-screen w-1 bg-muted" title={`${Math.round(progresso.pct * 100)}% concluído${progresso.faltam.length ? ` — faltam: ${progresso.faltam.join(', ')}` : ' — tudo pronto'}`}>
-        <div className="absolute bottom-0 left-0 w-full bg-primary transition-all" style={{ height: `${Math.round(progresso.pct * 100)}%` }} />
-      </div>
 
     </div>
   );
