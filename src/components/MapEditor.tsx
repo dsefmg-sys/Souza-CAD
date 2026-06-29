@@ -74,7 +74,7 @@ function iconeNomeVertice(texto: string, alterna: boolean, tam: number) {
   const fs = tam && tam > 0 ? tam : 11;
   return L.divIcon({
     className: 'vertice-nome',
-    html: `<div style="font-size:${fs}px;font-weight:700;color:#000;background:#fff;border:1px solid #333;border-radius:3px;padding:0 4px;white-space:nowrap;box-shadow:0 0 2px rgba(0,0,0,.5)">${(texto || '').replace(/</g, '&lt;')}</div>`,
+    html: `<div style="font-size:${fs}px;font-weight:700;color:#000;background:#fff;border:1.5px solid #333;border-radius:3px;padding:0 4px;white-space:nowrap;box-shadow:0 0 2px rgba(0,0,0,.5);width:max-content;display:inline-block">${(texto || '').replace(/</g, '&lt;')}</div>`,
     iconSize: [1, 1], iconAnchor: [-8, alterna ? tam * 2 : -2],
   });
 }
@@ -83,7 +83,7 @@ function iconeTexto(o: ObjetoDesenho, sel: boolean) {
   const al = o.alinhamento === 'center' ? 'center' : o.alinhamento === 'right' ? 'right' : 'left';
   return L.divIcon({
     className: 'objeto-texto',
-    html: `<div style="font-size:${o.tamanho ?? 12}px;color:${o.cor ?? '#000'};white-space:nowrap;text-align:${al};text-shadow:0 0 2px #fff,0 0 2px #fff;${sel ? 'outline:1px dashed #ef4444;' : ''}">${(o.texto ?? '').replace(/</g, '&lt;')}</div>`,
+    html: `<div style="font-size:${o.tamanho ?? 12}px;color:${o.cor ?? '#000'};background:#fff;border:1px solid #ccc;border-radius:3px;padding:2px 5px;white-space:nowrap;text-align:${al};box-shadow:0 1px 3px rgba(0,0,0,0.3);width:max-content;display:inline-block;${sel ? 'outline:1px dashed #ef4444;' : ''}">${(o.texto ?? '').replace(/</g, '&lt;')}</div>`,
     iconSize: [1, 1], iconAnchor: [0, 8],
   });
 }
@@ -94,7 +94,7 @@ const iconeRotulo = (r: RotuloMapa) => {
   const linhas = r.linhas.map((l) => `<div>${(l || '').replace(/</g, '&lt;')}</div>`).join('');
   return L.divIcon({
     className: 'objeto-rotulo',
-    html: `<div style="font-size:${fs}px;line-height:1.3;color:#000;background:#fff;border:1.5px solid #222;border-radius:4px;padding:3px 7px;white-space:nowrap;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.5)">${linhas}<div style="border-top:1px solid #000;margin-top:8px;padding-top:1px;font-size:${Math.max(8, fs - 2)}px;color:#333">Assinatura</div></div>`,
+    html: `<div style="font-size:${fs}px;line-height:1.3;color:#000;background:#fff;border:1.5px solid #222;border-radius:4px;padding:3px 7px;white-space:nowrap;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.5);width:max-content;display:inline-block">${linhas}<div style="border-top:1px solid #000;margin-top:8px;padding-top:1px;font-size:${Math.max(8, fs - 2)}px;color:#333">Assinatura</div></div>`,
     iconSize: [1, 1], iconAnchor: [0, 8],
   });
 };
@@ -106,7 +106,7 @@ const iconeCentro = (linhas: string[]) => {
   // caixa branca sólida e centrada no ponto (legível sobre o satélite); não captura clique
   return L.divIcon({
     className: 'gleba-centro',
-    html: `<div style="transform:translate(-50%,-50%);display:inline-block;pointer-events:none;color:#000;background:#fff;border:1.5px solid #222;border-radius:5px;padding:3px 9px;text-align:center;line-height:1.3;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.5)">${corpo}</div>`,
+    html: `<div style="transform:translate(-50%,-50%);display:inline-block;pointer-events:none;color:#000;background:#fff;border:1.5px solid #222;border-radius:5px;padding:3px 9px;text-align:center;line-height:1.3;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.5);width:max-content">${corpo}</div>`,
     iconSize: [1, 1], iconAnchor: [0, 0],
   });
 };
@@ -294,7 +294,7 @@ export default function MapEditor(props: Props) {
           return (
             <Fragment key={o.id}>
               <Polyline positions={pos} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 1 + (sel ? 1 : 0) }} eventHandlers={{ click: () => onSelecObjeto?.(o.id) }} />
-              <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:#b91c1c;background:#fff;padding:0 2px;border:1px solid #b91c1c;border-radius:2px">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })} />
+              <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:#b91c1c;background:#fff;padding:0 2px;border:1px solid #b91c1c;border-radius:2px;width:max-content;display:inline-block">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })} />
               {sel && pos.map((p, idx) => (
                 <Marker key={`hc${idx}`} position={p} draggable opacity={0}
                   eventHandlers={{

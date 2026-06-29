@@ -70,6 +70,12 @@
   white-space: nowrap;
 }
 
+/* Reset default styles of Leaflet divIcon wrapper to allow custom styling */
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
 /* impressão da planta — folha A3 paisagem */
 @page {
   size: A3 landscape;
