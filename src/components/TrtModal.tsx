@@ -37,7 +37,17 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
   ];
 
   function copiar(texto: string, chave: string) {
-    navigator.clipboard?.writeText(texto).then(() => { setCopiado(chave); setTimeout(() => setCopiado(null), 1500); });
+    const ok = () => { setCopiado(chave); setTimeout(() => setCopiado(null), 1500); };
+    const fallback = () => {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta); ok();
+      } catch { /* navegador não permitiu copiar */ }
+    };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(texto).then(ok).catch(fallback);
+    else fallback();
   }
   function copiarTudo() {
     const txt = linhas.map(([k, v]) => `${k}: ${v || '—'}`).join('\n');
