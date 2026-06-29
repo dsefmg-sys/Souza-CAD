@@ -5,6 +5,7 @@ import { numBR, formatMatricula } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm } from '@/lib/topo/coords';
 import { distanciaCota } from '@/lib/topo/objetos';
+import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import type { ObjetoDesenho } from '@/lib/topo/types';
 
 interface Props {
@@ -31,17 +32,30 @@ const CARW = 470;            // largura da coluna de carimbo (direita)
 const STRIP = 210;           // altura da faixa inferior (observações/convenções/etc.)
 const DRAW = { x0: 24, y0: 24, x1: W - CARW - 12, y1: H - STRIP - 12 };
 
+/** Linhas do rótulo do confrontante na planta, conforme a condição (proprietário/posseiro/espólio). */
+function rotuloConfrontanteLinhas(c: Confrontante): string[] {
+  const cond = c.condicao ?? 'proprietario';
+  const linhas: string[] = [];
+  if (cond === 'espolio') {
+    linhas.push(/esp[óo]lio/i.test(c.nome) ? c.nome : `Espólio de ${c.nome}`);
+    if (c.inventarianteNome) linhas.push(`Inventariante: ${c.inventarianteNome}`);
+    if (c.matricula) linhas.push(`Matrícula nº ${formatMatricula(c.matricula)}`);
+    return linhas;
+  }
+  linhas.push(`Nome: ${c.nome}`);
+  linhas.push(`CPF: ${c.cpf || '—'}`);
+  if (cond === 'posseiro') linhas.push('Possuidor(a)');
+  else linhas.push(`Matrícula nº ${formatMatricula(c.matricula) || '—'}`);
+  if (c.conjugeNome) linhas.push(`Cônjuge: ${c.conjugeNome}`);
+  return linhas;
+}
+
 function intervaloGrade(extent: number): number {
   const alvo = extent / 6;
   const pot = Math.pow(10, Math.floor(Math.log10(alvo)));
   for (const m of [1, 2, 5, 10]) if (pot * m >= alvo) return pot * m;
   return pot * 10;
 }
-
-const REPRES_LABEL: Record<string, string> = {
-  'linha-ideal': 'Linha ideal', cerca: 'Cerca', estrada: 'Estrada', corrego: 'Córrego',
-  rio: 'Rio', acude: 'Açude', muro: 'Muro', vala: 'Vala',
-};
 
 export default function Planta({ vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado, zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], objetos = [] }: Props) {
   if (vertices.length < 3) {
@@ -164,6 +178,24 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
       {/* ---------- POLÍGONO (gleba ativa) ---------- */}
       <polygon points={pts} fill="#fde68a" fillOpacity={0.18} stroke="#7c2d12" strokeWidth={1.8} />
 
+      {/* ---------- LINHAS DE APOIO DAS DIVISAS (cor externa à linha) ---------- */}
+      {vertices.map((v, i) => {
+        const cor = corDivisa(v.representacao);
+        if (!cor) return null;
+        const a = anel[i], b = anel[(i + 1) % anel.length];
+        if (!a || !b) return null;
+        // normal unitária do segmento, empurrada para FORA do polígono (lado oposto ao centróide)
+        let nx = -(b.y - a.y), ny = b.x - a.x;
+        const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        if ((mx - cx) * nx + (my - cy) * ny < 0) { nx = -nx; ny = -ny; }
+        const off = 3.2;
+        return (
+          <line key={`div${v.id}`} x1={a.x + nx * off} y1={a.y + ny * off} x2={b.x + nx * off} y2={b.y + ny * off}
+            stroke={cor} strokeWidth={3.2} strokeLinecap="round" opacity={0.9} />
+        );
+      })}
+
       {/* ---------- OBJETOS DE DESENHO ---------- */}
       {objetos.map((o) => {
         const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
@@ -190,14 +222,18 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
       })}
 
       {/* confrontantes (rótulo + linha de assinatura) */}
-      {rotulosConf.map((r, i) => r.c && r.c.nome ? (
-        <g key={i}>
-          <line x1={r.x - 70} y1={r.y - 13} x2={r.x + 70} y2={r.y - 13} stroke="#000" strokeWidth={0.6} />
-          <text x={r.x} y={r.y - 2} fontSize={8.5} textAnchor="middle" fill="#000">Nome: {r.c.nome}</text>
-          <text x={r.x} y={r.y + 8} fontSize={8.5} textAnchor="middle" fill="#000">CPF: {r.c.cpf || '—'}</text>
-          <text x={r.x} y={r.y + 18} fontSize={8.5} textAnchor="middle" fill="#000">Matrícula nº {formatMatricula(r.c.matricula) || '—'}</text>
-        </g>
-      ) : null)}
+      {rotulosConf.map((r, i) => {
+        if (!r.c || !r.c.nome) return null;
+        const linhas = rotuloConfrontanteLinhas(r.c);
+        return (
+          <g key={i}>
+            <line x1={r.x - 72} y1={r.y - 13} x2={r.x + 72} y2={r.y - 13} stroke="#000" strokeWidth={0.6} />
+            {linhas.map((t, k) => (
+              <text key={k} x={r.x} y={r.y - 2 + k * 10} fontSize={8.5} textAnchor="middle" fill="#000">{t}</text>
+            ))}
+          </g>
+        );
+      })}
 
       {/* vértices + códigos */}
       {vertices.map((v) => (
@@ -331,6 +367,8 @@ function Faixa(props: {
 
 function SimboloDivisa({ tipo, x, y }: { tipo: string; x: number; y: number }) {
   const w = 12;
+  const cor = corDivisa(tipo);
+  if (cor) return <line x1={x} y1={y} x2={x + w} y2={y} stroke={cor} strokeWidth={3} strokeLinecap="round" />;
   if (tipo === 'cerca') return <g><line x1={x} y1={y} x2={x + w} y2={y} stroke="#000" strokeWidth={1} />{[0, 4, 8, 12].map((d) => <line key={d} x1={x + d} y1={y - 3} x2={x + d} y2={y + 3} stroke="#000" strokeWidth={0.7} />)}</g>;
   if (tipo === 'estrada') return <g><line x1={x} y1={y - 2} x2={x + w} y2={y - 2} stroke="#000" strokeWidth={0.8} /><line x1={x} y1={y + 2} x2={x + w} y2={y + 2} stroke="#000" strokeWidth={0.8} /></g>;
   if (tipo === 'corrego' || tipo === 'rio') return <path d={`M${x} ${y} q3 -4 6 0 t6 0`} fill="none" stroke="#1d4ed8" strokeWidth={1} />;

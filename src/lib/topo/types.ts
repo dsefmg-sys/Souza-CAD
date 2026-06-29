@@ -96,6 +96,14 @@ export interface ProprietarioCad extends Partial<PessoaQualificada> {
   tipoPessoa: 'Física' | 'Jurídica';
 }
 
+/**
+ * Condição do confrontante perante o imóvel vizinho:
+ * - proprietario: dono com matrícula (padrão)
+ * - posseiro: possuidor sem matrícula (descreve "na condição de possuidor(a)")
+ * - espolio: imóvel de pessoa falecida, assinado pelo inventariante
+ */
+export type CondicaoConfrontante = 'proprietario' | 'posseiro' | 'espolio';
+
 export interface ConfrontanteCad {
   id: string;
   nome: string;
@@ -103,6 +111,12 @@ export interface ConfrontanteCad {
   matricula: string;
   cns: string;
   descricaoExtra?: string;
+  condicao?: CondicaoConfrontante;
+  conjugeNome?: string;
+  conjugeCpf?: string;
+  // quando espólio: quem assina pelo espólio (inventariante)
+  inventarianteNome?: string;
+  inventarianteCpf?: string;
 }
 
 export interface ImovelCad {
@@ -130,6 +144,14 @@ export interface Confrontante {
   cns: string;         // código do cartório
   // descrição livre opcional (ex.: espólio/inventariante)
   descricaoExtra?: string;
+  // condição perante o imóvel vizinho (proprietário/posseiro/espólio)
+  condicao?: CondicaoConfrontante;
+  // cônjuge — qualifica e assina junto
+  conjugeNome?: string;
+  conjugeCpf?: string;
+  // quando espólio: inventariante que assina pelo espólio
+  inventarianteNome?: string;
+  inventarianteCpf?: string;
   // posição manual do rótulo na planta (se o usuário arrastou); senão é automática
   posRotulo?: { lat: number; lon: number };
 }
@@ -167,6 +189,9 @@ export interface ImovelData {
   proprietario: string;       // "Juraci Francisco de Sales"
   cpfProprietario: string;
   tipoPessoa: 'Física' | 'Jurídica';
+  // cônjuge do proprietário — qualifica e assina junto nas peças
+  conjugeProprietario?: string;
+  cpfConjugeProprietario?: string;
   municipio: string;          // "Espera Feliz-MG"
   local: string;              // "Córrego Ventania, Espera Feliz-MG"
   naturezaServico: string;    // "Particular"

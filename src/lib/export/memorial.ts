@@ -13,33 +13,53 @@ function coordTexto(v: Vertex): string {
   return `Longitude: ${lon}, Latitude: ${lat} e Altitude: ${numBRmilhar(v.elevacao)} m`;
 }
 
-/** Descrição do confrontante como aparece no memorial. */
+/** Nome do imóvel/pessoa do confrontante já considerando espólio. */
+function nomeConfrontante(c: Confrontante): string {
+  if ((c.condicao ?? 'proprietario') === 'espolio') {
+    return /esp[óo]lio/i.test(c.nome) ? c.nome : `Espólio de ${c.nome}`;
+  }
+  return c.nome;
+}
+
+/** Descrição do confrontante como aparece no texto do memorial. */
 export function descreverConfrontante(c: Confrontante | undefined): string {
   if (!c) return 'confrontante não informado';
   if (c.descricaoExtra && c.descricaoExtra.trim()) return c.descricaoExtra.trim();
+  const cond = c.condicao ?? 'proprietario';
   const partes: string[] = [];
   if (c.cpf) partes.push(`CPF nº ${c.cpf}`);
-  if (c.matricula) partes.push(`Matrícula nº ${formatMatricula(c.matricula)}`);
+  // posseiro não tem matrícula; espólio e proprietário têm
+  if (cond !== 'posseiro' && c.matricula) partes.push(`Matrícula nº ${formatMatricula(c.matricula)}`);
   const sufixo = partes.length ? ` (${partes.join(', ')})` : '';
-  return `${c.nome}${sufixo}`;
+  const base = `${nomeConfrontante(c)}${sufixo}`;
+  if (cond === 'posseiro') return `${base}, na condição de possuidor(a)`;
+  return base;
 }
 
+/** Um pedaço do texto da narrativa; b = negrito (vértices, tipo de divisa e confrontantes). */
+export interface SegmentoTexto { t: string; b?: boolean }
+
 /**
- * Monta o texto corrido da "DESCRIÇÃO DO PERÍMETRO" no padrão do modelo do dono:
- * começa num vértice, segue por linha ideal agrupando os lados por confrontante,
- * fecha no vértice inicial.
+ * Monta a "DESCRIÇÃO DO PERÍMETRO" como segmentos (texto + negrito), no padrão do modelo do dono:
+ * começa num vértice, segue agrupando os lados por confrontante e tipo de divisa, fecha no inicial.
+ * Os códigos de vértice, o tipo de linha e a qualificação do confrontante saem em negrito.
  */
-export function construirNarrativa(
+export function construirNarrativaSegmentos(
   res: ResultadoCalculo,
   confrontantes: Confrontante[],
   confrontantePorLado: Record<number, string>
-): string {
+): SegmentoTexto[] {
   const { vertices, lados } = res;
-  if (vertices.length < 3) return '';
+  if (vertices.length < 3) return [];
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
   const v0 = vertices[0];
 
-  let txt = `Inicia-se a descrição deste perímetro no vértice ${v0.codigoSigef}, de coordenadas (${coordTexto(v0)}); `;
+  const segs: SegmentoTexto[] = [];
+  const push = (t: string, b = false) => { if (t) segs.push(b ? { t, b: true } : { t }); };
+
+  push('Inicia-se a descrição deste perímetro no vértice ');
+  push(v0.codigoSigef, true);
+  push(`, de coordenadas (${coordTexto(v0)}); `);
 
   // agrupa lados consecutivos por (confrontante + tipo de divisa). Uma nova "passada" começa
   // quando muda o confrontante OU o tipo de linha (cerca, córrego, linha ideal...).
@@ -54,39 +74,52 @@ export function construirNarrativa(
   });
 
   const totalLados = lados.length;
+  const emitirDestino = (i: number) => {
+    const l = lados[i];
+    push(' até o vértice ');
+    push(l.para.codigoSigef, true);
+    if (i === totalLados - 1) push(', ponto inicial da descrição deste perímetro');
+    else push(` (${coordTexto(l.para)})`);
+  };
+
   let confAnterior: string | null = null;
   runs.forEach((run, rIdx) => {
     const c = run.confrontanteId ? mapaC.get(run.confrontanteId) : undefined;
     const mesmoConf = run.confrontanteId != null && run.confrontanteId === confAnterior;
-    const confTxt = mesmoConf ? 'ainda confrontando com o mesmo' : `confrontando com ${descreverConfrontante(c)}`;
-    const item = (i: number) => {
-      const l = lados[i];
-      const az = azimuteDMS(l.azimute), d = numBR(l.distancia);
-      if (i === totalLados - 1) return `${az} e ${d} m até o vértice ${l.para.codigoSigef}, ponto inicial da descrição deste perímetro`;
-      return `${az} e ${d} m até o vértice ${l.para.codigoSigef} (${coordTexto(l.para)})`;
-    };
+    push('deste, segue por ');
+    push(seguePor(run.representacao), true);
+    push(', ');
+    if (mesmoConf) push('ainda confrontando com o mesmo');
+    else { push('confrontando com '); push(descreverConfrontante(c), true); }
 
     if (run.ladoIdx.length === 1) {
-      const i = run.ladoIdx[0];
-      const l = lados[i];
-      const az = azimuteDMS(l.azimute), d = numBR(l.distancia);
-      const destino = i === totalLados - 1
-        ? `o vértice ${l.para.codigoSigef}, ponto inicial da descrição deste perímetro`
-        : `o vértice ${l.para.codigoSigef} (${coordTexto(l.para)})`;
-      txt += `deste, segue por ${seguePor(run.representacao)}, ${confTxt}, com azimute de ${az} e distância de ${d} m até ${destino}`;
+      const l = lados[run.ladoIdx[0]];
+      push(`, com azimute de ${azimuteDMS(l.azimute)} e distância de ${numBR(l.distancia)} m`);
+      emitirDestino(run.ladoIdx[0]);
     } else {
-      const itens = run.ladoIdx.map(item);
-      const ultimoIdxLado = run.ladoIdx[run.ladoIdx.length - 1];
-      const conector = ultimoIdxLado === totalLados - 1 ? 'e finalmente ' : 'e ';
-      const bloco = itens.slice(0, -1).join('; ') + '; ' + conector + itens[itens.length - 1];
-      txt += `deste, segue por ${seguePor(run.representacao)}, ${confTxt}, com os seguintes azimutes e distâncias: ${bloco}`;
+      push(', com os seguintes azimutes e distâncias: ');
+      run.ladoIdx.forEach((i, k) => {
+        if (k > 0) push(k === run.ladoIdx.length - 1 ? (i === totalLados - 1 ? '; e finalmente ' : '; e ') : '; ');
+        const l = lados[i];
+        push(`${azimuteDMS(l.azimute)} e ${numBR(l.distancia)} m`);
+        emitirDestino(i);
+      });
     }
     confAnterior = run.confrontanteId;
-    if (rIdx < runs.length - 1) txt += '; ';
+    if (rIdx < runs.length - 1) push('; ');
   });
 
-  txt += '.';
-  return txt;
+  push('.');
+  return segs;
+}
+
+/** Versão em texto puro (sem negrito) — usada em testes e onde basta a string. */
+export function construirNarrativa(
+  res: ResultadoCalculo,
+  confrontantes: Confrontante[],
+  confrontantePorLado: Record<number, string>
+): string {
+  return construirNarrativaSegmentos(res, confrontantes, confrontantePorLado).map((s) => s.t).join('');
 }
 
 /** Como o memorial descreve a linha que "segue por", conforme o tipo de divisa. */
@@ -130,16 +163,6 @@ function p(text: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[
   });
 }
 
-function linhaInfo(rotulo: string, valor: string) {
-  return new Paragraph({
-    spacing: { after: 40 },
-    children: [
-      new TextRun({ text: `${rotulo} `, bold: true, size: 22 }),
-      new TextRun({ text: valor, size: 22 }),
-    ],
-  });
-}
-
 function assinatura(linhas: string[], boldPrimeira = false) {
   const filhos = [
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360 }, children: [new TextRun({ text: '________________________________________', size: 22 })] }),
@@ -148,6 +171,41 @@ function assinatura(linhas: string[], boldPrimeira = false) {
     filhos.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, children: [new TextRun({ text: l, bold: boldPrimeira && i === 0, size: 22 })] }))
   );
   return filhos;
+}
+
+/** Célula da tabela de cabeçalho: rótulo em negrito + valor. */
+function celulaCab(rotulo: string, valor: string): TableCell {
+  return new TableCell({
+    width: { size: 50, type: WidthType.PERCENTAGE },
+    margins: { top: 30, bottom: 30, left: 90, right: 90 },
+    children: [new Paragraph({ children: [
+      new TextRun({ text: `${rotulo} `, bold: true, size: 20 }),
+      new TextRun({ text: valor || '—', size: 20 }),
+    ] })],
+  });
+}
+
+/** Tabela de identificação no topo do memorial (com bordas), como no modelo do dono. */
+function tabelaCabecalho(imovel: ImovelData, areaHa: number, perimetro: number): Table {
+  const b = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: { top: b, bottom: b, left: b, right: b, insideHorizontal: b, insideVertical: b },
+    rows: [
+      new TableRow({ children: [celulaCab('Imóvel:', imovel.denominacao), celulaCab('Matrícula:', imovel.matricula)] }),
+      new TableRow({ children: [celulaCab('Proprietário(a):', imovel.proprietario), celulaCab('Área SGL (ha):', `${numBR(areaHa, 4)} ha`)] }),
+      new TableRow({ children: [celulaCab('Local:', imovel.local), celulaCab('Perímetro (m):', `${numBR(perimetro)} m`)] }),
+    ],
+  });
+}
+
+/** Assinatura de uma pessoa e, se houver, do seu cônjuge logo abaixo. */
+function assinaturaComConjuge(linhas: string[], conjugeNome?: string, conjugeCpf?: string): Paragraph[] {
+  const out = assinatura(linhas);
+  if (conjugeNome && conjugeNome.trim()) {
+    out.push(...assinatura([`Cônjuge: ${conjugeNome}`, `CPF: ${conjugeCpf || '—'}`]));
+  }
+  return out;
 }
 
 export interface MemorialInput {
@@ -164,21 +222,24 @@ export async function gerarMemorialDocx(input: MemorialInput): Promise<Blob> {
   // Defesa final: nunca gerar memorial com lacuna de código de vértice.
   const semCodigo = res.vertices.filter((v) => !v.codigoSigef).length;
   if (semCodigo > 0) throw new Error(`${semCodigo} vértice(s) sem código. Renumere os vértices antes de gerar o memorial.`);
-  const narrativa = construirNarrativa(res, confrontantes, confrontantePorLado);
+  const narrativaSegs = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado);
 
-  const children: Paragraph[] = [];
+  const children: (Paragraph | Table)[] = [];
 
-  // Cabeçalho (usa os valores oficiais do SIGEF quando o usuário escolheu reconciliar)
+  // Título
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 220 }, children: [
+    new TextRun({ text: 'MEMORIAL DESCRITIVO', bold: true, size: 28 }),
+  ] }));
+
+  // Cabeçalho em tabela (usa os valores oficiais do SIGEF quando o usuário escolheu reconciliar)
   const ef = valoresEfetivos(res, imovel);
-  children.push(linhaInfo('Imóvel:', imovel.denominacao));
-  children.push(linhaInfo('Matrícula:', imovel.matricula));
-  children.push(linhaInfo('Proprietário(a):', imovel.proprietario));
-  children.push(linhaInfo('Área SGL (ha):', `${numBR(ef.areaHa, 4)} ha`));
-  children.push(linhaInfo('Local:', imovel.local));
-  children.push(linhaInfo('Perímetro (m):', `${numBR(ef.perimetro)} m`));
+  children.push(tabelaCabecalho(imovel, ef.areaHa, ef.perimetro));
 
-  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 240, after: 160 }, children: [new TextRun({ text: 'DESCRIÇÃO DO PERÍMETRO', bold: true, size: 24 })] }));
-  children.push(p(narrativa));
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 280, after: 160 }, children: [new TextRun({ text: 'DESCRIÇÃO DO PERÍMETRO', bold: true, size: 24 })] }));
+  children.push(new Paragraph({
+    alignment: AlignmentType.JUSTIFIED, spacing: { after: 120 },
+    children: narrativaSegs.map((s) => new TextRun({ text: s.t, bold: s.b, size: 22 })),
+  }));
 
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 240, after: 120 }, children: [new TextRun({ text: 'INFORMAÇÕES TÉCNICAS', bold: true, size: 24 })] }));
   children.push(p(INFO_TECNICAS));
@@ -195,25 +256,21 @@ export async function gerarMemorialDocx(input: MemorialInput): Promise<Blob> {
     `Credenciamento INCRA: ${tecnico.credenciamentoIncra}`,
   ], true).forEach((c) => children.push(c));
 
-  // Bloco proprietários
+  // Bloco proprietários (com cônjuge, se houver)
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'PROPRIETÁRIOS', bold: true, size: 24 })] }));
   children.push(p('Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas neste memorial e na planta que o acompanha.'));
-  assinatura([
+  assinaturaComConjuge([
     `Nome: ${imovel.proprietario}`,
     `CPF: ${imovel.cpfProprietario}`,
     `Imóvel de Matrícula: ${imovel.matricula}`,
-  ]).forEach((c) => children.push(c));
+  ], imovel.conjugeProprietario, imovel.cpfConjugeProprietario).forEach((c) => children.push(c));
 
-  // Bloco confrontantes
+  // Bloco confrontantes (respeita posseiro/espólio e cônjuge)
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'CONFRONTANTES', bold: true, size: 24 })] }));
   children.push(p('Concordamos com as medidas apresentadas neste memorial e na planta anexa no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade. Estamos cientes de que, nos termos do §10 do artigo 213 da LRP, nossa anuência supre a participação do cônjuge e de eventuais outros condôminos titulares de nosso imóvel.'));
   confrontantes.forEach((c) => {
     if (!c.nome) return;
-    assinatura([
-      `Nome: ${c.nome}`,
-      `CPF: ${c.cpf}`,
-      `Imóvel de Matrícula: ${formatMatricula(c.matricula)}`,
-    ]).forEach((x) => children.push(x));
+    blocoAssinaturaConfrontante(c).forEach((x) => children.push(x));
   });
 
   const doc = new Document({
@@ -225,5 +282,29 @@ export async function gerarMemorialDocx(input: MemorialInput): Promise<Blob> {
   return Packer.toBlob(doc);
 }
 
-// suprime "unused" enquanto mantemos imports disponíveis para evoluções da tabela
-void Table; void TableRow; void TableCell; void WidthType; void BorderStyle;
+/** Linhas de assinatura de um confrontante conforme a condição (proprietário/posseiro/espólio). */
+function blocoAssinaturaConfrontante(c: Confrontante): Paragraph[] {
+  const cond = c.condicao ?? 'proprietario';
+  if (cond === 'espolio') {
+    const nome = /esp[óo]lio/i.test(c.nome) ? c.nome : `Espólio de ${c.nome}`;
+    const linhas = [
+      `Inventariante: ${c.inventarianteNome || '—'}`,
+      `CPF: ${c.inventarianteCpf || '—'}`,
+      nome,
+    ];
+    if (c.matricula) linhas.push(`Imóvel de Matrícula: ${formatMatricula(c.matricula)}`);
+    return assinatura(linhas);
+  }
+  if (cond === 'posseiro') {
+    return assinaturaComConjuge([
+      `Nome: ${c.nome}`,
+      `CPF: ${c.cpf}`,
+      'Na condição de possuidor(a)',
+    ], c.conjugeNome, c.conjugeCpf);
+  }
+  return assinaturaComConjuge([
+    `Nome: ${c.nome}`,
+    `CPF: ${c.cpf}`,
+    `Imóvel de Matrícula: ${formatMatricula(c.matricula)}`,
+  ], c.conjugeNome, c.conjugeCpf);
+}

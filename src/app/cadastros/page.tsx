@@ -73,21 +73,35 @@ function Proprietarios() {
 }
 
 function Confrontantes() {
-  const vazio: ConfrontanteCad = { id: '', nome: '', cpf: '', matricula: '', cns: '', descricaoExtra: '' };
+  const vazio: ConfrontanteCad = { id: '', nome: '', cpf: '', matricula: '', cns: '', descricaoExtra: '', condicao: 'proprietario' };
   const [lista, setLista] = useState<ConfrontanteCad[]>([]);
   const [form, setForm] = useState<ConfrontanteCad>(vazio);
   const carregar = () => confrontantesCad.listar().then(setLista).catch(() => {});
   useEffect(() => { carregar(); }, []);
   async function salvar() { if (!form.nome) return; await confrontantesCad.salvar(form); setForm(vazio); carregar(); }
   async function excluir(id: string) { await confrontantesCad.excluir(id); carregar(); }
+  const cond = form.condicao ?? 'proprietario';
   return (
     <div className="space-y-4">
       <Card><CardContent className="grid grid-cols-2 gap-3 p-4">
         {campo('Nome', form.nome, (v) => setForm({ ...form, nome: v }))}
         {campo('CPF/CNPJ', form.cpf, (v) => setForm({ ...form, cpf: v }))}
-        {campo('Matrícula', form.matricula, (v) => setForm({ ...form, matricula: v }))}
+        <div className="space-y-1">
+          <Label>Condição</Label>
+          <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+            value={cond} onChange={(e) => setForm({ ...form, condicao: e.target.value as ConfrontanteCad['condicao'] })}>
+            <option value="proprietario">Proprietário</option>
+            <option value="posseiro">Posseiro (sem matrícula)</option>
+            <option value="espolio">Espólio (assina inventariante)</option>
+          </select>
+        </div>
+        {cond !== 'posseiro' && campo('Matrícula', form.matricula, (v) => setForm({ ...form, matricula: v }))}
         {campo('Cartório (CNS)', form.cns, (v) => setForm({ ...form, cns: v }))}
-        <div className="col-span-2">{campo('Descrição extra (espólio/inventariante)', form.descricaoExtra ?? '', (v) => setForm({ ...form, descricaoExtra: v }))}</div>
+        {cond === 'espolio' && campo('Inventariante', form.inventarianteNome ?? '', (v) => setForm({ ...form, inventarianteNome: v }))}
+        {cond === 'espolio' && campo('CPF do inventariante', form.inventarianteCpf ?? '', (v) => setForm({ ...form, inventarianteCpf: v }))}
+        {cond !== 'espolio' && campo('Cônjuge', form.conjugeNome ?? '', (v) => setForm({ ...form, conjugeNome: v }))}
+        {cond !== 'espolio' && campo('CPF do cônjuge', form.conjugeCpf ?? '', (v) => setForm({ ...form, conjugeCpf: v }))}
+        <div className="col-span-2">{campo('Descrição extra (sobrepõe o texto automático)', form.descricaoExtra ?? '', (v) => setForm({ ...form, descricaoExtra: v }))}</div>
         <div className="col-span-2"><Button size="sm" onClick={salvar}><Plus /> {form.id ? 'Atualizar' : 'Adicionar'}</Button></div>
       </CardContent></Card>
       <div className="space-y-1">

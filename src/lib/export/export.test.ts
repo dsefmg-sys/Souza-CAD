@@ -10,7 +10,8 @@ import { calcular } from '../topo/calcular';
 import { detectarZona } from '../topo/coords';
 import type { ImovelData, TecnicoData } from '../topo/types';
 import { montarContentXml, montarContentXmlGlebas } from './sigefOds';
-import { construirNarrativa, gerarMemorialDocx } from './memorial';
+import { construirNarrativa, construirNarrativaSegmentos, descreverConfrontante, gerarMemorialDocx } from './memorial';
+import type { Confrontante } from '../topo/types';
 import { gerarRequerimentoDocx } from './requerimento';
 import type { PessoaQualificada } from '../topo/types';
 
@@ -109,6 +110,41 @@ describe('memorial', () => {
     expect(buf.length).toBeGreaterThan(2000);
     mkdirSync(OUT, { recursive: true });
     writeFileSync(resolve(OUT, 'memorial_out.docx'), buf);
+  });
+
+  it('segmentos da narrativa: códigos de vértice e confrontante saem em negrito; texto bate com a string', () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    const segs = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado);
+    // o texto puro (join dos segmentos) é idêntico à versão string
+    expect(segs.map((s) => s.t).join('')).toBe(construirNarrativa(res, confrontantes, confrontantePorLado));
+    // o 1º código de vértice é um segmento em negrito
+    const v0 = res.vertices[0].codigoSigef;
+    expect(segs.some((s) => s.b && s.t === v0)).toBe(true);
+    // algum confrontante aparece em negrito como descrição completa
+    expect(segs.some((s) => s.b && /CPF nº/.test(s.t))).toBe(true);
+  });
+
+  it('posseiro: descrição com "possuidor(a)" e sem matrícula', () => {
+    const c: Confrontante = { id: 'x', nome: 'José Possuidor', cpf: '111', matricula: '999', cns: '', condicao: 'posseiro' };
+    const t = descreverConfrontante(c);
+    expect(t).toContain('na condição de possuidor(a)');
+    expect(t).not.toContain('Matrícula');
+  });
+
+  it('espólio: descrição prefixada com "Espólio de"', () => {
+    const c: Confrontante = { id: 'y', nome: 'Maria Falecida', cpf: '222', matricula: '777', cns: '', condicao: 'espolio' };
+    const t = descreverConfrontante(c);
+    expect(t.startsWith('Espólio de Maria Falecida')).toBe(true);
+    expect(t).toContain('Matrícula nº');
+  });
+
+  it('memorial com cônjuge e espólio gera .docx sem erro', async () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    confrontantes[0] = { ...confrontantes[0], condicao: 'espolio', inventarianteNome: 'Inv. Fulano', inventarianteCpf: '333' };
+    if (confrontantes[1]) confrontantes[1] = { ...confrontantes[1], conjugeNome: 'Cônjuge Beltrana', conjugeCpf: '444' };
+    const imovelConj: ImovelData = { ...imovel, conjugeProprietario: 'Esposa do Dono', cpfConjugeProprietario: '555' };
+    const blob = await gerarMemorialDocx({ res, imovel: imovelConj, tecnico, confrontantes, confrontantePorLado });
+    expect((await blob.arrayBuffer()).byteLength).toBeGreaterThan(2000);
   });
 });
 

@@ -9,7 +9,7 @@ import {
   Upload, FileText, Sheet, Map as MapIcon, Printer, Settings, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen,
+  Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen, Brush,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,7 @@ import { ancoraMunicipio } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema } from '@/lib/topo/conferencia';
-import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES } from '@/lib/topo/sigefVocab';
+import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS } from '@/lib/topo/geometry';
 import { carregarTecnico, carregarEscritorio } from '@/lib/store/settings';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId } from '@/lib/store/projects';
@@ -80,6 +80,7 @@ export default function EditorPage() {
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [snapAtivo, setSnapAtivo] = useState(false);
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
+  const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
   // camada de desenho livre (objetos da gleba ativa)
   const [objetos, setObjetos] = useState<ObjetoDesenho[]>([]);
   const [desenhoBuffer, setDesenhoBuffer] = useState<PontoLL[]>([]);
@@ -355,6 +356,12 @@ export default function EditorPage() {
     setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, ...patch } : v)));
   }
 
+  // Pintar divisa: aplica o tipo escolhido ao trecho que SAI do vértice clicado. Para marcar um
+  // caminho, é só clicar os vértices em sequência ao longo dele.
+  function pintarDivisa(id: string) {
+    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, representacao: tipoDivisaPincel } : v)));
+  }
+
   function detectarConfrontantes() {
     const { confrontantes: cs, confrontantePorLado: mapa } = montarConfrontantes(vertices);
     // preserva dados já preenchidos por nome
@@ -578,7 +585,11 @@ export default function EditorPage() {
   }
   async function salvarConfCadastro(c: Confrontante) {
     if (!c.nome) { aviso('Preencha o nome do confrontante.'); return; }
-    await cadConf.salvar({ id: '', nome: c.nome, cpf: c.cpf, matricula: c.matricula, cns: c.cns, descricaoExtra: c.descricaoExtra });
+    await cadConf.salvar({
+      id: '', nome: c.nome, cpf: c.cpf, matricula: c.matricula, cns: c.cns, descricaoExtra: c.descricaoExtra,
+      condicao: c.condicao, conjugeNome: c.conjugeNome, conjugeCpf: c.conjugeCpf,
+      inventarianteNome: c.inventarianteNome, inventarianteCpf: c.inventarianteCpf,
+    });
     cadConf.listar().then(setSugConf).catch(() => {});
     aviso('Confrontante salvo no cadastro.');
   }
@@ -676,6 +687,13 @@ export default function EditorPage() {
                 <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} onClick={() => setSnapAtivo((s) => !s)} title="Snap: encaixar em vértices existentes"><Magnet /></Button>
                 <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} onClick={() => setBloqueado((b) => !b)} title={bloqueado ? 'Vértices travados (clique para liberar a edição)' : 'Vértices liberados — cuidado para não mover sem querer'}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
                 <div className="mx-1 w-px bg-border" />
+                <Button size="sm" variant={modo === 'divisa' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'divisa' ? 'navegar' : 'divisa')} title="Pintar divisa: escolha o tipo e clique os vértices ao longo do caminho"><Brush /></Button>
+                {modo === 'divisa' && (
+                  <select className="h-8 rounded border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
+                    {REPRESENTACOES.map((r) => <option key={r} value={r}>{REPRES_LABEL[r] || r}</option>)}
+                  </select>
+                )}
+                <div className="mx-1 w-px bg-border" />
                 <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Desenhar linha/polilinha (clique os pontos, depois Finalizar)"><PenTool /></Button>
                 <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos"><RotateCcw className="rotate-90" /></Button>
                 <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir"><FileText /></Button>
@@ -697,7 +715,7 @@ export default function EditorPage() {
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} objetoSelId={objetoSelId}
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
-                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} />
+                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} />
             </>
           ) : (
             <div id="planta-print" className="relative h-full overflow-auto bg-neutral-200 p-4">
@@ -890,6 +908,10 @@ function PainelImovel({ imovel, onChange, onMunicipio, nome, onNome, zona, hemis
         </datalist>
       </div>
       <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} />
+      <div className="grid grid-cols-2 gap-2">
+        <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
+        <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} />
+      </div>
       <Campo label="Município" value={imovel.municipio} onChange={onMunicipio} placeholder="Espera Feliz-MG" />
       <Campo label="Local (memorial)" value={imovel.local} onChange={(v) => set('local', v)} placeholder="Córrego ..., Cidade-UF" />
       <div className="grid grid-cols-2 gap-2">
@@ -960,11 +982,13 @@ function PainelConfrontantes({ confrontantes, onChange, onDetectar, mapa, lados,
   sugConf: ConfrontanteCad[]; onSalvarCadastro: (c: Confrontante) => void;
 }) {
   const set = (id: string, k: keyof Confrontante, v: string) =>
-    onChange(confrontantes.map((c) => (c.id === id ? { ...c, [k]: v } : c)));
+    onChange(confrontantes.map((c) => (c.id === id ? ({ ...c, [k]: v } as Confrontante) : c)));
   const setNome = (id: string, v: string) => {
     const m = sugConf.find((s) => s.nome === v);
     onChange(confrontantes.map((c) => (c.id === id
-      ? (m ? { ...c, nome: v, cpf: m.cpf, matricula: m.matricula, cns: m.cns, descricaoExtra: m.descricaoExtra } : { ...c, nome: v })
+      ? (m ? { ...c, nome: v, cpf: m.cpf, matricula: m.matricula, cns: m.cns, descricaoExtra: m.descricaoExtra,
+              condicao: m.condicao, conjugeNome: m.conjugeNome, conjugeCpf: m.conjugeCpf,
+              inventarianteNome: m.inventarianteNome, inventarianteCpf: m.inventarianteCpf } : { ...c, nome: v })
       : c)));
   };
   const ladosDe = (id: string) => Object.entries(mapa).filter(([, cid]) => cid === id).map(([i]) => Number(i));
@@ -990,12 +1014,33 @@ function PainelConfrontantes({ confrontantes, onChange, onDetectar, mapa, lados,
                 <Label>Nome</Label>
                 <Input list="lista-confrontantes" value={c.nome} onChange={(e) => setNome(c.id, e.target.value)} />
               </div>
+              <div className="space-y-1">
+                <Label>Condição</Label>
+                <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  value={c.condicao ?? 'proprietario'} onChange={(e) => set(c.id, 'condicao', e.target.value)}>
+                  <option value="proprietario">Proprietário</option>
+                  <option value="posseiro">Posseiro (sem matrícula)</option>
+                  <option value="espolio">Espólio (assina inventariante)</option>
+                </select>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <Campo label="CPF/CNPJ" value={c.cpf} onChange={(v) => set(c.id, 'cpf', v)} />
-                <Campo label="Matrícula" value={c.matricula} onChange={(v) => set(c.id, 'matricula', v)} />
+                {(c.condicao ?? 'proprietario') !== 'posseiro' && <Campo label="Matrícula" value={c.matricula} onChange={(v) => set(c.id, 'matricula', v)} />}
               </div>
+              {(c.condicao ?? 'proprietario') === 'espolio' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Campo label="Inventariante" value={c.inventarianteNome ?? ''} onChange={(v) => set(c.id, 'inventarianteNome', v)} />
+                  <Campo label="CPF do inventariante" value={c.inventarianteCpf ?? ''} onChange={(v) => set(c.id, 'inventarianteCpf', v)} />
+                </div>
+              )}
+              {(c.condicao ?? 'proprietario') !== 'espolio' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Campo label="Cônjuge" value={c.conjugeNome ?? ''} onChange={(v) => set(c.id, 'conjugeNome', v)} />
+                  <Campo label="CPF do cônjuge" value={c.conjugeCpf ?? ''} onChange={(v) => set(c.id, 'conjugeCpf', v)} />
+                </div>
+              )}
               <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set(c.id, 'cns', v)} list="lista-cns" />
-              <Campo label="Descrição extra (espólio/inventariante)" value={c.descricaoExtra ?? ''} onChange={(v) => set(c.id, 'descricaoExtra', v)} />
+              <Campo label="Descrição extra (sobrepõe o texto automático)" value={c.descricaoExtra ?? ''} onChange={(v) => set(c.id, 'descricaoExtra', v)} />
             </CardContent>
           </Card>
         );

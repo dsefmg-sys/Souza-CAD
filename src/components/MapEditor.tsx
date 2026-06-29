@@ -5,9 +5,10 @@ import { MapContainer, TileLayer, Polygon, Polyline, Marker, Tooltip, CircleMark
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho } from '@/lib/topo/types';
 import { distanciaCota } from '@/lib/topo/objetos';
+import { corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR } from '@/lib/topo/geometry';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'cota' | 'texto';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'cota' | 'texto' | 'divisa';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; texto: string; }
 
@@ -31,6 +32,7 @@ interface Props {
   onSelecObjeto?: (id: string | null) => void;
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onMoverRotulo?: (id: string, lat: number, lon: number) => void;
+  onPintarDivisa?: (id: string) => void;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -96,7 +98,7 @@ export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], objetoSelId = null,
-    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo,
+    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa,
   } = props;
 
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
@@ -136,6 +138,16 @@ export default function MapEditor(props: Props) {
       ) : anel.length === 2 ? (
         <Polyline positions={anel} pathOptions={{ color: '#facc15', weight: 2 }} />
       ) : null}
+
+      {/* cor de apoio das divisas (sobre cada lado, conforme a representação do vértice) */}
+      {validos.map((v, i) => {
+        const cor = corDivisa(v.representacao);
+        if (!cor || validos.length < 2) return null;
+        const a: [number, number] = [v.lat, v.lon];
+        const prox = validos[(i + 1) % validos.length];
+        if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
+        return <Polyline key={`div${v.id}`} positions={[a, [prox.lat, prox.lon]]} pathOptions={{ color: cor, weight: 6, opacity: 0.65 }} />;
+      })}
 
       {/* objetos de desenho */}
       {objetos.map((o) => {
@@ -197,7 +209,11 @@ export default function MapEditor(props: Props) {
           draggable={modo === 'navegar' && !bloqueado}
           icon={iconeVertice(v, v.id === selecionadoId)}
           eventHandlers={{
-            click() { if (modo === 'apagar') onApagar(v.id); else onSelecionar(v.id); },
+            click() {
+              if (modo === 'apagar') onApagar(v.id);
+              else if (modo === 'divisa') onPintarDivisa?.(v.id);
+              else onSelecionar(v.id);
+            },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
           }}
         >
