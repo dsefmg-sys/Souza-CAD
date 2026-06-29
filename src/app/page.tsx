@@ -481,6 +481,19 @@ export default function EditorPage() {
     if (selecionadoId === id) setSelecionadoId(null);
   }
 
+  // Apaga TODO o polígono (vértices + ignorados + trechos), para redesenhar à mão depois.
+  function limparPoligono() {
+    if (vertices.length === 0 && verticesIgnorados.length === 0) return;
+    if (!window.confirm(`Apagar todo o polígono (${vertices.length} vértices)? Você poderá desenhar de novo com a ferramenta "Inserir vértice".`)) return;
+    snap();
+    setVertices([]);
+    setVerticesIgnorados([]);
+    setConfrontantePorLado({});
+    setSelecionadoId(null);
+    setModo('inserir');
+    aviso('Polígono apagado. Clique no mapa com "Inserir vértice" para desenhar o novo.');
+  }
+
   // Ignorar vértice: tira-o do desenho do polígono (vai para a lista de ignorados, pode voltar).
   function ignorarVertice(id: string) {
     const v = vertices.find((x) => x.id === id);
@@ -732,7 +745,8 @@ export default function EditorPage() {
 
   function alternarTipo(id: string) {
     snap();
-    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, tipo: v.tipo === 'M' ? 'P' : 'M', isDivisa: v.tipo !== 'M' } : v)));
+    const prox = { M: 'P', P: 'V', V: 'M' } as const;
+    setVertices((vs) => vs.map((v) => { if (v.id !== id) return v; const t = prox[v.tipo as 'M' | 'P' | 'V'] ?? 'P'; return { ...v, tipo: t, isDivisa: t !== 'M' }; }));
   }
 
   function editarVertice(id: string, patch: Partial<Vertex>) {
@@ -1348,6 +1362,7 @@ export default function EditorPage() {
                   <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer última ação"><Undo2 /> Desfazer</Button>
                   <Button size="sm" variant="outline" onClick={ordenarNorteHorario} title="Começa no vértice mais ao norte e segue no sentido horário">Norte ↻</Button>
                   <Button size="sm" variant="outline" onClick={renumerar}>Renumerar</Button>
+                  <Button size="sm" variant="outline" className="text-destructive" onClick={limparPoligono} title="Apagar todo o polígono para desenhar de novo à mão"><Trash2 /> Limpar</Button>
                   <Button size="sm" variant="default" onClick={abrirPlanilha} title="Editar todos os vértices em uma planilha" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"><Table className="size-4 mr-1" /> Editar em Tabela</Button>
                 </div>
                 <p className="mb-1 text-[10px] text-muted-foreground">Arraste um vértice para reordenar o polígono (renumera automático).</p>
@@ -1365,8 +1380,8 @@ export default function EditorPage() {
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-semibold">{v.codigoSigef || '(sem código)'}</span>
                         <span className="flex gap-1">
-                          <button className="rounded bg-secondary px-1" onClick={(e) => { e.stopPropagation(); alternarTipo(v.id); }} title="Alternar M/P">{v.tipo}</button>
-                          <button className="rounded bg-destructive px-1 text-destructive-foreground" onClick={(e) => { e.stopPropagation(); apagarVertice(v.id); }}>×</button>
+                          <button className="rounded bg-secondary px-2.5 py-1 text-sm font-bold" onClick={(e) => { e.stopPropagation(); alternarTipo(v.id); }} title="Alternar tipo do marco (M/P/V)">{v.tipo}</button>
+                          <button className="rounded bg-destructive px-2 py-1 text-sm text-destructive-foreground" onClick={(e) => { e.stopPropagation(); apagarVertice(v.id); }} title="Apagar vértice">×</button>
                         </span>
                       </div>
                       <div className="mt-1 text-muted-foreground">{v.codigoCampo || v.nome}</div>
