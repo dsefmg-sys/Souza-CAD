@@ -53,10 +53,12 @@ function linhaVertice(
     celFloat('ce40', Number(v.elevacao.toFixed(2)), numBR(v.elevacao)) +
     celStr('ce40', '0,01') +
     celStr('ce40', v.metodo || tec.metodoPosicionamento || 'PG6') +
-    celStr('ce93', v.tipoLimite || tec.tipoLimite || 'LA6') +
-    celStr('ce93', cns) +
-    celStr('ce93', mat) +
-    celStr('ce93', descritivoConfrontante(conf));
+    // ce40 é o estilo de célula de dado presente no template (o antigo ce93 não existe no modelo
+    // em branco; manter referência válida evita estilo pendente)
+    celStr('ce40', v.tipoLimite || tec.tipoLimite || 'LA6') +
+    celStr('ce40', cns) +
+    celStr('ce40', mat) +
+    celStr('ce40', descritivoConfrontante(conf));
   return `<table:table-row table:style-name="ro2">${cels}${TRAILING_FILLER}</table:table-row>`;
 }
 
@@ -74,7 +76,12 @@ function fatiarTabela(xml: string, nome: string): { antes: string; tabela: strin
   };
 }
 
-/** Substitui as linhas de vértice DENTRO de uma string de tabela de perímetro. */
+/**
+ * Coloca as linhas de vértice na tabela de perímetro. Funciona com os dois formatos de template:
+ *  - template com linhas de EXEMPLO (`-M-`/`-P-`): substitui essas linhas;
+ *  - template em BRANCO (sem exemplos, linhas de entrada vazias/comprimidas): insere logo após
+ *    o cabeçalho. Em ambos os casos sobram só os vértices reais.
+ */
 function preencherPerimetroEm(tabela: string, linhas: string[]): string {
   const rows = [...tabela.matchAll(ROW_RE)];
   const headerIdx = rows.findIndex((r) => r[0].includes('E/Long'));
@@ -85,10 +92,15 @@ function preencherPerimetroEm(tabela: string, linhas: string[]): string {
     if (ehDado(rows[i][0])) { if (first < 0) first = i; last = i; }
     else if (first >= 0) break;
   }
-  if (first < 0) throw new Error('Linhas de vértice do template não encontradas');
-  const startPos = rows[first].index!;
-  const endPos = rows[last].index! + rows[last][0].length;
-  return tabela.slice(0, startPos) + linhas.join('') + tabela.slice(endPos);
+  if (first >= 0) {
+    // template com exemplos: troca o bloco de exemplo pelos vértices reais
+    const startPos = rows[first].index!;
+    const endPos = rows[last].index! + rows[last][0].length;
+    return tabela.slice(0, startPos) + linhas.join('') + tabela.slice(endPos);
+  }
+  // template em branco: insere logo após o cabeçalho
+  const hEnd = rows[headerIdx].index! + rows[headerIdx][0].length;
+  return tabela.slice(0, hEnd) + linhas.join('') + tabela.slice(hEnd);
 }
 
 /** Define Denominação e Parcela número na tabela de perímetro. */
@@ -121,35 +133,52 @@ function setTextoP(rowStr: string, indice: number, novo: string): string {
   });
 }
 
+/**
+ * Define o texto da N-ésima célula (0-based, contando elementos <table:table-cell>) de uma linha,
+ * CRIANDO o <text:p> quando a célula está vazia (caso do template em branco) e substituindo quando
+ * já há conteúdo (caso do template preenchido). Preserva controles de formulário (draw:control) e
+ * força tipo string. Robusto para os dois formatos de template SIGEF.
+ */
+function setCelulaTexto(rowStr: string, ordinal: number, valor: string): string {
+  let idx = -1;
+  return rowStr.replace(/<table:table-cell\b([^>]*?)(?:\/>|>([\s\S]*?)<\/table:table-cell>)/g, (full, attrs: string, inner: string | undefined) => {
+    idx++;
+    if (idx !== ordinal) return full;
+    const a = attrs
+      .replace(/\soffice:value-type="[^"]*"/g, '')
+      .replace(/\soffice:value="[^"]*"/g, '')
+      .replace(/\scalcext:value-type="[^"]*"/g, '')
+      + ' office:value-type="string" calcext:value-type="string"';
+    // preserva eventuais controles de formulário já presentes na célula
+    const controles = inner ? (inner.match(/<draw:control\b[\s\S]*?\/>/g) || []).join('') : '';
+    return `<table:table-cell${a}><text:p>${esc(valor)}</text:p>${controles}</table:table-cell>`;
+  });
+}
+
 /** Substitui os valores da aba identificacao (estrutural por índice de linha). */
 function injetarIdentificacao(xml: string, imovel: ImovelData): string {
   const { antes, tabela, depois } = fatiarTabela(xml, 'identificacao');
   const rows = [...tabela.matchAll(ROW_RE)];
-  // mapeia índice de linha -> (índice do text:p de valor, novo valor)
-  const edits: Record<number, [number, string]> = {
-    5: [1, imovel.proprietario],        // Nome:
-    6: [1, imovel.cpfProprietario],     // CPF:
-    9: [1, imovel.denominacao],         // Denominação:
-    12: [1, imovel.codigoImovelIncra],  // Código do Imóvel (SNCR/INCRA):
-    13: [1, imovel.cns],                // Código do cartório (CNS):
-    14: [1, imovel.matricula],          // Matrícula:
+  // transformação por índice de linha. A célula de valor é a 2ª (ordinal 1); o município ocupa as
+  // duas primeiras (ordinais 0 e 1). setCelulaTexto cria o texto quando a célula está vazia.
+  const trans: Record<number, (row: string) => string> = {};
+  const add = (ri: number, valor: string | undefined, ords: number[] = [1]) => {
+    if (valor) trans[ri] = (row) => ords.reduce((r, o) => setCelulaTexto(r, o, valor), row);
   };
+  add(5, imovel.proprietario);        // Nome:
+  add(6, imovel.cpfProprietario);     // CPF:
+  add(9, imovel.denominacao);         // Denominação:
+  add(12, imovel.codigoImovelIncra);  // Código do Imóvel (SNCR/INCRA):
+  add(13, imovel.cns);                // Código do cartório (CNS):
+  add(14, imovel.matricula);          // Matrícula:
+  add(16, imovel.municipio, [0, 1]);  // Município(s): duas células
   let novaTabela = tabela;
-  // aplica de trás pra frente para preservar índices
-  const idxs = Object.keys(edits).map(Number).sort((a, b) => b - a);
-  for (const ri of idxs) {
+  // aplica TODOS de trás pra frente, usando os offsets originais (preencher célula vazia muda o
+  // tamanho da linha; processar do maior índice para o menor mantém os offsets válidos).
+  for (const ri of Object.keys(trans).map(Number).sort((a, b) => b - a)) {
     if (!rows[ri]) continue;
-    const [pIdx, valor] = edits[ri];
-    if (!valor) continue;
-    const novaRow = setTextoP(rows[ri][0], pIdx, valor);
+    const novaRow = trans[ri](rows[ri][0]);
     novaTabela = novaTabela.slice(0, rows[ri].index!) + novaRow + novaTabela.slice(rows[ri].index! + rows[ri][0].length);
-  }
-  // município (linha 16): dois valores, ambos = município
-  if (rows[16] && imovel.municipio) {
-    let r = rows[16][0];
-    r = setTextoP(r, 0, imovel.municipio);
-    r = setTextoP(r, 1, imovel.municipio);
-    novaTabela = novaTabela.slice(0, rows[16].index!) + r + novaTabela.slice(rows[16].index! + rows[16][0].length);
   }
   return antes + novaTabela + depois;
 }

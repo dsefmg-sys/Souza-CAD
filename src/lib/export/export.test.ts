@@ -189,6 +189,24 @@ describe('sigef ods', () => {
     writeFileSync(resolve(OUT, 'sigef_out.ods'), out);
   });
 
+  it('identificação: cada campo cai na célula certa, inclusive município (template em branco)', async () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    const tplBytes = readFileSync(resolve(__dirname, '../../../public/templates/sigef.ods'));
+    const zip = await JSZip.loadAsync(tplBytes);
+    const xml = await zip.file('content.xml')!.async('string');
+    const novo = montarContentXml(xml, { res, imovel, tecnico, confrontantes, confrontantePorLado });
+    // isola a aba identificacao e confere as linhas-chave
+    const k = novo.indexOf('table:name="identificacao"');
+    const ini = novo.lastIndexOf('<table:table ', k);
+    const fim = novo.indexOf('</table:table>', k);
+    const idt = novo.slice(ini, fim);
+    const rows = idt.match(/<table:table-row[\s\S]*?<\/table:table-row>/g)!;
+    const txt = (s: string) => (s.match(/<text:p>([\s\S]*?)<\/text:p>/g) || []).map((m) => m.replace(/<[^>]+>/g, ''));
+    expect(txt(rows[5])).toContain(imovel.proprietario);   // Nome
+    expect(txt(rows[14])).toContain(imovel.matricula);     // Matrícula
+    expect(txt(rows[16])).toContain(imovel.municipio);     // Município (era o bug)
+  });
+
   it('multi-gleba: gera uma aba perimetro_N por gleba', async () => {
     const { res, confrontantes, confrontantePorLado } = preparar();
     const tplBytes = readFileSync(resolve(__dirname, '../../../public/templates/sigef.ods'));
