@@ -546,9 +546,12 @@ export default function EditorPage() {
     }
   }
 
-  function concluirImportacao(gerarPoligono: boolean) {
+  function concluirImportacao(gerarPoligono: boolean, zonaEscolhida?: number) {
     if (!previewData) return;
-    const { perim, vs, numGlebas, municipio, z, novoImovel } = previewData;
+    const { perim, vs: vs0, numGlebas, municipio, z: z0, novoImovel } = previewData;
+    // se o usuário corrigiu o fuso na prévia, reprojeta os vértices (E/N iguais, lat/lon novos)
+    const z = (zonaEscolhida && zonaEscolhida !== z0) ? zonaEscolhida : z0;
+    const vs = z !== z0 ? reprojetar(vs0, z, hemisferio) : vs0;
 
     setImovel(novoImovel);
     setZona(z);
@@ -2222,6 +2225,7 @@ export default function EditorPage() {
         open={!!previewData}
         onOpenChange={(open) => { if (!open) setPreviewData(null); }}
         perim={previewData?.perim || []}
+        zona={previewData?.z ?? zona} hemisferio={hemisferio} fusosPermitidos={tecnico?.fusosPermitidos}
         onConfirm={concluirImportacao}
       />
 
