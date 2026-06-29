@@ -284,19 +284,17 @@ export default function Planta({
       {/* superfície de captura para edição (transparente; não aparece no PDF) */}
       {editavel && <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="transparent" style={{ pointerEvents: 'all' }} />}
 
-      {/* ---------- GRADE (linhas com visibilidade intermediária; números nos 4 lados) ---------- */}
+      {/* ---------- GRADE (números só no topo e na esquerda) ---------- */}
       {verGrade && linhasX.map((x) => (
         <g key={`x${x}`}>
           <line x1={sx(x)} y1={DRAW.y0} x2={sx(x)} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.55} strokeDasharray="5 4" />
           <text x={sx(x)} y={DRAW.y0 - 4} fontSize={fs(9)} textAnchor="middle" fill="#1f2937">{`E ${numBR(x, 4)} m`}</text>
-          <text x={sx(x)} y={DRAW.y1 + 12} fontSize={fs(9)} textAnchor="middle" fill="#1f2937">{`E ${numBR(x, 4)} m`}</text>
         </g>
       ))}
       {verGrade && linhasY.map((y) => (
         <g key={`y${y}`}>
           <line x1={DRAW.x0} y1={sy(y)} x2={DRAW.x1} y2={sy(y)} stroke="#8a94a6" strokeWidth={0.55} strokeDasharray="5 4" />
           <text x={DRAW.x0 - 4} y={sy(y) + 3} fontSize={fs(9)} textAnchor="end" fill="#1f2937" transform={`rotate(-90 ${DRAW.x0 - 4} ${sy(y)})`}>{`N ${numBR(y, 4)} m`}</text>
-          <text x={DRAW.x1 + 4} y={sy(y) + 3} fontSize={fs(9)} textAnchor="start" fill="#1f2937" transform={`rotate(-90 ${DRAW.x1 + 4} ${sy(y)})`}>{`N ${numBR(y, 4)} m`}</text>
         </g>
       ))}
 
@@ -574,7 +572,7 @@ function CarimboA3(props: {
   requerente?: PessoaQualificada; transmitente?: PessoaQualificada;
   ed?: { ativo: boolean; textos: Record<string, TextoOverride>; onEditar?: (id: string, atual: string) => void; onMenu?: (id: string, atual: string, x: number, y: number) => void };
 }) {
-  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, requerente, transmitente, ed } = props;
+  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, ed } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   // texto editável do carimbo (atalho para o helper Ted, já ligado ao modo edição)
   const T = (id: string, base: string, o: { x: number; y: number; size: number; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; fill?: string; slice?: number }) => (
@@ -632,21 +630,20 @@ function CarimboA3(props: {
 
   const gap = Math.min(27, Math.floor(255 / (campos.length - 1)));
 
-  // Caixas de assinatura lado a lado (cada uma com seu centro e seus limites de linha)
-  const bcx1 = lx + 107.5, bxa1 = lx + 12, bxb1 = lx + 203; // proprietário (esquerda)
-  const bcx2 = lx + 334.5, bxa2 = lx + 239, bxb2 = lx + 430; // responsável técnico (direita)
-
-  // Assinatura: linha + papel + nome + detalhes, tudo CENTRADO na própria caixa (xa..xb).
-  const renderAssinatura = (cxBox: number, xa: number, xb: number, yLine: number, label: string, nome: string, detalhe1?: string, detalhe2?: string, detalhe3?: string) => (
-    <g>
-      <line x1={xa} y1={yLine} x2={xb} y2={yLine} stroke="#000" strokeWidth={0.6} />
-      <text x={cxBox} y={yLine - 4} fontSize={fs(7.5)} fill="#555" textAnchor="middle">{label}</text>
-      <text x={cxBox} y={yLine + 14} fontSize={fs(9)} fontWeight="bold" fill="#000" textAnchor="middle">{nome}</text>
-      {detalhe1 && <text x={cxBox} y={yLine + 26} fontSize={fs(7.5)} fill="#222" textAnchor="middle">{detalhe1}</text>}
-      {detalhe2 && <text x={cxBox} y={yLine + 37} fontSize={fs(7.5)} fill="#222" textAnchor="middle">{detalhe2}</text>}
-      {detalhe3 && <text x={cxBox} y={yLine + 48} fontSize={fs(7.5)} fill="#222" textAnchor="middle">{detalhe3}</text>}
-    </g>
-  );
+  // Assinatura num intervalo livre (xa..xb): linha + papel + nome + detalhes, centrados no meio.
+  const assina = (xa: number, xb: number, yLine: number, label: string, nome: string, detalhes: string[] = []) => {
+    const m = (xa + xb) / 2;
+    return (
+      <g>
+        <line x1={xa} y1={yLine} x2={xb} y2={yLine} stroke="#000" strokeWidth={0.6} />
+        <text x={m} y={yLine - 4} fontSize={fs(7)} fill="#555" textAnchor="middle">{label}</text>
+        <text x={m} y={yLine + 13} fontSize={fs(8.5)} fontWeight="bold" fill="#000" textAnchor="middle">{nome}</text>
+        {detalhes.filter(Boolean).map((d, k) => (
+          <text key={k} x={m} y={yLine + 24 + k * 11} fontSize={fs(7)} fill="#222" textAnchor="middle">{d}</text>
+        ))}
+      </g>
+    );
+  };
 
   return (
     <g>
@@ -682,64 +679,55 @@ function CarimboA3(props: {
         })}
       </g>
 
-      {/* --- BOXES 4 & 5: ASSINATURAS DO PROPRIETÁRIO E DO RESPONSÁVEL TÉCNICO (lado a lado) --- */}
-      {/* Assinatura Proprietário (esquerda) */}
+      {/* --- CARD A: DECLARAÇÃO DO(S) PROPRIETÁRIO(S) (largura cheia) --- */}
       <g>
-        <rect x={lx} y={428} width={215} height={240} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={bcx1} y={444} fontSize={fs(7.5)} fontWeight="bold" textAnchor="middle" fill="#4b5563">Assinatura do Proprietário</text>
-        <text x={bcx1} y={464} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">PROPRIETÁRIO(S)</text>
-        <TextoQuebrado x={bcx1} y={478} fontSize={fs(6.5)} larguraChars={36} textAnchor="middle" texto={
-          `Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta e no memorial anexo. Declaramos que indicamos em campo, de forma expressa, as divisas, limites e confrontações consideradas verdadeiras.`
+        <rect x={lx} y={428} width={wBox} height={150} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={cxc} y={444} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DO(S) PROPRIETÁRIO(S)</text>
+        <TextoQuebrado x={cxc} y={459} fontSize={fs(7)} larguraChars={84} textAnchor="middle" texto={
+          `Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta e no memorial anexo, e que indicamos em campo, de forma expressa, as divisas, limites e confrontações consideradas verdadeiras.`
         } />
-
-        {imovel.comprador ? (
-          <g>
-            {renderAssinatura(bcx1, bxa1, bxb1, 548, 'Assinatura do Transmitente', imovel.proprietario, `CPF: ${imovel.cpfProprietario}`, transmitente?.rg ? `RG: ${transmitente.rg}` : undefined)}
-            {renderAssinatura(bcx1, bxa1, bxb1, 608, 'Assinatura do Comprador', imovel.comprador, `CPF: ${imovel.cpfComprador || '—'}`, requerente?.rg ? `RG: ${requerente.rg}` : undefined)}
-          </g>
-        ) : (
-          renderAssinatura(bcx1, bxa1, bxb1, 612, 'Assinatura do Proprietário', imovel.proprietario, `CPF: ${imovel.cpfProprietario}`, transmitente?.rg ? `RG: ${transmitente.rg}` : undefined)
-        )}
+        {imovel.comprador
+          ? (<g>
+              {assina(lx + 16, cxc - 12, 552, 'Transmitente', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`])}
+              {assina(cxc + 12, rx - 16, 552, 'Comprador', imovel.comprador, [`CPF: ${imovel.cpfComprador || '—'}`])}
+            </g>)
+          : assina(lx + 90, rx - 90, 552, 'Assinatura do(s) Proprietário(s)', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`])}
       </g>
 
-      {/* Assinatura Responsável Técnico (direita) */}
+      {/* --- CARD B: LAUDO TÉCNICO / RESPONSÁVEL TÉCNICO (largura cheia) --- */}
       <g>
-        <rect x={lx + 227} y={428} width={215} height={240} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={bcx2} y={444} fontSize={fs(7.5)} fontWeight="bold" textAnchor="middle" fill="#4b5563">Assinatura do Responsável Técnico</text>
-        <text x={bcx2} y={464} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">LAUDO TÉCNICO</text>
-        <TextoQuebrado x={bcx2} y={478} fontSize={fs(6.5)} larguraChars={36} textAnchor="middle" texto={textoLaudo} />
-
-        {renderAssinatura(bcx2, bxa2, bxb2, 612, 'Assinatura do Responsável Técnico', tecnico.nome, tecnico.formacao, `CFT: ${tecnico.cft}`, `INCRA: ${tecnico.credenciamentoIncra}`)}
+        <rect x={lx} y={586} width={wBox} height={160} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={cxc} y={602} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">LAUDO TÉCNICO</text>
+        <TextoQuebrado x={cxc} y={617} fontSize={fs(7)} larguraChars={84} textAnchor="middle" texto={textoLaudo} />
+        {assina(lx + 90, rx - 90, 712, 'Assinatura do Responsável Técnico', tecnico.nome, [tecnico.formacao || '', `CFT: ${tecnico.cft || '—'} — INCRA: ${tecnico.credenciamentoIncra || '—'}`])}
       </g>
 
-      {/* --- BOX 6: DECLARAÇÃO DOS CONFRONTANTES --- */}
+      {/* --- CARD C: DECLARAÇÃO DOS CONFRONTANTES (largura cheia) --- */}
       <g>
-        <rect x={lx} y={680} width={wBox} height={160} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={lx + 10} y={695} fontSize={fs(7)} fontWeight="bold" fill="#4b5563">Declaração dos Confrontantes:</text>
-        <text x={cxc} y={714} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">CONFRONTANTES</text>
-        <TextoQuebrado x={cxc} y={728} fontSize={fs(8.5)} larguraChars={58} textAnchor="middle" texto={textoConfront} />
+        <rect x={lx} y={754} width={wBox} height={120} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={cxc} y={770} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DOS CONFRONTANTES</text>
+        <TextoQuebrado x={cxc} y={786} fontSize={fs(8)} larguraChars={70} textAnchor="middle" texto={textoConfront} />
       </g>
 
-      {/* --- BOX 7: CARIMBO DO ESCRITÓRIO --- */}
+      {/* --- CARD D: CARIMBO DO ESCRITÓRIO (largura cheia) --- */}
       <g>
-        <rect x={lx} y={852} width={wBox} height={H - 852 - 24} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        
+        <rect x={lx} y={882} width={wBox} height={H - 882 - 24} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         {temLogo ? (
           <g>
-            <image href={escritorio.logoDataUrl} x={lx + 12} y={864} width={wBox - 24} height={50} preserveAspectRatio="xMidYMid meet" />
-            {T('esc.nome', escritorio.nome, { x: cxc, y: 938, size: fs(11), bold: true, anchor: 'middle' })}
-            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 953, size: fs(8), anchor: 'middle' })}
-            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 967, size: fs(8), anchor: 'middle' })}
-            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 981, size: fs(8), anchor: 'middle', slice: 60 })}
-            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 995, size: fs(8), anchor: 'middle' })}
+            <image href={escritorio.logoDataUrl} x={lx + 12} y={896} width={wBox - 24} height={56} preserveAspectRatio="xMidYMid meet" />
+            {T('esc.nome', escritorio.nome, { x: cxc, y: 978, size: fs(11), bold: true, anchor: 'middle' })}
+            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 994, size: fs(8), anchor: 'middle' })}
+            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 1009, size: fs(8), anchor: 'middle' })}
+            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1024, size: fs(8), anchor: 'middle', slice: 64 })}
+            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1039, size: fs(8), anchor: 'middle' })}
           </g>
         ) : (
           <g>
-            {T('esc.nome', escritorio.nome, { x: cxc, y: 895, size: fs(12), bold: true, anchor: 'middle' })}
-            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 915, size: fs(8.5), anchor: 'middle' })}
-            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 935, size: fs(8.5), anchor: 'middle' })}
-            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 955, size: fs(8.5), anchor: 'middle' })}
-            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 975, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.nome', escritorio.nome, { x: cxc, y: 950, size: fs(12), bold: true, anchor: 'middle' })}
+            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 972, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 990, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1008, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1026, size: fs(8.5), anchor: 'middle' })}
           </g>
         )}
       </g>
