@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
@@ -90,6 +90,11 @@ export default function EditorPage() {
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
+  // barra de ferramentas flutuante (posição/altura salvas por usuário)
+  const [tbPos, setTbPos] = useState<{ x: number; y: number }>({ x: 12, y: 12 });
+  const [tbH, setTbH] = useState<number | null>(null);
+  const tbRef = useRef<HTMLDivElement>(null);
+  const tbDrag = useRef<{ dx: number; dy: number } | null>(null);
   // camada de desenho livre (objetos da gleba ativa)
   const [objetos, setObjetos] = useState<ObjetoDesenho[]>([]);
   const [desenhoBuffer, setDesenhoBuffer] = useState<PontoLL[]>([]);
@@ -128,6 +133,10 @@ export default function EditorPage() {
     const t = (localStorage.getItem('metrica.tema') as 'claro' | 'escuro') || 'claro';
     setTema(t);
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
+    try {
+      const raw = localStorage.getItem('metrica.toolbar');
+      if (raw) { const p = JSON.parse(raw); if (typeof p.x === 'number') setTbPos({ x: p.x, y: p.y }); if (typeof p.h === 'number') setTbH(p.h); }
+    } catch { /* ignore */ }
     // começa com uma gleba
     const g = glebaDe(1, [], [], {}, 'Parcela 1');
     setGlebas([g]);
@@ -138,6 +147,24 @@ export default function EditorPage() {
     document.documentElement.classList.toggle('dark', tema === 'escuro');
     try { localStorage.setItem('metrica.tema', tema); } catch { /* ignore */ }
   }, [tema]);
+
+  // salva posição/altura da barra de ferramentas
+  useEffect(() => {
+    try { localStorage.setItem('metrica.toolbar', JSON.stringify({ x: tbPos.x, y: tbPos.y, h: tbH })); } catch { /* ignore */ }
+  }, [tbPos, tbH]);
+
+  // atalhos: F3 = imã (snap), F4 = nomes dos vértices, F5 = ferramenta mover (navegar)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (e.key === 'F3') { e.preventDefault(); setSnapAtivo((s) => !s); }
+      else if (e.key === 'F4') { e.preventDefault(); setMostrarRotulos((m) => !m); }
+      else if (e.key === 'F5') { e.preventDefault(); setModo('navegar'); }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const res = useMemo(() => (vertices.length >= 3 ? calcular(vertices, confrontantePorLado) : null), [vertices, confrontantePorLado]);
 
@@ -155,6 +182,20 @@ export default function EditorPage() {
     setVertices(s.v);
     setConfrontantePorLado(s.cpl);
     aviso('Última ação desfeita.');
+  }
+
+  // arrastar a barra de ferramentas
+  function tbDown(e: ReactPointerEvent) {
+    tbDrag.current = { dx: e.clientX - tbPos.x, dy: e.clientY - tbPos.y };
+    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ }
+  }
+  function tbMove(e: ReactPointerEvent) {
+    if (!tbDrag.current) return;
+    setTbPos({ x: Math.max(0, e.clientX - tbDrag.current.dx), y: Math.max(0, e.clientY - tbDrag.current.dy) });
+  }
+  function tbUp(e: ReactPointerEvent) {
+    tbDrag.current = null;
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
   }
 
   // ---------- glebas ----------
@@ -734,18 +775,22 @@ export default function EditorPage() {
         <main className="relative min-w-0 flex-1">
           {vista === 'mapa' ? (
             <>
-              <div className="no-print absolute left-3 top-3 z-[1000] flex gap-1 rounded-md border bg-background/95 p-1 shadow">
-                <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover"><MousePointer2 /></Button>
+              <div ref={tbRef} onMouseUp={() => { if (tbRef.current && !tbDrag.current) setTbH(tbRef.current.offsetHeight); }}
+                style={{ left: tbPos.x, top: tbPos.y, height: tbH ?? undefined, resize: 'vertical', overflow: 'auto' }}
+                className="no-print absolute z-[1000] flex max-h-[88vh] w-auto min-w-[48px] flex-col items-stretch gap-1 rounded-md border bg-background/95 p-1 shadow [&>button]:h-9 [&>button]:min-w-9">
+                <div onPointerDown={tbDown} onPointerMove={tbMove} onPointerUp={tbUp}
+                  className="-mx-1 -mt-1 mb-0.5 flex h-5 shrink-0 cursor-move touch-none items-center justify-center rounded-t bg-muted text-[10px] tracking-widest text-muted-foreground" title="Arraste para mover a barra">⋮⋮</div>
+                <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F5)"><MousePointer2 /></Button>
                 <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice"><Plus /></Button>
                 <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /></Button>
-                <div className="mx-1 w-px bg-border" />
+                <div className="my-0.5 h-px w-full bg-border" />
                 <Button size="sm" variant="ghost" onClick={desfazer} title="Desfazer última ação"><Undo2 /></Button>
                 <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => { if (selecionadoId) { snap(); setVertices((vs) => definirInicio(vs, selecionadoId)); } }} title="Definir início no vértice selecionado"><Flag /></Button>
                 <Button size="sm" variant="ghost" onClick={renumerar} title="Renumerar vértices"><Crosshair /></Button>
-                <Button size="sm" variant="ghost" onClick={() => setMostrarRotulos((m) => !m)} title={mostrarRotulos ? 'Esconder nomes' : 'Mostrar nomes'}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
-                <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} onClick={() => setSnapAtivo((s) => !s)} title="Snap: encaixar em vértices existentes"><Magnet /></Button>
+                <Button size="sm" variant="ghost" onClick={() => setMostrarRotulos((m) => !m)} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
+                <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} onClick={() => setSnapAtivo((s) => !s)} title="Imã: encaixar em vértices existentes (F3)"><Magnet /></Button>
                 <Button size="sm" variant={bloqueado ? 'default' : 'ghost'} onClick={() => setBloqueado((b) => !b)} title={bloqueado ? 'Vértices travados (clique para liberar a edição)' : 'Vértices liberados — cuidado para não mover sem querer'}>{bloqueado ? <Lock /> : <LockOpen />}</Button>
-                <div className="mx-1 w-px bg-border" />
+                <div className="my-0.5 h-px w-full bg-border" />
                 <Button size="sm" variant={modo === 'divisa' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'divisa' ? 'navegar' : 'divisa')} title="Pintar divisa: escolha o tipo e clique os vértices ao longo do caminho"><Brush /></Button>
                 {modo === 'divisa' && (
                   <select className="h-8 rounded border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
@@ -762,7 +807,7 @@ export default function EditorPage() {
                     <Button size="sm" variant="ghost" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus /></Button>
                   </>
                 )}
-                <div className="mx-1 w-px bg-border" />
+                <div className="my-0.5 h-px w-full bg-border" />
                 <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Desenhar linha/polilinha (clique os pontos, depois Finalizar)"><PenTool /></Button>
                 <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos"><RotateCcw className="rotate-90" /></Button>
                 <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir"><FileText /></Button>
@@ -778,7 +823,7 @@ export default function EditorPage() {
                   <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher (ex.: lago)">Preencher</Button>
                 )}
                 {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /></Button>}
-                <div className="mx-1 w-px bg-border" />
+                <div className="my-0.5 h-px w-full bg-border" />
                 <Button size="sm" variant="ghost" onClick={() => geojsonRef.current?.click()} title="Ref. SIGEF: importar confrontante certificado (GeoJSON do SIGEF/QGIS)"><Upload /></Button>
               </div>
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado}

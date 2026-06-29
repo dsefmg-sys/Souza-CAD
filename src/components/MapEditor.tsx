@@ -107,7 +107,7 @@ export default function MapEditor(props: Props) {
   const anel = validos.map((v) => [v.lat, v.lon] as [number, number]);
 
   return (
-    <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={22} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
+    <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={22} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false}>
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Híbrido (Google)">
           <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={22} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
