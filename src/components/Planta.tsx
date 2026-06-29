@@ -253,8 +253,7 @@ export default function Planta({ vertices, res, imovel, tecnico, escritorio, con
       {/* vértices + códigos */}
       {vertices.map((v) => (
         <g key={v.id}>
-          <circle cx={sx(v.leste)} cy={sy(v.norte)} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6}
-            fill={v.tipo === 'M' ? '#b45309' : v.tipo === 'V' ? '#7c3aed' : '#15803d'} stroke="#000" strokeWidth={0.5} />
+          <SimboloVertice tipo={v.tipo} cx={sx(v.leste)} cy={sy(v.norte)} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6} />
           <text x={sx(v.leste) + 5} y={sy(v.norte) - 4} fontSize={Math.max(6, fonteRot - 0.5)} fill="#000">{v.codigoSigef || 'S/N'}</text>
         </g>
       ))}
@@ -363,11 +362,11 @@ function Faixa(props: {
       {/* Convenções */}
       {verConv && <text x={c2 + 8} y={y0 + 16} fontSize={fs(10)} fontWeight="bold">CONVENÇÕES</text>}
       {verConv && <g>
-        <circle cx={c2 + 16} cy={y0 + 32} r={3.6} fill="#b45309" stroke="#000" strokeWidth={0.5} />
+        <SimboloVertice tipo="M" cx={c2 + 16} cy={y0 + 32} r={3.6} />
         <text x={c2 + 26} y={y0 + 35} fontSize={fs(9)}>Vértice tipo M</text>
-        <circle cx={c2 + 16} cy={y0 + 48} r={2.6} fill="#15803d" stroke="#000" strokeWidth={0.5} />
+        <SimboloVertice tipo="P" cx={c2 + 16} cy={y0 + 48} r={2.6} />
         <text x={c2 + 26} y={y0 + 51} fontSize={fs(9)}>Vértice tipo P</text>
-        <circle cx={c2 + 16} cy={y0 + 64} r={3} fill="#7c3aed" stroke="#000" strokeWidth={0.5} />
+        <SimboloVertice tipo="V" cx={c2 + 16} cy={y0 + 64} r={3} />
         <text x={c2 + 26} y={y0 + 67} fontSize={fs(9)}>Vértice tipo V (virtual)</text>
         {represUsadas.map((r, i) => (
           <g key={r}>
@@ -383,6 +382,19 @@ function Faixa(props: {
       {verNortes && <Nortes cx={(c3 + x1) / 2} cy={y0 + STRIP - 55} conv={conv} decl={decl} />}
     </g>
   );
+}
+
+// símbolo do vértice por tipo (igual ao do mapa): M = losango, P = círculo, V = triângulo
+function SimboloVertice({ tipo, cx, cy, r }: { tipo: string; cx: number; cy: number; r: number }) {
+  const cor = tipo === 'M' ? '#b45309' : tipo === 'V' ? '#7c3aed' : '#15803d';
+  if (tipo === 'M') {
+    const d = r * 1.15;
+    return <rect x={cx - d} y={cy - d} width={d * 2} height={d * 2} transform={`rotate(45 ${cx} ${cy})`} fill={cor} stroke="#000" strokeWidth={0.5} />;
+  }
+  if (tipo === 'V') {
+    return <polygon points={`${cx},${cy - r * 1.25} ${cx + r * 1.15},${cy + r} ${cx - r * 1.15},${cy + r}`} fill={cor} stroke="#000" strokeWidth={0.5} />;
+  }
+  return <circle cx={cx} cy={cy} r={r} fill={cor} stroke="#000" strokeWidth={0.5} />;
 }
 
 function SimboloDivisa({ tipo, x, y }: { tipo: string; x: number; y: number }) {

@@ -438,6 +438,10 @@ export default function EditorPage() {
   function onMoverRotulo(id: string, lat: number, lon: number) {
     setConfrontantes((cs) => cs.map((c) => (c.id === id ? { ...c, posRotulo: { lat, lon } } : c)));
   }
+  function onMoverRotuloVertice(id: string, lat: number, lon: number) {
+    snap();
+    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, posRotulo: { lat, lon } } : v)));
+  }
 
   function alternarTipo(id: string) {
     snap();
@@ -849,7 +853,7 @@ export default function EditorPage() {
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} objetoSelId={objetoSelId}
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
-                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} />
+                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} />
             </>
           ) : (
             <div id="planta-print" className="relative h-full overflow-auto bg-neutral-200 p-4">

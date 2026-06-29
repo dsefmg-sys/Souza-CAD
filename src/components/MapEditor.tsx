@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, Fragment } from 'react';
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, Tooltip, CircleMarker, LayersControl, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, LayersControl, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho } from '@/lib/topo/types';
 import { distanciaCota } from '@/lib/topo/objetos';
@@ -34,6 +34,7 @@ interface Props {
   onMoverRotulo?: (id: string, lat: number, lon: number) => void;
   onPintarDivisa?: (id: string) => void;
   onPintarConfrontante?: (id: string) => void;
+  onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -42,14 +43,28 @@ function valido(v: Vertex): boolean {
   return Number.isFinite(v.lat) && Number.isFinite(v.lon) && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180;
 }
 
+// símbolo do vértice por tipo, igual ao da legenda da planta: M = losango, P = círculo, V = triângulo
 function iconeVertice(v: Vertex, selecionado: boolean) {
   const cor = v.tipo === 'M' ? '#f59e0b' : v.tipo === 'V' ? '#a855f7' : '#22c55e';
   const borda = selecionado ? '#ef4444' : '#ffffff';
-  const tam = v.tipo === 'M' ? 14 : 11;
+  const sw = selecionado ? 2.5 : 1.6;
+  let shape: string;
+  if (v.tipo === 'M') shape = `<rect x="4" y="4" width="9" height="9" transform="rotate(45 8.5 8.5)" fill="${cor}" stroke="${borda}" stroke-width="${sw}"/>`;
+  else if (v.tipo === 'V') shape = `<polygon points="8.5,2 15,15 2,15" fill="${cor}" stroke="${borda}" stroke-width="${sw}"/>`;
+  else shape = `<circle cx="8.5" cy="8.5" r="5.5" fill="${cor}" stroke="${borda}" stroke-width="${sw}"/>`;
   return L.divIcon({
     className: 'vertice-icon',
-    html: `<div style="width:${tam}px;height:${tam}px;border-radius:50%;background:${cor};border:2px solid ${borda};box-shadow:0 0 2px #000"></div>`,
-    iconSize: [tam, tam], iconAnchor: [tam / 2, tam / 2],
+    html: `<svg width="17" height="17" viewBox="0 0 17 17" style="overflow:visible;filter:drop-shadow(0 0 1px rgba(0,0,0,.8))">${shape}</svg>`,
+    iconSize: [17, 17], iconAnchor: [8.5, 8.5],
+  });
+}
+
+// rótulo do vértice: caixinha branca com texto preto, nítida sobre o mapa
+function iconeNomeVertice(texto: string, alterna: boolean) {
+  return L.divIcon({
+    className: 'vertice-nome',
+    html: `<div style="font-size:10px;font-weight:600;color:#000;background:rgba(255,255,255,0.92);border:1px solid #444;border-radius:3px;padding:0 3px;white-space:nowrap;box-shadow:0 0 2px rgba(0,0,0,.35)">${(texto || '').replace(/</g, '&lt;')}</div>`,
+    iconSize: [1, 1], iconAnchor: [-8, alterna ? 20 : -2],
   });
 }
 
@@ -99,7 +114,7 @@ export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], objetoSelId = null,
-    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante,
+    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice,
   } = props;
 
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
@@ -218,11 +233,21 @@ export default function MapEditor(props: Props) {
             },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
           }}
-        >
-          {mostrarRotulos && (
-            <Tooltip permanent direction="top" offset={[0, -8]} className="vertice-label">{v.codigoSigef || v.nome}</Tooltip>
-          )}
-        </Marker>
+        />
+      ))}
+
+      {/* rótulos dos vértices (caixinha branca; arrastáveis com a ferramenta mover/F5) */}
+      {mostrarRotulos && validos.map((v, i) => (
+        <Marker
+          key={`nome${v.id}`}
+          position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}
+          draggable={modo === 'navegar'}
+          icon={iconeNomeVertice(v.codigoSigef || v.nome, i % 2 === 1)}
+          eventHandlers={{
+            click() { onSelecionar(v.id); },
+            dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },
+          }}
+        />
       ))}
     </MapContainer>
   );

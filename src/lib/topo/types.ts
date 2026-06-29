@@ -39,6 +39,7 @@ export interface Vertex {
   codigoSigef: string; // ex.: COIN-M-0017
   isDivisa: boolean;   // verdadeiro quando o código do campo indica troca de divisa
   registrado?: boolean;// já consumiu número do banco de pontos (não pode ser reusado)
+  posRotulo?: { lat: number; lon: number }; // posição manual do rótulo do vértice (arrastado com F5)
 }
 
 // ----- Banco de pontos por credenciado (nunca repetir vértice) -----
