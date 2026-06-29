@@ -45,6 +45,9 @@ interface Props {
   onIgnorarVertice?: (id: string) => void;
   onConsiderarVertice?: (id: string) => void;
   realceId?: string | null;
+  onContextMenuVertice?: (v: Vertex, x: number, y: number) => void;
+  onContextMenuDivisa?: (v: Vertex, idx: number, x: number, y: number) => void;
+  onContextMenuMapa?: (lat: number, lon: number, x: number, y: number) => void;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -111,24 +114,33 @@ const iconeCentro = (linhas: string[]) => {
   });
 };
 
-function AjustarLimites({ vertices }: { vertices: Vertex[] }) {
+function AjustarLimites({ vertices, referencias = [] }: { vertices: Vertex[]; referencias?: [number, number][][] }) {
   const map = useMap();
-  // Enquadra UMA vez, quando o primeiro polígono aparece. NÃO reenquadra a cada edição (ignorar/
+  // Enquadra UMA vez, quando o primeiro polígono ou referências aparecem. NÃO reenquadra a cada edição (ignorar/
   // apagar/inserir vértice) — isso resetava o zoom do usuário. Reenquadrar de propósito = botão
   // "Centralizar" (via centralizarSig) e nos eventos de importação/troca de gleba.
   const jaAjustou = useRef(false);
   useEffect(() => {
     if (jaAjustou.current) return;
     const validos = vertices.filter(valido);
-    if (validos.length < 2) return;
+    const refFlat = referencias.flat().map((p) => ({ lat: p[0], lon: p[1] }));
+    const pts = validos.length ? validos : refFlat;
+    if (pts.length < 2) return;
     try {
-      const b = L.latLngBounds(validos.map((v) => [v.lat, v.lon] as [number, number]));
+      const b = L.latLngBounds(pts.map((v) => [v.lat, v.lon] as [number, number]));
       if (b.isValid()) {
-        map.whenReady(() => { try { map.fitBounds(b, { padding: [40, 40] }); } catch { /* sem tamanho */ } });
+        map.whenReady(() => {
+          setTimeout(() => {
+            try {
+              map.invalidateSize();
+              map.fitBounds(b, { padding: [40, 40] });
+            } catch { /* sem tamanho */ }
+          }, 100);
+        });
         jaAjustou.current = true;
       }
     } catch { /* coords inválidas */ }
-  }, [vertices, map]);
+  }, [vertices, referencias, map]);
   return null;
 }
 
@@ -215,7 +227,7 @@ export default function MapEditor(props: Props) {
         </LayersControl.BaseLayer>
       </LayersControl>
 
-      <AjustarLimites vertices={validos} />
+      <AjustarLimites vertices={validos} referencias={referencias} />
       <Centralizar sig={centralizarSig} vertices={vertices} />
       <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} />
       <FocoMap latLng={focoLatLng} />
@@ -329,7 +341,6 @@ export default function MapEditor(props: Props) {
       {rotulos.map((r) => (
         <Marker key={r.id} position={[r.lat, r.lon]} draggable icon={iconeRotulo(r)}
           eventHandlers={{
-            drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverRotulo?.(r.id, ll.lat, ll.lng); },
             dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverRotulo?.(r.id, ll.lat, ll.lng); }
           }} />
       ))}
@@ -349,16 +360,15 @@ export default function MapEditor(props: Props) {
               else if (modo === 'ignorar') onIgnorarVertice?.(v.id);
               else onSelecionar(v.id);
             },
-            drag(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
           }}
         />
       ))}
 
-      {/* vértices IGNORADOS: pontos cinza fora do anel; no modo "considerar", clicar reinsere */}
+      {/* vértices IGNORADOS: pontos brancos com borda preta, super visíveis; no modo "considerar", clicar reinsere */}
       {verticesIgnorados.filter(valido).map((v) => (
-        <CircleMarker key={`ign${v.id}`} center={[v.lat, v.lon]} radius={6}
-          pathOptions={{ color: '#374151', fillColor: '#9ca3af', fillOpacity: 0.85, weight: 1.5, dashArray: '2 2' }}
+        <CircleMarker key={`ign${v.id}`} center={[v.lat, v.lon]} radius={5.5}
+          pathOptions={{ color: '#000000', fillColor: '#ffffff', fillOpacity: 1.0, weight: 1.8 }}
           eventHandlers={{ click() { if (modo === 'considerar') onConsiderarVertice?.(v.id); } }} />
       ))}
 
@@ -371,7 +381,6 @@ export default function MapEditor(props: Props) {
           icon={iconeNomeVertice(v.codigoSigef || v.nome, i % 2 === 1, tamNomes)}
           eventHandlers={{
             click() { onSelecionar(v.id); },
-            drag(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },
           }}
         />

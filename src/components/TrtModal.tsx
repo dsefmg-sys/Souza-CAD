@@ -56,21 +56,26 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Dados para o TRT</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">Confira e copie os campos para preencher o Termo de Responsabilidade Técnica no conselho.</p>
-        <div className="divide-y rounded border">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded border p-3 bg-muted/20 overflow-y-auto">
           {linhas.map(([k, v]) => (
-            <div key={k} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-              <div className="min-w-0"><div className="text-[10px] uppercase text-muted-foreground">{k}</div><div className="truncate">{v || '—'}</div></div>
-              <Button size="sm" variant="ghost" onClick={() => copiar(v, k)} title="Copiar">{copiado === k ? <CheckCheck className="text-primary" /> : <Copy />}</Button>
+            <div key={k} className="flex items-center justify-between gap-2 p-2 border rounded bg-background text-sm">
+              <div className="min-w-0"><div className="text-[10px] uppercase text-muted-foreground">{k}</div><div className="truncate font-medium">{v || '—'}</div></div>
+              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 shrink-0" onClick={() => copiar(v, k)} title="Copiar">{copiado === k ? <CheckCheck className="text-primary size-4" /> : <Copy className="size-4" />}</Button>
             </div>
           ))}
         </div>
-        <div className="flex justify-end">
-          <Button size="sm" onClick={copiarTudo}>{copiado === '__tudo__' ? <CheckCheck /> : <Copy />} Copiar tudo</Button>
+        <div className="flex justify-between items-center mt-3 border-t pt-3">
+          <a href="https://servicos.sinceti.net.br/" target="_blank" rel="noopener noreferrer">
+            <Button size="sm" variant="default" className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1">
+              EMITIR TRT
+            </Button>
+          </a>
+          <Button size="sm" className="gap-1" onClick={copiarTudo}>{copiado === '__tudo__' ? <CheckCheck className="size-4" /> : <Copy className="size-4" />} Copiar tudo</Button>
         </div>
       </DialogContent>
     </Dialog>

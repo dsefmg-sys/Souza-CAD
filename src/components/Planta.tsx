@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import { useRef, useState, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante, PlantaConfig, PessoaQualificada, PontoLL } from '@/lib/topo/types';
 import { numBR, formatMatricula } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
@@ -40,10 +40,14 @@ interface Props {
   onTextoEditar?: (id: string, atual: string) => void;            // clique duplo: editar conteúdo
   onTextoMenu?: (id: string, atual: string, x: number, y: number) => void; // clique direito: formatar
   onMoverFolha?: (dx: number, dy: number) => void;                // arrastar o vazio: reposiciona a folha
+  onTextoMover?: (id: string, dx: number, dy: number) => void;     // arrastar o texto: salva o offset
+  folhaTravada?: boolean;
+  editandoTextoId?: string | null;
+  onSetEditandoTextoId?: (id: string | null) => void;
 }
 
-/** Ajuste salvo de um texto (conteúdo/escala/negrito). */
-export type TextoOverride = { texto?: string; escala?: number; negrito?: boolean };
+/** Ajuste salvo de um texto (conteúdo/escala/negrito/deslocamento). */
+export type TextoOverride = { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number };
 
 const LAUDO_PADRAO = 'LAUDO TÉCNICO: Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.';
 const CONFRONT_PADRAO = 'Concordamos com as medidas apresentadas nesta planta e no memorial anexo, no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade (§10 do art. 213 da LRP).';
@@ -53,9 +57,9 @@ const W = 1587;
 const H = 1123;
 const CARW = 470;            // largura da coluna de carimbo (direita)
 const STRIP = 210;           // altura da faixa inferior (observações/convenções/etc.)
-const DRAW = { x0: 24, y0: 24, x1: W - CARW - 12, y1: H - STRIP - 12 };
+const DRAW = { x0: 95, y0: 26, x1: W - CARW - 26, y1: H - STRIP - 26 };
 
-/** Linhas do rótulo do confrontante na planta, conforme a condição (proprietário/posseiro/espólio). */
+/** Linhas do rótulo do confrontante na planta, conforme a condition (proprietário/posseiro/espólio). */
 function rotuloConfrontanteLinhas(c: Confrontante): string[] {
   const cond = c.condicao ?? 'proprietario';
   const linhas: string[] = [];
@@ -75,27 +79,74 @@ function rotuloConfrontanteLinhas(c: Confrontante): string[] {
   return linhas;
 }
 
-// Texto editável da planta: aplica override (conteúdo/escala/negrito) e, no modo edição,
-// permite clique duplo (editar conteúdo) e clique direito (menu de formato).
+// Texto editável da planta: aplica override (conteúdo/escala/negrito/posição) e, no modo edição,
+// permite clique duplo (editar conteúdo em linha), clique direito (menu de formato) e arrastar para reposicionar.
 function Ted(props: {
   id: string; x: number; y: number; base: string; size: number;
   bold?: boolean; anchor?: 'start' | 'middle' | 'end'; fill?: string; slice?: number;
   ov?: TextoOverride; ed?: boolean;
   onEditar?: (id: string, atual: string) => void;
   onMenu?: (id: string, atual: string, x: number, y: number) => void;
+  onDragStart?: (id: string, e: ReactPointerEvent) => void;
+  halo?: boolean;
+  editando?: boolean;
+  onTerminarEditar?: (id: string, novoTexto: string) => void;
+  onStartEdit?: (id: string) => void;
 }) {
-  const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onEditar, onMenu } = props;
+  const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onMenu, onDragStart, halo = false, editando = false, onTerminarEditar, onStartEdit } = props;
   const conteudo = ov?.texto ?? base;
   const texto = slice ? conteudo.slice(0, slice) : conteudo;
   const fz = +(size * (ov?.escala ?? 1)).toFixed(2);
   const peso = (ov?.negrito ?? bold) ? 'bold' : 'normal';
+
+  const [val, setVal] = useState(conteudo);
+  useEffect(() => { setVal(conteudo); }, [conteudo, editando]);
+
+  const posX = x + (ov?.dx ?? 0);
+  const posY = y + (ov?.dy ?? 0);
+
+  if (editando) {
+    const inputW = Math.max(120, fz * val.length * 0.65);
+    const inputH = fz * 1.5;
+    const offX = anchor === 'middle' ? -inputW / 2 : anchor === 'end' ? -inputW : 0;
+    const offY = -fz * 1.15;
+    return (
+      <foreignObject x={posX + offX} y={posY + offY} width={inputW} height={inputH} style={{ overflow: 'visible' }}>
+        <input
+          autoFocus
+          className="w-full h-full border border-blue-500 bg-white text-black outline-none px-1 shadow-md rounded"
+          style={{ fontSize: `${fz}px`, fontWeight: peso, textAlign: anchor === 'middle' ? 'center' : anchor === 'end' ? 'right' : 'left', fontFamily: 'Arial, sans-serif' }}
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onBlur={() => onTerminarEditar?.(id, val)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              onTerminarEditar?.(id, val);
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              onTerminarEditar?.(id, conteudo);
+            }
+          }}
+        />
+      </foreignObject>
+    );
+  }
+
   return (
-    <text x={x} y={y} fontSize={fz} fontWeight={peso} textAnchor={anchor} fill={fill}
-      style={ed ? { cursor: 'text' } : undefined}
-      onDoubleClick={ed ? (e) => { e.stopPropagation(); onEditar?.(id, conteudo); } : undefined}
-      onContextMenu={ed ? (e) => { e.preventDefault(); e.stopPropagation(); onMenu?.(id, conteudo, e.clientX, e.clientY); } : undefined}>
-      {texto}
-    </text>
+    <g style={ed ? { cursor: 'move' } : undefined}
+       onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id); } : undefined}
+       onContextMenu={ed ? (e) => { e.preventDefault(); e.stopPropagation(); onMenu?.(id, conteudo, e.clientX, e.clientY); } : undefined}
+       onPointerDown={ed ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}>
+      {halo && (
+        <text x={posX} y={posY} fontSize={fz} fontWeight={peso} textAnchor={anchor} fill="#fff" stroke="#fff" strokeWidth={2.6} strokeLinejoin="round">
+          {texto}
+        </text>
+      )}
+      <text x={posX} y={posY} fontSize={fz} fontWeight={peso} textAnchor={anchor} fill={fill}>
+        {texto}
+      </text>
+    </g>
   );
 }
 
@@ -112,12 +163,28 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onMoverRotuloConf, onMoverRotuloVertice,
-  onTextoEditar, onTextoMenu, onMoverFolha,
+  onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, folhaTravada = true,
+  editandoTextoId, onSetEditandoTextoId,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha'; id: string; idx?: number }>(null);
+  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted'; id: string; idx?: number; dx?: number; dy?: number }>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
+
+  // Estados locais para edição em linha (in-place)
+  const [localEditandoId, setLocalEditandoId] = useState<string | null>(null);
+  const editandoId = editandoTextoId !== undefined ? editandoTextoId : localEditandoId;
+  const setEditandoId = onSetEditandoTextoId !== undefined ? onSetEditandoTextoId : setLocalEditandoId;
+
+  // Estado para arrasto fluído/suave (evita recálculos geográficos pesados em tempo real)
+  const [dragTemp, setDragTemp] = useState<{
+    kind: 'rotConf' | 'rotVert' | 'ted';
+    id: string;
+    dx: number;
+    dy: number;
+    baseX: number;
+    baseY: number;
+  } | null>(null);
 
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
@@ -132,7 +199,6 @@ export default function Planta({
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
   const fonteRot = fs(config.fonteRotulos ?? 10);
   const textosOv = config.textos ?? {};
-  const tedComum = { ed: editavel, onEditar: onTextoEditar, onMenu: onTextoMenu };
   const ef = valoresEfetivos(res, imovel);
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
 
@@ -204,6 +270,51 @@ export default function Planta({
     return { v, x: sx(v.leste) + 5, y: sy(v.norte) - 4 };
   });
 
+  const getOverride = (id: string) => {
+    const base = textosOv[id] || {};
+    if (dragTemp && dragTemp.id === id) {
+      if (id.startsWith('vert.')) {
+        return { ...base, dx: dragTemp.dx, dy: dragTemp.dy };
+      }
+      return { ...base, dx: dragTemp.baseX + dragTemp.dx, dy: dragTemp.baseY + dragTemp.dy };
+    }
+    return base;
+  };
+
+  const terminarEdicao = (id: string, novoTexto: string) => {
+    setEditandoId(null);
+    onTextoEditar?.(id, novoTexto);
+  };
+
+  const tedComum = {
+    ed: editavel,
+    onMenu: onTextoMenu,
+    onStartEdit: (id: string) => setEditandoId(id),
+    onTerminarEditar: terminarEdicao,
+    onDragStart: (id: string, e: ReactPointerEvent) => {
+      const u = svgPonto(e); if (!u) return;
+      if (id.startsWith('vert.')) {
+        const vId = id.slice(5);
+        dragRef.current = { kind: 'rotVert', id: vId };
+        const rv = rotuloVert.find((x) => x.v.id === vId);
+        if (rv) setDragTemp({ kind: 'rotVert', id: vId, dx: 0, dy: 0, baseX: rv.x, baseY: rv.y });
+      } else {
+        const ov = textosOv[id];
+        dragRef.current = { kind: 'ted', id, dx: ov?.dx ?? 0, dy: ov?.dy ?? 0 };
+        setDragTemp({ kind: 'ted', id, dx: 0, dy: 0, baseX: ov?.dx ?? 0, baseY: ov?.dy ?? 0 });
+      }
+      folhaLast.current = u;
+      captura(e);
+    }
+  };
+
+  const tProps = (id: string) => ({
+    ...tedComum,
+    id,
+    ov: getOverride(id),
+    editando: editandoId === id,
+  });
+
   // ---- EDIÇÃO NA PLANTA: converte pixel do SVG -> terreno e arrasta itens ----
   function svgPonto(e: ReactPointerEvent): { x: number; y: number } | null {
     const svg = svgRef.current; const ctm = svg?.getScreenCTM();
@@ -225,7 +336,7 @@ export default function Planta({
       if (u.x < DRAW.x0 || u.x > DRAW.x1 || u.y < DRAW.y0 || u.y > DRAW.y1) return;
       const g = paraGeo(u); onCliquePlanta?.(g.lat, g.lon); return;
     }
-    // navegar: arrastar item mais próximo (prioridade: ponto de objeto > rótulo conf > nome de vértice)
+    // navegar: arrastar item mais próximo (prioridade: ponto de objeto)
     for (const o of objetos) {
       for (let i = 0; i < o.pontos.length; i++) {
         if (Math.hypot(sx(o.pontos[i].leste) - u.x, sy(o.pontos[i].norte) - u.y) < 7) {
@@ -233,25 +344,13 @@ export default function Planta({
         }
       }
     }
-    for (const r of rotulosConf) {
-      if (!r.c) continue;
-      const fz = r.c.tamRotulo && r.c.tamRotulo > 0 ? r.c.tamRotulo * escTxt : fonteRot;
-      const half = Math.max(60, fz * 8);
-      const nLinhas = rotuloConfrontanteLinhas(r.c).length;
-      if (Math.abs(u.x - r.x) < half && u.y > r.y - 16 && u.y < r.y + nLinhas * (fz + 1.5)) {
-        dragRef.current = { kind: 'rotConf', id: r.c.id }; captura(e); return;
-      }
-    }
-    for (const rv of rotuloVert) {
-      if (Math.abs(u.x - rv.x) < 26 && Math.abs(u.y - rv.y) < 9) {
-        dragRef.current = { kind: 'rotVert', id: rv.v.id }; captura(e); return;
-      }
-    }
-    // clique/arrasto no vazio: desseleciona e permite reposicionar a FOLHA inteira
+    // clique/arrasto no vazio: desseleciona e permite reposicionar a FOLHA inteira (se destravada)
     onSelecObjeto?.(null);
-    dragRef.current = { kind: 'folha', id: '' };
-    folhaLast.current = u;
-    captura(e);
+    if (!folhaTravada) {
+      dragRef.current = { kind: 'folha', id: '' };
+      folhaLast.current = u;
+      captura(e);
+    }
   }
   function plantaMove(e: ReactPointerEvent) {
     if (!editavel || !dragRef.current) return;
@@ -262,13 +361,32 @@ export default function Planta({
       folhaLast.current = u;
       return;
     }
-    const g = paraGeo(u);
-    if (d.kind === 'objPonto') onMoverPontoObjeto?.(d.id, d.idx!, g.lat, g.lon);
-    else if (d.kind === 'rotConf') onMoverRotuloConf?.(d.id, g.lat, g.lon);
-    else if (d.kind === 'rotVert') onMoverRotuloVertice?.(d.id, g.lat, g.lon);
+    if (folhaLast.current && dragTemp) {
+      const dx = u.x - folhaLast.current.x;
+      const dy = u.y - folhaLast.current.y;
+      setDragTemp((prev) => prev ? { ...prev, dx, dy } : null);
+    }
+    if (d.kind === 'objPonto') {
+      const g = paraGeo(u);
+      onMoverPontoObjeto?.(d.id, d.idx!, g.lat, g.lon);
+    }
   }
   function plantaUp(e: ReactPointerEvent) {
-    dragRef.current = null; folhaLast.current = null;
+    if (dragTemp && dragRef.current) {
+      const d = dragRef.current;
+      const finalX = dragTemp.baseX + dragTemp.dx;
+      const finalY = dragTemp.baseY + dragTemp.dy;
+      if (d.kind === 'ted') {
+        onTextoMover?.(dragTemp.id, finalX, finalY);
+      } else {
+        const g = paraGeo({ x: finalX, y: finalY });
+        if (d.kind === 'rotConf') onMoverRotuloConf?.(dragTemp.id, g.lat, g.lon);
+        else if (d.kind === 'rotVert') onMoverRotuloVertice?.(dragTemp.id, g.lat, g.lon);
+      }
+    }
+    dragRef.current = null;
+    folhaLast.current = null;
+    setDragTemp(null);
     try { svgRef.current?.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
   }
   function captura(e: ReactPointerEvent) { try { svgRef.current?.setPointerCapture(e.pointerId); } catch { /* ignore */ } }
@@ -290,9 +408,17 @@ export default function Planta({
       style={{ background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'crosshair') : 'default', touchAction: editavel ? 'none' : undefined }}
       onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
       xmlns="http://www.w3.org/2000/svg">
-      {/* Moldura externa */}
+      {/* Moldura externa (Margem NBR: esquerda=25mm/95px, outras=7mm/26px) */}
       <rect x={0} y={0} width={W} height={H} fill="#fff" />
-      <rect x={8} y={8} width={W - 16} height={H - 16} fill="none" stroke="#000" strokeWidth={1.5} />
+      <rect x={95} y={26} width={W - 95 - 26} height={H - 26 - 26} fill="none" stroke="#000" strokeWidth={1.5} />
+
+      {/* Linhas de guia/marcas de dobra A3 para caber em pasta A4 (130mm e 235mm) */}
+      <g stroke="#9ca3af" strokeWidth={0.8} strokeDasharray="3 3">
+        <line x1={491} y1={0} x2={491} y2={26} />
+        <line x1={491} y1={H - 26} x2={491} y2={H} />
+        <line x1={888} y1={0} x2={888} y2={26} />
+        <line x1={888} y1={H - 26} x2={888} y2={H} />
+      </g>
       {/* superfície de captura para edição (transparente; não aparece no PDF) */}
       {editavel && <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="transparent" style={{ pointerEvents: 'all' }} />}
 
@@ -351,7 +477,9 @@ export default function Planta({
         const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
         if (o.tipo === 'texto' && sp[0]) {
           const anchor = o.alinhamento === 'center' ? 'middle' : o.alinhamento === 'right' ? 'end' : 'start';
-          return <text key={o.id} x={sp[0].x} y={sp[0].y} fontSize={(o.tamanho ?? 12) * 0.8} textAnchor={anchor} fill={o.cor ?? '#000'}>{o.texto}</text>;
+          return (
+            <Ted key={o.id} x={sp[0].x} y={sp[0].y} base={o.texto || ''} size={(o.tamanho ?? 12) * 0.8} fill={o.cor ?? '#000'} anchor={anchor} {...tProps(o.id)} halo />
+          );
         }
         if (o.tipo === 'cota' && sp.length >= 2) {
           const mx = (sp[0].x + sp[1].x) / 2, my = (sp[0].y + sp[1].y) / 2;
@@ -374,14 +502,30 @@ export default function Planta({
       {/* confrontantes (rótulo + linha de assinatura) */}
       {rotulosConf.map((r, i) => {
         if (!r.c || !r.c.nome) return null;
-        const linhas = rotuloConfrontanteLinhas(r.c);
-        const fz = r.c.tamRotulo && r.c.tamRotulo > 0 ? +(r.c.tamRotulo * escTxt).toFixed(2) : fonteRot;
+        const c = r.c;
+        const linhas = rotuloConfrontanteLinhas(c);
+        const fz = c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteRot;
         const half = Math.max(60, fz * 8);
+        const boxW = half * 2 + 16;
+        const boxH = 20 + linhas.length * (fz + 1.5);
+        const isDragging = dragTemp && dragTemp.kind === 'rotConf' && dragTemp.id === c.id;
+        const px = isDragging ? r.x + dragTemp.dx : r.x;
+        const py = isDragging ? r.y + dragTemp.dy : r.y;
         return (
-          <g key={i}>
-            <line x1={r.x - half} y1={r.y - 13} x2={r.x + half} y2={r.y - 13} stroke="#000" strokeWidth={0.6} />
+          <g key={i}
+            style={editavel ? { cursor: 'move' } : undefined}
+            onPointerDown={editavel ? (e) => {
+              e.stopPropagation();
+              const u = svgPonto(e); if (!u) return;
+              dragRef.current = { kind: 'rotConf', id: c.id };
+              setDragTemp({ kind: 'rotConf', id: c.id, dx: 0, dy: 0, baseX: r.x, baseY: r.y });
+              folhaLast.current = u;
+              captura(e);
+            } : undefined}>
+            <rect x={px - half - 8} y={py - 22} width={boxW} height={boxH} fill="#ffffff" fillOpacity={0.92} stroke="#dddddd" strokeWidth={0.6} rx={3} ry={3} />
+            <line x1={px - half} y1={py - 13} x2={px + half} y2={py - 13} stroke="#000" strokeWidth={0.6} />
             {linhas.map((t, k) => (
-              <text key={k} x={r.x} y={r.y - 2 + k * (fz + 1.5)} fontSize={fz} textAnchor="middle" fill="#000">{t}</text>
+              <text key={k} x={px} y={py - 2 + k * (fz + 1.5)} fontSize={fz} textAnchor="middle" fill="#000">{t}</text>
             ))}
           </g>
         );
@@ -391,7 +535,7 @@ export default function Planta({
       {rotuloVert.map(({ v, x, y }) => (
         <g key={v.id}>
           <SimboloVertice tipo={v.tipo} cx={sx(v.leste)} cy={sy(v.norte)} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6} />
-          <Ted id={`vert.${v.id}`} x={x} y={y} base={v.codigoSigef || 'S/N'} size={Math.max(6, fonteRot - 0.5)} fill="#000" ov={textosOv[`vert.${v.id}`]} {...tedComum} />
+          <Ted x={x} y={y} base={v.codigoSigef || 'S/N'} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
         </g>
       ))}
 
@@ -411,7 +555,7 @@ export default function Planta({
           imovel.proprietario ? `Prop.: ${imovel.proprietario}` : '',
           `Área: ${numBR(ef.areaHa, 4)} ha`,
         ].filter(Boolean).map((t, i) => (
-          <Ted key={i} id={`centro.${i}`} x={cx} y={cy + i * 14} base={t} size={fs(i === 0 ? 13 : 11)} bold={i === 0} anchor="middle" fill="#1c1917" ov={textosOv[`centro.${i}`]} {...tedComum} />
+          <Ted key={i} x={cx} y={cy + i * 14} base={t} size={fs(i === 0 ? 13 : 11)} bold={i === 0} anchor="middle" fill="#1c1917" {...tProps(`centro.${i}`)} />
         ))}
       </g>
 
@@ -446,7 +590,15 @@ export default function Planta({
         titulo={config.titulo || 'Levantamento Planimétrico Georreferenciado'} folha={config.folha || 'Única'}
         textoLaudo={config.textoLaudo || LAUDO_PADRAO} textoConfront={config.textoConfrontantes || CONFRONT_PADRAO} escala={escTxt}
         requerente={requerente} transmitente={transmitente}
-        ed={{ ativo: editavel, textos: textosOv, onEditar: onTextoEditar, onMenu: onTextoMenu }}
+        ed={{
+          ativo: editavel,
+          textos: textosOv,
+          onEditar: onTextoEditar,
+          onMenu: onTextoMenu,
+          editandoId,
+          onStartEdit: (id) => setEditandoId(id),
+          onTerminarEditar: terminarEdicao,
+        }}
       />
     </svg>
   );
@@ -528,9 +680,10 @@ function FaixaInferior(props: {
 
         {/* Lado Esquerdo do Box 3 (Projeção e Diagrama) */}
         <g>
-          <text x={x3 + 12} y={y0 + 38} fontSize={fs(7)} fontWeight="bold">PROJEÇÃO UNIVERSAL TRANSVERSA DE MERCATOR (UTM)</text>
-          <text x={x3 + 12} y={y0 + 51} fontSize={fs(7)} fontWeight="bold">SGR - SIRGAS2000</text>
-          <text x={x3 + 12} y={y0 + 64} fontSize={fs(7)}>MC: {meridianoCentral(zona)}° · Fuso {zona}{hemisferio}</text>
+          <text x={x3 + 12} y={y0 + 35} fontSize={fs(7)} fontWeight="bold">PROJEÇÃO UNIVERSAL TRANSVERSA</text>
+          <text x={x3 + 12} y={y0 + 46} fontSize={fs(7)} fontWeight="bold">DE MERCATOR (UTM)</text>
+          <text x={x3 + 12} y={y0 + 60} fontSize={fs(7)} fontWeight="bold">SGR - SIRGAS2000</text>
+          <text x={x3 + 12} y={y0 + 73} fontSize={fs(7)}>MC: {meridianoCentral(zona)}° · Fuso {zona}{hemisferio}</text>
           {verNortes && <Nortes cx={x3 + 70} cy={y0 + 148} conv={conv} decl={decl} />}
         </g>
 
@@ -584,14 +737,23 @@ function CarimboA3(props: {
   glebaNome?: string; escalaDenom: number; dataExtenso?: string;
   titulo: string; folha: string; textoLaudo: string; textoConfront: string; escala: number;
   requerente?: PessoaQualificada; transmitente?: PessoaQualificada;
-  ed?: { ativo: boolean; textos: Record<string, TextoOverride>; onEditar?: (id: string, atual: string) => void; onMenu?: (id: string, atual: string, x: number, y: number) => void };
+  ed?: {
+    ativo: boolean;
+    textos: Record<string, TextoOverride>;
+    onEditar?: (id: string, atual: string) => void;
+    onMenu?: (id: string, atual: string, x: number, y: number) => void;
+    editandoId?: string | null;
+    onStartEdit?: (id: string) => void;
+    onTerminarEditar?: (id: string, novoTexto: string) => void;
+  };
 }) {
   const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, ed } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   // texto editável do carimbo (atalho para o helper Ted, já ligado ao modo edição)
   const T = (id: string, base: string, o: { x: number; y: number; size: number; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; fill?: string; slice?: number }) => (
     <Ted id={id} base={base} x={o.x} y={o.y} size={o.size} bold={o.bold} anchor={o.anchor} fill={o.fill} slice={o.slice}
-      ov={ed?.textos[id]} ed={ed?.ativo} onEditar={ed?.onEditar} onMenu={ed?.onMenu} />
+      ov={ed?.textos[id]} ed={ed?.ativo} onEditar={ed?.onEditar} onMenu={ed?.onMenu}
+      editando={ed?.editandoId === id} onStartEdit={ed?.onStartEdit} onTerminarEditar={ed?.onTerminarEditar} />
   );
   const x0 = W - CARW; // 1117
   const padX = 10;

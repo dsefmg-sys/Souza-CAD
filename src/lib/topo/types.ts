@@ -270,7 +270,7 @@ export interface PlantaConfig {
   textoLaudo?: string;         // texto do laudo técnico (carimbo)
   textoConfrontantes?: string; // declaração dos confrontantes (carimbo)
   // ajustes por texto (chave = id do texto na planta): conteúdo, escala própria e negrito
-  textos?: Record<string, { texto?: string; escala?: number; negrito?: boolean }>;
+  textos?: Record<string, { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number }>;
   
   // Customização de cores e espessuras das linhas e polígonos na planta
   corPoligono?: string;        // cor do perímetro principal, padrão "#7c2d12"

@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users,
-  Maximize, Settings, LogOut, Table, FileWarning, Target, Search,
+  Maximize, Settings, LogOut, Table, FileWarning, Target, Search, Check, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,8 @@ import RequerimentoModal from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
 import ConsultarModal from '@/components/ConsultarModal';
+import ConfiguracoesModal from '@/components/ConfiguracoesModal';
+import ImportPreviewModal from '@/components/ImportPreviewModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -93,7 +95,17 @@ export default function EditorPage() {
   const [plantaPan, setPlantaPan] = useState({ x: 0, y: 0 });
   const [editarPlanta, setEditarPlanta] = useState(true); // planta abre já no modo edição
   const [folhaTravada, setFolhaTravada] = useState(true); // por padrão, reposicionamento da moldura travado
-  const [menuTexto, setMenuTexto] = useState<{ id: string; atual: string; x: number; y: number } | null>(null);
+  const [menuContexto, setMenuContexto] = useState<{
+    tipo: 'texto' | 'vertice' | 'divisa' | 'mapa';
+    x: number;
+    y: number;
+    id?: string;
+    atual?: string;
+    vertice?: Vertex;
+    verticeIdx?: number;
+    lat?: number;
+    lon?: number;
+  } | null>(null);
   const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
@@ -158,6 +170,9 @@ export default function EditorPage() {
   const [trtAberto, setTrtAberto] = useState(false);
   const [errataAberto, setErrataAberto] = useState(false);
   const [consultarAberto, setConsultarAberto] = useState(false);
+  const [configAberta, setConfigAberta] = useState(false);
+  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [situacaoVersSnapshot, setSituacaoVersSnapshot] = useState<string>('');
   const rascunhoRestaurado = useRef(false); // garante restaurar o rascunho só uma vez
   const [requerente, setRequerente] = useState<PessoaQualificada | undefined>(undefined);
   const [transmitente, setTransmitente] = useState<PessoaQualificada | undefined>(undefined);
@@ -307,23 +322,24 @@ export default function EditorPage() {
     }
   }, [imovel, nomeProjetoManual]);
 
-  // atalhos: F3 imã, F4 nomes, F5 travar, F6 mover, F7 ignorar, F8 linha, F9 polilinha,
-  // F10 cota, F11 apagar vértice, F12 alternar planta/mapa, Esc cancela desenho
+  // atalhos remapeados em ordem crescente
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       const k = e.key;
-      if (k === 'F3') { e.preventDefault(); setSnapAtivo((s) => !s); }
+      if (k === 'F1') { e.preventDefault(); setModo('texto'); }
+      else if (k === 'F2') { e.preventDefault(); setVista((v) => (v === 'mapa' ? 'planta' : 'mapa')); }
+      else if (k === 'F3') { e.preventDefault(); setSnapAtivo((s) => !s); }
       else if (k === 'F4') { e.preventDefault(); setMostrarRotulos((m) => !m); }
-      else if (k === 'F5') { e.preventDefault(); setBloqueado((b) => !b); }
-      else if (k === 'F6') { e.preventDefault(); setModo('navegar'); }
-      else if (k === 'F7') { e.preventDefault(); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
-      else if (k === 'F8') { e.preventDefault(); setModo('linha'); setDesenhoBuffer([]); }
-      else if (k === 'F9') { e.preventDefault(); setModo('polilinha'); setDesenhoBuffer([]); }
-      else if (k === 'F10') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
-      else if (k === 'F11') { e.preventDefault(); setModo('apagar'); }
-      else if (k === 'F12') { e.preventDefault(); setVista((v) => (v === 'mapa' ? 'planta' : 'mapa')); }
+      else if (k === 'F5') { e.preventDefault(); setModo('navegar'); }
+      else if (k === 'F6') { e.preventDefault(); setModo('linha'); setDesenhoBuffer([]); }
+      else if (k === 'F7') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
+      else if (k === 'F8') { e.preventDefault(); setModo('polilinha'); setDesenhoBuffer([]); }
+      else if (k === 'F9') { e.preventDefault(); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
+      else if (k === 'F10') { e.preventDefault(); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
+      else if (k === 'F11') { e.preventDefault(); setModo('inserir'); }
+      else if (k === 'F12') { e.preventDefault(); setModo('apagar'); }
       else if (k === 'Escape') {
         if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
           e.preventDefault();
@@ -382,15 +398,31 @@ export default function EditorPage() {
   function moverFolhaPlanta(dx: number, dy: number) {
     setPlantaConfig((c) => ({ ...c, offsetX: +(((c.offsetX ?? 0) + dx).toFixed(1)), offsetY: +(((c.offsetY ?? 0) + dy).toFixed(1)) }));
   }
+  // reposiciona um texto na planta A3 por id (salva o deslocamento dx/dy em pixel)
+  function moverTextoPlanta(id: string, dx: number, dy: number) {
+    snap();
+    setPlantaConfig((c) => ({
+      ...c,
+      textos: {
+        ...(c.textos ?? {}),
+        [id]: { ...(c.textos?.[id] ?? {}), dx: +dx.toFixed(1), dy: +dy.toFixed(1) }
+      }
+    }));
+  }
 
   // ---- edição de textos da planta (conteúdo/escala/negrito por id) ----
-  function patchTextoPlanta(id: string, patch: { texto?: string; escala?: number; negrito?: boolean }) {
+  function patchTextoPlanta(id: string, patch: { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number }) {
+    snap();
     setPlantaConfig((c) => ({ ...c, textos: { ...(c.textos ?? {}), [id]: { ...(c.textos?.[id] ?? {}), ...patch } } }));
   }
-  function editarTextoPlanta(id: string, atual: string) {
-    const t = window.prompt('Editar texto:', atual);
-    if (t == null) return;
-    patchTextoPlanta(id, { texto: t });
+  function editarTextoPlanta(id: string, novoTexto: string) {
+    if (id.startsWith('vert.')) {
+      const vId = id.slice(5);
+      snap();
+      setVertices((vs) => vs.map((v) => (v.id === vId ? { ...v, codigoSigef: novoTexto } : v)));
+    } else {
+      patchTextoPlanta(id, { texto: novoTexto });
+    }
   }
   function restaurarTextoPlanta(id: string) {
     setPlantaConfig((c) => { const m = { ...(c.textos ?? {}) }; delete m[id]; return { ...c, textos: m }; });
@@ -470,7 +502,6 @@ export default function EditorPage() {
 
       // Define o município no imóvel
       const novoImovel = { ...imovel, municipio, local: `${municipio}` };
-      setImovel(novoImovel);
 
       const tec = tecnico ?? carregarTecnico();
       const fusos = tec.fusosPermitidos ?? [22, 23, 24, 25];
@@ -481,20 +512,43 @@ export default function EditorPage() {
       // Se o município foi informado, sua âncora confirma/refina (mais específica).
       const anc = ancoraMunicipio(municipio);
       if (anc) z = escolherZonaPorAncora(perim[0].leste, perim[0].norte, hemisferio, anc, fusos);
-      setZona(z);
 
       // numeração provisória a partir do banco de pontos (para não colidir com o já usado)
       const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
       const vs0 = montarVertices(perim, z, hemisferio, { credenciamentoIncra: tec.credenciamentoIncra, contadorMarco: cont.M, contadorPonto: cont.P });
-      // praxe: começa no vértice mais ao norte e segue no sentido horário; renumera nessa ordem
       const vs = recodificar(iniciarDoNorteHorario(vs0), tec.credenciamentoIncra, cont.M, cont.P);
       // defesa: não importar coordenadas que viraram inválidas (NaN/fora de faixa) — protege a peça
       if (vs.some((v) => !Number.isFinite(v.lat) || !Number.isFinite(v.lon) || Math.abs(v.lat) > 90 || Math.abs(v.lon) > 180)) {
         aviso('Coordenadas inválidas após a conversão — confira o fuso/hemisfério e o arquivo.'); return;
       }
+
+      setPreviewData({
+        perim,
+        vs,
+        numGlebas,
+        municipio,
+        fuso,
+        z,
+        novoImovel,
+      });
+
+    } catch (e) {
+      aviso('Erro na importação: ' + (e as Error).message);
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  function concluirImportacao(gerarPoligono: boolean) {
+    if (!previewData) return;
+    const { perim, vs, numGlebas, municipio, z, novoImovel } = previewData;
+
+    setImovel(novoImovel);
+    setZona(z);
+
+    const gs: Gleba[] = [];
+    if (gerarPoligono) {
       const { confrontantes: cs, confrontantePorLado: mapa } = montarConfrontantes(vs);
-      
-      const gs: Gleba[] = [];
       for (let i = 1; i <= numGlebas; i++) {
         if (i === 1) {
           gs.push(glebaDe(1, vs, cs, mapa, 'Parcela 1'));
@@ -502,22 +556,36 @@ export default function EditorPage() {
           gs.push(novaGlebaVazia(i));
         }
       }
-      
-      setProjetoId(null); // importar um TXT começa um projeto novo (não sobrescreve o salvo anterior)
-      setGlebas(gs);
-      carregarGleba(gs[0]);
-
-      if (!nomeProjeto || !nomeProjetoManual) {
-        const auto = gerarTituloAutomatico(novoImovel);
-        setNomeProjeto(auto || importPendingFile.name.replace(/\.[^.]+$/, ''));
+    } else {
+      // Importa apenas como referências
+      setReferencias([perim.map((p: any) => {
+        const g = utmParaGeo(p.leste, p.norte, z, hemisferio);
+        return { lat: g.lat, lon: g.lon, leste: p.leste, norte: p.norte };
+      })]);
+      for (let i = 1; i <= numGlebas; i++) {
+        if (i === 1) {
+          gs.push(glebaDe(1, [], [], {}, 'Parcela 1'));
+        } else {
+          gs.push(novaGlebaVazia(i));
+        }
       }
-      aviso(`${vs.length} vértices importados na Parcela 1 — fuso ${z}${hemisferio} (${municipio}).`);
-    } catch (e) {
-      aviso('Erro na importação: ' + (e as Error).message);
-    } finally {
-      setProcessando(false);
-      setImportPendingFile(null);
     }
+    
+    setProjetoId(null); // importar um TXT começa um projeto novo (não sobrescreve o salvo anterior)
+    setGlebas(gs);
+    carregarGleba(gs[0]);
+
+    if (!nomeProjeto || !nomeProjetoManual) {
+      const auto = gerarTituloAutomatico(novoImovel);
+      setNomeProjeto(auto || importPendingFile?.name.replace(/\.[^.]+$/, '') || '');
+    }
+    if (gerarPoligono) {
+      aviso(`${vs.length} vértices importados e perímetro gerado na Parcela 1 — fuso ${z}${hemisferio} (${municipio}).`);
+    } else {
+      aviso(`${perim.length} pontos importados como referências de snap na Parcela 1 — fuso ${z}${hemisferio} (${municipio}).`);
+    }
+    setPreviewData(null);
+    setImportPendingFile(null);
   }
 
   function trocarZona(z: number) {
@@ -854,9 +922,28 @@ export default function EditorPage() {
     setObjetos((os) => os.filter((o) => o.id !== objetoSelId));
     setObjetoSelId(null);
   }
+  function limparObjetos() {
+    if (window.confirm('Deseja apagar todos os desenhos e textos da camada livre desta gleba?')) {
+      snap();
+      setObjetos([]);
+    }
+  }
   function editarObjetoSel(patch: Partial<ObjetoDesenho>) {
     if (!objetoSelId) return;
     setObjetos((os) => os.map((o) => (o.id === objetoSelId ? { ...o, ...patch } : o)));
+  }
+  function definirDivisaLado(id: string, tipo: string) {
+    snap();
+    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, representacao: tipo as any } : v)));
+  }
+  function definirConfrontanteLado(idx: number, confrontanteId: string) {
+    snap();
+    setConfrontantePorLado((m) => {
+      const copy = { ...m };
+      if (confrontanteId) copy[idx] = confrontanteId;
+      else delete copy[idx];
+      return copy;
+    });
   }
   function onMoverRotulo(id: string, lat: number, lon: number) {
     setConfrontantes((cs) => cs.map((c) => (c.id === id ? { ...c, posRotulo: { lat, lon } } : c)));
@@ -1053,7 +1140,12 @@ export default function EditorPage() {
     ];
     const url = await gerarSituacao(aneis);
     setSituacaoUrl(url ?? undefined);
-    aviso(url ? 'Planta de situação gerada.' : 'Não consegui carregar o satélite (rede/CORS).');
+    if (url) {
+      setSituacaoVersSnapshot(JSON.stringify(vertices));
+      aviso('Planta de situação gerada.');
+    } else {
+      aviso('Não consegui carregar o satélite (rede/CORS).');
+    }
   }
 
   async function exportarDxf() {
@@ -1218,6 +1310,83 @@ export default function EditorPage() {
     return true;
   }
 
+  async function criarNovoProjeto() {
+    if (temConteudoTrabalho()) {
+      const ok = window.confirm('Deseja SALVAR o projeto atual antes de criar um novo?\n\n[OK] = Sim, salvar projeto e criar novo\n[Cancelar] = Não, descartar e criar novo');
+      if (ok) {
+        await salvar();
+      } else {
+        const confirmarDescarte = window.confirm('Atenção: Você escolheu não salvar. Deseja realmente DESCARTAR as alterações não salvas e iniciar um novo projeto?');
+        if (!confirmarDescarte) return;
+      }
+    }
+    // Limpa todos os estados para começar do zero
+    setProjetoId(null);
+    setNomeProjeto('');
+    setNomeProjetoManual(false);
+    setImovel({
+      denominacao: '',
+      proprietario: '',
+      cpfProprietario: '',
+      tipoPessoa: 'Física',
+      municipio: '',
+      local: '',
+      matricula: '',
+      cns: '',
+      codigoImovelIncra: '',
+      naturezaServico: 'Georreferenciamento',
+      situacao: 'Imóvel Registrado',
+      naturezaArea: 'Particular',
+    });
+    setVertices([]);
+    setGlebas([novaGlebaVazia(1)]);
+    setGlebaAtivaId('1');
+    setConfrontantes([]);
+    setConfrontantePorLado({});
+    setReferencias([]);
+    setSituacaoUrl(undefined);
+    setObjetos([]);
+    setPlantaConfig({});
+    setObjetoSelId(null);
+    localStorage.removeItem(rascunhoKey());
+    aviso('Novo projeto iniciado. Importe pontos para começar.');
+    setTimeout(() => {
+      fileRef.current?.click();
+    }, 150);
+  }
+
+  function converterPolilinhaEmPerimetro() {
+    if (!objetoSelId) return;
+    const o = objetos.find((x) => x.id === objetoSelId);
+    if (!o || o.tipo !== 'polilinha' || o.pontos.length < 3) {
+      alert('Selecione uma polilinha com pelo menos 3 pontos para converter em perímetro.');
+      return;
+    }
+    if (window.confirm('Deseja substituir o perímetro atual do imóvel por esta polilinha?')) {
+      snap();
+      const novosVertices: Vertex[] = o.pontos.map((p, i) => {
+        return {
+          id: `v_${Date.now().toString(36)}_${i}`,
+          lat: p.lat,
+          lon: p.lon,
+          leste: p.leste,
+          norte: p.norte,
+          tipo: 'P',
+          codigoSigef: `P${(i + 1).toString().padStart(4, '0')}`,
+          isDivisa: false,
+          ordem: i + 1,
+          nome: `P${(i + 1).toString().padStart(4, '0')}`,
+          codigoCampo: `P${(i + 1).toString().padStart(4, '0')}`,
+          elevacao: 0,
+        };
+      });
+      setVertices(novosVertices);
+      setObjetos((os) => os.filter((x) => x.id !== objetoSelId));
+      setObjetoSelId(null);
+      aviso('Polilinha convertida em perímetro com sucesso!');
+    }
+  }
+
   // antes de importar um novo TXT, oferece salvar o trabalho atual (que será substituído)
   async function iniciarImportTxt() {
     if (temConteudoTrabalho()) {
@@ -1348,13 +1517,54 @@ export default function EditorPage() {
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEMORIAL</Button>
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button>
         <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQUERIMENTO</Button>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Gerar uma errata formal ao cartório (corrigir dados)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button>
+        <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
+          <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERTIFICAR</Button>
+        </a>
+        <Button size="sm" variant="outline" className="shrink-0 bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500 hover:text-black dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/30 dark:hover:bg-amber-400 dark:hover:text-black font-semibold" title="Gerar uma errata formal ao cartório (corrigir dados)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button>
        </div>
        {/* Conta/sistema fixos no canto superior direito */}
        <div className="flex shrink-0 items-center gap-1 border-l px-2">
-         <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /></Button>
+         {/* Grupo A- / A+ contextual */}
+         <div className="flex items-center gap-0.5 mr-1 bg-muted/40 rounded px-1.5 py-0.5" title={vista === 'mapa' ? 'Tamanho dos nomes dos vértices no mapa' : 'Escala dos textos na planta'}>
+           <Button
+             size="sm"
+             variant="ghost"
+             className="h-7 w-7 p-0"
+             onClick={() => {
+               if (vista === 'mapa') {
+                 setTamNomes((n) => Math.max(7, n - 1));
+               } else {
+                 setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.5) - 0.05).toFixed(2))) }));
+               }
+             }}
+           >
+             <span className="text-[10px] font-bold">A-</span>
+           </Button>
+           <Button
+             size="sm"
+             variant="ghost"
+             className="h-7 w-7 p-0"
+             onClick={() => {
+               if (vista === 'mapa') {
+                 setTamNomes((n) => Math.min(22, n + 1));
+               } else {
+                 setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) }));
+               }
+             }}
+           >
+             <span className="text-[10px] font-bold">A+</span>
+           </Button>
+         </div>
+
+         <Button size="sm" variant="outline" className="gap-1 font-semibold shrink-0 h-8" disabled={processando} title="Iniciar um novo projeto (TXT)" onClick={criarNovoProjeto}>
+           <Plus className="size-4" /> NOVO
+         </Button>
+         <Button size="sm" variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1 shrink-0 h-8 mr-1" disabled={processando} title="Salvar o projeto" onClick={salvar}>
+           <Save className="size-4" /> SALVAR
+         </Button>
+
          <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
-         <Link href="/configuracoes"><Button size="sm" variant="ghost" title="Configurações"><Settings /></Button></Link>
+         <Button size="sm" variant="ghost" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
          {nuvemDisponivel && user && (
            <Button size="sm" variant="ghost" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
          )}
@@ -1400,7 +1610,7 @@ export default function EditorPage() {
         {/* Área principal: mapa ou planta */}
         {(() => {
           const rotulo = toolW >= 104;
-          const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t}</span> : null);
+          const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t.toUpperCase()}</span> : null);
           return (
             <>
               <aside style={{ width: toolW }} className="no-print flex shrink-0 flex-col gap-1 overflow-y-auto border-r bg-background p-1.5">
@@ -1408,9 +1618,9 @@ export default function EditorPage() {
                 {vista === 'mapa' && (
                   <>
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                      <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /> <span className="truncate text-xs">Desfazer</span></Button>
-                      <Button size="sm" variant="ghost" title="Refazer a ação desfeita" onClick={refazer}><Redo2 /> <span className="truncate text-xs">Refazer</span></Button>
-                      <Button size="sm" variant="ghost" title="Focalizar/enquadrar o desenho atual" onClick={centralizar}><Target /> <span className="truncate text-xs">Focalizar</span></Button>
+                      <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /> <span className="truncate text-xs font-semibold">DESFAZER</span></Button>
+                      <Button size="sm" variant="ghost" title="Refazer a ação desfeita" onClick={refazer}><Redo2 /> <span className="truncate text-xs font-semibold">REFAZER</span></Button>
+                      <Button size="sm" variant="ghost" title="Focalizar/enquadrar o desenho atual" onClick={centralizar}><Target /> <span className="truncate text-xs font-semibold">FOCALIZAR</span></Button>
                     </div>
                     <div className="flex flex-wrap gap-1 [&_button]:h-9 [&_button]:justify-center [&_button]:gap-0.5 [&_button]:px-1.5">
                       <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /><span className="text-[9px] font-bold text-amber-400">F3</span></Button>
@@ -1425,19 +1635,21 @@ export default function EditorPage() {
                   <>
                     <div className="my-0.5 h-px w-full bg-border" />
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                      <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F6)"><MousePointer2 /> {L('Mover')}<span className="ml-auto text-[9px] font-bold text-amber-400">F6</span></Button>
-                      <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice"><Plus /> {L('Inserir vértice')}</Button>
-                      <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice (F11)"><Trash2 /> {L('Apagar vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
-                      <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'ignorar' ? 'navegar' : 'ignorar')} title="Ignorar vértice (F7): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F7</span></Button>
-                      <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'considerar' ? 'navegar' : 'considerar')} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo no segmento mais próximo"><Plus /> {L('Considerar vértice')}</Button>
+                      <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F1)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
+                      <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} onClick={() => setModo('navegar')} title="Navegar e mover (F5)"><MousePointer2 /> {L('Mover')}<span className="ml-auto text-[9px] font-bold text-amber-400">F5</span></Button>
+                      <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)"><PenTool /> {L('Linha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F6</span></Button>
+                      <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F7)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F7</span></Button>
+                      <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos e depois Finalizar (F8; botão direito cancela)"><PenTool /> {L('Polilinha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F8</span></Button>
+                      <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'considerar' ? 'navegar' : 'considerar')} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo (F9)"><Plus /> {L('Considerar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
+                      <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'ignorar' ? 'navegar' : 'ignorar')} title="Ignorar vértice (F10): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
+                      <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice (F11)"><Plus /> {L('Inserir vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
+                      <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice (F12)"><Trash2 /> {L('Apagar vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
+
                       {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
                       <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => { if (selecionadoId) { snap(); setVertices((vs) => definirInicio(vs, selecionadoId)); } }} title="Definir início no vértice selecionado"><Flag /> {L('Definir início')}</Button>
-                      <Button size="sm" variant="ghost" onClick={renumerar} title="Renumerar vértices"><Crosshair /> {L('Renumerar')}</Button>
-                      <div className="my-0.5 h-px w-full bg-border" />
-                      <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F8)"><PenTool /> {L('Linha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F8</span></Button>
-                      <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos e depois Finalizar (F9; botão direito cancela)"><PenTool /> {L('Polilinha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
-                      <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F10)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
-                      <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir"><FileText /> {L('Texto')}</Button>
+                      {objetos.length > 0 && (
+                        <Button size="sm" variant="ghost" onClick={limparObjetos} title="Apagar todos os desenhos e textos livres desta gleba"><Trash2 className="text-destructive" /> {L('Limpar desenhos')}</Button>
+                      )}
                       {modo === 'polilinha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
                       {objSel?.tipo === 'texto' && (
                         <>
@@ -1447,13 +1659,16 @@ export default function EditorPage() {
                         </>
                       )}
                       {objSel?.tipo === 'polilinha' && (
-                        <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher (ex.: lago)"><Brush /> {L('Preencher')}</Button>
+                        <>
+                          <Button size="sm" variant="secondary" className="gap-1.5 w-full justify-start" onClick={converterPolilinhaEmPerimetro} title="Usar esta polilinha como o perímetro principal do imóvel"><RotateCcw className="size-4 text-emerald-500" /> {L('Usar como perímetro')}</Button>
+                          <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} className="w-full justify-start gap-2" onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher (ex.: lago)"><Brush /> {L('Preencher')}</Button>
+                        </>
                       )}
                       {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /> {L('Apagar objeto')}</Button>}
                       <div className="my-0.5 h-px w-full bg-border" />
                       {/* DXF: baixar e enviar */}
                       <div className={`flex items-center gap-0.5 rounded-md border px-1.5 ${COR_IMPORT}`}>
-                        <span className="text-xs font-medium">DXF</span>
+                        <span className="text-[10px] font-bold mr-1 shrink-0">ARQUIVO DXF</span>
                         <Button size="sm" variant="ghost" className="size-7 p-0" title="Baixar o desenho em DXF" onClick={exportarDxf}><Download className="size-4" /></Button>
                         <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Enviar/importar um DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-4" /></Button>
                       </div>
@@ -1461,13 +1676,8 @@ export default function EditorPage() {
                   </>
                 )}
 
-                {/* BASE: tamanho dos nomes (A-/A+) quando os rótulos estão visíveis */}
-                {vista === 'mapa' && mostrarRotulos && (
-                  <div className="mt-auto flex flex-wrap gap-1 border-t pt-1 [&_button]:h-9 [&_button]:w-9 [&_button]:justify-center [&_button]:p-0">
-                    <Button size="sm" variant="ghost" title="Diminuir os nomes dos vértices" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-xs font-bold">A-</span></Button>
-                    <Button size="sm" variant="ghost" title="Aumentar os nomes dos vértices" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-xs font-bold">A+</span></Button>
-                  </div>
-                )}
+                {/* BASE: sem atalhos */}
+                <div className="mt-auto" />
               </aside>
               {vista === 'mapa' && (
                 <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
@@ -1482,39 +1692,72 @@ export default function EditorPage() {
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} objetoSelId={objetoSelId}
-                onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
+        onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice}
                 conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}
-                verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId} />
+                verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId}
+                onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
+                onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
+                onContextMenuMapa={(lat, lon, x, y) => setMenuContexto({ tipo: 'mapa', lat, lon, x, y })} />
           ) : (
             <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
-                <Button size="sm" variant={editarPlanta ? 'default' : 'outline'} title={editarPlanta ? 'Editando: arraste itens; com uma ferramenta ativa, clique para desenhar' : 'Editar a planta (mover itens e desenhar, como no mapa)'} onClick={() => setEditarPlanta((v) => !v)}><Pencil /> Editar</Button>
+                <Button size="sm" variant={editarPlanta ? 'default' : 'secondary'} className={editarPlanta ? 'bg-primary text-primary-foreground font-bold' : 'font-bold'} title="Alternar modo de edição na planta (arrastar textos/folha)" onClick={() => setEditarPlanta(!editarPlanta)}>
+                  {editarPlanta ? <Check className="size-3.5" /> : <Pencil className="size-3.5" />}
+                  {editarPlanta ? 'FINALIZAR' : 'EDITAR'}
+                </Button>
                 {editarPlanta && (
                   <Button
                     size="sm"
                     variant={folhaTravada ? 'outline' : 'default'}
-                    className={folhaTravada ? '' : 'bg-amber-600 hover:bg-amber-700 text-white font-semibold'}
-                    title={folhaTravada ? 'Reposicionamento da folha A3 está travado para evitar deslocamentos acidentais. Clique para destravar.' : 'Folha destravada! Arraste o fundo vazio da folha para movê-la.'}
+                    className={folhaTravada ? 'font-bold' : 'bg-amber-600 hover:bg-amber-700 text-white font-bold animate-pulse'}
+                    title={folhaTravada ? 'Folha está travada — clique para poder arrastá-la' : 'Folha está destravada — arraste o fundo para reposicioná-la'}
                     onClick={() => setFolhaTravada((v) => !v)}
                   >
                     {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
-                    {folhaTravada ? 'Folha Travada' : 'Mover Folha'}
+                    {folhaTravada ? 'FOLHA TRAVADA' : 'MOVER FOLHA'}
                   </Button>
                 )}
-                <Button size="sm" variant="outline" className="px-2" title="Diminuir todos os textos da planta" onClick={() => setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.5) - 0.05).toFixed(2))) }))}>A-</Button>
-                <Button size="sm" variant="outline" className="px-2" title="Aumentar todos os textos da planta" onClick={() => setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) }))}>A+</Button>
+
                 {/* Escala do desenho em passos de 250 (padrão de trabalho) */}
                 <div className="flex items-center gap-0.5 rounded-md border bg-background px-1 text-xs">
                   <Button size="sm" variant="ghost" className="size-7 p-0" title="Desenho maior (denominador −250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: Math.max(250, (c.escalaManual ?? 1000) - 250) }))}>−</Button>
-                  <span className="min-w-[52px] text-center font-medium" title="Escala do desenho">1 / {plantaConfig.escalaManual ?? 'auto'}</span>
+                  <span className="min-w-[52px] text-center font-bold" title="Escala do desenho">1 / {plantaConfig.escalaManual ?? 'auto'}</span>
                   <Button size="sm" variant="ghost" className="size-7 p-0" title="Desenho menor (denominador +250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: (c.escalaManual ?? 1000) + 250 }))}>+</Button>
-                  <Button size="sm" variant="ghost" className="h-7 px-1" title="Escala automática" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>auto</Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-1 font-bold" title="Escala automática" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>AUTO</Button>
                 </div>
-                <Button size="sm" variant="default" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> Baixar PDF</Button>
-                <Button size="sm" variant="secondary" title="Gerar a planta de situação (recorte de satélite)" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
-                {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }}>Remover</Button>}
-                <Button size="sm" variant="outline" title="Ajustar (zoom 100%)" onClick={ajustarPlanta}><Maximize /> {Math.round(plantaZoom * 100)}%</Button>
+                <Button size="sm" variant="default" className="font-bold gap-1" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> BAIXAR PDF</Button>
+                
+                {(() => {
+                  const situacaoDesatualizada = !!situacaoUrl && (situacaoVersSnapshot !== JSON.stringify(vertices));
+                  return (
+                    <div className="flex items-center shrink-0">
+                      <Button
+                        size="sm"
+                        variant={situacaoDesatualizada ? 'default' : 'secondary'}
+                        className={situacaoDesatualizada ? 'bg-orange-500 hover:bg-orange-600 text-white font-bold gap-1 rounded-r-none border-r border-orange-600/30' : situacaoUrl ? 'rounded-r-none border-r border-border font-bold gap-1' : 'font-bold gap-1'}
+                        title={situacaoDesatualizada ? 'Atualizar a planta de situação com o perímetro editado' : 'Gerar a planta de situação (recorte de satélite)'}
+                        onClick={gerarSituacaoPlanta}
+                      >
+                        <MapIcon className="size-3.5" />
+                        {situacaoDesatualizada ? 'ATUALIZAR SITUAÇÃO' : 'GERAR SITUAÇÃO'}
+                      </Button>
+                      {situacaoUrl && (
+                        <Button
+                          size="sm"
+                          variant={situacaoDesatualizada ? 'default' : 'secondary'}
+                          className={situacaoDesatualizada ? 'bg-orange-500 hover:bg-orange-600 text-white font-bold px-2 rounded-l-none' : 'px-2 rounded-l-none'}
+                          title="Remover a planta de situação"
+                          onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }}
+                        >
+                          <X className="size-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                <Button size="sm" variant="outline" className="font-bold gap-1" title="Ajustar (zoom 100%)" onClick={ajustarPlanta}><Maximize className="size-3.5" /> AJUSTAR ({Math.round(plantaZoom * 100)}%)</Button>
               </div>
               <div className={`absolute inset-0 overflow-hidden p-4 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
                 onPointerDown={editarPlanta ? undefined : plantaPanDown} onPointerMove={editarPlanta ? undefined : plantaPanMove} onPointerUp={editarPlanta ? undefined : plantaPanUp}
@@ -1529,8 +1772,8 @@ export default function EditorPage() {
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
-                      onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuTexto({ id, atual, x, y })}
-                      onMoverFolha={moverFolhaPlanta} folhaTravada={folhaTravada} />
+                      onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
+                      onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} />
                   </div>
                 )}
               </div>
@@ -1764,17 +2007,115 @@ export default function EditorPage() {
         onInserirProprietario={inserirPropConsulta} onInserirConfrontante={inserirConfConsulta}
         onInserirImovel={inserirImovelConsulta} onInserirCartorio={inserirCartorioConsulta} />
 
-      {/* menu de formatação de texto da planta (clique direito) */}
-      {menuTexto && (
+      {/* menu de contexto multiuso (clique direito dependendo do elemento/situação) */}
+      {menuContexto && (
         <>
-          <div className="fixed inset-0 z-[1190]" onClick={() => setMenuTexto(null)} onContextMenu={(e) => { e.preventDefault(); setMenuTexto(null); }} />
-          <div className="fixed z-[1200] w-44 overflow-hidden rounded-md border bg-background text-sm shadow-lg"
-            style={{ left: Math.min(menuTexto.x, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 190), top: menuTexto.y }}>
-            <button className="block w-full px-3 py-1.5 text-left hover:bg-accent" onClick={() => { const m = menuTexto; setMenuTexto(null); editarTextoPlanta(m.id, m.atual); }}>Editar texto…</button>
-            <button className="block w-full px-3 py-1.5 text-left hover:bg-accent" onClick={() => patchTextoPlanta(menuTexto.id, { negrito: !(plantaConfig.textos?.[menuTexto.id]?.negrito) })}>Negrito (liga/desliga)</button>
-            <button className="block w-full px-3 py-1.5 text-left hover:bg-accent" onClick={() => patchTextoPlanta(menuTexto.id, { escala: Math.min(3, +(escTextoAtual(menuTexto.id) + 0.1).toFixed(2)) })}>Aumentar este texto</button>
-            <button className="block w-full px-3 py-1.5 text-left hover:bg-accent" onClick={() => patchTextoPlanta(menuTexto.id, { escala: Math.max(0.4, +(escTextoAtual(menuTexto.id) - 0.1).toFixed(2)) })}>Diminuir este texto</button>
-            <button className="block w-full border-t px-3 py-1.5 text-left hover:bg-accent" onClick={() => { restaurarTextoPlanta(menuTexto.id); setMenuTexto(null); }}>Restaurar padrão</button>
+          <div className="fixed inset-0 z-[1190]" onClick={() => setMenuContexto(null)} onContextMenu={(e) => { e.preventDefault(); setMenuContexto(null); }} />
+          <div className="fixed z-[1200] w-52 overflow-hidden rounded-md border bg-background p-1 text-sm shadow-lg"
+            style={{ left: Math.min(menuContexto.x, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 220), top: menuContexto.y }}>
+            
+            {menuContexto.tipo === 'texto' && (
+              <div className="flex flex-col gap-0.5">
+                <button className="block w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const m = menuContexto; setMenuContexto(null); editarTextoPlanta(m.id!, m.atual!); }}>Editar texto…</button>
+                <button className="block w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { negrito: !(plantaConfig.textos?.[menuContexto.id!]?.negrito) })}>Negrito (liga/desliga)</button>
+                <button className="block w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { escala: Math.min(3, +(escTextoAtual(menuContexto.id!) + 0.1).toFixed(2)) })}>Aumentar este texto</button>
+                <button className="block w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { escala: Math.max(0.4, +(escTextoAtual(menuContexto.id!) - 0.1).toFixed(2)) })}>Diminuir este texto</button>
+                <button className="block w-full border-t px-2 py-1.5 text-left rounded hover:bg-accent text-destructive" onClick={() => { patchTextoPlanta(menuContexto.id!, { dx: 0, dy: 0 }); setMenuContexto(null); }}>Resetar posição</button>
+                <button className="block w-full border-t px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { restaurarTextoPlanta(menuContexto.id!); setMenuContexto(null); }}>Restaurar padrão</button>
+              </div>
+            )}
+
+            {menuContexto.tipo === 'vertice' && menuContexto.vertice && (
+              <div className="flex flex-col gap-0.5">
+                <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">Ações do Vértice</div>
+                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded hover:bg-accent" onClick={() => { snap(); setVertices((vs) => definirInicio(vs, menuContexto.vertice!.id)); setMenuContexto(null); }}><Flag className="size-3.5" /> Definir Início</button>
+                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded hover:bg-accent text-destructive" onClick={() => { apagarVertice(menuContexto.vertice!.id); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Excluir Vértice</button>
+                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded hover:bg-accent" onClick={() => { ignorarVertice(menuContexto.vertice!.id); setMenuContexto(null); }}><EyeOff className="size-3.5" /> Ignorar Vértice</button>
+                
+                <div className="border-t my-1" />
+                <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">Tipo de Vértice</div>
+                <div className="flex gap-1 px-1 py-0.5">
+                  {['M', 'P', 'V'].map((t) => (
+                    <button
+                      key={t}
+                      className={`flex-1 text-center py-0.5 text-xs rounded border ${menuContexto.vertice!.tipo === t ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
+                      onClick={() => { editarVertice(menuContexto.vertice!.id, { tipo: t as any, isDivisa: t === 'M' }); setMenuContexto(null); }}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {menuContexto.tipo === 'divisa' && menuContexto.vertice && (
+              <div className="flex flex-col gap-0.5">
+                <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">Tipo da Divisa</div>
+                <select
+                  className="mx-1 h-8 rounded border bg-background px-1 text-xs"
+                  value={menuContexto.vertice.representacao || 'linha-ideal'}
+                  onChange={(e) => { definirDivisaLado(menuContexto.vertice!.id, e.target.value); setMenuContexto(null); }}
+                >
+                  {REPRESENTACOES.map((r) => <option key={r} value={r}>{REPRES_LABEL[r] || r}</option>)}
+                </select>
+
+                <div className="border-t my-1" />
+                <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">Confrontante</div>
+                <select
+                  className="mx-1 h-8 rounded border bg-background px-1 text-xs"
+                  value={confrontantePorLado[menuContexto.verticeIdx ?? -1] || ''}
+                  onChange={(e) => { definirConfrontanteLado(menuContexto.verticeIdx ?? -1, e.target.value); setMenuContexto(null); }}
+                >
+                  <option value="">— Sem confrontante —</option>
+                  {confrontantes.map((c) => <option key={c.id} value={c.id}>{c.nome || '(sem nome)'}</option>)}
+                </select>
+              </div>
+            )}
+
+            {menuContexto.tipo === 'mapa' && (
+              <div className="flex flex-col gap-0.5">
+                <button
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent"
+                  onClick={() => {
+                    inserirVertice(menuContexto.lat!, menuContexto.lon!);
+                    setMenuContexto(null);
+                  }}
+                >
+                  <Plus className="size-3.5" /> Inserir Vértice Aqui
+                </button>
+                <button
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent"
+                  onClick={() => {
+                    const txt = window.prompt('Texto a inserir:');
+                    if (txt) {
+                      snap();
+                      const utm = geoParaUtm(menuContexto.lat!, menuContexto.lon!, zona, hemisferio);
+                      const novoObj: ObjetoDesenho = {
+                        id: `obj_${Date.now().toString(36)}`,
+                        tipo: 'texto',
+                        pontos: [{ lat: menuContexto.lat!, lon: menuContexto.lon!, leste: utm.leste, norte: utm.norte }],
+                        texto: txt.trim(),
+                        tamanho: 12,
+                      };
+                      setObjetos((obs) => [...obs, novoObj]);
+                    }
+                    setMenuContexto(null);
+                  }}
+                >
+                  <FileText className="size-3.5" /> Inserir Texto Aqui
+                </button>
+                <button
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent"
+                  onClick={() => {
+                    centralizar();
+                    setMenuContexto(null);
+                  }}
+                >
+                  <Target className="size-3.5" /> Centralizar Desenho
+                </button>
+              </div>
+            )}
+
           </div>
         </>
       )}
@@ -1789,6 +2130,17 @@ export default function EditorPage() {
         isOpen={importModalAberto}
         onClose={() => setImportModalAberto(false)}
         onConfirm={processarImportacao}
+      />
+      <ConfiguracoesModal
+        open={configAberta}
+        onOpenChange={setConfigAberta}
+        onConfigChange={() => { setTecnico(carregarTecnico()); }}
+      />
+      <ImportPreviewModal
+        open={!!previewData}
+        onOpenChange={(open) => { if (!open) setPreviewData(null); }}
+        perim={previewData?.perim || []}
+        onConfirm={concluirImportacao}
       />
 
     </div>
