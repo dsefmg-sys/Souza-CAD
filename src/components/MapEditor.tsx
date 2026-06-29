@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, Fragment } from 'react';
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, LayersControl, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, LayersControl, Popup, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho } from '@/lib/topo/types';
 import { distanciaCota } from '@/lib/topo/objetos';
@@ -19,6 +19,8 @@ interface Props {
   mostrarRotulos: boolean;
   bloqueado: boolean;
   referencias?: [number, number][][];
+  parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
+  onAdotarVertice?: (lat: number, lon: number) => void;
   outrasGlebas?: [number, number][][];
   objetos?: ObjetoDesenho[];
   desenhoAtual?: [number, number][];
@@ -191,7 +193,7 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 
 export default function MapEditor(props: Props) {
   const {
-    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], outrasGlebas = [],
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], onAdotarVertice, outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     conflitos = [],
@@ -236,6 +238,26 @@ export default function MapEditor(props: Props) {
       {referencias.filter((r) => r.length >= 2).map((r, i) => (
         <Polyline key={`ref${i}`} positions={r.length >= 3 ? [...r, r[0]] : r} pathOptions={{ color: '#06b6d4', weight: 1.5, dashArray: '5 4' }} />
       ))}
+
+      {/* parcelas certificadas do INCRA: clicáveis (info) + vértices clicáveis (adotar no projeto) */}
+      {parcelasCert.filter((p) => p.anel.length >= 3).map((p, i) => (
+        <Polygon key={`pc${i}`} positions={p.anel} pathOptions={{ color: '#0891b2', weight: 1.4, fillColor: '#06b6d4', fillOpacity: 0.04 }}>
+          <Popup>
+            <div className="text-xs leading-snug">
+              <div className="mb-0.5 font-bold">{p.info.titulo}</div>
+              {p.info.linhas.map((l, k) => <div key={k}>{l}</div>)}
+              <div className="mt-1 text-[10px] text-muted-foreground">Clique num vértice (ponto) para adotá-lo no seu projeto.</div>
+            </div>
+          </Popup>
+        </Polygon>
+      ))}
+      {parcelasCert.flatMap((p, i) => p.anel.map((pt, j) => (
+        <CircleMarker key={`pcv${i}-${j}`} center={pt} radius={4}
+          pathOptions={{ color: '#0e7490', fillColor: '#ffffff', fillOpacity: 1, weight: 1.6 }}
+          eventHandlers={{ click: () => onAdotarVertice?.(pt[0], pt[1]) }}>
+          <Tooltip direction="top" offset={[0, -4]}>Vértice certificado — clique para adotar</Tooltip>
+        </CircleMarker>
+      )))}
 
       {/* demais glebas */}
       {outrasGlebas.filter((g) => g.length >= 3).map((g, i) => (

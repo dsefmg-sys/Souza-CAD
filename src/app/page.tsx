@@ -156,6 +156,7 @@ export default function EditorPage() {
   const [situacaoUrl, setSituacaoUrl] = useState<string | undefined>(undefined);
   // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
   const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
+  const [parcelasCert, setParcelasCert] = useState<{ anel: [number, number][]; info: { titulo: string; linhas: string[] } }[]>([]);
   const conflitos = useMemo(() => detectarConflitosDivisas(vertices, referencias), [vertices, referencias]);
   const [tema, setTema] = useState<'claro' | 'escuro'>('escuro');
   const [temaCarregadoDaNuvem, setTemaCarregadoDaNuvem] = useState(false);
@@ -1238,6 +1239,17 @@ export default function EditorPage() {
       const vizinhas = parcelasVizinhas(meuAnel, todas, 15);
       if (!vizinhas.length) { aviso(`${todas.length} parcela(s) na região, mas nenhuma encostando no imóvel.`); return; }
       setReferencias((prev) => [...prev, ...parcelasParaReferencias(vizinhas, zona, hemisferio)]);
+      setParcelasCert((prev) => [...prev, ...vizinhas.map((p) => ({
+        anel: p.anel.map((q) => [q.lat, q.lon] as [number, number]),
+        info: {
+          titulo: p.denominacao || 'Imóvel certificado SIGEF',
+          linhas: [
+            p.codigoImovel ? `Código INCRA: ${p.codigoImovel}` : '',
+            p.matricula ? `Matrícula: ${p.matricula}` : '',
+            p.municipio ? `Cód. município (IBGE): ${p.municipio}` : '',
+          ].filter(Boolean),
+        },
+      }))]);
       const novos = confrontantesDeVizinhas(vizinhas);
       snap();
       setConfrontantes((cs) => {
@@ -1465,6 +1477,7 @@ export default function EditorPage() {
     setConfrontantes([]);
     setConfrontantePorLado({});
     setReferencias([]);
+    setParcelasCert([]);
     setSituacaoUrl(undefined);
     setObjetos([]);
     setPlantaConfig({});
@@ -1832,6 +1845,7 @@ export default function EditorPage() {
           {vista === 'mapa' ? (
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
+                parcelasCert={parcelasCert} onAdotarVertice={inserirVertice}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
