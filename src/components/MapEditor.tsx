@@ -21,6 +21,7 @@ interface Props {
   referencias?: [number, number][][];
   parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
   onAdotarVertice?: (lat: number, lon: number) => void;
+  onDblClick?: (lat: number, lon: number) => void;
   outrasGlebas?: [number, number][][];
   objetos?: ObjetoDesenho[];
   desenhoAtual?: [number, number][];
@@ -160,16 +161,21 @@ function Centralizar({ sig, vertices }: { sig?: number; vertices: Vertex[] }) {
   return null;
 }
 
-function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho }: {
+function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblClick }: {
   modo: ModoEdicao;
   onInserir: (lat: number, lon: number) => void;
   onCliqueDesenho?: (lat: number, lon: number) => void;
   onCancelDesenho?: () => void;
+  onDblClick?: (lat: number, lon: number) => void;
 }) {
   useMapEvents({
     click(e) {
       if (modo === 'inserir') onInserir(e.latlng.lat, e.latlng.lng);
       else if ((modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
+    },
+    dblclick(e) {
+      // duplo clique abre o editor de texto (não dá zoom — doubleClickZoom desligado)
+      onDblClick?.(e.latlng.lat, e.latlng.lng);
     },
     contextmenu(e) {
       if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
@@ -193,7 +199,7 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 
 export default function MapEditor(props: Props) {
   const {
-    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], onAdotarVertice, outrasGlebas = [],
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], onAdotarVertice, onDblClick, outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     conflitos = [],
@@ -216,7 +222,7 @@ export default function MapEditor(props: Props) {
   }, [validos]);
 
   return (
-    <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={22} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false}>
+    <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={22} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Híbrido (Google)">
           <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={22} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
@@ -231,7 +237,7 @@ export default function MapEditor(props: Props) {
 
       <AjustarLimites vertices={validos} referencias={referencias} />
       <Centralizar sig={centralizarSig} vertices={vertices} />
-      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} />
+      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} />
       <FocoMap latLng={focoLatLng} />
 
       {/* referências certificadas (snap) */}

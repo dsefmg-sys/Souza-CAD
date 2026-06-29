@@ -1846,6 +1846,7 @@ export default function EditorPage() {
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 parcelasCert={parcelasCert} onAdotarVertice={inserirVertice}
+                onDblClick={(lat, lon) => { const t = window.prompt('Texto a inserir:'); if (t) setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
