@@ -84,6 +84,8 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
 
   async function gerar() {
     if (!tecnico) { setMsg('Configure o técnico primeiro.'); return; }
+    if (!req.nome?.trim() || !trans.nome?.trim()) { setMsg('Preencha o nome do requerente e do transmitente.'); return; }
+    if (!req.cpf?.trim() || !trans.cpf?.trim()) { setMsg('Preencha o CPF/CNPJ do requerente e do transmitente.'); return; }
     onChangePessoas(req, trans);
     const blob = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje() });
     saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);

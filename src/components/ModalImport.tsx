@@ -15,7 +15,7 @@ interface Props {
 const MUNICIPIOS_PADRAO = [
   { nome: 'Espera Feliz-MG', fuso: 23 },
   { nome: 'Caiana-MG', fuso: 23 },
-  { nome: 'Caparaó-mg', fuso: 23 },
+  { nome: 'Caparaó-MG', fuso: 23 },
   { nome: 'Alto Caparaó-MG', fuso: 23 },
   { nome: 'Dores do Rio Preto-ES', fuso: 23 },
   { nome: 'Guaçuí-ES', fuso: 24 },

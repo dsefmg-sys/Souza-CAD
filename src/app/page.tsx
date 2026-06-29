@@ -1052,11 +1052,15 @@ export default function EditorPage() {
 
   // progresso do trabalho (preenchimento + peças) para a barrinha à esquerda
   const progresso = useMemo(() => {
-    const passos = [
-      !!imovel.denominacao, !!imovel.matricula, !!imovel.proprietario, !!imovel.municipio,
-      vertices.length >= 3, !!res, confrontantes.some((c) => c.nome), !!situacaoUrl,
+    const passos: [string, boolean][] = [
+      ['denominação', !!imovel.denominacao], ['matrícula', !!imovel.matricula],
+      ['proprietário', !!imovel.proprietario], ['município', !!imovel.municipio],
+      ['vértices', vertices.length >= 3], ['área calculada', !!res],
+      ['confrontantes', confrontantes.some((c) => c.nome)], ['situação', !!situacaoUrl],
     ];
-    return passos.filter(Boolean).length / passos.length;
+    const feitos = passos.filter(([, ok]) => ok).length;
+    const faltam = passos.filter(([, ok]) => !ok).map(([n]) => n);
+    return { pct: feitos / passos.length, faltam };
   }, [imovel, vertices, res, confrontantes, situacaoUrl]);
 
   // rótulos de confrontante arrastáveis no mapa (posRotulo manual ou centróide dos lados)
@@ -1207,7 +1211,7 @@ export default function EditorPage() {
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
                 <Button size="sm" variant="default" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> Baixar PDF</Button>
                 <Button size="sm" variant="secondary" title="Gerar a planta de situação (recorte de satélite)" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
-                {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => setSituacaoUrl(undefined)}>Remover</Button>}
+                {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }}>Remover</Button>}
                 <Button size="sm" variant="outline" title="Ajustar (zoom 100%)" onClick={ajustarPlanta}><Maximize /> {Math.round(plantaZoom * 100)}%</Button>
               </div>
               <div className="absolute inset-0 cursor-grab touch-none overflow-hidden p-4 active:cursor-grabbing"
@@ -1451,8 +1455,8 @@ export default function EditorPage() {
       />
 
       {/* Barra de progresso do trabalho (lateral esquerda) */}
-      <div className="no-print fixed left-0 top-0 z-[1050] h-screen w-1 bg-muted" title={`${Math.round(progresso * 100)}% do trabalho preenchido/gerado`}>
-        <div className="absolute bottom-0 left-0 w-full bg-primary transition-all" style={{ height: `${Math.round(progresso * 100)}%` }} />
+      <div className="no-print fixed left-0 top-0 z-[1050] h-screen w-1 bg-muted" title={`${Math.round(progresso.pct * 100)}% concluído${progresso.faltam.length ? ` — faltam: ${progresso.faltam.join(', ')}` : ' — tudo pronto'}`}>
+        <div className="absolute bottom-0 left-0 w-full bg-primary transition-all" style={{ height: `${Math.round(progresso.pct * 100)}%` }} />
       </div>
 
     </div>
