@@ -2112,6 +2112,39 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta, onS
         {chk('Escala gráfica', 'mostrarEscalaGrafica')}
         {chk('Planta de situação', 'mostrarSituacao')}
       </div>
+      <div className="space-y-1 rounded border p-2">
+        <div className="text-[10px] uppercase text-muted-foreground">Estilização das Linhas (Planta)</div>
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          <div className="space-y-1">
+            <Label className="text-[10px]">Cor do perímetro</Label>
+            <Input type="text" placeholder="#7c2d12" value={config.corPoligono ?? ''} onChange={(e) => set({ corPoligono: e.target.value || undefined })} className="h-7 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px]">Espessura perímetro</Label>
+            <Input type="number" step="0.1" placeholder="1.8" value={config.larguraPoligono ? String(config.larguraPoligono) : ''} onChange={(e) => set({ larguraPoligono: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="space-y-1">
+            <Label className="text-[10px]">Cor de preenchimento</Label>
+            <Input type="text" placeholder="#fde68a" value={config.fillPoligono ?? ''} onChange={(e) => set({ fillPoligono: e.target.value || undefined })} className="h-7 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px]">Espessura divisas apoio</Label>
+            <Input type="number" step="0.1" placeholder="3.2" value={config.larguraDivisasApoio ? String(config.larguraDivisasApoio) : ''} onChange={(e) => set({ larguraDivisasApoio: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="space-y-1">
+            <Label className="text-[10px]">Cor outras glebas</Label>
+            <Input type="text" placeholder="#c2410c" value={config.corOutrasGlebas ?? ''} onChange={(e) => set({ corOutrasGlebas: e.target.value || undefined })} className="h-7 text-xs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px]">Espessura outras glebas</Label>
+            <Input type="number" step="0.1" placeholder="1.2" value={config.larguraOutrasGlebas ? String(config.larguraOutrasGlebas) : ''} onChange={(e) => set({ larguraOutrasGlebas: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
+          </div>
+        </div>
+      </div>
       <div className="space-y-1">
         <Label>Laudo técnico (carimbo)</Label>
         <textarea className="min-h-[84px] w-full rounded border border-input bg-background p-2 text-xs" placeholder="(texto padrão)"

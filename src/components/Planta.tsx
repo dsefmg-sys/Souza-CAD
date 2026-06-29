@@ -316,16 +316,18 @@ export default function Planta({
         const pp = g.pts.map((p) => `${sx(p.leste).toFixed(1)},${sy(p.norte).toFixed(1)}`).join(' ');
         const ccx = g.pts.reduce((s, p) => s + sx(p.leste), 0) / g.pts.length;
         const ccy = g.pts.reduce((s, p) => s + sy(p.norte), 0) / g.pts.length;
+        const ogCor = config.corOutrasGlebas || '#c2410c';
+        const ogFill = config.corOutrasGlebas || '#f97316';
         return (
           <g key={`og${i}`}>
-            <polygon points={pp} fill="#f97316" fillOpacity={0.06} stroke="#c2410c" strokeWidth={1.2} strokeDasharray="6 4" />
-            <text x={ccx} y={ccy} fontSize={fs(10)} fontWeight="bold" textAnchor="middle" fill="#7c2d12">{g.nome}</text>
+            <polygon points={pp} fill={ogFill} fillOpacity={0.06} stroke={ogCor} strokeWidth={config.larguraOutrasGlebas ?? 1.2} strokeDasharray="6 4" />
+            <text x={ccx} y={ccy} fontSize={fs(10)} fontWeight="bold" textAnchor="middle" fill={ogCor}>{g.nome}</text>
           </g>
         );
       })}
 
       {/* ---------- POLÍGONO (gleba ativa) ---------- */}
-      <polygon points={pts} fill="#fde68a" fillOpacity={0.18} stroke="#7c2d12" strokeWidth={1.8} />
+      <polygon points={pts} fill={config.fillPoligono || '#fde68a'} fillOpacity={0.18} stroke={config.corPoligono || '#7c2d12'} strokeWidth={config.larguraPoligono ?? 1.8} />
 
       {/* ---------- LINHAS DE APOIO DAS DIVISAS ---------- */}
       {vertices.map((v, i) => {
@@ -340,7 +342,7 @@ export default function Planta({
         const off = 3.2;
         return (
           <line key={`div${v.id}`} x1={a.x + nx * off} y1={a.y + ny * off} x2={b.x + nx * off} y2={b.y + ny * off}
-            stroke={cor} strokeWidth={3.2} strokeLinecap="round" opacity={0.9} />
+            stroke={cor} strokeWidth={config.larguraDivisasApoio ?? 3.2} strokeLinecap="round" opacity={0.9} />
         );
       })}
 

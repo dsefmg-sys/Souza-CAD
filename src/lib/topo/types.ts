@@ -271,6 +271,14 @@ export interface PlantaConfig {
   textoConfrontantes?: string; // declaração dos confrontantes (carimbo)
   // ajustes por texto (chave = id do texto na planta): conteúdo, escala própria e negrito
   textos?: Record<string, { texto?: string; escala?: number; negrito?: boolean }>;
+  
+  // Customização de cores e espessuras das linhas e polígonos na planta
+  corPoligono?: string;        // cor do perímetro principal, padrão "#7c2d12"
+  larguraPoligono?: number;    // espessura da linha do perímetro principal, padrão 1.8
+  fillPoligono?: string;       // cor de preenchimento do perímetro principal, padrão "#fde68a"
+  corOutrasGlebas?: string;    // cor das linhas de outras glebas, padrão "#c2410c"
+  larguraOutrasGlebas?: number;// espessura das linhas de outras glebas, padrão 1.2
+  larguraDivisasApoio?: number;// espessura das linhas de apoio das divisas, padrão 3.2
 }
 
 /** Dados fixos do escritório (carimbo da planta). */
