@@ -1633,8 +1633,8 @@ export default function EditorPage() {
          <Button size="sm" variant="outline" className="gap-1 font-semibold shrink-0 h-8" disabled={processando} title="Iniciar um novo projeto (TXT)" onClick={criarNovoProjeto}>
            <Plus className="size-4" /> NOVO
          </Button>
-         <Button size="sm" variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1 shrink-0 h-8 mr-1" disabled={processando} title="Salvar o projeto" onClick={salvar}>
-           <Save className="size-4" /> SALVAR
+         <Button size="sm" variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1 shrink-0 h-8 mr-1" disabled={processando} title="Projeto salvo (cor sólida = salvo com sucesso). Tudo é salvo automaticamente; este botão força e confirma o salvamento." onClick={salvar}>
+           <Save className="size-4" /> SALVO
          </Button>
 
          <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
@@ -1655,32 +1655,33 @@ export default function EditorPage() {
         })}
       </div>
 
-      {/* Faixa de status/controles contextuais — só aparece quando há algo para mostrar */}
-      {(!!msg || (vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante'))) && (
-      <div className="no-print flex items-center gap-2 border-b px-3 py-1 text-xs">
-        {vista === 'mapa' && modo === 'divisa' && (
-          <>
-            <span className="text-muted-foreground">Pintando divisa:</span>
-            <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
-              {REPRESENTACOES.map((r) => <option key={r} value={r}>{REPRES_LABEL[r] || r}</option>)}
-            </select>
-          </>
+      <div className="relative flex min-h-0 flex-1">
+        {/* Faixa de status/controles — sobreposta (não empurra o mapa/planta); some sozinha */}
+        {(!!msg || (vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante'))) && (
+          <div className="no-print pointer-events-none absolute left-1/2 top-2 z-[1200] flex max-w-[90%] -translate-x-1/2 justify-center">
+            <div className="pointer-events-auto flex items-center gap-2 rounded-full border bg-background/95 px-3 py-1 text-xs shadow-lg backdrop-blur">
+              {vista === 'mapa' && modo === 'divisa' && (
+                <>
+                  <span className="text-muted-foreground">Pintando divisa:</span>
+                  <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
+                    {REPRESENTACOES.map((r) => <option key={r} value={r}>{REPRES_LABEL[r] || r}</option>)}
+                  </select>
+                </>
+              )}
+              {vista === 'mapa' && modo === 'confrontante' && (
+                <>
+                  <span className="text-muted-foreground">Pintando confrontante:</span>
+                  <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
+                    <option value="">— escolher —</option>
+                    {confrontantes.map((c) => <option key={c.id} value={c.id}>{c.nome || '(sem nome)'}</option>)}
+                  </select>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus className="size-3" /> Novo confront.</Button>
+                </>
+              )}
+              {msg && <span className="text-primary">{msg}</span>}
+            </div>
+          </div>
         )}
-        {vista === 'mapa' && modo === 'confrontante' && (
-          <>
-            <span className="text-muted-foreground">Pintando confrontante:</span>
-            <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
-              <option value="">— escolher —</option>
-              {confrontantes.map((c) => <option key={c.id} value={c.id}>{c.nome || '(sem nome)'}</option>)}
-            </select>
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus className="size-3" /> Novo confront.</Button>
-          </>
-        )}
-        {msg && <span className="ml-auto text-primary">{msg}</span>}
-      </div>
-      )}
-
-      <div className="flex min-h-0 flex-1">
         {/* Área principal: mapa ou planta */}
         {(() => {
           const rotulo = toolW >= 104;
