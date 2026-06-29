@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import {
-  Upload, FileText, Sheet, Map as MapIcon, Printer, Settings, Plus, Trash2,
+  Upload, FileText, Map as MapIcon, Printer, Settings, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen, Brush,
+  Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen, Brush, Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +57,11 @@ const IMOVEL_VAZIO: ImovelData = {
 };
 
 type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'planta' | 'conferencia' | 'projetos';
+
+// tons médios e suaves (funcionam no tema claro e escuro via opacidade)
+const COR_IMPORT = 'bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20 border-sky-500/30';
+const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30';
+const COR_PLANTA = 'bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20 border-violet-500/30';
 
 export default function EditorPage() {
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
@@ -640,35 +645,31 @@ export default function EditorPage() {
   return (
     <div className="flex h-screen flex-col">
       {/* Topo */}
-      <header className="no-print flex items-center gap-2 border-b px-3 py-2">
-        <span className="mr-2 text-lg font-semibold tracking-tight">Souza CAD</span>
+      <header className="no-print flex items-center gap-1.5 border-b px-3 py-2">
         <input ref={fileRef} type="file" accept=".txt,.csv" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarDxfArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={geojsonRef} type="file" accept=".geojson,.json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarReferenciaGeoJson(f); e.currentTarget.value = ''; }} />
-        <Button size="sm" variant="secondary" disabled={processando} onClick={() => fileRef.current?.click()}><Upload /> Importar TXT</Button>
-        <Button size="sm" variant="secondary" disabled={processando} onClick={() => dxfRef.current?.click()}><Upload /> Importar DXF</Button>
-        <Button size="sm" variant="secondary" onClick={() => geojsonRef.current?.click()} title="Importar confrontante certificado (GeoJSON do SIGEF/QGIS)"><Upload /> Ref. SIGEF</Button>
+        <Button size="sm" variant="outline" className={COR_IMPORT} disabled={processando} title="Importar pontos de um arquivo TXT" onClick={() => fileRef.current?.click()}><Upload /> TXT</Button>
+        <Button size="sm" variant="outline" className={COR_IMPORT} disabled={processando} title="Importar desenho de um arquivo DXF" onClick={() => dxfRef.current?.click()}><Upload /> DXF</Button>
         <div className="mx-1 h-6 w-px bg-border" />
-        <Button size="sm" variant="outline" onClick={exportarMemorial}><FileText /> Memorial</Button>
-        <Button size="sm" variant="outline" onClick={exportarOds}><Sheet /> Planilha SIGEF</Button>
-        <Button size="sm" variant="outline" onClick={exportarPlanta}><Printer /> Planta PDF</Button>
-        <Button size="sm" variant="outline" onClick={exportarDxf}><PenTool /> DXF</Button>
-        <Button size="sm" variant="outline" onClick={() => setReqAberto(true)}><FileSignature /> Requerimento</Button>
-        <Button size="sm" variant="outline" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
+        <Button size="sm" variant="outline" className={COR_PECA} title="Gerar o memorial descritivo (.docx)" onClick={exportarMemorial}><FileText /> Memorial</Button>
+        <Button size="sm" variant="outline" className={COR_PECA} title="Gerar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button>
+        <Button size="sm" variant="outline" className={COR_PECA} title="Exportar o desenho em DXF (georreferenciado)" onClick={exportarDxf}><PenTool /> DXF</Button>
+        <Button size="sm" variant="outline" className={COR_PECA} title="Gerar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><FileSignature /> Requerimento</Button>
+        <Button size="sm" variant="outline" className={COR_PECA} title="Gerar os dados do TRT" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
         <div className="mx-1 h-6 w-px bg-border" />
-        <Button size="sm" variant="ghost" onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
-          {vista === 'mapa' ? <><FileText /> Ver planta</> : <><MapIcon /> Ver mapa</>}
+        <Button size="sm" variant="outline" className={COR_PLANTA} title={vista === 'mapa' ? 'Abrir a prévia da planta' : 'Voltar ao mapa'} onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
+          {vista === 'mapa' ? <><Eye /> Planta</> : <><MapIcon /> Mapa</>}
         </Button>
         <div className="ml-auto flex items-center gap-2">
           {msg && <span className="text-xs text-primary">{msg}</span>}
-          <Button size="sm" variant="ghost" disabled={processando} onClick={salvar}><Save /> Salvar</Button>
+          <Button size="sm" variant="ghost" disabled={processando} title="Salvar o projeto" onClick={salvar}><Save /> Salvar</Button>
           <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
           <AuthBar onMudou={() => { atualizarLista(); }} />
-          <Link href="/cadastros"><Button size="sm" variant="ghost"><BookUser /> Cadastros</Button></Link>
-          <Link href="/configuracoes"><Button size="sm" variant="ghost"><Settings /> Config</Button></Link>
+          <Link href="/cadastros"><Button size="sm" variant="ghost" title="Dados de proprietários, confrontantes, imóveis e cartórios"><BookUser /> Dados</Button></Link>
         </div>
       </header>
 
@@ -711,6 +712,8 @@ export default function EditorPage() {
                   <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher (ex.: lago)">Preencher</Button>
                 )}
                 {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /></Button>}
+                <div className="mx-1 w-px bg-border" />
+                <Button size="sm" variant="ghost" onClick={() => geojsonRef.current?.click()} title="Ref. SIGEF: importar confrontante certificado (GeoJSON do SIGEF/QGIS)"><Upload /></Button>
               </div>
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
@@ -722,8 +725,9 @@ export default function EditorPage() {
           ) : (
             <div id="planta-print" className="relative h-full overflow-auto bg-neutral-200 p-4">
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
-                <Button size="sm" variant="secondary" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
-                {situacaoUrl && <Button size="sm" variant="ghost" onClick={() => setSituacaoUrl(undefined)}>Remover</Button>}
+                <Button size="sm" variant="default" title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> Baixar PDF</Button>
+                <Button size="sm" variant="secondary" title="Gerar a planta de situação (recorte de satélite)" onClick={gerarSituacaoPlanta}><MapIcon /> Gerar situação</Button>
+                {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => setSituacaoUrl(undefined)}>Remover</Button>}
               </div>
               {res && tecnico && escritorio && (
                 <div className="mx-auto max-w-[1587px] bg-white shadow">
@@ -856,6 +860,12 @@ export default function EditorPage() {
       />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
+
+      {/* Configurações: engrenagem flutuante no canto inferior esquerdo */}
+      <Link href="/configuracoes" title="Configurações"
+        className="no-print fixed bottom-3 left-3 z-[1100] flex size-10 items-center justify-center rounded-full border bg-background/95 text-muted-foreground shadow-md hover:text-foreground [&_svg]:size-5">
+        <Settings />
+      </Link>
     </div>
   );
 }
