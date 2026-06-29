@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users,
-  Maximize, Settings, LogOut, Table, FileWarning, Target, Search, Check, X,
+  Maximize, Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import ErrataModal from '@/components/ErrataModal';
 import ConsultarModal from '@/components/ConsultarModal';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
+import CalculadoraModal from '@/components/CalculadoraModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -184,6 +185,7 @@ export default function EditorPage() {
   const [nomeProjetoManual, setNomeProjetoManual] = useState(false);
   const [reqAberto, setReqAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
+  const [calcAberta, setCalcAberta] = useState(false);
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean }>({});
@@ -1725,6 +1727,7 @@ export default function EditorPage() {
            </Button>
          </Etapa>
 
+         <Button size="sm" variant="ghost" title="Calculadora: converter coordenada, distância e azimute" onClick={() => setCalcAberta(true)}><Ruler /></Button>
          <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
          <Button size="sm" variant="ghost" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
          {nuvemDisponivel && user && (
@@ -2115,6 +2118,7 @@ export default function EditorPage() {
         sugProp={sugProp}
         onBaixar={() => setBaixou((b) => ({ ...b, req: true }))}
       />
+      <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
