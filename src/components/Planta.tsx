@@ -425,18 +425,13 @@ function Carimbo(props: {
   const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const x0 = W - CARW;
-  let y = 24;
-  const linha = (label: string, valor: string) => {
-    const el = (
-      <g key={label + y}>
-        <text x={x0 + 10} y={y} fontSize={fs(8.5)} fontWeight="bold" fill="#333">{label}</text>
-        <text x={x0 + 10} y={y + 11} fontSize={fs((valor || '').length > 46 ? 8.5 : 10)}>{(valor || '—').slice(0, 64)}</text>
-      </g>
-    );
-    y += 27;
-    return el;
-  };
-  const campos = [
+  const padX = 10;
+  const lx = x0 + padX;          // x do conteúdo
+  const rx = W - 14;             // borda direita do conteúdo
+  const cxc = (x0 + W) / 2;      // centro da coluna
+  const temLogo = !!escritorio.logoDataUrl;
+
+  const campos: [string, string][] = [
     ['Título:', titulo],
     ['Folha:', folha],
     ['PROPRIEDADE:', glebaNome || imovel.denominacao || '—'],
@@ -449,40 +444,74 @@ function Carimbo(props: {
     ['ESCALA:', `1 / ${escalaDenom}`],
     ['DATA:', dataExtenso || '—'],
   ];
-  const elementos = campos.map(([k, v]) => linha(k, v));
-  const yAssin = y + 6;
+
+  // âncoras verticais: cabeçalho no topo, carimbo do escritório no rodapé; o miolo (campos,
+  // assinaturas e declarações) é distribuído para preencher a coluna sem vãos.
+  const headerBottom = temLogo ? 70 : 24;
+  const fieldsTop = headerBottom + 18;
+  const fieldGap = 30;
+  const fieldsEnd = fieldsTop + campos.length * fieldGap;
+  const officeTop = H - 112;
+  const declTop = officeTop - 132;
+  const sigSpace = declTop - fieldsEnd;
+  const sig1 = fieldsEnd + sigSpace * 0.34;
+  const sig2 = fieldsEnd + sigSpace * 0.72;
+
+  const assinatura = (yLine: number, linhas: { t: string; b?: boolean; muted?: boolean }[]) => (
+    <g>
+      <line x1={lx + 6} y1={yLine} x2={rx - 6} y2={yLine} stroke="#000" strokeWidth={0.7} />
+      {linhas.map((l, i) => (
+        <text key={i} x={cxc} y={yLine + 13 + i * 11} fontSize={fs(l.b ? 9 : 8)} fontWeight={l.b ? 'bold' : 'normal'} fill={l.muted ? '#555' : '#000'} textAnchor="middle">{l.t}</text>
+      ))}
+    </g>
+  );
 
   return (
     <g>
       <line x1={x0} y1={16} x2={x0} y2={H - 16} stroke="#000" strokeWidth={1.2} />
-      {escritorio.logoDataUrl ? <image href={escritorio.logoDataUrl} x={x0 + 10} y={16} height={40} /> : null}
-      {elementos}
 
-      {/* assinaturas */}
-      <line x1={x0 + 10} y1={yAssin + 40} x2={x0 + CARW - 20} y2={yAssin + 40} stroke="#000" strokeWidth={0.7} />
-      <text x={(x0 + W) / 2} y={yAssin + 52} fontSize={fs(9)} textAnchor="middle">{imovel.proprietario || 'Proprietário'}</text>
-      <text x={(x0 + W) / 2} y={yAssin + 62} fontSize={fs(8)} textAnchor="middle" fill="#555">Assinatura do Proprietário</text>
+      {/* cabeçalho: logotipo enquadrado */}
+      {temLogo ? <image href={escritorio.logoDataUrl} x={lx} y={18} width={rx - lx} height={44} preserveAspectRatio="xMidYMid meet" /> : null}
+      <line x1={lx} y1={headerBottom} x2={rx} y2={headerBottom} stroke="#000" strokeWidth={0.6} />
 
-      <line x1={x0 + 10} y1={yAssin + 100} x2={x0 + CARW - 20} y2={yAssin + 100} stroke="#000" strokeWidth={0.7} />
-      <text x={(x0 + W) / 2} y={yAssin + 112} fontSize={fs(9)} fontWeight="bold" textAnchor="middle">{tecnico.nome}</text>
-      <text x={(x0 + W) / 2} y={yAssin + 122} fontSize={fs(8)} textAnchor="middle">{tecnico.formacao}</text>
-      <text x={(x0 + W) / 2} y={yAssin + 132} fontSize={fs(8)} textAnchor="middle">CFT nº {tecnico.cft} · INCRA: {tecnico.credenciamentoIncra}</text>
-      <text x={(x0 + W) / 2} y={yAssin + 142} fontSize={fs(8)} textAnchor="middle" fill="#555">Assinatura do Responsável Técnico</text>
+      {/* campos */}
+      {campos.map(([k, v], i) => {
+        const y = fieldsTop + i * fieldGap;
+        const valor = (v || '—').slice(0, 64);
+        return (
+          <g key={k}>
+            <text x={lx} y={y} fontSize={fs(8)} fontWeight="bold" fill="#444">{k}</text>
+            <text x={lx} y={y + 12.5} fontSize={fs(valor.length > 40 ? 8 : 9.5)} fill="#111">{valor}</text>
+          </g>
+        );
+      })}
+      <line x1={lx} y1={fieldsEnd - 4} x2={rx} y2={fieldsEnd - 4} stroke="#000" strokeWidth={0.6} />
 
-      {/* laudo técnico (resumido) */}
-      <TextoQuebrado x={x0 + 10} y={yAssin + 158} fontSize={fs(7.5)} larguraChars={66} texto={textoLaudo} />
+      {/* assinaturas distribuídas */}
+      {assinatura(sig1, [
+        { t: imovel.proprietario || 'Proprietário' },
+        { t: 'Assinatura do Proprietário', muted: true },
+      ])}
+      {assinatura(sig2, [
+        { t: tecnico.nome, b: true },
+        { t: tecnico.formacao },
+        { t: `CFT nº ${tecnico.cft} · INCRA: ${tecnico.credenciamentoIncra}` },
+        { t: 'Assinatura do Responsável Técnico', muted: true },
+      ])}
 
-      {/* declaração confrontantes (resumida) */}
-      <text x={x0 + 10} y={yAssin + 196} fontSize={fs(8.5)} fontWeight="bold">CONFRONTANTES</text>
-      <TextoQuebrado x={x0 + 10} y={yAssin + 208} fontSize={fs(7.5)} larguraChars={66} texto={textoConfront} />
+      {/* declarações (laudo + confrontantes) */}
+      <line x1={lx} y1={declTop - 10} x2={rx} y2={declTop - 10} stroke="#000" strokeWidth={0.6} />
+      <TextoQuebrado x={lx} y={declTop + 4} fontSize={fs(7)} larguraChars={72} texto={textoLaudo} />
+      <text x={lx} y={declTop + 52} fontSize={fs(8)} fontWeight="bold">CONFRONTANTES</text>
+      <TextoQuebrado x={lx} y={declTop + 64} fontSize={fs(7)} larguraChars={72} texto={textoConfront} />
 
-      {/* carimbo do escritório */}
-      <rect x={x0 + 8} y={H - 110} width={CARW - 16} height={94} fill="none" stroke="#000" strokeWidth={1} />
-      <text x={(x0 + W) / 2} y={H - 90} fontSize={fs(11)} fontWeight="bold" textAnchor="middle">{escritorio.nome}</text>
-      <text x={(x0 + W) / 2} y={H - 76} fontSize={fs(8.5)} textAnchor="middle">{escritorio.ramo}</text>
-      <text x={(x0 + W) / 2} y={H - 62} fontSize={fs(8.5)} textAnchor="middle">CNPJ {escritorio.cnpj}</text>
-      <text x={(x0 + W) / 2} y={H - 48} fontSize={fs(8.5)} textAnchor="middle">{escritorio.endereco.slice(0, 60)}</text>
-      <text x={(x0 + W) / 2} y={H - 34} fontSize={fs(8.5)} textAnchor="middle">Tel./WhatsApp: {escritorio.telefone}</text>
+      {/* carimbo do escritório (rodapé) */}
+      <rect x={x0 + 8} y={officeTop} width={CARW - 16} height={96} fill="none" stroke="#000" strokeWidth={1} />
+      <text x={cxc} y={officeTop + 22} fontSize={fs(11)} fontWeight="bold" textAnchor="middle">{escritorio.nome}</text>
+      <text x={cxc} y={officeTop + 37} fontSize={fs(8)} textAnchor="middle">{escritorio.ramo}</text>
+      <text x={cxc} y={officeTop + 51} fontSize={fs(8)} textAnchor="middle">CNPJ {escritorio.cnpj}</text>
+      <text x={cxc} y={officeTop + 65} fontSize={fs(8)} textAnchor="middle">{escritorio.endereco.slice(0, 60)}</text>
+      <text x={cxc} y={officeTop + 79} fontSize={fs(8)} textAnchor="middle">Tel./WhatsApp: {escritorio.telefone}</text>
     </g>
   );
 }

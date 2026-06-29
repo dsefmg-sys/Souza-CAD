@@ -9,7 +9,7 @@ import {
   Upload, FileText, Map as MapIcon, Printer, Settings, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen, Brush, Download,
+  Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,7 @@ import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Pro
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
-import { montarVertices, reordenar, inverterSentido, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
+import { montarVertices, reordenar, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
 import { novaGlebaVazia, glebaDe, migrarProjeto } from '@/lib/topo/glebas';
 import { calcular } from '@/lib/topo/calcular';
@@ -59,6 +59,9 @@ const IMOVEL_VAZIO: ImovelData = {
 type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'planta' | 'conferencia' | 'projetos';
 
 // tons médios e suaves (funcionam no tema claro e escuro via opacidade)
+// municípios mais atendidos (atalho na importação; cada um ancora o fuso 23/24)
+const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-MG', 'Guaçuí-ES', 'Carangola-MG', 'Caparaó-MG'];
+
 const COR_IMPORT = 'bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20 border-sky-500/30';
 const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30';
 const COR_PLANTA = 'bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20 border-violet-500/30';
@@ -138,6 +141,20 @@ export default function EditorPage() {
   const res = useMemo(() => (vertices.length >= 3 ? calcular(vertices, confrontantePorLado) : null), [vertices, confrontantePorLado]);
 
   function aviso(t: string) { setMsg(t); setTimeout(() => setMsg(''), 4000); }
+
+  // ---------- desfazer (histórico de vértices + trechos de confrontante) ----------
+  const histRef = useRef<{ v: Vertex[]; cpl: Record<number, string> }[]>([]);
+  function snap() {
+    histRef.current.push({ v: vertices, cpl: confrontantePorLado });
+    if (histRef.current.length > 60) histRef.current.shift();
+  }
+  function desfazer() {
+    const s = histRef.current.pop();
+    if (!s) { aviso('Nada para desfazer.'); return; }
+    setVertices(s.v);
+    setConfrontantePorLado(s.cpl);
+    aviso('Última ação desfeita.');
+  }
 
   // ---------- glebas ----------
   // Devolve a lista completa de glebas com a ativa atualizada a partir do estado de trabalho.
@@ -245,6 +262,7 @@ export default function EditorPage() {
   }
 
   function moverVertice(id: string, lat: number, lon: number) {
+    snap();
     let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
     if (snapAtivo) {
       const s = snapUtm(leste, norte, alvosSnap(id), { tolVerticeM: 2 });
@@ -254,6 +272,7 @@ export default function EditorPage() {
   }
 
   function apagarVertice(id: string) {
+    snap();
     setVertices((vs) => reordenar(vs.filter((v) => v.id !== id)));
     if (selecionadoId === id) setSelecionadoId(null);
   }
@@ -275,6 +294,7 @@ export default function EditorPage() {
   }
 
   function inserirVertice(lat: number, lon: number) {
+    snap();
     let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
     if (snapAtivo) {
       const s = snapUtm(leste, norte, alvosSnap(), { tolVerticeM: 2 });
@@ -299,6 +319,7 @@ export default function EditorPage() {
   }
 
   async function renumerar() {
+    snap();
     await aplicarCodigos(vertices);
     aviso('Vértices renumerados.');
   }
@@ -306,6 +327,7 @@ export default function EditorPage() {
   // Reordena a partir do vértice mais ao norte, sentido horário (praxe), e renumera.
   async function ordenarNorteHorario() {
     if (vertices.length < 3) return;
+    snap();
     await aplicarCodigos(iniciarDoNorteHorario(vertices));
     aviso('Reordenado do norte em sentido horário.');
   }
@@ -313,6 +335,7 @@ export default function EditorPage() {
   // Reordena o anel arrastando na lista e renumera (muda o polígono e os nomes).
   async function reordenarVertice(from: number, to: number) {
     if (from === to || from < 0 || to < 0 || from >= vertices.length || to >= vertices.length) return;
+    snap();
     const out = [...vertices];
     const [m] = out.splice(from, 1);
     out.splice(to, 0, m);
@@ -365,6 +388,7 @@ export default function EditorPage() {
   }
 
   function alternarTipo(id: string) {
+    snap();
     setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, tipo: v.tipo === 'M' ? 'P' : 'M', isDivisa: v.tipo !== 'M' } : v)));
   }
 
@@ -375,10 +399,12 @@ export default function EditorPage() {
   // Pintar divisa: aplica o tipo escolhido ao trecho que SAI do vértice clicado. Para marcar um
   // caminho, é só clicar os vértices em sequência ao longo dele.
   function pintarDivisa(id: string) {
+    snap();
     setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, representacao: tipoDivisaPincel } : v)));
   }
 
   function detectarConfrontantes() {
+    snap();
     const { confrontantes: cs, confrontantePorLado: mapa } = montarConfrontantes(vertices);
     // preserva dados já preenchidos por nome
     setConfrontantes((old) => cs.map((c) => {
@@ -693,8 +719,8 @@ export default function EditorPage() {
                 <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice"><Plus /></Button>
                 <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /></Button>
                 <div className="mx-1 w-px bg-border" />
-                <Button size="sm" variant="ghost" onClick={() => setVertices((vs) => inverterSentido(vs))} title="Inverter sentido"><RotateCcw /></Button>
-                <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => selecionadoId && setVertices((vs) => definirInicio(vs, selecionadoId))} title="Definir início no vértice selecionado"><Flag /></Button>
+                <Button size="sm" variant="ghost" onClick={desfazer} title="Desfazer última ação"><Undo2 /></Button>
+                <Button size="sm" variant="ghost" disabled={!selecionadoId} onClick={() => { if (selecionadoId) { snap(); setVertices((vs) => definirInicio(vs, selecionadoId)); } }} title="Definir início no vértice selecionado"><Flag /></Button>
                 <Button size="sm" variant="ghost" onClick={renumerar} title="Renumerar vértices"><Crosshair /></Button>
                 <Button size="sm" variant="ghost" onClick={() => setMostrarRotulos((m) => !m)} title={mostrarRotulos ? 'Esconder nomes' : 'Mostrar nomes'}>{mostrarRotulos ? <EyeOff /> : <Eye />}</Button>
                 <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} onClick={() => setSnapAtivo((s) => !s)} title="Snap: encaixar em vértices existentes"><Magnet /></Button>
@@ -788,9 +814,9 @@ export default function EditorPage() {
             {aba === 'vertices' && (
               <div className="space-y-1">
                 <div className="mb-2 flex flex-wrap gap-1">
+                  <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer última ação"><Undo2 /> Desfazer</Button>
                   <Button size="sm" variant="outline" onClick={ordenarNorteHorario} title="Começa no vértice mais ao norte e segue no sentido horário">Norte ↻</Button>
                   <Button size="sm" variant="outline" onClick={renumerar}>Renumerar</Button>
-                  <Button size="sm" variant="outline" onClick={() => setVertices((vs) => inverterSentido(vs))}>Inverter</Button>
                 </div>
                 <p className="mb-1 text-[10px] text-muted-foreground">Arraste um vértice para reordenar o polígono (renumera automático).</p>
                 {vertices.map((v, i) => {
@@ -939,7 +965,17 @@ function PainelImovel({ imovel, onChange, onMunicipio, nome, onNome, zona, hemis
         <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
         <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} />
       </div>
-      <Campo label="Município" value={imovel.municipio} onChange={onMunicipio} placeholder="Espera Feliz-MG" />
+      <div className="space-y-1">
+        <Campo label="Município" value={imovel.municipio} onChange={onMunicipio} placeholder="Espera Feliz-MG" />
+        <div className="flex flex-wrap gap-1">
+          {MUNICIPIOS_ATALHO.map((m) => (
+            <button key={m} onClick={() => onMunicipio(m)} title={`Usar ${m} (ajusta o fuso)`}
+              className={`rounded border px-1.5 py-0.5 text-[10px] ${imovel.municipio === m ? 'border-primary bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
+              {m.replace(/-[A-Z]{2}$/, '')}
+            </button>
+          ))}
+        </div>
+      </div>
       <Campo label="Local (memorial)" value={imovel.local} onChange={(v) => set('local', v)} placeholder="Córrego ..., Cidade-UF" />
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
