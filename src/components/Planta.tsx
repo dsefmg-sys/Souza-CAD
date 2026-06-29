@@ -96,9 +96,9 @@ export default function Planta({
   const verConv = config.mostrarConvencoes !== false;
   const verEscalaG = config.mostrarEscalaGrafica !== false;
   const verSituacao = config.mostrarSituacao !== false;
-  const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1;
+  const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1.08;
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
-  const fonteRot = fs(config.fonteRotulos ?? 8.5);
+  const fonteRot = fs(config.fonteRotulos ?? 10);
   const ef = valoresEfetivos(res, imovel);
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
 
@@ -628,8 +628,9 @@ function CarimboA3(props: {
           const y = 152 + i * gap;
           return (
             <g key={k}>
-              <text x={lx + 12} y={y} fontSize={fs(8)} fontWeight="bold" fill="#374151">{k}</text>
-              <text x={lx + 150} y={y} fontSize={fs(9)} fontWeight="medium" fill="#000">{v.slice(0, 48)}</text>
+              {/* rótulo à esquerda e valor numa coluna fixa, ambos na mesma base */}
+              <text x={lx + 12} y={y} fontSize={fs(9.5)} fontWeight="bold" fill="#1f2937">{k}</text>
+              <text x={lx + 150} y={y} fontSize={fs(11)} fontWeight="600" fill="#000">{v.slice(0, 44)}</text>
             </g>
           );
         })}
