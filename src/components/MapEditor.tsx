@@ -8,7 +8,7 @@ import { distanciaCota } from '@/lib/topo/objetos';
 import { corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR } from '@/lib/topo/geometry';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'cota' | 'texto' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'cota' | 'texto' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
@@ -43,6 +43,7 @@ interface Props {
   verticesIgnorados?: Vertex[];
   onIgnorarVertice?: (id: string) => void;
   onConsiderarVertice?: (id: string) => void;
+  realceId?: string | null;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -138,10 +139,10 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho }: {
   useMapEvents({
     click(e) {
       if (modo === 'inserir') onInserir(e.latlng.lat, e.latlng.lng);
-      else if ((modo === 'linha' || modo === 'cota' || modo === 'texto') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
+      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
     },
     contextmenu(e) {
-      if (modo === 'linha' || modo === 'cota' || modo === 'texto') {
+      if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
         e.originalEvent.preventDefault();
         onCancelDesenho?.();
       }
@@ -171,6 +172,7 @@ export default function MapEditor(props: Props) {
     tamNomes = 11,
     verticesIgnorados = [],
     onIgnorarVertice, onConsiderarVertice,
+    realceId = null,
   } = props;
 
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
@@ -311,7 +313,7 @@ export default function MapEditor(props: Props) {
           key={v.id}
           position={[v.lat, v.lon]}
           draggable={modo === 'navegar' && !bloqueado}
-          icon={iconeVertice(v, v.id === selecionadoId)}
+          icon={iconeVertice(v, v.id === selecionadoId || v.id === realceId)}
           eventHandlers={{
             click() {
               if (modo === 'apagar') onApagar(v.id);

@@ -108,6 +108,7 @@ export default function EditorPage() {
   const [zona, setZona] = useState(23);
   const [hemisferio, setHemisferio] = useState<'N' | 'S'>('S');
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+  const [realceId, setRealceId] = useState<string | null>(null); // vértice destacado ao passar o mouse na lista
   const [modo, setModo] = useState<ModoEdicao>('navegar');
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [tamNomes, setTamNomes] = useState(11); // tamanho da fonte dos nomes dos vértices no mapa
@@ -660,6 +661,14 @@ export default function EditorPage() {
         return nb;
       });
     } else if (modo === 'linha') {
+      // linha = traço reto de 2 pontos (fecha sozinho no 2º clique)
+      setDesenhoBuffer((buf) => {
+        const nb = [...buf, p];
+        if (nb.length >= 2) { setObjetos((os) => [...os, novaPolilinha(nb)]); return []; }
+        return nb;
+      });
+    } else if (modo === 'polilinha') {
+      // polilinha = vários pontos; finaliza no botão
       setDesenhoBuffer((buf) => [...buf, p]);
     }
   }
@@ -924,9 +933,12 @@ export default function EditorPage() {
       const f = anel[0], l = anel[anel.length - 1];
       if (Math.hypot(f.x - l.x, f.y - l.y) < 0.01) anel = anel.slice(0, -1);
       const tec = tecnico ?? carregarTecnico();
+      // fuso automático por região (igual ao TXT), a partir do 1º ponto do DXF
+      const z = detectarFusoPorRegiao(anel[0].x, anel[0].y, hemisferio, tec.fusosPermitidos ?? [22, 23, 24, 25]).zona;
+      setZona(z);
       const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
       let vs: Vertex[] = anel.map((p) => {
-        const { lat, lon } = utmParaGeo(p.x, p.y, zona, hemisferio);
+        const { lat, lon } = utmParaGeo(p.x, p.y, z, hemisferio);
         return { ...novoVertice({ lat, lon, leste: p.x, norte: p.y, elevacao: 0 }), metodo: tec.metodoPosicionamento, tipoLimite: tec.tipoLimite, representacao: 'linha-ideal' };
       });
       vs = atribuirProvisorio(iniciarDoNorteHorario(vs), cont);
@@ -940,7 +952,7 @@ export default function EditorPage() {
         setNomeProjeto(auto || file.name.replace(/\.[^.]+$/, ''));
         setNomeProjetoManual(false);
       }
-      aviso(`${vs.length} vértices importados do DXF na ${glebaAtivaNome} (fuso ${zona}${hemisferio}).`);
+      aviso(`${vs.length} vértices importados do DXF na ${glebaAtivaNome} (fuso ${z}${hemisferio}).`);
     } finally { setProcessando(false); }
   }
 
@@ -1155,10 +1167,11 @@ export default function EditorPage() {
                   </>
                 )}
                 <div className="my-0.5 h-px w-full bg-border" />
-                <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Desenhar linha/polilinha (clique os pontos, depois Finalizar)"><PenTool /> {L('Linha')}</Button>
+                <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos"><PenTool /> {L('Linha')}</Button>
+                <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos e depois Finalizar (botão direito cancela)"><PenTool /> {L('Polilinha')}</Button>
                 <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos"><RotateCcw className="rotate-90" /> {L('Cota')}</Button>
                 <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir"><FileText /> {L('Texto')}</Button>
-                {modo === 'linha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
+                {modo === 'polilinha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
                 {objSel?.tipo === 'texto' && (
                   <>
                     <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold">A-</span> {L('Diminuir')}</Button>
@@ -1188,7 +1201,7 @@ export default function EditorPage() {
                 onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice}
                 conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}
-                verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} />
+                verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId} />
           ) : (
             <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
               <div className="no-print absolute right-4 top-4 z-10 flex gap-1">
@@ -1337,6 +1350,7 @@ export default function EditorPage() {
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => { if (dragVtxIdx != null) reordenarVertice(dragVtxIdx, i); setDragVtxIdx(null); }}
                       className={`cursor-grab rounded border p-2 text-xs ${selecionadoId === v.id ? 'border-primary bg-accent' : ''} ${dragVtxIdx === i ? 'opacity-50' : ''}`}
+                      onMouseEnter={() => setRealceId(v.id)} onMouseLeave={() => setRealceId((r) => (r === v.id ? null : r))}
                       onClick={() => setSelecionadoId(v.id)}>
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-semibold">{v.codigoSigef || '(sem código)'}</span>
