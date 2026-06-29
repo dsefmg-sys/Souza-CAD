@@ -36,6 +36,27 @@ export function descreverConfrontante(c: Confrontante | undefined): string {
   return base;
 }
 
+export function rumoDMS(azimuteGraus: number): string {
+  let ang = azimuteGraus % 360;
+  if (ang < 0) ang += 360;
+  let quad = '';
+  let val = 0;
+  if (ang >= 0 && ang < 90) {
+    quad = 'NE';
+    val = ang;
+  } else if (ang >= 90 && ang < 180) {
+    quad = 'SE';
+    val = 180 - ang;
+  } else if (ang >= 180 && ang < 270) {
+    quad = 'SW';
+    val = ang - 180;
+  } else {
+    quad = 'NW';
+    val = 360 - ang;
+  }
+  return `${grausParaDMS(val)} ${quad}`;
+}
+
 /** Um pedaço do texto da narrativa; b = negrito (vértices, tipo de divisa e confrontantes). */
 export interface SegmentoTexto { t: string; b?: boolean }
 
@@ -47,7 +68,8 @@ export interface SegmentoTexto { t: string; b?: boolean }
 export function construirNarrativaSegmentos(
   res: ResultadoCalculo,
   confrontantes: Confrontante[],
-  confrontantePorLado: Record<number, string>
+  confrontantePorLado: Record<number, string>,
+  imovel?: ImovelData
 ): SegmentoTexto[] {
   const { vertices, lados } = res;
   if (vertices.length < 3) return [];
@@ -57,9 +79,19 @@ export function construirNarrativaSegmentos(
   const segs: SegmentoTexto[] = [];
   const push = (t: string, b = false) => { if (t) segs.push(b ? { t, b: true } : { t }); };
 
-  push('Inicia-se a descrição deste perímetro no vértice ');
-  push(v0.codigoSigef, true);
-  push(`, de coordenadas (${coordTexto(v0)}); `);
+  const isUrbano = imovel?.tipoImovel === 'urbano';
+
+  if (isUrbano && imovel?.distanciaEsquinaM != null && imovel?.esquinaRua) {
+    push('Inicia-se a descrição deste perímetro no vértice ');
+    push(v0.codigoSigef, true);
+    push(`, situado a ${numBR(imovel.distanciaEsquinaM)} m da esquina formada com a `);
+    push(imovel.esquinaRua, true);
+    push(`, de coordenadas (${coordTexto(v0)}); `);
+  } else {
+    push('Inicia-se a descrição deste perímetro no vértice ');
+    push(v0.codigoSigef, true);
+    push(`, de coordenadas (${coordTexto(v0)}); `);
+  }
 
   // agrupa lados consecutivos por (confrontante + tipo de divisa). Uma nova "passada" começa
   // quando muda o confrontante OU o tipo de linha (cerca, córrego, linha ideal...).
@@ -94,14 +126,24 @@ export function construirNarrativaSegmentos(
 
     if (run.ladoIdx.length === 1) {
       const l = lados[run.ladoIdx[0]];
-      push(`, com azimute de ${azimuteDMS(l.azimute)} e distância de ${numBR(l.distancia)} m`);
+      const direcao = isUrbano
+        ? `rumo de ${rumoDMS(l.azimute)} (azimute de ${azimuteDMS(l.azimute)})`
+        : `azimute de ${azimuteDMS(l.azimute)}`;
+      push(`, com ${direcao} e distância de ${numBR(l.distancia)} m`);
       emitirDestino(run.ladoIdx[0]);
     } else {
-      push(', com os seguintes azimutes e distâncias: ');
+      if (isUrbano) {
+        push(', com os seguintes rumos, azimutes e distâncias: ');
+      } else {
+        push(', com os seguintes azimutes e distâncias: ');
+      }
       run.ladoIdx.forEach((i, k) => {
         if (k > 0) push(k === run.ladoIdx.length - 1 ? (i === totalLados - 1 ? '; e finalmente ' : '; e ') : '; ');
         const l = lados[i];
-        push(`${azimuteDMS(l.azimute)} e ${numBR(l.distancia)} m`);
+        const direcao = isUrbano
+          ? `${rumoDMS(l.azimute)} (${azimuteDMS(l.azimute)})`
+          : `${azimuteDMS(l.azimute)}`;
+        push(`${direcao} e ${numBR(l.distancia)} m`);
         emitirDestino(i);
       });
     }
@@ -188,12 +230,20 @@ function celulaCab(rotulo: string, valor: string): TableCell {
 /** Tabela de identificação no topo do memorial (com bordas), como no modelo do dono. */
 function tabelaCabecalho(imovel: ImovelData, areaHa: number, perimetro: number): Table {
   const b = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
+  const isUrbano = imovel.tipoImovel === 'urbano';
+  const labelArea = isUrbano ? 'Área SGL (m²):' : 'Área SGL (ha):';
+  const valArea = isUrbano ? `${numBR(areaHa * 10000)} m²` : `${numBR(areaHa, 4)} ha`;
+  
+  const idMunicipal = isUrbano && imovel.inscricaoMunicipal
+    ? ` / Insc.: ${imovel.inscricaoMunicipal}`
+    : '';
+
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: { top: b, bottom: b, left: b, right: b, insideHorizontal: b, insideVertical: b },
     rows: [
-      new TableRow({ children: [celulaCab('Imóvel:', imovel.denominacao), celulaCab('Matrícula:', imovel.matricula)] }),
-      new TableRow({ children: [celulaCab('Proprietário(a):', imovel.proprietario), celulaCab('Área SGL (ha):', `${numBR(areaHa, 4)} ha`)] }),
+      new TableRow({ children: [celulaCab(isUrbano ? 'Imóvel/Lote:' : 'Imóvel:', imovel.denominacao), celulaCab('Matrícula:', `${imovel.matricula}${idMunicipal}`)] }),
+      new TableRow({ children: [celulaCab('Proprietário(a):', imovel.proprietario), celulaCab(labelArea, valArea)] }),
       new TableRow({ children: [celulaCab('Local:', imovel.local), celulaCab('Perímetro (m):', `${numBR(perimetro)} m`)] }),
     ],
   });
@@ -224,7 +274,7 @@ export async function gerarMemorialDocx(input: MemorialInput): Promise<Blob> {
   // Defesa final: nunca gerar memorial com lacuna de código de vértice.
   const semCodigo = res.vertices.filter((v) => !v.codigoSigef).length;
   if (semCodigo > 0) throw new Error(`${semCodigo} vértice(s) sem código. Renumere os vértices antes de gerar o memorial.`);
-  const narrativaSegs = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado);
+  const narrativaSegs = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado, imovel);
 
   const children: (Paragraph | Table)[] = [];
 

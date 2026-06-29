@@ -9,7 +9,7 @@ import {
   Upload, FileText, Map as MapIcon, Printer, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, FileSignature, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Users,
+  Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Users,
   Maximize, Settings, LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ import Planta from '@/components/Planta';
 import RequerimentoModal from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
@@ -55,6 +55,7 @@ const IMOVEL_VAZIO: ImovelData = {
   denominacao: '', matricula: '', cns: '', codigoImovelIncra: '', proprietario: '',
   cpfProprietario: '', tipoPessoa: 'Física', comprador: '', cpfComprador: '', municipio: '', local: '',
   naturezaServico: 'Particular', situacao: 'Imóvel Registrado', naturezaArea: 'Particular',
+  tipoImovel: 'rural', inscricaoMunicipal: '', frenteM: undefined, fundosM: undefined, distanciaEsquinaM: undefined, esquinaRua: '',
 };
 
 function gerarTituloAutomatico(im: ImovelData): string {
@@ -134,6 +135,7 @@ export default function EditorPage() {
   const [sugProp, setSugProp] = useState<ProprietarioCad[]>([]);
   const [sugConf, setSugConf] = useState<ConfrontanteCad[]>([]);
   const [sugCns, setSugCns] = useState<string[]>([]);
+  const [sugCartorios, setSugCartorios] = useState<CartorioCad[]>([]);
   const [totalPontos, setTotalPontos] = useState(0);
   const [msg, setMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -145,7 +147,7 @@ export default function EditorPage() {
     setEscritorio(carregarEscritorio());
     cadProp.listar().then(setSugProp).catch(() => {});
     cadConf.listar().then(setSugConf).catch(() => {});
-    cadCart.listar().then((cs) => setSugCns(cs.map((c) => c.cns).filter(Boolean))).catch(() => {});
+    cadCart.listar().then((cs) => { setSugCns(cs.map((c) => c.cns).filter(Boolean)); setSugCartorios(cs); }).catch(() => {});
     totalPontosRegistrados().then(setTotalPontos).catch(() => {});
     const t = (localStorage.getItem('metrica.tema') as 'claro' | 'escuro') || 'claro';
     setTema(t);
@@ -872,13 +874,17 @@ export default function EditorPage() {
         <input ref={geojsonRef} type="file" accept=".geojson,.json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarReferenciaGeoJson(f); e.currentTarget.value = ''; }} />
         <Button size="sm" variant="outline" className={COR_IMPORT} disabled={processando} title="Importar pontos de um arquivo TXT" onClick={() => fileRef.current?.click()}><Upload /> TXT</Button>
-        <Button size="sm" variant="outline" className={COR_IMPORT} disabled={processando} title="Importar desenho de um arquivo DXF" onClick={() => dxfRef.current?.click()}><Upload /> DXF</Button>
+        {/* DXF: baixar e enviar num grupo só, com a palavra DXF uma vez */}
+        <div className={`flex items-center gap-0.5 rounded-md border px-1.5 ${COR_IMPORT}`}>
+          <span className="text-xs font-medium">DXF</span>
+          <Button size="sm" variant="ghost" className="size-7 p-0" title="Baixar o desenho em DXF" onClick={exportarDxf}><Download className="size-4" /></Button>
+          <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Enviar/importar um DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-4" /></Button>
+        </div>
         <div className="mx-1 h-6 w-px bg-border" />
-        <Button size="sm" variant="outline" className={COR_PECA} title="Gerar o memorial descritivo (.docx)" onClick={exportarMemorial}><FileText /> Memorial</Button>
-        <Button size="sm" variant="outline" className={COR_PECA} title="Gerar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button>
-        <Button size="sm" variant="outline" className={COR_PECA} title="Exportar o desenho em DXF (georreferenciado)" onClick={exportarDxf}><PenTool /> DXF</Button>
-        <Button size="sm" variant="outline" className={COR_PECA} title="Gerar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><FileSignature /> Requerimento</Button>
-        <Button size="sm" variant="outline" className={COR_PECA} title="Gerar os dados do TRT" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
+        <Button size="sm" variant="outline" className={COR_PECA} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> Memorial</Button>
+        <Button size="sm" variant="outline" className={COR_PECA} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button>
+        <Button size="sm" variant="outline" className={COR_PECA} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> Requerimento</Button>
+        <Button size="sm" variant="outline" className={COR_PECA} title="Abrir os dados do TRT" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button>
         <div className="mx-1 h-6 w-px bg-border" />
         <Button size="sm" variant="outline" className={COR_PLANTA} title={vista === 'mapa' ? 'Abrir a prévia da planta' : 'Voltar ao mapa'} onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
           {vista === 'mapa' ? <><Eye /> Planta</> : <><MapIcon /> Mapa</>}
@@ -1024,7 +1030,7 @@ export default function EditorPage() {
 
           <div className="min-h-0 flex-1 overflow-auto p-3">
             <datalist id="lista-cns">{sugCns.map((c) => <option key={c} value={c} />)}</datalist>
-            {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} />}
+            {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} />}
             {aba === 'vertices' && (
               <div className="space-y-1">
                 <div className="mb-2 flex flex-wrap gap-1">
@@ -1144,11 +1150,11 @@ function Campo({ label, value, onChange, placeholder, list }: { label: string; v
   );
 }
 
-function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp }: {
+function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios }: {
   imovel: ImovelData; onChange: (i: ImovelData) => void; onMunicipio: (s: string) => void; onLocal: (s: string) => void;
   nome: string; onNome: (s: string) => void;
   zona: number; hemisferio: 'N' | 'S'; onZona: (z: number) => void; onHemisferio: (h: 'N' | 'S') => void;
-  sugProp: ProprietarioCad[]; onSalvarProp: () => void;
+  sugProp: ProprietarioCad[]; onSalvarProp: () => void; sugCartorios: CartorioCad[];
 }) {
   const set = (k: keyof ImovelData, v: string) => onChange({ ...imovel, [k]: v });
   function setProprietario(v: string) {
@@ -1157,13 +1163,56 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
   }
   return (
     <div className="space-y-3">
+      {/* Seletor Deslizante Rural / Urbano */}
+      <div className="flex rounded-md bg-secondary p-0.5 text-xs font-medium">
+        <button
+          type="button"
+          onClick={() => onChange({ ...imovel, tipoImovel: 'rural' })}
+          className={`flex-1 rounded py-1 text-center transition-all ${imovel.tipoImovel !== 'urbano' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          Rural
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange({ ...imovel, tipoImovel: 'urbano' })}
+          className={`flex-1 rounded py-1 text-center transition-all ${imovel.tipoImovel === 'urbano' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          Urbano
+        </button>
+      </div>
+
       <Campo label="Nome do projeto" value={nome} onChange={onNome} />
-      <Campo label="Denominação do imóvel" value={imovel.denominacao} onChange={(v) => set('denominacao', v)} placeholder="Fazenda..." />
+      <Campo label="Denominação do imóvel" value={imovel.denominacao} onChange={(v) => set('denominacao', v)} placeholder={imovel.tipoImovel === 'urbano' ? "Lote / Residencial..." : "Fazenda..."} />
       <div className="grid grid-cols-2 gap-2">
         <Campo label="Matrícula" value={imovel.matricula} onChange={(v) => set('matricula', v)} />
         <Campo label="Cartório (CNS)" value={imovel.cns} onChange={(v) => set('cns', v)} list="lista-cns" />
       </div>
-      <Campo label="Código do Imóvel (SNCR/INCRA)" value={imovel.codigoImovelIncra} onChange={(v) => set('codigoImovelIncra', v)} />
+      {sugCartorios.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {sugCartorios.map((c) => (
+            <button key={c.id} onClick={() => set('cns', c.cns)} title={`${c.nome}${c.municipio ? ` — ${c.municipio}` : ''}`}
+              className={`rounded border px-1.5 py-0.5 text-[10px] ${imovel.cns === c.cns ? 'border-primary bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
+              {c.nome ? c.nome.replace(/Cart[óo]rio.*?de\s*/i, '').slice(0, 22) : c.cns}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {imovel.tipoImovel === 'urbano' ? (
+        <>
+          <Campo label="Inscrição Municipal" value={imovel.inscricaoMunicipal ?? ''} onChange={(v) => set('inscricaoMunicipal', v)} placeholder="Inscrição municipal..." />
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="Frente (m)" value={imovel.frenteM != null ? String(imovel.frenteM) : ''} onChange={(v) => onChange({ ...imovel, frenteM: v === '' ? undefined : Number(v) })} placeholder="0.00" />
+            <Campo label="Fundos (m)" value={imovel.fundosM != null ? String(imovel.fundosM) : ''} onChange={(v) => onChange({ ...imovel, fundosM: v === '' ? undefined : Number(v) })} placeholder="0.00" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="Dist. Esquina (m)" value={imovel.distanciaEsquinaM != null ? String(imovel.distanciaEsquinaM) : ''} onChange={(v) => onChange({ ...imovel, distanciaEsquinaM: v === '' ? undefined : Number(v) })} placeholder="0.00" />
+            <Campo label="Rua da Esquina" value={imovel.esquinaRua ?? ''} onChange={(v) => set('esquinaRua', v)} placeholder="Rua..." />
+          </div>
+        </>
+      ) : (
+        <Campo label="Código do Imóvel (SNCR/INCRA)" value={imovel.codigoImovelIncra} onChange={(v) => set('codigoImovelIncra', v)} />
+      )}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <Label>Proprietário</Label>

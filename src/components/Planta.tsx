@@ -448,7 +448,7 @@ function CarimboA3(props: {
 
   // Lista dos dados do imóvel a serem desenhados na Box de Dados
   const campos: [string, string][] = [
-    ['PROPRIEDADE:', glebaNome || imovel.denominacao || '—'],
+    [imovel.tipoImovel === 'urbano' ? 'LOTE/IMÓVEL:' : 'PROPRIEDADE:', glebaNome || imovel.denominacao || '—'],
     ['PROPRIETÁRIO(A):', imovel.proprietario || '—'],
   ];
   if (imovel.comprador) {
@@ -458,13 +458,36 @@ function CarimboA3(props: {
     ['MUNICÍPIO(S):', imovel.municipio || '—'],
     ['TRT:', tecnico.art || '—'],
     ['MAT./TRANSC.:', imovel.matricula || '—'],
-    ['ÁREA TOTAL (ha):', `${numBR(ef.areaHa, 4)} ha`],
-    ['PERÍMETRO (m):', `${numBR(ef.perimetro)} m`],
+  );
+  if (imovel.tipoImovel === 'urbano') {
+    if (imovel.inscricaoMunicipal) {
+      campos.push(['INSCRIÇÃO MUN.:', imovel.inscricaoMunicipal]);
+    }
+    if (imovel.frenteM != null || imovel.fundosM != null) {
+      const dim: string[] = [];
+      if (imovel.frenteM != null) dim.push(`Fr: ${numBR(imovel.frenteM)}m`);
+      if (imovel.fundosM != null) dim.push(`Fd: ${numBR(imovel.fundosM)}m`);
+      campos.push(['DIMENSÕES:', dim.join(' / ')]);
+    }
+    if (imovel.distanciaEsquinaM != null && imovel.esquinaRua) {
+      campos.push(['AMARRAÇÃO:', `A ${numBR(imovel.distanciaEsquinaM)}m da ${imovel.esquinaRua}`]);
+    }
+    campos.push(
+      ['ÁREA TOTAL:', `${numBR(ef.areaHa * 10000)} m²`],
+      ['PERÍMETRO (m):', `${numBR(ef.perimetro)} m`],
+    );
+  } else {
+    campos.push(
+      ['ÁREA TOTAL (ha):', `${numBR(ef.areaHa, 4)} ha`],
+      ['PERÍMETRO (m):', `${numBR(ef.perimetro)} m`],
+    );
+  }
+  campos.push(
     ['DATA:', dataExtenso || '—'],
     ['ESCALA:', `1 / ${escalaDenom}`],
   );
 
-  const gap = campos.length > 10 ? 25 : 27;
+  const gap = Math.min(27, Math.floor(255 / (campos.length - 1)));
 
   // Estrutura de Assinatura
   const renderAssinatura = (yLine: number, label: string, nome: string, detalhe1?: string, detalhe2?: string, detalhe3?: string) => (

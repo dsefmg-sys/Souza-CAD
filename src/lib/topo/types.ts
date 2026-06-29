@@ -215,6 +215,12 @@ export interface ImovelData {
   // Para a planta:
   declinacaoMagnetica?: number; // graus (negativo = oeste), do serviço de declinação
   variacaoAnual?: number;       // minutos/ano
+  tipoImovel?: 'rural' | 'urbano';
+  inscricaoMunicipal?: string;
+  frenteM?: number;
+  fundosM?: number;
+  distanciaEsquinaM?: number;
+  esquinaRua?: string;
 }
 
 /**
