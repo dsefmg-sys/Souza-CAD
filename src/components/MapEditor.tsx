@@ -10,7 +10,7 @@ import { numBR } from '@/lib/topo/geometry';
 
 export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'cota' | 'texto' | 'divisa' | 'confrontante';
 
-export interface RotuloMapa { id: string; lat: number; lon: number; texto: string; }
+export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
 interface Props {
   vertices: Vertex[];
@@ -80,11 +80,17 @@ function iconeTexto(o: ObjetoDesenho, sel: boolean) {
     iconSize: [1, 1], iconAnchor: [0, 8],
   });
 }
-const iconeRotulo = (r: RotuloMapa) => L.divIcon({
-  className: 'objeto-rotulo',
-  html: `<div style="font-size:10px;color:#000;background:rgba(255,255,255,0.8);border:1px solid #999;border-radius:3px;padding:1px 3px;white-space:nowrap">${r.texto.replace(/</g, '&lt;')}</div>`,
-  iconSize: [1, 1], iconAnchor: [0, 8],
-});
+// rótulo/assinatura do confrontante: bloco branco com texto preto (legível no claro e no escuro),
+// multilinha (Nome/CPF/Matrícula…) e uma linha de assinatura embaixo. Movível e redimensionável.
+const iconeRotulo = (r: RotuloMapa) => {
+  const fs = r.tam && r.tam > 0 ? r.tam : 10;
+  const linhas = r.linhas.map((l) => `<div>${(l || '').replace(/</g, '&lt;')}</div>`).join('');
+  return L.divIcon({
+    className: 'objeto-rotulo',
+    html: `<div style="font-size:${fs}px;line-height:1.25;color:#000;background:rgba(255,255,255,0.92);border:1px solid #555;border-radius:3px;padding:2px 6px;white-space:nowrap;text-align:center;box-shadow:0 0 2px rgba(0,0,0,.35)">${linhas}<div style="border-top:1px solid #000;margin-top:7px;padding-top:1px;font-size:${Math.max(7, fs - 2)}px;color:#444">Assinatura</div></div>`,
+    iconSize: [1, 1], iconAnchor: [0, 8],
+  });
+};
 
 function AjustarLimites({ vertices }: { vertices: Vertex[] }) {
   const map = useMap();

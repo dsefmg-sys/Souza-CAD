@@ -238,11 +238,13 @@ export default function Planta({
       {rotulosConf.map((r, i) => {
         if (!r.c || !r.c.nome) return null;
         const linhas = rotuloConfrontanteLinhas(r.c);
+        const fz = r.c.tamRotulo && r.c.tamRotulo > 0 ? +(r.c.tamRotulo * escTxt).toFixed(2) : fonteRot;
+        const half = Math.max(60, fz * 8);
         return (
           <g key={i}>
-            <line x1={r.x - 72} y1={r.y - 13} x2={r.x + 72} y2={r.y - 13} stroke="#000" strokeWidth={0.6} />
+            <line x1={r.x - half} y1={r.y - 13} x2={r.x + half} y2={r.y - 13} stroke="#000" strokeWidth={0.6} />
             {linhas.map((t, k) => (
-              <text key={k} x={r.x} y={r.y - 2 + k * (fonteRot + 1.5)} fontSize={fonteRot} textAnchor="middle" fill="#000">{t}</text>
+              <text key={k} x={r.x} y={r.y - 2 + k * (fz + 1.5)} fontSize={fz} textAnchor="middle" fill="#000">{t}</text>
             ))}
           </g>
         );

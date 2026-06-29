@@ -35,6 +35,7 @@ import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
 import { parseParcelasSigef, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas } from '@/lib/io/sigefVizinhos';
+import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
 import { ancoraMunicipio, MUNICIPIOS } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
@@ -1026,13 +1027,14 @@ export default function EditorPage() {
     const out: RotuloMapa[] = [];
     for (const c of confrontantes) {
       if (!c.nome) continue;
-      if (c.posRotulo) { out.push({ id: c.id, lat: c.posRotulo.lat, lon: c.posRotulo.lon, texto: c.nome }); continue; }
+      const linhas = linhasRotuloConfrontante(c);
+      if (c.posRotulo) { out.push({ id: c.id, lat: c.posRotulo.lat, lon: c.posRotulo.lon, linhas, tam: c.tamRotulo }); continue; }
       const idxs = Object.entries(confrontantePorLado).filter(([, cid]) => cid === c.id).map(([i]) => Number(i));
       if (!idxs.length || vertices.length < 2) continue;
       const mid = idxs[Math.floor(idxs.length / 2)];
       const a = vertices[mid], b = vertices[(mid + 1) % vertices.length];
       if (!a || !b) continue;
-      out.push({ id: c.id, lat: (a.lat + b.lat) / 2, lon: (a.lon + b.lon) / 2, texto: c.nome });
+      out.push({ id: c.id, lat: (a.lat + b.lat) / 2, lon: (a.lon + b.lon) / 2, linhas, tam: c.tamRotulo });
     }
     return out;
   }, [confrontantes, confrontantePorLado, vertices]);
@@ -1633,6 +1635,8 @@ function PainelConfrontantes({ confrontantes, onChange, onDetectar, mapa, lados,
 }) {
   const set = (id: string, k: keyof Confrontante, v: string) =>
     onChange(confrontantes.map((c) => (c.id === id ? ({ ...c, [k]: v } as Confrontante) : c)));
+  const setTam = (id: string, delta: number) =>
+    onChange(confrontantes.map((c) => (c.id === id ? { ...c, tamRotulo: Math.max(6, Math.min(22, (c.tamRotulo ?? 10) + delta)) } : c)));
   const setNome = (id: string, v: string) => {
     const m = sugConf.find((s) => s.nome === v);
     onChange(confrontantes.map((c) => (c.id === id
@@ -1691,6 +1695,14 @@ function PainelConfrontantes({ confrontantes, onChange, onDetectar, mapa, lados,
               )}
               <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set(c.id, 'cns', v)} list="lista-cns" />
               <Campo label="Descrição extra (sobrepõe o texto automático)" value={c.descricaoExtra ?? ''} onChange={(v) => set(c.id, 'descricaoExtra', v)} />
+              <div className="flex items-center gap-2">
+                <Label className="text-[11px]">Tamanho do rótulo/assinatura</Label>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Diminuir" onClick={() => setTam(c.id, -1)}>A-</Button>
+                  <span className="w-6 text-center text-xs">{c.tamRotulo ?? 10}</span>
+                  <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Aumentar" onClick={() => setTam(c.id, 1)}>A+</Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         );

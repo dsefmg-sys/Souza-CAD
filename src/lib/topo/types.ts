@@ -158,6 +158,8 @@ export interface Confrontante {
   inventarianteCpf?: string;
   // posição manual do rótulo na planta (se o usuário arrastou); senão é automática
   posRotulo?: { lat: number; lon: number };
+  // tamanho da fonte do rótulo/assinatura (mapa e planta); vazio = padrão
+  tamRotulo?: number;
 }
 
 /** Objeto de desenho livre (georreferenciado) sobreposto ao mapa/planta. */
