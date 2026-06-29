@@ -258,6 +258,27 @@ export default function EditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [temaCarregadoDaNuvem]);
 
+  // aplica a fila "Inserir no projeto" vinda da tela de Dados (após restaurar o rascunho)
+  const filaInserirAplicada = useRef(false);
+  useEffect(() => {
+    if (filaInserirAplicada.current || !temaCarregadoDaNuvem) return;
+    filaInserirAplicada.current = true;
+    try {
+      const raw = localStorage.getItem('metrica.filaInserir');
+      if (!raw) return;
+      localStorage.removeItem('metrica.filaInserir');
+      const fila = JSON.parse(raw) as { tipo: string; item: ProprietarioCad & ConfrontanteCad & ImovelCad & CartorioCad }[];
+      for (const f of fila) {
+        if (f.tipo === 'prop') inserirPropConsulta(f.item);
+        else if (f.tipo === 'conf') inserirConfConsulta(f.item);
+        else if (f.tipo === 'imovel') inserirImovelConsulta(f.item);
+        else if (f.tipo === 'cartorio') inserirCartorioConsulta(f.item);
+      }
+      if (fila.length) aviso(`${fila.length} cadastro(s) inserido(s) no projeto.`);
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [temaCarregadoDaNuvem]);
+
   // salva o rascunho automaticamente (com atraso), depois de já ter restaurado
   useEffect(() => {
     if (!rascunhoRestaurado.current) return;

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Search, Link2, Edit } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Search, Link2, Edit, FolderInput } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,26 @@ import { carregarProjeto } from '@/lib/store/projects';
 import { cpfValido } from '@/lib/topo/validation';
 
 type Aba = 'proprietarios' | 'confrontantes' | 'imoveis' | 'cartorios' | 'global';
+
+// Enfileira um cadastro para inserir no projeto aberto e volta ao editor (que aplica a fila).
+// O editor guarda o trabalho automaticamente, então voltar não perde nada.
+type TipoInsercao = 'prop' | 'conf' | 'imovel' | 'cartorio';
+function enviarParaProjeto(tipo: TipoInsercao, item: unknown) {
+  try {
+    const raw = localStorage.getItem('metrica.filaInserir');
+    const fila = raw ? JSON.parse(raw) : [];
+    fila.push({ tipo, item });
+    localStorage.setItem('metrica.filaInserir', JSON.stringify(fila));
+  } catch { /* ignore */ }
+  window.location.href = '/';
+}
+function BtnInserir({ tipo, item }: { tipo: TipoInsercao; item: unknown }) {
+  return (
+    <Button size="sm" variant="outline" className="h-8 shrink-0 gap-1" title="Inserir no projeto aberto (volta ao editor)" onClick={() => enviarParaProjeto(tipo, item)}>
+      <FolderInput className="h-3.5 w-3.5" /> Inserir no projeto
+    </Button>
+  );
+}
 
 export default function CadastrosPage() {
   const [aba, setAba] = useState<Aba>('proprietarios');
@@ -251,7 +271,10 @@ function Proprietarios({
             <span onClick={() => setForm(p)} className="cursor-pointer font-medium hover:text-primary transition-colors">
               {p.nome} — {p.cpf}
             </span>
-            <Button size="sm" variant="ghost" onClick={() => excluir(p.id)}><Trash2 className="text-destructive h-4 w-4" /></Button>
+            <div className="flex shrink-0 items-center gap-1">
+              <BtnInserir tipo="prop" item={p} />
+              <Button size="sm" variant="ghost" onClick={() => excluir(p.id)}><Trash2 className="text-destructive h-4 w-4" /></Button>
+            </div>
           </div>
         ))}
         {listaExibicao.length === 0 && (
@@ -366,7 +389,10 @@ function Confrontantes({
             <span onClick={() => setForm(c)} className="cursor-pointer font-medium hover:text-primary transition-colors">
               {c.nome} — {c.cpf} — Mat. {c.matricula}
             </span>
-            <Button size="sm" variant="ghost" onClick={() => excluir(c.id)}><Trash2 className="text-destructive h-4 w-4" /></Button>
+            <div className="flex shrink-0 items-center gap-1">
+              <BtnInserir tipo="conf" item={c} />
+              <Button size="sm" variant="ghost" onClick={() => excluir(c.id)}><Trash2 className="text-destructive h-4 w-4" /></Button>
+            </div>
           </div>
         ))}
         {listaExibicao.length === 0 && (
@@ -430,7 +456,10 @@ function Imoveis({
             <span onClick={() => setForm(m)} className="cursor-pointer font-medium hover:text-primary transition-colors">
               {m.denominacao} — Mat. {m.matricula} — {m.municipio}
             </span>
-            <Button size="sm" variant="ghost" onClick={() => excluir(m.id)}><Trash2 className="text-destructive h-4 w-4" /></Button>
+            <div className="flex shrink-0 items-center gap-1">
+              <BtnInserir tipo="imovel" item={m} />
+              <Button size="sm" variant="ghost" onClick={() => excluir(m.id)}><Trash2 className="text-destructive h-4 w-4" /></Button>
+            </div>
           </div>
         ))}
         {listaExibicao.length === 0 && (
@@ -488,7 +517,10 @@ function Cartorios({
             <span onClick={() => setForm(c)} className="cursor-pointer font-medium hover:text-primary transition-colors">
               {c.cns} — {c.nome} {c.municipio ? `(${c.municipio})` : ''}
             </span>
-            <Button size="sm" variant="ghost" onClick={() => excluir(c.id)}><Trash2 className="text-destructive h-4 w-4" /></Button>
+            <div className="flex shrink-0 items-center gap-1">
+              <BtnInserir tipo="cartorio" item={c} />
+              <Button size="sm" variant="ghost" onClick={() => excluir(c.id)}><Trash2 className="text-destructive h-4 w-4" /></Button>
+            </div>
           </div>
         ))}
       </div>
