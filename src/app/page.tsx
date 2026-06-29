@@ -1193,7 +1193,7 @@ export default function EditorPage() {
       ['denominação', !!imovel.denominacao], ['matrícula', !!imovel.matricula],
       ['proprietário', !!imovel.proprietario], ['município', !!imovel.municipio],
       ['vértices', vertices.length >= 3], ['área calculada', !!res],
-      ['confrontantes', confrontantes.some((c) => c.nome)], ['situação', !!situacaoUrl],
+      ['confrontantes', confrontantes.some((c) => c.nome && (c.cpf || c.matricula))], ['situação', !!situacaoUrl],
     ];
     const feitos = passos.filter(([, ok]) => ok).length;
     const faltam = passos.filter(([, ok]) => !ok).map(([n]) => n);
@@ -1203,18 +1203,20 @@ export default function EditorPage() {
   // Fluxo de trabalho (ordem do cabeçalho, esquerda→direita) para a linha fina sob os botões.
   // Estado de cada etapa: feito | falha (pulada: incompleta mas uma etapa posterior já foi feita) | pendente.
   const fluxo = useMemo(() => {
+    // Só AÇÕES do usuário, na ordem do processo. Nada que se complete sozinho ao importar
+    // (a área, por ex., é automática) — senão o fim acende e o meio vira "pulado" cedo demais.
     const steps: { label: string; ok: boolean }[] = [
       { label: 'Importar pontos (TXT)', ok: vertices.length >= 3 },
       { label: 'Dados do imóvel', ok: !!(imovel.denominacao && imovel.matricula && imovel.proprietario && imovel.municipio) },
-      { label: 'Confrontantes', ok: confrontantes.some((c) => c.nome) && Object.keys(confrontantePorLado).length > 0 },
+      // confrontante "feito" = tem dado real (não o rascunho automático do TXT) e está atribuído a um lado
+      { label: 'Confrontantes', ok: confrontantes.some((c) => c.nome && (c.cpf || c.matricula)) && Object.keys(confrontantePorLado).length > 0 },
       { label: 'Divisas pintadas', ok: vertices.some((v) => v.representacao && v.representacao !== 'linha-ideal') },
-      { label: 'Área calculada (planta)', ok: !!res },
       { label: 'Planta de situação', ok: !!situacaoUrl },
     ];
     const ultimoFeito = steps.reduce((acc, s, i) => (s.ok ? i : acc), -1);
     const estados = steps.map((s, i) => (s.ok ? 'feito' : i < ultimoFeito ? 'falha' : 'pendente'));
     return { steps, estados };
-  }, [vertices, imovel, confrontantes, confrontantePorLado, res, situacaoUrl]);
+  }, [vertices, imovel, confrontantes, confrontantePorLado, situacaoUrl]);
 
   // rótulos de confrontante arrastáveis no mapa (posRotulo manual ou centróide dos lados)
   const rotulosConf: RotuloMapa[] = useMemo(() => {
