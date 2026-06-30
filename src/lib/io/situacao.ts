@@ -40,7 +40,7 @@ export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number
   const pts = rings.flat();
   if (typeof document === 'undefined' || pts.length < 3) return null;
   const alvoPx = opts.alvoPx ?? 1024;     // resolução-alvo (nitidez)
-  const pad = opts.padding ?? 0.35;       // folga ao redor do imóvel (enquadramento)
+  const pad = opts.padding ?? 1.1;       // folga ao redor do imóvel (enquadramento)
   const aspecto = opts.aspecto ?? 232 / 168; // mesma proporção do quadro na planta (sem cortar)
 
   let minLat = Math.min(...pts.map((p) => p.lat));
@@ -95,14 +95,14 @@ export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number
     const xy = anel.map((p) => [lonToGlobalPx(p.lon, z) - pxMin, latToGlobalPx(p.lat, z) - pyMin] as const);
     const traco = () => { ctx.beginPath(); xy.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y))); ctx.closePath(); };
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    traco(); ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fill();
-    traco(); ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 7 * esc; ctx.stroke();   // halo
-    traco(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3.2 * esc; ctx.stroke();          // branco forte
+    traco(); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
+    traco(); ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.lineWidth = 11 * esc; ctx.stroke();   // halo
+    traco(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5.2 * esc; ctx.stroke();          // branco forte
     // vértices
     xy.forEach(([x, y]) => {
-      ctx.beginPath(); ctx.arc(x, y, 3.2 * esc, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(x, y, 5.2 * esc, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff'; ctx.fill();
-      ctx.lineWidth = 1.2 * esc; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.stroke();
+      ctx.lineWidth = 1.5 * esc; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.stroke();
     });
   });
 

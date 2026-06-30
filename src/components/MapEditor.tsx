@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import type { Vertex, ObjetoDesenho } from '@/lib/topo/types';
+import type { Vertex, ObjetoDesenho, Confrontante } from '@/lib/topo/types';
 import { distanciaCota } from '@/lib/topo/objetos';
 import { corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR } from '@/lib/topo/geometry';
@@ -62,6 +62,9 @@ interface Props {
   onContextMenuVertice?: (v: Vertex, x: number, y: number) => void;
   onContextMenuDivisa?: (v: Vertex, idx: number, x: number, y: number) => void;
   onContextMenuMapa?: (lat: number, lon: number, x: number, y: number) => void;
+  confrontantes?: Confrontante[];
+  confrontantePorLado?: Record<number, string>;
+  onEditarConfrontante?: (id: string) => void;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -257,6 +260,7 @@ export default function MapEditor(props: Props) {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
+    onEditarConfrontante,
     conflitos = [],
     focoLatLng = null,
     onCancelDesenho,
@@ -264,6 +268,8 @@ export default function MapEditor(props: Props) {
     verticesIgnorados = [],
     onIgnorarVertice, onConsiderarVertice,
     realceId = null,
+    confrontantes = [],
+    confrontantePorLado = {},
   } = props;
 
   const [zoom, setZoom] = useState(16);
@@ -349,6 +355,36 @@ export default function MapEditor(props: Props) {
         const prox = validos[(i + 1) % validos.length];
         if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
         return <Polyline key={`div${v.id}`} positions={[a, [prox.lat, prox.lon]]} pathOptions={{ color: cor, weight: 6, opacity: 0.65 }} />;
+      })}
+
+      {/* Roteamento visual de confrontantes aplicados sobre os segmentos */}
+      {confrontantePorLado && confrontantes && validos.map((v, i) => {
+        if (validos.length < 2) return null;
+        const prox = validos[(i + 1) % validos.length];
+        if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
+        
+        const idxOriginal = vertices.findIndex((x) => x.id === v.id);
+        if (idxOriginal === -1) return null;
+        
+        const confId = confrontantePorLado[idxOriginal];
+        if (!confId) return null;
+        const conf = confrontantes.find((c) => c.id === confId);
+        if (!conf) return null;
+
+        const a: [number, number] = [v.lat, v.lon];
+        const b: [number, number] = [prox.lat, prox.lon];
+
+        return (
+          <Polyline 
+            key={`conf-seg-${v.id}`} 
+            positions={[a, b]} 
+            pathOptions={{ color: '#2563eb', weight: 4, opacity: 0.85, dashArray: '4 8' }}
+          >
+            <Tooltip sticky direction="top" opacity={0.9}>
+              <span className="font-bold text-blue-900">Confrontante: {conf.nome || '(sem nome)'}</span>
+            </Tooltip>
+          </Polyline>
+        );
       })}
 
       {/* Realce de conflitos (sobreposição/vãos) */}
@@ -441,6 +477,7 @@ export default function MapEditor(props: Props) {
       {rotulos.map((r) => (
         <Marker key={r.id} position={[r.lat, r.lon]} draggable icon={iconeRotulo(r)}
           eventHandlers={{
+            click: () => { onEditarConfrontante?.(r.id); },
             dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverRotulo?.(r.id, ll.lat, ll.lng); }
           }} />
       ))}

@@ -66,7 +66,7 @@ const IMOVEL_VAZIO: ImovelData = {
   denominacao: '', matricula: '', cns: '', codigoImovelIncra: '', proprietario: '',
   cpfProprietario: '', tipoPessoa: 'Física', comprador: '', cpfComprador: '', municipio: '', local: '',
   naturezaServico: 'Particular', situacao: 'Imóvel Registrado', naturezaArea: 'Particular',
-  tipoImovel: 'rural', inscricaoMunicipal: '', frenteM: undefined, fundosM: undefined, distanciaEsquinaM: undefined, esquinaRua: '',
+  tipoImovel: 'rural', usarValoresSigef: true, inscricaoMunicipal: '', frenteM: undefined, fundosM: undefined, distanciaEsquinaM: undefined, esquinaRua: '',
 };
 
 function gerarTituloAutomatico(im: ImovelData): string {
@@ -524,17 +524,17 @@ export default function EditorPage() {
   }
 
   // ---- edição de textos da planta (conteúdo/escala/negrito por id) ----
-  function patchTextoPlanta(id: string, patch: { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number }) {
+  function patchTextoPlanta(id: string, patch: { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) {
     snap();
     setPlantaConfig((c) => ({ ...c, textos: { ...(c.textos ?? {}), [id]: { ...(c.textos?.[id] ?? {}), ...patch } } }));
   }
-  function editarTextoPlanta(id: string, novoTexto: string) {
+  function editarTextoPlanta(id: string, novoTexto: string, larguraChars?: number) {
     if (id.startsWith('vert.')) {
       const vId = id.slice(5);
       snap();
       setVertices((vs) => vs.map((v) => (v.id === vId ? { ...v, codigoSigef: novoTexto } : v)));
     } else {
-      patchTextoPlanta(id, { texto: novoTexto });
+      patchTextoPlanta(id, { texto: novoTexto, larguraChars });
     }
   }
   function restaurarTextoPlanta(id: string) {
@@ -1266,8 +1266,18 @@ export default function EditorPage() {
     return vs;
   }
 
+  function verificarConciliacaoSigef(): boolean {
+    if (!imovel.areaSigefHa || !imovel.perimetroSigef) {
+      return window.confirm(
+        "Atenção: A área oficial (SGL) ou o perímetro oficial do SIGEF não foram preenchidos na aba 'Imóvel' (Reconciliação com o SIGEF).\n\nRecomenda-se realizar a reconciliação antes de exportar as peças oficiais.\n\nDeseja exportar mesmo assim utilizando os valores calculados?"
+      );
+    }
+    return true;
+  }
+
   async function exportarMemorial() {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
+    if (!verificarConciliacaoSigef()) return;
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
@@ -1330,6 +1340,7 @@ export default function EditorPage() {
 
   async function exportarPlanta() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
+    if (!verificarConciliacaoSigef()) return;
     await comCodigos();
     setVista('planta');
     setObjetoSelId(null); setDesenhoBuffer([]); // limpa realces de edição (a superfície de captura é invisível no PDF)
@@ -1853,13 +1864,27 @@ export default function EditorPage() {
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
         </a>
        </div>
-       {/* Zona de hover no canto direito do cabeçalho — abre o painel lateral sem aberturas acidentais ao mover o mouse pela lateral da tela */}
-       <div
-         className="no-print w-16 shrink-0 cursor-pointer"
-         title="Dados do projeto"
-         onMouseEnter={() => { painelMouseDentro.current = true; setPainelAberto(true); }}
-         onMouseLeave={() => { painelMouseDentro.current = false; if (!asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
-       />
+       {/* Botão de Dados do Projeto que abre o dropdown superior */}
+       <div className="no-print mr-2 flex items-center shrink-0">
+         <Button
+           variant={painelAberto ? 'default' : 'outline'}
+           size="sm"
+           className="flex items-center gap-1.5 font-bold shadow-sm transition-all"
+           title="Dados do projeto (passe o mouse para abrir)"
+           onMouseEnter={() => { painelMouseDentro.current = true; setPainelAberto(true); }}
+           onMouseLeave={() => {
+             painelMouseDentro.current = false;
+             setTimeout(() => {
+               if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) {
+                 setPainelAberto(false);
+               }
+             }, 120); // 120ms grace period to transition to the dropdown body
+           }}
+         >
+           <Settings className="size-4" />
+           DADOS DO PROJETO
+         </Button>
+       </div>
       </header>
 
       <div className="relative flex min-h-0 flex-1">
@@ -2062,6 +2087,7 @@ export default function EditorPage() {
 
           {vista === 'mapa' ? (
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
+                confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 parcelasCert={parcelasCert} onAdotarVertice={inserirVertice}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
@@ -2070,7 +2096,7 @@ export default function EditorPage() {
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
-                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice}
+                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
                 conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}
                 verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
                 onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
@@ -2149,23 +2175,29 @@ export default function EditorPage() {
           )}
         </main>
 
-        {/* Painel direito — recolhido numa barra fina translúcida; abre ao passar o mouse na zona do cabeçalho e some ao sair */}
-        <div ref={painelWrap} className="no-print flex shrink-0"
+        {/* Painel suspenso de dados do projeto — abre de cima pra baixo a partir do cabeçalho */}
+        <div ref={painelWrap}
+          className={`no-print absolute right-4 top-2 z-[2000] flex w-[550px] max-h-[85vh] flex-col rounded-b-xl border bg-background shadow-2xl transition-all duration-300 ${
+            painelAberto
+              ? 'translate-y-0 opacity-100 scale-100 visible'
+              : '-translate-y-4 opacity-0 scale-95 invisible pointer-events-none'
+          }`}
           onMouseEnter={() => { painelMouseDentro.current = true; }}
           onMouseLeave={() => { painelMouseDentro.current = false; if (!asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
-          onBlurCapture={() => { setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 0); }}>
-          {painelAberto && (
-            <div onPointerDown={asideDown} onPointerMove={asideMove} onPointerUp={asideUp}
-              className="w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar o painel" />
-          )}
-          <aside style={{ width: painelAberto ? asideW : 26 }} className="relative z-20 flex shrink-0 flex-col overflow-hidden border-l bg-background transition-[width] duration-150">
-            {!painelAberto && (
-              <div className="absolute inset-0 z-10 flex cursor-pointer items-center justify-center bg-background/70">
-                <span className="rotate-180 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground [writing-mode:vertical-rl]">Dados do projeto ›</span>
-              </div>
-            )}
-          {/* glebas */}
-          <div className="flex items-center gap-1 overflow-x-auto border-b p-1">
+          onBlurCapture={() => { setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 50); }}>
+          <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background rounded-b-xl">
+            {/* Header do dropdown */}
+            <div className="flex items-center justify-between bg-[#475569] px-3 py-2 text-white shadow-sm">
+              <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 text-white">
+                <Settings className="size-3.5" />
+                Dados do Projeto
+              </span>
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white hover:bg-white/20 hover:text-white" onClick={() => setPainelAberto(false)} title="Fechar painel">
+                <X className="size-4" />
+              </Button>
+            </div>
+            {/* glebas */}
+            <div className="flex items-center gap-1 overflow-x-auto border-b p-1">
             {glebas.map((g) => (
               <button key={g.id} disabled={processando} onClick={() => trocarGleba(g.id)}
                 className={`shrink-0 rounded px-2 py-1 text-xs disabled:opacity-50 ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
@@ -2371,7 +2403,7 @@ export default function EditorPage() {
               </div>
             )}
           </div>
-        </aside>
+          </aside>
         </div>
       </div>
 
@@ -2637,8 +2669,30 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
       <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} />
       
       {/* Comprador (para compra e venda / transferências) */}
+      <div className="flex items-center justify-between">
+        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Comprador (se houver)</Label>
+        {imovel.comprador && (
+          <button
+            type="button"
+            className="text-[10px] text-primary hover:underline font-bold"
+            onClick={() => {
+              if (window.confirm(`Deseja promover o comprador "${imovel.comprador}" a proprietário do imóvel? As informações atuais do proprietário serão substituídas.`)) {
+                onChange({
+                  ...imovel,
+                  proprietario: imovel.comprador || '',
+                  cpfProprietario: imovel.cpfComprador || '',
+                  comprador: '',
+                  cpfComprador: '',
+                });
+              }
+            }}
+          >
+            Tornar Proprietário (Transmissão)
+          </button>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-2">
-        <Campo label="Comprador (se houver)" value={imovel.comprador ?? ''} onChange={(v) => set('comprador', v)} placeholder="Se houver..." />
+        <Campo label="Nome do comprador" value={imovel.comprador ?? ''} onChange={(v) => set('comprador', v)} placeholder="Se houver..." />
         <Campo label="CPF/CNPJ do comprador" value={imovel.cpfComprador ?? ''} onChange={(v) => set('cpfComprador', v)} />
       </div>
 
