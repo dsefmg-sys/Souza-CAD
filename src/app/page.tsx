@@ -209,6 +209,9 @@ export default function EditorPage() {
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean }>({});
   const [salvoOk, setSalvoOk] = useState(false);
+  const [salvarLaranja, setSalvarLaranja] = useState(false); // disquete laranja: há mudança não salva há >1s
+  const ultimoSalvoSig = useRef<string>('');
+  const acabouDeSalvar = useRef(false);
   const [errataAberto, setErrataAberto] = useState(false);
   const [consultarAberto, setConsultarAberto] = useState(false);
   const [configAberta, setConfigAberta] = useState(false);
@@ -407,6 +410,20 @@ export default function EditorPage() {
   useEffect(() => { if (modo !== 'multi') setSelMulti((s) => (s.size ? new Set() : s)); }, [modo]);
 
   const res = useMemo(() => (vertices.length >= 3 ? calcular(vertices, confrontantePorLado) : null), [vertices, confrontantePorLado]);
+
+  // assinatura do conteúdo do projeto, para acender o disquete laranja quando há mudança não salva
+  const projSig = useMemo(
+    () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas.map((g) => g.id) }),
+    [vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas],
+  );
+  useEffect(() => {
+    // o salvar muda os vértices (códigos); adota essa mudança imediata como "salva"
+    if (acabouDeSalvar.current) { acabouDeSalvar.current = false; ultimoSalvoSig.current = projSig; setSalvarLaranja(false); return; }
+    if (projSig === ultimoSalvoSig.current) { setSalvarLaranja(false); return; }
+    setSalvoOk(false);
+    const t = setTimeout(() => setSalvarLaranja(true), 1000);
+    return () => clearTimeout(t);
+  }, [projSig]);
 
   function aviso(t: string) { setMsg(t); setTimeout(() => setMsg(''), 4000); }
 
@@ -1493,6 +1510,7 @@ export default function EditorPage() {
         await salvarProjeto(p);
         setProjetoId(id);
         setSalvoOk(true);
+        ultimoSalvoSig.current = projSig; acabouDeSalvar.current = true; setSalvarLaranja(false);
         aviso(registrou ? 'Projeto salvo e pontos registrados.' : 'Projeto salvo, mas falhou registrar os pontos — tente salvar de novo.');
       } catch (e) {
         setProjetoId(id);
@@ -1671,6 +1689,7 @@ export default function EditorPage() {
     setPlantaConfig(p.plantaConfig ?? {});
     setGlebas(p.glebas);
     carregarGleba(p.glebas[0]);
+    acabouDeSalvar.current = true; setSalvarLaranja(false); setSalvoOk(true); // recém-carregado = "salvo"
     aviso(`Projeto carregado (${p.glebas.length} gleba(s)).`);
   }
   async function remover(id: string) { await excluirProjeto(id); atualizarLista(); }
@@ -1822,19 +1841,7 @@ export default function EditorPage() {
           return (
             <>
               <aside style={{ width: toolW }} className="no-print flex shrink-0 flex-col gap-1 overflow-y-auto border-r bg-background p-1.5">
-                {/* NOVO (ação) + indicador SALVO — sempre visível, no topo */}
-                <Button size="sm" variant="outline" className="h-9 w-full justify-start gap-2 font-semibold" disabled={processando} title="Iniciar um novo projeto (TXT)" onClick={criarNovoProjeto}>
-                  <Plus className="size-4" /> <span className="truncate text-xs">NOVO PROJETO</span>
-                </Button>
-                <button
-                  className="flex items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-muted/50 disabled:opacity-60"
-                  disabled={processando}
-                  title="Tudo é salvo automaticamente. A luz verde indica salvo com sucesso; clique para forçar e confirmar o salvamento."
-                  onClick={salvar}
-                >
-                  <span className={`size-2.5 shrink-0 rounded-full ${processando ? 'bg-amber-400 animate-pulse' : salvoOk ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
-                  <span className="truncate font-semibold text-muted-foreground">{processando ? 'Salvando…' : salvoOk ? 'Salvo' : 'Salvar agora'}</span>
-                </button>
+                {/* SALVAR e NOVO foram para a barra flutuante inferior */}
 
                 {/* SISTEMA (topo): ações úteis com nome + ícones de alternância */}
                 {vista === 'mapa' && (
@@ -1984,7 +1991,7 @@ export default function EditorPage() {
               </>
             )}
             <div className="w-px bg-border" />
-            <button type="button" onClick={salvar} disabled={processando} title="Salvar o projeto" className="act border bg-background hover:bg-muted disabled:opacity-50"><Save className={`size-5 ${salvoOk ? 'text-emerald-600' : ''}`} /></button>
+            <button type="button" onClick={salvar} disabled={processando} title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar' : 'Salvar o projeto'} className={`act disabled:opacity-50 ${salvarLaranja ? 'bg-amber-500 text-white hover:bg-amber-600' : 'border bg-background hover:bg-muted'}`}><Save className={`size-5 ${!salvarLaranja && salvoOk ? 'text-emerald-600' : ''}`} /></button>
             <button type="button" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto" className="act border bg-background hover:bg-muted disabled:opacity-50"><Plus className="size-5" /></button>
             {glebas.length > 1 && (
               <>
