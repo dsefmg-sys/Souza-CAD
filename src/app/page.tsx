@@ -1042,6 +1042,19 @@ export default function EditorPage() {
   function onMoverRotulo(id: string, lat: number, lon: number) {
     setConfrontantes((cs) => cs.map((c) => (c.id === id ? { ...c, posRotulo: { lat, lon } } : c)));
   }
+  // edição direta do rótulo do confrontante na planta (duplo clique)
+  function editarConfrontantePlanta(id: string) {
+    const c = confrontantes.find((x) => x.id === id);
+    if (!c) return;
+    const nome = window.prompt('Nome do confrontante:', c.nome);
+    if (nome == null) return;
+    const matricula = window.prompt('Matrícula (deixe vazio se não houver):', c.matricula ?? '');
+    setConfrontantes((cs) => cs.map((x) => (x.id === id ? { ...x, nome: nome.trim(), ...(matricula != null ? { matricula: matricula.trim() } : {}) } : x)));
+  }
+  // tamanho da fonte do rótulo do confrontante selecionado/por id (A-/A+ na planta)
+  function ajustarTamRotuloConf(id: string, delta: number) {
+    setConfrontantes((cs) => cs.map((x) => (x.id === id ? { ...x, tamRotulo: Math.max(4, Math.min(18, (x.tamRotulo ?? 7) + delta)) } : x)));
+  }
   function onMoverRotuloVertice(id: string, lat: number, lon: number) {
     snap();
     setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, posRotulo: { lat, lon } } : v)));
@@ -1815,6 +1828,7 @@ export default function EditorPage() {
                     <Button size="sm" variant={editarPlanta ? 'default' : 'outline'} title="Alternar modo de edição na planta (arrastar textos/folha)" onClick={() => setEditarPlanta(!editarPlanta)}>{editarPlanta ? <Check /> : <Pencil />} <span className="truncate text-xs font-semibold">{editarPlanta ? 'FINALIZAR EDIÇÃO' : 'EDITAR'}</span></Button>
                     {editarPlanta && (
                       <>
+                        <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-9 w-full justify-start gap-2" title="Mover: arrastar textos, rótulos e a folha. Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span></Button>
                         <div className="flex gap-1 [&>button]:h-9 [&>button]:flex-1 [&>button]:justify-center">
                           <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /> <span className="truncate text-xs font-semibold">DESFAZER</span></Button>
                           <Button size="sm" variant="ghost" title="Refazer a ação desfeita" onClick={refazer}><Redo2 /> <span className="truncate text-xs font-semibold">REFAZER</span></Button>
@@ -1995,6 +2009,7 @@ export default function EditorPage() {
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
+                      onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} />
                   </div>

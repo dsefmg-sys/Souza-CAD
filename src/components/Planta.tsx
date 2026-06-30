@@ -37,6 +37,8 @@ interface Props {
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
   onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
+  onEditarConfrontante?: (id: string) => void;                     // duplo clique no rótulo: editar nome/matrícula
+  onTamRotuloConf?: (id: string, delta: number) => void;           // ajusta o tamanho da fonte do rótulo
   onTextoEditar?: (id: string, atual: string) => void;            // clique duplo: editar conteúdo
   onTextoMenu?: (id: string, atual: string, x: number, y: number) => void; // clique direito: formatar
   onMoverFolha?: (dx: number, dy: number) => void;                // arrastar o vazio: reposiciona a folha
@@ -163,6 +165,7 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onMoverRotuloConf, onMoverRotuloVertice,
+  onEditarConfrontante, onTamRotuloConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId,
 }: Props) {
@@ -514,6 +517,8 @@ export default function Planta({
         return (
           <g key={i}
             style={editavel ? { cursor: 'move' } : undefined}
+            onDoubleClick={editavel ? (e) => { e.stopPropagation(); onEditarConfrontante?.(c.id); } : undefined}
+            onContextMenu={editavel && onTamRotuloConf ? (e) => { e.preventDefault(); e.stopPropagation(); const maior = window.confirm('Aumentar o tamanho deste rótulo?\n\nOK = aumentar · Cancelar = diminuir'); onTamRotuloConf(c.id, maior ? 1 : -1); } : undefined}
             onPointerDown={editavel ? (e) => {
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;
@@ -726,58 +731,21 @@ function FaixaInferior(props: {
 
 // ---------------- Nortes modificado ----------------
 // ---------------- RosaDosVentos e Nortes ----------------
-function RosaDosVentos({ cx, cy, conv, decl, fs }: { cx: number; cy: number; conv: number; decl: number; fs: (n: number) => number }) {
-  const R = 40;
-  // vetor unitário (ux,uy) e perpendicular (px,py) para um ângulo em graus (0 = Norte, horário)
-  const u = (deg: number) => { const a = (deg * Math.PI) / 180; return { ux: Math.sin(a), uy: -Math.cos(a), px: Math.cos(a), py: Math.sin(a) }; };
-  // ponta da estrela (losango dividido em metade clara/escura, dá o efeito 3D)
-  const ponta = (deg: number, len: number, key: string) => {
-    const { ux, uy, px, py } = u(deg);
-    const tipx = cx + len * ux, tipy = cy + len * uy;
-    const sh = 0.28 * len, hw = 0.11 * len;
-    const lx = cx + sh * ux + hw * px, ly = cy + sh * uy + hw * py;
-    const rx = cx + sh * ux - hw * px, ry = cy + sh * uy - hw * py;
-    return (
-      <g key={key}>
-        <polygon points={`${cx},${cy} ${lx.toFixed(1)},${ly.toFixed(1)} ${tipx.toFixed(1)},${tipy.toFixed(1)}`} fill="#1f2937" />
-        <polygon points={`${cx},${cy} ${rx.toFixed(1)},${ry.toFixed(1)} ${tipx.toFixed(1)},${tipy.toFixed(1)}`} fill="#cbd5e1" />
-      </g>
-    );
-  };
-  // agulha técnica fina (norte de quadrícula e magnético)
-  const agulha = (ang: number, label: string, cor: string, ladoDir: number) => {
-    const { ux, uy } = u(ang); const len = R + 3;
-    const tx = cx + len * ux, ty = cy + len * uy;
-    return (
-      <g key={label}>
-        <line x1={cx} y1={cy} x2={tx} y2={ty} stroke={cor} strokeWidth={0.9} />
-        <circle cx={tx} cy={ty} r={1.3} fill={cor} />
-        <text x={tx + ladoDir * 7} y={ty + 2.5} fontSize={fs(5.5)} fontWeight="bold" textAnchor="middle" fill={cor}>{label}</text>
-      </g>
-    );
-  };
-  const letras: [string, number][] = [['N', 0], ['L', 90], ['S', 180], ['O', 270]];
+// Rosa dos ventos BÁSICA: seta de Norte limpa (metade clara/escura) num anel discreto, só a
+// letra "N". Sem vermelho, sem excesso de letras.
+function RosaDosVentos({ cx, cy, fs }: { cx: number; cy: number; conv?: number; decl?: number; fs: (n: number) => number }) {
+  const R = 34;
   return (
     <g>
-      {/* anel graduado */}
-      <circle cx={cx} cy={cy} r={R + 11} fill="#ffffff" fillOpacity={0.92} stroke="#cbd5e1" strokeWidth={0.7} />
-      <circle cx={cx} cy={cy} r={R + 4} fill="none" stroke="#94a3b8" strokeWidth={0.5} />
-      {Array.from({ length: 36 }).map((_, k) => {
-        const { ux, uy } = u(k * 10); const maior = k % 9 === 0;
-        const r1 = R + 4, r2 = maior ? R - 3 : R + 1.5;
-        return <line key={k} x1={cx + r1 * ux} y1={cy + r1 * uy} x2={cx + r2 * ux} y2={cy + r2 * uy} stroke="#94a3b8" strokeWidth={maior ? 1 : 0.4} />;
-      })}
-      {/* estrela de 8 pontas: intercardinais curtas, cardinais longas */}
-      {[45, 135, 225, 315].map((d) => ponta(d, R * 0.58, `i${d}`))}
-      {[90, 180, 270].map((d) => ponta(d, R, `c${d}`))}
-      {/* ponta Norte destacada em vermelho */}
-      {(() => { const { ux, uy, px, py } = u(0); const len = R; const tipx = cx + len * ux, tipy = cy + len * uy; const sh = 0.28 * len, hw = 0.11 * len; const lx = cx + sh * ux + hw * px, ly = cy + sh * uy + hw * py; const rx = cx + sh * ux - hw * px, ry = cy + sh * uy - hw * py; return (<g><polygon points={`${cx},${cy} ${lx.toFixed(1)},${ly.toFixed(1)} ${tipx.toFixed(1)},${tipy.toFixed(1)}`} fill="#b91c1c" /><polygon points={`${cx},${cy} ${rx.toFixed(1)},${ry.toFixed(1)} ${tipx.toFixed(1)},${tipy.toFixed(1)}`} fill="#f87171" /></g>); })()}
-      {/* agulhas técnicas (NQ = quadrícula, NM = magnético) */}
-      {agulha(conv, 'NQ', '#1d4ed8', -1)}
-      {agulha(decl, 'NM', '#b91c1c', 1)}
-      {/* letras cardeais */}
-      {letras.map(([t, d]) => { const { ux, uy } = u(d); const r = R + 8; return <text key={t} x={cx + r * ux} y={cy + r * uy + 3} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle" fill={t === 'N' ? '#b91c1c' : '#0f172a'}>{t}</text>; })}
-      <circle cx={cx} cy={cy} r={2.6} fill="#1f2937" stroke="#ffffff" strokeWidth={0.7} />
+      <circle cx={cx} cy={cy} r={R} fill="#ffffff" fillOpacity={0.9} stroke="#cbd5e1" strokeWidth={0.7} />
+      <circle cx={cx} cy={cy} r={R - 6} fill="none" stroke="#e2e8f0" strokeWidth={0.5} />
+      {/* seta Norte: dois triângulos (claro/escuro) do centro até o topo */}
+      <polygon points={`${cx},${cy - (R - 4)} ${cx - 6},${cy + 9} ${cx},${cy + 2}`} fill="#1f2937" />
+      <polygon points={`${cx},${cy - (R - 4)} ${cx + 6},${cy + 9} ${cx},${cy + 2}`} fill="#94a3b8" />
+      {/* haste sul discreta */}
+      <line x1={cx} y1={cy + 2} x2={cx} y2={cy + 12} stroke="#94a3b8" strokeWidth={1} />
+      <circle cx={cx} cy={cy} r={1.8} fill="#1f2937" />
+      <text x={cx} y={cy - R + 1} fontSize={fs(9)} fontWeight="bold" textAnchor="middle" fill="#0f172a">N</text>
     </g>
   );
 }
