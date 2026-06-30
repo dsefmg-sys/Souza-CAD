@@ -90,16 +90,15 @@ const COR_IMPORT = 'bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-50
 const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30';
 
 type EtapaEstado = 'feito' | 'andamento' | 'pendente';
-// Envolve um botão do fluxo com uma barrinha de progresso COLADA embaixo dele
-// (verde = feito, azul = em andamento, cinza = pendente).
+// Acende o ÍCONE do botão do fluxo: verde = etapa feita, azul = em andamento, neutro = pendente.
+// (Sem mais barrinha embaixo; o próprio ícone sinaliza o progresso.)
 function Etapa({ st, children }: { st: EtapaEstado; children: ReactNode }) {
-  const cor = st === 'feito' ? 'bg-green-500' : st === 'andamento' ? 'bg-blue-500' : 'bg-foreground/15';
-  return (
-    <div className="flex shrink-0 flex-col items-stretch">
-      {children}
-      <div className={`mt-0.5 h-1 w-full rounded-full ${cor}`} />
-    </div>
-  );
+  const cls = st === 'feito'
+    ? '[&_svg]:text-green-600 [&_svg]:dark:text-green-400'
+    : st === 'andamento'
+    ? '[&_svg]:text-blue-600 [&_svg]:dark:text-blue-400'
+    : '';
+  return <div className={`flex shrink-0 ${cls}`}>{children}</div>;
 }
 
 export default function EditorPage() {

@@ -559,33 +559,38 @@ export default function Planta({
         ))}
       </g>
 
-      {/* ---------- BARRA DE ESCALA GRÁFICA ---------- */}
+      {/* ---------- BARRA DE ESCALA GRÁFICA (moderna) ---------- */}
       {verEscalaG && (() => {
         const nices = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
-        const barM = nices.find((n) => n * escala >= 120) ?? 5000;
+        const barM = nices.find((n) => n * escala >= 130) ?? 5000;
         const barPx = barM * escala;
-        const bx = DRAW.x0 + 20, by = DRAW.y1 - 35;
         const seg = barPx / 4;
+        const h = 7; // altura da barra
+        const bx = DRAW.x0 + 22, by = DRAW.y1 - 40;
         return (
-          <g className="no-print" transform={`translate(${bx}, ${by})`}>
-            {/* Fundo translúcido */}
-            <rect x={-8} y={-24} width={barPx + 36} height={46} fill="#ffffff" fillOpacity={0.85} stroke="#d1d5db" strokeWidth={0.6} rx={4} ry={4} />
-            <text x={0} y={-12} fontSize={fs(7.5)} fontWeight="bold" fill="#374151">ESCALA GRÁFICA</text>
+          <g transform={`translate(${bx}, ${by})`}>
+            {/* cartão de fundo */}
+            <rect x={-12} y={-20} width={barPx + 46} height={48} fill="#ffffff" fillOpacity={0.92} stroke="#cbd5e1" strokeWidth={0.7} rx={5} ry={5} />
+            <text x={0} y={-9} fontSize={fs(7)} fontWeight="bold" letterSpacing="0.5" fill="#0f172a">ESCALA  1:{escalaDenom}</text>
+            {/* segmentos alternados com moldura única */}
             {[0, 1, 2, 3].map((k) => (
-              <rect key={k} x={k * seg} y={0} width={seg} height={5} fill={k % 2 ? '#ffffff' : '#1c1917'} stroke="#1c1917" strokeWidth={0.6} />
+              <rect key={k} x={k * seg} y={0} width={seg} height={h} fill={k % 2 ? '#ffffff' : '#0f172a'} />
             ))}
+            <rect x={0} y={0} width={barPx} height={h} fill="none" stroke="#0f172a" strokeWidth={0.8} />
+            {/* marcas e rótulos em metros */}
             {[0, 1, 2, 3, 4].map((k) => (
-              <text key={k} x={k * seg} y={13} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill="#374151">
-                {Math.round((barM * k) / 4)}
-              </text>
+              <g key={k}>
+                <line x1={k * seg} y1={h} x2={k * seg} y2={h + 3} stroke="#0f172a" strokeWidth={0.6} />
+                <text x={k * seg} y={h + 12} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill="#334155">{Math.round((barM * k) / 4)}</text>
+              </g>
             ))}
-            <text x={barPx + 10} y={6} fontSize={fs(7)} fontWeight="bold" fill="#374151">m</text>
+            <text x={barPx + 11} y={h - 1} fontSize={fs(7)} fontWeight="bold" fill="#334155">m</text>
           </g>
         );
       })()}
 
       {/* Rosa dos Ventos com indicações de Norte no canto superior direito do desenho */}
-      {verNortes && <RosaDosVentos cx={DRAW.x1 - 65} cy={DRAW.y0 + 65} conv={conv} decl={decl} />}
+      {verNortes && <RosaDosVentos cx={DRAW.x1 - 72} cy={DRAW.y0 + 74} conv={conv} decl={decl} fs={fs} />}
 
       {/* ---------- FAIXA INFERIOR (SITUAÇÃO, CONVENÇÕES, INFOS COORDENADAS) ---------- */}
       <FaixaInferior
@@ -721,33 +726,58 @@ function FaixaInferior(props: {
 
 // ---------------- Nortes modificado ----------------
 // ---------------- RosaDosVentos e Nortes ----------------
-function RosaDosVentos({ cx, cy, conv, decl }: { cx: number; cy: number; conv: number; decl: number }) {
-  const seta = (ang: number, label: string, cor: string, len: number) => {
-    const a = (-ang * Math.PI) / 180;
-    const tx = cx + len * Math.sin(a), ty = cy - len * Math.cos(a);
-    // Calcular a rotação para alinhar o texto com a linha da seta
+function RosaDosVentos({ cx, cy, conv, decl, fs }: { cx: number; cy: number; conv: number; decl: number; fs: (n: number) => number }) {
+  const R = 40;
+  // vetor unitário (ux,uy) e perpendicular (px,py) para um ângulo em graus (0 = Norte, horário)
+  const u = (deg: number) => { const a = (deg * Math.PI) / 180; return { ux: Math.sin(a), uy: -Math.cos(a), px: Math.cos(a), py: Math.sin(a) }; };
+  // ponta da estrela (losango dividido em metade clara/escura, dá o efeito 3D)
+  const ponta = (deg: number, len: number, key: string) => {
+    const { ux, uy, px, py } = u(deg);
+    const tipx = cx + len * ux, tipy = cy + len * uy;
+    const sh = 0.28 * len, hw = 0.11 * len;
+    const lx = cx + sh * ux + hw * px, ly = cy + sh * uy + hw * py;
+    const rx = cx + sh * ux - hw * px, ry = cy + sh * uy - hw * py;
     return (
-      <g key={label}>
-        <line x1={cx} y1={cy} x2={tx} y2={ty} stroke={cor} strokeWidth={1.2} />
-        <text x={tx + Math.sin(a) * 6} y={ty - Math.cos(a) * 2 + 3} fontSize={7.5} fontWeight="bold" textAnchor="middle" fill={cor}>{label}</text>
+      <g key={key}>
+        <polygon points={`${cx},${cy} ${lx.toFixed(1)},${ly.toFixed(1)} ${tipx.toFixed(1)},${tipy.toFixed(1)}`} fill="#1f2937" />
+        <polygon points={`${cx},${cy} ${rx.toFixed(1)},${ry.toFixed(1)} ${tipx.toFixed(1)},${tipy.toFixed(1)}`} fill="#cbd5e1" />
       </g>
     );
   };
-
+  // agulha técnica fina (norte de quadrícula e magnético)
+  const agulha = (ang: number, label: string, cor: string, ladoDir: number) => {
+    const { ux, uy } = u(ang); const len = R + 3;
+    const tx = cx + len * ux, ty = cy + len * uy;
+    return (
+      <g key={label}>
+        <line x1={cx} y1={cy} x2={tx} y2={ty} stroke={cor} strokeWidth={0.9} />
+        <circle cx={tx} cy={ty} r={1.3} fill={cor} />
+        <text x={tx + ladoDir * 7} y={ty + 2.5} fontSize={fs(5.5)} fontWeight="bold" textAnchor="middle" fill={cor}>{label}</text>
+      </g>
+    );
+  };
+  const letras: [string, number][] = [['N', 0], ['L', 90], ['S', 180], ['O', 270]];
   return (
-    <g className="no-print">
-      {/* Círculo graduado de fundo */}
-      <circle cx={cx} cy={cy} r={34} fill="#ffffff" fillOpacity={0.85} stroke="#d1d5db" strokeWidth={0.6} strokeDasharray="2 2" />
-      <circle cx={cx} cy={cy} r={22} fill="none" stroke="#e5e7eb" strokeWidth={0.6} />
-      
-      {/* Setas direcionais */}
-      {seta(0, 'NV', '#1c1917', 38)}
-      {seta(conv, 'NQ', '#1d4ed8', 32)}
-      {seta(decl, 'NM', '#b91c1c', 32)}
-      
-      {/* Mini agulha/polígono para dar um charme cartográfico para o Norte Verdadeiro */}
-      <polygon points={`${cx},${cy - 38} ${cx - 3},${cy - 16} ${cx},${cy - 21} ${cx + 3},${cy - 16}`} fill="#1c1917" />
-      <circle cx={cx} cy={cy} r={2} fill="#1c1917" stroke="#ffffff" strokeWidth={0.6} />
+    <g>
+      {/* anel graduado */}
+      <circle cx={cx} cy={cy} r={R + 11} fill="#ffffff" fillOpacity={0.92} stroke="#cbd5e1" strokeWidth={0.7} />
+      <circle cx={cx} cy={cy} r={R + 4} fill="none" stroke="#94a3b8" strokeWidth={0.5} />
+      {Array.from({ length: 36 }).map((_, k) => {
+        const { ux, uy } = u(k * 10); const maior = k % 9 === 0;
+        const r1 = R + 4, r2 = maior ? R - 3 : R + 1.5;
+        return <line key={k} x1={cx + r1 * ux} y1={cy + r1 * uy} x2={cx + r2 * ux} y2={cy + r2 * uy} stroke="#94a3b8" strokeWidth={maior ? 1 : 0.4} />;
+      })}
+      {/* estrela de 8 pontas: intercardinais curtas, cardinais longas */}
+      {[45, 135, 225, 315].map((d) => ponta(d, R * 0.58, `i${d}`))}
+      {[90, 180, 270].map((d) => ponta(d, R, `c${d}`))}
+      {/* ponta Norte destacada em vermelho */}
+      {(() => { const { ux, uy, px, py } = u(0); const len = R; const tipx = cx + len * ux, tipy = cy + len * uy; const sh = 0.28 * len, hw = 0.11 * len; const lx = cx + sh * ux + hw * px, ly = cy + sh * uy + hw * py; const rx = cx + sh * ux - hw * px, ry = cy + sh * uy - hw * py; return (<g><polygon points={`${cx},${cy} ${lx.toFixed(1)},${ly.toFixed(1)} ${tipx.toFixed(1)},${tipy.toFixed(1)}`} fill="#b91c1c" /><polygon points={`${cx},${cy} ${rx.toFixed(1)},${ry.toFixed(1)} ${tipx.toFixed(1)},${tipy.toFixed(1)}`} fill="#f87171" /></g>); })()}
+      {/* agulhas técnicas (NQ = quadrícula, NM = magnético) */}
+      {agulha(conv, 'NQ', '#1d4ed8', -1)}
+      {agulha(decl, 'NM', '#b91c1c', 1)}
+      {/* letras cardeais */}
+      {letras.map(([t, d]) => { const { ux, uy } = u(d); const r = R + 8; return <text key={t} x={cx + r * ux} y={cy + r * uy + 3} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle" fill={t === 'N' ? '#b91c1c' : '#0f172a'}>{t}</text>; })}
+      <circle cx={cx} cy={cy} r={2.6} fill="#1f2937" stroke="#ffffff" strokeWidth={0.7} />
     </g>
   );
 }
