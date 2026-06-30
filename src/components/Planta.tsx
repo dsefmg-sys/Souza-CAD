@@ -753,7 +753,7 @@ export default function Planta({
         );
       })()}
 
-      {/* Rosa dos Ventos com indicações de Norte no canto superior direito do desenho */}
+      {/* Rosa dos Ventos e Diagrama de Nortes agrupados e móveis */}
       {verNortes && (() => {
         const idRosa = 'planta.rosaDosVentos';
         const ovRosa = textosOv[idRosa] || {};
@@ -762,7 +762,7 @@ export default function Planta({
         const rcy = (DRAW.y0 + 74) + (offsetRosa.dy ?? 0);
         return (
           <g
-            key="rosa-dos-ventos-g"
+            key="rosa-nortes-grupo"
             id={idRosa}
             x={DRAW.x1 - 72}
             y={DRAW.y0 + 74}
@@ -776,7 +776,10 @@ export default function Planta({
               captura(e);
             } : undefined}
           >
-            <RosaDosVentos cx={rcx} cy={rcy} conv={conv} decl={decl} fs={fs} />
+            {/* Rosa dos Ventos (Orientação decorativa) */}
+            <RosaDosVentos cx={rcx} cy={rcy} fs={fs} />
+            {/* Diagrama Técnico de Norte (Convergência) */}
+            <Nortes cx={rcx} cy={rcy + 54} conv={conv} decl={decl} fs={fs} />
           </g>
         );
       })()}
@@ -805,7 +808,17 @@ export default function Planta({
           onTerminarEditar: terminarEdicao,
           onDragStart: tedComum.onDragStart,
         }}
-      />    </svg>
+      />      {editavel && guiaAlinhamento && (
+        <g>
+          {guiaAlinhamento.x != null && (
+            <line x1={guiaAlinhamento.x} y1={0} x2={guiaAlinhamento.x} y2={H} stroke="#ef4444" strokeWidth={0.8} strokeDasharray="4 2" />
+          )}
+          {guiaAlinhamento.y != null && (
+            <line x1={0} y1={guiaAlinhamento.y} x2={W} y2={guiaAlinhamento.y} stroke="#ef4444" strokeWidth={0.8} strokeDasharray="4 2" />
+          )}
+        </g>
+      )}
+    </svg>
   );
 }
 
@@ -902,7 +915,7 @@ function FaixaInferior(props: {
           <text x={x3 + 12} y={y0 + 52} fontSize={fs(8.5)} fontWeight="bold">de Mercator (UTM)</text>
           <text x={x3 + 12} y={y0 + 72} fontSize={fs(8.5)}>SGR (Ref.): <tspan fontWeight="bold">SIRGAS2000</tspan></text>
           <text x={x3 + 12} y={y0 + 88} fontSize={fs(8.5)}>Fuso <tspan fontWeight="bold">{zona}{hemisferio}</tspan> / MC <tspan fontWeight="bold">{Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</tspan></text>
-          {verNortes && <Nortes cx={x3 + 76} cy={y0 + 152} conv={conv} decl={decl} fs={fs} />}
+
         </g>
 
         {/* Lado Direito do Box 3 (Valores do Vértice de Referência) */}
