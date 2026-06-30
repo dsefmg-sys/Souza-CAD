@@ -1741,17 +1741,6 @@ export default function EditorPage() {
         </a>
         <Button size="sm" variant="outline" className="shrink-0 bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500 hover:text-black dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/30 dark:hover:bg-amber-400 dark:hover:text-black font-semibold" title="Gerar uma errata formal ao cartório (corrigir dados)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button>
        </div>
-       {/* Conta/sistema fixos no canto superior direito — só NOVO e SALVO (o resto foi pro rodapé da lateral) */}
-       <div className="flex shrink-0 items-center gap-1 border-l px-2">
-         <Button size="sm" variant="outline" className="gap-1 font-semibold shrink-0 h-8" disabled={processando} title="Iniciar um novo projeto (TXT)" onClick={criarNovoProjeto}>
-           <Plus className="size-4" /> NOVO
-         </Button>
-         <Etapa st={etapas.salvo}>
-           <Button size="sm" variant="default" className={`font-bold gap-1 shrink-0 h-8 mr-1 text-white ${salvoOk ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-emerald-600/50 hover:bg-emerald-600/70'}`} disabled={processando} title="Salvar o projeto (cor sólida = salvo com sucesso). Tudo é salvo automaticamente; este botão força e confirma o salvamento." onClick={salvar}>
-             <Save className="size-4" /> SALVO
-           </Button>
-         </Etapa>
-       </div>
       </header>
 
       <div className="relative flex min-h-0 flex-1">
@@ -1788,6 +1777,20 @@ export default function EditorPage() {
           return (
             <>
               <aside style={{ width: toolW }} className="no-print flex shrink-0 flex-col gap-1 overflow-y-auto border-r bg-background p-1.5">
+                {/* NOVO (ação) + indicador SALVO — sempre visível, no topo */}
+                <Button size="sm" variant="outline" className="h-9 w-full justify-start gap-2 font-semibold" disabled={processando} title="Iniciar um novo projeto (TXT)" onClick={criarNovoProjeto}>
+                  <Plus className="size-4" /> <span className="truncate text-xs">NOVO PROJETO</span>
+                </Button>
+                <button
+                  className="flex items-center gap-2 rounded px-2 py-1 text-left text-xs hover:bg-muted/50 disabled:opacity-60"
+                  disabled={processando}
+                  title="Tudo é salvo automaticamente. A luz verde indica salvo com sucesso; clique para forçar e confirmar o salvamento."
+                  onClick={salvar}
+                >
+                  <span className={`size-2.5 shrink-0 rounded-full ${processando ? 'bg-amber-400 animate-pulse' : salvoOk ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
+                  <span className="truncate font-semibold text-muted-foreground">{processando ? 'Salvando…' : salvoOk ? 'Salvo' : 'Salvar agora'}</span>
+                </button>
+
                 {/* SISTEMA (topo): ações úteis com nome + ícones de alternância */}
                 {vista === 'mapa' && (
                   <>
