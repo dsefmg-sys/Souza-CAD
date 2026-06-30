@@ -2024,10 +2024,10 @@ export default function EditorPage() {
             {glebas.length > 1 && <Button size="sm" variant="ghost" disabled={processando} onClick={() => removerGleba(glebaAtivaId)} title="Remover gleba"><Trash2 /></Button>}
           </div>
           {/* resumo */}
-          <div className="grid grid-cols-3 gap-2 border-b p-3 text-center">
-            <div><div className="text-[10px] uppercase text-muted-foreground">Área SGL</div><div className="font-semibold">{res ? `${numBR(res.areaHa, 4)} ha` : '—'}</div></div>
-            <div><div className="text-[10px] uppercase text-muted-foreground">Perímetro</div><div className="font-semibold">{res ? `${numBR(res.perimetro)} m` : '—'}</div></div>
-            <div><div className="text-[10px] uppercase text-muted-foreground">Vértices</div><div className="font-semibold">{vertices.length}</div></div>
+          <div className="grid grid-cols-3 gap-1 border-b px-2 py-1.5 text-center">
+            <div><div className="text-[9px] uppercase text-muted-foreground">Área SGL</div><div className="text-sm font-semibold">{res ? `${numBR(res.areaHa, 4)} ha` : '—'}</div></div>
+            <div><div className="text-[9px] uppercase text-muted-foreground">Perímetro</div><div className="text-sm font-semibold">{res ? `${numBR(res.perimetro)} m` : '—'}</div></div>
+            <div><div className="text-[9px] uppercase text-muted-foreground">Vértices</div><div className="text-sm font-semibold">{vertices.length}</div></div>
           </div>
 
           {/* abas */}
@@ -2040,7 +2040,7 @@ export default function EditorPage() {
             ))}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto p-3">
+          <div className="min-h-0 flex-1 overflow-auto p-2.5">
             <datalist id="lista-cns">{sugCns.map((c) => <option key={c} value={c} />)}</datalist>
             {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} />}
             {aba === 'vertices' && (
@@ -2396,9 +2396,9 @@ function MiniSelect({ label, value, options, onChange }: { label: string; value:
 
 function Campo({ label, value, onChange, placeholder, list }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; list?: string }) {
   return (
-    <div className="space-y-1">
-      <Label>{label}</Label>
-      <Input list={list} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+    <div className="space-y-0.5">
+      <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Label>
+      <Input list={list} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="h-8 text-sm" />
     </div>
   );
 }
@@ -2415,7 +2415,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
     onChange(m ? { ...imovel, proprietario: v, cpfProprietario: m.cpf, tipoPessoa: m.tipoPessoa } : { ...imovel, proprietario: v });
   }
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Seletor Deslizante Rural / Urbano */}
       <div className="flex rounded-md bg-secondary p-0.5 text-xs font-medium">
         <button
@@ -2468,10 +2468,10 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
       )}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <Label>Proprietário</Label>
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Proprietário</Label>
           <button className="text-[10px] text-primary hover:underline" onClick={onSalvarProp}>salvar no cadastro</button>
         </div>
-        <Input list="lista-proprietarios" value={imovel.proprietario} onChange={(e) => setProprietario(e.target.value)} />
+        <Input list="lista-proprietarios" value={imovel.proprietario} onChange={(e) => setProprietario(e.target.value)} className="h-8 text-sm" />
         <datalist id="lista-proprietarios">
           {sugProp.map((p) => <option key={p.id} value={p.nome} />)}
         </datalist>
@@ -2501,13 +2501,13 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
       </div>
       <Campo label="Local (memorial)" value={imovel.local} onChange={onLocal} placeholder="Córrego ..., Cidade-UF" />
       <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label>Fuso UTM</Label>
-          <Input type="number" value={zona} onChange={(e) => onZona(Number(e.target.value))} />
+        <div className="space-y-0.5">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fuso UTM</Label>
+          <Input type="number" value={zona} onChange={(e) => onZona(Number(e.target.value))} className="h-8 text-sm" />
         </div>
-        <div className="space-y-1">
-          <Label>Hemisfério</Label>
-          <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm" value={hemisferio} onChange={(e) => onHemisferio(e.target.value as 'N' | 'S')}>
+        <div className="space-y-0.5">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Hemisfério</Label>
+          <select className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm" value={hemisferio} onChange={(e) => onHemisferio(e.target.value as 'N' | 'S')}>
             <option value="S">Sul</option>
             <option value="N">Norte</option>
           </select>
