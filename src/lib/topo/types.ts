@@ -64,6 +64,10 @@ export interface Vertex {
   sigmaY?: number;     // precisão horizontal Y (m), lida do TXT
   sigmaZ?: number;     // precisão vertical Z (m), lida do TXT
   posRotulo?: { lat: number; lon: number }; // posição manual do rótulo do vértice (arrastado com F5)
+  // tique de TROCA DE CONFRONTANTE saindo do marco (M): azimute (graus, 0=topo) e comprimento (px da
+  // prancha A3). Vazio = padrão (aponta pra fora do polígono, ~4 cm). Ajustável arrastando a ponta.
+  divisaConfAz?: number;
+  divisaConfLen?: number;
 }
 
 // ----- Banco de pontos por credenciado (nunca repetir vértice) -----
@@ -266,6 +270,7 @@ export interface PlantaConfig {
   mostrarNortes?: boolean;     // padrão true
   mostrarConvencoes?: boolean; // padrão true
   mostrarEscalaGrafica?: boolean; // padrão true
+  mostrarDivisaConf?: boolean;    // padrão true: tique de troca de confrontante nos marcos M
   mostrarSituacao?: boolean;   // padrão true (quando há imagem de situação)
   fonteRotulos?: number;       // tamanho da fonte dos rótulos (vértices/confrontantes), padrão 8.5
   escalaTextos?: number;       // multiplicador de TODOS os textos da planta (1 = padrão)

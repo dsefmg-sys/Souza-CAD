@@ -1061,6 +1061,11 @@ export default function EditorPage() {
   function editarConfrontantePlanta(id: string) {
     if (confrontantes.some((x) => x.id === id)) setConfEditId(id);
   }
+  // ajusta o tique de troca de confrontante (azimute/comprimento) de um marco M
+  function ajustarDivisaConf(id: string, az: number, len: number) {
+    snap();
+    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, divisaConfAz: az, divisaConfLen: len } : v)));
+  }
   // arrasto do painel flutuante de dados (área/perímetro)
   function dadosDown(e: ReactPointerEvent) {
     dadosDrag.current = { ox: e.clientX - dadosPos.x, oy: e.clientY - dadosPos.y };
@@ -2057,7 +2062,7 @@ export default function EditorPage() {
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
-                      onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf}
+                      onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} />
                   </div>

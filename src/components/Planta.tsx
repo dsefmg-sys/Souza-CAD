@@ -39,6 +39,7 @@ interface Props {
   onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
   onEditarConfrontante?: (id: string) => void;                     // duplo clique no rótulo: editar nome/matrícula
   onTamRotuloConf?: (id: string, delta: number) => void;           // ajusta o tamanho da fonte do rótulo
+  onAjustarDivisaConf?: (id: string, az: number, len: number) => void; // arrastar a ponta do tique de troca
   onTextoEditar?: (id: string, atual: string) => void;            // clique duplo: editar conteúdo
   onTextoMenu?: (id: string, atual: string, x: number, y: number) => void; // clique direito: formatar
   onMoverFolha?: (dx: number, dy: number) => void;                // arrastar o vazio: reposiciona a folha
@@ -165,13 +166,13 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onMoverRotuloConf, onMoverRotuloVertice,
-  onEditarConfrontante, onTamRotuloConf,
+  onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted'; id: string; idx?: number; dx?: number; dy?: number }>(null);
+  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number }>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
 
   // Estados locais para edição em linha (in-place)
@@ -181,7 +182,7 @@ export default function Planta({
 
   // Estado para arrasto fluído/suave (evita recálculos geográficos pesados em tempo real)
   const [dragTemp, setDragTemp] = useState<{
-    kind: 'rotConf' | 'rotVert' | 'ted';
+    kind: 'rotConf' | 'rotVert' | 'ted' | 'divisaConf';
     id: string;
     dx: number;
     dy: number;
@@ -197,6 +198,7 @@ export default function Planta({
   const verNortes = config.mostrarNortes !== false;
   const verConv = config.mostrarConvencoes !== false;
   const verEscalaG = config.mostrarEscalaGrafica !== false;
+  const verDivisaConf = config.mostrarDivisaConf !== false;
   const verSituacao = config.mostrarSituacao !== false;
   const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1.5;
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
@@ -381,6 +383,12 @@ export default function Planta({
       const finalY = dragTemp.baseY + dragTemp.dy;
       if (d.kind === 'ted') {
         onTextoMover?.(dragTemp.id, finalX, finalY);
+      } else if (d.kind === 'divisaConf' && d.vx != null && d.vy != null) {
+        // converte a ponta arrastada em azimute (0=topo, horário) + comprimento em px de prancha
+        const ddx = finalX - d.vx, ddy = finalY - d.vy;
+        let az = (Math.atan2(ddx, -ddy) * 180) / Math.PI; if (az < 0) az += 360;
+        const len = Math.min(400, Math.max(15, Math.hypot(ddx, ddy)));
+        onAjustarDivisaConf?.(dragTemp.id, +az.toFixed(1), +len.toFixed(0));
       } else {
         const g = paraGeo({ x: finalX, y: finalY });
         if (d.kind === 'rotConf') onMoverRotuloConf?.(dragTemp.id, g.lat, g.lon);
@@ -536,6 +544,41 @@ export default function Planta({
           </g>
         );
       })}
+
+      {/* TIQUE DE TROCA DE CONFRONTANTE: linha tracejada saindo de cada marco M para fora do polígono */}
+      {verDivisaConf && (() => {
+        const vsv = vertices.filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte));
+        if (vsv.length < 3) return null;
+        const ccx = vsv.reduce((s, v) => s + sx(v.leste), 0) / vsv.length;
+        const ccy = vsv.reduce((s, v) => s + sy(v.norte), 0) / vsv.length;
+        return vsv.filter((v) => v.tipo === 'M').map((v) => {
+          const vx = sx(v.leste), vy = sy(v.norte);
+          // azimute: salvo, senão "pra fora" (vértice − centróide)
+          let az = v.divisaConfAz;
+          if (az == null) { let a = (Math.atan2(vx - ccx, -(vy - ccy)) * 180) / Math.PI; if (a < 0) a += 360; az = a; }
+          const len = v.divisaConfLen ?? 150; // ~4 cm na prancha A3
+          const arrastando = dragTemp?.kind === 'divisaConf' && dragTemp.id === v.id;
+          const a = (az * Math.PI) / 180;
+          const ex = arrastando ? dragTemp.baseX + dragTemp.dx : vx + Math.sin(a) * len;
+          const ey = arrastando ? dragTemp.baseY + dragTemp.dy : vy - Math.cos(a) * len;
+          return (
+            <g key={`dc${v.id}`}>
+              <line x1={vx} y1={vy} x2={ex} y2={ey} stroke="#475569" strokeWidth={0.6} strokeDasharray="4 3" />
+              {editavel && (
+                <circle cx={ex} cy={ey} r={3.4} fill="#ffffff" stroke="#475569" strokeWidth={1.1} style={{ cursor: 'move' }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                    const u = svgPonto(e); if (!u) return;
+                    dragRef.current = { kind: 'divisaConf', id: v.id, vx, vy };
+                    setDragTemp({ kind: 'divisaConf', id: v.id, dx: 0, dy: 0, baseX: ex, baseY: ey });
+                    folhaLast.current = u;
+                    captura(e);
+                  }} />
+              )}
+            </g>
+          );
+        });
+      })()}
 
       {/* vértices + códigos (rótulo na posição arrastada, se houver; editável) */}
       {rotuloVert.map(({ v, x, y }) => (
