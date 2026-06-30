@@ -2300,7 +2300,11 @@ export default function EditorPage() {
                 {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
                 {projetos.map((p) => (
                   <div key={p.id} className="flex items-center justify-between rounded border p-2 text-xs">
-                    <div><div className="font-medium">{p.nome}</div><div className="text-muted-foreground">{contarVertices(p)} vértices{(p.glebas?.length ?? 0) > 1 ? ` · ${p.glebas!.length} glebas` : ''}</div></div>
+                    <div>
+                      <div className="font-medium">{p.nome}</div>
+                      <div className="text-muted-foreground">{contarVertices(p)} vértices{(p.glebas?.length ?? 0) > 1 ? ` · ${p.glebas!.length} glebas` : ''}</div>
+                      {p.atualizadoEm ? <div className="text-[10px] text-muted-foreground">Salvo em {new Date(p.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div> : null}
+                    </div>
                     <div className="flex gap-1">
                       <Button size="sm" variant="outline" onClick={() => abrir(p.id)} title="Abrir"><FolderOpen /></Button>
                       <Button size="sm" variant="ghost" onClick={() => renomear(p)} title="Renomear"><Pencil /></Button>

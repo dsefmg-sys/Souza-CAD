@@ -388,11 +388,14 @@ export default function Planta({
   function plantaUp(e: ReactPointerEvent) {
     if (dragTemp && dragRef.current) {
       const d = dragRef.current;
-      const finalX = dragTemp.baseX + dragTemp.dx;
-      const finalY = dragTemp.baseY + dragTemp.dy;
+      let finalX = dragTemp.baseX + dragTemp.dx;
+      let finalY = dragTemp.baseY + dragTemp.dy;
       if (d.kind === 'ted') {
         onTextoMover?.(dragTemp.id, finalX, finalY);
       } else if (d.kind === 'divisaConf' && d.vx != null && d.vy != null) {
+        // a ponta não pode sair do quadro do desenho
+        finalX = Math.max(DRAW.x0, Math.min(DRAW.x1, finalX));
+        finalY = Math.max(DRAW.y0, Math.min(DRAW.y1, finalY));
         // converte a ponta arrastada em azimute (0=topo, horário) + comprimento em px de prancha
         const ddx = finalX - d.vx, ddy = finalY - d.vy;
         let az = (Math.atan2(ddx, -ddy) * 180) / Math.PI; if (az < 0) az += 360;
@@ -568,8 +571,10 @@ export default function Planta({
           const len = v.divisaConfLen ?? 150; // ~4 cm na prancha A3
           const arrastando = dragTemp?.kind === 'divisaConf' && dragTemp.id === v.id;
           const a = (az * Math.PI) / 180;
-          const ex = arrastando ? dragTemp.baseX + dragTemp.dx : vx + Math.sin(a) * len;
-          const ey = arrastando ? dragTemp.baseY + dragTemp.dy : vy - Math.cos(a) * len;
+          // a ponta NÃO pode sair do quadro do desenho (clamp em DRAW)
+          const cl = (val: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, val));
+          const ex = cl(arrastando ? dragTemp.baseX + dragTemp.dx : vx + Math.sin(a) * len, DRAW.x0, DRAW.x1);
+          const ey = cl(arrastando ? dragTemp.baseY + dragTemp.dy : vy - Math.cos(a) * len, DRAW.y0, DRAW.y1);
           return (
             <g key={`dc${v.id}`}>
               <line x1={vx} y1={vy} x2={ex} y2={ey} stroke="#475569" strokeWidth={0.6} strokeDasharray="4 3" />
