@@ -2013,7 +2013,7 @@ export default function EditorPage() {
                 selMulti={selMulti} onToggleMulti={alternarMulti} onBoxSelect={adicionarMulti}
                 onDblClick={(lat, lon) => { const t = window.prompt('Texto a inserir:'); if (t) setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
-                objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} objetoSelId={objetoSelId}
+                objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice}
                 conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}
@@ -2788,7 +2788,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta, onS
   config: PlantaConfig; onChange: (c: PlantaConfig) => void; temSituacao: boolean; temLogo: boolean; onVerPlanta: () => void; onSalvarPadrao: () => void;
 }) {
   const set = (patch: Partial<PlantaConfig>) => onChange({ ...config, ...patch });
-  type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao';
+  type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao' | 'mostrarDivisaConf';
   const chk = (label: string, key: BoolKey) => (
     <label className="flex items-center gap-2 text-xs">
       <input type="checkbox" checked={config[key] !== false} onChange={(e) => set({ [key]: e.target.checked } as Partial<PlantaConfig>)} />
@@ -2827,6 +2827,14 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta, onS
         {chk('Convenções (legenda)', 'mostrarConvencoes')}
         {chk('Escala gráfica', 'mostrarEscalaGrafica')}
         {chk('Planta de situação', 'mostrarSituacao')}
+        {chk('Tiques de troca de confrontante (marcos M)', 'mostrarDivisaConf')}
+      </div>
+      <div className="space-y-1 rounded border p-2">
+        <div className="text-[10px] uppercase text-muted-foreground">Nome dos vértices</div>
+        <select className="h-8 w-full rounded border bg-background px-2 text-sm" value={config.estiloVertice ?? 'sigef'} onChange={(e) => set({ estiloVertice: e.target.value as 'sigef' | 'convencional' })}>
+          <option value="sigef">Código SIGEF (ex.: COIN-M-0017)</option>
+          <option value="convencional">Topografia convencional (P1, P2, P3…)</option>
+        </select>
       </div>
       <div className="space-y-1 rounded border p-2">
         <div className="text-[10px] uppercase text-muted-foreground">Estilização das Linhas (Planta)</div>

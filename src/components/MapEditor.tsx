@@ -37,6 +37,7 @@ interface Props {
   onMoverCentro?: (lat: number, lon: number) => void;
   mostrarDivisaConf?: boolean;
   onAjustarDivisaConf?: (id: string, az: number, len: number) => void;
+  estiloVertice?: 'sigef' | 'convencional';
   objetoSelId?: string | null;
   onMover: (id: string, lat: number, lon: number) => void;
   onSelecionar: (id: string) => void;
@@ -254,7 +255,7 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
-    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, mostrarDivisaConf = true, onAjustarDivisaConf, objetoSelId = null,
+    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     conflitos = [],
     focoLatLng = null,
@@ -512,7 +513,7 @@ export default function MapEditor(props: Props) {
           key={`nome${v.id}`}
           position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}
           draggable={modo === 'navegar'}
-          icon={iconeNomeVertice(v.codigoSigef || v.nome, i % 2 === 1, tamNomes)}
+          icon={iconeNomeVertice(estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome), i % 2 === 1, tamNomes)}
           eventHandlers={{
             click() { onSelecionar(v.id); },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },

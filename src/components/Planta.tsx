@@ -276,10 +276,12 @@ export default function Planta({
   });
 
   // posição do rótulo de cada vértice (honra posRotulo arrastado; senão, deslocado do ponto)
-  const rotuloVert = vertices.map((v) => {
-    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, x: sx(u.leste), y: sy(u.norte) }; }
-    return { v, x: sx(v.leste) + 5, y: sy(v.norte) - 4 };
+  const rotuloVert = vertices.map((v, i) => {
+    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, i, x: sx(u.leste), y: sy(u.norte) }; }
+    return { v, i, x: sx(v.leste) + 5, y: sy(v.norte) - 4 };
   });
+  // rótulo exibido do vértice: código SIGEF (padrão) ou P1, P2, P3… (topografia convencional)
+  const nomeVertice = (v: Vertex, i: number) => (config.estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || 'S/N'));
 
   const getOverride = (id: string) => {
     const base = textosOv[id] || {};
@@ -588,10 +590,10 @@ export default function Planta({
       })()}
 
       {/* vértices + códigos (rótulo na posição arrastada, se houver; editável) */}
-      {rotuloVert.map(({ v, x, y }) => (
+      {rotuloVert.map(({ v, i, x, y }) => (
         <g key={v.id}>
           <SimboloVertice tipo={v.tipo} cx={sx(v.leste)} cy={sy(v.norte)} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6} />
-          <Ted x={x} y={y} base={v.codigoSigef || 'S/N'} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
+          <Ted x={x} y={y} base={nomeVertice(v, i)} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
         </g>
       ))}
 

@@ -271,6 +271,7 @@ export interface PlantaConfig {
   mostrarConvencoes?: boolean; // padrão true
   mostrarEscalaGrafica?: boolean; // padrão true
   mostrarDivisaConf?: boolean;    // padrão true: tique de troca de confrontante nos marcos M
+  estiloVertice?: 'sigef' | 'convencional'; // rótulo do vértice: código SIGEF (padrão) ou P1, P2, P3…
   mostrarSituacao?: boolean;   // padrão true (quando há imagem de situação)
   fonteRotulos?: number;       // tamanho da fonte dos rótulos (vértices/confrontantes), padrão 8.5
   escalaTextos?: number;       // multiplicador de TODOS os textos da planta (1 = padrão)
