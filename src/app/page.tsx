@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users,
-  Maximize, Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight,
+  Maximize, Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -99,6 +99,17 @@ function Etapa({ st, children }: { st: EtapaEstado; children: ReactNode }) {
     ? '[&_svg]:text-blue-600 [&_svg]:dark:text-blue-400'
     : '';
   return <div className={`flex shrink-0 ${cls}`}>{children}</div>;
+}
+
+// Botão único de AÇÕES: desfazer à esquerda, refazer à direita, rótulo no meio (economiza espaço).
+function BotaoAcoes({ onUndo, onRedo }: { onUndo: () => void; onRedo: () => void }) {
+  return (
+    <div className="flex h-9 w-full items-stretch overflow-hidden rounded-md border bg-background">
+      <button type="button" onClick={onUndo} title="Desfazer" className="flex flex-1 items-center justify-center hover:bg-muted"><Undo2 className="size-4" /></button>
+      <span className="flex items-center border-x px-1.5 text-[9px] font-bold tracking-wide text-muted-foreground">AÇÕES</span>
+      <button type="button" onClick={onRedo} title="Refazer" className="flex flex-1 items-center justify-center hover:bg-muted"><Redo2 className="size-4" /></button>
+    </div>
+  );
 }
 
 export default function EditorPage() {
@@ -1807,8 +1818,7 @@ export default function EditorPage() {
                 {vista === 'mapa' && (
                   <>
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                      <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /> <span className="truncate text-xs font-semibold">DESFAZER</span></Button>
-                      <Button size="sm" variant="ghost" title="Refazer a ação desfeita" onClick={refazer}><Redo2 /> <span className="truncate text-xs font-semibold">REFAZER</span></Button>
+                      <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
                       <Button size="sm" variant="ghost" title="Focalizar/enquadrar o desenho atual" onClick={centralizar}><Target /> <span className="truncate text-xs font-semibold">FOCALIZAR</span></Button>
                       <Button size="sm" variant="ghost" title="Abrir a prévia da planta (F1)" onClick={() => setVista('planta')}><Eye /> <span className="truncate text-xs font-semibold">PLANTA</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
                       <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER</span><span className="ml-auto text-[9px] font-bold text-amber-400">F2</span></Button>
@@ -1829,11 +1839,7 @@ export default function EditorPage() {
                     {editarPlanta && (
                       <>
                         <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-9 w-full justify-start gap-2" title="Mover: arrastar textos, rótulos e a folha. Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span></Button>
-                        <div className="flex gap-1 [&>button]:h-9 [&>button]:flex-1 [&>button]:justify-center">
-                          <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /> <span className="truncate text-xs font-semibold">DESFAZER</span></Button>
-                          <Button size="sm" variant="ghost" title="Refazer a ação desfeita" onClick={refazer}><Redo2 /> <span className="truncate text-xs font-semibold">REFAZER</span></Button>
-                        </div>
-                        <Button size="sm" variant={folhaTravada ? 'outline' : 'default'} className={folhaTravada ? '' : 'bg-amber-600 text-white hover:bg-amber-700'} title={folhaTravada ? 'Folha travada — clique para poder arrastá-la' : 'Folha destravada — arraste o fundo para reposicioná-la'} onClick={() => setFolhaTravada((v) => !v)}>{folhaTravada ? <Lock /> : <LockOpen />} <span className="truncate text-xs font-semibold">{folhaTravada ? 'FOLHA TRAVADA' : 'MOVER FOLHA'}</span></Button>
+                        <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
                       </>
                     )}
                     {/* escala em passos de 250 */}
@@ -1995,6 +2001,14 @@ export default function EditorPage() {
 
           {vista === 'planta' && (
             <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
+              {/* cadeado flutuante: trava/destrava o arrasto da folha (só no modo edição) */}
+              {editarPlanta && (
+                <button type="button" onClick={() => setFolhaTravada((v) => !v)}
+                  title={folhaTravada ? 'Folha travada — clique para poder arrastá-la pela área vazia' : 'Folha livre — arraste o fundo para reposicioná-la. Clique para travar.'}
+                  className={`absolute left-3 top-3 z-[1000] flex size-9 items-center justify-center rounded-full border shadow-md backdrop-blur transition-colors ${folhaTravada ? 'bg-background/90 text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>
+                  {folhaTravada ? <Lock className="size-4" /> : <Move className="size-4" />}
+                </button>
+              )}
               {/* controles da planta movidos para a coluna esquerda; aqui a folha fica limpa */}
               <div className={`absolute inset-0 overflow-hidden p-4 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
                 onPointerDown={editarPlanta ? undefined : plantaPanDown} onPointerMove={editarPlanta ? undefined : plantaPanMove} onPointerUp={editarPlanta ? undefined : plantaPanUp}

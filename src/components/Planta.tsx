@@ -705,7 +705,7 @@ function FaixaInferior(props: {
           <text x={x3 + 12} y={y0 + 46} fontSize={fs(7)} fontWeight="bold">DE MERCATOR (UTM)</text>
           <text x={x3 + 12} y={y0 + 60} fontSize={fs(7)} fontWeight="bold">SGR (Sistema de Referência): SIRGAS2000</text>
           <text x={x3 + 12} y={y0 + 73} fontSize={fs(7)}>Fuso {zona}{hemisferio} / MC {Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</text>
-          {verNortes && <Nortes cx={x3 + 70} cy={y0 + 145} />}
+          {verNortes && <Nortes cx={x3 + 60} cy={y0 + 140} conv={conv} decl={decl} fs={fs} />}
         </g>
 
         {/* Lado Direito do Box 3 (Valores do Vértice de Referência) */}
@@ -750,17 +750,30 @@ function RosaDosVentos({ cx, cy, fs }: { cx: number; cy: number; conv?: number; 
   );
 }
 
-// Norte limpo para o carimbo: seta cheia com metade clara/escura + "N". Sem o emaranhado de
-// linhas (os valores de convergência e declinação ficam em texto ao lado, sem poluir).
-function Nortes({ cx, cy }: { cx: number; cy: number }) {
-  const topo = cy - 30, base = cy + 16;
+// Diagrama de CONVERGÊNCIA (NV/NQ/NM) para o carimbo. Os ângulos reais são minúsculos, então são
+// EXAGERADOS visualmente (preservando o sinal) só para leitura — os valores exatos ficam no texto
+// ao lado. É um diagrama técnico, diferente da rosa dos ventos (orientação) do desenho.
+function Nortes({ cx, cy, conv, decl, fs }: { cx: number; cy: number; conv: number; decl: number; fs: (n: number) => number }) {
+  const L = 38;
+  const ponto = (deg: number, len: number) => { const a = (deg * Math.PI) / 180; return [cx + len * Math.sin(a), cy - len * Math.cos(a)] as const; };
+  const vq = conv === 0 ? 0 : (conv > 0 ? 1 : -1) * 14;  // quadrícula
+  const vm = decl === 0 ? 0 : (decl > 0 ? 1 : -1) * 30;  // magnético
+  const [nx, ny] = ponto(0, L);
+  const [qx, qy] = ponto(vq, L - 3);
+  const [mx, my] = ponto(vm, L - 8);
   return (
     <g>
-      <text x={cx} y={topo - 5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#0f172a">N</text>
-      <polygon points={`${cx},${topo} ${cx},${base} ${cx - 7},${base - 6}`} fill="#0f172a" />
-      <polygon points={`${cx},${topo} ${cx},${base} ${cx + 7},${base - 6}`} fill="#94a3b8" />
-      <line x1={cx} y1={topo} x2={cx} y2={base} stroke="#0f172a" strokeWidth={0.6} />
-      <circle cx={cx} cy={base} r={1.8} fill="#0f172a" />
+      {/* NM magnético (vermelho tracejado) */}
+      <line x1={cx} y1={cy} x2={mx} y2={my} stroke="#b91c1c" strokeWidth={0.9} strokeDasharray="3 2" />
+      <text x={mx + (vm >= 0 ? 5 : -5)} y={my + 2} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#b91c1c">NM</text>
+      {/* NQ quadrícula (azul) */}
+      <line x1={cx} y1={cy} x2={qx} y2={qy} stroke="#1d4ed8" strokeWidth={0.9} />
+      <text x={qx + (vq >= 0 ? 5 : -5)} y={qy + 2} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#1d4ed8">NQ</text>
+      {/* NV verdadeiro (preto, com ponta de seta + estrela) */}
+      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#0f172a" strokeWidth={1.4} />
+      <polygon points={`${nx},${ny - 7} ${nx - 2.6},${ny} ${nx + 2.6},${ny}`} fill="#0f172a" />
+      <text x={nx} y={ny - 9} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill="#0f172a">NV</text>
+      <circle cx={cx} cy={cy} r={2.2} fill="#0f172a" />
     </g>
   );
 }
