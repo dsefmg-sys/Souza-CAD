@@ -2067,14 +2067,15 @@ export default function EditorPage() {
           {vista === 'planta' && (
             <div id="planta-print" className="relative h-full select-none overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
               {/* controles da planta movidos para a coluna esquerda; aqui a folha fica limpa */}
-              <div className={`absolute inset-0 overflow-hidden p-4 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
+              <div className={`absolute inset-0 overflow-hidden py-2 pr-2 pl-0 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
                 onPointerDown={(e) => { if (e.button === 1) { e.preventDefault(); plantaPanDown(e); } else if (!editarPlanta) plantaPanDown(e); }}
                 onPointerMove={(e) => { if (plantaPanRef.current) plantaPanMove(e); }}
                 onPointerUp={(e) => { if (plantaPanRef.current) plantaPanUp(e); }}
                 title={editarPlanta ? 'Modo edição: arraste itens; botão do meio do mouse dá pan; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
                 {plantaDark && <style>{`#planta-print .a3-dark{filter:invert(1) hue-rotate(180deg)}#planta-print .a3-dark image{filter:invert(1) hue-rotate(180deg)}`}</style>}
                 {res && tecnico && escritorio && (
-                  <div className={`mx-auto max-w-[1587px] bg-white shadow ${plantaDark ? 'a3-dark' : ''}`} style={{ transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'center top' }}>
+                  // folha alinhada à ESQUERDA (sem o vão de centralização) e ancorada no canto esq. superior
+                  <div className={`mr-auto max-w-[1587px] bg-white shadow ${plantaDark ? 'a3-dark' : ''}`} style={{ transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'left top' }}>
                     <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                       confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
                       glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
@@ -2911,5 +2912,5 @@ function distPontoSegmento(px: number, py: number, ax: number, ay: number, bx: n
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const DIAS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 function dataPorExtenso(d = new Date()): string {
-  return `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+  return `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 }
