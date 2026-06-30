@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,7 @@ import CalculadoraModal from '@/components/CalculadoraModal';
 import ConfrontanteEditModal from '@/components/ConfrontanteEditModal';
 import DxfEditorModal from '@/components/DxfEditorModal';
 import PorcentagemModal from '@/components/PorcentagemModal';
+import EstudioModal from '@/components/EstudioModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -209,6 +210,7 @@ export default function EditorPage() {
   const [calcAberta, setCalcAberta] = useState(false);
   const [dxfEditorAberto, setDxfEditorAberto] = useState(false);
   const [porcentagemAberta, setPorcentagemAberta] = useState(false);
+  const [estudioAberto, setEstudioAberto] = useState(false);
   const [confEditId, setConfEditId] = useState<string | null>(null);
   const [dadosPos, setDadosPos] = useState<{ x: number; y: number } | null>(null); // barra flutuante (null = canto inf. esq.)
   const dadosDrag = useRef<{ ox: number; oy: number } | null>(null);
@@ -2083,6 +2085,7 @@ export default function EditorPage() {
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Calculadora: converter coordenada, distância e azimute" onClick={() => setCalcAberta(true)}><Ruler /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Editor de DXF (abrir e editar um DXF qualquer, ex.: projeto elétrico — isolado do projeto)" onClick={() => setDxfEditorAberto(true)}><PencilRuler /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Porcentagem entre dois polígonos (área de um em relação ao outro e ao total)" onClick={() => setPorcentagemAberta(true)}><Percent /></Button>
+                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Estúdio: edição de imagem (mini-Canva, isolado do projeto)" onClick={() => setEstudioAberto(true)}><ImagePlus /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Tema claro/escuro" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))}>{tema === 'claro' ? <Moon /> : <Sun />}</Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
                     {nuvemDisponivel && user && (
@@ -2497,6 +2500,7 @@ export default function EditorPage() {
       <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
       <DxfEditorModal open={dxfEditorAberto} onOpenChange={setDxfEditorAberto} />
       <PorcentagemModal open={porcentagemAberta} onOpenChange={setPorcentagemAberta} glebas={glebas.map((g) => ({ id: g.id, nome: g.denominacao, vertices: g.id === glebaAtivaId ? vertices : g.vertices }))} />
+      <EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} />
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}
