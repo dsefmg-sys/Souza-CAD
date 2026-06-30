@@ -26,6 +26,7 @@ import ConsultarModal from '@/components/ConsultarModal';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
 import CalculadoraModal from '@/components/CalculadoraModal';
+import ConfrontanteEditModal from '@/components/ConfrontanteEditModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -200,6 +201,7 @@ export default function EditorPage() {
   const [reqAberto, setReqAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
   const [calcAberta, setCalcAberta] = useState(false);
+  const [confEditId, setConfEditId] = useState<string | null>(null);
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean }>({});
@@ -1053,14 +1055,9 @@ export default function EditorPage() {
   function onMoverRotulo(id: string, lat: number, lon: number) {
     setConfrontantes((cs) => cs.map((c) => (c.id === id ? { ...c, posRotulo: { lat, lon } } : c)));
   }
-  // edição direta do rótulo do confrontante na planta (duplo clique)
+  // edição direta do confrontante na planta (duplo clique abre o editor com prévia)
   function editarConfrontantePlanta(id: string) {
-    const c = confrontantes.find((x) => x.id === id);
-    if (!c) return;
-    const nome = window.prompt('Nome do confrontante:', c.nome);
-    if (nome == null) return;
-    const matricula = window.prompt('Matrícula (deixe vazio se não houver):', c.matricula ?? '');
-    setConfrontantes((cs) => cs.map((x) => (x.id === id ? { ...x, nome: nome.trim(), ...(matricula != null ? { matricula: matricula.trim() } : {}) } : x)));
+    if (confrontantes.some((x) => x.id === id)) setConfEditId(id);
   }
   // tamanho da fonte do rótulo do confrontante selecionado/por id (A-/A+ na planta)
   function ajustarTamRotuloConf(id: string, delta: number) {
@@ -2270,6 +2267,12 @@ export default function EditorPage() {
         onBaixar={() => setBaixou((b) => ({ ...b, req: true }))}
       />
       <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
+      <ConfrontanteEditModal
+        open={confEditId != null}
+        confrontante={confrontantes.find((c) => c.id === confEditId) ?? null}
+        onSalvar={(novo) => setConfrontantes((cs) => cs.map((c) => (c.id === novo.id ? novo : c)))}
+        onOpenChange={(o) => { if (!o) setConfEditId(null); }}
+      />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
