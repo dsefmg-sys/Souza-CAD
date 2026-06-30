@@ -202,8 +202,9 @@ export default function EditorPage() {
   const [trtAberto, setTrtAberto] = useState(false);
   const [calcAberta, setCalcAberta] = useState(false);
   const [confEditId, setConfEditId] = useState<string | null>(null);
-  const [dadosPos, setDadosPos] = useState({ x: 12, y: 12 }); // painel flutuante de área/perímetro
+  const [dadosPos, setDadosPos] = useState<{ x: number; y: number } | null>(null); // barra flutuante (null = canto inf. esq.)
   const dadosDrag = useRef<{ ox: number; oy: number } | null>(null);
+  const [plantaDark, setPlantaDark] = useState(false); // modo escuro só da folha A3 (conforto noturno)
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean }>({});
@@ -1066,9 +1067,16 @@ export default function EditorPage() {
     snap();
     setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, divisaConfAz: az, divisaConfLen: len } : v)));
   }
-  // arrasto do painel flutuante de dados (área/perímetro)
+  // arrasto da barra flutuante de dados (default no canto inf. esquerdo; vira top/left ao arrastar)
   function dadosDown(e: ReactPointerEvent) {
-    dadosDrag.current = { ox: e.clientX - dadosPos.x, oy: e.clientY - dadosPos.y };
+    const card = (e.currentTarget as HTMLElement).parentElement;
+    const main = card?.offsetParent as HTMLElement | null;
+    if (card && main) {
+      const r = card.getBoundingClientRect(), mr = main.getBoundingClientRect();
+      const x = r.left - mr.left, y = r.top - mr.top;
+      dadosDrag.current = { ox: e.clientX - x, oy: e.clientY - y };
+      setDadosPos({ x, y });
+    }
     try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ }
   }
   function dadosMove(e: ReactPointerEvent) {
@@ -1953,42 +1961,48 @@ export default function EditorPage() {
         })()}
         <main className="relative isolate min-w-0 flex-1">
           {/* PAINEL FLUTUANTE DE DADOS (arrastável): área/perímetro/vértices + situação + folha */}
-          <div className="absolute z-[1100] flex w-56 select-none flex-col rounded-lg border bg-background/95 shadow-lg backdrop-blur" style={{ left: dadosPos.x, top: dadosPos.y }}>
-            <div className="flex cursor-move items-center gap-2 rounded-t-lg border-b bg-muted/60 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground"
-              onPointerDown={dadosDown} onPointerMove={dadosMove} onPointerUp={dadosUp} title="Arraste para mover este painel">
-              <Move className="size-3" /> Dados do projeto
+          <div className={`absolute z-[1100] flex select-none items-stretch gap-1 rounded-lg border bg-background/95 p-1 shadow-lg backdrop-blur ${dadosPos ? '' : 'bottom-3 left-3'}`} style={dadosPos ? { left: dadosPos.x, top: dadosPos.y } : undefined}>
+            {/* alça de arraste */}
+            <div className="flex cursor-move items-center rounded bg-muted/60 px-1 text-muted-foreground" onPointerDown={dadosDown} onPointerMove={dadosMove} onPointerUp={dadosUp} title="Arraste para mover esta barra"><Move className="size-3.5" /></div>
+            {/* dados em linha */}
+            <div className="flex items-center gap-2 px-1 text-center text-[11px] leading-tight">
+              <div><div className="text-[8px] uppercase text-muted-foreground">Área</div><div className="font-semibold">{res ? `${numBR(res.areaHa, 4)} ha` : '—'}</div></div>
+              <div><div className="text-[8px] uppercase text-muted-foreground">Perím.</div><div className="font-semibold">{res ? `${numBR(res.perimetro)} m` : '—'}</div></div>
+              <div><div className="text-[8px] uppercase text-muted-foreground">Vért.</div><div className="font-semibold">{vertices.length}</div></div>
             </div>
-            <div className="grid grid-cols-3 gap-2 px-3 py-1.5 text-center">
-              <div><div className="text-[9px] uppercase text-muted-foreground">Área SGL</div><div className="text-sm font-semibold">{res ? `${numBR(res.areaHa, 4)} ha` : '—'}</div></div>
-              <div><div className="text-[9px] uppercase text-muted-foreground">Perímetro</div><div className="text-sm font-semibold">{res ? `${numBR(res.perimetro)} m` : '—'}</div></div>
-              <div><div className="text-[9px] uppercase text-muted-foreground">Vértices</div><div className="text-sm font-semibold">{vertices.length}</div></div>
-            </div>
-            {/* botões quadrados: situação (capturar/atualizar/remover) + folha */}
-            <div className="flex items-center gap-1 border-t px-2 py-1.5">
-              {(() => {
-                const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
-                const cor = !situacaoUrl ? 'border bg-background text-foreground hover:bg-muted' : stale ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-600 text-white hover:bg-emerald-700';
-                const titulo = !situacaoUrl ? 'Capturar a planta de situação (recorte de satélite)' : stale ? 'Situação DESATUALIZADA — clique para refazer com o desenho atual' : 'Situação pronta — clique para refazer';
-                return (
-                  <button type="button" onClick={gerarSituacaoPlanta} title={titulo} className={`flex size-8 items-center justify-center rounded ${cor}`}>
-                    <Camera className="size-4" />
-                  </button>
-                );
-              })()}
-              {situacaoUrl && (
-                <button type="button" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }} title="Remover a situação" className="flex size-8 items-center justify-center rounded border bg-background text-destructive hover:bg-destructive hover:text-white">
-                  <X className="size-4" />
-                </button>
-              )}
-              <span className="text-[9px] font-medium uppercase text-muted-foreground">Situação</span>
-              {vista === 'planta' && editarPlanta && (
-                <button type="button" onClick={() => setFolhaTravada((v) => !v)}
-                  title={folhaTravada ? 'Folha FIXA — clique para liberar e poder arrastá-la' : 'Folha LIVRE (cuidado) — clique para fixar' }
-                  className={`ml-auto flex size-8 items-center justify-center rounded ${folhaTravada ? 'border bg-background text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>
-                  {folhaTravada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
-                </button>
-              )}
-            </div>
+            <div className="w-px bg-border" />
+            {/* botões úteis numa linha só */}
+            {(() => {
+              const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
+              const cor = !situacaoUrl ? 'border bg-background text-foreground hover:bg-muted' : stale ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-600 text-white hover:bg-emerald-700';
+              const titulo = !situacaoUrl ? 'Capturar a planta de situação (recorte de satélite)' : stale ? 'Situação DESATUALIZADA — clique para refazer' : 'Situação pronta — clique para refazer';
+              return <button type="button" onClick={gerarSituacaoPlanta} title={titulo} className={`flex size-8 items-center justify-center rounded ${cor}`}><Camera className="size-4" /></button>;
+            })()}
+            {situacaoUrl && (
+              <button type="button" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }} title="Remover a situação" className="flex size-8 items-center justify-center rounded border bg-background text-destructive hover:bg-destructive hover:text-white"><X className="size-4" /></button>
+            )}
+            {vista === 'planta' && (
+              <>
+                <button type="button" onClick={() => setFolhaTravada((v) => !v)} title={folhaTravada ? 'Folha FIXA — clique para liberar e arrastá-la' : 'Folha LIVRE (cuidado) — clique para fixar'}
+                  className={`flex size-8 items-center justify-center rounded ${folhaTravada ? 'border bg-background text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>{folhaTravada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}</button>
+                <button type="button" onClick={() => setPlantaDark((v) => !v)} title={plantaDark ? 'Folha clara' : 'Folha escura (conforto noturno; não afeta o PDF)'}
+                  className={`flex size-8 items-center justify-center rounded ${plantaDark ? 'bg-slate-800 text-amber-300 hover:bg-slate-700' : 'border bg-background text-foreground hover:bg-muted'}`}>{plantaDark ? <Sun className="size-4" /> : <Moon className="size-4" />}</button>
+              </>
+            )}
+            <div className="w-px bg-border" />
+            <button type="button" onClick={salvar} disabled={processando} title="Salvar o projeto" className="flex size-8 items-center justify-center rounded border bg-background hover:bg-muted disabled:opacity-50"><Save className={`size-4 ${salvoOk ? 'text-emerald-600' : ''}`} /></button>
+            <button type="button" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto" className="flex size-8 items-center justify-center rounded border bg-background hover:bg-muted disabled:opacity-50"><Plus className="size-4" /></button>
+            {glebas.length > 1 && (
+              <>
+                <div className="w-px bg-border" />
+                <div className="flex items-center gap-0.5" title="Parcelas — clique para abrir os ajustes na lateral">
+                  {glebas.map((g, i) => (
+                    <button key={g.id} type="button" onClick={() => { trocarGleba(g.id); setPainelAberto(true); }} title={g.denominacao}
+                      className={`flex size-8 items-center justify-center rounded text-xs font-bold ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'border bg-background hover:bg-muted'}`}>{i + 1}</button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {vista === 'mapa' ? (
@@ -2058,8 +2072,9 @@ export default function EditorPage() {
                 onPointerMove={(e) => { if (plantaPanRef.current) plantaPanMove(e); }}
                 onPointerUp={(e) => { if (plantaPanRef.current) plantaPanUp(e); }}
                 title={editarPlanta ? 'Modo edição: arraste itens; botão do meio do mouse dá pan; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
+                {plantaDark && <style>{`#planta-print .a3-dark{filter:invert(1) hue-rotate(180deg)}#planta-print .a3-dark image{filter:invert(1) hue-rotate(180deg)}`}</style>}
                 {res && tecnico && escritorio && (
-                  <div className="mx-auto max-w-[1587px] bg-white shadow" style={{ transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'center top' }}>
+                  <div className={`mx-auto max-w-[1587px] bg-white shadow ${plantaDark ? 'a3-dark' : ''}`} style={{ transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'center top' }}>
                     <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                       confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
                       glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
