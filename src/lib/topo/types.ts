@@ -261,6 +261,7 @@ export interface PlantaConfig {
   escalaManual?: number;       // denominador fixo (ex.: 2000); 0/ausente = automática
   offsetX?: number;            // deslocamento da folha em relação ao polígono (px da prancha A3)
   offsetY?: number;
+  centroInfoPos?: { lat: number; lon: number }; // posição (arrastada) do rótulo central do imóvel no mapa
   mostrarGrade?: boolean;      // padrão true
   mostrarNortes?: boolean;     // padrão true
   mostrarConvencoes?: boolean; // padrão true

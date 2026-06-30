@@ -508,7 +508,8 @@ export default function Planta({
         const c = r.c;
         const linhas = rotuloConfrontanteLinhas(c);
         const fz = c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteRot;
-        const half = Math.max(60, fz * 8);
+        // linha de assinatura: mínimo ~4 cm no papel A3 (~3,78 px/mm) para caber uma assinatura
+        const half = Math.max(76, fz * 8);
         const boxW = half * 2 + 16;
         const boxH = 20 + linhas.length * (fz + 1.5);
         const isDragging = dragTemp && dragTemp.kind === 'rotConf' && dragTemp.id === c.id;

@@ -33,7 +33,8 @@ interface Props {
   objetos?: ObjetoDesenho[];
   desenhoAtual?: [number, number][];
   rotulos?: RotuloMapa[];
-  centroGleba?: { linhas: string[] } | null;
+  centroGleba?: { linhas: string[]; lat?: number; lon?: number } | null;
+  onMoverCentro?: (lat: number, lon: number) => void;
   objetoSelId?: string | null;
   onMover: (id: string, lat: number, lon: number) => void;
   onSelecionar: (id: string) => void;
@@ -244,7 +245,7 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
-    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, objetoSelId = null,
+    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     conflitos = [],
     focoLatLng = null,
@@ -413,10 +414,18 @@ export default function MapEditor(props: Props) {
       {desenhoAtual.length >= 2 && <Polyline positions={desenhoAtual} pathOptions={{ color: '#2563eb', weight: 1.5, dashArray: '4 3' }} />}
       {desenhoAtual.map((p, i) => <CircleMarker key={`da${i}`} center={p} radius={3} pathOptions={{ color: '#2563eb', fillColor: '#fff', fillOpacity: 1 }} />)}
 
-      {/* dados-chave no centro da gleba (não interativo) */}
-      {centroGleba && centroideGleba && centroGleba.linhas.length > 0 && (
-        <Marker position={centroideGleba} interactive={false} icon={iconeCentro(centroGleba.linhas)} />
-      )}
+      {/* dados-chave no centro da gleba (arrastável no modo navegar) */}
+      {centroGleba && centroGleba.linhas.length > 0 && (() => {
+        const pos: [number, number] | null = (Number.isFinite(centroGleba.lat) && Number.isFinite(centroGleba.lon))
+          ? [centroGleba.lat as number, centroGleba.lon as number] : centroideGleba;
+        if (!pos) return null;
+        const arrastavel = modo === 'navegar' && !!onMoverCentro;
+        return (
+          <Marker position={pos} draggable={arrastavel} interactive={arrastavel}
+            icon={iconeCentro(centroGleba.linhas)}
+            eventHandlers={arrastavel ? { dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverCentro?.(ll.lat, ll.lng); } } : undefined} />
+        );
+      })()}
 
       {/* rótulos de confrontante (arrastáveis) */}
       {rotulos.map((r) => (

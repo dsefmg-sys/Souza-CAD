@@ -1726,9 +1726,10 @@ export default function EditorPage() {
       imovel.proprietario ? `Prop.: ${imovel.proprietario}` : '',
       ef ? `Área: ${numBR(ef.areaHa, 4)} ha` : '',
     ].filter(Boolean);
-    return { linhas };
+    const p = plantaConfig.centroInfoPos;
+    return { linhas, lat: p?.lat, lon: p?.lon };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vertices.length, res, imovel, glebaAtivaNome, glebas.length]);
+  }, [vertices.length, res, imovel, glebaAtivaNome, glebas.length, plantaConfig.centroInfoPos]);
 
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
 
@@ -1771,7 +1772,6 @@ export default function EditorPage() {
         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
         </a>
-        <Button size="sm" variant="outline" className="shrink-0 bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500 hover:text-black dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/30 dark:hover:bg-amber-400 dark:hover:text-black font-semibold" title="Gerar uma errata formal ao cartório (corrigir dados)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button>
        </div>
       </header>
 
@@ -1931,6 +1931,7 @@ export default function EditorPage() {
                   </div>
                   {/* ícones de sistema */}
                   <div className="flex items-center gap-0.5">
+                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0 text-amber-500 hover:bg-amber-500 hover:text-black dark:text-amber-400 dark:hover:bg-amber-400 dark:hover:text-black" title="Errata: gerar correção formal ao cartório (uso raro)" onClick={() => setErrataAberto(true)}><FileWarning /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Calculadora: converter coordenada, distância e azimute" onClick={() => setCalcAberta(true)}><Ruler /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Tema claro/escuro" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))}>{tema === 'claro' ? <Moon /> : <Sun />}</Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
@@ -1989,7 +1990,7 @@ export default function EditorPage() {
                 selMulti={selMulti} onToggleMulti={alternarMulti} onBoxSelect={adicionarMulti}
                 onDblClick={(lat, lon) => { const t = window.prompt('Texto a inserir:'); if (t) setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
-                objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} objetoSelId={objetoSelId}
+                objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice}
                 conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}
