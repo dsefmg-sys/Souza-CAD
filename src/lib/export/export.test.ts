@@ -14,6 +14,8 @@ import { construirNarrativa, construirNarrativaSegmentos, descreverConfrontante,
 import type { Confrontante } from '../topo/types';
 import { gerarRequerimentoDocx } from './requerimento';
 import type { PessoaQualificada } from '../topo/types';
+import { gerarKML } from './kml';
+import { pontoNoPoligono, segmentosSeCruzam, analisarSobreposicoes } from '../topo/confrontacaoCheck';
 
 const PESSOA_VAZIA: PessoaQualificada = {
   nome: '', rg: '', cpf: '', nacionalidade: 'Brasileira', naturalidade: '', dataNascimento: '',
@@ -254,5 +256,86 @@ describe('sigef ods', () => {
     const novo = montarContentXml(xml, { res, imovel, tecnico, confrontantes, confrontantePorLado });
     expect(novo).toContain('LN1');
     expect(novo).toContain('PT8');
+  });
+});
+
+describe('KML exporter', () => {
+  it('gera string XML KML com coordenadas do polígono e marcadores de vértice', () => {
+    const { res } = preparar();
+    res.vertices[0] = { ...res.vertices[0], lat: -20.12345, lon: -42.54321, elevacao: 800 };
+    res.vertices[1] = { ...res.vertices[1], lat: -20.12355, lon: -42.54311, elevacao: 810 };
+    res.vertices[2] = { ...res.vertices[2], lat: -20.12365, lon: -42.54331, elevacao: 820 };
+    
+    const xml = gerarKML(res.vertices, imovel);
+    
+    expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+    expect(xml).toContain('<kml xmlns="http://www.opengis.net/kml/2.2">');
+    expect(xml).toContain('<Polygon>');
+    expect(xml).toContain('-42.54321,-20.12345,800');
+    expect(xml).toContain('<Point>');
+  });
+});
+
+describe('Análise de Sobreposição', () => {
+  it('verifica contensão de ponto em polígono (Ray Casting)', () => {
+    const square = [
+      { leste: 0, norte: 0 },
+      { leste: 10, norte: 0 },
+      { leste: 10, norte: 10 },
+      { leste: 0, norte: 10 },
+    ];
+    expect(pontoNoPoligono({ leste: 5, norte: 5 }, square)).toBe(true);
+    expect(pontoNoPoligono({ leste: 15, norte: 5 }, square)).toBe(false);
+  });
+
+  it('verifica se segmentos se cruzam corretamente', () => {
+    const a = { leste: 0, norte: 5 };
+    const b = { leste: 10, norte: 5 };
+    const c = { leste: 5, norte: 0 };
+    const d = { leste: 5, norte: 10 };
+    expect(segmentosSeCruzam(a, b, c, d)).toBe(true);
+
+    const e = { leste: 0, norte: 0 };
+    const f = { leste: 10, norte: 0 };
+    const g = { leste: 0, norte: 5 };
+    const h = { leste: 10, norte: 5 };
+    expect(segmentosSeCruzam(e, f, g, h)).toBe(false);
+
+    expect(segmentosSeCruzam(e, f, f, g)).toBe(false);
+  });
+
+  it('analisa sobreposição completa entre polígonos', () => {
+    const { res } = preparar();
+    res.vertices[0] = { ...res.vertices[0], leste: 10, norte: 10 };
+    res.vertices[1] = { ...res.vertices[1], leste: 20, norte: 10 };
+    res.vertices[2] = { ...res.vertices[2], leste: 20, norte: 20 };
+    res.vertices[3] = { ...res.vertices[3], leste: 10, norte: 20 };
+    const cleanVertices = res.vertices.slice(0, 4);
+
+    const vizinhoLonge = {
+      nome: 'Vizinho A',
+      pts: [
+        { leste: 100, norte: 100 },
+        { leste: 120, norte: 100 },
+        { leste: 120, norte: 120 },
+      ],
+    };
+
+    const vizinhoSobreposto = {
+      nome: 'Vizinho B',
+      pts: [
+        { leste: 15, norte: 15 },
+        { leste: 25, norte: 15 },
+        { leste: 25, norte: 25 },
+      ],
+    };
+
+    const diag1 = analisarSobreposicoes(cleanVertices, [vizinhoLonge]);
+    expect(diag1[0].temSobreposicao).toBe(false);
+    expect(diag1[0].tipo).toBe('OK');
+
+    const diag2 = analisarSobreposicoes(cleanVertices, [vizinhoSobreposto]);
+    expect(diag2[0].temSobreposicao).toBe(true);
+    expect(diag2[0].tipo).toBe('PERIGO');
   });
 });

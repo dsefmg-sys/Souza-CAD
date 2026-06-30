@@ -339,56 +339,40 @@ export default function Planta({
 
   // posição do rótulo de cada vértice (honra posRotulo arrastado; senão, deslocado do ponto)
   const initialRotuloVert = vertices.map((v, i) => {
-    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, i, x: sx(u.leste), y: sy(u.norte), dx: 0, dy: 0, hasPos: true }; }
     const vx = sx(v.leste), vy = sy(v.norte);
+    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, i, x: sx(u.leste), y: sy(u.norte), hasPos: true }; }
     let dx = vx - cx, dy = vy - cy;
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
-    return { v, i, x: vx, y: vy, dx, dy, hasPos: false };
+    return { v, i, x: vx + dx * 11, y: vy + dy * 11 - 2, hasPos: false };
   });
 
-  // Resolve overlaps between vertex labels (repulsion)
+  // Resolve overlaps between vertex labels (repulsion directly on coordinates)
   const fzRot = Math.max(6, fonteRot - 0.5);
-  for (let step = 0; step < 3; step++) {
+  for (let step = 0; step < 15; step++) {
     for (let i = 0; i < initialRotuloVert.length; i++) {
       for (let j = i + 1; j < initialRotuloVert.length; j++) {
         const r1 = initialRotuloVert[i], r2 = initialRotuloVert[j];
         if (r1.hasPos || r2.hasPos) continue;
         
-        // Current positions (assuming standard 10px offset)
-        const x1 = r1.x + r1.dx * 10;
-        const y1 = r1.y + r1.dy * 10;
-        const x2 = r2.x + r2.dx * 10;
-        const y2 = r2.y + r2.dy * 10;
-        
-        const dist = Math.hypot(x2 - x1, y2 - y1);
-        const minDist = fzRot * 2.8; // minimum distance between labels (approx 20-25px)
+        const dist = Math.hypot(r2.x - r1.x, r2.y - r1.y);
+        const minDist = fzRot * 3.4; // approx 28-32px to ensure clear separation
         if (dist < minDist) {
-          // Push them slightly apart by altering their dx/dy vectors
-          let pushX = x2 - x1, pushY = y2 - y1;
+          let pushX = r2.x - r1.x, pushY = r2.y - r1.y;
           let pushLen = Math.hypot(pushX, pushY) || 1;
           pushX /= pushLen; pushY /= pushLen;
           
-          const force = (minDist - dist) * 0.15;
-          r1.dx -= pushX * force * 0.05;
-          r1.dy -= pushY * force * 0.05;
-          r2.dx += pushX * force * 0.05;
-          r2.dy += pushY * force * 0.05;
-          
-          // Re-normalize vectors
-          const len1 = Math.hypot(r1.dx, r1.dy) || 1;
-          r1.dx /= len1; r1.dy /= len1;
-          const len2 = Math.hypot(r2.dx, r2.dy) || 1;
-          r2.dx /= len2; r2.dy /= len2;
+          const force = (minDist - dist) * 0.45;
+          r1.x -= pushX * force;
+          r1.y -= pushY * force;
+          r2.x += pushX * force;
+          r2.y += pushY * force;
         }
       }
     }
   }
 
-  const rotuloVert = initialRotuloVert.map((r) => {
-    if (r.hasPos) return { v: r.v, i: r.i, x: r.x, y: r.y };
-    return { v: r.v, i: r.i, x: r.x + r.dx * 10, y: r.y + r.dy * 10 - 2 };
-  });
+  const rotuloVert = initialRotuloVert.map((r) => ({ v: r.v, i: r.i, x: r.x, y: r.y }));
   // rótulo exibido do vértice: código SIGEF (padrão) ou P1, P2, P3… (topografia convencional)
   const nomeVertice = (v: Vertex, i: number) => (config.estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || 'S/N'));
 
