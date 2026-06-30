@@ -422,17 +422,17 @@ export default function Planta({
       {/* superfície de captura para edição (transparente; não aparece no PDF) */}
       {editavel && <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="transparent" style={{ pointerEvents: 'all' }} />}
 
-      {/* ---------- GRADE (números só no topo e na esquerda) ---------- */}
+      {/* ---------- GRADE (números DENTRO do quadro, no topo e na esquerda) ---------- */}
       {verGrade && linhasX.map((x) => (
         <g key={`x${x}`}>
-          <line x1={sx(x)} y1={DRAW.y0} x2={sx(x)} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.55} strokeDasharray="5 4" />
-          <text x={sx(x)} y={DRAW.y0 - 4} fontSize={fs(9)} textAnchor="middle" fill="#1f2937">{`E ${numBR(x, 4)} m`}</text>
+          <line x1={sx(x)} y1={DRAW.y0} x2={sx(x)} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
+          <text x={sx(x)} y={DRAW.y0 + 13} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle" fill="#1f2937" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>
         </g>
       ))}
       {verGrade && linhasY.map((y) => (
         <g key={`y${y}`}>
-          <line x1={DRAW.x0} y1={sy(y)} x2={DRAW.x1} y2={sy(y)} stroke="#8a94a6" strokeWidth={0.55} strokeDasharray="5 4" />
-          <text x={DRAW.x0 - 4} y={sy(y) + 3} fontSize={fs(9)} textAnchor="end" fill="#1f2937" transform={`rotate(-90 ${DRAW.x0 - 4} ${sy(y)})`}>{`N ${numBR(y, 4)} m`}</text>
+          <line x1={DRAW.x0} y1={sy(y)} x2={DRAW.x1} y2={sy(y)} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
+          <text x={DRAW.x0 + 13} y={sy(y)} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle" fill="#1f2937" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${sy(y)})`}>{`N ${numBR(y, 4)}`}</text>
         </g>
       ))}
 
@@ -700,7 +700,7 @@ function FaixaInferior(props: {
           <text x={x3 + 12} y={y0 + 46} fontSize={fs(7)} fontWeight="bold">DE MERCATOR (UTM)</text>
           <text x={x3 + 12} y={y0 + 60} fontSize={fs(7)} fontWeight="bold">SGR (Sistema de Referência): SIRGAS2000</text>
           <text x={x3 + 12} y={y0 + 73} fontSize={fs(7)}>Fuso {zona}{hemisferio} / MC {Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</text>
-          {verNortes && <Nortes cx={x3 + 70} cy={y0 + 148} conv={conv} decl={decl} />}
+          {verNortes && <Nortes cx={x3 + 70} cy={y0 + 145} />}
         </g>
 
         {/* Lado Direito do Box 3 (Valores do Vértice de Referência) */}
@@ -782,24 +782,17 @@ function RosaDosVentos({ cx, cy, conv, decl, fs }: { cx: number; cy: number; con
   );
 }
 
-function Nortes({ cx, cy, conv, decl }: { cx: number; cy: number; conv: number; decl: number }) {
-  const seta = (ang: number, label: string, cor: string) => {
-    const r = 32;
-    const a = (-ang * Math.PI) / 180;
-    const tx = cx + r * Math.sin(a), ty = cy - r * Math.cos(a);
-    return (
-      <g>
-        <line x1={cx} y1={cy} x2={tx} y2={ty} stroke={cor} strokeWidth={1.3} />
-        <text x={tx} y={ty - 3} fontSize={8} fontWeight="bold" textAnchor="middle" fill={cor}>{label}</text>
-      </g>
-    );
-  };
+// Norte limpo para o carimbo: seta cheia com metade clara/escura + "N". Sem o emaranhado de
+// linhas (os valores de convergência e declinação ficam em texto ao lado, sem poluir).
+function Nortes({ cx, cy }: { cx: number; cy: number }) {
+  const topo = cy - 30, base = cy + 16;
   return (
     <g>
-      {seta(0, 'NV', '#000')}
-      {seta(conv, 'NQ', '#1d4ed8')}
-      {seta(decl, 'NM', '#b91c1c')}
-      <circle cx={cx} cy={cy} r={2} fill="#000" />
+      <text x={cx} y={topo - 5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#0f172a">N</text>
+      <polygon points={`${cx},${topo} ${cx},${base} ${cx - 7},${base - 6}`} fill="#0f172a" />
+      <polygon points={`${cx},${topo} ${cx},${base} ${cx + 7},${base - 6}`} fill="#94a3b8" />
+      <line x1={cx} y1={topo} x2={cx} y2={base} stroke="#0f172a" strokeWidth={0.6} />
+      <circle cx={cx} cy={base} r={1.8} fill="#0f172a" />
     </g>
   );
 }

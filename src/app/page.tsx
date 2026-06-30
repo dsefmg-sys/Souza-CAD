@@ -1814,7 +1814,13 @@ export default function EditorPage() {
                     <Button size="sm" variant="ghost" title="Voltar ao mapa (F1)" onClick={() => setVista('mapa')}><MapIcon /> <span className="truncate text-xs font-semibold">VER MAPA</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
                     <Button size="sm" variant={editarPlanta ? 'default' : 'outline'} title="Alternar modo de edição na planta (arrastar textos/folha)" onClick={() => setEditarPlanta(!editarPlanta)}>{editarPlanta ? <Check /> : <Pencil />} <span className="truncate text-xs font-semibold">{editarPlanta ? 'FINALIZAR EDIÇÃO' : 'EDITAR'}</span></Button>
                     {editarPlanta && (
-                      <Button size="sm" variant={folhaTravada ? 'outline' : 'default'} className={folhaTravada ? '' : 'bg-amber-600 text-white hover:bg-amber-700'} title={folhaTravada ? 'Folha travada — clique para poder arrastá-la' : 'Folha destravada — arraste o fundo para reposicioná-la'} onClick={() => setFolhaTravada((v) => !v)}>{folhaTravada ? <Lock /> : <LockOpen />} <span className="truncate text-xs font-semibold">{folhaTravada ? 'FOLHA TRAVADA' : 'MOVER FOLHA'}</span></Button>
+                      <>
+                        <div className="flex gap-1 [&>button]:h-9 [&>button]:flex-1 [&>button]:justify-center">
+                          <Button size="sm" variant="ghost" title="Desfazer última ação" onClick={desfazer}><Undo2 /> <span className="truncate text-xs font-semibold">DESFAZER</span></Button>
+                          <Button size="sm" variant="ghost" title="Refazer a ação desfeita" onClick={refazer}><Redo2 /> <span className="truncate text-xs font-semibold">REFAZER</span></Button>
+                        </div>
+                        <Button size="sm" variant={folhaTravada ? 'outline' : 'default'} className={folhaTravada ? '' : 'bg-amber-600 text-white hover:bg-amber-700'} title={folhaTravada ? 'Folha travada — clique para poder arrastá-la' : 'Folha destravada — arraste o fundo para reposicioná-la'} onClick={() => setFolhaTravada((v) => !v)}>{folhaTravada ? <Lock /> : <LockOpen />} <span className="truncate text-xs font-semibold">{folhaTravada ? 'FOLHA TRAVADA' : 'MOVER FOLHA'}</span></Button>
+                      </>
                     )}
                     {/* escala em passos de 250 */}
                     <div className="flex items-center gap-0.5 rounded-md border bg-background px-1 text-xs [&>button]:h-7 [&>button]:w-7 [&>button]:p-0">
