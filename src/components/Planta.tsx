@@ -290,13 +290,20 @@ export default function Planta({
     let dx = mx - cx, dy = my - cy;
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
-    return { c, x: clampX(mx + dx * 60), y: clampY(my + dy * 60) };
+    let dist = 85;
+    if (dy > 0.1) dist += 35 * dy;
+    if (Math.abs(dx) > 0.4) dist += 30 * Math.abs(dx);
+    return { c, x: clampX(mx + dx * dist), y: clampY(my + dy * dist) };
   });
 
   // posição do rótulo de cada vértice (honra posRotulo arrastado; senão, deslocado do ponto)
   const rotuloVert = vertices.map((v, i) => {
     if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, i, x: sx(u.leste), y: sy(u.norte) }; }
-    return { v, i, x: sx(v.leste) + 5, y: sy(v.norte) - 4 };
+    const vx = sx(v.leste), vy = sy(v.norte);
+    let dx = vx - cx, dy = vy - cy;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len; dy /= len;
+    return { v, i, x: vx + dx * 10, y: vy + dy * 10 - 2 };
   });
   // rótulo exibido do vértice: código SIGEF (padrão) ou P1, P2, P3… (topografia convencional)
   const nomeVertice = (v: Vertex, i: number) => (config.estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || 'S/N'));
