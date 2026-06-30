@@ -913,14 +913,15 @@ function CarimboA3(props: {
   // Assinatura num intervalo livre (xa..xb): linha + papel + nome + detalhes, centrados no meio.
   const assina = (xa: number, xb: number, yLine: number, label: string, nome: string, detalhes: string[] = [], keyPrefix: string) => {
     const m = (xa + xb) / 2;
+    const det = detalhes.filter(Boolean);
     return (
       <g>
         <line x1={xa} y1={yLine} x2={xb} y2={yLine} stroke="#000" strokeWidth={0.6} />
-        <text x={m} y={yLine - 4} fontSize={fs(7)} fill="#555" textAnchor="middle">{label}</text>
-        {T(`${keyPrefix}.nome`, nome, { x: m, y: yLine + 13, size: fs(8.5), bold: true, anchor: 'middle', fill: '#000' })}
-        {detalhes.filter(Boolean).map((d, k) => (
+        <text x={m} y={yLine - 4} fontSize={fs(6.5)} fill="#555" textAnchor="middle">{label}</text>
+        {T(`${keyPrefix}.nome`, nome, { x: m, y: yLine + 11, size: fs(8), bold: true, anchor: 'middle', fill: '#000' })}
+        {det.map((d, k) => (
           <g key={k}>
-            {T(`${keyPrefix}.detalhe.${k}`, d, { x: m, y: yLine + 24 + k * 11, size: fs(7), anchor: 'middle', fill: '#222' })}
+            {T(`${keyPrefix}.detalhe.${k}`, d, { x: m, y: yLine + 21 + k * 9.5, size: fs(6), anchor: 'middle', fill: '#222' })}
           </g>
         ))}
       </g>
@@ -1043,7 +1044,7 @@ function CarimboA3(props: {
           );
         })()}
         
-        {assina(lx + 90, rx - 90, 724, 'Assinatura do Responsável Técnico', tecnico.nome, [tecnico.formacao || '', `CFT: ${tecnico.cft || '—'} — INCRA: ${tecnico.credenciamentoIncra || '—'}`], 'responsavel')}
+        {assina(lx + 90, rx - 90, 712, 'Assinatura do Responsável Técnico', tecnico.nome, [tecnico.formacao || '', `CFT: ${tecnico.cft || '—'}  ·  INCRA: ${tecnico.credenciamentoIncra || '—'}`], 'responsavel')}
       </g>
 
       {/* --- CARD C: DECLARAÇÃO DOS CONFRONTANTES (largura cheia) --- */}
@@ -1089,12 +1090,12 @@ function CarimboA3(props: {
         <rect x={lx} y={902} width={wBox} height={H - 902 - 26} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         {temLogo ? (
           <g>
-            <image href={escritorio.logoDataUrl} x={lx + 12} y={907} width={wBox - 24} height={86} preserveAspectRatio="xMidYMid meet" />
-            {T('esc.nome', escritorio.nome, { x: cxc, y: 1009, size: fs(11), bold: true, anchor: 'middle' })}
-            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 1024, size: fs(8), anchor: 'middle' })}
-            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 1038, size: fs(8), anchor: 'middle' })}
-            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1052, size: fs(8), anchor: 'middle', slice: 64 })}
-            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1066, size: fs(8), anchor: 'middle' })}
+            {/* logo maior; o NOME não aparece (o próprio logo já identifica a empresa) */}
+            <image href={escritorio.logoDataUrl} x={lx + 12} y={908} width={wBox - 24} height={104} preserveAspectRatio="xMidYMid meet" />
+            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 1028, size: fs(8), anchor: 'middle' })}
+            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 1042, size: fs(8), anchor: 'middle' })}
+            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1056, size: fs(8), anchor: 'middle', slice: 64 })}
+            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1070, size: fs(8), anchor: 'middle' })}
           </g>
         ) : (
           <g>

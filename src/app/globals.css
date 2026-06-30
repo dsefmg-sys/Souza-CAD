@@ -88,3 +88,10 @@
   #planta-print > div { max-width: none !important; box-shadow: none !important; }
   .no-print { display: none !important; }
 }
+
+/* barra de rolagem discreta e moderna (lateral de ferramentas e painéis) */
+.scroll-fino { scrollbar-width: thin; scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent; }
+.scroll-fino::-webkit-scrollbar { width: 7px; height: 7px; }
+.scroll-fino::-webkit-scrollbar-track { background: transparent; }
+.scroll-fino::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 9999px; }
+.scroll-fino:hover::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.5); }

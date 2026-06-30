@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users,
-  Maximize, Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1840,7 +1840,7 @@ export default function EditorPage() {
           const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t.toUpperCase()}</span> : null);
           return (
             <>
-              <aside style={{ width: toolW }} className="no-print flex shrink-0 flex-col gap-1 overflow-y-auto border-r bg-background p-1.5">
+              <aside style={{ width: toolW }} className="no-print scroll-fino flex shrink-0 flex-col gap-1 overflow-y-auto border-r bg-background p-1.5">
                 {/* SALVAR e NOVO foram para a barra flutuante inferior */}
 
                 {/* SISTEMA (topo): ações úteis com nome + ícones de alternância */}
@@ -1866,7 +1866,6 @@ export default function EditorPage() {
                     <Button size="sm" variant="ghost" title="Voltar ao mapa (F1)" onClick={() => setVista('mapa')}><MapIcon /> <span className="truncate text-xs font-semibold">VER MAPA</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
                     <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-9 w-full justify-start gap-2" title="Mover: arrastar textos, rótulos e a folha. Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span></Button>
                     <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                    <Button size="sm" variant="outline" title="Ajustar (zoom 100%)" onClick={ajustarPlanta}><Maximize /> <span className="truncate text-xs font-semibold">AJUSTAR ({Math.round(plantaZoom * 100)}%)</span></Button>
                   </div>
                 )}
 
@@ -2133,7 +2132,7 @@ export default function EditorPage() {
             ))}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto p-2.5">
+          <div className="min-h-0 flex-1 overflow-auto p-2.5 scroll-fino">
             <datalist id="lista-cns">{sugCns.map((c) => <option key={c} value={c} />)}</datalist>
             {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} />}
             {aba === 'vertices' && (
