@@ -365,6 +365,24 @@ export default function EditorPage() {
   useEffect(() => { try { localStorage.setItem('metrica.tamNomes', String(tamNomes)); } catch { /* ignore */ } }, [tamNomes]);
   useEffect(() => { try { localStorage.setItem('metrica.asideW', String(asideW)); } catch { /* ignore */ } }, [asideW]);
 
+  // Avisa sobre alterações não salvas antes de fechar ou recarregar a página e salva rascunho preventivo
+  useEffect(() => {
+    function aoSair(e: BeforeUnloadEvent) {
+      try {
+        if (temConteudoTrabalho()) {
+          localStorage.setItem(rascunhoKey(), JSON.stringify(montarRascunho()));
+        }
+      } catch { /* ignore */ }
+
+      if (salvarLaranja) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    }
+    window.addEventListener('beforeunload', aoSair);
+    return () => window.removeEventListener('beforeunload', aoSair);
+  }, [salvarLaranja, vertices, confrontantes, confrontantePorLado, objetos, glebas, imovel, zona, hemisferio, requerente, transmitente, plantaConfig, nomeProjeto, projetoId, glebaAtivaId]);
+
   // Auto-ajusta e centraliza a folha A3 sempre que a aba Planta é aberta, redimensionada ou as larguras dos painéis mudam
   useEffect(() => {
     if (vista === 'planta') {
