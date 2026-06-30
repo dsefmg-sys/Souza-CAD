@@ -241,8 +241,14 @@ export default function Planta({
   const anel = vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
   const pts = anel.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 
-  const cx = anel.reduce((s, p) => s + p.x, 0) / anel.length;
-  const cy = anel.reduce((s, p) => s + p.y, 0) / anel.length;
+  // centro do rótulo do imóvel: usa a posição ajustada no MAPA (config.centroInfoPos), se houver —
+  // assim a edição no mapa reflete na planta; senão, centróide do polígono.
+  let cx = anel.reduce((s, p) => s + p.x, 0) / anel.length;
+  let cy = anel.reduce((s, p) => s + p.y, 0) / anel.length;
+  if (config.centroInfoPos) {
+    const u = geoParaUtm(config.centroInfoPos.lat, config.centroInfoPos.lon, zona, hemisferio);
+    cx = sx(u.leste); cy = sy(u.norte);
+  }
 
   // ---- confrontantes por trecho: posição do rótulo (fora do polígono) ----
   const trechos = new Map<string, number[]>();

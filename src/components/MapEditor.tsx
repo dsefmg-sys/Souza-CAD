@@ -35,6 +35,8 @@ interface Props {
   rotulos?: RotuloMapa[];
   centroGleba?: { linhas: string[]; lat?: number; lon?: number } | null;
   onMoverCentro?: (lat: number, lon: number) => void;
+  mostrarDivisaConf?: boolean;
+  onAjustarDivisaConf?: (id: string, az: number, len: number) => void;
   objetoSelId?: string | null;
   onMover: (id: string, lat: number, lon: number) => void;
   onSelecionar: (id: string) => void;
@@ -92,6 +94,13 @@ function iconeNomeVertice(texto: string, alterna: boolean, tam: number) {
     iconSize: [1, 1], iconAnchor: [-8, alterna ? tam * 2 : -2],
   });
 }
+
+// ponta arrastável do tique de troca de confrontante (visível no mapa para poder pegar)
+const L_DIVISA_ICON = L.divIcon({
+  className: 'ponta-divisa',
+  html: '<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #475569;box-shadow:0 1px 2px rgba(0,0,0,0.4)"></div>',
+  iconSize: [10, 10], iconAnchor: [5, 5],
+});
 
 function iconeTexto(o: ObjetoDesenho, sel: boolean) {
   const al = o.alinhamento === 'center' ? 'center' : o.alinhamento === 'right' ? 'right' : 'left';
@@ -245,7 +254,7 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
-    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, objetoSelId = null,
+    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, mostrarDivisaConf = true, onAjustarDivisaConf, objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     conflitos = [],
     focoLatLng = null,
@@ -461,6 +470,34 @@ export default function MapEditor(props: Props) {
           }}
         />
       ))}
+
+      {/* TIQUE DE TROCA DE CONFRONTANTE nos marcos M (sincronizado com a planta via divisaConfAz) */}
+      {mostrarDivisaConf && validos.length >= 3 && (() => {
+        const cLat = validos.reduce((s, v) => s + v.lat, 0) / validos.length;
+        const cLon = validos.reduce((s, v) => s + v.lon, 0) / validos.length;
+        const mLat = 111320, mLon = 111320 * Math.cos((cLat * Math.PI) / 180);
+        const lats = validos.map((v) => v.lat), lons = validos.map((v) => v.lon);
+        const wM = (Math.max(...lons) - Math.min(...lons)) * mLon, hM = (Math.max(...lats) - Math.min(...lats)) * mLat;
+        const L = Math.min(80, Math.max(10, Math.hypot(wM, hM) * 0.08)); // metros
+        const arrastavel = modo === 'navegar' && !!onAjustarDivisaConf;
+        return validos.filter((v) => v.tipo === 'M').map((v) => {
+          let az = v.divisaConfAz;
+          if (az == null) { const dN = (v.lat - cLat) * mLat, dE = (v.lon - cLon) * mLon; let a = (Math.atan2(dE, dN) * 180) / Math.PI; if (a < 0) a += 360; az = a; }
+          const a = (az * Math.PI) / 180;
+          const eLat = v.lat + (L * Math.cos(a)) / mLat;
+          const eLon = v.lon + (L * Math.sin(a)) / mLon;
+          return (
+            <Fragment key={`dc${v.id}`}>
+              <Polyline positions={[[v.lat, v.lon], [eLat, eLon]]} pathOptions={{ color: '#475569', weight: 1, dashArray: '4 3' }} />
+              {arrastavel && (
+                <Marker position={[eLat, eLon]} draggable
+                  icon={L_DIVISA_ICON}
+                  eventHandlers={{ dragend(e) { const ll = (e.target as L.Marker).getLatLng(); const dN = (ll.lat - v.lat) * mLat, dE = (ll.lng - v.lon) * mLon; let na = (Math.atan2(dE, dN) * 180) / Math.PI; if (na < 0) na += 360; onAjustarDivisaConf?.(v.id, +na.toFixed(1), v.divisaConfLen ?? 150); } }} />
+              )}
+            </Fragment>
+          );
+        });
+      })()}
 
       {/* vértices IGNORADOS: pontos brancos com borda preta, super visíveis; no modo "considerar", clicar reinsere */}
       {verticesIgnorados.filter(valido).map((v) => (
