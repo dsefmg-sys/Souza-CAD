@@ -1857,13 +1857,8 @@ export default function EditorPage() {
                 {vista === 'planta' && (
                   <div className="flex flex-col gap-1 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
                     <Button size="sm" variant="ghost" title="Voltar ao mapa (F1)" onClick={() => setVista('mapa')}><MapIcon /> <span className="truncate text-xs font-semibold">VER MAPA</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
-                    <Button size="sm" variant={editarPlanta ? 'default' : 'outline'} title="Alternar modo de edição na planta (arrastar textos/folha)" onClick={() => setEditarPlanta(!editarPlanta)}>{editarPlanta ? <Check /> : <Pencil />} <span className="truncate text-xs font-semibold">{editarPlanta ? 'FINALIZAR EDIÇÃO' : 'EDITAR'}</span></Button>
-                    {editarPlanta && (
-                      <>
-                        <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-9 w-full justify-start gap-2" title="Mover: arrastar textos, rótulos e a folha. Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span></Button>
-                        <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                      </>
-                    )}
+                    <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-9 w-full justify-start gap-2" title="Mover: arrastar textos, rótulos e a folha. Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span></Button>
+                    <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
                     {/* escala em passos de 250 */}
                     <div className="flex items-center gap-0.5 rounded-md border bg-background px-1 text-xs [&>button]:h-7 [&>button]:w-7 [&>button]:p-0">
                       <Button size="sm" variant="ghost" title="Desenho maior (denominador −250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: Math.max(250, (c.escalaManual ?? 1000) - 250) }))}>−</Button>
@@ -1960,45 +1955,45 @@ export default function EditorPage() {
           );
         })()}
         <main className="relative isolate min-w-0 flex-1">
-          {/* PAINEL FLUTUANTE DE DADOS (arrastável): área/perímetro/vértices + situação + folha */}
-          <div className={`absolute z-[1100] flex select-none items-stretch gap-1 rounded-lg border bg-background/95 p-1 shadow-lg backdrop-blur ${dadosPos ? '' : 'bottom-3 left-3'}`} style={dadosPos ? { left: dadosPos.x, top: dadosPos.y } : undefined}>
+          {/* BARRA FLUTUANTE (arrastável): dados do projeto + ações úteis, numa linha só */}
+          <div className={`absolute z-[1100] flex select-none items-stretch gap-1.5 rounded-xl border bg-background/95 p-1.5 shadow-xl backdrop-blur [&_button.act]:flex [&_button.act]:size-10 [&_button.act]:items-center [&_button.act]:justify-center [&_button.act]:rounded-lg ${dadosPos ? '' : 'bottom-4 left-4'}`} style={dadosPos ? { left: dadosPos.x, top: dadosPos.y } : undefined}>
             {/* alça de arraste */}
-            <div className="flex cursor-move items-center rounded bg-muted/60 px-1 text-muted-foreground" onPointerDown={dadosDown} onPointerMove={dadosMove} onPointerUp={dadosUp} title="Arraste para mover esta barra"><Move className="size-3.5" /></div>
+            <div className="flex cursor-move items-center rounded-lg bg-muted/60 px-1.5 text-muted-foreground hover:bg-muted" onPointerDown={dadosDown} onPointerMove={dadosMove} onPointerUp={dadosUp} title="Arraste para mover esta barra"><Move className="size-4" /></div>
             {/* dados em linha */}
-            <div className="flex items-center gap-2 px-1 text-center text-[11px] leading-tight">
-              <div><div className="text-[8px] uppercase text-muted-foreground">Área</div><div className="font-semibold">{res ? `${numBR(res.areaHa, 4)} ha` : '—'}</div></div>
-              <div><div className="text-[8px] uppercase text-muted-foreground">Perím.</div><div className="font-semibold">{res ? `${numBR(res.perimetro)} m` : '—'}</div></div>
-              <div><div className="text-[8px] uppercase text-muted-foreground">Vért.</div><div className="font-semibold">{vertices.length}</div></div>
+            <div className="flex items-center gap-3 px-2 text-center leading-tight">
+              <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Área SGL</div><div className="text-base font-bold">{res ? `${numBR(res.areaHa, 4)}` : '—'}<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">ha</span></div></div>
+              <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Perímetro</div><div className="text-base font-bold">{res ? `${numBR(res.perimetro)}` : '—'}<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">m</span></div></div>
+              <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Vértices</div><div className="text-base font-bold">{vertices.length}</div></div>
             </div>
             <div className="w-px bg-border" />
-            {/* botões úteis numa linha só */}
+            <button type="button" className="act border bg-background hover:bg-muted" title="Focalizar/enquadrar o desenho" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())}><Target className="size-5" /></button>
             {(() => {
               const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
               const cor = !situacaoUrl ? 'border bg-background text-foreground hover:bg-muted' : stale ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-600 text-white hover:bg-emerald-700';
               const titulo = !situacaoUrl ? 'Capturar a planta de situação (recorte de satélite)' : stale ? 'Situação DESATUALIZADA — clique para refazer' : 'Situação pronta — clique para refazer';
-              return <button type="button" onClick={gerarSituacaoPlanta} title={titulo} className={`flex size-8 items-center justify-center rounded ${cor}`}><Camera className="size-4" /></button>;
+              return <button type="button" onClick={gerarSituacaoPlanta} title={titulo} className={`act ${cor}`}><Camera className="size-5" /></button>;
             })()}
             {situacaoUrl && (
-              <button type="button" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }} title="Remover a situação" className="flex size-8 items-center justify-center rounded border bg-background text-destructive hover:bg-destructive hover:text-white"><X className="size-4" /></button>
+              <button type="button" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }} title="Remover a situação" className="act border bg-background text-destructive hover:bg-destructive hover:text-white"><X className="size-5" /></button>
             )}
             {vista === 'planta' && (
               <>
                 <button type="button" onClick={() => setFolhaTravada((v) => !v)} title={folhaTravada ? 'Folha FIXA — clique para liberar e arrastá-la' : 'Folha LIVRE (cuidado) — clique para fixar'}
-                  className={`flex size-8 items-center justify-center rounded ${folhaTravada ? 'border bg-background text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>{folhaTravada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}</button>
+                  className={`act ${folhaTravada ? 'border bg-background text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>{folhaTravada ? <Lock className="size-5" /> : <LockOpen className="size-5" />}</button>
                 <button type="button" onClick={() => setPlantaDark((v) => !v)} title={plantaDark ? 'Folha clara' : 'Folha escura (conforto noturno; não afeta o PDF)'}
-                  className={`flex size-8 items-center justify-center rounded ${plantaDark ? 'bg-slate-800 text-amber-300 hover:bg-slate-700' : 'border bg-background text-foreground hover:bg-muted'}`}>{plantaDark ? <Sun className="size-4" /> : <Moon className="size-4" />}</button>
+                  className={`act ${plantaDark ? 'bg-slate-800 text-amber-300 hover:bg-slate-700' : 'border bg-background text-foreground hover:bg-muted'}`}>{plantaDark ? <Sun className="size-5" /> : <Moon className="size-5" />}</button>
               </>
             )}
             <div className="w-px bg-border" />
-            <button type="button" onClick={salvar} disabled={processando} title="Salvar o projeto" className="flex size-8 items-center justify-center rounded border bg-background hover:bg-muted disabled:opacity-50"><Save className={`size-4 ${salvoOk ? 'text-emerald-600' : ''}`} /></button>
-            <button type="button" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto" className="flex size-8 items-center justify-center rounded border bg-background hover:bg-muted disabled:opacity-50"><Plus className="size-4" /></button>
+            <button type="button" onClick={salvar} disabled={processando} title="Salvar o projeto" className="act border bg-background hover:bg-muted disabled:opacity-50"><Save className={`size-5 ${salvoOk ? 'text-emerald-600' : ''}`} /></button>
+            <button type="button" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto" className="act border bg-background hover:bg-muted disabled:opacity-50"><Plus className="size-5" /></button>
             {glebas.length > 1 && (
               <>
                 <div className="w-px bg-border" />
-                <div className="flex items-center gap-0.5" title="Parcelas — clique para abrir os ajustes na lateral">
+                <div className="flex items-center gap-1" title="Parcelas — clique para abrir os ajustes na lateral">
                   {glebas.map((g, i) => (
                     <button key={g.id} type="button" onClick={() => { trocarGleba(g.id); setPainelAberto(true); }} title={g.denominacao}
-                      className={`flex size-8 items-center justify-center rounded text-xs font-bold ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'border bg-background hover:bg-muted'}`}>{i + 1}</button>
+                      className={`act text-sm font-bold ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'border bg-background hover:bg-muted'}`}>{i + 1}</button>
                   ))}
                 </div>
               </>
