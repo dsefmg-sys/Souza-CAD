@@ -33,7 +33,7 @@ import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
 import { montarVertices, reordenar, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
-import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas } from '@/lib/topo/glebas';
+import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, dividirPorAreaAlvo } from '@/lib/topo/glebas';
 import { calcular } from '@/lib/topo/calcular';
 import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
@@ -47,7 +47,7 @@ import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
-import { numBR, azimuteDMS } from '@/lib/topo/geometry';
+import { numBR, azimuteDMS, azimute } from '@/lib/topo/geometry';
 import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
@@ -166,6 +166,7 @@ export default function EditorPage() {
   const [objetoSelId, setObjetoSelId] = useState<string | null>(null);
   const [vSplitInicioId, setVSplitInicioId] = useState<string | null>(null);
   const [vSplitFimId, setVSplitFimId] = useState<string | null>(null);
+  const [areaAlvoHa, setAreaAlvoHa] = useState(''); // divisão por área alvo (ha)
   const [focoLatLng, setFocoLatLng] = useState<[number, number] | null>(null);
   const [dragVtxIdx, setDragVtxIdx] = useState<number | null>(null);
   const [situacaoUrl, setSituacaoUrl] = useState<string | undefined>(undefined);
@@ -808,6 +809,40 @@ export default function EditorPage() {
     } catch (e) {
       alert((e as Error).message);
     }
+  }
+
+  // Divide a gleba ativa por ÁREA ALVO: a linha de corte fica paralela à reta De→Até.
+  function executarDivisaoPorArea() {
+    const alvoHa = Number(String(areaAlvoHa).replace(',', '.'));
+    if (!(alvoHa > 0)) { alert('Informe a área alvo em hectares (ex.: 0,4).'); return; }
+    if (!vSplitInicioId || !vSplitFimId) { alert('Selecione dois vértices (De e Até): a linha de divisão sai paralela a eles.'); return; }
+    const vi = vertices.find((v) => v.id === vSplitInicioId), vf = vertices.find((v) => v.id === vSplitFimId);
+    if (!vi || !vf) return;
+    const az = azimute({ e: vi.leste, n: vi.norte }, { e: vf.leste, n: vf.norte });
+    const poly = vertices.map((v) => ({ leste: v.leste, norte: v.norte }));
+    try {
+      const { anelA, anelB, areaA, areaB } = dividirPorAreaAlvo(poly, alvoHa * 10000, az);
+      const ts = Date.now().toString(36);
+      const toVerts = (anel: { leste: number; norte: number }[], pref: string) => reordenar(anel.map((p) => {
+        const orig = vertices.find((v) => Math.hypot(v.leste - p.leste, v.norte - p.norte) < 0.05);
+        if (orig) return { ...orig, id: `${pref}_${orig.id}_${ts}` };
+        const g = utmParaGeo(p.leste, p.norte, zona, hemisferio);
+        return novoVertice({ lat: g.lat, lon: g.lon, leste: p.leste, norte: p.norte, elevacao: 0 });
+      }));
+      const vertsA = toVerts(anelA, 'da'), vertsB = toVerts(anelB, 'db');
+      const gAtiva = glebas.find((g) => g.id === glebaAtivaId);
+      if (!gAtiva) return;
+      snap();
+      const gA = glebaDe(glebas.length + 1, vertsA, [], {}, `${gAtiva.denominacao} - ${numBR(areaA / 10000, 4)} ha`);
+      const gB = glebaDe(glebas.length + 2, vertsB, [], {}, `${gAtiva.denominacao} - ${numBR(areaB / 10000, 4)} ha`);
+      setGlebas(glebas.filter((g) => g.id !== glebaAtivaId).concat(gA, gB));
+      setGlebaAtivaId(gA.id);
+      setVertices(vertsA);
+      setConfrontantePorLado({});
+      setVerticesIgnorados([]);
+      setVSplitInicioId(null); setVSplitFimId(null); setAreaAlvoHa('');
+      aviso(`Gleba dividida: ${numBR(areaA / 10000, 4)} ha e ${numBR(areaB / 10000, 4)} ha. Repinte as divisas da nova linha.`);
+    } catch (e) { alert((e as Error).message); }
   }
 
   function executarFusaoGlebas(gAlvoId: string) {
@@ -2071,15 +2106,31 @@ export default function EditorPage() {
                     </div>
                   </div>
                   
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="default"
-                    className="w-full h-7 text-xs font-semibold" 
+                    className="w-full h-7 text-xs font-semibold"
                     disabled={!vSplitInicioId || !vSplitFimId || vSplitInicioId === vSplitFimId}
                     onClick={executarDivisaoGleba}
                   >
                     Dividir Gleba por esta Linha
                   </Button>
+
+                  {/* Divisão por ÁREA ALVO: corte paralelo à reta De→Até */}
+                  <div className="mt-2 border-t border-dashed pt-2">
+                    <span className="text-[9px] block text-muted-foreground uppercase font-medium mb-1">Ou dividir por área alvo</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text" inputMode="decimal" value={areaAlvoHa} onChange={(e) => setAreaAlvoHa(e.target.value)}
+                        placeholder="ha (ex.: 0,4)" className="h-7 flex-1 rounded border bg-background px-1 text-[11px]" />
+                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] font-semibold"
+                        disabled={!vSplitInicioId || !vSplitFimId || vSplitInicioId === vSplitFimId || !areaAlvoHa}
+                        onClick={executarDivisaoPorArea} title="A linha de corte fica paralela à reta De→Até e é posicionada para dar esta área de um lado">
+                        Dividir
+                      </Button>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground mt-1">A linha de divisão sai paralela à reta De→Até e é posicionada para dar a área informada de um lado.</p>
+                  </div>
                 </div>
 
                 {/* Painel de Fusão (Remembramento) - exibe apenas se houver outras glebas */}

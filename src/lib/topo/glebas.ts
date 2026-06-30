@@ -118,6 +118,66 @@ export function dividirGleba(
   };
 }
 
+export interface PontoEN { leste: number; norte: number }
+
+function areaShoelace(p: PontoEN[]): number {
+  let a = 0;
+  for (let i = 0; i < p.length; i++) {
+    const b = p[(i + 1) % p.length];
+    a += p[i].leste * b.norte - b.leste * p[i].norte;
+  }
+  return Math.abs(a) / 2;
+}
+
+// Corta o polígono pelo semiplano n·p <= c (Sutherland-Hodgman). Insere os pontos de interseção.
+function cortarSemiplano(poly: PontoEN[], nx: number, ny: number, c: number): PontoEN[] {
+  const out: PontoEN[] = [];
+  const N = poly.length;
+  for (let i = 0; i < N; i++) {
+    const cur = poly[i], nxt = poly[(i + 1) % N];
+    const dCur = nx * cur.leste + ny * cur.norte - c;
+    const dNxt = nx * nxt.leste + ny * nxt.norte - c;
+    const inCur = dCur <= 0, inNxt = dNxt <= 0;
+    if (inCur) out.push(cur);
+    if (inCur !== inNxt) {
+      const t = dCur / (dCur - dNxt);
+      out.push({ leste: cur.leste + t * (nxt.leste - cur.leste), norte: cur.norte + t * (nxt.norte - cur.norte) });
+    }
+  }
+  return out;
+}
+
+/**
+ * Divide o polígono em duas partes por uma linha de corte PARALELA ao azimute `azimuteGraus`
+ * (medido do Norte, horário), posicionada por busca binária para que a parte A tenha `areaAlvoM2`.
+ * Trabalha em coordenadas planas UTM (leste,norte). Retorna os dois anéis e suas áreas.
+ */
+export function dividirPorAreaAlvo(poly: PontoEN[], areaAlvoM2: number, azimuteGraus: number): {
+  anelA: PontoEN[]; anelB: PontoEN[]; areaA: number; areaB: number;
+} {
+  if (poly.length < 3) throw new Error('A gleba precisa de ao menos 3 vértices.');
+  const total = areaShoelace(poly);
+  if (!(areaAlvoM2 > 0) || areaAlvoM2 >= total) {
+    throw new Error('A área alvo precisa ser maior que zero e menor que a área total da gleba.');
+  }
+  const rad = (azimuteGraus * Math.PI) / 180;
+  const dx = Math.sin(rad), dy = Math.cos(rad); // direção do corte (E,N)
+  const nx = dy, ny = -dx;                       // normal de varredura, perpendicular ao corte
+  let lo = Infinity, hi = -Infinity;
+  for (const p of poly) { const c = nx * p.leste + ny * p.norte; lo = Math.min(lo, c); hi = Math.max(hi, c); }
+  // a área do lado (n·p <= c) cresce de 0 (c=lo) a total (c=hi): monótona → busca binária
+  let a = lo, b = hi, cMid = (a + b) / 2;
+  for (let it = 0; it < 80; it++) {
+    cMid = (a + b) / 2;
+    const parte = cortarSemiplano(poly, nx, ny, cMid);
+    const areaParte = parte.length >= 3 ? areaShoelace(parte) : 0;
+    if (areaParte < areaAlvoM2) a = cMid; else b = cMid;
+  }
+  const anelA = cortarSemiplano(poly, nx, ny, cMid);
+  const anelB = cortarSemiplano(poly, -nx, -ny, -cMid);
+  return { anelA, anelB, areaA: areaShoelace(anelA), areaB: areaShoelace(anelB) };
+}
+
 export function unirGlebas(
   verticesA: Vertex[],
   verticesB: Vertex[],

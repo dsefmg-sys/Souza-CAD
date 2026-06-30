@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas } from './glebas';
+import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, dividirPorAreaAlvo } from './glebas';
 import type { Projeto, Vertex } from './types';
 
 const baseProj: Omit<Projeto, 'glebas' | 'vertices' | 'confrontantes' | 'confrontantePorLado'> = {
@@ -16,6 +16,26 @@ describe('glebas', () => {
   it('novaGlebaVazia numera a parcela com zero à esquerda', () => {
     expect(novaGlebaVazia(1).parcela).toBe('001');
     expect(novaGlebaVazia(2).denominacao).toBe('Parcela 2');
+  });
+
+  it('divide por área alvo: quadrado 100x100 (1 ha) em 0,4 ha + 0,6 ha', () => {
+    const quadrado = [
+      { leste: 0, norte: 0 }, { leste: 100, norte: 0 },
+      { leste: 100, norte: 100 }, { leste: 0, norte: 100 },
+    ];
+    // corte paralelo ao azimute 90° (linha leste-oeste), varrendo no eixo Norte
+    const r = dividirPorAreaAlvo(quadrado, 4000, 90);
+    expect(Math.abs(r.areaA - 4000)).toBeLessThan(1);
+    expect(Math.abs(r.areaB - 6000)).toBeLessThan(1);
+    expect(Math.abs(r.areaA + r.areaB - 10000)).toBeLessThan(1);
+  });
+
+  it('divide por área alvo rejeita alvo >= área total', () => {
+    const quadrado = [
+      { leste: 0, norte: 0 }, { leste: 100, norte: 0 },
+      { leste: 100, norte: 100 }, { leste: 0, norte: 100 },
+    ];
+    expect(() => dividirPorAreaAlvo(quadrado, 10000, 90)).toThrow();
   });
 
   it('migra projeto legado (vertices no topo) para glebas[0]', () => {
