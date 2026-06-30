@@ -85,11 +85,13 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
   const foraDaFaixa = ll.some(([la, lo]) => !Number.isFinite(la) || !Number.isFinite(lo) || la > 6 || la < -34 || lo > -28 || lo < -74);
   const fusos = (fusosPermitidos && fusosPermitidos.length ? fusosPermitidos : [22, 23, 24, 25]);
 
-  // dados do mapa: polígono passa só pelos importados + no polígono; marcadores = todos importados
-  const importadosNaOrdem = ordem.filter((i) => importar[i]);
+  // dados do mapa: polígono passa só pelos importados + no polígono; marcadores = todos importados.
+  // Guarda contra índices "velhos" (logo após reabrir com outra quantidade de pontos, antes do
+  // useEffect reiniciar os arrays) — só usa índices que existem em `ll`/`pontos`.
+  const importadosNaOrdem = ordem.filter((i) => i < n && ll[i] && pontos[i] && importar[i]);
   const poligono = importadosNaOrdem.filter((i) => noPoligono[i]).map((i) => ll[i]);
   const marcadores = importadosNaOrdem.map((i) => ({ lat: ll[i][0], lon: ll[i][1], ativo: i === destaque, noPoligono: noPoligono[i], rotulo: pontos[i].nome }));
-  const destaqueLL = destaque != null ? ll[destaque] : null;
+  const destaqueLL = destaque != null && ll[destaque] ? ll[destaque] : null;
 
   const qtdImportar = importar.filter(Boolean).length;
   const qtdPoligono = importadosNaOrdem.filter((i) => noPoligono[i]).length;
@@ -155,7 +157,7 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
               <span className="text-center">No polígono</span>
             </div>
             <div className="min-h-0 flex-1 divide-y overflow-y-auto">
-              {ordem.map((i, pos) => (
+              {ordem.filter((i) => i < n && pontos[i]).map((i, pos) => (
                 <div
                   key={i}
                   draggable
