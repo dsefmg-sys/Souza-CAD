@@ -691,8 +691,8 @@ function FaixaInferior(props: {
 }) {
   const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
-  const y0 = H - STRIP - 12; // 901px
-  const hBox = STRIP;       // 210px
+  const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
+  const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
 
   const lon = grausParaDMS(vref.lon, { estilo: 'memorial', casas: 3 });
   const lat = grausParaDMS(vref.lat, { estilo: 'memorial', casas: 3 });
@@ -700,11 +700,11 @@ function FaixaInferior(props: {
   // Posições X das 3 caixas
   const w1 = 244;
   const w2 = 200;
-  const w3 = DRAW.x1 - (DRAW.x0 + w1 + 12 + w2 + 12); // Restante: 613px
+  const w3 = 544; // Box 3 esticada para terminar em 1107 (10px antes da linha divisória vertical principal 1117)
   
-  const x1 = DRAW.x0; // 24
-  const x2 = x1 + w1 + 12; // 280
-  const x3 = x2 + w2 + 12; // 492
+  const x1 = DRAW.x0; // 95
+  const x2 = x1 + w1 + 12; // 351
+  const x3 = x2 + w2 + 12; // 563
 
   return (
     <g>
@@ -718,7 +718,7 @@ function FaixaInferior(props: {
         ) : (
           <g>
             <rect x={x1 + 6} y={y0 + 24} width={w1 - 12} height={hBox - 30} fill="#f3f4f6" stroke="#d1d5db" strokeWidth={0.5} />
-            <text x={x1 + w1 / 2} y={y0 + hBox / 2 + 10} fontSize={fs(8)} fill="#6b7280" textAnchor="middle">Situação Indisponível</text>
+            <text x={x1 + w1 / 2} y={y0 + 24 + (hBox - 30) / 2 + 3} fontSize={fs(8.5)} fill="#6b7280" textAnchor="middle">Situação Indisponível</text>
           </g>
         )}
       </g>
@@ -731,21 +731,21 @@ function FaixaInferior(props: {
           
           <g>
             <SimboloVertice tipo="M" cx={x2 + 18} cy={y0 + 35} r={3.6} />
-            <text x={x2 + 28} y={y0 + 38} fontSize={fs(8)}>Vértices Tipo M</text>
+            <text x={x2 + 28} y={y0 + 38} fontSize={fs(8.5)}>Vértices Tipo M</text>
             
-            <SimboloVertice tipo="P" cx={x2 + 18} cy={y0 + 51} r={2.6} />
-            <text x={x2 + 28} y={y0 + 54} fontSize={fs(8)}>Vértices Tipo P</text>
+            <SimboloVertice tipo="P" cx={x2 + 18} cy={y0 + 53} r={2.6} />
+            <text x={x2 + 28} y={y0 + 56} fontSize={fs(8.5)}>Vértices Tipo P</text>
             
-            <SimboloVertice tipo="V" cx={x2 + 18} cy={y0 + 67} r={3} />
-            <text x={x2 + 28} y={y0 + 70} fontSize={fs(8)}>Vértices Tipo V (virtual)</text>
+            <SimboloVertice tipo="V" cx={x2 + 18} cy={y0 + 71} r={3} />
+            <text x={x2 + 28} y={y0 + 74} fontSize={fs(8.5)}>Vértices Tipo V (virtual)</text>
 
-            <SimboloDivisa tipo="linha-ideal" x={x2 + 12} y={y0 + 83} />
-            <text x={x2 + 28} y={y0 + 86} fontSize={fs(8)}>Linha ideal</text>
+            <SimboloDivisa tipo="linha-ideal" x={x2 + 12} y={y0 + 89} />
+            <text x={x2 + 28} y={y0 + 92} fontSize={fs(8.5)}>Linha ideal</text>
 
-            {represUsadas.filter((r) => r !== 'linha-ideal').slice(0, 7).map((r, i) => (
+            {represUsadas.filter((r) => r !== 'linha-ideal').slice(0, 5).map((r, i) => (
               <g key={r}>
-                <SimboloDivisa tipo={r} x={x2 + 12} y={y0 + 99 + i * 16} />
-                <text x={x2 + 28} y={y0 + 102 + i * 16} fontSize={fs(8)}>{REPRES_LABEL[r] || r}</text>
+                <SimboloDivisa tipo={r} x={x2 + 12} y={y0 + 107 + i * 18} />
+                <text x={x2 + 28} y={y0 + 110 + i * 18} fontSize={fs(8.5)}>{REPRES_LABEL[r] || r}</text>
               </g>
             ))}
           </g>
@@ -759,16 +759,16 @@ function FaixaInferior(props: {
 
         {/* Lado Esquerdo do Box 3 (Projeção e Diagrama) */}
         <g>
-          <text x={x3 + 12} y={y0 + 35} fontSize={fs(7)} fontWeight="bold">PROJEÇÃO UNIVERSAL TRANSVERSA</text>
-          <text x={x3 + 12} y={y0 + 46} fontSize={fs(7)} fontWeight="bold">DE MERCATOR (UTM)</text>
-          <text x={x3 + 12} y={y0 + 60} fontSize={fs(7)} fontWeight="bold">SGR (Sistema de Referência): SIRGAS2000</text>
-          <text x={x3 + 12} y={y0 + 73} fontSize={fs(7)}>Fuso {zona}{hemisferio} / MC {Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</text>
-          {verNortes && <Nortes cx={x3 + 60} cy={y0 + 140} conv={conv} decl={decl} fs={fs} />}
+          <text x={x3 + 12} y={y0 + 36} fontSize={fs(8)} fontWeight="bold">PROJEÇÃO UNIVERSAL TRANSVERSA</text>
+          <text x={x3 + 12} y={y0 + 48} fontSize={fs(8)} fontWeight="bold">DE MERCATOR (UTM)</text>
+          <text x={x3 + 12} y={y0 + 64} fontSize={fs(8)} fontWeight="bold">SGR (Sistema de Referência): SIRGAS2000</text>
+          <text x={x3 + 12} y={y0 + 78} fontSize={fs(8)}>Fuso {zona}{hemisferio} / MC {Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</text>
+          {verNortes && <Nortes cx={x3 + 60} cy={y0 + 130} conv={conv} decl={decl} fs={fs} />}
         </g>
 
-        {/* Lado Direito do Box 3 (Valores do Vértice de Referência) */}
-        <g transform="translate(300, 0)">
-          <text x={x3 + 12} y={y0 + 38} fontSize={fs(8)} fontWeight="bold">Vértice de referência: {vref.codigoSigef || vref.nome}</text>
+        {/* Lado Direito do Box 3 (Valores do Vértice de Referência) - Coluna deslocada para 260px para melhor equilíbrio */}
+        <g transform="translate(260, 0)">
+          <text x={x3 + 12} y={y0 + 36} fontSize={fs(8.5)} fontWeight="bold">Vértice de referência: {vref.codigoSigef || vref.nome}</text>
           {[
             ['Latitude:', lat],
             ['Longitude:', lon],
@@ -777,7 +777,7 @@ function FaixaInferior(props: {
             ['Variação anual:', imovel.variacaoAnual != null ? `${numBR(imovel.variacaoAnual, 1)}'/ano` : '—'],
             ['Fator de escala (K):', fatorK.toFixed(9)],
           ].map(([label, val], idx) => (
-            <text key={idx} x={x3 + 12} y={y0 + 56 + idx * 16} fontSize={fs(8)}>
+            <text key={idx} x={x3 + 12} y={y0 + 56 + idx * 17} fontSize={fs(8.5)}>
               <tspan fontWeight="bold">{label} </tspan> {val}
             </text>
           ))}
@@ -870,9 +870,9 @@ function CarimboA3(props: {
   const x0 = W - CARW; // 1117
   const padX = 10;
   const lx = x0 + padX; // 1127
-  const rx = W - 18;  // 1569
-  const wBox = rx - lx; // 442
-  const cxc = lx + wBox / 2; // 1348.5
+  const rx = W - 26 - 10;  // 1551 (10px antes da margem direita externa 1561)
+  const wBox = rx - lx; // 424
+  const cxc = lx + wBox / 2; // 1339
   const temLogo = !!escritorio.logoDataUrl;
 
   // Lista dos dados do imóvel a serem desenhados na Box de Dados
@@ -917,20 +917,46 @@ function CarimboA3(props: {
     ['ESCALA:', `1 / ${escalaDenom}`],
   );
 
-  const gap = Math.min(27, Math.floor(255 / (campos.length - 1)));
+  const gap = Math.min(27, Math.floor(220 / (campos.length - 1))); // Ajustado para hBox menor (264px)
 
-  // Assinatura num intervalo livre (xa..xb): linha + papel + nome + detalhes, centrados no meio.
+  // Coordenadas verticais do carimbo — grade otimizada e sem sobreposições:
+  //   y=32  : BOX Título/Folha  (h=74)   → base=106
+  //   y=116 : BOX Dados         (h=264)  → base=380
+  //   y=390 : CARD Proprietários (h=160)  → base=550
+  //          texto declaração: y=408..465
+  //          linha assinatura: y=502
+  //          nome:             y=520
+  //          detalhes:         y=530
+  //   y=560 : CARD Laudo         (h=175)  → base=735
+  //          texto laudo:      y=578..630
+  //          linha RT:         y=684
+  //          nome:             y=702
+  //          detalhes 0:       y=712
+  //          detalhes 1:       y=721.5
+  //   y=745 : CARD Confrontantes (h=110)  → base=855
+  //          texto:            y=763..825
+  //   y=865 : CARD Escritório    (h=222)  → base=1087 (10px antes do final)
+  const Y_TITULO      = 32;
+  const Y_DADOS       = 116;
+  const Y_PROP        = 390;
+  const Y_LAUDO       = 560;
+  const Y_CONF        = 745;
+  const Y_ESC         = 865;
+  const Y_ASSINA_PROP = Y_PROP  + 112; // 502
+  const Y_ASSINA_RT   = Y_LAUDO + 124; // 684
+
+  // Assinatura num intervalo livre (xa..xb): linha + rótulo abaixo + nome + detalhes, com fontes maiores e mais espaçadas
   const assina = (xa: number, xb: number, yLine: number, label: string, nome: string, detalhes: string[] = [], keyPrefix: string) => {
     const m = (xa + xb) / 2;
     const det = detalhes.filter(Boolean);
     return (
       <g>
         <line x1={xa} y1={yLine} x2={xb} y2={yLine} stroke="#000" strokeWidth={0.6} />
-        <text x={m} y={yLine - 4} fontSize={fs(6.5)} fill="#555" textAnchor="middle">{label}</text>
-        {T(`${keyPrefix}.nome`, nome, { x: m, y: yLine + 11, size: fs(8), bold: true, anchor: 'middle', fill: '#000' })}
+        <text x={m} y={yLine + 8} fontSize={fs(7.5)} fill="#555" textAnchor="middle">{label}</text>
+        {T(`${keyPrefix}.nome`, nome, { x: m, y: yLine + 18, size: fs(9), bold: true, anchor: 'middle', fill: '#000' })}
         {det.map((d, k) => (
           <g key={k}>
-            {T(`${keyPrefix}.detalhe.${k}`, d, { x: m, y: yLine + 21 + k * 9.5, size: fs(6), anchor: 'middle', fill: '#222' })}
+            {T(`${keyPrefix}.detalhe.${k}`, d, { x: m, y: yLine + 28 + k * 9.5, size: fs(7), anchor: 'middle', fill: '#222' })}
           </g>
         ))}
       </g>
@@ -942,28 +968,27 @@ function CarimboA3(props: {
       {/* Linha separadora vertical principal */}
       <line x1={x0} y1={26} x2={x0} y2={H - 26} stroke="#000" strokeWidth={1.2} />
 
-      {/* --- BOX 1: TÍTULO --- */}
+      {/* ── BOX 1: TÍTULO ─────────────────────────────────────────────────── */}
       <g>
-        <rect x={lx} y={32} width={wBox - 72} height={90} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={lx + 10} y={50} fontSize={fs(8)} fontWeight="bold" fill="#4b5563">Título:</text>
-        {T('carimbo.titulo', titulo, { x: lx + (wBox - 72) / 2, y: 82, size: fs(9.5), bold: true, anchor: 'middle', fill: '#000' })}
+        <rect x={lx} y={Y_TITULO} width={wBox - 72} height={74} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={lx + 10} y={Y_TITULO + 16} fontSize={fs(8)} fontWeight="bold" fill="#4b5563">Título:</text>
+        {T('carimbo.titulo', titulo, { x: lx + (wBox - 72) / 2, y: Y_TITULO + 46, size: fs(9.5), bold: true, anchor: 'middle', fill: '#000' })}
       </g>
 
-      {/* --- BOX 2: FOLHA --- */}
+      {/* ── BOX 2: FOLHA ──────────────────────────────────────────────────── */}
       <g>
-        <rect x={rx - 62} y={32} width={62} height={90} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={rx - 54} y={50} fontSize={fs(8)} fill="#4b5563">Folha:</text>
-        {T('carimbo.folha', folha, { x: rx - 31, y: 82, size: fs(10), bold: true, anchor: 'middle', fill: '#000' })}
+        <rect x={rx - 62} y={Y_TITULO} width={62} height={74} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={rx - 54} y={Y_TITULO + 16} fontSize={fs(8)} fill="#4b5563">Folha:</text>
+        {T('carimbo.folha', folha, { x: rx - 31, y: Y_TITULO + 46, size: fs(10), bold: true, anchor: 'middle', fill: '#000' })}
       </g>
 
-      {/* --- BOX 3: DADOS DO IMÓVEL --- */}
+      {/* ── BOX 3: DADOS DO IMÓVEL ────────────────────────────────────────── */}
       <g>
-        <rect x={lx} y={134} width={wBox} height={290} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <rect x={lx} y={Y_DADOS} width={wBox} height={264} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         {campos.map(([k, v], i) => {
-          const y = 160 + i * gap;
+          const y = Y_DADOS + 24 + i * gap;
           return (
             <g key={k}>
-              {/* rótulo à esquerda e valor numa coluna fixa, ambos na mesma base */}
               <text x={lx + 12} y={y} fontSize={fs(9)} fontWeight="bold" fill="#1f2937">{k}</text>
               {T(`dado.${i}`, v, { x: lx + 148, y, size: fs(10), bold: true, fill: '#000', slice: 40 })}
             </g>
@@ -971,17 +996,17 @@ function CarimboA3(props: {
         })}
       </g>
 
-      {/* --- CARD A: DECLARAÇÃO DO(S) PROPRIETÁRIO(S) (largura cheia) --- */}
+      {/* ── CARD A: DECLARAÇÃO DO(S) PROPRIETÁRIO(S) ──────────────────────── */}
       <g>
-        <rect x={lx} y={436} width={wBox} height={150} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={cxc} y={452} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DO(S) PROPRIETÁRIO(S)</text>
-        
+        <rect x={lx} y={Y_PROP} width={wBox} height={160} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={cxc} y={Y_PROP + 16} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DO(S) PROPRIETÁRIO(S)</text>
+
         {(() => {
           const idProp = 'carimbo.declProprietario';
           const ovProp = ed?.textos[idProp] || {};
           const txtProp = ovProp.texto || `Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta e no memorial anexo, e que indicamos em campo, de forma expressa, as divisas, limites e confrontações consideradas verdadeiras.`;
           const pxProp = cxc + (ovProp.dx ?? 0);
-          const pyProp = 467 + (ovProp.dy ?? 0);
+          const pyProp = (Y_PROP + 32) + (ovProp.dy ?? 0);
 
           if (ed?.editandoId === idProp) {
             return (
@@ -1003,30 +1028,30 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
-              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fs(7)} larguraChars={84} textAnchor="middle" texto={txtProp} />
+              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fs(7.5)} larguraChars={80} textAnchor="middle" texto={txtProp} />
             </g>
           );
         })()}
-        
+
         {imovel.comprador
           ? (<g>
-              {assina(lx + 16, cxc - 12, 560, 'Transmitente', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`], 'proprietario')}
-              {assina(cxc + 12, rx - 16, 560, 'Comprador', imovel.comprador, [`CPF: ${imovel.cpfComprador || '—'}`], 'comprador')}
+              {assina(lx + 16, cxc - 12, Y_ASSINA_PROP, 'Transmitente', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`], 'proprietario')}
+              {assina(cxc + 12, rx - 16, Y_ASSINA_PROP, 'Comprador', imovel.comprador, [`CPF: ${imovel.cpfComprador || '—'}`], 'comprador')}
             </g>)
-          : assina(lx + 90, rx - 90, 560, 'Assinatura do(s) Proprietário(s)', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`], 'proprietario')}
+          : assina(lx + 90, rx - 90, Y_ASSINA_PROP, 'Assinatura do(s) Proprietário(s)', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`], 'proprietario')}
       </g>
 
-      {/* --- CARD B: LAUDO TÉCNICO / RESPONSÁVEL TÉCNICO (largura cheia) --- */}
+      {/* ── CARD B: LAUDO TÉCNICO / RESPONSÁVEL TÉCNICO ───────────────────── */}
       <g>
-        <rect x={lx} y={598} width={wBox} height={160} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={cxc} y={614} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">LAUDO TÉCNICO</text>
-        
+        <rect x={lx} y={Y_LAUDO} width={wBox} height={175} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={cxc} y={Y_LAUDO + 16} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">LAUDO TÉCNICO</text>
+
         {(() => {
           const idLaudo = 'carimbo.laudoTécnico';
           const ovLaudo = ed?.textos[idLaudo] || {};
           const txtLaudo = ovLaudo.texto || textoLaudo;
           const pxLaudo = cxc + (ovLaudo.dx ?? 0);
-          const pyLaudo = 629 + (ovLaudo.dy ?? 0);
+          const pyLaudo = (Y_LAUDO + 32) + (ovLaudo.dy ?? 0);
 
           if (ed?.editandoId === idLaudo) {
             return (
@@ -1048,25 +1073,25 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
-              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fs(7)} larguraChars={84} textAnchor="middle" texto={txtLaudo} />
+              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fs(7.5)} larguraChars={80} textAnchor="middle" texto={txtLaudo} />
             </g>
           );
         })()}
-        
-        {assina(lx + 90, rx - 90, 712, 'Assinatura do Responsável Técnico', tecnico.nome, [tecnico.formacao || '', `CFT: ${tecnico.cft || '—'}  ·  INCRA: ${tecnico.credenciamentoIncra || '—'}`], 'responsavel')}
+
+        {assina(lx + 90, rx - 90, Y_ASSINA_RT, 'Assinatura do Responsável Técnico', tecnico.nome, [tecnico.formacao || '', `CFT: ${tecnico.cft || '—'}  ·  INCRA: ${tecnico.credenciamentoIncra || '—'}`], 'responsavel')}
       </g>
 
-      {/* --- CARD C: DECLARAÇÃO DOS CONFRONTANTES (largura cheia) --- */}
+      {/* ── CARD C: DECLARAÇÃO DOS CONFRONTANTES ──────────────────────────── */}
       <g>
-        <rect x={lx} y={770} width={wBox} height={120} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={cxc} y={786} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DOS CONFRONTANTES</text>
-        
+        <rect x={lx} y={Y_CONF} width={wBox} height={110} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <text x={cxc} y={Y_CONF + 16} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DOS CONFRONTANTES</text>
+
         {(() => {
           const idConf = 'carimbo.declConfrontantes';
           const ovConf = ed?.textos[idConf] || {};
           const txtConf = ovConf.texto || textoConfront;
           const pxConf = cxc + (ovConf.dx ?? 0);
-          const pyConf = 802 + (ovConf.dy ?? 0);
+          const pyConf = (Y_CONF + 32) + (ovConf.dy ?? 0);
 
           if (ed?.editandoId === idConf) {
             return (
@@ -1088,31 +1113,31 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idConf, e); } : undefined}>
-              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fs(8)} larguraChars={70} textAnchor="middle" texto={txtConf} />
+              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fs(8)} larguraChars={74} textAnchor="middle" texto={txtConf} />
             </g>
           );
         })()}
       </g>
 
-      {/* --- CARD D: CARIMBO DO ESCRITÓRIO (largura cheia) --- */}
+      {/* ── CARD D: CARIMBO DO ESCRITÓRIO ─────────────────────────────────── */}
       <g>
-        <rect x={lx} y={902} width={wBox} height={H - 902 - 26} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <rect x={lx} y={Y_ESC} width={wBox} height={222} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         {temLogo ? (
           <g>
             {/* logo maior; o NOME não aparece (o próprio logo já identifica a empresa) */}
-            <image href={escritorio.logoDataUrl} x={lx + 12} y={908} width={wBox - 24} height={104} preserveAspectRatio="xMidYMid meet" />
-            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 1028, size: fs(8), anchor: 'middle' })}
-            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 1042, size: fs(8), anchor: 'middle' })}
-            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1056, size: fs(8), anchor: 'middle', slice: 64 })}
-            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1070, size: fs(8), anchor: 'middle' })}
+            <image href={escritorio.logoDataUrl} x={lx + 12} y={Y_ESC + 10} width={wBox - 24} height={110} preserveAspectRatio="xMidYMid meet" />
+            {T('esc.ramo',    escritorio.ramo,                        { x: cxc, y: Y_ESC + 140, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.cnpj',   `CNPJ ${escritorio.cnpj}`,              { x: cxc, y: Y_ESC + 156, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.endereco', escritorio.endereco,                   { x: cxc, y: Y_ESC + 172, size: fs(8.5), anchor: 'middle', slice: 64 })}
+            {T('esc.tel',    `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: Y_ESC + 188, size: fs(8.5), anchor: 'middle' })}
           </g>
         ) : (
           <g>
-            {T('esc.nome', escritorio.nome, { x: cxc, y: 965, size: fs(12), bold: true, anchor: 'middle' })}
-            {T('esc.ramo', escritorio.ramo, { x: cxc, y: 987, size: fs(8.5), anchor: 'middle' })}
-            {T('esc.cnpj', `CNPJ ${escritorio.cnpj}`, { x: cxc, y: 1005, size: fs(8.5), anchor: 'middle' })}
-            {T('esc.endereco', escritorio.endereco, { x: cxc, y: 1023, size: fs(8.5), anchor: 'middle' })}
-            {T('esc.tel', `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: 1041, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.nome',    escritorio.nome,                        { x: cxc, y: Y_ESC + 50, size: fs(12),  bold: true, anchor: 'middle' })}
+            {T('esc.ramo',    escritorio.ramo,                        { x: cxc, y: Y_ESC + 80, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.cnpj',   `CNPJ ${escritorio.cnpj}`,              { x: cxc, y: Y_ESC + 102, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.endereco', escritorio.endereco,                   { x: cxc, y: Y_ESC + 124, size: fs(8.5), anchor: 'middle' })}
+            {T('esc.tel',    `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: Y_ESC + 146, size: fs(8.5), anchor: 'middle' })}
           </g>
         )}
       </g>

@@ -49,7 +49,7 @@ export async function registrarPontos(
 
         const r = atribuirDefinitivo(vertices, atual, imovelId, zonaUtm, hemisferio, Date.now());
 
-        transaction.set(counterDocRef, r.contadores);
+        transaction.set(counterDocRef, { ...r.contadores, _uid: uid });
 
         for (const p of r.pontos) {
           const pointDocRef = doc(fdb()!, 'credenciados', prefixo, 'pontos', p.codigo);
@@ -101,7 +101,7 @@ export async function definirContadores(c: Contadores): Promise<void> {
   const uid = auth()?.currentUser?.uid ?? null;
   if (firebaseConfigurado && uid) {
     try {
-      await setDoc(doc(fdb()!, 'credenciados', c.prefixo), c);
+      await setDoc(doc(fdb()!, 'credenciados', c.prefixo), { ...c, _uid: uid });
     } catch (e) {
       console.warn('Erro ao definir contadores no Firestore:', e);
     }

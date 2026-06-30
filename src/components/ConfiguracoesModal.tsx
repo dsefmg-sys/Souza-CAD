@@ -36,6 +36,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
   const [importTxtAberto, setImportTxtAberto] = useState(false);
   const [modeloProprio, setModeloProprio] = useState(false);
   const sigefRef = useRef<HTMLInputElement>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -47,10 +48,11 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
 
   const flash = (m: string) => {
     setMsg(m);
-    setTimeout(() => setMsg(''), 2000);
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setMsg(''), 2000);
   };
 
-  const changeT = (k: keyof TecnicoData, val: any) => {
+  const changeT = (k: keyof TecnicoData, val: TecnicoData[keyof TecnicoData]) => {
     const updated = { ...t, [k]: val };
     setT(updated);
     salvarTecnico(updated);
@@ -58,7 +60,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
     flash('Salvo automaticamente');
   };
 
-  const changeEsc = (k: keyof EscritorioData, val: any) => {
+  const changeEsc = (k: keyof EscritorioData, val: EscritorioData[keyof EscritorioData]) => {
     const updated = { ...esc, [k]: val };
     setEsc(updated);
     salvarEscritorio(updated);

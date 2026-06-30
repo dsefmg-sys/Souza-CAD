@@ -131,6 +131,7 @@ export default function EditorPage() {
     lat?: number;
     lon?: number;
   } | null>(null);
+  const aviseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
@@ -361,6 +362,22 @@ export default function EditorPage() {
   useEffect(() => { try { localStorage.setItem('metrica.tamNomes', String(tamNomes)); } catch { /* ignore */ } }, [tamNomes]);
   useEffect(() => { try { localStorage.setItem('metrica.asideW', String(asideW)); } catch { /* ignore */ } }, [asideW]);
 
+  // Auto-ajusta e centraliza a folha A3 sempre que a aba Planta é aberta, redimensionada ou as larguras dos painéis mudam
+  useEffect(() => {
+    if (vista === 'planta') {
+      const t = setTimeout(ajustarPlanta, 100);
+      return () => clearTimeout(t);
+    }
+  }, [vista, toolW, asideW]);
+
+  useEffect(() => {
+    if (vista === 'planta') {
+      const handleResize = () => ajustarPlanta();
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, [vista]);
+
   // Atualiza automaticamente o nome do projeto se não foi modificado manualmente
   useEffect(() => {
     if (!nomeProjetoManual && imovel) {
@@ -425,7 +442,11 @@ export default function EditorPage() {
     return () => clearTimeout(t);
   }, [projSig]);
 
-  function aviso(t: string) { setMsg(t); setTimeout(() => setMsg(''), 4000); }
+  function aviso(t: string) {
+    setMsg(t);
+    if (aviseTimerRef.current) clearTimeout(aviseTimerRef.current);
+    aviseTimerRef.current = setTimeout(() => setMsg(''), 4000);
+  }
 
   // ---------- desfazer / refazer (histórico de vértices + trechos de confrontante) ----------
   const histRef = useRef<{ v: Vertex[]; cpl: Record<number, string> }[]>([]);
@@ -465,7 +486,27 @@ export default function EditorPage() {
   function plantaPanDown(e: ReactPointerEvent) { plantaPanRef.current = { px: e.clientX, py: e.clientY, ox: plantaPan.x, oy: plantaPan.y }; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
   function plantaPanMove(e: ReactPointerEvent) { const d = plantaPanRef.current; if (d) setPlantaPan({ x: d.ox + (e.clientX - d.px), y: d.oy + (e.clientY - d.py) }); }
   function plantaPanUp(e: ReactPointerEvent) { plantaPanRef.current = null; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ } }
-  function ajustarPlanta() { setPlantaZoom(1); setPlantaPan({ x: 0, y: 0 }); setPlantaConfig((c) => ({ ...c, offsetX: 0, offsetY: 0 })); }
+  function ajustarPlanta() {
+    const el = document.getElementById('planta-print');
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const pad = 12;
+      const wAvailable = rect.width - pad * 2;
+      const hAvailable = rect.height - pad * 2;
+      // Ajusta a escala para caber a folha A3 inteira (1587 x 1123) na viewport
+      const scale = Math.min(wAvailable / 1587, hAvailable / 1123);
+      setPlantaZoom(scale);
+      // Centraliza perfeitamente a folha A3
+      setPlantaPan({
+        x: pad + (wAvailable - 1587 * scale) / 2,
+        y: pad + (hAvailable - 1123 * scale) / 2
+      });
+    } else {
+      setPlantaZoom(1);
+      setPlantaPan({ x: 0, y: 0 });
+    }
+    setPlantaConfig((c) => ({ ...c, offsetX: 0, offsetY: 0 }));
+  }
   // reposiciona a folha A3 em relação ao polígono (que é georreferenciado e fixo)
   function moverFolhaPlanta(dx: number, dy: number) {
     setPlantaConfig((c) => ({ ...c, offsetX: +(((c.offsetX ?? 0) + dx).toFixed(1)), offsetY: +(((c.offsetY ?? 0) + dy).toFixed(1)) }));
@@ -1061,7 +1102,7 @@ export default function EditorPage() {
   }
   function definirDivisaLado(id: string, tipo: string) {
     snap();
-    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, representacao: tipo as any } : v)));
+    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, representacao: tipo as Vertex['representacao'] } : v)));
   }
   function definirConfrontanteLado(idx: number, confrontanteId: string) {
     snap();
@@ -1113,7 +1154,7 @@ export default function EditorPage() {
   function alternarTipo(id: string) {
     snap();
     const prox = { M: 'P', P: 'V', V: 'M' } as const;
-    setVertices((vs) => vs.map((v) => { if (v.id !== id) return v; const t = prox[v.tipo as 'M' | 'P' | 'V'] ?? 'P'; return { ...v, tipo: t, isDivisa: t !== 'M' }; }));
+    setVertices((vs) => vs.map((v) => { if (v.id !== id) return v; const t = prox[v.tipo as 'M' | 'P' | 'V'] ?? 'P'; return { ...v, tipo: t, isDivisa: t === 'M' }; }));
   }
 
   function editarVertice(id: string, patch: Partial<Vertex>) {
@@ -1142,9 +1183,12 @@ export default function EditorPage() {
       indices.push(start);
     } else {
       let curr = start;
-      while (curr !== end) {
+      const maxIter = vertices.length + 1; // guarda contra loop infinito se vértice for apagado entre cliques
+      let iter = 0;
+      while (curr !== end && iter < maxIter) {
         indices.push(curr);
         curr = (curr + 1) % vertices.length;
+        iter++;
       }
     }
 
@@ -1179,9 +1223,12 @@ export default function EditorPage() {
       indices.push(start);
     } else {
       let curr = start;
-      while (curr !== end) {
+      const maxIter = vertices.length + 1; // guarda contra loop infinito se vértice for apagado entre cliques
+      let iter = 0;
+      while (curr !== end && iter < maxIter) {
         indices.push(curr);
         curr = (curr + 1) % vertices.length;
+        iter++;
       }
     }
 
@@ -1618,8 +1665,9 @@ export default function EditorPage() {
       naturezaArea: 'Particular',
     });
     setVertices([]);
-    setGlebas([novaGlebaVazia(1)]);
-    setGlebaAtivaId('1');
+    const novaGleba = novaGlebaVazia(1);
+    setGlebas([novaGleba]);
+    setGlebaAtivaId(novaGleba.id); // usa o ID real gerado, não o hardcoded '1'
     setConfrontantes([]);
     setConfrontantePorLado({});
     setReferencias([]);
@@ -1805,6 +1853,13 @@ export default function EditorPage() {
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
         </a>
        </div>
+       {/* Zona de hover no canto direito do cabeçalho — abre o painel lateral sem aberturas acidentais ao mover o mouse pela lateral da tela */}
+       <div
+         className="no-print w-16 shrink-0 cursor-pointer"
+         title="Dados do projeto"
+         onMouseEnter={() => { painelMouseDentro.current = true; setPainelAberto(true); }}
+         onMouseLeave={() => { painelMouseDentro.current = false; if (!asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
+       />
       </header>
 
       <div className="relative flex min-h-0 flex-1">
@@ -1968,8 +2023,8 @@ export default function EditorPage() {
             <button type="button" className="act border bg-background hover:bg-muted" title="Focalizar/enquadrar o desenho" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())}><Target className="size-5" /></button>
             {(() => {
               const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
-              const cor = !situacaoUrl ? 'border bg-background text-foreground hover:bg-muted' : stale ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-600 text-white hover:bg-emerald-700';
-              const titulo = !situacaoUrl ? 'Capturar a planta de situação (recorte de satélite)' : stale ? 'Situação DESATUALIZADA — clique para refazer' : 'Situação pronta — clique para refazer';
+              const cor = !situacaoUrl ? 'bg-amber-500 text-white hover:bg-amber-600' : stale ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-600 text-white hover:bg-emerald-700';
+              const titulo = !situacaoUrl ? 'Capturar a planta de situação (recorte de satélite) — PENDENTE' : stale ? 'Situação DESATUALIZADA — clique para refazer' : 'Situação pronta — clique para refazer';
               return <button type="button" onClick={gerarSituacaoPlanta} title={titulo} className={`act ${cor}`}><Camera className="size-5" /></button>;
             })()}
             {situacaoUrl && (
@@ -2094,9 +2149,9 @@ export default function EditorPage() {
           )}
         </main>
 
-        {/* Painel direito — recolhido numa barra fina translúcida; abre ao passar o mouse e some ao sair */}
+        {/* Painel direito — recolhido numa barra fina translúcida; abre ao passar o mouse na zona do cabeçalho e some ao sair */}
         <div ref={painelWrap} className="no-print flex shrink-0"
-          onMouseEnter={() => { painelMouseDentro.current = true; setPainelAberto(true); }}
+          onMouseEnter={() => { painelMouseDentro.current = true; }}
           onMouseLeave={() => { painelMouseDentro.current = false; if (!asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
           onBlurCapture={() => { setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 0); }}>
           {painelAberto && (
@@ -2375,7 +2430,7 @@ export default function EditorPage() {
                     <button
                       key={t}
                       className={`flex-1 text-center py-0.5 text-xs rounded border ${menuContexto.vertice!.tipo === t ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
-                      onClick={() => { editarVertice(menuContexto.vertice!.id, { tipo: t as any, isDivisa: t === 'M' }); setMenuContexto(null); }}
+                      onClick={() => { editarVertice(menuContexto.vertice!.id, { tipo: t as Vertex['tipo'], isDivisa: t === 'M' }); setMenuContexto(null); }}
                     >
                       {t}
                     </button>
