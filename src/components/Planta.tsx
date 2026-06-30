@@ -772,8 +772,8 @@ function FaixaInferior(props: {
           {[
             ['Latitude:', lat],
             ['Longitude:', lon],
-            ['Conv. meridiana (CM):', grausParaDMS(conv, { casas: 6, estilo: 'memorial' })],
-            ['Declinação magnética:', grausParaDMS(decl, { casas: 6, estilo: 'memorial' })],
+            ['Conv. meridiana (CM):', grausParaDMS(conv, { casas: 2, estilo: 'memorial' })],
+            ['Declinação magnética:', grausParaDMS(decl, { casas: 2, estilo: 'memorial' })],
             ['Variação anual:', imovel.variacaoAnual != null ? `${numBR(imovel.variacaoAnual, 1)}'/ano` : '—'],
             ['Fator de escala (K):', fatorK.toFixed(9)],
           ].map(([label, val], idx) => (

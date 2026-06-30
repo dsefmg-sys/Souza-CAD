@@ -2065,7 +2065,7 @@ export default function EditorPage() {
           )}
 
           {vista === 'planta' && (
-            <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
+            <div id="planta-print" className="relative h-full select-none overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
               {/* controles da planta movidos para a coluna esquerda; aqui a folha fica limpa */}
               <div className={`absolute inset-0 overflow-hidden p-4 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
                 onPointerDown={(e) => { if (e.button === 1) { e.preventDefault(); plantaPanDown(e); } else if (!editarPlanta) plantaPanDown(e); }}
