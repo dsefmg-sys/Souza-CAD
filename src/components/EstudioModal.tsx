@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Type, Square, Circle, Trash2, Download, ArrowUp, ArrowDown, AlignCenterHorizontal, AlignCenterVertical, Palette } from 'lucide-react';
+import { Image as ImageIcon, Type, Square, Circle, Trash2, Download, ArrowUp, ArrowDown, AlignCenterHorizontal, AlignCenterVertical, Palette, Search, Shapes } from 'lucide-react';
 
 // ESTÚDIO isolado (mini-Canva): tela com formato escolhido, elementos de imagem/texto/forma,
 // mover/redimensionar/alinhar/camadas e exportar PNG. Não toca no projeto de agrimensura.
@@ -32,6 +32,10 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
   const [sel, setSel] = useState<number | null>(null);
   const [box, setBox] = useState({ w: 800, h: 600 });
   const [procFundo, setProcFundo] = useState(false);
+  const [painelElem, setPainelElem] = useState(false);
+  const [busca, setBusca] = useState('');
+  const [resultados, setResultados] = useState<string[]>([]);
+  const [buscando, setBuscando] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const palcoRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
@@ -99,6 +103,27 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
     finally { setProcFundo(false); }
   }
 
+  // biblioteca de elementos: ícones do Iconify (grátis, sem chave)
+  async function buscarElementos() {
+    const q = busca.trim(); if (!q) return;
+    setBuscando(true);
+    try {
+      const r = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(q)}&limit=60`);
+      const j = await r.json();
+      setResultados(Array.isArray(j.icons) ? j.icons : []);
+    } catch { setResultados([]); }
+    finally { setBuscando(false); }
+  }
+  async function addIcone(nome: string) {
+    try {
+      const svg = await fetch(`https://api.iconify.design/${nome}.svg?height=240`).then((r) => r.text());
+      const url = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+      const s = Math.min(fmt.w, fmt.h) * 0.25; const id = nid();
+      setEls((es) => [...es, { id, t: 'img', src: url, x: (fmt.w - s) / 2, y: (fmt.h - s) / 2, w: s, h: s }]);
+      setSel(id);
+    } catch { alert('Não consegui carregar este elemento.'); }
+  }
+
   function apagar() { if (sel != null) { setEls((es) => es.filter((e) => e.id !== sel)); setSel(null); } }
   function camada(dir: number) {
     if (sel == null) return;
@@ -164,6 +189,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
           <Button size="sm" variant="outline" onClick={addTexto}><Type className="size-4" /> Texto</Button>
           <Button size="sm" variant="outline" onClick={() => addForma('rect')}><Square className="size-4" /> Retângulo</Button>
           <Button size="sm" variant="outline" onClick={() => addForma('ellipse')}><Circle className="size-4" /> Elipse</Button>
+          <Button size="sm" variant={painelElem ? 'default' : 'outline'} onClick={() => setPainelElem((v) => !v)}><Shapes className="size-4" /> Elementos</Button>
           <div className="mx-1 h-6 w-px bg-border" />
           <Button size="sm" variant="outline" disabled={sel == null} onClick={() => centrar('h')} title="Centralizar na horizontal"><AlignCenterVertical className="size-4" /></Button>
           <Button size="sm" variant="outline" disabled={sel == null} onClick={() => centrar('v')} title="Centralizar na vertical"><AlignCenterHorizontal className="size-4" /></Button>
@@ -172,6 +198,28 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
           <Button size="sm" variant="outline" disabled={sel == null} onClick={apagar} title="Apagar (Delete)"><Trash2 className="size-4" /></Button>
           <Button size="sm" className="ml-auto" onClick={exportar}><Download className="size-4" /> Baixar PNG</Button>
         </div>
+
+        {/* biblioteca de elementos (ícones Iconify, grátis) */}
+        {painelElem && (
+          <div className="flex flex-col gap-2 border-y py-2">
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="font-semibold">Elementos:</span>
+              <input className="h-8 w-64 rounded border bg-background px-2 text-sm" placeholder="Buscar ícone (ex.: casa, sol, raio, seta)" value={busca}
+                onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') buscarElementos(); }} />
+              <Button size="sm" variant="outline" disabled={buscando} onClick={buscarElementos}><Search className="size-4" /> {buscando ? 'Buscando…' : 'Buscar'}</Button>
+              <span className="text-muted-foreground">Ícones gratuitos. Fotos de banco de imagem virão com uma chave (grátis) que você gera.</span>
+            </div>
+            {resultados.length > 0 && (
+              <div className="grid max-h-28 grid-flow-col grid-rows-2 gap-1 overflow-x-auto rounded border bg-muted/20 p-1.5">
+                {resultados.map((n) => (
+                  <button key={n} type="button" title={n} onClick={() => addIcone(n)} className="flex size-11 shrink-0 items-center justify-center rounded border bg-background hover:bg-muted">
+                    <img src={`https://api.iconify.design/${n}.svg?height=28`} alt={n} width={28} height={28} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* propriedades da imagem selecionada */}
         {selEl?.t === 'img' && (
