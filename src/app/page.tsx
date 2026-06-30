@@ -1840,7 +1840,7 @@ export default function EditorPage() {
                     <div className="flex flex-wrap gap-1 [&_button]:h-9 [&_button]:justify-center [&_button]:gap-0.5 [&_button]:px-1.5">
                       <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /><span className="text-[9px] font-bold text-amber-400">F3</span></Button>
                       <Button size="sm" variant="ghost" title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)}>{mostrarRotulos ? <EyeOff /> : <Eye />}<span className="text-[9px] font-bold text-amber-400">F4</span></Button>
-                      <Button size="sm" variant="ghost" title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'Vértices liberados — F5'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}<span className="text-[9px] font-bold text-amber-400">F5</span></Button>
+                      <Button size="sm" variant="ghost" className={bloqueado ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}<span className={`text-[9px] font-bold ${bloqueado ? 'text-amber-400' : 'text-white'}`}>F5</span></Button>
                     </div>
                   </>
                 )}
@@ -1863,7 +1863,6 @@ export default function EditorPage() {
                       <Button size="sm" variant="ghost" title="Desenho menor (denominador +250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: (c.escalaManual ?? 1000) + 250 }))}>+</Button>
                       <Button size="sm" variant="ghost" className="!w-auto px-1 font-bold" title="Escala automática" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>AUTO</Button>
                     </div>
-                    {situacaoUrl && <Button size="sm" variant="ghost" title="Remover a planta de situação" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }}><X /> <span className="truncate text-xs">Remover situação</span></Button>}
                     <Button size="sm" variant="outline" title="Ajustar (zoom 100%)" onClick={ajustarPlanta}><Maximize /> <span className="truncate text-xs font-semibold">AJUSTAR ({Math.round(plantaZoom * 100)}%)</span></Button>
                   </div>
                 )}
@@ -1926,17 +1925,16 @@ export default function EditorPage() {
 
                 {/* RODAPÉ FIXO: ajuste de texto + sistema (calculadora, tema, config, sair) */}
                 <div className="mt-auto flex flex-col gap-1 border-t pt-1.5">
-                  {/* A- / A+ contextual (mapa = nomes dos vértices; planta = escala dos textos) */}
-                  <div className="flex items-center justify-between rounded bg-muted/40 px-1.5 py-0.5" title={vista === 'mapa' ? 'Tamanho dos nomes dos vértices no mapa' : 'Escala dos textos na planta'}>
-                    <span className="text-[9px] font-medium uppercase text-muted-foreground">{vista === 'mapa' ? 'Nomes' : 'Textos'}</span>
-                    <div className="flex items-center gap-0.5">
+                  {/* Errata (retangular) + A- / A+ contextual (mapa = nomes dos vértices; planta = escala dos textos) */}
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="outline" className="h-7 flex-1 gap-1 px-1 text-amber-500 border-amber-500/40 hover:bg-amber-500 hover:text-black dark:text-amber-400 dark:hover:bg-amber-400 dark:hover:text-black" title="Errata: gerar correção formal ao cartório (uso raro)" onClick={() => setErrataAberto(true)}><FileWarning className="size-3.5" /> <span className="text-[10px] font-bold uppercase">Errata</span></Button>
+                    <div className="flex items-center gap-0.5 rounded bg-muted/40 px-1" title={vista === 'mapa' ? 'Tamanho dos nomes dos vértices no mapa' : 'Escala dos textos na planta'}>
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.max(7, n - 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.5) - 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A-</span></Button>
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.min(22, n + 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A+</span></Button>
                     </div>
                   </div>
                   {/* ícones de sistema */}
                   <div className="flex items-center gap-0.5">
-                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0 text-amber-500 hover:bg-amber-500 hover:text-black dark:text-amber-400 dark:hover:bg-amber-400 dark:hover:text-black" title="Errata: gerar correção formal ao cartório (uso raro)" onClick={() => setErrataAberto(true)}><FileWarning /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Calculadora: converter coordenada, distância e azimute" onClick={() => setCalcAberta(true)}><Ruler /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Tema claro/escuro" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))}>{tema === 'claro' ? <Moon /> : <Sun />}</Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
@@ -1954,38 +1952,44 @@ export default function EditorPage() {
           );
         })()}
         <main className="relative isolate min-w-0 flex-1">
-          {/* PAINEL FLUTUANTE DE DADOS (arrastável): área, perímetro, vértices + cadeado da folha */}
-          <div className="absolute z-[1100] flex select-none flex-col rounded-lg border bg-background/95 shadow-lg backdrop-blur" style={{ left: dadosPos.x, top: dadosPos.y }}>
+          {/* PAINEL FLUTUANTE DE DADOS (arrastável): área/perímetro/vértices + situação + folha */}
+          <div className="absolute z-[1100] flex w-56 select-none flex-col rounded-lg border bg-background/95 shadow-lg backdrop-blur" style={{ left: dadosPos.x, top: dadosPos.y }}>
             <div className="flex cursor-move items-center gap-2 rounded-t-lg border-b bg-muted/60 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground"
               onPointerDown={dadosDown} onPointerMove={dadosMove} onPointerUp={dadosUp} title="Arraste para mover este painel">
-              <Move className="size-3" /> Dados
-              {vista === 'planta' && editarPlanta && (
-                <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={() => setFolhaTravada((v) => !v)}
-                  title={folhaTravada ? 'Folha travada — clique para poder arrastá-la' : 'Folha livre — clique para travar'}
-                  className={`ml-auto flex size-5 items-center justify-center rounded-full ${folhaTravada ? 'text-foreground hover:bg-muted' : 'bg-amber-500 text-white'}`}>
-                  {folhaTravada ? <Lock className="size-3" /> : <Move className="size-3" />}
-                </button>
-              )}
+              <Move className="size-3" /> Dados do projeto
             </div>
             <div className="grid grid-cols-3 gap-2 px-3 py-1.5 text-center">
               <div><div className="text-[9px] uppercase text-muted-foreground">Área SGL</div><div className="text-sm font-semibold">{res ? `${numBR(res.areaHa, 4)} ha` : '—'}</div></div>
               <div><div className="text-[9px] uppercase text-muted-foreground">Perímetro</div><div className="text-sm font-semibold">{res ? `${numBR(res.perimetro)} m` : '—'}</div></div>
               <div><div className="text-[9px] uppercase text-muted-foreground">Vértices</div><div className="text-sm font-semibold">{vertices.length}</div></div>
             </div>
+            {/* botões quadrados: situação (capturar/atualizar/remover) + folha */}
+            <div className="flex items-center gap-1 border-t px-2 py-1.5">
+              {(() => {
+                const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
+                const cor = !situacaoUrl ? 'border bg-background text-foreground hover:bg-muted' : stale ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-600 text-white hover:bg-emerald-700';
+                const titulo = !situacaoUrl ? 'Capturar a planta de situação (recorte de satélite)' : stale ? 'Situação DESATUALIZADA — clique para refazer com o desenho atual' : 'Situação pronta — clique para refazer';
+                return (
+                  <button type="button" onClick={gerarSituacaoPlanta} title={titulo} className={`flex size-8 items-center justify-center rounded ${cor}`}>
+                    <Camera className="size-4" />
+                  </button>
+                );
+              })()}
+              {situacaoUrl && (
+                <button type="button" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }} title="Remover a situação" className="flex size-8 items-center justify-center rounded border bg-background text-destructive hover:bg-destructive hover:text-white">
+                  <X className="size-4" />
+                </button>
+              )}
+              <span className="text-[9px] font-medium uppercase text-muted-foreground">Situação</span>
+              {vista === 'planta' && editarPlanta && (
+                <button type="button" onClick={() => setFolhaTravada((v) => !v)}
+                  title={folhaTravada ? 'Folha FIXA — clique para liberar e poder arrastá-la' : 'Folha LIVRE (cuidado) — clique para fixar' }
+                  className={`ml-auto flex size-8 items-center justify-center rounded ${folhaTravada ? 'border bg-background text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>
+                  {folhaTravada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
+                </button>
+              )}
+            </div>
           </div>
-
-          {/* SITUAÇÃO: bolinha de câmera (canto inf. esquerdo). Verde = pronta; laranja = precisa atualizar */}
-          {(() => {
-            const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
-            const cor = !situacaoUrl ? 'bg-background/90 text-foreground border' : stale ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white';
-            const titulo = !situacaoUrl ? 'Gerar a planta de situação (recorte de satélite)' : stale ? 'A situação está desatualizada — clique para refazer com o desenho atual' : 'Situação pronta e atualizada — clique para refazer';
-            return (
-              <button type="button" onClick={gerarSituacaoPlanta} title={titulo}
-                className={`absolute bottom-3 left-3 z-[1000] flex size-10 items-center justify-center rounded-full shadow-lg backdrop-blur transition-colors ${cor}`}>
-                <Camera className="size-5" />
-              </button>
-            );
-          })()}
 
           {vista === 'mapa' ? (
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
@@ -2050,8 +2054,10 @@ export default function EditorPage() {
             <div id="planta-print" className="relative h-full overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
               {/* controles da planta movidos para a coluna esquerda; aqui a folha fica limpa */}
               <div className={`absolute inset-0 overflow-hidden p-4 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
-                onPointerDown={editarPlanta ? undefined : plantaPanDown} onPointerMove={editarPlanta ? undefined : plantaPanMove} onPointerUp={editarPlanta ? undefined : plantaPanUp}
-                title={editarPlanta ? 'Modo edição: arraste itens; arraste uma área vazia para reposicionar a folha; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
+                onPointerDown={(e) => { if (e.button === 1) { e.preventDefault(); plantaPanDown(e); } else if (!editarPlanta) plantaPanDown(e); }}
+                onPointerMove={(e) => { if (plantaPanRef.current) plantaPanMove(e); }}
+                onPointerUp={(e) => { if (plantaPanRef.current) plantaPanUp(e); }}
+                title={editarPlanta ? 'Modo edição: arraste itens; botão do meio do mouse dá pan; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
                 {res && tecnico && escritorio && (
                   <div className="mx-auto max-w-[1587px] bg-white shadow" style={{ transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'center top' }}>
                     <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}

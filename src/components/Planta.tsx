@@ -335,6 +335,7 @@ export default function Planta({
   }
   function plantaDown(e: ReactPointerEvent) {
     if (!editavel) return;
+    if (e.button !== 0) return; // botão do meio/direito não arrasta itens (meio = pan, tratado fora)
     const u = svgPonto(e); if (!u) return;
     // modos de desenho: o clique cria/continua o objeto (só dentro da área de desenho, nunca no carimbo)
     if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
@@ -565,7 +566,7 @@ export default function Planta({
             <g key={`dc${v.id}`}>
               <line x1={vx} y1={vy} x2={ex} y2={ey} stroke="#475569" strokeWidth={0.6} strokeDasharray="4 3" />
               {editavel && (
-                <circle cx={ex} cy={ey} r={3.4} fill="#ffffff" stroke="#475569" strokeWidth={1.1} style={{ cursor: 'move' }}
+                <circle cx={ex} cy={ey} r={7} fill="transparent" style={{ cursor: 'move' }}
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     const u = svgPonto(e); if (!u) return;
