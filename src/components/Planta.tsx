@@ -807,26 +807,29 @@ function RosaDosVentos({ cx, cy, fs }: { cx: number; cy: number; conv?: number; 
 // EXAGERADOS visualmente (preservando o sinal) só para leitura — os valores exatos ficam no texto
 // ao lado. É um diagrama técnico, diferente da rosa dos ventos (orientação) do desenho.
 function Nortes({ cx, cy, conv, decl, fs }: { cx: number; cy: number; conv: number; decl: number; fs: (n: number) => number }) {
-  const L = 38;
+  const L = 48; // um pouco maior
   const ponto = (deg: number, len: number) => { const a = (deg * Math.PI) / 180; return [cx + len * Math.sin(a), cy - len * Math.cos(a)] as const; };
-  const vq = conv === 0 ? 0 : (conv > 0 ? 1 : -1) * 14;  // quadrícula
-  const vm = decl === 0 ? 0 : (decl > 0 ? 1 : -1) * 30;  // magnético
+  const vq = conv === 0 ? 0 : (conv > 0 ? 1 : -1) * 16;  // quadrícula (ângulo exagerado pra leitura)
+  const vm = decl === 0 ? 0 : (decl > 0 ? 1 : -1) * 32;  // magnético
   const [nx, ny] = ponto(0, L);
-  const [qx, qy] = ponto(vq, L - 3);
-  const [mx, my] = ponto(vm, L - 8);
+  const [qx, qy] = ponto(vq, L);
+  const [mx, my] = ponto(vm, L);
+  // rótulos posicionados ALÉM da ponta de cada linha, todos escuros (sem texto colorido) e fora das linhas
+  const [lnx, lny] = ponto(0, L + 11);
+  const [lqx, lqy] = ponto(vq, L + 11);
+  const [lmx, lmy] = ponto(vm, L + 11);
+  const TXT = '#0f172a';
   return (
     <g>
-      {/* NM magnético (vermelho tracejado) */}
+      {/* linhas (coloridas só pra distinguir; o texto é escuro e fica fora delas) */}
       <line x1={cx} y1={cy} x2={mx} y2={my} stroke="#b91c1c" strokeWidth={0.9} strokeDasharray="3 2" />
-      <text x={mx + (vm >= 0 ? 5 : -5)} y={my + 2} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#b91c1c">NM</text>
-      {/* NQ quadrícula (azul) */}
       <line x1={cx} y1={cy} x2={qx} y2={qy} stroke="#1d4ed8" strokeWidth={0.9} />
-      <text x={qx + (vq >= 0 ? 5 : -5)} y={qy + 2} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#1d4ed8">NQ</text>
-      {/* NV verdadeiro (preto, com ponta de seta + estrela) */}
-      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#0f172a" strokeWidth={1.4} />
-      <polygon points={`${nx},${ny - 7} ${nx - 2.6},${ny} ${nx + 2.6},${ny}`} fill="#0f172a" />
-      <text x={nx} y={ny - 9} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill="#0f172a">NV</text>
-      <circle cx={cx} cy={cy} r={2.2} fill="#0f172a" />
+      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#0f172a" strokeWidth={1.5} />
+      <polygon points={`${nx},${ny - 8} ${nx - 3},${ny} ${nx + 3},${ny}`} fill="#0f172a" />
+      <circle cx={cx} cy={cy} r={2.4} fill="#0f172a" />
+      <text x={lmx} y={lmy + 2} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill={TXT}>NM</text>
+      <text x={lqx} y={lqy + 2} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill={TXT}>NQ</text>
+      <text x={lnx} y={lny - 1} fontSize={fs(7)} fontWeight="bold" textAnchor="middle" fill={TXT}>NV</text>
     </g>
   );
 }

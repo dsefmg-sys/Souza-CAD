@@ -1859,13 +1859,6 @@ export default function EditorPage() {
                     <Button size="sm" variant="ghost" title="Voltar ao mapa (F1)" onClick={() => setVista('mapa')}><MapIcon /> <span className="truncate text-xs font-semibold">VER MAPA</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
                     <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-9 w-full justify-start gap-2" title="Mover: arrastar textos, rótulos e a folha. Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span></Button>
                     <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                    {/* escala em passos de 250 */}
-                    <div className="flex items-center gap-0.5 rounded-md border bg-background px-1 text-xs [&>button]:h-7 [&>button]:w-7 [&>button]:p-0">
-                      <Button size="sm" variant="ghost" title="Desenho maior (denominador −250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: Math.max(250, (c.escalaManual ?? 1000) - 250) }))}>−</Button>
-                      <span className="flex-1 text-center font-bold">1 / {plantaConfig.escalaManual ?? 'auto'}</span>
-                      <Button size="sm" variant="ghost" title="Desenho menor (denominador +250)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: (c.escalaManual ?? 1000) + 250 }))}>+</Button>
-                      <Button size="sm" variant="ghost" className="!w-auto px-1 font-bold" title="Escala automática" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>AUTO</Button>
-                    </div>
                     <Button size="sm" variant="outline" title="Ajustar (zoom 100%)" onClick={ajustarPlanta}><Maximize /> <span className="truncate text-xs font-semibold">AJUSTAR ({Math.round(plantaZoom * 100)}%)</span></Button>
                   </div>
                 )}
@@ -1982,6 +1975,12 @@ export default function EditorPage() {
                   className={`act ${folhaTravada ? 'border bg-background text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>{folhaTravada ? <Lock className="size-5" /> : <LockOpen className="size-5" />}</button>
                 <button type="button" onClick={() => setPlantaDark((v) => !v)} title={plantaDark ? 'Folha clara' : 'Folha escura (conforto noturno; não afeta o PDF)'}
                   className={`act ${plantaDark ? 'bg-slate-800 text-amber-300 hover:bg-slate-700' : 'border bg-background text-foreground hover:bg-muted'}`}>{plantaDark ? <Sun className="size-5" /> : <Moon className="size-5" />}</button>
+                {/* escala: [-] 1/X [+] */}
+                <div className="flex items-center gap-1 rounded-lg border bg-background px-1" title="Escala da planta (− aumenta o desenho, + diminui)">
+                  <button type="button" className="flex size-7 items-center justify-center rounded hover:bg-muted" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: Math.max(250, (c.escalaManual ?? 1000) - 250) }))}><span className="text-base font-bold">−</span></button>
+                  <span className="min-w-[3.5rem] text-center text-xs font-bold">1/{plantaConfig.escalaManual ?? 'auto'}</span>
+                  <button type="button" className="flex size-7 items-center justify-center rounded hover:bg-muted" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: (c.escalaManual ?? 1000) + 250 }))}><span className="text-base font-bold">+</span></button>
+                </div>
               </>
             )}
             <div className="w-px bg-border" />
