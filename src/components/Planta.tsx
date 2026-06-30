@@ -610,7 +610,7 @@ export default function Planta({
       })}
 
       {/* ---------- POLÍGONO (gleba ativa) ---------- */}
-      <polygon points={pts} fill={config.fillPoligono || '#fde68a'} fillOpacity={0.18} stroke={config.corPoligono || '#7c2d12'} strokeWidth={config.larguraPoligono ?? 1.8} />
+      <polygon points={pts} fill={config.fillPoligono || '#15803d'} fillOpacity={0.08} stroke={config.corPoligono || '#334155'} strokeWidth={config.larguraPoligono ?? 1.8} />
 
       {/* ---------- LINHAS DE APOIO DAS DIVISAS ---------- */}
       {vertices.map((v, i) => {
@@ -656,19 +656,45 @@ export default function Planta({
         return null;
       })}
 
-      {/* confrontantes (rótulo + linha de assinatura) */}
+      {/* confrontantes (rótulo + linha de assinatura). Layout: matrícula no topo, depois a LINHA de
+          assinatura SOBRE o nome do confrontante; quando há cônjuge, uma SEGUNDA linha de assinatura
+          sobre o nome do cônjuge (não mais as duas linhas juntas no topo). */}
       {rotulosConf.map((r, i) => {
         if (!r.c || !r.c.nome) return null;
         const c = r.c;
-        const linhas = rotuloConfrontanteLinhas(c);
         const fz = c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteRot;
-        const temConjuge = !!c.conjugeNome;
+        const todas = rotuloConfrontanteLinhas(c);
+        // cônjuge só conta se a função realmente anexou as 2 linhas dele (não acontece em espólio)
+        const temConjLinhas = !!c.conjugeNome && todas.length >= 2 && /^C[ôo]njuge:/i.test(todas[todas.length - 2]);
+        const conjLines = temConjLinhas ? todas.slice(-2) : [];
+        const principalAll = temConjLinhas ? todas.slice(0, -2) : todas;
+        const matLine = principalAll.find((l) => /^Matr[íi]cula/i.test(l)) ?? null;
+        const principalSemMat = principalAll.filter((l) => l !== matLine);
+
         const half = Math.max(86, fz * 9);
         const boxW = half * 2 + 16;
-        const boxH = (temConjuge ? 74 : 46) + linhas.length * (fz + 2.5);
+        const lineH = fz + 3;
+        const signRoom = 14;            // espaço acima de cada linha para a pessoa assinar
+        const nText = (matLine ? 1 : 0) + principalSemMat.length + conjLines.length;
+        const nSig = temConjLinhas ? 2 : 1;
+        const boxH = nText * lineH + nSig * (signRoom + 6) + 14;
+
         const isDragging = dragTemp && dragTemp.kind === 'rotConf' && dragTemp.id === c.id;
         const px = isDragging ? r.x + dragTemp.dx : r.x;
         const py = isDragging ? r.y + dragTemp.dy : r.y;
+        const top = py - boxH / 2;
+
+        // posiciona cada elemento (texto ou linha de assinatura) de cima para baixo
+        const placed: { kind: 'text' | 'sig'; t?: string; y: number }[] = [];
+        let cur = top + 7;
+        if (matLine) { cur += lineH; placed.push({ kind: 'text', t: matLine, y: cur - 2 }); }
+        cur += signRoom; placed.push({ kind: 'sig', y: cur }); cur += 6;
+        principalSemMat.forEach((t) => { cur += lineH; placed.push({ kind: 'text', t, y: cur - 2 }); });
+        if (temConjLinhas) {
+          cur += signRoom; placed.push({ kind: 'sig', y: cur }); cur += 6;
+          conjLines.forEach((t) => { cur += lineH; placed.push({ kind: 'text', t, y: cur - 2 }); });
+        }
+
         return (
           <g key={i}
             style={editavel ? { cursor: 'move' } : undefined}
@@ -682,14 +708,11 @@ export default function Planta({
               folhaLast.current = u;
               captura(e);
             } : undefined}>
-            <rect x={px - half - 8} y={py - (temConjuge ? 70 : 42)} width={boxW} height={boxH} fill="#ffffff" fillOpacity={0.92} stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
-            <line x1={px - half} y1={py - 14} x2={px + half} y2={py - 14} stroke="#475569" strokeWidth={0.7} />
-            {temConjuge && (
-              <line x1={px - half} y1={py - 42} x2={px + half} y2={py - 42} stroke="#475569" strokeWidth={0.7} />
+            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="#ffffff" fillOpacity={0.92} stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
+            {placed.map((p, k) => p.kind === 'sig'
+              ? <line key={k} x1={px - half} y1={p.y} x2={px + half} y2={p.y} stroke="#475569" strokeWidth={0.7} />
+              : <text key={k} x={px} y={p.y} fontSize={fz} textAnchor="middle" fill="#0f172a">{p.t}</text>
             )}
-            {linhas.map((t, k) => (
-              <text key={k} x={px} y={py + 4 + k * (fz + 2.5)} fontSize={fz} textAnchor="middle" fill="#0f172a">{t}</text>
-            ))}
           </g>
         );
       })}
@@ -794,8 +817,7 @@ export default function Planta({
                   size={fs(i === 0 ? 13 : 11) * esc}
                   bold={i === 0 || neg}
                   anchor="middle"
-                  fill="#1c1917"
-                  halo
+                  fill="#000000"
                   ed={false} // Não editável diretamente por duplo clique para evitar conflitos com arrasto
                 />
               ))}
@@ -880,34 +902,8 @@ export default function Planta({
         );
       })()}
 
-      {/* Diagrama Técnico de Norte (Convergência) - Móvel (posicionado no rodapé por padrão) */}
-      {verNortes && (() => {
-        const idDiag = 'planta.diagramaNortes';
-        const ovDiag = textosOv[idDiag] || {};
-        const offsetDiag = getOverride(idDiag);
-        const x3 = DRAW.x0 + 20, y0 = 897;
-        const dcx = (x3 + 76) + (offsetDiag.dx ?? 0);
-        const dcy = (y0 + 138) + (offsetDiag.dy ?? 0);
-        return (
-          <g
-            key="diagrama-nortes-g"
-            id={idDiag}
-            x={x3 + 76}
-            y={y0 + 138}
-            style={editavel ? { cursor: 'move' } : undefined}
-            onPointerDown={editavel ? (e) => {
-              e.stopPropagation();
-              const u = svgPonto(e); if (!u) return;
-              dragRef.current = { kind: 'ted', id: idDiag, dx: ovDiag.dx ?? 0, dy: ovDiag.dy ?? 0 };
-              setDragTemp({ kind: 'ted', id: idDiag, dx: 0, dy: 0, baseX: ovDiag.dx ?? 0, baseY: ovDiag.dy ?? 0 });
-              folhaLast.current = u;
-              captura(e);
-            } : undefined}
-          >
-            <Nortes cx={dcx} cy={dcy} conv={conv} decl={decl} fs={fs} />
-          </g>
-        );
-      })()}
+      {/* O diagrama técnico de convergência (NV/NQ/NM) agora vive DENTRO da seção
+          "Informações de Coordenadas" (FaixaInferior), seu lugar natural. */}
 
       {/* ---------- FAIXA INFERIOR (SITUAÇÃO, CONVENÇÕES, INFOS COORDENADAS) ---------- */}
       <FaixaInferior
@@ -1040,11 +1036,20 @@ function FaixaInferior(props: {
         {/* Lado Esquerdo do Box 3 (Projeção e Diagrama) */}
         <g fill="#0f172a">
           <text x={x3 + 12} y={y0 + 40} fontSize={fs(8.5)} fontWeight="bold">Projeção Universal Transversa</text>
-          <text x={x3 + 12} y={y0 + 52} fontSize={fs(8.5)} fontWeight="bold">de Mercator (UTM)</text>
+          <text x={x3 + 12} y={y0 + 55} fontSize={fs(8.5)} fontWeight="bold">de Mercator (UTM)</text>
           <text x={x3 + 12} y={y0 + 72} fontSize={fs(8.5)}>SGR (Ref.): <tspan fontWeight="bold">SIRGAS2000</tspan></text>
           <text x={x3 + 12} y={y0 + 88} fontSize={fs(8.5)}>Fuso <tspan fontWeight="bold">{zona}{hemisferio}</tspan> / MC <tspan fontWeight="bold">{Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</tspan></text>
-
         </g>
+
+        {/* Diagrama técnico de convergência (NV = norte verdadeiro, NQ = norte de quadrícula,
+            NM = norte magnético). Ângulos exagerados só para leitura; valores exatos na coluna ao lado. */}
+        {verNortes && (
+          <g>
+            <Nortes cx={x3 + 75} cy={y0 + 150} conv={conv} decl={decl} fs={fs} />
+            <text x={x3 + 132} y={y0 + 147} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Diagrama de</text>
+            <text x={x3 + 132} y={y0 + 159} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Convergência</text>
+          </g>
+        )}
 
         {/* Lado Direito do Box 3 (Valores do Vértice de Referência) */}
         <g transform="translate(260, 0)" fill="#0f172a">
@@ -1054,7 +1059,6 @@ function FaixaInferior(props: {
             ['Longitude:', lon],
             ['Conv. meridiana (CM):', grausParaDMS(conv, { casas: 2, estilo: 'memorial' })],
             ['Declinação magnética:', grausParaDMS(decl, { casas: 2, estilo: 'memorial' })],
-            ['Variação anual:', imovel.variacaoAnual != null ? `${numBR(imovel.variacaoAnual, 1)}'/ano` : '—'],
             ['Fator de escala (K):', fatorK.toFixed(9)],
           ].map(([label, val], idx) => (
             <text key={idx} x={x3 + 12} y={y0 + 60 + idx * 19} fontSize={fs(8.5)}>
@@ -1159,6 +1163,18 @@ function CarimboA3(props: {
   const cxc = lx + wBox / 2; // 1339
   const temLogo = !!escritorio.logoDataUrl;
 
+  // Cabeçalho escuro (tarja #475569 + título branco) idêntico aos quadros de baixo da planta
+  // (Situação/Convenções/Informações de Coordenadas). Se receber um id, o título fica editável.
+  const Cab = (y: number, label: string, id?: string) => (
+    <g>
+      <rect x={lx} y={y} width={wBox} height={24} rx={6} ry={6} fill="#475569" />
+      <rect x={lx} y={y + 18} width={wBox} height={6} fill="#475569" />
+      {id
+        ? T(id, label, { x: cxc, y: y + 16, size: fs(8.5), bold: true, anchor: 'middle', fill: '#fff' })
+        : <text x={cxc} y={y + 16} fontSize={fs(8.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{label}</text>}
+    </g>
+  );
+
   // Lista dos dados do imóvel a serem desenhados na Box de Dados
   const campos: [string, string][] = [
     [imovel.tipoImovel === 'urbano' ? 'LOTE/IMÓVEL:' : 'PROPRIEDADE:', glebaNome || imovel.denominacao || '—'],
@@ -1198,33 +1214,23 @@ function CarimboA3(props: {
     ['ESCALA:', `1 / ${escalaDenom}`],
   );
 
-  const gap = Math.min(27, Math.floor(220 / (campos.length - 1))); // Ajustado para hBox menor (264px)
+  const gap = Math.min(27, Math.floor(204 / (campos.length - 1))); // Ajustado para hBox (264px) menos o cabeçalho
 
-  // Coordenadas verticais do carimbo — grade otimizada e sem sobreposições:
-  //   y=32  : BOX Título/Folha  (h=74)   → base=106
-  //   y=116 : BOX Dados         (h=264)  → base=380
-  //   y=390 : CARD Proprietários (h=165)  → base=555
-  //          texto declaração: y=408..465
-  //          linha assinatura: y=495
-  //          nome:             y=518
-  //          detalhes:         y=531
-  //   y=565 : CARD Laudo         (h=180)  → base=745
-  //          texto laudo:      y=583..635
-  //          linha RT:         y=680
-  //          nome:             y=703
-  //          detalhes 0:       y=716
-  //          detalhes 1:       y=727.5
-  //   y=755 : CARD Confrontantes (h=110)  → base=865
-  //          texto:            y=773..835
-  //   y=875 : CARD Escritório    (h=212)  → base=1087 (10px antes do final)
-  const Y_TITULO      = 32;
-  const Y_DADOS       = 116;
-  const Y_PROP        = 390;
-  const Y_LAUDO       = 565;
-  const Y_CONF        = 755;
-  const Y_ESC         = 875;
-  const Y_ASSINA_PROP = Y_PROP  + 105; // 495
-  const Y_ASSINA_RT   = Y_LAUDO + 115; // 680
+  // Coordenadas verticais do carimbo. O antigo box de TÍTULO saiu: o título virou o CABEÇALHO da
+  // seção de Dados (que já traz o nome do imóvel), liberando ~84px que foram redistribuídos para
+  // dar mais FOLGA às assinaturas (proprietários e responsável técnico).
+  //   y=32  : Dados do imóvel        (h=264) → 296   (cabeçalho = título do levantamento + Folha)
+  //   y=306 : Declaração proprietários (h=200) → 506  (assinatura mais espaçada)
+  //   y=516 : Laudo técnico          (h=210) → 726   (assinatura mais espaçada)
+  //   y=736 : Declaração confrontantes (h=110) → 846
+  //   y=856 : Escritório             (h=212) → 1068 (antes da borda inferior)
+  const Y_DADOS       = 32;
+  const Y_PROP        = 306;
+  const Y_LAUDO       = 516;
+  const Y_CONF        = 736;
+  const Y_ESC         = 856;
+  const Y_ASSINA_PROP = Y_PROP  + 130;
+  const Y_ASSINA_RT   = Y_LAUDO + 145;
 
   // Assinatura num intervalo livre (xa..xb): linha + rótulo abaixo + nome + detalhes, com fontes maiores e mais espaçadas (bloco móvel e coeso)
   const assina = (xa: number, xb: number, yLine: number, label: string, nome: string, detalhes: string[] = [], keyPrefix: string) => {
@@ -1261,25 +1267,16 @@ function CarimboA3(props: {
       {/* Linha separadora vertical principal */}
       <line x1={x0} y1={26} x2={x0} y2={H - 26} stroke="#000" strokeWidth={1.2} />
 
-      {/* ── BOX 1: TÍTULO ─────────────────────────────────────────────────── */}
-      <g>
-        <rect x={lx} y={Y_TITULO} width={wBox - 72} height={74} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={lx + 10} y={Y_TITULO + 16} fontSize={fs(8)} fontWeight="bold" fill="#4b5563">Título:</text>
-        {T('carimbo.titulo', titulo, { x: lx + (wBox - 72) / 2, y: Y_TITULO + 46, size: fs(9.5), bold: true, anchor: 'middle', fill: '#000' })}
-      </g>
-
-      {/* ── BOX 2: FOLHA ──────────────────────────────────────────────────── */}
-      <g>
-        <rect x={rx - 62} y={Y_TITULO} width={62} height={74} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={rx - 54} y={Y_TITULO + 16} fontSize={fs(8)} fill="#4b5563">Folha:</text>
-        {T('carimbo.folha', folha, { x: rx - 31, y: Y_TITULO + 46, size: fs(10), bold: true, anchor: 'middle', fill: '#000' })}
-      </g>
+      {/* O título do levantamento agora é o cabeçalho da seção de Dados (abaixo); a Folha vira um
+          rótulo discreto no canto desse mesmo cabeçalho. Não há mais box de título separado. */}
 
       {/* ── BOX 3: DADOS DO IMÓVEL ────────────────────────────────────────── */}
       <g>
-        <rect x={lx} y={Y_DADOS} width={wBox} height={264} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <rect x={lx} y={Y_DADOS} width={wBox} height={264} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
+        {Cab(Y_DADOS, titulo, 'carimbo.titulo')}
+        <text x={rx - 8} y={Y_DADOS + 16} fontSize={fs(7)} fill="#e2e8f0" textAnchor="end">Folha: {folha}</text>
         {campos.map(([k, v], i) => {
-          const y = Y_DADOS + 24 + i * gap;
+          const y = Y_DADOS + 40 + i * gap;
           return (
             <g key={k}>
               <text x={lx + 12} y={y} fontSize={fs(9)} fontWeight="bold" fill="#1f2937">{k}</text>
@@ -1291,8 +1288,8 @@ function CarimboA3(props: {
 
       {/* ── CARD A: DECLARAÇÃO DO(S) PROPRIETÁRIO(S) ──────────────────────── */}
       <g>
-        <rect x={lx} y={Y_PROP} width={wBox} height={165} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        {T('carimbo.tituloProp', 'DECLARAÇÃO DO(S) PROPRIETÁRIO(S)', { x: cxc, y: Y_PROP + 16, size: fs(8.5), bold: true, anchor: 'middle' })}
+        <rect x={lx} y={Y_PROP} width={wBox} height={200} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
+        {Cab(Y_PROP, 'DECLARAÇÃO DO(S) PROPRIETÁRIO(S)', 'carimbo.tituloProp')}
 
         {(() => {
           const idProp = 'carimbo.declProprietario';
@@ -1337,8 +1334,8 @@ function CarimboA3(props: {
 
       {/* ── CARD B: LAUDO TÉCNICO / RESPONSÁVEL TÉCNICO ───────────────────── */}
       <g>
-        <rect x={lx} y={Y_LAUDO} width={wBox} height={180} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        {T('carimbo.tituloLaudo', 'LAUDO TÉCNICO', { x: cxc, y: Y_LAUDO + 16, size: fs(8.5), bold: true, anchor: 'middle' })}
+        <rect x={lx} y={Y_LAUDO} width={wBox} height={210} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
+        {Cab(Y_LAUDO, 'LAUDO TÉCNICO', 'carimbo.tituloLaudo')}
 
         {(() => {
           const idLaudo = 'carimbo.laudoTécnico';
@@ -1383,8 +1380,8 @@ function CarimboA3(props: {
 
       {/* ── CARD C: DECLARAÇÃO DOS CONFRONTANTES ──────────────────────────── */}
       <g>
-        <rect x={lx} y={Y_CONF} width={wBox} height={110} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        {T('carimbo.tituloConf', 'DECLARAÇÃO DOS CONFRONTANTES', { x: cxc, y: Y_CONF + 16, size: fs(8.5), bold: true, anchor: 'middle' })}
+        <rect x={lx} y={Y_CONF} width={wBox} height={110} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
+        {Cab(Y_CONF, 'DECLARAÇÃO DOS CONFRONTANTES', 'carimbo.tituloConf')}
 
         {(() => {
           const idConf = 'carimbo.declConfrontantes';
@@ -1451,7 +1448,7 @@ function CarimboA3(props: {
 
 // símbolo do vértice por tipo (M = losango, P = círculo, V = triângulo)
 function SimboloVertice({ tipo, cx, cy, r }: { tipo: string; cx: number; cy: number; r: number }) {
-  const cor = tipo === 'M' ? '#f59e0b' : tipo === 'V' ? '#a855f7' : '#22c55e';
+  const cor = tipo === 'M' ? '#f59e0b' : tipo === 'V' ? '#a855f7' : '#1e3a8a';
   if (tipo === 'M') {
     const d = r * 1.15;
     return <rect x={cx - d} y={cy - d} width={d * 2} height={d * 2} transform={`rotate(45 ${cx} ${cy})`} fill={cor} stroke="#000" strokeWidth={0.5} />;
@@ -1472,7 +1469,7 @@ function SimboloDivisa({ tipo, x, y }: { tipo: string; x: number; y: number }) {
   if (tipo === 'acude') return <rect x={x} y={y - 3} width={w} height={6} fill="#93c5fd" stroke="#1d4ed8" strokeWidth={0.6} />;
   if (tipo === 'muro') return <rect x={x} y={y - 2} width={w} height={4} fill="#000" />;
   if (tipo === 'vala') return <line x1={x} y1={y} x2={x + w} y2={y} stroke="#000" strokeWidth={1} strokeDasharray="2 2" />;
-  return <line x1={x} y1={y} x2={x + w} y2={y} stroke="#000" strokeWidth={1.2} />; // linha ideal
+  return <line x1={x} y1={y} x2={x + w} y2={y} stroke="#334155" strokeWidth={1.2} />; // linha ideal
 }
 
 // SVG não quebra texto sozinho; quebramos em linhas por contagem de caracteres (texto nativo)
