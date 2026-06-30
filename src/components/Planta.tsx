@@ -819,16 +819,19 @@ function Nortes({ cx, cy, conv, decl, fs }: { cx: number; cy: number; conv: numb
   const [lqx, lqy] = ponto(vq, L + 11);
   const [lmx, lmy] = ponto(vm, L + 11);
   const TXT = '#0f172a';
+  // só desenha NQ/NM quando o ângulo NÃO é zero (zero = coincide com o NV → evita sobreposição)
+  const temNQ = conv !== 0;
+  const temNM = decl !== 0;
   return (
     <g>
       {/* linhas (coloridas só pra distinguir; o texto é escuro e fica fora delas) */}
-      <line x1={cx} y1={cy} x2={mx} y2={my} stroke="#b91c1c" strokeWidth={0.9} strokeDasharray="3 2" />
-      <line x1={cx} y1={cy} x2={qx} y2={qy} stroke="#1d4ed8" strokeWidth={0.9} />
+      {temNM && <line x1={cx} y1={cy} x2={mx} y2={my} stroke="#b91c1c" strokeWidth={0.9} strokeDasharray="3 2" />}
+      {temNQ && <line x1={cx} y1={cy} x2={qx} y2={qy} stroke="#1d4ed8" strokeWidth={0.9} />}
       <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#0f172a" strokeWidth={1.5} />
       <polygon points={`${nx},${ny - 8} ${nx - 3},${ny} ${nx + 3},${ny}`} fill="#0f172a" />
       <circle cx={cx} cy={cy} r={2.4} fill="#0f172a" />
-      <text x={lmx} y={lmy + 2} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill={TXT}>NM</text>
-      <text x={lqx} y={lqy + 2} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill={TXT}>NQ</text>
+      {temNM && <text x={lmx} y={lmy + 2} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill={TXT}>NM</text>}
+      {temNQ && <text x={lqx} y={lqy + 2} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill={TXT}>NQ</text>}
       <text x={lnx} y={lny - 1} fontSize={fs(7)} fontWeight="bold" textAnchor="middle" fill={TXT}>NV</text>
     </g>
   );
