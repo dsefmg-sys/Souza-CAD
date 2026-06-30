@@ -88,7 +88,6 @@ const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-M
 
 const COR_IMPORT = 'bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20 border-sky-500/30';
 const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30';
-const COR_PLANTA = 'bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20 border-violet-500/30';
 
 type EtapaEstado = 'feito' | 'andamento' | 'pendente';
 // Envolve um botão do fluxo com uma barrinha de progresso COLADA embaixo dele
@@ -1741,46 +1740,9 @@ export default function EditorPage() {
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
         </a>
         <Button size="sm" variant="outline" className="shrink-0 bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500 hover:text-black dark:bg-amber-400/10 dark:text-amber-400 dark:border-amber-400/30 dark:hover:bg-amber-400 dark:hover:text-black font-semibold" title="Gerar uma errata formal ao cartório (corrigir dados)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button>
-        <div className="mx-1 h-6 w-px shrink-0 bg-border" />
-        {/* Alternar mapa/planta — fica à direita por não seguir a lógica de etapas */}
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PLANTA}`} title={vista === 'mapa' ? 'Abrir a prévia da planta' : 'Voltar ao mapa'} onClick={() => setVista(vista === 'mapa' ? 'planta' : 'mapa')}>
-          {vista === 'mapa' ? <><Eye /> PLANTA</> : <><MapIcon /> MAPA</>}
-        </Button>
        </div>
-       {/* Conta/sistema fixos no canto superior direito */}
+       {/* Conta/sistema fixos no canto superior direito — só NOVO e SALVO (o resto foi pro rodapé da lateral) */}
        <div className="flex shrink-0 items-center gap-1 border-l px-2">
-         {/* Grupo A- / A+ contextual */}
-         <div className="flex items-center gap-0.5 mr-1 bg-muted/40 rounded px-1.5 py-0.5" title={vista === 'mapa' ? 'Tamanho dos nomes dos vértices no mapa' : 'Escala dos textos na planta'}>
-           <Button
-             size="sm"
-             variant="ghost"
-             className="h-7 w-7 p-0"
-             onClick={() => {
-               if (vista === 'mapa') {
-                 setTamNomes((n) => Math.max(7, n - 1));
-               } else {
-                 setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.5) - 0.05).toFixed(2))) }));
-               }
-             }}
-           >
-             <span className="text-[10px] font-bold">A-</span>
-           </Button>
-           <Button
-             size="sm"
-             variant="ghost"
-             className="h-7 w-7 p-0"
-             onClick={() => {
-               if (vista === 'mapa') {
-                 setTamNomes((n) => Math.min(22, n + 1));
-               } else {
-                 setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) }));
-               }
-             }}
-           >
-             <span className="text-[10px] font-bold">A+</span>
-           </Button>
-         </div>
-
          <Button size="sm" variant="outline" className="gap-1 font-semibold shrink-0 h-8" disabled={processando} title="Iniciar um novo projeto (TXT)" onClick={criarNovoProjeto}>
            <Plus className="size-4" /> NOVO
          </Button>
@@ -1789,13 +1751,6 @@ export default function EditorPage() {
              <Save className="size-4" /> SALVO
            </Button>
          </Etapa>
-
-         <Button size="sm" variant="ghost" title="Calculadora: converter coordenada, distância e azimute" onClick={() => setCalcAberta(true)}><Ruler /></Button>
-         <Button size="sm" variant="ghost" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))} title="Tema claro/escuro">{tema === 'claro' ? <Moon /> : <Sun />}</Button>
-         <Button size="sm" variant="ghost" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
-         {nuvemDisponivel && user && (
-           <Button size="sm" variant="ghost" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
-         )}
        </div>
       </header>
 
@@ -1854,6 +1809,7 @@ export default function EditorPage() {
                 {/* CONTROLES DA PLANTA (na visão da planta) — deixa a folha limpa */}
                 {vista === 'planta' && (
                   <div className="flex flex-col gap-1 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
+                    <Button size="sm" variant="ghost" title="Voltar ao mapa (F1)" onClick={() => setVista('mapa')}><MapIcon /> <span className="truncate text-xs font-semibold">VER MAPA</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
                     <Button size="sm" variant={editarPlanta ? 'default' : 'outline'} title="Alternar modo de edição na planta (arrastar textos/folha)" onClick={() => setEditarPlanta(!editarPlanta)}>{editarPlanta ? <Check /> : <Pencil />} <span className="truncate text-xs font-semibold">{editarPlanta ? 'FINALIZAR EDIÇÃO' : 'EDITAR'}</span></Button>
                     {editarPlanta && (
                       <Button size="sm" variant={folhaTravada ? 'outline' : 'default'} className={folhaTravada ? '' : 'bg-amber-600 text-white hover:bg-amber-700'} title={folhaTravada ? 'Folha travada — clique para poder arrastá-la' : 'Folha destravada — arraste o fundo para reposicioná-la'} onClick={() => setFolhaTravada((v) => !v)}>{folhaTravada ? <Lock /> : <LockOpen />} <span className="truncate text-xs font-semibold">{folhaTravada ? 'FOLHA TRAVADA' : 'MOVER FOLHA'}</span></Button>
@@ -1927,8 +1883,26 @@ export default function EditorPage() {
                   </>
                 )}
 
-                {/* BASE: sem atalhos */}
-                <div className="mt-auto" />
+                {/* RODAPÉ FIXO: ajuste de texto + sistema (calculadora, tema, config, sair) */}
+                <div className="mt-auto flex flex-col gap-1 border-t pt-1.5">
+                  {/* A- / A+ contextual (mapa = nomes dos vértices; planta = escala dos textos) */}
+                  <div className="flex items-center justify-between rounded bg-muted/40 px-1.5 py-0.5" title={vista === 'mapa' ? 'Tamanho dos nomes dos vértices no mapa' : 'Escala dos textos na planta'}>
+                    <span className="text-[9px] font-medium uppercase text-muted-foreground">{vista === 'mapa' ? 'Nomes' : 'Textos'}</span>
+                    <div className="flex items-center gap-0.5">
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.max(7, n - 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.5) - 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A-</span></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.min(22, n + 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A+</span></Button>
+                    </div>
+                  </div>
+                  {/* ícones de sistema */}
+                  <div className="flex items-center gap-0.5">
+                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Calculadora: converter coordenada, distância e azimute" onClick={() => setCalcAberta(true)}><Ruler /></Button>
+                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Tema claro/escuro" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))}>{tema === 'claro' ? <Moon /> : <Sun />}</Button>
+                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
+                    {nuvemDisponivel && user && (
+                      <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
+                    )}
+                  </div>
+                </div>
               </aside>
               {vista === 'mapa' && (
                 <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
