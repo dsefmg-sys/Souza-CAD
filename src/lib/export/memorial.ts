@@ -229,7 +229,6 @@ function celulaCab(rotulo: string, valor: string): TableCell {
 
 /** Tabela de identificação no topo do memorial (com bordas), como no modelo do dono. */
 function tabelaCabecalho(imovel: ImovelData, areaHa: number, perimetro: number): Table {
-  const b = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
   const isUrbano = imovel.tipoImovel === 'urbano';
   const labelArea = isUrbano ? 'Área SGL (m²):' : 'Área SGL (ha):';
   const valArea = isUrbano ? `${numBR(areaHa * 10000)} m²` : `${numBR(areaHa, 4)} ha`;
@@ -238,9 +237,18 @@ function tabelaCabecalho(imovel: ImovelData, areaHa: number, perimetro: number):
     ? ` / Insc.: ${imovel.inscricaoMunicipal}`
     : '';
 
+  const border = () => ({ style: BorderStyle.SINGLE, size: 4, color: '000000' });
+
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: { top: b, bottom: b, left: b, right: b, insideHorizontal: b, insideVertical: b },
+    borders: {
+      top: border(),
+      bottom: border(),
+      left: border(),
+      right: border(),
+      insideHorizontal: border(),
+      insideVertical: border(),
+    },
     rows: [
       new TableRow({ children: [celulaCab(isUrbano ? 'Imóvel/Lote:' : 'Imóvel:', imovel.denominacao), celulaCab('Matrícula:', `${imovel.matricula}${idMunicipal}`)] }),
       new TableRow({ children: [celulaCab('Proprietário(a):', imovel.proprietario), celulaCab(labelArea, valArea)] }),

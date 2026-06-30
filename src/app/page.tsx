@@ -415,6 +415,7 @@ export default function EditorPage() {
         else if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
           e.preventDefault();
           cancelarDesenho();
+          setModo('navegar');
         }
       }
     }
@@ -481,10 +482,23 @@ export default function EditorPage() {
   // centraliza/enquadra o desenho atual no mapa
   function centralizar() { setCentralizarSig((n) => n + 1); }
 
-  // zoom/pan da prévia da planta
+  // zoom/pan da prévia da planta (aproxima na posição do cursor do mouse)
   function onPlantaWheel(e: ReactWheelEvent) {
     if (e.ctrlKey) return;
-    setPlantaZoom((z) => Math.min(6, Math.max(0.3, +(z * (e.deltaY < 0 ? 1.12 : 0.89)).toFixed(3))));
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    setPlantaZoom((z) => {
+      const nextZ = Math.min(6, Math.max(0.3, +(z * (e.deltaY < 0 ? 1.12 : 0.89)).toFixed(3)));
+      setPlantaPan((pan) => {
+        const factor = nextZ / z;
+        const nextX = mx - (mx - pan.x) * factor;
+        const nextY = my - (my - pan.y) * factor;
+        return { x: +nextX.toFixed(1), y: +nextY.toFixed(1) };
+      });
+      return nextZ;
+    });
   }
   function plantaPanDown(e: ReactPointerEvent) { plantaPanRef.current = { px: e.clientX, py: e.clientY, ox: plantaPan.x, oy: plantaPan.y }; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
   function plantaPanMove(e: ReactPointerEvent) { const d = plantaPanRef.current; if (d) setPlantaPan({ x: d.ox + (e.clientX - d.px), y: d.oy + (e.clientY - d.py) }); }
@@ -2170,7 +2184,7 @@ export default function EditorPage() {
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
-                      onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} />
+                      onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} />
                   </div>
                 )}
               </div>

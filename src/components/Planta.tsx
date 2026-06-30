@@ -47,6 +47,7 @@ interface Props {
   folhaTravada?: boolean;
   editandoTextoId?: string | null;
   onSetEditandoTextoId?: (id: string | null) => void;
+  onTextoStartEdit?: () => void;
 }
 
 /** Ajuste salvo de um texto (conteúdo/escala/negrito/deslocamento). */
@@ -172,7 +173,7 @@ export default function Planta({
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onMoverRotuloConf, onMoverRotuloVertice,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, folhaTravada = true,
-  editandoTextoId, onSetEditandoTextoId,
+  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
@@ -182,7 +183,14 @@ export default function Planta({
   // Estados locais para edição em linha (in-place)
   const [localEditandoId, setLocalEditandoId] = useState<string | null>(null);
   const editandoId = editandoTextoId !== undefined ? editandoTextoId : localEditandoId;
-  const setEditandoId = onSetEditandoTextoId !== undefined ? onSetEditandoTextoId : setLocalEditandoId;
+  const setEditandoId = (id: string | null) => {
+    if (onSetEditandoTextoId !== undefined) {
+      onSetEditandoTextoId(id);
+    } else {
+      setLocalEditandoId(id);
+    }
+    if (id) onTextoStartEdit?.();
+  };
   const [guiaAlinhamento, setGuiaAlinhamento] = useState<{ x?: number; y?: number } | null>(null);
 
   // Estado para arrasto fluído/suave (evita recálculos geográficos pesados em tempo real)
@@ -237,11 +245,16 @@ export default function Planta({
   const sx = (e: number) => offX + (e - minX) * escala;
   const sy = (n: number) => offY + (maxY - n) * escala;
 
+  const eMin = minX + (DRAW.x0 - 200 - offX) / escala;
+  const eMax = minX + (DRAW.x1 + 200 - offX) / escala;
+  const nMin = maxY - (DRAW.y1 + 200 - offY) / escala;
+  const nMax = maxY - (DRAW.y0 - 200 - offY) / escala;
+
   const intervalo = intervaloGrade(Math.max(maxX - minX, maxY - minY));
   const linhasX: number[] = [];
-  for (let x = Math.ceil(minX / intervalo) * intervalo; x <= maxX; x += intervalo) linhasX.push(x);
+  for (let x = Math.ceil(eMin / intervalo) * intervalo; x <= eMax; x += intervalo) linhasX.push(x);
   const linhasY: number[] = [];
-  for (let y = Math.ceil(minY / intervalo) * intervalo; y <= maxY; y += intervalo) linhasY.push(y);
+  for (let y = Math.ceil(nMin / intervalo) * intervalo; y <= nMax; y += intervalo) linhasY.push(y);
 
   const anel = vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
   const pts = anel.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
@@ -481,18 +494,26 @@ export default function Planta({
       {editavel && <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="transparent" style={{ pointerEvents: 'all' }} />}
 
       {/* ---------- GRADE (números DENTRO do quadro, no topo e na esquerda) ---------- */}
-      {verGrade && linhasX.map((x) => (
-        <g key={`x${x}`}>
-          <line x1={sx(x)} y1={DRAW.y0} x2={sx(x)} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
-          <text x={sx(x)} y={DRAW.y0 + 13} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>
-        </g>
-      ))}
-      {verGrade && linhasY.map((y) => (
-        <g key={`y${y}`}>
-          <line x1={DRAW.x0} y1={sy(y)} x2={DRAW.x1} y2={sy(y)} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
-          <text x={DRAW.x0 + 13} y={sy(y)} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${sy(y)})`}>{`N ${numBR(y, 4)}`}</text>
-        </g>
-      ))}
+      {verGrade && linhasX.map((x) => {
+        const valX = sx(x);
+        if (valX < DRAW.x0 || valX > DRAW.x1) return null;
+        return (
+          <g key={`x${x}`}>
+            <line x1={valX} y1={DRAW.y0} x2={valX} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
+            <text x={valX} y={DRAW.y0 + 13} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>
+          </g>
+        );
+      })}
+      {verGrade && linhasY.map((y) => {
+        const valY = sy(y);
+        if (valY < DRAW.y0 || valY > DRAW.y1) return null;
+        return (
+          <g key={`y${y}`}>
+            <line x1={DRAW.x0} y1={valY} x2={DRAW.x1} y2={valY} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
+            <text x={DRAW.x0 + 13} y={valY} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${valY})`}>{`N ${numBR(y, 4)}`}</text>
+          </g>
+        );
+      })}
 
       {/* demais glebas do imóvel (contorno + nome) */}
       {outrasGlebas.map((g, i) => {
@@ -753,7 +774,7 @@ export default function Planta({
         );
       })()}
 
-      {/* Rosa dos Ventos e Diagrama de Nortes agrupados e móveis */}
+      {/* Rosa dos Ventos - Móvel */}
       {verNortes && (() => {
         const idRosa = 'planta.rosaDosVentos';
         const ovRosa = textosOv[idRosa] || {};
@@ -762,7 +783,7 @@ export default function Planta({
         const rcy = (DRAW.y0 + 74) + (offsetRosa.dy ?? 0);
         return (
           <g
-            key="rosa-nortes-grupo"
+            key="rosa-dos-ventos-g"
             id={idRosa}
             x={DRAW.x1 - 72}
             y={DRAW.y0 + 74}
@@ -776,10 +797,36 @@ export default function Planta({
               captura(e);
             } : undefined}
           >
-            {/* Rosa dos Ventos (Orientação decorativa) */}
             <RosaDosVentos cx={rcx} cy={rcy} fs={fs} />
-            {/* Diagrama Técnico de Norte (Convergência) */}
-            <Nortes cx={rcx} cy={rcy + 54} conv={conv} decl={decl} fs={fs} />
+          </g>
+        );
+      })()}
+
+      {/* Diagrama Técnico de Norte (Convergência) - Móvel (posicionado no rodapé por padrão) */}
+      {verNortes && (() => {
+        const idDiag = 'planta.diagramaNortes';
+        const ovDiag = textosOv[idDiag] || {};
+        const offsetDiag = getOverride(idDiag);
+        const x3 = DRAW.x0 + 20, y0 = 897;
+        const dcx = (x3 + 76) + (offsetDiag.dx ?? 0);
+        const dcy = (y0 + 138) + (offsetDiag.dy ?? 0);
+        return (
+          <g
+            key="diagrama-nortes-g"
+            id={idDiag}
+            x={x3 + 76}
+            y={y0 + 138}
+            style={editavel ? { cursor: 'move' } : undefined}
+            onPointerDown={editavel ? (e) => {
+              e.stopPropagation();
+              const u = svgPonto(e); if (!u) return;
+              dragRef.current = { kind: 'ted', id: idDiag, dx: ovDiag.dx ?? 0, dy: ovDiag.dy ?? 0 };
+              setDragTemp({ kind: 'ted', id: idDiag, dx: 0, dy: 0, baseX: ovDiag.dx ?? 0, baseY: ovDiag.dy ?? 0 });
+              folhaLast.current = u;
+              captura(e);
+            } : undefined}
+          >
+            <Nortes cx={dcx} cy={dcy} conv={conv} decl={decl} fs={fs} />
           </g>
         );
       })()}
@@ -1095,19 +1142,31 @@ function CarimboA3(props: {
   const Y_ASSINA_PROP = Y_PROP  + 105; // 495
   const Y_ASSINA_RT   = Y_LAUDO + 115; // 680
 
-  // Assinatura num intervalo livre (xa..xb): linha + rótulo abaixo + nome + detalhes, com fontes maiores e mais espaçadas
+  // Assinatura num intervalo livre (xa..xb): linha + rótulo abaixo + nome + detalhes, com fontes maiores e mais espaçadas (bloco móvel e coeso)
   const assina = (xa: number, xb: number, yLine: number, label: string, nome: string, detalhes: string[] = [], keyPrefix: string) => {
+    const idAssina = `carimbo.assina.${keyPrefix}`;
+    const ov = ed?.textos[idAssina] || {};
+    const dx = ov.dx ?? 0;
+    const dy = ov.dy ?? 0;
     const m = (xa + xb) / 2;
     const det = detalhes.filter(Boolean);
     return (
-      <g>
+      <g
+        id={idAssina}
+        x={m}
+        y={yLine}
+        transform={`translate(${dx}, ${dy})`}
+        style={ed?.ativo ? { cursor: 'move' } : undefined}
+        onPointerDown={ed?.ativo ? (e) => {
+          e.stopPropagation();
+          ed.onDragStart?.(idAssina, e);
+        } : undefined}
+      >
         <line x1={xa} y1={yLine} x2={xb} y2={yLine} stroke="#000" strokeWidth={0.6} />
         <text x={m} y={yLine + 10} fontSize={fs(7.5)} fill="#555" textAnchor="middle">{label}</text>
-        {T(`${keyPrefix}.nome`, nome, { x: m, y: yLine + 23, size: fs(9), bold: true, anchor: 'middle', fill: '#000' })}
+        <text x={m} y={yLine + 23} fontSize={fs(9)} fontWeight="bold" fill="#000" textAnchor="middle">{nome}</text>
         {det.map((d, k) => (
-          <g key={k}>
-            {T(`${keyPrefix}.detalhe.${k}`, d, { x: m, y: yLine + 36 + k * 11.5, size: fs(7), anchor: 'middle', fill: '#222' })}
-          </g>
+          <text key={k} x={m} y={yLine + 36 + k * 11.5} fontSize={fs(7)} fill="#222" textAnchor="middle">{d}</text>
         ))}
       </g>
     );
@@ -1149,7 +1208,7 @@ function CarimboA3(props: {
       {/* ── CARD A: DECLARAÇÃO DO(S) PROPRIETÁRIO(S) ──────────────────────── */}
       <g>
         <rect x={lx} y={Y_PROP} width={wBox} height={165} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={cxc} y={Y_PROP + 16} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DO(S) PROPRIETÁRIO(S)</text>
+        {T('carimbo.tituloProp', 'DECLARAÇÃO DO(S) PROPRIETÁRIO(S)', { x: cxc, y: Y_PROP + 16, size: fs(8.5), bold: true, anchor: 'middle' })}
 
         {(() => {
           const idProp = 'carimbo.declProprietario';
@@ -1195,7 +1254,7 @@ function CarimboA3(props: {
       {/* ── CARD B: LAUDO TÉCNICO / RESPONSÁVEL TÉCNICO ───────────────────── */}
       <g>
         <rect x={lx} y={Y_LAUDO} width={wBox} height={180} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={cxc} y={Y_LAUDO + 16} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">LAUDO TÉCNICO</text>
+        {T('carimbo.tituloLaudo', 'LAUDO TÉCNICO', { x: cxc, y: Y_LAUDO + 16, size: fs(8.5), bold: true, anchor: 'middle' })}
 
         {(() => {
           const idLaudo = 'carimbo.laudoTécnico';
@@ -1241,7 +1300,7 @@ function CarimboA3(props: {
       {/* ── CARD C: DECLARAÇÃO DOS CONFRONTANTES ──────────────────────────── */}
       <g>
         <rect x={lx} y={Y_CONF} width={wBox} height={110} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        <text x={cxc} y={Y_CONF + 16} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle">DECLARAÇÃO DOS CONFRONTANTES</text>
+        {T('carimbo.tituloConf', 'DECLARAÇÃO DOS CONFRONTANTES', { x: cxc, y: Y_CONF + 16, size: fs(8.5), bold: true, anchor: 'middle' })}
 
         {(() => {
           const idConf = 'carimbo.declConfrontantes';
