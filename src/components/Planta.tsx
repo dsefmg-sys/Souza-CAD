@@ -885,7 +885,8 @@ function CarimboA3(props: {
   }
   campos.push(
     ['MUNICÍPIO(S):', imovel.municipio || '—'],
-    ['TRT:', tecnico.art || '—'],
+    // TRT do PROJETO (informado no modal TRT) tem prioridade; senão, o ART do técnico
+    ['TRT:', imovel.numeroTrt || tecnico.art || '—'],
     ['MAT./TRANSC.:', imovel.matricula || '—'],
   );
   if (imovel.tipoImovel === 'urbano') {
