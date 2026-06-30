@@ -48,6 +48,7 @@ interface Props {
   editandoTextoId?: string | null;
   onSetEditandoTextoId?: (id: string | null) => void;
   onTextoStartEdit?: () => void;
+  onTextoPatch?: (id: string, patch: { escala?: number; texto?: string; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) => void;
 }
 
 /** Ajuste salvo de um texto (conteúdo/escala/negrito/deslocamento). */
@@ -100,8 +101,11 @@ function Ted(props: {
   editando?: boolean;
   onTerminarEditar?: (id: string, novoTexto: string) => void;
   onStartEdit?: (id: string) => void;
+  selecionadoId?: string | null;
+  onSelect?: (id: string | null) => void;
+  onTextoPatch?: (id: string, patch: { escala?: number }) => void;
 }) {
-  const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onMenu, onDragStart, halo = false, editando = false, onTerminarEditar, onStartEdit } = props;
+  const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onMenu, onDragStart, halo = false, editando = false, onTerminarEditar, onStartEdit, selecionadoId, onSelect, onTextoPatch } = props;
   const conteudo = ov?.texto ?? base;
   const texto = slice ? conteudo.slice(0, slice) : conteudo;
   const fz = +(size * (ov?.escala ?? 1)).toFixed(2);
@@ -141,8 +145,13 @@ function Ted(props: {
     );
   }
 
+  const isSelected = ed && selecionadoId === id;
+  const textW = fz * (texto?.length || 1) * 0.55;
+  const endX = anchor === 'middle' ? posX + textW / 2 : anchor === 'end' ? posX : posX + textW;
+
   return (
     <g style={ed ? { cursor: 'move' } : undefined}
+       onClick={ed ? (e) => { e.stopPropagation(); onSelect?.(id); } : undefined}
        onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id); } : undefined}
        onContextMenu={ed ? (e) => { e.preventDefault(); e.stopPropagation(); onMenu?.(id, conteudo, e.clientX, e.clientY); } : undefined}
        onPointerDown={ed ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}>
@@ -154,6 +163,37 @@ function Ted(props: {
       <text x={posX} y={posY} fontSize={fz} fontWeight={peso} textAnchor={anchor} fill={fill}>
         {texto}
       </text>
+
+      {isSelected && (
+        <g style={{ pointerEvents: 'all' }}>
+          {/* Botão de Diminuir (-) */}
+          <g onClick={(e) => {
+            e.stopPropagation();
+            const esc = ov?.escala ?? 1;
+            onTextoPatch?.(id, { escala: Math.max(0.4, +(esc - 0.1).toFixed(2)) });
+          }}>
+            <circle cx={endX + 25} cy={posY - 3} r={7} fill="#f1f5f9" fillOpacity={0.9} stroke="#94a3b8" strokeWidth={0.5} style={{ cursor: 'pointer' }} />
+            <text x={endX + 25} y={posY - 0.5} fontSize={9} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ pointerEvents: 'none', userSelect: 'none' }}>-</text>
+          </g>
+          {/* Botão de Aumentar (+) */}
+          <g onClick={(e) => {
+            e.stopPropagation();
+            const esc = ov?.escala ?? 1;
+            onTextoPatch?.(id, { escala: Math.min(4.0, +(esc + 0.1).toFixed(2)) });
+          }}>
+            <circle cx={endX + 41} cy={posY - 3} r={7} fill="#f1f5f9" fillOpacity={0.9} stroke="#94a3b8" strokeWidth={0.5} style={{ cursor: 'pointer' }} />
+            <text x={endX + 41} y={posY - 0.5} fontSize={8} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ pointerEvents: 'none', userSelect: 'none' }}>+</text>
+          </g>
+          {/* Botão de Fechar (x) */}
+          <g onClick={(e) => {
+            e.stopPropagation();
+            onSelect?.(null);
+          }}>
+            <circle cx={endX + 57} cy={posY - 3} r={7} fill="#fee2e2" fillOpacity={0.9} stroke="#fca5a5" strokeWidth={0.5} style={{ cursor: 'pointer' }} />
+            <text x={endX + 57} y={posY - 0.5} fontSize={7} fontWeight="bold" textAnchor="middle" fill="#991b1b" style={{ pointerEvents: 'none', userSelect: 'none' }}>x</text>
+          </g>
+        </g>
+      )}
     </g>
   );
 }
@@ -173,14 +213,15 @@ export default function Planta({
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onMoverRotuloConf, onMoverRotuloVertice,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, folhaTravada = true,
-  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit,
+  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number }>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
 
-  // Estados locais para edição em linha (in-place)
+  // Estados locais para seleção e edição em linha (in-place)
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [localEditandoId, setLocalEditandoId] = useState<string | null>(null);
   const editandoId = editandoTextoId !== undefined ? editandoTextoId : localEditandoId;
   const setEditandoId = (id: string | null) => {
@@ -297,13 +338,56 @@ export default function Planta({
   });
 
   // posição do rótulo de cada vértice (honra posRotulo arrastado; senão, deslocado do ponto)
-  const rotuloVert = vertices.map((v, i) => {
-    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, i, x: sx(u.leste), y: sy(u.norte) }; }
+  const initialRotuloVert = vertices.map((v, i) => {
+    if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, i, x: sx(u.leste), y: sy(u.norte), dx: 0, dy: 0, hasPos: true }; }
     const vx = sx(v.leste), vy = sy(v.norte);
     let dx = vx - cx, dy = vy - cy;
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
-    return { v, i, x: vx + dx * 10, y: vy + dy * 10 - 2 };
+    return { v, i, x: vx, y: vy, dx, dy, hasPos: false };
+  });
+
+  // Resolve overlaps between vertex labels (repulsion)
+  const fzRot = Math.max(6, fonteRot - 0.5);
+  for (let step = 0; step < 3; step++) {
+    for (let i = 0; i < initialRotuloVert.length; i++) {
+      for (let j = i + 1; j < initialRotuloVert.length; j++) {
+        const r1 = initialRotuloVert[i], r2 = initialRotuloVert[j];
+        if (r1.hasPos || r2.hasPos) continue;
+        
+        // Current positions (assuming standard 10px offset)
+        const x1 = r1.x + r1.dx * 10;
+        const y1 = r1.y + r1.dy * 10;
+        const x2 = r2.x + r2.dx * 10;
+        const y2 = r2.y + r2.dy * 10;
+        
+        const dist = Math.hypot(x2 - x1, y2 - y1);
+        const minDist = fzRot * 2.8; // minimum distance between labels (approx 20-25px)
+        if (dist < minDist) {
+          // Push them slightly apart by altering their dx/dy vectors
+          let pushX = x2 - x1, pushY = y2 - y1;
+          let pushLen = Math.hypot(pushX, pushY) || 1;
+          pushX /= pushLen; pushY /= pushLen;
+          
+          const force = (minDist - dist) * 0.15;
+          r1.dx -= pushX * force * 0.05;
+          r1.dy -= pushY * force * 0.05;
+          r2.dx += pushX * force * 0.05;
+          r2.dy += pushY * force * 0.05;
+          
+          // Re-normalize vectors
+          const len1 = Math.hypot(r1.dx, r1.dy) || 1;
+          r1.dx /= len1; r1.dy /= len1;
+          const len2 = Math.hypot(r2.dx, r2.dy) || 1;
+          r2.dx /= len2; r2.dy /= len2;
+        }
+      }
+    }
+  }
+
+  const rotuloVert = initialRotuloVert.map((r) => {
+    if (r.hasPos) return { v: r.v, i: r.i, x: r.x, y: r.y };
+    return { v: r.v, i: r.i, x: r.x + r.dx * 10, y: r.y + r.dy * 10 - 2 };
   });
   // rótulo exibido do vértice: código SIGEF (padrão) ou P1, P2, P3… (topografia convencional)
   const nomeVertice = (v: Vertex, i: number) => (config.estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || 'S/N'));
@@ -329,6 +413,9 @@ export default function Planta({
     onMenu: onTextoMenu,
     onStartEdit: (id: string) => setEditandoId(id),
     onTerminarEditar: terminarEdicao,
+    selecionadoId,
+    onSelect: setSelecionadoId,
+    onTextoPatch,
     onDragStart: (id: string, e: ReactPointerEvent) => {
       const u = svgPonto(e); if (!u) return;
       if (id.startsWith('vert.')) {
@@ -861,6 +948,9 @@ export default function Planta({
           onStartEdit: (id) => setEditandoId(id),
           onTerminarEditar: terminarEdicao,
           onDragStart: tedComum.onDragStart,
+          selecionadoId,
+          onSelect: setSelecionadoId,
+          onTextoPatch: tedComum.onTextoPatch,
         }}
       />      {editavel && guiaAlinhamento && (
         <g>
@@ -1063,6 +1153,9 @@ function CarimboA3(props: {
     onStartEdit?: (id: string) => void;
     onTerminarEditar?: (id: string, novoTexto: string, larguraChars?: number) => void;
     onDragStart?: (id: string, e: ReactPointerEvent) => void;
+    selecionadoId?: string | null;
+    onSelect?: (id: string | null) => void;
+    onTextoPatch?: (id: string, patch: { escala?: number }) => void;
   };
 }) {
   const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, ed } = props;
@@ -1072,7 +1165,7 @@ function CarimboA3(props: {
     <Ted id={id} base={base} x={o.x} y={o.y} size={o.size} bold={o.bold} anchor={o.anchor} fill={o.fill} slice={o.slice}
       ov={ed?.textos[id]} ed={ed?.ativo} onEditar={ed?.onEditar} onMenu={ed?.onMenu}
       editando={ed?.editandoId === id} onStartEdit={ed?.onStartEdit} onTerminarEditar={ed?.onTerminarEditar}
-      onDragStart={ed?.onDragStart} />
+      onDragStart={ed?.onDragStart} selecionadoId={ed?.selecionadoId} onSelect={ed?.onSelect} onTextoPatch={ed?.onTextoPatch} />
   );
   const x0 = W - CARW; // 1117
   const padX = 10;

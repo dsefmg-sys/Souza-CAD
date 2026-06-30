@@ -2081,7 +2081,19 @@ export default function EditorPage() {
                 {/* escala: [-] 1/X [+] */}
                 <div className="flex items-center gap-1 rounded-lg border bg-background px-1" title="Escala da planta (− aumenta o desenho, + diminui)">
                   <button type="button" className="flex size-7 items-center justify-center rounded hover:bg-muted" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: Math.max(250, (c.escalaManual ?? 1000) - 250) }))}><span className="text-base font-bold">−</span></button>
-                  <span className="min-w-[3.5rem] text-center text-xs font-bold">1/{plantaConfig.escalaManual ?? 'auto'}</span>
+                  <select
+                    className="bg-transparent text-center text-xs font-bold outline-none cursor-pointer py-1 px-0.5"
+                    value={plantaConfig.escalaManual || ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setPlantaConfig((c) => ({ ...c, escalaManual: v ? parseInt(v, 10) : undefined }));
+                    }}
+                  >
+                    <option value="">Auto</option>
+                    {[250, 500, 750, 1000, 1250, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000].map((d) => (
+                      <option key={d} value={d}>1/{d}</option>
+                    ))}
+                  </select>
                   <button type="button" className="flex size-7 items-center justify-center rounded hover:bg-muted" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: (c.escalaManual ?? 1000) + 250 }))}><span className="text-base font-bold">+</span></button>
                 </div>
               </>
@@ -2184,7 +2196,7 @@ export default function EditorPage() {
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
-                      onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} />
+                      onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta} />
                   </div>
                 )}
               </div>
