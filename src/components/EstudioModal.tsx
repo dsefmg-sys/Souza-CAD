@@ -31,6 +31,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
   const [els, setEls] = useState<El[]>([]);
   const [sel, setSel] = useState<number | null>(null);
   const [box, setBox] = useState({ w: 800, h: 600 });
+  const [procFundo, setProcFundo] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const palcoRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
@@ -85,6 +86,18 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
     else patch(d.id, { w: Math.max(20, d.ow + dx), h: Math.max(20, d.oh + dy) } as Partial<El>);
   }
   function up() { drag.current = null; }
+
+  async function removerFundo() {
+    const e = selEl; if (!e || e.t !== 'img') return;
+    setProcFundo(true);
+    try {
+      const { removeBackground } = await import('@imgly/background-removal');
+      const blob = await removeBackground(e.src);
+      const url = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(blob); });
+      patch(e.id, { src: url } as Partial<El>);
+    } catch (err) { alert('Não consegui remover o fundo: ' + ((err as Error).message || 'erro')); }
+    finally { setProcFundo(false); }
+  }
 
   function apagar() { if (sel != null) { setEls((es) => es.filter((e) => e.id !== sel)); setSel(null); } }
   function camada(dir: number) {
@@ -159,6 +172,15 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
           <Button size="sm" variant="outline" disabled={sel == null} onClick={apagar} title="Apagar (Delete)"><Trash2 className="size-4" /></Button>
           <Button size="sm" className="ml-auto" onClick={exportar}><Download className="size-4" /> Baixar PNG</Button>
         </div>
+
+        {/* propriedades da imagem selecionada */}
+        {selEl?.t === 'img' && (
+          <div className="flex flex-wrap items-center gap-2 border-y py-1.5 text-xs">
+            <span className="font-semibold">Imagem:</span>
+            <Button size="sm" variant="outline" className="h-7" disabled={procFundo} onClick={removerFundo}>{procFundo ? 'Removendo fundo…' : 'Remover fundo'}</Button>
+            <span className="text-muted-foreground">Roda no navegador, sem custo. A primeira vez baixa o modelo (alguns segundos).</span>
+          </div>
+        )}
 
         {/* propriedades do texto selecionado */}
         {selEl?.t === 'text' && (
