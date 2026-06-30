@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ import ConfiguracoesModal from '@/components/ConfiguracoesModal';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
 import CalculadoraModal from '@/components/CalculadoraModal';
 import ConfrontanteEditModal from '@/components/ConfrontanteEditModal';
+import DxfEditorModal from '@/components/DxfEditorModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -116,7 +117,7 @@ function BotaoAcoes({ onUndo, onRedo }: { onUndo: () => void; onRedo: () => void
 }
 
 export default function EditorPage() {
-  const { user, disponivel: nuvemDisponivel } = useAuth();
+  const { user, carregando: authCarregando, disponivel: nuvemDisponivel } = useAuth();
   // zoom/pan da PRÉVIA da planta (não afeta o PDF exportado, que lê o SVG original)
   const [plantaZoom, setPlantaZoom] = useState(1);
   const [plantaPan, setPlantaPan] = useState({ x: 0, y: 0 });
@@ -205,6 +206,7 @@ export default function EditorPage() {
   const [modalSobreposicaoAberto, setModalSobreposicaoAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
   const [calcAberta, setCalcAberta] = useState(false);
+  const [dxfEditorAberto, setDxfEditorAberto] = useState(false);
   const [confEditId, setConfEditId] = useState<string | null>(null);
   const [dadosPos, setDadosPos] = useState<{ x: number; y: number } | null>(null); // barra flutuante (null = canto inf. esq.)
   const dadosDrag = useRef<{ ox: number; oy: number } | null>(null);
@@ -278,10 +280,13 @@ export default function EditorPage() {
         cadConf.listar().then(setSugConf).catch(() => {});
         cadCart.listar().then((cs) => { setSugCns(cs.map((c) => c.cns).filter(Boolean)); setSugCartorios(cs); }).catch(() => {});
       }).catch(() => {});
-    } else {
+    } else if (!authCarregando) {
+      // Auth já resolveu e não há usuário logado (modo local): pode liberar a restauração do
+      // rascunho na chave 'local'. Enquanto a auth ainda carrega, NÃO liberamos — senão a tela
+      // restauraria cedo demais a chave errada e o trabalho salvo sob o uid se perderia.
       setTemaCarregadoDaNuvem(true);
     }
-  }, [user]);
+  }, [user, authCarregando]);
 
   // Limpar o primeiro clique de pintura ao mudar de modo de pintura ou pincel
   useEffect(() => {
@@ -398,6 +403,20 @@ export default function EditorPage() {
       return () => window.removeEventListener('resize', handleResize);
     }
   }, [vista]);
+
+  // Na PRIMEIRA vez que a planta é aberta já existindo ao menos um polígono (3+ vértices),
+  // gera a planta de situação sozinha (recorte de satélite). Dispara uma única vez por projeto
+  // e nunca por cima de uma situação que já exista — o agrimensor segue podendo refazer ou
+  // remover pela câmera. Falha em silêncio se a rede/satélite não responder.
+  const situacaoAutoRef = useRef(false);
+  useEffect(() => { situacaoAutoRef.current = false; }, [projetoId]);
+  useEffect(() => {
+    if (vista !== 'planta' || situacaoAutoRef.current || situacaoUrl) return;
+    if (vertices.length < 3) return;
+    situacaoAutoRef.current = true;
+    gerarSituacaoPlanta();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vista, situacaoUrl, vertices.length]);
 
   // Atualiza automaticamente o nome do projeto se não foi modificado manualmente
   useEffect(() => {
@@ -1750,11 +1769,13 @@ export default function EditorPage() {
           leste: p.leste,
           norte: p.norte,
           tipo: 'P',
-          codigoSigef: `P${(i + 1).toString().padStart(4, '0')}`,
+          // nome provisório no editor: P1, P2… (sem zeros à esquerda, sempre maiúsculo). O código
+          // oficial do SIGEF é reatribuído por `recodificar` na hora de gerar a planilha/memorial.
+          codigoSigef: `P${i + 1}`,
           isDivisa: false,
           ordem: i + 1,
-          nome: `P${(i + 1).toString().padStart(4, '0')}`,
-          codigoCampo: `P${(i + 1).toString().padStart(4, '0')}`,
+          nome: `P${i + 1}`,
+          codigoCampo: `P${i + 1}`,
           elevacao: 0,
         };
       });
@@ -2058,6 +2079,7 @@ export default function EditorPage() {
                   {/* ícones de sistema */}
                   <div className="flex items-center gap-0.5">
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Calculadora: converter coordenada, distância e azimute" onClick={() => setCalcAberta(true)}><Ruler /></Button>
+                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Editor de DXF (abrir e editar um DXF qualquer, ex.: projeto elétrico — isolado do projeto)" onClick={() => setDxfEditorAberto(true)}><PencilRuler /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Tema claro/escuro" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))}>{tema === 'claro' ? <Moon /> : <Sun />}</Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
                     {nuvemDisponivel && user && (
@@ -2097,7 +2119,7 @@ export default function EditorPage() {
             )}
             {vista === 'planta' && (
               <>
-                <button type="button" onClick={() => setFolhaTravada((v) => !v)} title={folhaTravada ? 'Folha FIXA — clique para liberar e arrastá-la' : 'Folha LIVRE (cuidado) — clique para fixar'}
+                <button type="button" onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} title={folhaTravada ? 'Folha FIXA — clique para liberar e arrastá-la (já ativa a ferramenta Mover)' : 'Folha LIVRE (cuidado) — clique para fixar'}
                   className={`act ${folhaTravada ? 'border bg-background text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>{folhaTravada ? <Lock className="size-5" /> : <LockOpen className="size-5" />}</button>
                 <button type="button" onClick={() => setPlantaDark((v) => !v)} title={plantaDark ? 'Folha clara' : 'Folha escura (conforto noturno; não afeta o PDF)'}
                   className={`act ${plantaDark ? 'bg-slate-800 text-amber-300 hover:bg-slate-700' : 'border bg-background text-foreground hover:bg-muted'}`}>{plantaDark ? <Sun className="size-5" /> : <Moon className="size-5" />}</button>
@@ -2469,6 +2491,7 @@ export default function EditorPage() {
         onBaixar={() => setBaixou((b) => ({ ...b, req: true }))}
       />
       <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
+      <DxfEditorModal open={dxfEditorAberto} onOpenChange={setDxfEditorAberto} />
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}

@@ -10,7 +10,9 @@ export interface DxfEntidades {
   polilinhas: { fechada: boolean; pontos: PontoXY[] }[];
   linhas: { a: PontoXY; b: PontoXY }[];
   pontos: PontoXY[];
-  textos: { pos: PontoXY; texto: string }[];
+  textos: { pos: PontoXY; texto: string; altura?: number }[];
+  circulos: { c: PontoXY; r: number }[];
+  arcos: { c: PontoXY; r: number; a0: number; a1: number }[];
 }
 
 /** Lê pares (código, valor) do DXF ASCII. */
@@ -29,7 +31,7 @@ function lerPares(conteudo: string): { code: number; value: string }[] {
 /** Extrai entidades geométricas do DXF (LWPOLYLINE, POLYLINE, LINE, POINT, TEXT). */
 export function importarDxf(conteudo: string): DxfEntidades {
   const pares = lerPares(conteudo);
-  const out: DxfEntidades = { polilinhas: [], linhas: [], pontos: [], textos: [] };
+  const out: DxfEntidades = { polilinhas: [], linhas: [], pontos: [], textos: [], circulos: [], arcos: [] };
 
   // localiza a seção ENTITIES
   let i = 0;
@@ -40,6 +42,7 @@ export function importarDxf(conteudo: string): DxfEntidades {
   let atual: string | null = null;
   let textoVal = '';
   let xs: number[] = [], ys: number[] = [];
+  let raio = 0, ang0 = 0, ang1 = 360, alturaTxt = 0;
   let fechada = false;
   // POLYLINE clássico: vértices vêm em entidades VERTEX separadas até o SEQEND.
   let polyAberto: { fechada: boolean; pontos: PontoXY[] } | null = null;
@@ -57,9 +60,13 @@ export function importarDxf(conteudo: string): DxfEntidades {
     } else if (tipo === 'POINT') {
       if (xs.length >= 1) out.pontos.push({ x: xs[0], y: ys[0] });
     } else if (tipo === 'TEXT' || tipo === 'MTEXT') {
-      if (xs.length >= 1) out.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal });
+      if (xs.length >= 1) out.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal, altura: alturaTxt || undefined });
+    } else if (tipo === 'CIRCLE') {
+      if (xs.length >= 1 && raio > 0) out.circulos.push({ c: { x: xs[0], y: ys[0] }, r: raio });
+    } else if (tipo === 'ARC') {
+      if (xs.length >= 1 && raio > 0) out.arcos.push({ c: { x: xs[0], y: ys[0] }, r: raio, a0: ang0, a1: ang1 });
     }
-    atual = null; xs = []; ys = []; fechada = false; textoVal = '';
+    atual = null; xs = []; ys = []; fechada = false; textoVal = ''; raio = 0; ang0 = 0; ang1 = 360; alturaTxt = 0;
   };
 
   for (; i < pares.length; i++) {
@@ -83,6 +90,9 @@ export function importarDxf(conteudo: string): DxfEntidades {
     else if (code === 21) ys.push(parseFloat(value));
     else if (code === 70) { if (atual.toUpperCase() === 'POLYLINE' && polyAberto) polyAberto.fechada = (parseInt(value, 10) & 1) === 1; else fechada = (parseInt(value, 10) & 1) === 1; }
     else if (code === 1) textoVal = value;
+    else if (code === 40) { const t = atual.toUpperCase(); if (t === 'CIRCLE' || t === 'ARC') raio = parseFloat(value); else if (t === 'TEXT' || t === 'MTEXT') alturaTxt = parseFloat(value); }
+    else if (code === 50) ang0 = parseFloat(value);
+    else if (code === 51) ang1 = parseFloat(value);
   }
   finaliza();
   if (polyAberto && polyAberto.pontos.length >= 2) out.polilinhas.push(polyAberto);
