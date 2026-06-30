@@ -693,21 +693,21 @@ function FaixaInferior(props: {
         <g>
           <text x={x3 + 12} y={y0 + 35} fontSize={fs(7)} fontWeight="bold">PROJEÇÃO UNIVERSAL TRANSVERSA</text>
           <text x={x3 + 12} y={y0 + 46} fontSize={fs(7)} fontWeight="bold">DE MERCATOR (UTM)</text>
-          <text x={x3 + 12} y={y0 + 60} fontSize={fs(7)} fontWeight="bold">SGR - SIRGAS2000</text>
-          <text x={x3 + 12} y={y0 + 73} fontSize={fs(7)}>MC: {meridianoCentral(zona)}° · Fuso {zona}{hemisferio}</text>
+          <text x={x3 + 12} y={y0 + 60} fontSize={fs(7)} fontWeight="bold">SGR (Sistema de Referência): SIRGAS2000</text>
+          <text x={x3 + 12} y={y0 + 73} fontSize={fs(7)}>Fuso {zona}{hemisferio} / MC {Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</text>
           {verNortes && <Nortes cx={x3 + 70} cy={y0 + 148} conv={conv} decl={decl} />}
         </g>
 
         {/* Lado Direito do Box 3 (Valores do Vértice de Referência) */}
         <g transform="translate(300, 0)">
-          <text x={x3 + 12} y={y0 + 38} fontSize={fs(8)} fontWeight="bold">Vértice: {vref.codigoSigef || vref.nome}</text>
+          <text x={x3 + 12} y={y0 + 38} fontSize={fs(8)} fontWeight="bold">Vértice de referência: {vref.codigoSigef || vref.nome}</text>
           {[
-            ['Lat:', lat],
-            ['Long:', lon],
+            ['Latitude:', lat],
+            ['Longitude:', lon],
+            ['Conv. meridiana (CM):', grausParaDMS(conv, { casas: 6, estilo: 'memorial' })],
             ['Declinação magnética:', grausParaDMS(decl, { casas: 6, estilo: 'memorial' })],
             ['Variação anual:', imovel.variacaoAnual != null ? `${numBR(imovel.variacaoAnual, 1)}'/ano` : '—'],
-            ['Conv. meridiana:', grausParaDMS(conv, { casas: 6, estilo: 'memorial' })],
-            ['K:', fatorK.toFixed(9)],
+            ['Fator de escala (K):', fatorK.toFixed(9)],
           ].map(([label, val], idx) => (
             <text key={idx} x={x3 + 12} y={y0 + 56 + idx * 16} fontSize={fs(8)}>
               <tspan fontWeight="bold">{label} </tspan> {val}
