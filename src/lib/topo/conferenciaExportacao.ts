@@ -23,6 +23,16 @@ export function conferirProntoParaExportar(
     problemas.push('A poligonal precisa de pelo menos 3 vértices.');
   } else if (vertices.some((v) => !v.codigoSigef?.trim())) {
     problemas.push('Existem vértices sem código definitivo — registre os pontos antes de exportar.');
+  } else {
+    const vistos = new Set<string>();
+    const duplicados = new Set<string>();
+    for (const v of vertices) {
+      const cod = v.codigoSigef.trim();
+      if (vistos.has(cod)) duplicados.add(cod); else vistos.add(cod);
+    }
+    if (duplicados.size > 0) {
+      problemas.push(`Existem vértices com o código repetido (${[...duplicados].join(', ')}) — cada vértice precisa de um código único.`);
+    }
   }
 
   if (!tecnico) {

@@ -19,6 +19,10 @@ function imovel(parcial: Partial<ImovelData> = {}): ImovelData {
   } as ImovelData;
 }
 
+function tresVertices(): Vertex[] {
+  return [vertice(), vertice({ id: 'v2', codigoSigef: 'COIN-M-0002' }), vertice({ id: 'v3', codigoSigef: 'COIN-M-0003' })];
+}
+
 const tecnico: TecnicoData = {
   nome: 'Fulano', formacao: '', cft: '', art: '', credenciamentoIncra: 'COIN',
   cidadeAssinatura: '', metodoPosicionamento: 'PG6', tipoLimite: 'LA6',
@@ -27,7 +31,7 @@ const tecnico: TecnicoData = {
 
 describe('conferirProntoParaExportar', () => {
   it('aprova um projeto completo', () => {
-    const r = conferirProntoParaExportar(imovel(), [vertice(), vertice({ id: 'v2' }), vertice({ id: 'v3' })], [], tecnico);
+    const r = conferirProntoParaExportar(imovel(), tresVertices(), [], tecnico);
     expect(r.ok).toBe(true);
     expect(r.problemas).toEqual([]);
   });
@@ -46,33 +50,36 @@ describe('conferirProntoParaExportar', () => {
   });
 
   it('reprova sem técnico configurado', () => {
-    const vs = [vertice(), vertice({ id: 'v2' }), vertice({ id: 'v3' })];
-    const r = conferirProntoParaExportar(imovel(), vs, [], null);
+    const r = conferirProntoParaExportar(imovel(), tresVertices(), [], null);
     expect(r.ok).toBe(false);
     expect(r.problemas.some((p) => p.includes('responsável técnico'))).toBe(true);
   });
 
   it('reprova imóvel sem denominação, proprietário ou município', () => {
-    const vs = [vertice(), vertice({ id: 'v2' }), vertice({ id: 'v3' })];
-    const r = conferirProntoParaExportar(imovel({ denominacao: '', proprietario: '', municipio: '' }), vs, [], tecnico);
+    const r = conferirProntoParaExportar(imovel({ denominacao: '', proprietario: '', municipio: '' }), tresVertices(), [], tecnico);
     expect(r.problemas.some((p) => p.includes('denominação'))).toBe(true);
     expect(r.problemas.some((p) => p.includes('proprietário'))).toBe(true);
     expect(r.problemas.some((p) => p.includes('município'))).toBe(true);
   });
 
   it('reprova CPF inválido do proprietário', () => {
-    const vs = [vertice(), vertice({ id: 'v2' }), vertice({ id: 'v3' })];
-    const r = conferirProntoParaExportar(imovel({ cpfProprietario: '111.111.111-11' }), vs, [], tecnico);
+    const r = conferirProntoParaExportar(imovel({ cpfProprietario: '111.111.111-11' }), tresVertices(), [], tecnico);
     expect(r.problemas.some((p) => p.includes('CPF/CNPJ do proprietário'))).toBe(true);
   });
 
+  it('reprova vértices com código SIGEF repetido', () => {
+    const vs = [vertice(), vertice({ id: 'v2', codigoSigef: 'COIN-M-0001' }), vertice({ id: 'v3', codigoSigef: 'COIN-M-0003' })];
+    const r = conferirProntoParaExportar(imovel(), vs, [], tecnico);
+    expect(r.ok).toBe(false);
+    expect(r.problemas.some((p) => p.includes('código repetido') && p.includes('COIN-M-0001'))).toBe(true);
+  });
+
   it('reprova confrontante sem nome ou com CPF inválido', () => {
-    const vs = [vertice(), vertice({ id: 'v2' }), vertice({ id: 'v3' })];
     const confs: Confrontante[] = [
       { id: 'c1', nome: '', cpf: '', matricula: '', cns: '' },
       { id: 'c2', nome: 'Maria', cpf: '000.000.000-00', matricula: '', cns: '' },
     ];
-    const r = conferirProntoParaExportar(imovel(), vs, confs, tecnico);
+    const r = conferirProntoParaExportar(imovel(), tresVertices(), confs, tecnico);
     expect(r.problemas.some((p) => p.includes('sem nome preenchido'))).toBe(true);
     expect(r.problemas.some((p) => p.includes('Maria'))).toBe(true);
   });
