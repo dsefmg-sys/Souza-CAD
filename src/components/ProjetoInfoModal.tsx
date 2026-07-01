@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Info, Upload, Download, Trash2, Eye, FileText } from 'lucide-react';
+import { Info, Upload, Download, Trash2, Eye, FileText, Search } from 'lucide-react';
 import { listarArquivos, salvarArquivo, excluirArquivo, type ArquivoProjeto } from '@/lib/store/arquivosProjeto';
 import { numBR } from '@/lib/topo/geometry';
 import type { ImovelData, TecnicoData } from '@/lib/topo/types';
@@ -31,6 +31,7 @@ function tamanhoBR(b: number): string {
 export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, imovel, tecnico, areaHa, perimetro, numVertices, numConfrontantes, numGlebas }: Props) {
   const [arquivos, setArquivos] = useState<ArquivoProjeto[]>([]);
   const [carregando, setCarregando] = useState(false);
+  const [rotuloUpload, setRotuloUpload] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function recarregar() {
@@ -43,8 +44,12 @@ export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, 
 
   async function subir(files: FileList | null) {
     if (!files || !projetoId) return;
-    for (const f of Array.from(files)) await salvarArquivo(projetoId, f);
+    for (const f of Array.from(files)) await salvarArquivo(projetoId, f, rotuloUpload);
+    setRotuloUpload('');
     recarregar();
+  }
+  function abrirRiDigital() {
+    window.open('https://www.ridigital.org.br/Acesso.aspx', '_blank', 'noopener,noreferrer');
   }
   function baixar(a: ArquivoProjeto) {
     const url = URL.createObjectURL(a.blob);
@@ -104,8 +109,17 @@ export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, 
           <div className="flex flex-col">
             <div className="mb-1 flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase text-muted-foreground">Arquivos do projeto</span>
+              <Button size="sm" variant="outline" className="h-7" onClick={abrirRiDigital} title="Abre o RI Digital (ridigital.org.br) para buscar o espelho da matrícula"><Search className="size-3.5" /> Buscar espelho</Button>
+            </div>
+            <div className="mb-2 flex items-center gap-1.5">
+              <input
+                className="h-7 flex-1 rounded border bg-background px-2 text-xs"
+                placeholder="Rótulo do anexo (ex.: Espelho — Proprietário, Espelho — Confrontante José)"
+                value={rotuloUpload}
+                onChange={(e) => setRotuloUpload(e.target.value)}
+              />
               <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => { subir(e.target.files); e.currentTarget.value = ''; }} />
-              <Button size="sm" variant="outline" className="h-7" disabled={!projetoId} onClick={() => fileRef.current?.click()}><Upload className="size-3.5" /> Anexar</Button>
+              <Button size="sm" variant="outline" className="h-7 shrink-0" disabled={!projetoId} onClick={() => fileRef.current?.click()}><Upload className="size-3.5" /> Anexar</Button>
             </div>
             {!projetoId ? (
               <div className="rounded border border-dashed p-3 text-center text-xs text-muted-foreground">Salve o projeto primeiro para anexar arquivos.</div>
@@ -118,7 +132,10 @@ export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, 
                 {arquivos.map((a) => (
                   <div key={a.id} className="flex items-center gap-2 rounded border p-1.5 text-xs">
                     <FileText className="size-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 flex-1"><div className="truncate font-medium">{a.nome}</div><div className="text-[10px] text-muted-foreground">{tamanhoBR(a.tamanho)}</div></div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{a.nome}</div>
+                      <div className="text-[10px] text-muted-foreground">{a.rotulo ? `${a.rotulo} · ` : ''}{tamanhoBR(a.tamanho)}</div>
+                    </div>
                     <button className="rounded p-1 hover:bg-muted" title="Visualizar" onClick={() => ver(a)}><Eye className="size-4" /></button>
                     <button className="rounded p-1 hover:bg-muted" title="Baixar" onClick={() => baixar(a)}><Download className="size-4" /></button>
                     <button className="rounded p-1 text-destructive hover:bg-destructive hover:text-white" title="Remover" onClick={() => apagar(a)}><Trash2 className="size-4" /></button>

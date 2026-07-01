@@ -10,6 +10,7 @@ export interface ArquivoProjeto {
   tamanho: number;
   blob: Blob;
   criadoEm: number;
+  rotulo?: string;      // ex.: "Espelho — Proprietário", "Espelho — Confrontante João"
 }
 
 export interface MetricaDB extends DBSchema {

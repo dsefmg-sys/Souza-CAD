@@ -11,11 +11,11 @@ export async function listarArquivos(projetoId: string): Promise<ArquivoProjeto[
 }
 
 /** Anexa um arquivo ao projeto (guardado localmente no navegador). */
-export async function salvarArquivo(projetoId: string, file: File): Promise<ArquivoProjeto> {
+export async function salvarArquivo(projetoId: string, file: File, rotulo?: string): Promise<ArquivoProjeto> {
   const d = await db();
   const rec: ArquivoProjeto = {
     id: novoId('arq'), projetoId, nome: file.name, tipo: file.type || 'application/octet-stream',
-    tamanho: file.size, blob: file, criadoEm: Date.now(),
+    tamanho: file.size, blob: file, criadoEm: Date.now(), rotulo: rotulo?.trim() || undefined,
   };
   await d.put('arquivos', rec);
   return rec;
