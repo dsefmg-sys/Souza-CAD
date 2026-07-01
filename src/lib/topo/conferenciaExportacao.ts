@@ -3,17 +3,11 @@
 // poder avisar o usuário antes de entregar um documento incompleto.
 
 import type { Vertex, Confrontante, ImovelData, TecnicoData } from './types';
-import { cpfValido } from './validation';
+import { cpfOuCnpjValido } from './validation';
 
 export interface ConferenciaExportacao {
   ok: boolean;
   problemas: string[];
-}
-
-function cpfOuCnpjValido(v: string): boolean {
-  const digitos = v.replace(/\D/g, '');
-  if (digitos.length === 14) return true; // CNPJ: checagem de dígitos verificadores fica para outra etapa
-  return cpfValido(v);
 }
 
 /** Verifica se o projeto tem o mínimo necessário para gerar peças oficiais (memorial, planilha, planta, requerimento). */

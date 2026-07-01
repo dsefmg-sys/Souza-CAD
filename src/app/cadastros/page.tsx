@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad } from '@/lib/topo/types';
 import { proprietarios, confrontantesCad, imoveisCad, cartoriosCad } from '@/lib/store/cadastros';
 import { carregarProjeto } from '@/lib/store/projects';
-import { cpfValido } from '@/lib/topo/validation';
+import { cpfValido, cnpjValido } from '@/lib/topo/validation';
 
 type Aba = 'proprietarios' | 'confrontantes' | 'imoveis' | 'cartorios' | 'global';
 
@@ -246,10 +246,14 @@ function Proprietarios({
       }
     }
   } else if (cleanCpf.length === 14) {
-    const dupP = propsList.some((p) => p.id !== form.id && p.cpf.replace(/\D/g, '') === cleanCpf);
-    const dupC = confsList.some((c) => c.cpf.replace(/\D/g, '') === cleanCpf);
-    if (dupP || dupC) {
-      avisoCpf = 'Aviso: CNPJ já cadastrado em outro proprietário ou confrontante.';
+    if (!cnpjValido(cleanCpf)) {
+      avisoCpf = 'CNPJ inválido (dígitos verificadores incorretos).';
+    } else {
+      const dupP = propsList.some((p) => p.id !== form.id && p.cpf.replace(/\D/g, '') === cleanCpf);
+      const dupC = confsList.some((c) => c.cpf.replace(/\D/g, '') === cleanCpf);
+      if (dupP || dupC) {
+        avisoCpf = 'Aviso: CNPJ já cadastrado em outro proprietário ou confrontante.';
+      }
     }
   }
 
@@ -334,10 +338,14 @@ function Confrontantes({
       }
     }
   } else if (cleanCpf.length === 14) {
-    const dupP = propsList.some((p) => p.cpf.replace(/\D/g, '') === cleanCpf);
-    const dupC = confsList.some((c) => c.id !== form.id && c.cpf.replace(/\D/g, '') === cleanCpf);
-    if (dupP || dupC) {
-      avisoCpf = 'Aviso: CNPJ já cadastrado em outro proprietário ou confrontante.';
+    if (!cnpjValido(cleanCpf)) {
+      avisoCpf = 'CNPJ inválido (dígitos verificadores incorretos).';
+    } else {
+      const dupP = propsList.some((p) => p.cpf.replace(/\D/g, '') === cleanCpf);
+      const dupC = confsList.some((c) => c.id !== form.id && c.cpf.replace(/\D/g, '') === cleanCpf);
+      if (dupP || dupC) {
+        avisoCpf = 'Aviso: CNPJ já cadastrado em outro proprietário ou confrontante.';
+      }
     }
   }
 
