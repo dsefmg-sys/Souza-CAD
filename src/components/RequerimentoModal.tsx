@@ -70,15 +70,19 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
   );
 }
 
+function transVazio(imovel: ImovelData): PessoaQualificada {
+  return { ...PESSOA_VAZIA, nome: imovel.proprietario, cpf: imovel.cpfProprietario, cidadeUf: imovel.municipio || '' };
+}
+
 export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, onChangePessoas, sugProp, onBaixar }: Props) {
   const [req, setReq] = useState<PessoaQualificada>(requerente ?? PESSOA_VAZIA);
-  const [trans, setTrans] = useState<PessoaQualificada>(transmitente ?? { ...PESSOA_VAZIA, nome: imovel.proprietario, cpf: imovel.cpfProprietario });
+  const [trans, setTrans] = useState<PessoaQualificada>(transmitente ?? transVazio(imovel));
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
     if (open) {
       setReq(requerente ?? PESSOA_VAZIA);
-      setTrans(transmitente ?? { ...PESSOA_VAZIA, nome: imovel.proprietario, cpf: imovel.cpfProprietario });
+      setTrans(transmitente ?? transVazio(imovel));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -96,7 +100,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Requerimento ao cartório (retificação de área)</DialogTitle>
         </DialogHeader>
