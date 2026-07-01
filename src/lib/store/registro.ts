@@ -96,6 +96,13 @@ export async function totalPontosRegistrados(): Promise<number> {
   return d.count('pontos');
 }
 
+/** Lista todos os pontos já registrados neste navegador (para o gerenciador do banco). */
+export async function listarTodosPontos(): Promise<PontoRegistro[]> {
+  const d = await db();
+  const arr = await d.getAll('pontos');
+  return arr.sort((a, b) => b.criadoEm - a.criadoEm);
+}
+
 /** Ajuste manual dos contadores (Configurações), respeitando o que já foi usado. */
 export async function definirContadores(c: Contadores): Promise<void> {
   const uid = auth()?.currentUser?.uid ?? null;
