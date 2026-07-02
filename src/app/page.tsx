@@ -2217,7 +2217,7 @@ export default function EditorPage() {
                     ] as [string, string, React.ReactNode, () => void][]).map(([rotuloBtn, dica, icone, acao]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline" className="h-11 flex-col gap-0.5 p-0" title={dica} onClick={acao}>
                         {icone}
-                        <span className="text-[9px] leading-none">{rotuloBtn}</span>
+                        <span className="text-[11px] leading-none">{rotuloBtn}</span>
                       </Button>
                     ))}
                   </div>

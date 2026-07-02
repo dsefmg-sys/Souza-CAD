@@ -117,8 +117,8 @@ function iconeTexto(o: ObjetoDesenho, sel: boolean) {
 }
 // rótulo/assinatura do confrontante: bloco branco com texto preto (legível no claro e no escuro),
 // multilinha (Nome/CPF/Matrícula…) e uma linha de assinatura embaixo. Movível e redimensionável.
-const iconeRotulo = (r: RotuloMapa) => {
-  const fs = r.tam && r.tam > 0 ? r.tam : 11;
+const iconeRotulo = (r: RotuloMapa, fator = 1) => {
+  const fs = Math.round((r.tam && r.tam > 0 ? r.tam : 11) * fator);
   const linhas = r.linhas.map((l) => `<div>${(l || '').replace(/</g, '&lt;')}</div>`).join('');
   return L.divIcon({
     className: 'objeto-rotulo',
@@ -129,8 +129,8 @@ const iconeRotulo = (r: RotuloMapa) => {
 
 // rótulo central da gleba: dados-chave (denominação, proprietário, matrícula, área) no meio do polígono.
 // Não captura clique (pointer-events:none) para não atrapalhar a edição embaixo dele.
-const iconeCentro = (linhas: string[]) => {
-  const corpo = linhas.map((l, i) => `<div style="font-weight:${i === 0 ? 700 : 600};font-size:${i === 0 ? 13 : 11}px">${(l || '').replace(/</g, '&lt;')}</div>`).join('');
+const iconeCentro = (linhas: string[], fator = 1) => {
+  const corpo = linhas.map((l, i) => `<div style="font-weight:${i === 0 ? 700 : 600};font-size:${Math.round((i === 0 ? 13 : 11) * fator)}px">${(l || '').replace(/</g, '&lt;')}</div>`).join('');
   // caixa branca sólida e centrada no ponto (legível sobre o satélite); não captura clique
   return L.divIcon({
     className: 'gleba-centro',
@@ -274,6 +274,8 @@ export default function MapEditor(props: Props) {
   } = props;
 
   const [zoom, setZoom] = useState(16);
+  // rótulos crescem junto com o zoom (a partir do 16) pra não ficarem minúsculos perto do terreno
+  const fzZoom = Math.min(2, Math.max(1, 1 + (zoom - 16) * 0.22));
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
   const centro = useMemo<[number, number]>(() => (validos.length ? [validos[0].lat, validos[0].lon] : ESPERA_FELIZ), [validos]);
   const anel = validos.map((v) => [v.lat, v.lon] as [number, number]);
@@ -353,12 +355,10 @@ export default function MapEditor(props: Props) {
       {validos.length >= 2 && (() => {
         const cLat = validos.reduce((s, p) => s + p.lat, 0) / validos.length;
         const cLon = validos.reduce((s, p) => s + p.lon, 0) / validos.length;
-        // offset geográfico proporcional ao tamanho do desenho (~0,8% da maior dimensão)
-        const maxDim = Math.max(
-          ...validos.map((p) => Math.abs(p.lat - cLat)),
-          ...validos.map((p) => Math.abs(p.lon - cLon)),
-        ) || 0.0005;
-        const off = maxDim * 0.016;
+        // offset ancorado em PIXELS (~10px fora do traçado em qualquer zoom): converte
+        // metros-por-pixel do nível de zoom atual em graus de latitude
+        const mpp = (156543.03392 * Math.cos((cLat * Math.PI) / 180)) / 2 ** zoom;
+        const off = (10 * mpp) / 111320;
         return validos.map((v, i) => {
           const cor = corDivisa(v.representacao);
           if (!cor) return null;
@@ -372,7 +372,7 @@ export default function MapEditor(props: Props) {
           const a: [number, number] = [v.lat + ny * off, v.lon + nx * off];
           const b: [number, number] = [prox.lat + ny * off, prox.lon + nx * off];
           return (
-            <Polyline key={`div${v.id}`} positions={[a, b]} pathOptions={{ color: cor, weight: 5, opacity: 0.8 }}>
+            <Polyline key={`div${v.id}`} positions={[a, b]} pathOptions={{ color: cor, weight: zoom >= 18 ? 7 : 5, opacity: 0.8 }}>
               <Tooltip sticky direction="top" opacity={0.9}><span style={{ color: cor }}>Divisa: {REPRES_LABEL[v.representacao || ''] || v.representacao}</span></Tooltip>
             </Polyline>
           );
@@ -491,14 +491,14 @@ export default function MapEditor(props: Props) {
         const arrastavel = modo === 'navegar' && !!onMoverCentro;
         return (
           <Marker position={pos} draggable={arrastavel} interactive={arrastavel}
-            icon={iconeCentro(centroGleba.linhas)}
+            icon={iconeCentro(centroGleba.linhas, fzZoom)}
             eventHandlers={arrastavel ? { dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverCentro?.(ll.lat, ll.lng); } } : undefined} />
         );
       })()}
 
       {/* rótulos de confrontante (arrastáveis) */}
       {rotulos.map((r) => (
-        <Marker key={r.id} position={[r.lat, r.lon]} draggable icon={iconeRotulo(r)}
+        <Marker key={r.id} position={[r.lat, r.lon]} draggable icon={iconeRotulo(r, fzZoom)}
           eventHandlers={{
             click: () => { onEditarConfrontante?.(r.id); },
             dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverRotulo?.(r.id, ll.lat, ll.lng); }
@@ -573,7 +573,7 @@ export default function MapEditor(props: Props) {
           key={`nome${v.id}`}
           position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}
           draggable={modo === 'navegar'}
-          icon={iconeNomeVertice(estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome), i % 2 === 1, tamNomes)}
+          icon={iconeNomeVertice(estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome), i % 2 === 1, Math.round(tamNomes * fzZoom))}
           eventHandlers={{
             click() { onSelecionar(v.id); },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },

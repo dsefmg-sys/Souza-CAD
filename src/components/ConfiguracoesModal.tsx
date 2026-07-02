@@ -18,6 +18,7 @@ import {
   temModeloSigefProprio,
   limparModeloSigef,
 } from '@/lib/store/settings';
+import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte } from '@/lib/store/suporte';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import ImportVerticesVizinhoConfigModal from '@/components/ImportVerticesVizinhoConfigModal';
 
@@ -38,6 +39,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
   const [importTxtAberto, setImportTxtAberto] = useState(false);
   const [importVizinhoAberto, setImportVizinhoAberto] = useState(false);
   const [modeloProprio, setModeloProprio] = useState(false);
+  const [zapSuporte, setZapSuporte] = useState('');
   const sigefRef = useRef<HTMLInputElement>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -46,6 +48,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
       setT(carregarTecnico());
       setEsc(carregarEscritorio());
       setModeloProprio(temModeloSigefProprio());
+      if (souMaster()) carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
     }
   }, [open]);
 
@@ -123,10 +126,10 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-3 border-b-0">
-            <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Pessoais</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-emerald-600">Pessoais</span>
             <Tb a="pessoal" rotulo="Responsável Técnico" />
             <span className="mx-1 h-4 w-px bg-border" />
-            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Globais (empresa)</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-emerald-600">Globais (empresa)</span>
             <Tb a="escritorio" rotulo="Escritório & Carimbo" />
             <Tb a="numeracao" rotulo="Numeração e Fuso" />
             <Tb a="modelos" rotulo="Importação e Modelos" />
@@ -249,6 +252,16 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
                   <Label className="text-xs font-semibold">Endereço Físico</Label>
                   <Input value={esc.endereco} onChange={(e) => changeEsc('endereco', e.target.value)} />
                 </div>
+                {souMaster() && (
+                  <div className="space-y-1 rounded border border-emerald-600/30 bg-emerald-600/5 p-2">
+                    <Label className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">WhatsApp de SUPORTE do sistema (só o master vê este campo)</Label>
+                    <Input placeholder="Ex.: 32 9 9999-9999 — vazio = botão de suporte não aparece"
+                      value={zapSuporte}
+                      onChange={(e) => setZapSuporte(e.target.value)}
+                      onBlur={() => { salvarWhatsappSuporte(zapSuporte).then(() => flash('Suporte salvo')).catch(() => flash('Salvo local; nuvem indisponível')); }} />
+                    <p className="text-xs text-muted-foreground">Aparece pros clientes como botão &quot;Falar com o suporte&quot; no tutorial. Deixe vazio pra esconder.</p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3.5 border-t md:border-t-0 md:border-l md:pl-4 pt-3.5 md:pt-0 flex flex-col justify-between">

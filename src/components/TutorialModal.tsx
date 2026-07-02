@@ -7,8 +7,9 @@ import {
 import { Button } from '@/components/ui/button';
 import {
   Upload, Search, UserCheck, BookUser, Users, Brush, FileText, Save,
-  ChevronLeft, ChevronRight, CircleCheck, type LucideProps,
+  ChevronLeft, ChevronRight, CircleCheck, MessageCircle, type LucideProps,
 } from 'lucide-react';
+import { carregarWhatsappSuporte, linkWhatsapp } from '@/lib/store/suporte';
 
 interface Props {
   open: boolean;
@@ -59,7 +60,13 @@ const PASSOS: Passo[] = [
 
 export default function TutorialModal({ open, onOpenChange }: Props) {
   const [passo, setPasso] = useState(0);
-  useEffect(() => { if (open) setPasso(0); }, [open]);
+  const [zapSuporte, setZapSuporte] = useState('');
+  useEffect(() => {
+    if (!open) return;
+    setPasso(0);
+    carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
+  }, [open]);
+  const linkSuporte = linkWhatsapp(zapSuporte);
 
   const ultimo = passo === PASSOS.length - 1;
   const p = PASSOS[passo];
@@ -81,6 +88,14 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             <span key={i} className={`h-1.5 rounded-full transition-all ${i === passo ? 'w-5 bg-primary' : 'w-1.5 bg-muted-foreground/30'}`} />
           ))}
         </div>
+
+        {/* botão de suporte: só existe quando o master configurou um número */}
+        {linkSuporte && (
+          <a href={linkSuporte} target="_blank" rel="noopener noreferrer"
+             className="flex items-center justify-center gap-2 rounded-md border border-emerald-600/40 bg-emerald-600/10 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400">
+            <MessageCircle className="size-4" /> Falar com o suporte no WhatsApp
+          </a>
+        )}
 
         <div className="flex items-center justify-between border-t pt-3">
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>Pular</Button>
