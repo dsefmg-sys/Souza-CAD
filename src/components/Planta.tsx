@@ -546,17 +546,20 @@ export default function Planta({
         const xs = anel.map((p) => p.x), ys = anel.map((p) => p.y);
         const pMinX = Math.min(...xs), pMaxX = Math.max(...xs), pCx = xs.reduce((a, b) => a + b, 0) / xs.length;
         const pMinY = Math.min(...ys), pMaxY = Math.max(...ys), pCy = ys.reduce((a, b) => a + b, 0) / ys.length;
-        // referências: margem (azul claro), centro do desenho (azul escuro), bordas do polígono
-        // (amarelo), centro do polígono (laranja)
+        // referências: margem (azul claro), centros do desenho/folha/coluna do carimbo (azul
+        // escuro), bordas do polígono (amarelo), centro do polígono (laranja). Cobre TAMBÉM o
+        // carimbo (à direita) — antes só a área de desenho tinha guias.
+        const xCarimbo = W - CARW / 2; // centro da coluna do carimbo (onde ficam os textos centrados)
         const refX = [
           { pos: DRAW.x0 + MARG, cor: '#38bdf8' }, { pos: DRAW.x1 - MARG, cor: '#38bdf8' },
-          { pos: (DRAW.x0 + DRAW.x1) / 2, cor: '#1d4ed8' },
+          { pos: W - CARW + 10 + MARG, cor: '#38bdf8' }, { pos: W - 26 - 10 - MARG, cor: '#38bdf8' }, // margens da coluna do carimbo
+          { pos: (DRAW.x0 + DRAW.x1) / 2, cor: '#1d4ed8' }, { pos: xCarimbo, cor: '#1d4ed8' },
           { pos: pMinX, cor: '#eab308' }, { pos: pMaxX, cor: '#eab308' },
           { pos: pCx, cor: '#f97316' },
         ];
         const refY = [
           { pos: DRAW.y0 + MARG, cor: '#38bdf8' }, { pos: DRAW.y1 - MARG, cor: '#38bdf8' },
-          { pos: (DRAW.y0 + DRAW.y1) / 2, cor: '#1d4ed8' },
+          { pos: (DRAW.y0 + DRAW.y1) / 2, cor: '#1d4ed8' }, { pos: H / 2, cor: '#1d4ed8' },
           { pos: pMinY, cor: '#eab308' }, { pos: pMaxY, cor: '#eab308' },
           { pos: pCy, cor: '#f97316' },
         ];
@@ -1205,8 +1208,8 @@ export default function Planta({
         }}
       />      {editavel && guias.map((g, i) => (
         <g key={i}>
-          {g.x != null && <line x1={g.x} y1={DRAW.y0} x2={g.x} y2={DRAW.y1} stroke={g.cor} strokeWidth={0.9} strokeDasharray="5 3" />}
-          {g.y != null && <line x1={DRAW.x0} y1={g.y} x2={DRAW.x1} y2={g.y} stroke={g.cor} strokeWidth={0.9} strokeDasharray="5 3" />}
+          {g.x != null && <line x1={g.x} y1={26} x2={g.x} y2={H - 26} stroke={g.cor} strokeWidth={0.9} strokeDasharray="5 3" />}
+          {g.y != null && <line x1={26} y1={g.y} x2={W - 26} y2={g.y} stroke={g.cor} strokeWidth={0.9} strokeDasharray="5 3" />}
         </g>
       ))}
       {editavel && multiSel.size > 0 && (
