@@ -856,14 +856,21 @@ export default function Planta({
               <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6} />
             </g>
             {(() => {
-              // linha-guia tracejada ligando o rótulo ao seu vértice (deixa claro de quem é o nome)
+              // linha-guia tracejada ligando o rótulo ao seu vértice (deixa claro de quem é o nome).
+              // Conecta no lado do rótulo (esquerdo OU direito) mais próximo do vértice — o texto é
+              // ancorado à esquerda (x), então o canto direito fica em x + largura do texto.
               const ovR = getOverride(`vert.${v.id}`);
               const lxr = x + (ovR.dx ?? 0), lyr = y + (ovR.dy ?? 0);
-              const dGuia = Math.hypot(lxr - vx, lyr - vy);
-              if (dGuia < 13) return null;
-              // encurta a ponta pra não entrar nem no símbolo nem no texto
-              const ux = (lxr - vx) / dGuia, uy = (lyr - vy) / dGuia;
-              return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={lxr - ux * 6} y2={lyr - uy * 6} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
+              const rot = nomeVertice(v, i);
+              const fzr = Math.max(6, fonteRot - 0.5) * (ovR.escala ?? 1);
+              const w = Math.max(fzr, rot.length * fzr * 0.6);
+              const leftX = lxr, rightX = lxr + w;
+              const midY = lyr - fzr * 0.35; // meio vertical do texto (baseline fica em lyr)
+              const alvoX = Math.abs(vx - leftX) <= Math.abs(vx - rightX) ? leftX : rightX;
+              const dGuia = Math.hypot(alvoX - vx, midY - vy);
+              if (dGuia < 12) return null;
+              const ux = (alvoX - vx) / dGuia, uy = (midY - vy) / dGuia;
+              return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={alvoX - ux * 3} y2={midY - uy * 3} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
             })()}
             <Ted x={x} y={y} base={nomeVertice(v, i)} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
             {vsel && (
@@ -1126,43 +1133,51 @@ function FaixaInferior(props: {
       </g>
 
       {/* --- BOX 2: CONVENÇÕES --- */}
-      {verConv && (
-        <g>
-          <rect x={x2} y={y0} width={w2} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-          <rect x={x2} y={y0} width={w2} height={24} rx={6} ry={6} fill="#475569" />
-          <rect x={x2} y={y0 + 18} width={w2} height={6} fill="#475569" />
-          <text x={x2 + w2 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">CONVENÇÕES</text>
-          
-          <g transform={`translate(${x2 + 15}, ${y0 + 42})`} fontSize={fs(9)} fill="#0f172a">
-            <g transform="translate(0, 0)">
-              <SimboloVertice tipo="M" cx={5} cy={5} r={3.6} />
-              <text x={18} y={8}>Vértices Tipo M</text>
-            </g>
-            
-            <g transform="translate(0, 24)">
-              <SimboloVertice tipo="P" cx={5} cy={5} r={2.6} />
-              <text x={18} y={8}>Vértices Tipo P</text>
-            </g>
-            
-            <g transform="translate(0, 48)">
-              <SimboloVertice tipo="V" cx={5} cy={5} r={3} />
-              <text x={18} y={8}>Vértices Tipo V (virtual)</text>
-            </g>
+      {verConv && (() => {
+        // Vértice tipo V (virtual) só entra na legenda se existir algum no desenho.
+        const temV = props.res.vertices.some((v) => v.tipo === 'V');
+        const verts: { tipo: 'M' | 'P' | 'V'; r: number }[] = [
+          { tipo: 'M', r: 3.6 }, { tipo: 'P', r: 2.6 },
+          ...(temV ? [{ tipo: 'V' as const, r: 3 }] : []),
+        ];
+        const divs = ['linha-ideal', ...represUsadas.filter((r) => r !== 'linha-ideal')];
+        // divisas em DUAS colunas quando não caberiam confortavelmente numa só (textos curtos:
+        // cerca, córrego, estrada... cabem lado a lado). Vértices sempre em coluna única (texto maior).
+        const duasColunas = verts.length + divs.length > 6;
+        const nDivLin = duasColunas ? Math.ceil(divs.length / 2) : divs.length;
+        const totalLin = verts.length + 0.4 + nDivLin; // 0.4 = respiro entre seções
+        // espaçamento adaptável pra nunca estourar a caixa
+        const lh = Math.min(22, Math.max(12.5, (hBox - 52) / totalLin));
+        const colW = (w2 - 24) / 2;
+        return (
+          <g>
+            <rect x={x2} y={y0} width={w2} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
+            <rect x={x2} y={y0} width={w2} height={24} rx={6} ry={6} fill="#475569" />
+            <rect x={x2} y={y0 + 18} width={w2} height={6} fill="#475569" />
+            <text x={x2 + w2 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">CONVENÇÕES</text>
 
-            <g transform="translate(0, 72)">
-              <SimboloDivisa tipo="linha-ideal" x={0} y={5} />
-              <text x={18} y={8}>Linha ideal</text>
+            <g transform={`translate(${x2 + 14}, ${y0 + 40})`} fontSize={fs(8.5)} fill="#0f172a">
+              {verts.map((v, i) => (
+                <g key={v.tipo} transform={`translate(0, ${i * lh})`}>
+                  <SimboloVertice tipo={v.tipo} cx={5} cy={5} r={v.r} />
+                  <text x={18} y={8}>Vértice tipo {v.tipo}</text>
+                </g>
+              ))}
+              {divs.map((d, i) => {
+                const col = duasColunas ? i % 2 : 0;
+                const lin = duasColunas ? Math.floor(i / 2) : i;
+                const y = (verts.length + 0.4 + lin) * lh;
+                return (
+                  <g key={d} transform={`translate(${col * colW}, ${y})`}>
+                    <SimboloDivisa tipo={d} x={0} y={5} />
+                    <text x={16} y={8}>{REPRES_LABEL[d] || d}</text>
+                  </g>
+                );
+              })}
             </g>
-
-            {represUsadas.filter((r) => r !== 'linha-ideal').slice(0, 3).map((r, i) => (
-              <g key={r} transform={`translate(0, ${96 + i * 24})`}>
-                <SimboloDivisa tipo={r} x={0} y={5} />
-                <text x={18} y={8}>{REPRES_LABEL[r] || r}</text>
-              </g>
-            ))}
           </g>
-        </g>
-      )}
+        );
+      })()}
 
       {/* --- BOX 3: INFORMAÇÕES DE COORDENADAS (quadro fixo; os BLOCOS internos é que se arrastam) --- */}
       <g>
@@ -1198,9 +1213,10 @@ function FaixaInferior(props: {
               {/* Diagrama técnico de convergência (NV/NQ/NM); valores exatos na coluna ao lado */}
               {verNortes && bloco('coord.diagrama', (
                 <g>
-                  <Nortes cx={x3 + 75} cy={y0 + 150} conv={conv} decl={decl} fs={fs} />
-                  <text x={x3 + 132} y={y0 + 147} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Diagrama de</text>
-                  <text x={x3 + 132} y={y0 + 159} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Convergência</text>
+                  <Nortes cx={x3 + 75} cy={y0 + 148} conv={conv} decl={decl} fs={fs} />
+                  {/* rótulo centralizado logo abaixo do diagrama (antes ficava solto à direita) */}
+                  <text x={x3 + 75} y={y0 + 172} fontSize={fs(7.5)} fontWeight="bold" textAnchor="middle" fill="#475569">Diagrama de</text>
+                  <text x={x3 + 75} y={y0 + 183} fontSize={fs(7.5)} fontWeight="bold" textAnchor="middle" fill="#475569">Convergência</text>
                 </g>
               ))}
 
@@ -1394,8 +1410,9 @@ function CarimboA3(props: {
   const Y_ASSINA_PROP = Y_PROP  + 130;
   const Y_ASSINA_RT   = Y_LAUDO + 195;
 
-  // Assinatura num intervalo livre (xa..xb): linha + rótulo abaixo + nome + detalhes, com fontes maiores e mais espaçadas (bloco móvel e coeso)
-  const assina = (xa: number, xb: number, yLine: number, label: string, nome: string, detalhes: string[] = [], keyPrefix: string) => {
+  // Assinatura num intervalo livre (xa..xb): linha + nome + detalhes (o rótulo "Assinatura do..."
+  // foi removido — era redundante com o cabeçalho da seção e só ocupava espaço). Bloco móvel e coeso.
+  const assina = (xa: number, xb: number, yLine: number, nome: string, detalhes: string[] = [], keyPrefix: string) => {
     const idAssina = `carimbo.assina.${keyPrefix}`;
     const ov = ed?.textos[idAssina] || {};
     const dx = ov.dx ?? 0;
@@ -1415,10 +1432,9 @@ function CarimboA3(props: {
         } : undefined}
       >
         <line x1={xa} y1={yLine} x2={xb} y2={yLine} stroke="#000" strokeWidth={0.6} />
-        <text x={m} y={yLine + 10} fontSize={fs(7.5)} fill="#555" textAnchor="middle">{label}</text>
-        <text x={m} y={yLine + 23} fontSize={fs(9)} fontWeight="bold" fill="#000" textAnchor="middle">{nome}</text>
+        <text x={m} y={yLine + 14} fontSize={fs(9)} fontWeight="bold" fill="#000" textAnchor="middle">{nome}</text>
         {det.map((d, k) => (
-          <text key={k} x={m} y={yLine + 36 + k * 11.5} fontSize={fs(7)} fill="#222" textAnchor="middle">{d}</text>
+          <text key={k} x={m} y={yLine + 27 + k * 11.5} fontSize={fs(7)} fill="#222" textAnchor="middle">{d}</text>
         ))}
       </g>
     );
@@ -1491,7 +1507,7 @@ function CarimboA3(props: {
           );
         })()}
 
-        {assina(lx + 90, rx - 90, Y_ASSINA_PROP, 'Assinatura do(s) Proprietário(s)', imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`], 'proprietario')}
+        {assina(lx + 90, rx - 90, Y_ASSINA_PROP, imovel.proprietario, [`CPF: ${imovel.cpfProprietario || '—'}`], 'proprietario')}
       </g>
 
       {/* ── CARD B: LAUDO TÉCNICO / RESPONSÁVEL TÉCNICO ───────────────────── */}
@@ -1537,7 +1553,7 @@ function CarimboA3(props: {
           );
         })()}
 
-        {assina(lx + 90, rx - 90, Y_ASSINA_RT, 'Assinatura do Responsável Técnico', tecnico.nome, [tecnico.formacao || '', `CFT: ${tecnico.cft || '—'}  ·  INCRA: ${tecnico.credenciamentoIncra || '—'}`], 'responsavel')}
+        {assina(lx + 90, rx - 90, Y_ASSINA_RT, tecnico.nome, [tecnico.formacao || '', `CFT: ${tecnico.cft || '—'}  ·  INCRA: ${tecnico.credenciamentoIncra || '—'}`], 'responsavel')}
       </g>
 
       {/* ── CARD C: DECLARAÇÃO DOS CONFRONTANTES ──────────────────────────── */}
