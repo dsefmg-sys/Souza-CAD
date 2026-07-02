@@ -136,6 +136,8 @@ export default function EditorPage() {
   // zoom/pan da PRÉVIA da planta (não afeta o PDF exportado, que lê o SVG original)
   const [plantaZoom, setPlantaZoom] = useState(1);
   const [plantaPan, setPlantaPan] = useState({ x: 0, y: 0 });
+  // espelho de zoom/pan pra calcular o zoom-no-cursor sem atualizador aninhado (que o React roda 2x em dev)
+  const vistaPlantaRef = useRef({ z: 1, x: 0, y: 0 });
   const [editarPlanta, setEditarPlanta] = useState(true); // planta abre já no modo edição
   const [folhaTravada, setFolhaTravada] = useState(true); // por padrão, reposicionamento da moldura travado
   const [menuContexto, setMenuContexto] = useState<{
@@ -573,26 +575,25 @@ export default function EditorPage() {
   // centraliza/enquadra o desenho atual no mapa
   function centralizar() { setCentralizarSig((n) => n + 1); }
 
-  // zoom/pan da prévia da planta (aproxima na posição do cursor do mouse)
+  // zoom/pan da prévia da planta (aproxima na posição do cursor do mouse).
+  // Calcula tudo a partir do espelho (ref) e aplica UMA vez — sem atualizador aninhado, que o React
+  // roda 2x em dev e dobrava o deslocamento (dava a impressão de a planta escorregar de lado).
   function onPlantaWheel(e: ReactWheelEvent) {
     if (e.ctrlKey) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-
-    setPlantaZoom((z) => {
-      const nextZ = Math.min(6, Math.max(0.3, +(z * (e.deltaY < 0 ? 1.12 : 0.89)).toFixed(3)));
-      setPlantaPan((pan) => {
-        const factor = nextZ / z;
-        const nextX = mx - (mx - pan.x) * factor;
-        const nextY = my - (my - pan.y) * factor;
-        return { x: +nextX.toFixed(1), y: +nextY.toFixed(1) };
-      });
-      return nextZ;
-    });
+    const { z, x: px, y: py } = vistaPlantaRef.current;
+    const nextZ = Math.min(6, Math.max(0.3, +(z * (e.deltaY < 0 ? 1.12 : 0.89)).toFixed(3)));
+    const factor = nextZ / z;
+    const nextX = +(mx - (mx - px) * factor).toFixed(1);
+    const nextY = +(my - (my - py) * factor).toFixed(1);
+    vistaPlantaRef.current = { z: nextZ, x: nextX, y: nextY };
+    setPlantaZoom(nextZ);
+    setPlantaPan({ x: nextX, y: nextY });
   }
   function plantaPanDown(e: ReactPointerEvent) { plantaPanRef.current = { px: e.clientX, py: e.clientY, ox: plantaPan.x, oy: plantaPan.y }; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
-  function plantaPanMove(e: ReactPointerEvent) { const d = plantaPanRef.current; if (d) setPlantaPan({ x: d.ox + (e.clientX - d.px), y: d.oy + (e.clientY - d.py) }); }
+  function plantaPanMove(e: ReactPointerEvent) { const d = plantaPanRef.current; if (d) { const nx = d.ox + (e.clientX - d.px), ny = d.oy + (e.clientY - d.py); vistaPlantaRef.current = { ...vistaPlantaRef.current, x: nx, y: ny }; setPlantaPan({ x: nx, y: ny }); } }
   function plantaPanUp(e: ReactPointerEvent) { plantaPanRef.current = null; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ } }
   function ajustarPlanta() {
     const el = document.getElementById('planta-print');
@@ -603,15 +604,15 @@ export default function EditorPage() {
       const hAvailable = rect.height - pad * 2;
       // Ajusta a escala para caber a folha A3 inteira (1587 x 1123) na viewport
       const scale = Math.min(wAvailable / 1587, hAvailable / 1123);
+      const px = pad + (wAvailable - 1587 * scale) / 2;
+      const py = pad + (hAvailable - 1123 * scale) / 2;
       setPlantaZoom(scale);
-      // Centraliza perfeitamente a folha A3
-      setPlantaPan({
-        x: pad + (wAvailable - 1587 * scale) / 2,
-        y: pad + (hAvailable - 1123 * scale) / 2
-      });
+      setPlantaPan({ x: px, y: py });
+      vistaPlantaRef.current = { z: scale, x: px, y: py };
     } else {
       setPlantaZoom(1);
       setPlantaPan({ x: 0, y: 0 });
+      vistaPlantaRef.current = { z: 1, x: 0, y: 0 };
     }
     // NÃO zera offsetX/offsetY aqui: isso é a posição da folha em relação ao polígono, ajustada
     // à mão pelo usuário e salva no projeto. Antes, o auto-ajuste ao abrir a Planta apagava essa

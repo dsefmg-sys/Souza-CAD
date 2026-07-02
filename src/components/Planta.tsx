@@ -1343,6 +1343,7 @@ function FaixaInferior(props: {
               {/* Projeção (texto à esquerda) */}
               {bloco('coord.projecao', (
                 <g fill="#0f172a">
+                  <rect x={x3 + 8} y={y0 + 36} width={220} height={68} fill="transparent" />
                   <text x={x3 + 12} y={y0 + 48} fontSize={fs(8.5)} fontWeight="bold">Projeção Universal Transversa</text>
                   <text x={x3 + 12} y={y0 + 63} fontSize={fs(8.5)} fontWeight="bold">de Mercator (UTM)</text>
                   <text x={x3 + 12} y={y0 + 80} fontSize={fs(8.5)}>SGR (Ref.): <tspan fontWeight="bold">SIRGAS2000</tspan></text>
@@ -1353,6 +1354,9 @@ function FaixaInferior(props: {
               {/* Diagrama técnico de convergência (NV/NQ/NM); valores exatos na coluna ao lado */}
               {verNortes && bloco('coord.diagrama', (
                 <g>
+                  {/* área transparente de captura: sem ela, só as linhas finas do diagrama pegavam o
+                      arraste, e era quase impossível "pegar" o bloco */}
+                  <rect x={x3 + 28} y={y0 + 100} width={180} height={94} fill="transparent" />
                   <Nortes cx={x3 + 75} cy={y0 + 148} conv={conv} decl={decl} fs={fs} />
                   {/* rótulo à direita do diagrama, alinhado ao centro vertical dele */}
                   <text x={x3 + 128} y={y0 + 145} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Diagrama de</text>
@@ -1363,6 +1367,7 @@ function FaixaInferior(props: {
               {/* Valores do vértice de referência (coluna direita) */}
               {bloco('coord.valores', (
                 <g transform="translate(260, 0)" fill="#0f172a">
+                  <rect x={x3 + 8} y={y0 + 36} width={w3 - 268} height={140} fill="transparent" />
                   <text x={x3 + 12} y={y0 + 48} fontSize={fs(9)} fontWeight="bold">Vértice de referência: {vref.codigoSigef || vref.nome}</text>
                   {[
                     ['Latitude:', lat],
@@ -1513,10 +1518,15 @@ function CarimboA3(props: {
     if (imovel.distanciaEsquinaM != null && imovel.esquinaRua) {
       campos.push(['AMARRAÇÃO:', `A ${numBR(imovel.distanciaEsquinaM)}m da ${imovel.esquinaRua}`]);
     }
-    // perímetro na frente da área, os dois na mesma linha (compacta o quadro)
-    campos.push(['PERÍM. / ÁREA:', `${numBR(ef.perimetro)} m · ${numBR(ef.areaHa * 10000)} m²`]);
+    campos.push(
+      ['PERÍMETRO:', `${numBR(ef.perimetro)} m`],
+      ['ÁREA:', `${numBR(ef.areaHa * 10000)} m²`],
+    );
   } else {
-    campos.push(['PERÍM. / ÁREA:', `${numBR(ef.perimetro)} m · ${numBR(ef.areaHa, 4)} ha`]);
+    campos.push(
+      ['PERÍMETRO:', `${numBR(ef.perimetro)} m`],
+      ['ÁREA:', `${numBR(ef.areaHa, 4)} ha`],
+    );
   }
   campos.push(
     ['DATA:', dataExtenso || '—'],
@@ -1526,16 +1536,20 @@ function CarimboA3(props: {
 
   // título principal: quebra em até 2 linhas (calculado aqui pra o cabeçalho e os campos se alinharem)
   const tituloTxt = (ed?.textos['carimbo.titulo']?.texto ?? titulo).toUpperCase();
-  const maxChTitulo = Math.max(12, Math.floor((wBox - 18) / (fs(10.5) * 0.6)));
+  const maxChTitulo = Math.max(12, Math.floor((wBox - 18) / (fs(12) * 0.62)));
   const tituloLinhas = (() => {
-    if (tituloTxt.length <= maxChTitulo) return [tituloTxt];
     const pal = tituloTxt.split(' ');
-    let l1 = '', l2 = '';
-    for (const p of pal) {
-      if (!l2 && (l1 ? `${l1} ${p}` : p).length <= maxChTitulo) l1 = l1 ? `${l1} ${p}` : p;
-      else l2 = l2 ? `${l2} ${p}` : p;
+    // título curto (ou de 1 palavra) fica numa linha; título longo é dividido em DUAS linhas
+    // equilibradas — para ganhar destaque no cabeçalho, mesmo quando caberia numa linha só.
+    if (pal.length < 2 || (tituloTxt.length <= 22 && tituloTxt.length <= maxChTitulo)) return [tituloTxt];
+    // ponto de corte na palavra que deixa as duas linhas mais parecidas em comprimento
+    let melhor = 1, menorDif = Infinity;
+    for (let k = 1; k < pal.length; k++) {
+      const a = pal.slice(0, k).join(' ').length, b = pal.slice(k).join(' ').length;
+      const dif = Math.abs(a - b);
+      if (dif < menorDif) { menorDif = dif; melhor = k; }
     }
-    return l2 ? [l1, l2] : [l1];
+    return [pal.slice(0, melhor).join(' '), pal.slice(melhor).join(' ')];
   })();
   const hCabTitulo = tituloLinhas.length > 1 ? 40 : 24;
   const campoStart = hCabTitulo + 20; // início dos campos, com folga do cabeçalho
@@ -1613,12 +1627,12 @@ function CarimboA3(props: {
               <rect x={lx} y={Y_DADOS} width={wBox} height={hCabTitulo} rx={6} ry={6} fill="#475569" />
               <rect x={lx} y={Y_DADOS + hCabTitulo - 6} width={wBox} height={6} fill="#475569" />
               {editando ? (
-                T(idT, tituloTxt, { x: cxc, y: Y_DADOS + 16, size: fs(10.5), bold: true, anchor: 'middle', fill: '#fff' })
+                T(idT, tituloTxt, { x: cxc, y: Y_DADOS + 16, size: fs(12), bold: true, anchor: 'middle', fill: '#fff' })
               ) : (
                 <g style={ed?.ativo ? { cursor: 'text' } : undefined}
                    onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT); } : undefined}>
                   {tituloLinhas.map((ln, k) => (
-                    <text key={k} x={cxc} y={Y_DADOS + (duas ? 16 + k * 15 : 16)} fontSize={fs(10.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
+                    <text key={k} x={cxc} y={Y_DADOS + (duas ? 15 + k * 16 : 16)} fontSize={fs(12)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
                   ))}
                 </g>
               )}
@@ -1629,7 +1643,9 @@ function CarimboA3(props: {
           const y = Y_DADOS + campoStart + i * gap;
           return (
             <g key={k}>
-              <text x={lx + 12} y={y} fontSize={fs(9)} fontWeight="bold" fill="#1f2937">{k}</text>
+              {/* rótulo E valor editáveis por duplo clique (o valor reflete os dados; editar aqui é
+                  um ajuste manual do texto da planta, guardado como override) */}
+              {T(`rotulo.${i}`, k, { x: lx + 12, y, size: fs(9), bold: true, fill: '#1f2937' })}
               {T(`dado.${i}`, v, { x: lx + 148, y, size: fs(10), bold: true, fill: '#000', slice: 40 })}
             </g>
           );
