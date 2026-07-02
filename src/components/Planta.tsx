@@ -740,7 +740,7 @@ export default function Planta({
         const half = Math.max(86, fz * 9);
         const boxW = half * 2 + 16;
         const lineH = fz + 3;
-        const signRoom = 32;            // espaço acima de cada linha para a pessoa assinar (cabe a firma)
+        const signRoom = Math.max(40, fz * 4); // espaço acima de cada linha para a firma; cresce com a fonte pra nunca sobrepor texto vizinho
         const nText = (matLine ? 1 : 0) + principalSemMat.length + conjLines.length;
         const nSig = temConjLinhas ? 2 : 1;
         const boxH = nText * lineH + nSig * (signRoom + 6) + 14;
@@ -1315,16 +1315,19 @@ function CarimboA3(props: {
   // dar mais FOLGA às assinaturas (proprietários e responsável técnico).
   //   y=32  : Dados do imóvel        (h=264) → 296   (cabeçalho = título do levantamento + Folha)
   //   y=306 : Declaração proprietários (h=200) → 506  (assinatura mais espaçada)
-  //   y=516 : Laudo técnico          (h=210) → 726   (assinatura mais espaçada)
-  //   y=736 : Declaração confrontantes (h=110) → 846
-  //   y=856 : Escritório             (h=212) → 1068 (antes da borda inferior)
+  //   y=516 : Laudo técnico          (h=260) → 776   (mais alto: espaço real pra firma do RT)
+  //   y=786 : Declaração confrontantes (h=110) → 896
+  //   y=906 : Escritório             (h=185) → 1091  (desceu pra base, alinhado à faixa inferior,
+  //           liberando a altura extra do Laudo Técnico)
   const Y_DADOS       = 32;
   const Y_PROP        = 306;
   const Y_LAUDO       = 516;
-  const Y_CONF        = 736;
-  const Y_ESC         = 856;
+  const Y_CONF        = 786;
+  const Y_ESC         = 906;
+  const H_LAUDO       = 260;
+  const H_ESC         = 185;
   const Y_ASSINA_PROP = Y_PROP  + 130;
-  const Y_ASSINA_RT   = Y_LAUDO + 145;
+  const Y_ASSINA_RT   = Y_LAUDO + 195;
 
   // Assinatura num intervalo livre (xa..xb): linha + rótulo abaixo + nome + detalhes, com fontes maiores e mais espaçadas (bloco móvel e coeso)
   const assina = (xa: number, xb: number, yLine: number, label: string, nome: string, detalhes: string[] = [], keyPrefix: string) => {
@@ -1393,7 +1396,7 @@ function CarimboA3(props: {
           const pyProp = (Y_PROP + 32) + (ovProp.dy ?? 0);
 
           if (ed?.editandoId === idProp) {
-            const curWidth = Math.max(160, (ovProp.larguraChars ?? 80) * fs(7.5) * 0.45);
+            const curWidth = Math.max(160, (ovProp.larguraChars ?? 66) * fs(9) * 0.45);
             return (
               <foreignObject x={pxProp - curWidth / 2 - 6} y={pyProp - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
@@ -1404,7 +1407,7 @@ function CarimboA3(props: {
                   onChange={(e) => ed.onEditar?.(idProp, e.target.value)}
                   onBlur={(e) => {
                     const w = e.currentTarget.clientWidth;
-                    const ch = Math.round(w / (fs(7.5) * 0.45));
+                    const ch = Math.round(w / (fs(9) * 0.45));
                     ed.onTerminarEditar?.(idProp, txtProp, ch);
                   }}
                 />
@@ -1418,7 +1421,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
-              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fs(7.5)} larguraChars={ovProp.larguraChars ?? 80} textAnchor="middle" texto={txtProp} />
+              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fs(9)} larguraChars={ovProp.larguraChars ?? 66} textAnchor="middle" texto={txtProp} />
             </g>
           );
         })()}
@@ -1428,7 +1431,7 @@ function CarimboA3(props: {
 
       {/* ── CARD B: LAUDO TÉCNICO / RESPONSÁVEL TÉCNICO ───────────────────── */}
       <g>
-        <rect x={lx} y={Y_LAUDO} width={wBox} height={210} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
+        <rect x={lx} y={Y_LAUDO} width={wBox} height={H_LAUDO} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
         {Cab(Y_LAUDO, 'LAUDO TÉCNICO', 'carimbo.tituloLaudo')}
 
         {(() => {
@@ -1439,7 +1442,7 @@ function CarimboA3(props: {
           const pyLaudo = (Y_LAUDO + 32) + (ovLaudo.dy ?? 0);
 
           if (ed?.editandoId === idLaudo) {
-            const curWidth = Math.max(160, (ovLaudo.larguraChars ?? 80) * fs(7.5) * 0.45);
+            const curWidth = Math.max(160, (ovLaudo.larguraChars ?? 66) * fs(9) * 0.45);
             return (
               <foreignObject x={pxLaudo - curWidth / 2 - 6} y={pyLaudo - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
@@ -1450,7 +1453,7 @@ function CarimboA3(props: {
                   onChange={(e) => ed.onEditar?.(idLaudo, e.target.value)}
                   onBlur={(e) => {
                     const w = e.currentTarget.clientWidth;
-                    const ch = Math.round(w / (fs(7.5) * 0.45));
+                    const ch = Math.round(w / (fs(9) * 0.45));
                     ed.onTerminarEditar?.(idLaudo, txtLaudo, ch);
                   }}
                 />
@@ -1464,7 +1467,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
-              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fs(7.5)} larguraChars={ovLaudo.larguraChars ?? 80} textAnchor="middle" texto={txtLaudo} />
+              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fs(9)} larguraChars={ovLaudo.larguraChars ?? 66} textAnchor="middle" texto={txtLaudo} />
             </g>
           );
         })()}
@@ -1518,7 +1521,7 @@ function CarimboA3(props: {
 
       {/* ── CARD D: CARIMBO DO ESCRITÓRIO ─────────────────────────────────── */}
       <g>
-        <rect x={lx} y={Y_ESC} width={wBox} height={212} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
+        <rect x={lx} y={Y_ESC} width={wBox} height={H_ESC} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
         {temLogo ? (() => {
           // Logo REDIMENSIONÁVEL (botão direito aumenta/diminui; escala guardada no override 'esc.logo').
           const logoEsc = ed?.textos['esc.logo']?.escala ?? 1;
