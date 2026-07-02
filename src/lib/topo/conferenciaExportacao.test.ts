@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { conferirProntoParaExportar } from './conferenciaExportacao';
-import type { Vertex, Confrontante, ImovelData, TecnicoData } from './types';
+import { conferirProntoParaExportar, conferirProjetoGlebas } from './conferenciaExportacao';
+import type { Vertex, Confrontante, ImovelData, TecnicoData, Gleba } from './types';
 
 function vertice(parcial: Partial<Vertex> = {}): Vertex {
   return {
@@ -155,5 +155,54 @@ describe('conferirProntoParaExportar — severidade (graves travam de verdade, l
     const r = conferirProntoParaExportar(imovel(), tresVertices(), confs, tecnico, porLado);
     expect(r.graves).toEqual([]);
     expect(r.problemas.some((p) => p.includes('Vizinho Esquecido') && p.includes('não foi atribuído'))).toBe(true);
+  });
+});
+
+describe('conferirProjetoGlebas (multi-gleba)', () => {
+  const vizinho: Confrontante = { id: 'cz', nome: 'Vizinho', cpf: '', matricula: '', cns: '' };
+  function gleba(nome: string, vs: Vertex[]): Gleba {
+    const porLado: Record<number, string> = {};
+    vs.forEach((_, i) => { porLado[i] = 'cz'; });
+    return { id: `g_${nome}`, denominacao: nome, parcela: '001', vertices: vs, confrontantes: [vizinho], confrontantePorLado: porLado };
+  }
+
+  it('NÃO acusa código repetido quando duas glebas vizinhas compartilham vértices de divisa (mesmo código, correto no SIGEF)', () => {
+    const divisa1 = vertice({ id: 'd1', codigoSigef: 'COIN-M-0010' });
+    const divisa2 = vertice({ id: 'd2', codigoSigef: 'COIN-M-0011' });
+    const gA = gleba('Parcela 1', [vertice({ id: 'a1', codigoSigef: 'COIN-M-0001' }), divisa1, divisa2]);
+    const gB = gleba('Parcela 2', [vertice({ id: 'b1', codigoSigef: 'COIN-M-0002' }), { ...divisa1, id: 'd1b' }, { ...divisa2, id: 'd2b' }]);
+    const r = conferirProjetoGlebas(imovel(), [gA, gB], tecnico);
+    expect(r.graves).toEqual([]);
+  });
+
+  it('acusa código repetido DENTRO da mesma gleba', () => {
+    const g = gleba('Parcela 1', [vertice(), vertice({ id: 'v2', codigoSigef: 'COIN-M-0001' }), vertice({ id: 'v3', codigoSigef: 'COIN-M-0003' })]);
+    const r = conferirProjetoGlebas(imovel(), [g], tecnico);
+    expect(r.graves.some((p) => p.includes('código repetido'))).toBe(true);
+  });
+
+  it('prefixa as mensagens com o nome da gleba quando há mais de uma', () => {
+    const gOk = gleba('Parcela 1', tresVertices());
+    const gRuim = gleba('Parcela 2', [vertice({ id: 'x1', codigoSigef: 'COIN-M-0021' })]);
+    const r = conferirProjetoGlebas(imovel(), [gOk, gRuim], tecnico);
+    expect(r.graves.some((p) => p.startsWith('[Parcela 2]') && p.includes('3 vértices'))).toBe(true);
+  });
+
+  it('não prefixa quando o projeto tem uma gleba só', () => {
+    const g = gleba('Parcela 1', [vertice({ id: 'x1', codigoSigef: 'COIN-M-0021' })]);
+    const r = conferirProjetoGlebas(imovel(), [g], tecnico);
+    expect(r.graves.some((p) => p.startsWith('A poligonal'))).toBe(true);
+  });
+
+  it('checagens de cadastro (imóvel/técnico) aparecem uma vez só, sem repetir por gleba', () => {
+    const gA = gleba('Parcela 1', tresVertices());
+    const gB = gleba('Parcela 2', [vertice({ id: 'b1', codigoSigef: 'COIN-M-0031' }), vertice({ id: 'b2', codigoSigef: 'COIN-M-0032' }), vertice({ id: 'b3', codigoSigef: 'COIN-M-0033' })]);
+    const r = conferirProjetoGlebas(imovel({ municipio: '' }), [gA, gB], tecnico);
+    expect(r.problemas.filter((p) => p.includes('município')).length).toBe(1);
+  });
+
+  it('projeto sem nenhuma gleba é grave', () => {
+    const r = conferirProjetoGlebas(imovel(), [], tecnico);
+    expect(r.graves.some((p) => p.includes('nenhuma gleba'))).toBe(true);
   });
 });

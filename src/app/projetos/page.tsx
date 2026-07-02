@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import type { Projeto } from '@/lib/topo/types';
 import { listarProjetos, excluirProjeto } from '@/lib/store/projects';
 import { migrarProjeto } from '@/lib/topo/glebas';
-import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
+import { conferirProjetoGlebas } from '@/lib/topo/conferenciaExportacao';
 import { carregarTecnico } from '@/lib/store/settings';
 import { exportarBackupZip } from '@/lib/store/backup';
 
@@ -42,12 +42,20 @@ export default function ProjetosPage() {
   const tecnico = useMemo(() => carregarTecnico(), []);
 
   const linhas = useMemo(() => {
-    return projetos.map((p) => {
-      const m = migrarProjeto(p);
-      const vertices = m.glebas.flatMap((g) => g.vertices);
-      const confrontantes = m.glebas.flatMap((g) => g.confrontantes);
-      const conferencia = conferirProntoParaExportar(m.imovel, vertices, confrontantes, tecnico);
-      return { projeto: m, vertices, confrontantes, pronto: conferencia.graves.length === 0 };
+    // um projeto com dados corrompidos não pode derrubar o painel inteiro nem esconder os outros
+    return projetos.flatMap((p) => {
+      try {
+        const m = migrarProjeto(p);
+        const vertices = m.glebas.flatMap((g) => g.vertices);
+        const confrontantes = m.glebas.flatMap((g) => g.confrontantes);
+        // conferência POR GLEBA: vértices de divisa compartilhados entre glebas vizinhas têm o
+        // mesmo código SIGEF de propósito — juntar tudo numa lista acusaria "código repetido" à toa.
+        const conferencia = conferirProjetoGlebas(m.imovel, m.glebas, tecnico);
+        return [{ projeto: m, vertices, confrontantes, pronto: conferencia.graves.length === 0 }];
+      } catch (e) {
+        console.error(`Projeto "${p?.nome ?? p?.id}" com dados inesperados — pulado no painel:`, e);
+        return [];
+      }
     });
   }, [projetos, tecnico]);
 
@@ -146,7 +154,7 @@ export default function ProjetosPage() {
                     <FolderOpen className="size-3.5" /> Abrir
                   </Button>
                 </Link>
-                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Excluir" onClick={() => remover(p.id, p.nome)}>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Excluir" aria-label={`Excluir o projeto ${p.nome}`} onClick={() => remover(p.id, p.nome)}>
                   <Trash2 className="size-3.5 text-destructive" />
                 </Button>
               </div>

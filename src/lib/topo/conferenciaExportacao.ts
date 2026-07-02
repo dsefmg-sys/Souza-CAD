@@ -2,7 +2,7 @@
 // Não gera a peça sozinha — apenas aponta o que falta preencher, para o botão de exportar
 // poder avisar o usuário antes de entregar um documento incompleto.
 
-import type { Vertex, Confrontante, ImovelData, TecnicoData } from './types';
+import type { Vertex, Confrontante, ImovelData, TecnicoData, Gleba } from './types';
 import { cpfOuCnpjValido } from './validation';
 
 export interface ConferenciaExportacao {
@@ -17,22 +17,57 @@ export interface ConferenciaExportacao {
   graves: string[];
 }
 
-/** Verifica se o projeto tem o mínimo necessário para gerar peças oficiais (memorial, planilha, planta, requerimento). */
-export function conferirProntoParaExportar(
-  imovel: ImovelData,
-  vertices: Vertex[],
-  confrontantes: Confrontante[],
-  tecnico: TecnicoData | null,
-  confrontantePorLado?: Record<number, string>
-): ConferenciaExportacao {
+/** Acumulador interno: junta problemas e marca quais são graves. */
+interface Acc {
+  problemas: string[];
+  graves: string[];
+  avisa: (msg: string) => void;
+  trava: (msg: string) => void;
+}
+
+function novoAcc(): Acc {
   const problemas: string[] = [];
   const graves: string[] = [];
-  const grave = (msg: string) => { problemas.push(msg); graves.push(msg); };
+  return {
+    problemas,
+    graves,
+    avisa: (msg) => problemas.push(msg),
+    trava: (msg) => { problemas.push(msg); graves.push(msg); },
+  };
+}
+
+/** Checagens de CADASTRO (imóvel + técnico) — valem para o projeto inteiro, uma vez só. */
+function conferirCadastro(imovel: ImovelData, tecnico: TecnicoData | null, acc: Acc): void {
+  if (!tecnico) acc.avisa('Configure os dados do responsável técnico antes de exportar.');
+
+  if (!imovel.denominacao?.trim()) acc.avisa('Preencha a denominação do imóvel.');
+  if (!imovel.proprietario?.trim()) acc.avisa('Preencha o nome do proprietário.');
+  if (!imovel.municipio?.trim()) acc.avisa('Preencha o município do imóvel.');
+
+  if (imovel.cpfProprietario?.trim() && !cpfOuCnpjValido(imovel.cpfProprietario)) {
+    acc.avisa('O CPF/CNPJ do proprietário parece inválido — confira.');
+  }
+
+  if (imovel.conjugeProprietario?.trim() && !imovel.cpfConjugeProprietario?.trim()) {
+    acc.avisa('O cônjuge do proprietário está preenchido, mas falta o CPF dele(a).');
+  }
+}
+
+/** Checagens de GEOMETRIA e CONFRONTANTES — por gleba. `prefixo` identifica a gleba em multi-gleba. */
+function conferirGeometria(
+  vertices: Vertex[],
+  confrontantes: Confrontante[],
+  confrontantePorLado: Record<number, string> | undefined,
+  acc: Acc,
+  prefixo = ''
+): void {
+  const trava = (msg: string) => acc.trava(`${prefixo}${msg}`);
+  const avisa = (msg: string) => acc.avisa(`${prefixo}${msg}`);
 
   if (vertices.length < 3) {
-    grave('A poligonal precisa de pelo menos 3 vértices.');
+    trava('A poligonal precisa de pelo menos 3 vértices.');
   } else if (vertices.some((v) => !v.codigoSigef?.trim())) {
-    grave('Existem vértices sem código definitivo — registre os pontos antes de exportar.');
+    trava('Existem vértices sem código definitivo — registre os pontos antes de exportar.');
   } else {
     const vistos = new Set<string>();
     const duplicados = new Set<string>();
@@ -41,32 +76,16 @@ export function conferirProntoParaExportar(
       if (vistos.has(cod)) duplicados.add(cod); else vistos.add(cod);
     }
     if (duplicados.size > 0) {
-      grave(`Existem vértices com o código repetido (${[...duplicados].join(', ')}) — cada vértice precisa de um código único.`);
+      trava(`Existem vértices com o código repetido (${[...duplicados].join(', ')}) — cada vértice precisa de um código único.`);
     }
   }
 
-  if (!tecnico) {
-    problemas.push('Configure os dados do responsável técnico antes de exportar.');
-  }
-
-  if (!imovel.denominacao?.trim()) problemas.push('Preencha a denominação do imóvel.');
-  if (!imovel.proprietario?.trim()) problemas.push('Preencha o nome do proprietário.');
-  if (!imovel.municipio?.trim()) problemas.push('Preencha o município do imóvel.');
-
-  if (imovel.cpfProprietario?.trim() && !cpfOuCnpjValido(imovel.cpfProprietario)) {
-    problemas.push('O CPF/CNPJ do proprietário parece inválido — confira.');
-  }
-
-  if (imovel.conjugeProprietario?.trim() && !imovel.cpfConjugeProprietario?.trim()) {
-    problemas.push('O cônjuge do proprietário está preenchido, mas falta o CPF dele(a).');
-  }
-
   for (const c of confrontantes) {
-    if (!c.nome?.trim()) { problemas.push('Existe um confrontante sem nome preenchido.'); continue; }
-    if (c.cpf?.trim() && !cpfOuCnpjValido(c.cpf)) problemas.push(`O CPF/CNPJ de "${c.nome}" parece inválido — confira.`);
+    if (!c.nome?.trim()) { avisa('Existe um confrontante sem nome preenchido.'); continue; }
+    if (c.cpf?.trim() && !cpfOuCnpjValido(c.cpf)) avisa(`O CPF/CNPJ de "${c.nome}" parece inválido — confira.`);
     // espólio sem inventariante: o memorial assina com "Inventariante: —", assinatura juridicamente nula.
     if ((c.condicao ?? 'proprietario') === 'espolio' && !c.inventarianteNome?.trim()) {
-      grave(`O espólio de "${c.nome}" está sem o nome do inventariante — a assinatura sairia em branco no memorial.`);
+      trava(`O espólio de "${c.nome}" está sem o nome do inventariante — a assinatura sairia em branco no memorial.`);
     }
   }
 
@@ -76,15 +95,54 @@ export function conferirProntoParaExportar(
   if (confrontantePorLado && vertices.length >= 3) {
     const semConfrontante = vertices.some((_, i) => !confrontantePorLado[i]?.trim());
     if (semConfrontante) {
-      grave('Existem trechos do perímetro sem confrontante atribuído — o memorial sairia com o texto "confrontante não informado".');
+      trava('Existem trechos do perímetro sem confrontante atribuído — o memorial sairia com o texto "confrontante não informado".');
     }
     const idsUsados = new Set(Object.values(confrontantePorLado));
     for (const c of confrontantes) {
       if (!idsUsados.has(c.id)) {
-        problemas.push(`O confrontante "${c.nome || '(sem nome)'}" está cadastrado mas não foi atribuído a nenhum trecho do perímetro.`);
+        avisa(`O confrontante "${c.nome || '(sem nome)'}" está cadastrado mas não foi atribuído a nenhum trecho do perímetro.`);
       }
     }
   }
+}
 
-  return { ok: problemas.length === 0, problemas, graves };
+/** Verifica se o projeto tem o mínimo necessário para gerar peças oficiais (memorial, planilha, planta, requerimento). */
+export function conferirProntoParaExportar(
+  imovel: ImovelData,
+  vertices: Vertex[],
+  confrontantes: Confrontante[],
+  tecnico: TecnicoData | null,
+  confrontantePorLado?: Record<number, string>
+): ConferenciaExportacao {
+  const acc = novoAcc();
+  conferirGeometria(vertices, confrontantes, confrontantePorLado, acc);
+  conferirCadastro(imovel, tecnico, acc);
+  return { ok: acc.problemas.length === 0, problemas: acc.problemas, graves: acc.graves };
+}
+
+/**
+ * Confere o projeto INTEIRO, gleba por gleba. Importante: NÃO junte os vértices de todas as
+ * glebas numa lista só antes de conferir — glebas vizinhas compartilham vértices de divisa com
+ * o MESMO código SIGEF (isso é correto e obrigatório no SIGEF), e a checagem de código repetido
+ * acusaria um falso problema. Cada gleba é conferida sozinha, com o seu próprio
+ * confrontantePorLado; as checagens de cadastro (imóvel/técnico) entram uma vez só.
+ */
+export function conferirProjetoGlebas(
+  imovel: ImovelData,
+  glebas: Gleba[],
+  tecnico: TecnicoData | null
+): ConferenciaExportacao {
+  const acc = novoAcc();
+  const multi = glebas.length > 1;
+
+  if (glebas.length === 0) {
+    acc.trava('O projeto não tem nenhuma gleba com vértices.');
+  }
+  glebas.forEach((g, i) => {
+    const prefixo = multi ? `[${g.denominacao || `Gleba ${i + 1}`}] ` : '';
+    conferirGeometria(g.vertices, g.confrontantes, g.confrontantePorLado, acc, prefixo);
+  });
+  conferirCadastro(imovel, tecnico, acc);
+
+  return { ok: acc.problemas.length === 0, problemas: acc.problemas, graves: acc.graves };
 }
