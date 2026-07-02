@@ -1,0 +1,145 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, Search, FolderOpen, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import type { Projeto } from '@/lib/topo/types';
+import { listarProjetos, excluirProjeto } from '@/lib/store/projects';
+import { migrarProjeto } from '@/lib/topo/glebas';
+import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
+import { carregarTecnico } from '@/lib/store/settings';
+
+type FiltroStatus = 'todos' | 'prontos' | 'incompletos';
+
+const normalizar = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+
+export default function ProjetosPage() {
+  const [projetos, setProjetos] = useState<Projeto[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [busca, setBusca] = useState('');
+  const [filtro, setFiltro] = useState<FiltroStatus>('todos');
+
+  const carregarTudo = async () => {
+    setCarregando(true);
+    try { setProjetos(await listarProjetos()); }
+    catch (e) { console.error('Erro ao listar projetos:', e); }
+    finally { setCarregando(false); }
+  };
+
+  useEffect(() => { carregarTudo(); }, []);
+
+  const tecnico = useMemo(() => carregarTecnico(), []);
+
+  const linhas = useMemo(() => {
+    return projetos.map((p) => {
+      const m = migrarProjeto(p);
+      const vertices = m.glebas.flatMap((g) => g.vertices);
+      const confrontantes = m.glebas.flatMap((g) => g.confrontantes);
+      const conferencia = conferirProntoParaExportar(m.imovel, vertices, confrontantes, tecnico);
+      return { projeto: m, vertices, confrontantes, pronto: conferencia.graves.length === 0 };
+    });
+  }, [projetos, tecnico]);
+
+  const filtradas = useMemo(() => {
+    const q = normalizar(busca);
+    return linhas
+      .filter(({ projeto, pronto }) => {
+        if (filtro === 'prontos' && !pronto) return false;
+        if (filtro === 'incompletos' && pronto) return false;
+        if (!q) return true;
+        return (
+          normalizar(projeto.nome).includes(q) ||
+          normalizar(projeto.imovel.proprietario).includes(q) ||
+          normalizar(projeto.imovel.denominacao).includes(q) ||
+          normalizar(projeto.imovel.matricula).includes(q) ||
+          normalizar(projeto.imovel.municipio).includes(q)
+        );
+      })
+      .sort((a, b) => (b.projeto.atualizadoEm ?? 0) - (a.projeto.atualizadoEm ?? 0));
+  }, [linhas, busca, filtro]);
+
+  async function remover(id: string, nome: string) {
+    if (!window.confirm(`Excluir o projeto "${nome}"? Essa ação não pode ser desfeita.`)) return;
+    await excluirProjeto(id);
+    carregarTudo();
+  }
+
+  const totalPronto = linhas.filter((l) => l.pronto).length;
+
+  return (
+    <div className="mx-auto max-w-4xl p-6">
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft /> Voltar</Button></Link>
+          <h1 className="text-xl font-semibold">Projetos</h1>
+        </div>
+        <span className="text-xs text-muted-foreground">{linhas.length} projeto(s) · {totalPronto} pronto(s) para exportar</span>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[240px] flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input type="search" autoFocus placeholder="Buscar por nome, proprietário, matrícula, município… (ignora acentos)"
+            className="pl-8" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        </div>
+        <div className="flex gap-1">
+          {(['todos', 'prontos', 'incompletos'] as FiltroStatus[]).map((f) => (
+            <Button key={f} size="sm" variant={filtro === f ? 'default' : 'outline'} onClick={() => setFiltro(f)} className="capitalize">
+              {f}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        {carregando ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">Carregando…</div>
+        ) : filtradas.length === 0 ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            {projetos.length === 0 ? 'Nenhum projeto salvo ainda.' : 'Nenhum projeto encontrado para essa busca/filtro.'}
+          </div>
+        ) : (
+          filtradas.map(({ projeto: p, vertices, pronto }) => (
+            <div key={p.id} className="flex items-center justify-between gap-3 rounded-md border bg-card p-3 text-sm">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium">{p.nome}</span>
+                  {pronto ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="size-3" /> Pronto
+                    </span>
+                  ) : (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                      <AlertTriangle className="size-3" /> Incompleto
+                    </span>
+                  )}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {p.imovel.proprietario || 'Sem proprietário'} · {p.imovel.municipio || 'Sem município'} · {vertices.length} vértice(s)
+                  {p.glebas.length > 1 ? ` · ${p.glebas.length} glebas` : ''}
+                </div>
+                {p.atualizadoEm ? (
+                  <div className="text-[10px] text-muted-foreground">
+                    Atualizado em {new Date(p.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Link href={`/?projetoId=${p.id}`}>
+                  <Button size="sm" variant="outline" className="h-8 gap-1" title="Abrir este projeto no editor">
+                    <FolderOpen className="size-3.5" /> Abrir
+                  </Button>
+                </Link>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Excluir" onClick={() => remover(p.id, p.nome)}>
+                  <Trash2 className="size-3.5 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
