@@ -1346,16 +1346,20 @@ function FaixaInferior(props: {
                 </g>
               ))}
 
-              {/* Diagrama técnico de convergência (NV/NQ/NM); valores exatos na coluna ao lado */}
+              {/* Diagrama técnico de convergência (NV/NQ/NM) — bloco próprio, arrastável sozinho */}
               {verNortes && bloco('coord.diagrama', (
                 <g>
-                  {/* área transparente de captura: sem ela, só as linhas finas do diagrama pegavam o
-                      arraste, e era quase impossível "pegar" o bloco */}
-                  <rect x={x3 + 28} y={y0 + 100} width={180} height={94} fill="transparent" />
+                  {/* área transparente de captura: sem ela, só as linhas finas pegavam o arraste */}
+                  <rect x={x3 + 40} y={y0 + 100} width={72} height={94} fill="transparent" />
                   <Nortes cx={x3 + 75} cy={y0 + 148} conv={conv} decl={decl} fs={fs} />
-                  {/* rótulo à direita do diagrama, alinhado ao centro vertical dele */}
-                  <text x={x3 + 128} y={y0 + 145} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Diagrama de</text>
-                  <text x={x3 + 128} y={y0 + 156} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Convergência</text>
+                </g>
+              ))}
+              {/* rótulo do diagrama — bloco SEPARADO, move livre do diagrama */}
+              {verNortes && bloco('coord.diagramaTitulo', (
+                <g>
+                  <rect x={x3 + 116} y={y0 + 136} width={80} height={26} fill="transparent" />
+                  <text x={x3 + 122} y={y0 + 145} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Diagrama de</text>
+                  <text x={x3 + 122} y={y0 + 156} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Convergência</text>
                 </g>
               ))}
 
