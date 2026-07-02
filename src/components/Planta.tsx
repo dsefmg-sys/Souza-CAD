@@ -227,7 +227,7 @@ export default function Planta({
   // Arraste suave: em vez de atualizar o estado a cada micro-movimento do mouse (que redesenha o
   // SVG inteiro e trava), juntamos as atualizações e aplicamos no máximo uma por quadro de tela.
   const dragRaf = useRef<number | null>(null);
-  const dragPending = useRef<{ dx: number; dy: number; guiaX?: number; guiaY?: number } | null>(null);
+  const dragPending = useRef<{ dx: number; dy: number; guias?: { x?: number; y?: number; cor: string }[] } | null>(null);
 
   // Estados locais para seleção e edição em linha (in-place)
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
@@ -252,7 +252,11 @@ export default function Planta({
     dy: number;
     baseX: number;
     baseY: number;
+    absX?: number; // centro absoluto do elemento no início do arraste (para snap às referências)
+    absY?: number;
   } | null>(null);
+  // guias de alinhamento coloridas mostradas durante o arraste de um elemento
+  const [guias, setGuias] = useState<{ x?: number; y?: number; cor: string }[]>([]);
 
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
@@ -420,7 +424,14 @@ export default function Planta({
       } else {
         const ov = textosOv[id];
         dragRef.current = { kind: 'ted', id, dx: ov?.dx ?? 0, dy: ov?.dy ?? 0 };
-        setDragTemp({ kind: 'ted', id, dx: 0, dy: 0, baseX: ov?.dx ?? 0, baseY: ov?.dy ?? 0 });
+        // centro absoluto do elemento (para alinhar às referências do desenho)
+        let absX: number | undefined, absY: number | undefined;
+        try {
+          const el = document.getElementById(id) as unknown as SVGGraphicsElement | null;
+          const bb = el?.getBBox();
+          if (bb) { absX = bb.x + bb.width / 2; absY = bb.y + bb.height / 2; }
+        } catch { /* getBBox pode falhar em elemento vazio */ }
+        setDragTemp({ kind: 'ted', id, dx: 0, dy: 0, baseX: ov?.dx ?? 0, baseY: ov?.dy ?? 0, absX, absY });
       }
       folhaLast.current = u;
       captura(e);
@@ -484,42 +495,42 @@ export default function Planta({
     if (folhaLast.current && dragTemp) {
       let dx = u.x - folhaLast.current.x;
       let dy = u.y - folhaLast.current.y;
-      let guiaX: number | undefined = undefined;
-      let guiaY: number | undefined = undefined;
+      const guias: { x?: number; y?: number; cor: string }[] = [];
 
-      if (d.kind === 'ted') {
-        const SNAP = 6;
-        const finalDx = dragTemp.baseX + dx;
-        const finalDy = dragTemp.baseY + dy;
-
-        // Snap X (alinhamento original / centro)
-        if (Math.abs(finalDx) < SNAP) {
-          dx = -dragTemp.baseX;
-          const el = document.getElementById(dragTemp.id);
-          if (el) {
-            const bx = el.getAttribute('x');
-            if (bx) guiaX = +bx;
-          }
-        }
-        // Snap Y (alinhamento original)
-        if (Math.abs(finalDy) < SNAP) {
-          dy = -dragTemp.baseY;
-          const el = document.getElementById(dragTemp.id);
-          if (el) {
-            const by = el.getAttribute('y');
-            if (by) guiaY = +by;
-          }
-        }
+      if (d.kind === 'ted' && dragTemp.absX != null && dragTemp.absY != null) {
+        const SNAP = 6, MARG = 24;
+        const xs = anel.map((p) => p.x), ys = anel.map((p) => p.y);
+        const pMinX = Math.min(...xs), pMaxX = Math.max(...xs), pCx = xs.reduce((a, b) => a + b, 0) / xs.length;
+        const pMinY = Math.min(...ys), pMaxY = Math.max(...ys), pCy = ys.reduce((a, b) => a + b, 0) / ys.length;
+        // referências: margem (azul claro), centro do desenho (azul escuro), bordas do polígono
+        // (amarelo), centro do polígono (laranja)
+        const refX = [
+          { pos: DRAW.x0 + MARG, cor: '#38bdf8' }, { pos: DRAW.x1 - MARG, cor: '#38bdf8' },
+          { pos: (DRAW.x0 + DRAW.x1) / 2, cor: '#1d4ed8' },
+          { pos: pMinX, cor: '#eab308' }, { pos: pMaxX, cor: '#eab308' },
+          { pos: pCx, cor: '#f97316' },
+        ];
+        const refY = [
+          { pos: DRAW.y0 + MARG, cor: '#38bdf8' }, { pos: DRAW.y1 - MARG, cor: '#38bdf8' },
+          { pos: (DRAW.y0 + DRAW.y1) / 2, cor: '#1d4ed8' },
+          { pos: pMinY, cor: '#eab308' }, { pos: pMaxY, cor: '#eab308' },
+          { pos: pCy, cor: '#f97316' },
+        ];
+        const curX = dragTemp.absX + dx, curY = dragTemp.absY + dy;
+        const hitX = refX.find((r) => Math.abs(curX - r.pos) < SNAP);
+        if (hitX) { dx = hitX.pos - dragTemp.absX; guias.push({ x: hitX.pos, cor: hitX.cor }); }
+        const hitY = refY.find((r) => Math.abs(curY - r.pos) < SNAP);
+        if (hitY) { dy = hitY.pos - dragTemp.absY; guias.push({ y: hitY.pos, cor: hitY.cor }); }
       }
 
       // coalesce por quadro de tela: no máximo um re-render por frame → arraste suave
-      dragPending.current = { dx, dy, guiaX, guiaY };
+      dragPending.current = { dx, dy, guias };
       if (dragRaf.current == null) {
         dragRaf.current = requestAnimationFrame(() => {
           dragRaf.current = null;
           const p = dragPending.current; if (!p) return;
           setDragTemp((prev) => prev ? { ...prev, dx: p.dx, dy: p.dy } : null);
-          setGuiaAlinhamento(p.guiaX != null || p.guiaY != null ? { x: p.guiaX, y: p.guiaY } : null);
+          setGuias(p.guias ?? []);
         });
       }
     }
@@ -532,7 +543,7 @@ export default function Planta({
     // garante que o último movimento pendente (ainda não aplicado pelo frame) entre no commit final
     if (dragRaf.current != null) { cancelAnimationFrame(dragRaf.current); dragRaf.current = null; }
     const pend = dragPending.current; dragPending.current = null;
-    setGuiaAlinhamento(null);
+    setGuias([]);
     if (dragTemp && dragRef.current) {
       const d = dragRef.current;
       let finalX = dragTemp.baseX + (pend ? pend.dx : dragTemp.dx);
@@ -1144,16 +1155,12 @@ export default function Planta({
           onSelect: setSelecionadoId,
           onTextoPatch: tedComum.onTextoPatch,
         }}
-      />      {editavel && guiaAlinhamento && (
-        <g>
-          {guiaAlinhamento.x != null && (
-            <line x1={guiaAlinhamento.x} y1={0} x2={guiaAlinhamento.x} y2={H} stroke="#ef4444" strokeWidth={0.8} strokeDasharray="4 2" />
-          )}
-          {guiaAlinhamento.y != null && (
-            <line x1={0} y1={guiaAlinhamento.y} x2={W} y2={guiaAlinhamento.y} stroke="#ef4444" strokeWidth={0.8} strokeDasharray="4 2" />
-          )}
+      />      {editavel && guias.map((g, i) => (
+        <g key={i}>
+          {g.x != null && <line x1={g.x} y1={DRAW.y0} x2={g.x} y2={DRAW.y1} stroke={g.cor} strokeWidth={0.9} strokeDasharray="5 3" />}
+          {g.y != null && <line x1={DRAW.x0} y1={g.y} x2={DRAW.x1} y2={g.y} stroke={g.cor} strokeWidth={0.9} strokeDasharray="5 3" />}
         </g>
-      )}
+      ))}
     </svg>
   );
 }
