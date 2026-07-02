@@ -359,38 +359,58 @@ export default function Planta({
     return { c, x: clampX(mx + dx * dist), y: clampY(my + dy * dist) };
   });
 
-  // posição do rótulo de cada vértice (honra posRotulo arrastado; senão, deslocado do ponto)
+  // posição do rótulo de cada vértice: FORA do polígono (não cobre a linha), a uma folga do
+  // vértice (não cobre o ponto) e, adiante, empurrado pra não colar em outro rótulo/vértice.
+  const fzRot = Math.max(6, fonteRot - 0.5);
+  const ptsScr = vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
+  const nV = ptsScr.length;
+  const offBase = Math.max(14, fzRot * 1.7); // folga do vértice, proporcional à fonte
   const initialRotuloVert = vertices.map((v, i) => {
-    const vx = sx(v.leste), vy = sy(v.norte);
+    const vx = ptsScr[i].x, vy = ptsScr[i].y;
     if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, i, x: sx(u.leste), y: sy(u.norte), hasPos: true }; }
-    let dx = vx - cx, dy = vy - cy;
-    const len = Math.hypot(dx, dy) || 1;
-    dx /= len; dy /= len;
-    return { v, i, x: vx + dx * 11, y: vy + dy * 11 - 2, hasPos: false };
+    // direção pra FORA = oposto da bissetriz do ângulo interno (média das duas arestas)
+    const prev = ptsScr[(i - 1 + nV) % nV], next = ptsScr[(i + 1) % nV];
+    const n1x = prev.x - vx, n1y = prev.y - vy, l1 = Math.hypot(n1x, n1y) || 1;
+    const n2x = next.x - vx, n2y = next.y - vy, l2 = Math.hypot(n2x, n2y) || 1;
+    let ox = -(n1x / l1 + n2x / l2), oy = -(n1y / l1 + n2y / l2);
+    let ol = Math.hypot(ox, oy);
+    // degenerado (quase reto) ou apontando pra dentro → usa a direção a partir do centróide
+    const cdx = vx - cx, cdy = vy - cy;
+    if (ol < 0.15 || (ox * cdx + oy * cdy) < 0) { ox = cdx; oy = cdy; ol = Math.hypot(ox, oy) || 1; }
+    ox /= ol; oy /= ol;
+    return { v, i, x: vx + ox * offBase, y: vy + oy * offBase, hasPos: false };
   });
 
-  // Resolve overlaps between vertex labels (repulsion directly on coordinates)
-  const fzRot = Math.max(6, fonteRot - 0.5);
-  for (let step = 0; step < 15; step++) {
+  // Afasta rótulos que se sobrepõem entre si E que caem em cima de qualquer vértice.
+  const minLbl = fzRot * 3.6;   // separação mínima entre dois rótulos
+  const minVtx = offBase - 1;   // distância mínima de um rótulo a qualquer vértice
+  for (let step = 0; step < 24; step++) {
     for (let i = 0; i < initialRotuloVert.length; i++) {
-      for (let j = i + 1; j < initialRotuloVert.length; j++) {
-        const r1 = initialRotuloVert[i], r2 = initialRotuloVert[j];
-        if (r1.hasPos || r2.hasPos) continue;
-        
-        const dist = Math.hypot(r2.x - r1.x, r2.y - r1.y);
-        const minDist = fzRot * 3.4; // approx 28-32px to ensure clear separation
-        if (dist < minDist) {
-          let pushX = r2.x - r1.x, pushY = r2.y - r1.y;
-          let pushLen = Math.hypot(pushX, pushY) || 1;
-          pushX /= pushLen; pushY /= pushLen;
-          
-          const force = (minDist - dist) * 0.45;
-          r1.x -= pushX * force;
-          r1.y -= pushY * force;
-          r2.x += pushX * force;
-          r2.y += pushY * force;
+      const r1 = initialRotuloVert[i];
+      if (r1.hasPos) continue;
+      // repulsão de outros rótulos
+      for (let j = 0; j < initialRotuloVert.length; j++) {
+        if (j === i) continue;
+        const r2 = initialRotuloVert[j];
+        const dx = r1.x - r2.x, dy = r1.y - r2.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < minLbl) {
+          const f = (minLbl - dist) * 0.5;
+          const ux = (dx || (i - j) * 0.01) / (dist || 1), uy = dy / (dist || 1);
+          r1.x += ux * f; r1.y += uy * f;
         }
       }
+      // repulsão de todos os vértices (não cobrir ponto nem cair sobre vizinho)
+      for (let k = 0; k < nV; k++) {
+        const dx = r1.x - ptsScr[k].x, dy = r1.y - ptsScr[k].y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < minVtx) {
+          const f = (minVtx - dist) * 0.5;
+          const ux = (dx || 0.01) / (dist || 1), uy = dy / (dist || 1);
+          r1.x += ux * f; r1.y += uy * f;
+        }
+      }
+      r1.x = clampX(r1.x); r1.y = clampY(r1.y);
     }
   }
 

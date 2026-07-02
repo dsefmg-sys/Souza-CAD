@@ -91,13 +91,24 @@ function iconeVertice(v: Vertex, selecionado: boolean) {
 }
 
 // rótulo do vértice: caixinha branca SÓLIDA com texto preto, nítida sobre o mapa; tamanho ajustável
-function iconeNomeVertice(texto: string, alterna: boolean, tam: number) {
+// Posiciona o rótulo do vértice PRA FORA do polígono (direção dirx/diry, x direita / y baixo), a
+// uma folga que nunca cobre o ponto. Se dir=(0,0) (rótulo arrastado à mão), fica centrado no ponto.
+function iconeNomeVertice(texto: string, tam: number, dirx = 0, diry = 0) {
   const fs = tam && tam > 0 ? tam : 11;
-  // afastamento proporcional à fonte: o rótulo NUNCA cobre o ponto do vértice (atrapalha a edição)
+  const txt = (texto || '').replace(/</g, '&lt;');
+  const estW = txt.length * fs * 0.62 + 10;
+  const estH = fs + 8;
+  let ax = estW / 2, ay = estH / 2; // padrão: centrado (rótulo manual)
+  if (dirx !== 0 || diry !== 0) {
+    const c = 11 + fs * 0.35; // folga além do símbolo do vértice
+    const half = (Math.abs(dirx) * estW + Math.abs(diry) * estH) / 2;
+    ax = estW / 2 - dirx * (c + half);
+    ay = estH / 2 - diry * (c + half);
+  }
   return L.divIcon({
     className: 'vertice-nome',
-    html: `<div style="font-size:${fs}px;font-weight:700;color:#000;background:#fff;border:1.5px solid #333;border-radius:3px;padding:0 4px;white-space:nowrap;box-shadow:0 0 2px rgba(0,0,0,.5);width:max-content;display:inline-block">${(texto || '').replace(/</g, '&lt;')}</div>`,
-    iconSize: [1, 1], iconAnchor: [-(12 + fs * 0.3), alterna ? fs * 2 + 10 : -(10 + fs * 0.3)],
+    html: `<div style="font-size:${fs}px;font-weight:700;color:#000;background:#fff;border:1.5px solid #333;border-radius:3px;padding:0 4px;white-space:nowrap;box-shadow:0 0 2px rgba(0,0,0,.5);width:max-content;display:inline-block">${txt}</div>`,
+    iconSize: [1, 1], iconAnchor: [ax, ay],
   });
 }
 
@@ -285,6 +296,25 @@ export default function MapEditor(props: Props) {
     const la = validos.reduce((s, v) => s + v.lat, 0) / validos.length;
     const lo = validos.reduce((s, v) => s + v.lon, 0) / validos.length;
     return [la, lo];
+  }, [validos]);
+  // direção PRA FORA do polígono em cada vértice (frame de tela: x=lon, y=-lat), pra o rótulo
+  // ficar do lado de fora da linha. Bissetriz do ângulo interno invertida, com recuo pro centróide.
+  const dirsRotulo = useMemo<[number, number][]>(() => {
+    const n = validos.length;
+    if (n < 3) return validos.map(() => [1, 0]);
+    const cx = validos.reduce((s, v) => s + v.lon, 0) / n;
+    const cy = validos.reduce((s, v) => s + (-v.lat), 0) / n;
+    return validos.map((v, i) => {
+      const cur = { x: v.lon, y: -v.lat };
+      const p = validos[(i - 1 + n) % n], q = validos[(i + 1) % n];
+      const n1x = p.lon - cur.x, n1y = -p.lat - cur.y, l1 = Math.hypot(n1x, n1y) || 1;
+      const n2x = q.lon - cur.x, n2y = -q.lat - cur.y, l2 = Math.hypot(n2x, n2y) || 1;
+      let ox = -(n1x / l1 + n2x / l2), oy = -(n1y / l1 + n2y / l2);
+      let ol = Math.hypot(ox, oy);
+      const cdx = cur.x - cx, cdy = cur.y - cy;
+      if (ol < 0.15 || (ox * cdx + oy * cdy) < 0) { ox = cdx; oy = cdy; ol = Math.hypot(ox, oy) || 1; }
+      return [ox / ol, oy / ol];
+    });
   }, [validos]);
 
   return (
@@ -578,7 +608,12 @@ export default function MapEditor(props: Props) {
           key={`nome${v.id}`}
           position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}
           draggable={modo === 'navegar'}
-          icon={iconeNomeVertice(estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome), i % 2 === 1, Math.round(tamNomes * fzZoom))}
+          icon={iconeNomeVertice(
+            estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome),
+            Math.round(tamNomes * fzZoom),
+            v.posRotulo ? 0 : (dirsRotulo[i]?.[0] ?? 1),
+            v.posRotulo ? 0 : (dirsRotulo[i]?.[1] ?? 0),
+          )}
           eventHandlers={{
             click() { onSelecionar(v.id); },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },
