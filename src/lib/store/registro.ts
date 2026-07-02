@@ -124,6 +124,18 @@ export async function zerarBancoPontos(): Promise<number> {
   return todos.length;
 }
 
+/** Move UM ponto para a lixeira (exclusão individual, recuperável). */
+export async function excluirPonto(codigo: string): Promise<void> {
+  const d = await db();
+  const tx = d.transaction(['pontos', 'pontosLixeira'], 'readwrite');
+  const p = await tx.objectStore('pontos').get(codigo);
+  if (p) {
+    await tx.objectStore('pontosLixeira').put({ ...p, excluidoEm: Date.now() });
+    await tx.objectStore('pontos').delete(codigo);
+  }
+  await tx.done;
+}
+
 /** Lista os pontos que estão na lixeira (mais recentes primeiro). */
 export async function listarLixeiraPontos(): Promise<(PontoRegistro & { excluidoEm: number })[]> {
   const d = await db();

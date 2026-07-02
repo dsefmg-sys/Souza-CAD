@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Database, Copy, Check, Trash2, Undo2, AlertTriangle } from 'lucide-react';
 import {
-  listarTodosPontos, listarLixeiraPontos, zerarBancoPontos, resgatarPonto, resgatarTodosPontos,
+  listarTodosPontos, listarLixeiraPontos, zerarBancoPontos, resgatarPonto, resgatarTodosPontos, excluirPonto,
 } from '@/lib/store/registro';
 import type { PontoRegistro } from '@/lib/topo/types';
 import { numBR } from '@/lib/topo/geometry';
@@ -61,6 +61,7 @@ export default function PontosBancoModal({ open, onOpenChange }: Props) {
     setAba('lixeira');
   }
   async function resgatar(codigo: string) { await resgatarPonto(codigo); await recarregar(); }
+  async function excluir(codigo: string) { await excluirPonto(codigo); await recarregar(); }
   async function resgatarTodos() {
     if (!lixeira.length) return;
     if (!window.confirm(`Resgatar todos os ${lixeira.length} ponto(s) da lixeira de volta pro banco ativo?`)) return;
@@ -115,7 +116,7 @@ export default function PontosBancoModal({ open, onOpenChange }: Props) {
                   <th className="px-2 py-1 text-center">Fuso</th>
                   <th className="px-2 py-1 text-left">Imóvel</th>
                   <th className="px-2 py-1 text-right">Data</th>
-                  {aba === 'lixeira' && <th className="px-2 py-1 text-center">Resgatar</th>}
+                  {aba === 'lixeira' ? <th className="px-2 py-1 text-center">Resgatar</th> : <th className="px-2 py-1 text-center">Excluir</th>}
                 </tr>
               </thead>
               <tbody>
@@ -128,9 +129,13 @@ export default function PontosBancoModal({ open, onOpenChange }: Props) {
                     <td className="px-2 py-1 text-center">{p.zonaUtm}{p.hemisferio}</td>
                     <td className="px-2 py-1 truncate">{p.imovelId ?? '—'}</td>
                     <td className="px-2 py-1 text-right">{dataBR(p.criadoEm)}</td>
-                    {aba === 'lixeira' && (
+                    {aba === 'lixeira' ? (
                       <td className="px-2 py-1 text-center">
                         <button className="rounded p-1 text-primary hover:bg-muted" title="Resgatar este ponto" aria-label={`Resgatar ${p.codigo}`} onClick={() => resgatar(p.codigo)}><Undo2 className="size-4" /></button>
+                      </td>
+                    ) : (
+                      <td className="px-2 py-1 text-center">
+                        <button className="rounded p-1 text-destructive hover:bg-destructive hover:text-white" title="Excluir este vértice (vai para a lixeira, recuperável)" aria-label={`Excluir ${p.codigo}`} onClick={() => excluir(p.codigo)}><Trash2 className="size-4" /></button>
                       </td>
                     )}
                   </tr>
