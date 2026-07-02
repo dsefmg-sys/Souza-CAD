@@ -13,6 +13,8 @@ export interface PreferenciasApp {
   mostrarDicasEducativas: boolean;
   /** Quando falso, um problema "grave" da conferência de exportação vira só aviso (pode prosseguir). Padrão: true (trava de verdade). */
   bloquearExportacaoIncompleta: boolean;
+  /** Nível de experiência do agrimensor: muda a linguagem da ajuda/temas (iniciante = didática, experiente = objetiva). Padrão: iniciante. */
+  nivelExperiencia: 'iniciante' | 'experiente';
 }
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {
@@ -21,6 +23,7 @@ export const PREFERENCIAS_PADRAO: PreferenciasApp = {
   exigirCns: false,
   mostrarDicasEducativas: true,
   bloquearExportacaoIncompleta: true,
+  nivelExperiencia: 'iniciante',
 };
 
 const KEY = 'metrica.preferencias';
