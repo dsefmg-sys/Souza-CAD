@@ -177,9 +177,9 @@ export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, 
                       <div className="truncate font-medium">{a.nome}</div>
                       <div className="text-[10px] text-muted-foreground">{a.rotulo ? `${a.rotulo} · ` : ''}{tamanhoBR(a.tamanho)}</div>
                     </div>
-                    <button className="rounded p-1 hover:bg-muted" title="Visualizar" onClick={() => ver(a)}><Eye className="size-4" /></button>
-                    <button className="rounded p-1 hover:bg-muted" title="Baixar" onClick={() => baixar(a)}><Download className="size-4" /></button>
-                    <button className="rounded p-1 text-destructive hover:bg-destructive hover:text-white" title="Remover" onClick={() => apagar(a)}><Trash2 className="size-4" /></button>
+                    <button className="rounded p-1 hover:bg-muted" title="Visualizar" aria-label={`Visualizar ${a.nome}`} onClick={() => ver(a)}><Eye className="size-4" /></button>
+                    <button className="rounded p-1 hover:bg-muted" title="Baixar" aria-label={`Baixar ${a.nome}`} onClick={() => baixar(a)}><Download className="size-4" /></button>
+                    <button className="rounded p-1 text-destructive hover:bg-destructive hover:text-white" title="Remover" aria-label={`Remover ${a.nome}`} onClick={() => apagar(a)}><Trash2 className="size-4" /></button>
                   </div>
                 ))}
               </div>

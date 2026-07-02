@@ -1,4 +1,5 @@
 import type { Gleba, Projeto, Vertex, Confrontante } from './types';
+import { temAutoIntersecao } from './conferencia';
 
 let _seq = 0;
 export function novoGlebaId(): string {
@@ -315,6 +316,16 @@ export function unirGlebas(
       }
     }
   });
+
+  // defesa: se as glebas se sobrepõem (erro de digitalização), a costura acima produz um anel
+  // que se cruza — melhor recusar aqui, com mensagem clara, do que deixar o erro estourar depois
+  // na conferência do memorial/planilha sem dizer de onde veio.
+  if (finalVertices.length < 3) {
+    throw new Error('A união não formou um polígono válido — confira se as glebas realmente são adjacentes.');
+  }
+  if (temAutoIntersecao(finalVertices)) {
+    throw new Error('A união geraria um polígono que se cruza sobre si mesmo — as glebas provavelmente estão sobrepostas. Corrija os vértices da divisa antes de unir.');
+  }
 
   return {
     vertices: finalVertices,

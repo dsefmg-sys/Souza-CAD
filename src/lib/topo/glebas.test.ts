@@ -108,4 +108,18 @@ describe('glebas', () => {
     expect(coords).toContain('10,10');
     expect(coords).toContain('0,10');
   });
+
+  it('unirGlebas recusa glebas sem divisa comum', () => {
+    const va = [
+      { id: 'va0', nome: 'A0', leste: 0, norte: 0, lat: 0, lon: 0 },
+      { id: 'va1', nome: 'A1', leste: 10, norte: 0, lat: 0, lon: 0 },
+      { id: 'va2', nome: 'A2', leste: 10, norte: 10, lat: 0, lon: 0 },
+    ] as unknown as Vertex[];
+    const vb = [
+      { id: 'vb0', nome: 'B0', leste: 100, norte: 100, lat: 0, lon: 0 },
+      { id: 'vb1', nome: 'B1', leste: 110, norte: 100, lat: 0, lon: 0 },
+      { id: 'vb2', nome: 'B2', leste: 110, norte: 110, lat: 0, lon: 0 },
+    ] as unknown as Vertex[];
+    expect(() => unirGlebas(va, vb, {}, {})).toThrow(/divisa comum/);
+  });
 });

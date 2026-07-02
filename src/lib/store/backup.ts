@@ -7,11 +7,37 @@ import { listarArquivos } from './arquivosProjeto';
  * anexados de cada um (espelhos, PDFs, fotos…), organizados em `arquivos/<projetoId>/`. Serve
  * como backup manual — reduz o risco de perda com muitos trabalhos em andamento.
  */
+// chaves de configuração do app no localStorage que entram no backup (JSON simples; o modelo
+// SIGEF binário e o banco de pontos por credenciado ficam de fora de propósito — o modelo é
+// re-baixável e o banco de pontos tem numeração que não deve ser restaurada por cima de outra)
+const CHAVES_CONFIG = [
+  'metrica.tecnico',
+  'metrica.escritorio',
+  'metrica.plantaPadrao',
+  'metrica.importTxt',
+  'metrica.importVerticesVizinho',
+  'metrica.preferencias',
+];
+
+/** Junta as configurações do app (técnico, escritório, planta padrão, preferências…) num JSON. */
+function coletarConfiguracoes(): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (typeof window === 'undefined') return out;
+  for (const chave of CHAVES_CONFIG) {
+    try {
+      const bruto = localStorage.getItem(chave);
+      if (bruto != null) out[chave] = JSON.parse(bruto);
+    } catch { /* valor corrompido — não derruba o backup por causa de uma chave */ }
+  }
+  return out;
+}
+
 export async function gerarBackupZip(): Promise<Blob> {
   const projetos = await listarProjetos();
   const zip = new JSZip();
 
   zip.file('projetos.json', JSON.stringify(projetos, null, 2));
+  zip.file('configuracoes.json', JSON.stringify(coletarConfiguracoes(), null, 2));
 
   for (const p of projetos) {
     const arquivos = await listarArquivos(p.id).catch(() => []);
