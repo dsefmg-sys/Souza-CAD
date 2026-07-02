@@ -584,7 +584,9 @@ export default function EditorPage() {
       setPlantaZoom(1);
       setPlantaPan({ x: 0, y: 0 });
     }
-    setPlantaConfig((c) => ({ ...c, offsetX: 0, offsetY: 0 }));
+    // NÃO zera offsetX/offsetY aqui: isso é a posição da folha em relação ao polígono, ajustada
+    // à mão pelo usuário e salva no projeto. Antes, o auto-ajuste ao abrir a Planta apagava essa
+    // posição toda vez. O enquadramento acima é só da tela (zoom/pan da viewport), não da folha.
   }
   // reposiciona a folha A3 em relação ao polígono (que é georreferenciado e fixo)
   function moverFolhaPlanta(dx: number, dy: number) {

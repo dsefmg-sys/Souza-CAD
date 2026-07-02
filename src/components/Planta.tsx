@@ -1373,20 +1373,15 @@ function CarimboA3(props: {
     if (imovel.distanciaEsquinaM != null && imovel.esquinaRua) {
       campos.push(['AMARRAÇÃO:', `A ${numBR(imovel.distanciaEsquinaM)}m da ${imovel.esquinaRua}`]);
     }
-    campos.push(
-      ['ÁREA TOTAL:', `${numBR(ef.areaHa * 10000)} m²`],
-      ['PERÍMETRO (m):', `${numBR(ef.perimetro)} m`],
-    );
+    // perímetro na frente da área, os dois na mesma linha (compacta o quadro)
+    campos.push(['PERÍM. / ÁREA:', `${numBR(ef.perimetro)} m · ${numBR(ef.areaHa * 10000)} m²`]);
   } else {
-    campos.push(
-      ['ÁREA TOTAL (ha):', `${numBR(ef.areaHa, 4)} ha`],
-      ['PERÍMETRO (m):', `${numBR(ef.perimetro)} m`],
-    );
+    campos.push(['PERÍM. / ÁREA:', `${numBR(ef.perimetro)} m · ${numBR(ef.areaHa, 4)} ha`]);
   }
   campos.push(
     ['DATA:', dataExtenso || '—'],
-    ['FOLHA:', folha],
-    ['ESCALA:', `1 / ${escalaDenom}`],
+    // folha e escala juntas numa linha só (ambas curtas)
+    ['FOLHA / ESCALA:', `${folha} · 1/${escalaDenom}`],
   );
 
   const gap = Math.min(27, Math.floor(196 / (campos.length - 1))); // hBox (264px) menos cabeçalho e a folga superior de 48px
