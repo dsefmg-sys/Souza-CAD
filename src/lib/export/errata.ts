@@ -88,12 +88,13 @@ export async function gerarErrataDocx(input: ErrataInput): Promise<Blob> {
 
   // Data e assinatura
   const data = input.dataExtenso ? `${comarca} - MG, ${input.dataExtenso}.` : `${comarca} - MG, ____ de __________ de ______.`;
-  c.push(new Paragraph({ spacing: { before: 240, after: 320 }, children: [t(data)] }));
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: nomeUpper, bold: true, size: 22 })] }));
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [t('Técnico em Agrimensura')] }));
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [t(`CFT ${tecnico.cft || '—'}`)] }));
+  c.push(new Paragraph({ spacing: { before: 240, after: 320 }, keepNext: true, keepLines: true, children: [t(data)] }));
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, keepLines: true, children: [new TextRun({ text: nomeUpper, bold: true, size: 22 })] }));
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, keepLines: true, children: [t('Técnico em Agrimensura')] }));
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepLines: true, children: [t(`CFT ${tecnico.cft || '—'}`)] }));
 
   const doc = new Document({
+    styles: { default: { document: { run: { font: 'Arial' } } } },
     sections: [{ properties: { page: { margin: { top: 1133, bottom: 1133, left: 1133, right: 1133 } } }, children: c }],
   });
   return Packer.toBlob(doc);

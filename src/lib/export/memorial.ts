@@ -205,12 +205,14 @@ function p(text: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[
   });
 }
 
+// keepNext/keepLines em todo parágrafo do bloco: impede o Word de cortar a página entre o traço
+// de assinatura e o nome, ou entre uma linha de dado e a próxima (bloco sempre atômico).
 function assinatura(linhas: string[], boldPrimeira = false) {
   const filhos = [
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360 }, children: [new TextRun({ text: '________________________________________', size: 22 })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360 }, keepNext: true, keepLines: true, children: [new TextRun({ text: '________________________________________', size: 22 })] }),
   ];
   linhas.forEach((l, i) =>
-    filhos.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, children: [new TextRun({ text: l, bold: boldPrimeira && i === 0, size: 22 })] }))
+    filhos.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, keepNext: true, keepLines: true, children: [new TextRun({ text: l, bold: boldPrimeira && i === 0, size: 22 })] }))
   );
   return filhos;
 }
@@ -312,7 +314,7 @@ export async function gerarMemorialDocx(input: MemorialInput): Promise<Blob> {
     tecnico.nome.toUpperCase(),
     tecnico.formacao,
     `CFT: ${tecnico.cft}`,
-    `TRT nº ${tecnico.art}`,
+    `TRT nº ${imovel.numeroTrt || tecnico.art}`,
     `Credenciamento INCRA: ${tecnico.credenciamentoIncra}`,
   ], true).forEach((c) => children.push(c));
 
@@ -362,6 +364,7 @@ export async function gerarMemorialDocx(input: MemorialInput): Promise<Blob> {
   });
 
   const doc = new Document({
+    styles: { default: { document: { run: { font: 'Arial' } } } },
     sections: [{
       properties: { page: { margin: { top: 1133, bottom: 1133, left: 1133, right: 1133 } } },
       children,

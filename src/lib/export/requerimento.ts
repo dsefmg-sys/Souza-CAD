@@ -182,9 +182,10 @@ export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<B
   c.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 200 }, children: [new TextRun({ text: data, size: 22 })] }));
 
   c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 60 }, children: [new TextRun({ text: 'ASSINATURAS', bold: true, size: 22 })] }));
+  // keepNext/keepLines: impede o Word de cortar a página entre o traço de assinatura e o nome.
   const assina = (linhas: string[]) => {
-    c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300 }, children: [new TextRun({ text: '____________________________________', size: 22 })] }));
-    linhas.forEach((l) => c.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: l, size: 22 })] })));
+    c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300 }, keepNext: true, keepLines: true, children: [new TextRun({ text: '____________________________________', size: 22 })] }));
+    linhas.forEach((l) => c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, keepLines: true, children: [new TextRun({ text: l, size: 22 })] })));
   };
   assina([requerente.nome, rot.assinaReq]);
   assina([transmitente.nome, rot.assinaTrans]);
@@ -192,6 +193,7 @@ export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<B
   assina([tecnico.nome, `CFT ${tecnico.cft} - INCRA: ${tecnico.credenciamentoIncra}`]);
 
   const doc = new Document({
+    styles: { default: { document: { run: { font: 'Arial' } } } },
     sections: [{ properties: { page: { margin: { top: 1133, bottom: 1133, left: 1133, right: 1133 } } }, children: c }],
   });
   return Packer.toBlob(doc);
