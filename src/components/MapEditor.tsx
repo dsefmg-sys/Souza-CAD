@@ -93,10 +93,11 @@ function iconeVertice(v: Vertex, selecionado: boolean) {
 // rótulo do vértice: caixinha branca SÓLIDA com texto preto, nítida sobre o mapa; tamanho ajustável
 function iconeNomeVertice(texto: string, alterna: boolean, tam: number) {
   const fs = tam && tam > 0 ? tam : 11;
+  // afastamento proporcional à fonte: o rótulo NUNCA cobre o ponto do vértice (atrapalha a edição)
   return L.divIcon({
     className: 'vertice-nome',
     html: `<div style="font-size:${fs}px;font-weight:700;color:#000;background:#fff;border:1.5px solid #333;border-radius:3px;padding:0 4px;white-space:nowrap;box-shadow:0 0 2px rgba(0,0,0,.5);width:max-content;display:inline-block">${(texto || '').replace(/</g, '&lt;')}</div>`,
-    iconSize: [1, 1], iconAnchor: [-8, alterna ? tam * 2 : -2],
+    iconSize: [1, 1], iconAnchor: [-(12 + fs * 0.3), alterna ? fs * 2 + 10 : -(10 + fs * 0.3)],
   });
 }
 
@@ -360,7 +361,9 @@ export default function MapEditor(props: Props) {
         const mpp = (156543.03392 * Math.cos((cLat * Math.PI) / 180)) / 2 ** zoom;
         const off = (10 * mpp) / 111320;
         return validos.map((v, i) => {
-          const cor = corDivisa(v.representacao);
+          // linha ideal PINTADA de propósito sai branca no mapa (lado nunca pintado fica sem linha
+          // de apoio — todo lado nasce "linha ideal" por padrão e não deve poluir o desenho)
+          const cor = v.representacao === 'linha-ideal' ? '#ffffff' : corDivisa(v.representacao);
           if (!cor) return null;
           const prox = validos[(i + 1) % validos.length];
           if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;

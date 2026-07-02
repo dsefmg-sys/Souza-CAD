@@ -38,8 +38,8 @@ export const REPRES_LABEL: Record<string, string> = {
  * propósito: é a ausência de divisa física, desenha apenas o traço padrão.
  */
 export const CORES_DIVISA: Record<string, string> = {
-  'linha-ideal': '',
-  cerca: '#16a34a',    // verde
+  'linha-ideal': '',   // sem cor na PLANTA (papel branco); no MAPA sai branca quando pintada de propósito
+  cerca: '#9ca3af',    // cinza médio
   estrada: '#ef4444',  // vermelho/salmão
   corrego: '#06b6d4',  // ciano
   rio: '#2563eb',      // azul

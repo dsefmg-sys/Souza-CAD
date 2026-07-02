@@ -37,6 +37,7 @@ interface Props {
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
+  onRemoverSituacao?: () => void;      // clicar na imagem da situação mostra um X; o X chama isto
   onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
   onEditarConfrontante?: (id: string) => void;                     // duplo clique no rótulo: editar nome/matrícula
   onTamRotuloConf?: (id: string, delta: number) => void;           // ajusta o tamanho da fonte do rótulo
@@ -213,7 +214,7 @@ export default function Planta({
   zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
-  onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice,
+  onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
@@ -229,6 +230,7 @@ export default function Planta({
 
   // Estados locais para seleção e edição em linha (in-place)
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+  const [situacaoSel, setSituacaoSel] = useState(false); // clicou na imagem da situação → mostra o X de excluir
   const [localEditandoId, setLocalEditandoId] = useState<string | null>(null);
   const editandoId = editandoTextoId !== undefined ? editandoTextoId : localEditandoId;
   const setEditandoId = (id: string | null) => {
@@ -1003,6 +1005,8 @@ export default function Planta({
         verConv={verConv} verNortes={verNortes} escala={escTxt} situacaoUrl={situacaoUrl} verSituacao={verSituacao}
         coordEditavel={editavel} coordGetOv={getOverride}
         onCoordItemDown={(id, e) => { e.stopPropagation(); tedComum.onDragStart(id, e); }}
+        situacaoSel={situacaoSel} onSituacaoClick={() => setSituacaoSel((s) => !s)}
+        onRemoverSituacao={() => { setSituacaoSel(false); onRemoverSituacao?.(); }}
       />
 
       {/* ---------- CARIMBO (coluna direita - reformulada) ---------- */}
@@ -1045,8 +1049,9 @@ function FaixaInferior(props: {
   zona: number; hemisferio: 'N' | 'S'; vref: Vertex; conv: number; decl: number; represUsadas: string[]; fatorK: number;
   verConv: boolean; verNortes: boolean; escala: number; situacaoUrl?: string; verSituacao: boolean;
   coordEditavel?: boolean; coordGetOv?: (id: string) => TextoOverride; onCoordItemDown?: (id: string, e: ReactPointerEvent) => void;
+  situacaoSel?: boolean; onSituacaoClick?: () => void; onRemoverSituacao?: () => void;
 }) {
-  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, coordEditavel, coordGetOv, onCoordItemDown } = props;
+  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -1073,7 +1078,17 @@ function FaixaInferior(props: {
         <rect x={x1} y={y0 + 18} width={w1} height={6} fill="#475569" />
         <text x={x1 + w1 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">SITUAÇÃO</text>
         {situacaoUrl && verSituacao ? (
-          <image href={situacaoUrl} x={x1 + 6} y={y0 + 30} width={w1 - 12} height={hBox - 36} preserveAspectRatio="xMidYMid slice" />
+          <g>
+            <image href={situacaoUrl} x={x1 + 6} y={y0 + 30} width={w1 - 12} height={hBox - 36} preserveAspectRatio="xMidYMid slice"
+              style={coordEditavel ? { cursor: 'pointer' } : undefined}
+              onClick={coordEditavel && onSituacaoClick ? (e) => { e.stopPropagation(); onSituacaoClick(); } : undefined} />
+            {coordEditavel && situacaoSel && (
+              <g style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); if (window.confirm('Remover a planta de situação?')) onRemoverSituacao?.(); }}>
+                <circle cx={x1 + w1 - 14} cy={y0 + 38} r={8} fill="#fee2e2" stroke="#dc2626" strokeWidth={1} />
+                <text x={x1 + w1 - 14} y={y0 + 41.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#dc2626" style={{ userSelect: 'none' }}>×</text>
+              </g>
+            )}
+          </g>
         ) : (
           <g>
             <rect x={x1 + 6} y={y0 + 30} width={w1 - 12} height={hBox - 36} fill="#f8fafc" stroke="#e2e8f0" strokeWidth={0.6} />

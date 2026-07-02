@@ -2043,7 +2043,6 @@ export default function EditorPage() {
         <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button></Etapa>
         <Etapa st={etapas.memorial}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEM</Button></Etapa>
         <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button></Etapa>
-        <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o arquivo KML (.kml)" onClick={() => exportarKML(vertices, imovel)}><Download /> KML</Button>
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
@@ -2116,7 +2115,6 @@ export default function EditorPage() {
                   <>
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
                       <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                      <Button size="sm" variant="ghost" title="Focalizar/enquadrar o desenho atual" onClick={centralizar}><Target /> <span className="truncate text-xs font-semibold">FOCALIZAR</span></Button>
                       <Button size="sm" variant="ghost" title="Abrir a prévia da planta (F1)" onClick={() => setVista('planta')}><Eye /> <span className="truncate text-xs font-semibold">PLANTA</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
                       <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER</span><span className="ml-auto text-[9px] font-bold text-amber-400">F2</span></Button>
                     </div>
@@ -2189,6 +2187,11 @@ export default function EditorPage() {
                         <Button size="sm" variant="ghost" className="size-7 p-0" title="Baixar o desenho em DXF" onClick={exportarDxf}><Download className="size-4" /></Button>
                         <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Enviar/importar um DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-4" /></Button>
                       </div>
+                      {/* KML: baixar (Google Earth/GPS) — mesmo padrão do DXF */}
+                      <div className={`flex items-center gap-0.5 rounded-md border px-1.5 ${COR_IMPORT}`}>
+                        <span className="text-[10px] font-bold mr-1 shrink-0">ARQUIVO KML</span>
+                        <Button size="sm" variant="ghost" className="size-7 p-0" title="Baixar o KML (Google Earth / GPS)" onClick={() => exportarKML(vertices, imovel)}><Download className="size-4" /></Button>
+                      </div>
                     </div>
                   </>
                 )}
@@ -2225,7 +2228,8 @@ export default function EditorPage() {
               </aside>
               {vista === 'mapa' && (
                 <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
-                  className="no-print w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar a barra" />
+                  onDoubleClick={() => setToolW(176)}
+                  className="no-print w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar a barra · duplo clique = largura ideal (rótulos visíveis)" />
               )}
             </>
           );
@@ -2242,7 +2246,7 @@ export default function EditorPage() {
               <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Vértices</div><div className="text-base font-bold">{vertices.length}</div></div>
             </div>
             <div className="w-px bg-border" />
-            <button type="button" className="act border bg-background hover:bg-muted" title="Focalizar/enquadrar o desenho" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())}><Target className="size-5" /></button>
+            <button type="button" className="act flex-col border bg-background hover:bg-muted" title="Focalizar/enquadrar o desenho" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())}><Target className="size-4" /><span className="text-[8px] font-bold leading-none">FOCO</span></button>
             <button type="button" className="act border bg-background hover:bg-muted" title="Informações e gestão financeira do projeto (valor cobrado, gastos, recebimentos, recibo e contrato)" onClick={() => setGestaoAberta(true)}><Info className="size-5" /></button>
             <button type="button" className={`act ${infoJaVista(projetoId) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`} title="Detalhes do projeto, arquivos anexados e pendências (o que ainda falta pra exportar)" onClick={() => setInfoAberto(true)}><FileText className="size-5" /></button>
             <button type="button" className="act border bg-background hover:bg-muted" title="Banco de pontos do credenciado (consultar códigos já usados)" onClick={() => setPontosAberto(true)}><Database className="size-5" /></button>
@@ -2252,9 +2256,6 @@ export default function EditorPage() {
               const titulo = !situacaoUrl ? 'Capturar a planta de situação (recorte de satélite) — PENDENTE' : stale ? 'Situação DESATUALIZADA — clique para refazer' : 'Situação pronta — clique para refazer';
               return <button type="button" onClick={gerarSituacaoPlanta} title={titulo} className={`act ${cor}`}><Camera className="size-5" /></button>;
             })()}
-            {situacaoUrl && (
-              <button type="button" onClick={() => { if (window.confirm('Remover a planta de situação?')) { setSituacaoUrl(undefined); setPlantaConfig((c) => ({ ...c, situacaoDataUrl: undefined })); } }} title="Remover a situação" className="act border bg-background text-destructive hover:bg-destructive hover:text-white"><X className="size-5" /></button>
-            )}
             {vista === 'planta' && (
               <>
                 <button type="button" onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} title={folhaTravada ? 'Folha FIXA — clique para liberar e arrastá-la (já ativa a ferramenta Mover)' : 'Folha LIVRE (cuidado) — clique para fixar'}
@@ -2378,6 +2379,7 @@ export default function EditorPage() {
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
                       onExcluirObjeto={(id) => setObjetos((os) => os.filter((o) => o.id !== id))}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
+                      onRemoverSituacao={() => { setSituacaoUrl(undefined); setPlantaConfig((c) => ({ ...c, situacaoDataUrl: undefined })); }}
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
