@@ -57,7 +57,7 @@ import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
-import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
+import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS, azimute } from '@/lib/topo/geometry';
 import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef, carregarImportVerticesVizinho, tutorialJaVisto, marcarTutorialVisto } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
@@ -2071,8 +2071,9 @@ export default function EditorPage() {
               {vista === 'mapa' && modo === 'divisa' && (
                 <>
                   <span className="text-muted-foreground">Pintando divisa:</span>
+                  <span className="inline-block h-0 w-5 shrink-0 border-t-[3px]" style={{ borderColor: corDivisa(tipoDivisaPincel) || '#0f172a' }} title="Cor deste tipo de divisa na planta e no mapa" />
                   <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
-                    {REPRESENTACOES.map((r) => <option key={r} value={r}>{REPRES_LABEL[r] || r}</option>)}
+                    {REPRESENTACOES.map((r) => <option key={r} value={r} style={{ color: corDivisa(r) || undefined }}>{'━ '}{REPRES_LABEL[r] || r}</option>)}
                   </select>
                 </>
               )}

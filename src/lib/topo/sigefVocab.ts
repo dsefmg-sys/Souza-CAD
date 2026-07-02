@@ -33,13 +33,13 @@ export const REPRES_LABEL: Record<string, string> = {
 };
 
 /**
- * Cor de apoio que acompanha a divisa na planta (linha colorida externa à linha do perímetro),
- * só um reforço visual. Tipos sem cor (linha ideal, cerca) usam string vazia — desenham apenas
- * a linha/símbolo preto padrão.
+ * Cor de apoio que acompanha a divisa na planta e no mapa (linha colorida EXTERNA à linha do
+ * perímetro, pra não se sobrepor à cor do confrontante). Só a linha ideal fica sem cor de
+ * propósito: é a ausência de divisa física, desenha apenas o traço padrão.
  */
 export const CORES_DIVISA: Record<string, string> = {
   'linha-ideal': '',
-  cerca: '',
+  cerca: '#16a34a',    // verde
   estrada: '#ef4444',  // vermelho/salmão
   corrego: '#06b6d4',  // ciano
   rio: '#2563eb',      // azul

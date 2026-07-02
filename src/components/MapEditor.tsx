@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Recta
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho, Confrontante } from '@/lib/topo/types';
 import { distanciaCota } from '@/lib/topo/objetos';
-import { corDivisa } from '@/lib/topo/sigefVocab';
+import { corDivisa, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { numBR } from '@/lib/topo/geometry';
 
@@ -348,15 +348,36 @@ export default function MapEditor(props: Props) {
         <Polyline positions={anel} pathOptions={{ color: '#facc15', weight: 2 }} />
       ) : null}
 
-      {/* cor de apoio das divisas (sobre cada lado, conforme a representação do vértice) */}
-      {validos.map((v, i) => {
-        const cor = corDivisa(v.representacao);
-        if (!cor || validos.length < 2) return null;
-        const a: [number, number] = [v.lat, v.lon];
-        const prox = validos[(i + 1) % validos.length];
-        if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
-        return <Polyline key={`div${v.id}`} positions={[a, [prox.lat, prox.lon]]} pathOptions={{ color: cor, weight: 6, opacity: 0.65 }} />;
-      })}
+      {/* cor de apoio das divisas — deslocada pra FORA do polígono, deixando o traçado livre
+          pra cor do confrontante (que fica sobre a linha) não se sobreporem */}
+      {validos.length >= 2 && (() => {
+        const cLat = validos.reduce((s, p) => s + p.lat, 0) / validos.length;
+        const cLon = validos.reduce((s, p) => s + p.lon, 0) / validos.length;
+        // offset geográfico proporcional ao tamanho do desenho (~0,8% da maior dimensão)
+        const maxDim = Math.max(
+          ...validos.map((p) => Math.abs(p.lat - cLat)),
+          ...validos.map((p) => Math.abs(p.lon - cLon)),
+        ) || 0.0005;
+        const off = maxDim * 0.016;
+        return validos.map((v, i) => {
+          const cor = corDivisa(v.representacao);
+          if (!cor) return null;
+          const prox = validos[(i + 1) % validos.length];
+          if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
+          // normal do segmento apontando pra fora (pro lado oposto ao centróide)
+          let nx = -(prox.lat - v.lat), ny = prox.lon - v.lon;
+          const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
+          const mLat = (v.lat + prox.lat) / 2, mLon = (v.lon + prox.lon) / 2;
+          if ((mLon - cLon) * nx + (mLat - cLat) * ny < 0) { nx = -nx; ny = -ny; }
+          const a: [number, number] = [v.lat + ny * off, v.lon + nx * off];
+          const b: [number, number] = [prox.lat + ny * off, prox.lon + nx * off];
+          return (
+            <Polyline key={`div${v.id}`} positions={[a, b]} pathOptions={{ color: cor, weight: 5, opacity: 0.8 }}>
+              <Tooltip sticky direction="top" opacity={0.9}><span style={{ color: cor }}>Divisa: {REPRES_LABEL[v.representacao || ''] || v.representacao}</span></Tooltip>
+            </Polyline>
+          );
+        });
+      })()}
 
       {/* Roteamento visual de confrontantes aplicados sobre os segmentos */}
       {confrontantePorLado && confrontantes && validos.map((v, i) => {
