@@ -57,6 +57,10 @@ export function conferirProntoParaExportar(
     problemas.push('O CPF/CNPJ do proprietário parece inválido — confira.');
   }
 
+  if (imovel.conjugeProprietario?.trim() && !imovel.cpfConjugeProprietario?.trim()) {
+    problemas.push('O cônjuge do proprietário está preenchido, mas falta o CPF dele(a).');
+  }
+
   for (const c of confrontantes) {
     if (!c.nome?.trim()) { problemas.push('Existe um confrontante sem nome preenchido.'); continue; }
     if (c.cpf?.trim() && !cpfOuCnpjValido(c.cpf)) problemas.push(`O CPF/CNPJ de "${c.nome}" parece inválido — confira.`);

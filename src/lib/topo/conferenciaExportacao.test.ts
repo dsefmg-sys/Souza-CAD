@@ -67,6 +67,12 @@ describe('conferirProntoParaExportar', () => {
     expect(r.problemas.some((p) => p.includes('CPF/CNPJ do proprietário'))).toBe(true);
   });
 
+  it('avisa (sem travar) quando o cônjuge do proprietário está preenchido sem CPF', () => {
+    const r = conferirProntoParaExportar(imovel({ conjugeProprietario: 'Maria', cpfConjugeProprietario: '' }), tresVertices(), [], tecnico);
+    expect(r.problemas.some((p) => p.includes('cônjuge do proprietário'))).toBe(true);
+    expect(r.graves).toEqual([]);
+  });
+
   it('reprova vértices com código SIGEF repetido', () => {
     const vs = [vertice(), vertice({ id: 'v2', codigoSigef: 'COIN-M-0001' }), vertice({ id: 'v3', codigoSigef: 'COIN-M-0003' })];
     const r = conferirProntoParaExportar(imovel(), vs, [], tecnico);
