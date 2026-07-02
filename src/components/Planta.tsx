@@ -998,8 +998,8 @@ export default function Planta({
         imovel={imovel} res={res} ef={ef} tecnico={tecnico} zona={zona} hemisferio={hemisferio}
         vref={vref} conv={conv} decl={decl} represUsadas={represUsadas} fatorK={fatorK}
         verConv={verConv} verNortes={verNortes} escala={escTxt} situacaoUrl={situacaoUrl} verSituacao={verSituacao}
-        coordOv={getOverride('planta.coordBox')} coordEditavel={editavel}
-        onCoordDown={(e) => { e.stopPropagation(); tedComum.onDragStart('planta.coordBox', e); }}
+        coordEditavel={editavel} coordGetOv={getOverride}
+        onCoordItemDown={(id, e) => { e.stopPropagation(); tedComum.onDragStart(id, e); }}
       />
 
       {/* ---------- CARIMBO (coluna direita - reformulada) ---------- */}
@@ -1041,9 +1041,9 @@ function FaixaInferior(props: {
   imovel: ImovelData; res: ResultadoCalculo; ef: ReturnType<typeof valoresEfetivos>; tecnico: TecnicoData;
   zona: number; hemisferio: 'N' | 'S'; vref: Vertex; conv: number; decl: number; represUsadas: string[]; fatorK: number;
   verConv: boolean; verNortes: boolean; escala: number; situacaoUrl?: string; verSituacao: boolean;
-  coordOv?: TextoOverride; coordEditavel?: boolean; onCoordDown?: (e: ReactPointerEvent) => void;
+  coordEditavel?: boolean; coordGetOv?: (id: string) => TextoOverride; onCoordItemDown?: (id: string, e: ReactPointerEvent) => void;
 }) {
-  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, coordOv, coordEditavel, onCoordDown } = props;
+  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, coordEditavel, coordGetOv, onCoordItemDown } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -1117,49 +1117,66 @@ function FaixaInferior(props: {
         </g>
       )}
 
-      {/* --- BOX 3: INFORMAÇÕES DE COORDENADAS (arrastável quando em edição) --- */}
-      <g transform={`translate(${coordOv?.dx ?? 0}, ${coordOv?.dy ?? 0})`}
-         style={coordEditavel ? { cursor: 'move' } : undefined}
-         onPointerDown={coordEditavel && onCoordDown ? onCoordDown : undefined}>
-        {coordEditavel && <rect x={x3} y={y0} width={w3} height={hBox} fill="transparent" />}
+      {/* --- BOX 3: INFORMAÇÕES DE COORDENADAS (quadro fixo; os BLOCOS internos é que se arrastam) --- */}
+      <g>
         <rect x={x3} y={y0} width={w3} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
         <rect x={x3} y={y0} width={w3} height={24} rx={6} ry={6} fill="#475569" />
         <rect x={x3} y={y0 + 18} width={w3} height={6} fill="#475569" />
         <text x={x3 + w3 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">INFORMAÇÕES DE COORDENADAS</text>
 
-        {/* Lado Esquerdo do Box 3 (Projeção e Diagrama) */}
-        <g fill="#0f172a">
-          <text x={x3 + 12} y={y0 + 40} fontSize={fs(8.5)} fontWeight="bold">Projeção Universal Transversa</text>
-          <text x={x3 + 12} y={y0 + 55} fontSize={fs(8.5)} fontWeight="bold">de Mercator (UTM)</text>
-          <text x={x3 + 12} y={y0 + 72} fontSize={fs(8.5)}>SGR (Ref.): <tspan fontWeight="bold">SIRGAS2000</tspan></text>
-          <text x={x3 + 12} y={y0 + 88} fontSize={fs(8.5)}>Fuso <tspan fontWeight="bold">{zona}{hemisferio}</tspan> / MC <tspan fontWeight="bold">{Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</tspan></text>
-        </g>
+        {(() => {
+          // cada bloco interno vira um grupo arrastável com seu próprio deslocamento salvo
+          const bloco = (id: string, children: React.ReactNode) => {
+            const ov = coordGetOv?.(id) || {};
+            return (
+              <g transform={`translate(${ov.dx ?? 0}, ${ov.dy ?? 0})`}
+                 style={coordEditavel ? { cursor: 'move' } : undefined}
+                 onPointerDown={coordEditavel && onCoordItemDown ? (e) => onCoordItemDown(id, e) : undefined}>
+                {children}
+              </g>
+            );
+          };
+          return (
+            <>
+              {/* Projeção (texto à esquerda) */}
+              {bloco('coord.projecao', (
+                <g fill="#0f172a">
+                  <text x={x3 + 12} y={y0 + 40} fontSize={fs(8.5)} fontWeight="bold">Projeção Universal Transversa</text>
+                  <text x={x3 + 12} y={y0 + 55} fontSize={fs(8.5)} fontWeight="bold">de Mercator (UTM)</text>
+                  <text x={x3 + 12} y={y0 + 72} fontSize={fs(8.5)}>SGR (Ref.): <tspan fontWeight="bold">SIRGAS2000</tspan></text>
+                  <text x={x3 + 12} y={y0 + 88} fontSize={fs(8.5)}>Fuso <tspan fontWeight="bold">{zona}{hemisferio}</tspan> / MC <tspan fontWeight="bold">{Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</tspan></text>
+                </g>
+              ))}
 
-        {/* Diagrama técnico de convergência (NV = norte verdadeiro, NQ = norte de quadrícula,
-            NM = norte magnético). Ângulos exagerados só para leitura; valores exatos na coluna ao lado. */}
-        {verNortes && (
-          <g>
-            <Nortes cx={x3 + 75} cy={y0 + 150} conv={conv} decl={decl} fs={fs} />
-            <text x={x3 + 132} y={y0 + 147} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Diagrama de</text>
-            <text x={x3 + 132} y={y0 + 159} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Convergência</text>
-          </g>
-        )}
+              {/* Diagrama técnico de convergência (NV/NQ/NM); valores exatos na coluna ao lado */}
+              {verNortes && bloco('coord.diagrama', (
+                <g>
+                  <Nortes cx={x3 + 75} cy={y0 + 150} conv={conv} decl={decl} fs={fs} />
+                  <text x={x3 + 132} y={y0 + 147} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Diagrama de</text>
+                  <text x={x3 + 132} y={y0 + 159} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Convergência</text>
+                </g>
+              ))}
 
-        {/* Lado Direito do Box 3 (Valores do Vértice de Referência) */}
-        <g transform="translate(260, 0)" fill="#0f172a">
-          <text x={x3 + 12} y={y0 + 40} fontSize={fs(9)} fontWeight="bold">Vértice de referência: {vref.codigoSigef || vref.nome}</text>
-          {[
-            ['Latitude:', lat],
-            ['Longitude:', lon],
-            ['Conv. meridiana (CM):', grausParaDMS(conv, { casas: 2, estilo: 'memorial' })],
-            ['Declinação magnética:', grausParaDMS(decl, { casas: 2, estilo: 'memorial' })],
-            ['Fator de escala (K):', fatorK.toFixed(9)],
-          ].map(([label, val], idx) => (
-            <text key={idx} x={x3 + 12} y={y0 + 60 + idx * 19} fontSize={fs(8.5)}>
-              <tspan fontWeight="bold" fill="#475569">{label} </tspan> {val}
-            </text>
-          ))}
-        </g>
+              {/* Valores do vértice de referência (coluna direita) */}
+              {bloco('coord.valores', (
+                <g transform="translate(260, 0)" fill="#0f172a">
+                  <text x={x3 + 12} y={y0 + 40} fontSize={fs(9)} fontWeight="bold">Vértice de referência: {vref.codigoSigef || vref.nome}</text>
+                  {[
+                    ['Latitude:', lat],
+                    ['Longitude:', lon],
+                    ['Conv. meridiana (CM):', grausParaDMS(conv, { casas: 2, estilo: 'memorial' })],
+                    ['Declinação magnética:', grausParaDMS(decl, { casas: 2, estilo: 'memorial' })],
+                    ['Fator de escala (K):', fatorK.toFixed(9)],
+                  ].map(([label, val], idx) => (
+                    <text key={idx} x={x3 + 12} y={y0 + 60 + idx * 19} fontSize={fs(8.5)}>
+                      <tspan fontWeight="bold" fill="#475569">{label} </tspan> {val}
+                    </text>
+                  ))}
+                </g>
+              ))}
+            </>
+          );
+        })()}
       </g>
     </g>
   );
