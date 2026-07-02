@@ -27,6 +27,19 @@ describe('sanitizarTexto', () => {
     expect(sanitizarTexto(null)).toBe('');
     expect(sanitizarTexto('')).toBe('');
   });
+
+  it('remove surrogate solto e nao-caractere (quebravam o XML do docx)', () => {
+    const surrogateAltoSolto = 'Fazenda\uD800 Boa';   // metade de par UTF-16 sem a outra
+    const surrogateBaixoSolto = 'Sitio\uDC00 Novo';
+    const naoCaractere = 'Lote￿ Um';
+    expect(sanitizarTexto(surrogateAltoSolto)).toBe('Fazenda Boa');
+    expect(sanitizarTexto(surrogateBaixoSolto)).toBe('Sitio Novo');
+    expect(sanitizarTexto(naoCaractere)).toBe('Lote Um');
+  });
+
+  it('preserva par de surrogate valido (emoji)', () => {
+    expect(sanitizarTexto('Fazenda 😀 Sol')).toBe('Fazenda 😀 Sol');
+  });
 });
 
 describe('escaparXml', () => {

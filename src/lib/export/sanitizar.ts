@@ -1,15 +1,33 @@
 /**
- * Remove caracteres de controle invisiveis (comuns quando se cola texto de Word/PDF/WhatsApp)
- * antes de colocar o texto num documento gerado. Mantem quebra de linha (\n) e tabulacao (\t),
- * que o docx/jsPDF tratam de forma previsivel; remove os demais controles ASCII, zero-width,
- * marcas de direcao de texto (bidi) e BOM - invisiveis que podem corromper o XML do documento.
+ * Deixa o texto SEGURO para ir num XML (docx/ods/kml). Além de tirar os invisíveis colados de
+ * Word/PDF/WhatsApp, remove TODO caractere que o XML 1.0 proíbe — surrogates soltos (metade de um
+ * par UTF-16 sem a outra), não-caracteres (U+FFFE/U+FFFF) e controles. Esses, mesmo escapados,
+ * corrompem o arquivo e fazem o Word acusar "problema no conteúdo" ao abrir. Mantém \n e \t.
  */
 export function sanitizarTexto(texto: string | undefined | null): string {
   if (!texto) return '';
-  return texto
+  // 1) percorre a string preservando pares de surrogate válidos (emojis etc.) e descartando os
+  //    soltos e os não-caracteres — que quebram o XML.
+  let limpo = '';
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff) {
+      const n = texto.charCodeAt(i + 1);
+      if (n >= 0xdc00 && n <= 0xdfff) { limpo += texto[i] + texto[i + 1]; i++; } // par válido
+      // surrogate alto solto → descarta
+    } else if (c >= 0xdc00 && c <= 0xdfff) {
+      // surrogate baixo solto → descarta
+    } else if (c === 0xfffe || c === 0xffff) {
+      // não-caractere → descarta
+    } else {
+      limpo += texto[i];
+    }
+  }
+  // 2) tira controles ASCII (menos \n e \t), zero-width, marcas bidi e BOM
+  return limpo
     // eslint-disable-next-line no-control-regex
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // controles ASCII (exceto \n e \t)
-    .replace(/[​-‏‪-‮⁠﻿]/g, '') // zero-width, bidi, BOM
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[​-‏‪-‮⁠﻿]/g, '')
     .trim();
 }
 
