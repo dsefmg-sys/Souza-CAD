@@ -386,10 +386,11 @@ export default function MapEditor(props: Props) {
       {validos.length >= 2 && (() => {
         const cLat = validos.reduce((s, p) => s + p.lat, 0) / validos.length;
         const cLon = validos.reduce((s, p) => s + p.lon, 0) / validos.length;
-        // offset ancorado em PIXELS (~10px fora do traçado em qualquer zoom): converte
-        // metros-por-pixel do nível de zoom atual em graus de latitude
-        const mpp = (156543.03392 * Math.cos((cLat * Math.PI) / 180)) / 2 ** zoom;
-        const off = (10 * mpp) / 111320;
+        // afastamento proporcional ao TAMANHO do polígono (não ao zoom): assim as barras ficam
+        // sempre coladas na divisa, seja qual for o enquadramento ao abrir o projeto.
+        const lats = validos.map((p) => p.lat), lons = validos.map((p) => p.lon);
+        const maxDim = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons)) || 0.0005;
+        const off = maxDim * 0.012;
         return validos.map((v, i) => {
           // linha ideal sai branca SÓ no modo de pintar divisa (todo lado nasce "linha ideal" por
           // padrão — fora do modo, mostrar branca em tudo poluiria o desenho)
@@ -407,7 +408,7 @@ export default function MapEditor(props: Props) {
           const a: [number, number] = [v.lat + ny * off, v.lon + nx * off];
           const b: [number, number] = [prox.lat + ny * off, prox.lon + nx * off];
           return (
-            <Polyline key={`div${v.id}-${v.representacao}-${zoom}`} positions={[a, b]} pathOptions={{ color: cor, weight: zoom >= 18 ? 7 : 5, opacity: 0.8 }}>
+            <Polyline key={`div${v.id}-${v.representacao}`} positions={[a, b]} pathOptions={{ color: cor, weight: zoom >= 18 ? 7 : 5, opacity: 0.8 }}>
               <Tooltip sticky direction="top" opacity={0.9}><span style={{ color: cor }}>Divisa: {REPRES_LABEL[v.representacao || ''] || v.representacao}</span></Tooltip>
             </Polyline>
           );
