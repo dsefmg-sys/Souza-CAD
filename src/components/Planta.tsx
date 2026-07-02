@@ -1384,7 +1384,22 @@ function CarimboA3(props: {
     ['FOLHA / ESCALA:', `${folha} · 1/${escalaDenom}`],
   );
 
-  const gap = Math.min(27, Math.floor(196 / (campos.length - 1))); // hBox (264px) menos cabeçalho e a folga superior de 48px
+  // título principal: quebra em até 2 linhas (calculado aqui pra o cabeçalho e os campos se alinharem)
+  const tituloTxt = (ed?.textos['carimbo.titulo']?.texto ?? titulo).toUpperCase();
+  const maxChTitulo = Math.max(12, Math.floor((wBox - 18) / (fs(10.5) * 0.6)));
+  const tituloLinhas = (() => {
+    if (tituloTxt.length <= maxChTitulo) return [tituloTxt];
+    const pal = tituloTxt.split(' ');
+    let l1 = '', l2 = '';
+    for (const p of pal) {
+      if (!l2 && (l1 ? `${l1} ${p}` : p).length <= maxChTitulo) l1 = l1 ? `${l1} ${p}` : p;
+      else l2 = l2 ? `${l2} ${p}` : p;
+    }
+    return l2 ? [l1, l2] : [l1];
+  })();
+  const hCabTitulo = tituloLinhas.length > 1 ? 40 : 24;
+  const campoStart = hCabTitulo + 20; // início dos campos, com folga do cabeçalho
+  const gap = Math.min(27, Math.floor((264 - campoStart - 10) / Math.max(1, campos.length - 1)));
 
   // Coordenadas verticais do carimbo. O antigo box de TÍTULO saiu: o título virou o CABEÇALHO da
   // seção de Dados (que já traz o nome do imóvel), liberando ~84px que foram redistribuídos para
@@ -1446,10 +1461,31 @@ function CarimboA3(props: {
       {/* ── BOX 3: DADOS DO IMÓVEL ────────────────────────────────────────── */}
       <g>
         <rect x={lx} y={Y_DADOS} width={wBox} height={264} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-        {/* título principal da planta: fonte maior pra destaque; a Folha virou campo da lista (antes da escala) */}
-        {Cab(Y_DADOS, titulo, 'carimbo.titulo', 10.5)}
+        {/* título principal da planta: fonte maior pra destaque; quebra em até 2 linhas quando é longo.
+            Duplo clique edita direto na planta (ou escolha um modelo no painel de Planta). */}
+        {(() => {
+          const idT = 'carimbo.titulo';
+          const editando = ed?.editandoId === idT;
+          const duas = tituloLinhas.length > 1;
+          return (
+            <g>
+              <rect x={lx} y={Y_DADOS} width={wBox} height={hCabTitulo} rx={6} ry={6} fill="#475569" />
+              <rect x={lx} y={Y_DADOS + hCabTitulo - 6} width={wBox} height={6} fill="#475569" />
+              {editando ? (
+                T(idT, tituloTxt, { x: cxc, y: Y_DADOS + 16, size: fs(10.5), bold: true, anchor: 'middle', fill: '#fff' })
+              ) : (
+                <g style={ed?.ativo ? { cursor: 'text' } : undefined}
+                   onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT); } : undefined}>
+                  {tituloLinhas.map((ln, k) => (
+                    <text key={k} x={cxc} y={Y_DADOS + (duas ? 16 + k * 15 : 16)} fontSize={fs(10.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
+                  ))}
+                </g>
+              )}
+            </g>
+          );
+        })()}
         {campos.map(([k, v], i) => {
-          const y = Y_DADOS + 48 + i * gap; // 48 de folga do cabeçalho (não colar no título)
+          const y = Y_DADOS + campoStart + i * gap;
           return (
             <g key={k}>
               <text x={lx + 12} y={y} fontSize={fs(9)} fontWeight="bold" fill="#1f2937">{k}</text>

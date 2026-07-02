@@ -63,6 +63,7 @@ import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlanta
 import { useAuth, sair } from '@/lib/firebase/auth';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
+import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
 import { gerarMemorialDocx } from '@/lib/export/memorial';
 import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
@@ -3162,6 +3163,10 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
 }) {
   const multiplasGlebas = numGlebas > 1;
   const set = (patch: Partial<PlantaConfig>) => onChange({ ...config, ...patch });
+  const [titulos, setTitulos] = useState<string[]>([]);
+  useEffect(() => { setTitulos(carregarTitulos()); }, []);
+  const tituloAtual = (config.titulo ?? '').trim();
+  const podeSalvarTitulo = tituloAtual.length > 0 && !titulos.includes(tituloAtual);
   type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao' | 'mostrarDivisaConf';
   const chk = (label: string, key: BoolKey) => (
     <label className="flex items-center gap-2 text-xs">
@@ -3173,7 +3178,22 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
     <div className="space-y-3">
       <Button size="sm" variant="outline" className="w-full" onClick={onVerPlanta}><Printer /> Ver / atualizar planta</Button>
       <p className="text-[10px] text-muted-foreground">Tudo aqui é opcional: em branco usa o padrão. O layout A3 e o carimbo continuam padronizados.</p>
-      <Campo label="Título" value={config.titulo ?? ''} onChange={(v) => set({ titulo: v })} placeholder="Levantamento Planimétrico Georreferenciado" />
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <Label>Título da planta</Label>
+          {podeSalvarTitulo && (
+            <button type="button" className="text-[10px] text-primary hover:underline" onClick={() => setTitulos(adicionarTitulo(tituloAtual))}>salvar na lista</button>
+          )}
+        </div>
+        <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+          value={titulos.includes(tituloAtual) ? tituloAtual : ''}
+          onChange={(e) => { if (e.target.value) set({ titulo: e.target.value }); }}>
+          <option value="">— escolher um modelo de título —</option>
+          {titulos.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <Input value={config.titulo ?? ''} onChange={(e) => set({ titulo: e.target.value })} placeholder="Levantamento Planimétrico Georreferenciado (ou escolha acima)" />
+        <p className="text-[10px] text-muted-foreground">Escolha um modelo pronto ou digite o seu. Também dá pra editar direto na planta (dois cliques no título).</p>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <Campo label="Folha" value={config.folha ?? ''} onChange={(v) => set({ folha: v })} placeholder="Única" />
         <div className="space-y-1">
