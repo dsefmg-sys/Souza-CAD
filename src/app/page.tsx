@@ -486,9 +486,9 @@ export default function EditorPage() {
       else if (k === 'F3') { e.preventDefault(); setSnapAtivo((s) => !s); }
       else if (k === 'F4') { e.preventDefault(); setMostrarRotulos((m) => !m); }
       else if (k === 'F5') { e.preventDefault(); setBloqueado((b) => !b); }
-      else if (k === 'F6') { e.preventDefault(); setModo('texto'); }
-      else if (k === 'F7') { e.preventDefault(); setModo('linha'); setDesenhoBuffer([]); }
-      else if (k === 'F8') { e.preventDefault(); setModo('polilinha'); setDesenhoBuffer([]); }
+      else if (k === 'F6') { e.preventDefault(); setModo('linha'); setDesenhoBuffer([]); }
+      else if (k === 'F7') { e.preventDefault(); setModo('polilinha'); setDesenhoBuffer([]); }
+      else if (k === 'F8') { e.preventDefault(); setModo('texto'); }
       else if (k === 'F9') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
       else if (k === 'F10') { e.preventDefault(); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
       else if (k === 'F11') { e.preventDefault(); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
@@ -1190,7 +1190,18 @@ export default function EditorPage() {
         return nb;
       });
     } else if (modo === 'polilinha') {
-      // polilinha = vários pontos; finaliza no botão
+      // polilinha = vários pontos; ao CLICAR PERTO DO 1º ponto, fecha e vira polígono (preenchido)
+      if (desenhoBuffer.length >= 3) {
+        const first = desenhoBuffer[0];
+        const lats = desenhoBuffer.map((q) => q.lat), lons = desenhoBuffer.map((q) => q.lon);
+        const ext = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons)) || 0.0005;
+        if (Math.hypot(p.lat - first.lat, p.lon - first.lon) < ext * 0.05) {
+          setObjetos((os) => [...os, novaPolilinha(desenhoBuffer, { preenchido: true })]);
+          setDesenhoBuffer([]);
+          aviso('Polilinha fechada — virou polígono.');
+          return;
+        }
+      }
       setDesenhoBuffer((buf) => [...buf, p]);
     }
   }
@@ -2213,9 +2224,9 @@ export default function EditorPage() {
                   <>
                     <div className="my-0.5 h-px w-full bg-border" />
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                      <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F6)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F6</span></Button>
-                      <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F7)"><PenTool /> {L('Linha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F7</span></Button>
-                      <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos e depois Finalizar (F8; botão direito cancela)"><PenTool /> {L('Polilinha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F8</span></Button>
+                      <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)"><PenTool /> {L('Linha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F6</span></Button>
+                      <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; ao fechar (clicar no 1º ponto) vira polígono (F7; botão direito cancela)"><PenTool /> {L('Polilinha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F7</span></Button>
+                      <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F8)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F8</span></Button>
                       <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F9)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
                       <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'ignorar' ? 'navegar' : 'ignorar')} title="Ignorar vértice (F10): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
                       <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'considerar' ? 'navegar' : 'considerar')} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo (F11)"><Plus /> {L('Considerar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
