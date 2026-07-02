@@ -84,3 +84,70 @@ describe('conferirProntoParaExportar', () => {
     expect(r.problemas.some((p) => p.includes('Maria'))).toBe(true);
   });
 });
+
+describe('conferirProntoParaExportar — severidade (graves travam de verdade, leves só avisam)', () => {
+  it('geometria incompleta (menos de 3 vértices) é GRAVE', () => {
+    const r = conferirProntoParaExportar(imovel(), [vertice()], [], tecnico);
+    expect(r.graves.some((p) => p.includes('3 vértices'))).toBe(true);
+  });
+
+  it('vértice sem código definitivo é GRAVE', () => {
+    const vs = [vertice(), vertice({ id: 'v2', codigoSigef: '' }), vertice({ id: 'v3' })];
+    const r = conferirProntoParaExportar(imovel(), vs, [], tecnico);
+    expect(r.graves.some((p) => p.includes('código definitivo'))).toBe(true);
+  });
+
+  it('código de vértice repetido é GRAVE (SIGEF rejeitaria)', () => {
+    const vs = [vertice(), vertice({ id: 'v2', codigoSigef: 'COIN-M-0001' }), vertice({ id: 'v3', codigoSigef: 'COIN-M-0003' })];
+    const r = conferirProntoParaExportar(imovel(), vs, [], tecnico);
+    expect(r.graves.some((p) => p.includes('código repetido'))).toBe(true);
+  });
+
+  it('campo de cadastro faltando (denominação/proprietário/município) NÃO é grave — só aviso', () => {
+    const r = conferirProntoParaExportar(imovel({ denominacao: '', proprietario: '', municipio: '' }), tresVertices(), [], tecnico);
+    expect(r.graves).toEqual([]);
+    expect(r.problemas.length).toBeGreaterThan(0);
+  });
+
+  it('CPF com cara de inválido NÃO é grave — só aviso', () => {
+    const r = conferirProntoParaExportar(imovel({ cpfProprietario: '111.111.111-11' }), tresVertices(), [], tecnico);
+    expect(r.graves).toEqual([]);
+  });
+
+  it('espólio sem inventariante é GRAVE (assinatura sairia em branco no memorial)', () => {
+    const confs: Confrontante[] = [{ id: 'c1', nome: 'Espólio de Zeca', cpf: '', matricula: '', cns: '', condicao: 'espolio' }];
+    const r = conferirProntoParaExportar(imovel(), tresVertices(), confs, tecnico);
+    expect(r.graves.some((p) => p.includes('inventariante'))).toBe(true);
+  });
+
+  it('espólio COM inventariante não acusa problema', () => {
+    const confs: Confrontante[] = [{ id: 'c1', nome: 'Espólio de Zeca', cpf: '', matricula: '', cns: '', condicao: 'espolio', inventarianteNome: 'Maria Inventariante' }];
+    const r = conferirProntoParaExportar(imovel(), tresVertices(), confs, tecnico);
+    expect(r.graves.some((p) => p.includes('inventariante'))).toBe(false);
+  });
+
+  it('trecho do perímetro sem confrontante atribuído é GRAVE (memorial narraria "confrontante não informado")', () => {
+    const confs: Confrontante[] = [{ id: 'c1', nome: 'Vizinho', cpf: '', matricula: '', cns: '' }];
+    const porLado = { 0: 'c1', 1: 'c1' }; // falta o lado 2
+    const r = conferirProntoParaExportar(imovel(), tresVertices(), confs, tecnico, porLado);
+    expect(r.graves.some((p) => p.includes('confrontante não informado'))).toBe(true);
+  });
+
+  it('todos os trechos com confrontante atribuído não acusa problema', () => {
+    const confs: Confrontante[] = [{ id: 'c1', nome: 'Vizinho', cpf: '', matricula: '', cns: '' }];
+    const porLado = { 0: 'c1', 1: 'c1', 2: 'c1' };
+    const r = conferirProntoParaExportar(imovel(), tresVertices(), confs, tecnico, porLado);
+    expect(r.graves).toEqual([]);
+  });
+
+  it('confrontante cadastrado mas não atribuído a nenhum trecho gera aviso (não grave)', () => {
+    const confs: Confrontante[] = [
+      { id: 'c1', nome: 'Vizinho Usado', cpf: '', matricula: '', cns: '' },
+      { id: 'c2', nome: 'Vizinho Esquecido', cpf: '', matricula: '', cns: '' },
+    ];
+    const porLado = { 0: 'c1', 1: 'c1', 2: 'c1' };
+    const r = conferirProntoParaExportar(imovel(), tresVertices(), confs, tecnico, porLado);
+    expect(r.graves).toEqual([]);
+    expect(r.problemas.some((p) => p.includes('Vizinho Esquecido') && p.includes('não foi atribuído'))).toBe(true);
+  });
+});

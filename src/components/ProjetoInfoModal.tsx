@@ -20,6 +20,7 @@ interface Props {
   perimetro: number;
   vertices: Vertex[];
   confrontantes: Confrontante[];
+  confrontantePorLado?: Record<number, string>;
   numGlebas: number;
 }
 
@@ -41,7 +42,7 @@ export function infoJaVista(projetoId: string | null): boolean {
   try { return localStorage.getItem(`metrica.infoVista:${projetoId}`) === '1'; } catch { return false; }
 }
 
-export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, imovel, tecnico, areaHa, perimetro, vertices, confrontantes, numGlebas }: Props) {
+export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, imovel, tecnico, areaHa, perimetro, vertices, confrontantes, confrontantePorLado, numGlebas }: Props) {
   const [arquivos, setArquivos] = useState<ArquivoProjeto[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [rotuloUpload, setRotuloUpload] = useState('');
@@ -97,7 +98,7 @@ export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, 
     ['Glebas', String(numGlebas)],
   ];
 
-  const conferencia = conferirProntoParaExportar(imovel, vertices, confrontantes, tecnico);
+  const conferencia = conferirProntoParaExportar(imovel, vertices, confrontantes, tecnico, confrontantePorLado);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
