@@ -145,15 +145,10 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
                   <Label className="text-xs font-semibold">Formação Profissional</Label>
                   <Input value={t.formacao} onChange={(e) => changeT('formacao', e.target.value)} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Registro CFT/CREA</Label>
-                    <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">ART/TRT Padrão</Label>
-                    <Input value={t.art} onChange={(e) => changeT('art', e.target.value)} />
-                  </div>
+                {/* o TRT é sempre por projeto (emitido no TrtModal, campo imovel.numeroTrt) — não existe "TRT padrão" */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Registro CFT/CREA</Label>
+                  <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Cidade da Assinatura (peças técnicas)</Label>
