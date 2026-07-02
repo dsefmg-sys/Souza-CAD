@@ -6,6 +6,7 @@ import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex, P
 import { grausParaDMS } from '../topo/coords';
 import { azimuteDMS, numBR, numBRmilhar, formatMatricula } from '../topo/geometry';
 import { valoresEfetivos } from '../topo/conferencia';
+import { sanitizarProfundo } from './sanitizar';
 
 function coordTexto(v: Vertex): string {
   const lon = grausParaDMS(v.lon, { estilo: 'memorial', casas: 3 });
@@ -279,7 +280,8 @@ export interface MemorialInput {
   transmitente?: PessoaQualificada;
 }
 
-export async function gerarMemorialDocx(input: MemorialInput): Promise<Blob> {
+export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob> {
+  const input = sanitizarProfundo(inputBruto);
   const { res, imovel, tecnico, confrontantes, confrontantePorLado, requerente, transmitente } = input;
   // Defesa final: nunca gerar memorial com lacuna de código de vértice.
   const semCodigo = res.vertices.filter((v) => !v.codigoSigef).length;

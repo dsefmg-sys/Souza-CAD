@@ -1,6 +1,7 @@
 import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 import type { ImovelData, TecnicoData } from '../topo/types';
 import { numBR } from '../topo/geometry';
+import { sanitizarProfundo } from './sanitizar';
 
 /** Uma correção da errata: onde, o que constava (onde se lê) e o que passa a constar (leia-se). */
 export interface CorrecaoErrata {
@@ -32,7 +33,8 @@ function secao(n: number, titulo: string) {
   return new Paragraph({ spacing: { before: 160, after: 60 }, children: [new TextRun({ text: `${n}. ${titulo}`, bold: true, size: 22 })] });
 }
 
-export async function gerarErrataDocx(input: ErrataInput): Promise<Blob> {
+export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
+  const input = sanitizarProfundo(inputBruto);
   const { imovel, tecnico, correcoes, areaHa } = input;
   const comarca = (input.comarca || imovel.municipio || '—').replace(/\s*-\s*MG$/i, '').trim();
   const nomeUpper = (tecnico.nome || '').toUpperCase();
