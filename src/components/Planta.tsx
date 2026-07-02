@@ -23,6 +23,7 @@ interface Props {
   dataExtenso?: string;
   situacaoUrl?: string;
   outrasGlebas?: { nome: string; pts: { leste: number; norte: number }[] }[];
+  resumoGlebas?: { nome: string; areaHa: number; perimetro: number }[]; // quadro de áreas
   objetos?: ObjetoDesenho[];
   config?: PlantaConfig;
   requerente?: PessoaQualificada;
@@ -211,7 +212,7 @@ function intervaloGrade(extent: number): number {
 
 export default function Planta({
   vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado,
-  zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], objetos = [], config = {},
+  zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], resumoGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
@@ -717,6 +718,47 @@ export default function Planta({
             stroke={cor} strokeWidth={config.larguraDivisasApoio ?? 3.2} strokeLinecap="round" opacity={0.9} />
         );
       })}
+
+      {/* ---------- QUADRO DE ÁREAS (resumo de todos os polígonos; arrastável) ---------- */}
+      {config.mostrarQuadroAreas && resumoGlebas.length > 0 && (() => {
+        const idQ = 'planta.quadroAreas';
+        const ovQ = getOverride(idQ);
+        const bx = DRAW.x0 + 24 + (ovQ.dx ?? 0);
+        const by = DRAW.y0 + 24 + (ovQ.dy ?? 0);
+        const fz = Math.max(7, fonteRot);
+        const lh = fz + 5;
+        const wq = 250;
+        const linhas = resumoGlebas;
+        const totalHa = linhas.reduce((s, g) => s + g.areaHa, 0);
+        const totalPer = linhas.reduce((s, g) => s + g.perimetro, 0);
+        const hq = (linhas.length + 3.4) * lh;
+        const colNome = bx + 8, colArea = bx + wq - 128, colPer = bx + wq - 8;
+        return (
+          <g style={editavel ? { cursor: 'move' } : undefined}
+             onPointerDown={editavel ? (e) => { e.stopPropagation(); tedComum.onDragStart(idQ, e); } : undefined}>
+            <rect x={bx} y={by} width={wq} height={hq} rx={4} fill="#ffffff" fillOpacity={0.95} stroke="#475569" strokeWidth={0.8} />
+            <rect x={bx} y={by} width={wq} height={lh + 2} rx={4} fill="#475569" />
+            <text x={bx + wq / 2} y={by + lh - 2} fontSize={fz} fontWeight="bold" fill="#fff" textAnchor="middle">QUADRO DE ÁREAS</text>
+            <text x={colNome} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569">POLÍGONO</text>
+            <text x={colArea} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">ÁREA (ha)</text>
+            <text x={colPer} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">PERÍM. (m)</text>
+            {linhas.map((g, i) => {
+              const y = by + lh * (3 + i);
+              return (
+                <g key={i}>
+                  <text x={colNome} y={y} fontSize={fz} fill="#0f172a">{g.nome.slice(0, 22)}</text>
+                  <text x={colArea} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{numBR(g.areaHa, 4)}</text>
+                  <text x={colPer} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{numBR(g.perimetro)}</text>
+                </g>
+              );
+            })}
+            <line x1={bx + 6} y1={by + lh * (3 + linhas.length) - lh + 4} x2={bx + wq - 6} y2={by + lh * (3 + linhas.length) - lh + 4} stroke="#cbd5e1" strokeWidth={0.6} />
+            <text x={colNome} y={by + lh * (3.2 + linhas.length)} fontSize={fz} fontWeight="bold" fill="#0f172a">TOTAL{linhas.length > 1 ? ` (${linhas.length})` : ''}</text>
+            <text x={colArea} y={by + lh * (3.2 + linhas.length)} fontSize={fz} fontWeight="bold" fill="#0f172a" textAnchor="end">{numBR(totalHa, 4)}</text>
+            <text x={colPer} y={by + lh * (3.2 + linhas.length)} fontSize={fz} fontWeight="bold" fill="#0f172a" textAnchor="end">{numBR(totalPer)}</text>
+          </g>
+        );
+      })()}
 
       {/* ---------- OBJETOS DE DESENHO ---------- */}
       {objetos.map((o) => {

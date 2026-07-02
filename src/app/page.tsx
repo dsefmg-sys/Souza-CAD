@@ -496,6 +496,18 @@ export default function EditorPage() {
 
   const res = useMemo(() => (vertices.length >= 3 ? calcular(vertices, confrontantePorLado) : null), [vertices, confrontantePorLado]);
 
+  // resumo de área/perímetro de TODAS as glebas do desenho (para o "Quadro de áreas" da planta).
+  // A gleba ativa usa os vértices em edição; as demais, os vértices salvos na própria gleba.
+  const resumoGlebas = useMemo(() => {
+    const lista = glebas.length ? glebas : [];
+    return lista.map((g, i) => {
+      const vs = g.id === glebaAtivaId ? vertices : g.vertices;
+      if (vs.length < 3) return { nome: g.denominacao || `Parcela ${i + 1}`, areaHa: 0, perimetro: 0 };
+      const r = calcular(vs, {});
+      return { nome: g.denominacao || `Parcela ${i + 1}`, areaHa: r.areaHa, perimetro: r.perimetro };
+    }).filter((g) => g.areaHa > 0);
+  }, [glebas, glebaAtivaId, vertices]);
+
   // assinatura do conteúdo do projeto, para acender o disquete laranja quando há mudança não salva
   const projSig = useMemo(
     () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas.map((g) => g.id) }),
@@ -2400,6 +2412,7 @@ export default function EditorPage() {
                       glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
                       requerente={requerente} transmitente={transmitente}
                       outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))}
+                      resumoGlebas={resumoGlebas}
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
                       onExcluirObjeto={(id) => setObjetos((os) => os.filter((o) => o.id !== id))}
@@ -3244,6 +3257,11 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
         {chk('Escala gráfica', 'mostrarEscalaGrafica')}
         {chk('Planta de situação', 'mostrarSituacao')}
         {chk('Tiques de troca de confrontante (marcos M)', 'mostrarDivisaConf')}
+        {/* quadro de áreas: padrão DESLIGADO (por isso não usa o chk, que assume ligado) */}
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={config.mostrarQuadroAreas === true} onChange={(e) => set({ mostrarQuadroAreas: e.target.checked })} />
+          Quadro de áreas (resumo de todos os polígonos)
+        </label>
       </div>
       <div className="space-y-1 rounded border p-2">
         <div className="text-[10px] uppercase text-muted-foreground">Nome dos vértices</div>

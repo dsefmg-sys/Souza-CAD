@@ -320,6 +320,7 @@ export interface PlantaConfig {
   textos?: Record<string, { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }>;
   // imagem da planta de situação (data URL) — salva junto do projeto pra não precisar recapturar
   situacaoDataUrl?: string;
+  mostrarQuadroAreas?: boolean; // quadro-resumo de área/perímetro de todos os polígonos do desenho
   
   // Customização de cores e espessuras das linhas e polígonos na planta
   corPoligono?: string;        // cor do perímetro principal, padrão "#7c2d12"
