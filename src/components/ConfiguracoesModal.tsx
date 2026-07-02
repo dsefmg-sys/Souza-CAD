@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, AlertTriangle, Trash2 } from 'lucide-react';
+import { zerarBancoPontos } from '@/lib/store/registro';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -222,6 +223,22 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
                 </div>
                 <div className="p-2.5 rounded bg-muted/40 text-[11px] leading-tight text-muted-foreground border">
                   <strong>Dica de agrimensor:</strong> A numeração dos contadores é a semente inicial. À medida que novos pontos são gerados, o banco de dados interno avança automaticamente para evitar duplicidades de vértices.
+                </div>
+
+                {/* Zona de perigo: zerar o banco de pontos (recuperável na tela do Banco de pontos) */}
+                <div className="space-y-1.5 rounded border border-red-600/30 bg-red-600/5 p-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-red-700 dark:text-red-400"><AlertTriangle className="size-4" /> Zona de perigo</div>
+                  <p className="text-[11px] leading-tight text-muted-foreground">
+                    Zerar o banco de pontos do credenciado manda todos os pontos ativos para a <strong>lixeira</strong> (recuperáveis um a um ou todos de uma vez na tela do Banco de pontos). Use ao trocar de credenciado ou liberar códigos de uma certificação cancelada.
+                  </p>
+                  <Button size="sm" variant="outline" className="h-8 gap-1 border-red-600/40 text-red-700 hover:bg-red-600 hover:text-white dark:text-red-400"
+                    onClick={async () => {
+                      if (!window.confirm('Zerar o banco de pontos?\n\nTodos os pontos ativos vão para a lixeira (recuperáveis depois). Continuar?')) return;
+                      const n = await zerarBancoPontos();
+                      flash(n > 0 ? `${n} ponto(s) movidos para a lixeira.` : 'O banco já estava vazio.');
+                    }}>
+                    <Trash2 className="size-4" /> Zerar banco de pontos
+                  </Button>
                 </div>
               </div>
             </div>

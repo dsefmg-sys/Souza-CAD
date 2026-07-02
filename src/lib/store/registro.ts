@@ -103,6 +103,69 @@ export async function listarTodosPontos(): Promise<PontoRegistro[]> {
   return arr.sort((a, b) => b.criadoEm - a.criadoEm);
 }
 
+// ————————————————————————————————————————————————————————————————————————
+// Gestão do banco de pontos (danger zone): zerar move os pontos para a LIXEIRA em vez de apagar
+// de vez — dado importante (numeração do credenciado). De lá dá pra resgatar um a um ou todos.
+// Opera no banco LOCAL deste navegador (mesma origem do gerenciador do banco de pontos).
+// ————————————————————————————————————————————————————————————————————————
+
+/** Move TODOS os pontos registrados para a lixeira. Devolve quantos foram para lá. */
+export async function zerarBancoPontos(): Promise<number> {
+  const d = await db();
+  const todos = await d.getAll('pontos');
+  if (!todos.length) return 0;
+  const tx = d.transaction(['pontos', 'pontosLixeira'], 'readwrite');
+  const agora = Date.now();
+  for (const p of todos) {
+    await tx.objectStore('pontosLixeira').put({ ...p, excluidoEm: agora });
+    await tx.objectStore('pontos').delete(p.codigo);
+  }
+  await tx.done;
+  return todos.length;
+}
+
+/** Lista os pontos que estão na lixeira (mais recentes primeiro). */
+export async function listarLixeiraPontos(): Promise<(PontoRegistro & { excluidoEm: number })[]> {
+  const d = await db();
+  const arr = await d.getAll('pontosLixeira');
+  return arr.sort((a, b) => b.excluidoEm - a.excluidoEm);
+}
+
+export async function totalLixeiraPontos(): Promise<number> {
+  const d = await db();
+  return d.count('pontosLixeira');
+}
+
+/** Resgata um ponto da lixeira de volta pro banco ativo. */
+export async function resgatarPonto(codigo: string): Promise<void> {
+  const d = await db();
+  const tx = d.transaction(['pontos', 'pontosLixeira'], 'readwrite');
+  const p = await tx.objectStore('pontosLixeira').get(codigo);
+  if (p) {
+    const { excluidoEm: _descartar, ...limpo } = p;
+    void _descartar;
+    await tx.objectStore('pontos').put(limpo);
+    await tx.objectStore('pontosLixeira').delete(codigo);
+  }
+  await tx.done;
+}
+
+/** Resgata TODOS os pontos da lixeira. Devolve quantos voltaram. */
+export async function resgatarTodosPontos(): Promise<number> {
+  const d = await db();
+  const todos = await d.getAll('pontosLixeira');
+  if (!todos.length) return 0;
+  const tx = d.transaction(['pontos', 'pontosLixeira'], 'readwrite');
+  for (const p of todos) {
+    const { excluidoEm: _descartar, ...limpo } = p;
+    void _descartar;
+    await tx.objectStore('pontos').put(limpo);
+    await tx.objectStore('pontosLixeira').delete(p.codigo);
+  }
+  await tx.done;
+  return todos.length;
+}
+
 /** Ajuste manual dos contadores (Configurações), respeitando o que já foi usado. */
 export async function definirContadores(c: Contadores): Promise<void> {
   const uid = auth()?.currentUser?.uid ?? null;

@@ -24,6 +24,9 @@ export interface MetricaDB extends DBSchema {
   imoveis: { key: string; value: ImovelCad };
   cartorios: { key: string; value: CartorioCad };
   arquivos: { key: string; value: ArquivoProjeto; indexes: { 'por-projeto': string } };
+  // lixeira do banco de pontos: pontos "zerados" pelo credenciado ficam aqui, recuperáveis
+  // (dado importante — nunca some de vez sem passar por aqui).
+  pontosLixeira: { key: string; value: PontoRegistro & { excluidoEm: number }; indexes: { 'por-imovel': string } };
 }
 
 let _db: Promise<IDBPDatabase<MetricaDB>> | null = null;
@@ -33,7 +36,7 @@ export function db(): Promise<IDBPDatabase<MetricaDB>> {
     return Promise.reject(new Error('IndexedDB indisponível neste ambiente'));
   }
   if (!_db) {
-    _db = openDB<MetricaDB>('metrica', 4, {
+    _db = openDB<MetricaDB>('metrica', 5, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           d.createObjectStore('projetos', { keyPath: 'id' });
@@ -53,6 +56,10 @@ export function db(): Promise<IDBPDatabase<MetricaDB>> {
         if (oldVersion < 4) {
           const a = d.createObjectStore('arquivos', { keyPath: 'id' });
           a.createIndex('por-projeto', 'projetoId');
+        }
+        if (oldVersion < 5) {
+          const lix = d.createObjectStore('pontosLixeira', { keyPath: 'codigo' });
+          lix.createIndex('por-imovel', 'imovelId');
         }
       },
     });
