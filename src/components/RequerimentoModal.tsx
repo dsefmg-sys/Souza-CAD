@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
-import { FileSignature } from 'lucide-react';
+import { FileSignature, UserPlus, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +62,7 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
   }
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold">{titulo}</h3>
+      {titulo && <h3 className="text-sm font-semibold">{titulo}</h3>}
       <div className="grid grid-cols-2 gap-2">
         {CAMPOS.map((c) => (
           <div key={c.k} className={`space-y-1 ${c.wide ? 'col-span-2' : ''}`}>
@@ -85,7 +85,13 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   const [req, setReq] = useState<PessoaQualificada>(requerente ?? PESSOA_VAZIA);
   const [trans, setTrans] = useState<PessoaQualificada>(transmitente ?? transVazio(imovel));
   const [tipoAto, setTipoAto] = useState<TipoAtoRequerimento>('venda');
+  const [partesAdicionais, setPartesAdicionais] = useState<PessoaQualificada[]>([]);
   const [msg, setMsg] = useState('');
+  const permiteVariasPartes = tipoAto === 'doacao' || tipoAto === 'unificacao';
+
+  function addParte() { setPartesAdicionais((ps) => [...ps, { ...PESSOA_VAZIA }]); }
+  function setParte(i: number, p: PessoaQualificada) { setPartesAdicionais((ps) => ps.map((x, k) => (k === i ? p : x))); }
+  function rmParte(i: number) { setPartesAdicionais((ps) => ps.filter((_, k) => k !== i)); }
 
   const rotulos = {
     venda: { req: 'Requerente (adquirente / comprador)', trans: 'Proprietário registral (transmitente / vendedor)' },
@@ -98,6 +104,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     if (open) {
       setReq(requerente ?? PESSOA_VAZIA);
       setTrans(transmitente ?? transVazio(imovel));
+      setPartesAdicionais([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -107,7 +114,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     if (!req.nome?.trim() || !trans.nome?.trim()) { setMsg('Preencha o nome do requerente e do transmitente.'); return; }
     if (!req.cpf?.trim() || !trans.cpf?.trim()) { setMsg('Preencha o CPF/CNPJ do requerente e do transmitente.'); return; }
     onChangePessoas(req, trans);
-    const blob = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje(), tipoAto });
+    const blob = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje(), tipoAto, partesAdicionais });
     saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);
     onBaixar?.();
     setMsg('Requerimento gerado.');
@@ -152,6 +159,24 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
 
         <Bloco titulo={rotulos.req} pessoa={req} onChange={setReq} sugProp={sugProp} />
         <Bloco titulo={rotulos.trans} pessoa={trans} onChange={setTrans} sugProp={sugProp} />
+
+        {permiteVariasPartes && (
+          <div className="space-y-3 rounded border border-dashed p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">Partes adicionais (mais de um donatário/coproprietário)</span>
+              <Button type="button" size="sm" variant="outline" onClick={addParte}><UserPlus className="size-3.5" /> Adicionar parte</Button>
+            </div>
+            {partesAdicionais.map((p, i) => (
+              <div key={i} className="space-y-1 rounded border p-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Parte adicional {i + 1}</span>
+                  <Button type="button" size="sm" variant="ghost" className="h-6 px-1" onClick={() => rmParte(i)}><Trash2 className="size-3.5 text-destructive" /></Button>
+                </div>
+                <Bloco titulo="" pessoa={p} onChange={(np) => setParte(i, np)} sugProp={sugProp} />
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="flex items-center gap-3 border-t pt-3">
           <Button onClick={gerar}><FileSignature /> Gerar requerimento (.docx)</Button>

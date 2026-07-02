@@ -15,6 +15,8 @@ export interface RequerimentoInput {
   dataExtenso?: string;   // ex.: "17 de março de 2026"
   /** Tipo do ato que motiva a retificação — muda os rótulos das partes e o texto de contextualização. Padrão: 'venda'. */
   tipoAto?: TipoAtoRequerimento;
+  /** Partes adicionais (mais de um donatário/coproprietário) além de requerente/transmitente. */
+  partesAdicionais?: PessoaQualificada[];
 }
 
 const ROTULOS_ATO: Record<TipoAtoRequerimento, { requerente: string; transmitente: string; assinaReq: string; assinaTrans: string }> = {
@@ -137,6 +139,12 @@ export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<B
   c.push(titulo(rot.transmitente));
   blocoPessoa(transmitente).forEach((x) => c.push(x));
 
+  const partesAdicionais = (input.partesAdicionais ?? []).filter((p) => p.nome?.trim());
+  partesAdicionais.forEach((p, i) => {
+    c.push(titulo(`PARTE ADICIONAL ${i + 1}`));
+    blocoPessoa(p).forEach((x) => c.push(x));
+  });
+
   c.push(titulo('DO REQUERIMENTO'));
   c.push(par(txtRequerimento(tipo)));
 
@@ -180,6 +188,7 @@ export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<B
   };
   assina([requerente.nome, rot.assinaReq]);
   assina([transmitente.nome, rot.assinaTrans]);
+  partesAdicionais.forEach((p) => assina([p.nome, '(Parte adicional)']));
   assina([tecnico.nome, `CFT ${tecnico.cft} - INCRA: ${tecnico.credenciamentoIncra}`]);
 
   const doc = new Document({
