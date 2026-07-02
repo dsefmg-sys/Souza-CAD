@@ -23,17 +23,19 @@ import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte } from '@/lib
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import ImportVerticesVizinhoConfigModal from '@/components/ImportVerticesVizinhoConfigModal';
 
+// Pessoal = só do usuário (assinatura técnica). Global = da empresa (todos usam o mesmo).
+type AbaConfig = 'pessoal' | 'escritorio' | 'numeracao' | 'modelos';
+
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onConfigChange?: () => void; // Notifica a página principal caso mude algum contador ou fuso base
+  abaInicial?: AbaConfig;      // aba aberta ao abrir (ex.: 'pessoal' pelo botão RT)
 }
 
-// Pessoal = só do usuário (assinatura técnica). Global = da empresa (todos usam o mesmo).
-type AbaConfig = 'pessoal' | 'escritorio' | 'numeracao' | 'modelos';
-
-export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange }: Props) {
+export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange, abaInicial }: Props) {
   const [aba, setAba] = useState<AbaConfig>('pessoal');
+  useEffect(() => { if (open && abaInicial) setAba(abaInicial); }, [open, abaInicial]);
   const [t, setT] = useState<TecnicoData>(TECNICO_PADRAO);
   const [esc, setEsc] = useState<EscritorioData>(ESCRITORIO_PADRAO);
   const [msg, setMsg] = useState('');

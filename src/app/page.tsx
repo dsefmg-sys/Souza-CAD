@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette, Crown,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette, BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -186,7 +186,7 @@ export default function EditorPage() {
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
-  const [toolW, setToolW] = useState(176);
+  const [toolW, setToolW] = useState(200); // largura confortável pra não espremer os rótulos dos botões
   const toolDrag = useRef(false);
   const [centralizarSig, setCentralizarSig] = useState(0); // incrementa para enquadrar o desenho
   // largura do painel da direita (redimensionável, salva por usuário)
@@ -244,6 +244,7 @@ export default function EditorPage() {
   const [errataAberto, setErrataAberto] = useState(false);
   const [consultarAberto, setConsultarAberto] = useState(false);
   const [configAberta, setConfigAberta] = useState(false);
+  const [configAba, setConfigAba] = useState<'pessoal' | 'escritorio' | 'numeracao' | 'modelos' | undefined>(undefined);
   const [gestaoAberta, setGestaoAberta] = useState(false);
   const [tutorialAberto, setTutorialAberto] = useState(false);
   // primeira vez neste navegador: abre o tutorial sozinho (independe de login/rascunho).
@@ -2264,8 +2265,9 @@ export default function EditorPage() {
                       ['Estúdio', 'Estúdio: edição de imagem (mini-Canva, isolado do projeto)', <ImagePlus key="i" className="size-4" />, () => setEstudioAberto(true)],
                       ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))],
                       ['Ajuda', 'Tutorial: como usar o Métrica, passo a passo', <HelpCircle key="i" className="size-4" />, () => setTutorialAberto(true)],
-                      ['Config.', 'Configurações', <Settings key="i" className="size-4" />, () => setConfigAberta(true)],
-                      ...(souMaster() ? [['Titular', 'Painel do titular: contas ativas, empresas, RTs e últimos projetos', <Crown key="i" className="size-4 text-amber-500" />, () => setMasterAberto(true)]] : []),
+                      ['RT', 'Dados do responsável técnico: nome, CFT, código do credenciado e contadores', <UserCheck key="i" className="size-4" />, () => { setConfigAba('pessoal'); setConfigAberta(true); }],
+                      ['Config.', 'Configurações gerais', <Settings key="i" className="size-4" />, () => { setConfigAba(undefined); setConfigAberta(true); }],
+                      ...(souMaster() ? [['Uso', 'Painel do titular: contas e uso do sistema (só você vê)', <BarChart3 key="i" className="size-4" />, () => setMasterAberto(true)]] : []),
                       ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => sair()]] : []),
                     ] as [string, string, React.ReactNode, () => void][]).map(([rotuloBtn, dica, icone, acao]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline" className="h-11 flex-col gap-0.5 p-0" title={dica} onClick={acao}>
@@ -2278,7 +2280,7 @@ export default function EditorPage() {
               </aside>
               {vista === 'mapa' && (
                 <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
-                  onDoubleClick={() => setToolW(176)}
+                  onDoubleClick={() => setToolW(200)}
                   className="no-print w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar a barra · duplo clique = largura ideal (rótulos visíveis)" />
               )}
             </>
@@ -2835,6 +2837,7 @@ export default function EditorPage() {
       <ConfiguracoesModal
         open={configAberta}
         onOpenChange={setConfigAberta}
+        abaInicial={configAba}
         onConfigChange={() => { setTecnico(carregarTecnico()); }}
       />
       {tecnico && escritorio && (
