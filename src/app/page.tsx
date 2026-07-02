@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette, Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +65,10 @@ import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId,
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
+import { termosAceitosLocal, termosAceitosNuvem, sincronizarPerfil, registrarProjetoSalvo } from '@/lib/store/perfilUso';
+import { souMaster } from '@/lib/store/suporte';
+import TermosModal from '@/components/TermosModal';
+import MasterPainelModal from '@/components/MasterPainelModal';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
 import { gerarMemorialDocx } from '@/lib/export/memorial';
 import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
@@ -175,6 +179,8 @@ export default function EditorPage() {
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
   const [corPickerAberto, setCorPickerAberto] = useState(false); // painel de ajuste rápido das cores de divisa
   const [corBump, setCorBump] = useState(0); // força re-render após trocar uma cor (cores vivem em módulo)
+  const [termosOk, setTermosOk] = useState(true); // aceite dos termos de uso (bloqueia até aceitar)
+  const [masterAberto, setMasterAberto] = useState(false); // painel do titular (só master)
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
@@ -273,6 +279,12 @@ export default function EditorPage() {
     setTema(t);
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
     iniciarCoresDivisa(); // aplica as cores de divisa personalizadas do projetista
+    // termos de uso: bloqueia até aceitar (checa local, depois nuvem)
+    if (termosAceitosLocal()) setTermosOk(true);
+    else { setTermosOk(false); termosAceitosNuvem().then((ok) => { if (ok) setTermosOk(true); }).catch(() => {}); }
+    // registra/atualiza o perfil de uso (o titular acompanha empresa, RT, projetos)
+    const esc = carregarEscritorio(); const tec = carregarTecnico();
+    sincronizarPerfil({ ultimoAcessoEm: Date.now(), empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {});
     try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 320) setToolW(w); } catch { /* ignore */ }
     try { const n = Number(localStorage.getItem('metrica.tamNomes')); if (n >= 7 && n <= 22) setTamNomes(n); } catch { /* ignore */ }
     try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680) setAsideW(w); } catch { /* ignore */ }
@@ -1745,6 +1757,7 @@ export default function EditorPage() {
         setSalvoOk(true);
         ultimoSalvoSig.current = projSig; acabouDeSalvar.current = true; setSalvarLaranja(false);
         aviso(registrou ? 'Projeto salvo e pontos registrados.' : 'Projeto salvo, mas falhou registrar os pontos — tente salvar de novo.');
+        registrarProjetoSalvo(p.nome).catch(() => {}); // atualiza o perfil de uso (painel do titular)
       } catch (e) {
         setProjetoId(id);
         if (e instanceof NuvemSemPermissao) {
@@ -2253,6 +2266,7 @@ export default function EditorPage() {
                       ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))],
                       ['Ajuda', 'Tutorial: como usar o Métrica, passo a passo', <HelpCircle key="i" className="size-4" />, () => setTutorialAberto(true)],
                       ['Config.', 'Configurações', <Settings key="i" className="size-4" />, () => setConfigAberta(true)],
+                      ...(souMaster() ? [['Titular', 'Painel do titular: contas ativas, empresas, RTs e últimos projetos', <Crown key="i" className="size-4 text-amber-500" />, () => setMasterAberto(true)]] : []),
                       ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => sair()]] : []),
                     ] as [string, string, React.ReactNode, () => void][]).map(([rotuloBtn, dica, icone, acao]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline" className="h-11 flex-col gap-0.5 p-0" title={dica} onClick={acao}>
@@ -2838,6 +2852,8 @@ export default function EditorPage() {
         />
       )}
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
+      <TermosModal open={!termosOk} onAceitar={() => setTermosOk(true)} />
+      <MasterPainelModal open={masterAberto} onOpenChange={setMasterAberto} />
       <ProjetoInfoModal
         open={infoAberto}
         onOpenChange={setInfoAberto}
