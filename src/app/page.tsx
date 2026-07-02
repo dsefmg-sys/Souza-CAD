@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +64,7 @@ import { useAuth, sair } from '@/lib/firebase/auth';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
+import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
 import { gerarMemorialDocx } from '@/lib/export/memorial';
 import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
@@ -172,6 +173,8 @@ export default function EditorPage() {
   const [snapAtivo, setSnapAtivo] = useState(false);
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
+  const [corPickerAberto, setCorPickerAberto] = useState(false); // painel de ajuste rápido das cores de divisa
+  const [corBump, setCorBump] = useState(0); // força re-render após trocar uma cor (cores vivem em módulo)
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
@@ -269,6 +272,7 @@ export default function EditorPage() {
     const t = (localStorage.getItem('metrica.tema') as 'claro' | 'escuro') || 'escuro';
     setTema(t);
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
+    iniciarCoresDivisa(); // aplica as cores de divisa personalizadas do projetista
     try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 320) setToolW(w); } catch { /* ignore */ }
     try { const n = Number(localStorage.getItem('metrica.tamNomes')); if (n >= 7 && n <= 22) setTamNomes(n); } catch { /* ignore */ }
     try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680) setAsideW(w); } catch { /* ignore */ }
@@ -2083,7 +2087,25 @@ export default function EditorPage() {
               {vista === 'mapa' && modo === 'divisa' && (
                 <>
                   <span className="text-muted-foreground">Pintando divisa:</span>
-                  <span className="inline-block h-0 w-5 shrink-0 border-t-[3px]" style={{ borderColor: corDivisa(tipoDivisaPincel) || '#0f172a' }} title="Cor deste tipo de divisa na planta e no mapa" />
+                  <span className="relative inline-flex">
+                    <button type="button" className="flex h-7 items-center gap-1 rounded border border-input bg-background px-1.5 hover:bg-muted" title="Ajustar as cores das divisas (fica salvo pra suas plantas)" onClick={() => setCorPickerAberto((v) => !v)}>
+                      <span className="inline-block h-0 w-5 border-t-[3px]" style={{ borderColor: corDivisa(tipoDivisaPincel) || '#0f172a' }} />
+                      <Palette className="size-3.5 text-muted-foreground" />
+                    </button>
+                    {corPickerAberto && (
+                      <div className="absolute left-0 top-8 z-[1300] w-52 rounded-lg border bg-background p-2 shadow-xl" data-cor-bump={corBump}>
+                        <div className="mb-1 text-[10px] font-semibold uppercase text-muted-foreground">Cores das divisas</div>
+                        {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
+                          <label key={tipo} className="flex items-center justify-between gap-2 py-0.5 text-xs">
+                            <span>{REPRES_LABEL[tipo] || tipo}</span>
+                            <input type="color" value={cor || '#9ca3af'} className="h-6 w-8 cursor-pointer rounded border-0 bg-transparent p-0"
+                              onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }} />
+                          </label>
+                        ))}
+                        <button type="button" className="mt-1 w-full rounded border px-2 py-1 text-[11px] hover:bg-muted" onClick={() => setCorPickerAberto(false)}>Fechar</button>
+                      </div>
+                    )}
+                  </span>
                   <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
                     {REPRESENTACOES.map((r) => <option key={r} value={r} style={{ color: corDivisa(r) || undefined }}>{'━ '}{REPRES_LABEL[r] || r}</option>)}
                   </select>

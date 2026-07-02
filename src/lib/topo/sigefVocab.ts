@@ -48,8 +48,14 @@ export const CORES_DIVISA: Record<string, string> = {
   vala: '#a16207',     // marrom
 };
 
-/** Cor de apoio da divisa, ou null quando o tipo não usa cor. */
+// Overrides de cor por projetista (injetados de coresDivisa.ts na inicialização). Ficam em módulo
+// pra que corDivisa — chamada em muitos pontos de render — os respeite sem precisar receber props.
+let coresOverride: Record<string, string> = {};
+export function hidratarCoresDivisa(o: Record<string, string>): void { coresOverride = o || {}; }
+
+/** Cor de apoio da divisa (override do usuário tem prioridade), ou null quando o tipo não usa cor. */
 export function corDivisa(representacao: string | undefined): string | null {
-  const c = CORES_DIVISA[representacao || 'linha-ideal'];
+  const key = representacao || 'linha-ideal';
+  const c = key in coresOverride ? coresOverride[key] : CORES_DIVISA[key];
   return c || null;
 }
