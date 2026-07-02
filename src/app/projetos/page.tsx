@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Search, FolderOpen, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Search, FolderOpen, Trash2, CheckCircle2, AlertTriangle, DownloadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Projeto } from '@/lib/topo/types';
@@ -10,6 +10,7 @@ import { listarProjetos, excluirProjeto } from '@/lib/store/projects';
 import { migrarProjeto } from '@/lib/topo/glebas';
 import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
 import { carregarTecnico } from '@/lib/store/settings';
+import { exportarBackupZip } from '@/lib/store/backup';
 
 type FiltroStatus = 'todos' | 'prontos' | 'incompletos';
 
@@ -20,6 +21,14 @@ export default function ProjetosPage() {
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroStatus>('todos');
+  const [gerandoBackup, setGerandoBackup] = useState(false);
+
+  async function baixarBackup() {
+    setGerandoBackup(true);
+    try { await exportarBackupZip(); }
+    catch (e) { window.alert('Não consegui gerar o backup: ' + ((e as Error).message || 'erro')); }
+    finally { setGerandoBackup(false); }
+  }
 
   const carregarTudo = async () => {
     setCarregando(true);
@@ -75,7 +84,12 @@ export default function ProjetosPage() {
           <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft /> Voltar</Button></Link>
           <h1 className="text-xl font-semibold">Projetos</h1>
         </div>
-        <span className="text-xs text-muted-foreground">{linhas.length} projeto(s) · {totalPronto} pronto(s) para exportar</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">{linhas.length} projeto(s) · {totalPronto} pronto(s) para exportar</span>
+          <Button size="sm" variant="outline" className="gap-1" disabled={gerandoBackup || linhas.length === 0} onClick={baixarBackup} title="Baixa um zip com todos os projetos e arquivos anexados">
+            <DownloadCloud className="size-4" /> {gerandoBackup ? 'Gerando…' : 'Backup completo'}
+          </Button>
+        </div>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
