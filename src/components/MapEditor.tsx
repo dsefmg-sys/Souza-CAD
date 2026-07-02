@@ -361,9 +361,11 @@ export default function MapEditor(props: Props) {
         const mpp = (156543.03392 * Math.cos((cLat * Math.PI) / 180)) / 2 ** zoom;
         const off = (10 * mpp) / 111320;
         return validos.map((v, i) => {
-          // linha ideal PINTADA de propósito sai branca no mapa (lado nunca pintado fica sem linha
-          // de apoio — todo lado nasce "linha ideal" por padrão e não deve poluir o desenho)
-          const cor = v.representacao === 'linha-ideal' ? '#ffffff' : corDivisa(v.representacao);
+          // linha ideal sai branca SÓ no modo de pintar divisa (todo lado nasce "linha ideal" por
+          // padrão — fora do modo, mostrar branca em tudo poluiria o desenho)
+          const cor = v.representacao === 'linha-ideal'
+            ? (modo === 'divisa' ? '#ffffff' : null)
+            : corDivisa(v.representacao);
           if (!cor) return null;
           const prox = validos[(i + 1) % validos.length];
           if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
@@ -375,7 +377,7 @@ export default function MapEditor(props: Props) {
           const a: [number, number] = [v.lat + ny * off, v.lon + nx * off];
           const b: [number, number] = [prox.lat + ny * off, prox.lon + nx * off];
           return (
-            <Polyline key={`div${v.id}`} positions={[a, b]} pathOptions={{ color: cor, weight: zoom >= 18 ? 7 : 5, opacity: 0.8 }}>
+            <Polyline key={`div${v.id}-${v.representacao}-${zoom}`} positions={[a, b]} pathOptions={{ color: cor, weight: zoom >= 18 ? 7 : 5, opacity: 0.8 }}>
               <Tooltip sticky direction="top" opacity={0.9}><span style={{ color: cor }}>Divisa: {REPRES_LABEL[v.representacao || ''] || v.representacao}</span></Tooltip>
             </Polyline>
           );

@@ -694,8 +694,26 @@ export default function Planta({
         const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
         if ((mx - cx) * nx + (my - cy) * ny < 0) { nx = -nx; ny = -ny; }
         const off = 3.2;
+        const ax = a.x + nx * off, ay = a.y + ny * off, bx = b.x + nx * off, by = b.y + ny * off;
+        // cerca: além da linha cinza, tiques perpendiculares como palanques (símbolo clássico)
+        if (v.representacao === 'cerca') {
+          const compr = Math.hypot(bx - ax, by - ay);
+          const tx = (bx - ax) / (compr || 1), ty = (by - ay) / (compr || 1);
+          const passo = 11;
+          const nTiques = Math.max(0, Math.floor(compr / passo) - 1);
+          return (
+            <g key={`div${v.id}`} opacity={0.9}>
+              <line x1={ax} y1={ay} x2={bx} y2={by} stroke={cor} strokeWidth={(config.larguraDivisasApoio ?? 3.2) * 0.5} strokeLinecap="round" />
+              {Array.from({ length: nTiques }, (_, k) => {
+                const t = (k + 1) * passo;
+                const px = ax + tx * t, py = ay + ty * t;
+                return <line key={k} x1={px - nx * 2.4} y1={py - ny * 2.4} x2={px + nx * 2.4} y2={py + ny * 2.4} stroke={cor} strokeWidth={0.9} />;
+              })}
+            </g>
+          );
+        }
         return (
-          <line key={`div${v.id}`} x1={a.x + nx * off} y1={a.y + ny * off} x2={b.x + nx * off} y2={b.y + ny * off}
+          <line key={`div${v.id}`} x1={ax} y1={ay} x2={bx} y2={by}
             stroke={cor} strokeWidth={config.larguraDivisasApoio ?? 3.2} strokeLinecap="round" opacity={0.9} />
         );
       })}
@@ -837,6 +855,16 @@ export default function Planta({
               {editavel && <circle cx={vx} cy={vy} r={8} fill="transparent" />}
               <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6} />
             </g>
+            {(() => {
+              // linha-guia tracejada ligando o rótulo ao seu vértice (deixa claro de quem é o nome)
+              const ovR = getOverride(`vert.${v.id}`);
+              const lxr = x + (ovR.dx ?? 0), lyr = y + (ovR.dy ?? 0);
+              const dGuia = Math.hypot(lxr - vx, lyr - vy);
+              if (dGuia < 13) return null;
+              // encurta a ponta pra não entrar nem no símbolo nem no texto
+              const ux = (lxr - vx) / dGuia, uy = (lyr - vy) / dGuia;
+              return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={lxr - ux * 6} y2={lyr - uy * 6} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
+            })()}
             <Ted x={x} y={y} base={nomeVertice(v, i)} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
             {vsel && (
               <g style={{ pointerEvents: 'all' }} transform={`translate(${vx}, ${vy - 24})`}>
@@ -1013,7 +1041,7 @@ export default function Planta({
       <CarimboA3
         imovel={imovel} ef={ef} tecnico={tecnico} escritorio={escritorio} glebaNome={glebaNome}
         escalaDenom={escalaDenom} dataExtenso={dataExtenso}
-        titulo={config.titulo || 'Levantamento Planimétrico Georreferenciado'} folha={config.folha || 'Única'}
+        titulo={(config.titulo || 'Levantamento Planimétrico Georreferenciado').toUpperCase()} folha={config.folha || 'Única'}
         textoLaudo={config.textoLaudo || LAUDO_PADRAO} textoConfront={config.textoConfrontantes || CONFRONT_PADRAO} escala={escTxt}
         requerente={requerente} transmitente={transmitente}
         ed={{
@@ -1345,7 +1373,7 @@ function CarimboA3(props: {
     ['ESCALA:', `1 / ${escalaDenom}`],
   );
 
-  const gap = Math.min(27, Math.floor(204 / (campos.length - 1))); // Ajustado para hBox (264px) menos o cabeçalho
+  const gap = Math.min(27, Math.floor(196 / (campos.length - 1))); // hBox (264px) menos cabeçalho e a folga superior de 48px
 
   // Coordenadas verticais do carimbo. O antigo box de TÍTULO saiu: o título virou o CABEÇALHO da
   // seção de Dados (que já traz o nome do imóvel), liberando ~84px que foram redistribuídos para
@@ -1410,7 +1438,7 @@ function CarimboA3(props: {
         {/* título principal da planta: fonte maior pra destaque; a Folha virou campo da lista (antes da escala) */}
         {Cab(Y_DADOS, titulo, 'carimbo.titulo', 10.5)}
         {campos.map(([k, v], i) => {
-          const y = Y_DADOS + 40 + i * gap;
+          const y = Y_DADOS + 48 + i * gap; // 48 de folga do cabeçalho (não colar no título)
           return (
             <g key={k}>
               <text x={lx + 12} y={y} fontSize={fs(9)} fontWeight="bold" fill="#1f2937">{k}</text>
