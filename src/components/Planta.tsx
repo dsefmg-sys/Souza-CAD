@@ -169,6 +169,11 @@ function Ted(props: {
         {texto}
       </text>
 
+      {isSelected && (() => {
+        // contorno dourado ao redor do texto selecionado (deixa claro o que está selecionado)
+        const bx = anchor === 'middle' ? posX - textW / 2 : anchor === 'end' ? posX - textW : posX;
+        return <rect x={bx - 3} y={posY - fz} width={textW + 6} height={fz + 4} rx={2} fill="none" stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 2" style={{ pointerEvents: 'none' }} />;
+      })()}
       {isSelected && (
         <g style={{ pointerEvents: 'all' }}>
           {/* Botão de Diminuir (-) */}
@@ -652,8 +657,8 @@ export default function Planta({
   const rotY = rotuloGrade(linhasY, sy, DRAW.y0, DRAW.y1);
 
   return (
-    <svg ref={svgRef} id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%"
-      style={{ background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'crosshair') : 'default', touchAction: editavel ? 'none' : undefined }}
+    <svg ref={svgRef} id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%" height="100%"
+      style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'crosshair') : 'default', touchAction: editavel ? 'none' : undefined }}
       onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
       xmlns="http://www.w3.org/2000/svg">
       {/* Moldura externa (Margem NBR: esquerda=25mm/95px, outras=7mm/26px) */}

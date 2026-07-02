@@ -599,13 +599,11 @@ export default function EditorPage() {
     const el = document.getElementById('planta-print');
     if (el) {
       const rect = el.getBoundingClientRect();
-      const pad = 12;
-      const wAvailable = rect.width - pad * 2;
-      const hAvailable = rect.height - pad * 2;
-      // Ajusta a escala para caber a folha A3 inteira (1587 x 1123) na viewport
-      const scale = Math.min(wAvailable / 1587, hAvailable / 1123);
-      const px = pad + (wAvailable - 1587 * scale) / 2;
-      const py = pad + (hAvailable - 1123 * scale) / 2;
+      const pad = 6; // margem pequena; a folha ocupa quase toda a área
+      // maior escala que ainda mostra a folha A3 (1587x1123) inteira, centralizada
+      const scale = Math.min((rect.width - pad * 2) / 1587, (rect.height - pad * 2) / 1123);
+      const px = (rect.width - 1587 * scale) / 2;
+      const py = (rect.height - 1123 * scale) / 2;
       setPlantaZoom(scale);
       setPlantaPan({ x: px, y: py });
       vistaPlantaRef.current = { z: scale, x: px, y: py };
@@ -2420,8 +2418,10 @@ export default function EditorPage() {
                 title={editarPlanta ? 'Modo edição: arraste itens; botão do meio do mouse dá pan; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
                 {plantaDark && <style>{`#planta-print .a3-dark{filter:invert(1) hue-rotate(180deg)}#planta-print .a3-dark image{filter:invert(1) hue-rotate(180deg)}`}</style>}
                 {res && tecnico && escritorio && (
-                  // folha alinhada à ESQUERDA (sem o vão de centralização) e ancorada no canto esq. superior
-                  <div className={`mr-auto max-w-[1587px] bg-white shadow ${plantaDark ? 'a3-dark' : ''}`} style={{ transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'left top' }}>
+                  // folha com tamanho FIXO 1587x1123 (A3): o zoom/pan cuida do enquadramento. Sem
+                  // isso, quando a área era mais estreita que 1587 a folha já nascia menor e o Foco
+                  // encolhia demais (não enchia a tela).
+                  <div className={`bg-white shadow ${plantaDark ? 'a3-dark' : ''}`} style={{ width: 1587, height: 1123, transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'left top' }}>
                     <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                       confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
                       glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
