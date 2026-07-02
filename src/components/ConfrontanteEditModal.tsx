@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 import type { Confrontante, CondicaoConfrontante } from '@/lib/topo/types';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
+import { cpfOuCnpjValido } from '@/lib/topo/validation';
 
 interface Props {
   open: boolean;
@@ -14,11 +15,12 @@ interface Props {
   onOpenChange: (o: boolean) => void;
 }
 
-function Campo({ label, value, onChange, ph }: { label: string; value: string; onChange: (v: string) => void; ph?: string }) {
+function Campo({ label, value, onChange, ph, aviso }: { label: string; value: string; onChange: (v: string) => void; ph?: string; aviso?: string }) {
   return (
     <label className="flex flex-col gap-0.5 text-xs">
       <span className="font-semibold text-muted-foreground">{label}</span>
       <input className="h-8 rounded border bg-background px-2 text-sm" value={value} placeholder={ph} onChange={(e) => onChange(e.target.value)} />
+      {aviso && <span className="mt-0.5 block font-medium text-amber-500">{aviso}</span>}
     </label>
   );
 }
@@ -31,6 +33,8 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
   const cond: CondicaoConfrontante = c.condicao ?? 'proprietario';
   const set = (patch: Partial<Confrontante>) => setC({ ...c, ...patch });
   const linhas = linhasRotuloConfrontante(c);
+
+  const avisoDoc = (v: string) => (v?.trim() && !cpfOuCnpjValido(v) ? 'CPF/CNPJ inválido (dígitos verificadores incorretos).' : undefined);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,18 +57,18 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
             </label>
             <Campo label="Nome" value={c.nome} onChange={(v) => set({ nome: v })} ph="Nome do confrontante" />
             <div className="grid grid-cols-2 gap-2">
-              <Campo label="CPF/CNPJ" value={c.cpf} onChange={(v) => set({ cpf: v })} />
+              <Campo label="CPF/CNPJ" value={c.cpf} onChange={(v) => set({ cpf: v })} aviso={avisoDoc(c.cpf)} />
               {cond !== 'posseiro' && <Campo label="Matrícula" value={c.matricula} onChange={(v) => set({ matricula: v })} />}
             </div>
             {cond === 'espolio' ? (
               <div className="grid grid-cols-2 gap-2">
                 <Campo label="Inventariante" value={c.inventarianteNome ?? ''} onChange={(v) => set({ inventarianteNome: v })} />
-                <Campo label="CPF do inventariante" value={c.inventarianteCpf ?? ''} onChange={(v) => set({ inventarianteCpf: v })} />
+                <Campo label="CPF do inventariante" value={c.inventarianteCpf ?? ''} onChange={(v) => set({ inventarianteCpf: v })} aviso={avisoDoc(c.inventarianteCpf ?? '')} />
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 <Campo label="Cônjuge" value={c.conjugeNome ?? ''} onChange={(v) => set({ conjugeNome: v })} />
-                <Campo label="CPF do cônjuge" value={c.conjugeCpf ?? ''} onChange={(v) => set({ conjugeCpf: v })} />
+                <Campo label="CPF do cônjuge" value={c.conjugeCpf ?? ''} onChange={(v) => set({ conjugeCpf: v })} aviso={avisoDoc(c.conjugeCpf ?? '')} />
               </div>
             )}
             <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set({ cns: v })} />
