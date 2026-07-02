@@ -606,6 +606,9 @@ export default function Planta({
         <line x1={888} y1={0} x2={888} y2={26} />
         <line x1={888} y1={H - 26} x2={888} y2={H} />
       </g>
+      {/* linha horizontal separando a área do desenho da faixa inferior (situação/convenções/coordenadas) */}
+      <line x1={95} y1={DRAW.y1} x2={W - CARW} y2={DRAW.y1} stroke="#000" strokeWidth={1.2} />
+
       {/* superfície de captura para edição (transparente; não aparece no PDF) */}
       {editavel && <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="transparent" style={{ pointerEvents: 'all' }} />}
 
@@ -616,7 +619,7 @@ export default function Planta({
         return (
           <g key={`x${x}`}>
             <line x1={valX} y1={DRAW.y0} x2={valX} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
-            {rotX.has(x) && <text x={valX} y={DRAW.y0 + 13} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>}
+            {rotX.has(x) && valX >= DRAW.x0 + 48 && valX <= DRAW.x1 - 48 && <text x={valX} y={DRAW.y0 + 13} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>}
           </g>
         );
       })}
@@ -626,7 +629,7 @@ export default function Planta({
         return (
           <g key={`y${y}`}>
             <line x1={DRAW.x0} y1={valY} x2={DRAW.x1} y2={valY} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
-            {rotY.has(y) && <text x={DRAW.x0 + 13} y={valY} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${valY})`}>{`N ${numBR(y, 4)}`}</text>}
+            {rotY.has(y) && valY >= DRAW.y0 + 48 && valY <= DRAW.y1 - 48 && <text x={DRAW.x0 + 13} y={valY} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${valY})`}>{`N ${numBR(y, 4)}`}</text>}
           </g>
         );
       })}
@@ -1051,14 +1054,15 @@ function FaixaInferior(props: {
   const lon = grausParaDMS(vref.lon, { estilo: 'memorial', casas: 3 });
   const lat = grausParaDMS(vref.lat, { estilo: 'memorial', casas: 3 });
 
-  // Posições X das 3 caixas
+  // Posições X das 3 caixas — margem de 10px da borda esquerda (não colar na moldura) e
+  // espaçamento padronizado de 12px entre caixas; termina 10px antes da divisória do carimbo (1117)
   const w1 = 244;
   const w2 = 200;
-  const w3 = 544; // Box 3 esticada para terminar em 1107 (10px antes da linha divisória vertical principal 1117)
-  
-  const x1 = DRAW.x0; // 95
-  const x2 = x1 + w1 + 12; // 351
-  const x3 = x2 + w2 + 12; // 563
+  const w3 = 534;
+
+  const x1 = DRAW.x0 + 10; // 105
+  const x2 = x1 + w1 + 12; // 361
+  const x3 = x2 + w2 + 12; // 573
 
   return (
     <g>
@@ -1141,10 +1145,10 @@ function FaixaInferior(props: {
               {/* Projeção (texto à esquerda) */}
               {bloco('coord.projecao', (
                 <g fill="#0f172a">
-                  <text x={x3 + 12} y={y0 + 40} fontSize={fs(8.5)} fontWeight="bold">Projeção Universal Transversa</text>
-                  <text x={x3 + 12} y={y0 + 55} fontSize={fs(8.5)} fontWeight="bold">de Mercator (UTM)</text>
-                  <text x={x3 + 12} y={y0 + 72} fontSize={fs(8.5)}>SGR (Ref.): <tspan fontWeight="bold">SIRGAS2000</tspan></text>
-                  <text x={x3 + 12} y={y0 + 88} fontSize={fs(8.5)}>Fuso <tspan fontWeight="bold">{zona}{hemisferio}</tspan> / MC <tspan fontWeight="bold">{Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</tspan></text>
+                  <text x={x3 + 12} y={y0 + 48} fontSize={fs(8.5)} fontWeight="bold">Projeção Universal Transversa</text>
+                  <text x={x3 + 12} y={y0 + 63} fontSize={fs(8.5)} fontWeight="bold">de Mercator (UTM)</text>
+                  <text x={x3 + 12} y={y0 + 80} fontSize={fs(8.5)}>SGR (Ref.): <tspan fontWeight="bold">SIRGAS2000</tspan></text>
+                  <text x={x3 + 12} y={y0 + 96} fontSize={fs(8.5)}>Fuso <tspan fontWeight="bold">{zona}{hemisferio}</tspan> / MC <tspan fontWeight="bold">{Math.abs(meridianoCentral(zona))}° {meridianoCentral(zona) < 0 ? 'W' : 'E'}</tspan></text>
                 </g>
               ))}
 
@@ -1160,7 +1164,7 @@ function FaixaInferior(props: {
               {/* Valores do vértice de referência (coluna direita) */}
               {bloco('coord.valores', (
                 <g transform="translate(260, 0)" fill="#0f172a">
-                  <text x={x3 + 12} y={y0 + 40} fontSize={fs(9)} fontWeight="bold">Vértice de referência: {vref.codigoSigef || vref.nome}</text>
+                  <text x={x3 + 12} y={y0 + 48} fontSize={fs(9)} fontWeight="bold">Vértice de referência: {vref.codigoSigef || vref.nome}</text>
                   {[
                     ['Latitude:', lat],
                     ['Longitude:', lon],
@@ -1168,7 +1172,7 @@ function FaixaInferior(props: {
                     ['Declinação magnética:', grausParaDMS(decl, { casas: 2, estilo: 'memorial' })],
                     ['Fator de escala (K):', fatorK.toFixed(9)],
                   ].map(([label, val], idx) => (
-                    <text key={idx} x={x3 + 12} y={y0 + 60 + idx * 19} fontSize={fs(8.5)}>
+                    <text key={idx} x={x3 + 12} y={y0 + 68 + idx * 19} fontSize={fs(8.5)}>
                       <tspan fontWeight="bold" fill="#475569">{label} </tspan> {val}
                     </text>
                   ))}
@@ -1276,13 +1280,13 @@ function CarimboA3(props: {
 
   // Cabeçalho escuro (tarja #475569 + título branco) idêntico aos quadros de baixo da planta
   // (Situação/Convenções/Informações de Coordenadas). Se receber um id, o título fica editável.
-  const Cab = (y: number, label: string, id?: string) => (
+  const Cab = (y: number, label: string, id?: string, size = 8.5) => (
     <g>
       <rect x={lx} y={y} width={wBox} height={24} rx={6} ry={6} fill="#475569" />
       <rect x={lx} y={y + 18} width={wBox} height={6} fill="#475569" />
       {id
-        ? T(id, label, { x: cxc, y: y + 16, size: fs(8.5), bold: true, anchor: 'middle', fill: '#fff' })
-        : <text x={cxc} y={y + 16} fontSize={fs(8.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{label}</text>}
+        ? T(id, label, { x: cxc, y: y + 16, size: fs(size), bold: true, anchor: 'middle', fill: '#fff' })
+        : <text x={cxc} y={y + 16} fontSize={fs(size)} fontWeight="bold" fill="#fff" textAnchor="middle">{label}</text>}
     </g>
   );
 
@@ -1322,6 +1326,7 @@ function CarimboA3(props: {
   }
   campos.push(
     ['DATA:', dataExtenso || '—'],
+    ['FOLHA:', folha],
     ['ESCALA:', `1 / ${escalaDenom}`],
   );
 
@@ -1387,8 +1392,8 @@ function CarimboA3(props: {
       {/* ── BOX 3: DADOS DO IMÓVEL ────────────────────────────────────────── */}
       <g>
         <rect x={lx} y={Y_DADOS} width={wBox} height={264} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-        {Cab(Y_DADOS, titulo, 'carimbo.titulo')}
-        <text x={rx - 8} y={Y_DADOS + 16} fontSize={fs(7)} fill="#e2e8f0" textAnchor="end">Folha: {folha}</text>
+        {/* título principal da planta: fonte maior pra destaque; a Folha virou campo da lista (antes da escala) */}
+        {Cab(Y_DADOS, titulo, 'carimbo.titulo', 10.5)}
         {campos.map(([k, v], i) => {
           const y = Y_DADOS + 40 + i * gap;
           return (
