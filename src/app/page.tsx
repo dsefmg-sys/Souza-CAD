@@ -2193,18 +2193,23 @@ export default function EditorPage() {
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.min(22, n + 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A+</span></Button>
                     </div>
                   </div>
-                  {/* ícones de sistema */}
-                  <div className="flex items-center gap-0.5">
-                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Calculadora: converter coordenada, distância e azimute" onClick={() => setCalcAberta(true)}><Ruler /></Button>
-                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Editor de DXF (abrir e editar um DXF qualquer, ex.: projeto elétrico — isolado do projeto)" onClick={() => setDxfEditorAberto(true)}><PencilRuler /></Button>
-                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Porcentagem entre dois polígonos (área de um em relação ao outro e ao total)" onClick={() => setPorcentagemAberta(true)}><Percent /></Button>
-                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Estúdio: edição de imagem (mini-Canva, isolado do projeto)" onClick={() => setEstudioAberto(true)}><ImagePlus /></Button>
-                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Tema claro/escuro" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))}>{tema === 'claro' ? <Moon /> : <Sun />}</Button>
-                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Tutorial: como usar o Métrica, passo a passo" onClick={() => setTutorialAberto(true)}><HelpCircle /></Button>
-                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
-                    {nuvemDisponivel && user && (
-                      <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
-                    )}
+                  {/* ferramentas e sistema: duas linhas de botões rotulados (não mais ícones espremidos) */}
+                  <div className="grid grid-cols-4 gap-1">
+                    {([
+                      ['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-4" />, () => setCalcAberta(true)],
+                      ['DXF', 'Editor de DXF (abrir e editar um DXF qualquer, ex.: projeto elétrico — isolado do projeto)', <PencilRuler key="i" className="size-4" />, () => setDxfEditorAberto(true)],
+                      ['% Área', 'Porcentagem entre dois polígonos (área de um em relação ao outro e ao total)', <Percent key="i" className="size-4" />, () => setPorcentagemAberta(true)],
+                      ['Estúdio', 'Estúdio: edição de imagem (mini-Canva, isolado do projeto)', <ImagePlus key="i" className="size-4" />, () => setEstudioAberto(true)],
+                      ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))],
+                      ['Ajuda', 'Tutorial: como usar o Métrica, passo a passo', <HelpCircle key="i" className="size-4" />, () => setTutorialAberto(true)],
+                      ['Config.', 'Configurações', <Settings key="i" className="size-4" />, () => setConfigAberta(true)],
+                      ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => sair()]] : []),
+                    ] as [string, string, React.ReactNode, () => void][]).map(([rotuloBtn, dica, icone, acao]) => (
+                      <Button key={rotuloBtn} size="sm" variant="outline" className="h-11 flex-col gap-0.5 p-0" title={dica} onClick={acao}>
+                        {icone}
+                        <span className="text-[9px] leading-none">{rotuloBtn}</span>
+                      </Button>
+                    ))}
                   </div>
                 </div>
               </aside>
