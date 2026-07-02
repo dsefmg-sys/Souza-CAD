@@ -321,6 +321,8 @@ export interface PlantaConfig {
   // imagem da planta de situação (data URL) — salva junto do projeto pra não precisar recapturar
   situacaoDataUrl?: string;
   mostrarQuadroAreas?: boolean; // quadro-resumo de área/perímetro de todos os polígonos do desenho
+  mostrarRoteiro?: boolean;     // tabela de roteiro perimétrico (vértice, azimute, distância, confrontante)
+  roteiroComConfrontante?: boolean; // inclui a coluna de confrontante no roteiro (padrão true)
   
   // Customização de cores e espessuras das linhas e polígonos na planta
   corPoligono?: string;        // cor do perímetro principal, padrão "#7c2d12"

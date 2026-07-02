@@ -3257,11 +3257,21 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
         {chk('Escala gráfica', 'mostrarEscalaGrafica')}
         {chk('Planta de situação', 'mostrarSituacao')}
         {chk('Tiques de troca de confrontante (marcos M)', 'mostrarDivisaConf')}
-        {/* quadro de áreas: padrão DESLIGADO (por isso não usa o chk, que assume ligado) */}
+        {/* quadro de áreas e roteiro: padrão DESLIGADO (por isso não usam o chk, que assume ligado) */}
         <label className="flex items-center gap-2 text-xs">
           <input type="checkbox" checked={config.mostrarQuadroAreas === true} onChange={(e) => set({ mostrarQuadroAreas: e.target.checked })} />
           Quadro de áreas (resumo de todos os polígonos)
         </label>
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={config.mostrarRoteiro === true} onChange={(e) => set({ mostrarRoteiro: e.target.checked })} />
+          Roteiro perimétrico (tabela vértice → azimute → distância)
+        </label>
+        {config.mostrarRoteiro && (
+          <label className="ml-5 flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={config.roteiroComConfrontante !== false} onChange={(e) => set({ roteiroComConfrontante: e.target.checked })} />
+            incluir coluna de confrontante
+          </label>
+        )}
       </div>
       <div className="space-y-1 rounded border p-2">
         <div className="text-[10px] uppercase text-muted-foreground">Nome dos vértices</div>

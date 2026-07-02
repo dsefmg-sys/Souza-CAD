@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante, PlantaConfig, PessoaQualificada, PontoLL } from '@/lib/topo/types';
-import { numBR, formatMatricula } from '@/lib/topo/geometry';
+import { numBR, formatMatricula, azimuteDMS } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { distanciaCota } from '@/lib/topo/objetos';
@@ -756,6 +756,44 @@ export default function Planta({
             <text x={colNome} y={by + lh * (3.2 + linhas.length)} fontSize={fz} fontWeight="bold" fill="#0f172a">TOTAL{linhas.length > 1 ? ` (${linhas.length})` : ''}</text>
             <text x={colArea} y={by + lh * (3.2 + linhas.length)} fontSize={fz} fontWeight="bold" fill="#0f172a" textAnchor="end">{numBR(totalHa, 4)}</text>
             <text x={colPer} y={by + lh * (3.2 + linhas.length)} fontSize={fz} fontWeight="bold" fill="#0f172a" textAnchor="end">{numBR(totalPer)}</text>
+          </g>
+        );
+      })()}
+
+      {/* ---------- ROTEIRO PERIMÉTRICO (tabela vértice→vértice; arrastável) ---------- */}
+      {config.mostrarRoteiro && res.lados.length > 0 && (() => {
+        const idR = 'planta.roteiro';
+        const ovR = getOverride(idR);
+        const comConf = config.roteiroComConfrontante !== false;
+        const nomeConf = (cid: string | null) => (cid ? (confrontantes.find((c) => c.id === cid)?.nome || '—') : '—');
+        const fz = Math.max(6.5, fonteRot - 1);
+        const lh = fz + 4;
+        const wr = comConf ? 300 : 200;
+        const bx = DRAW.x0 + 24 + (ovR.dx ?? 0);
+        const by = DRAW.y1 - 24 - (res.lados.length + 2.5) * lh + (ovR.dy ?? 0);
+        const cV = bx + 8, cAz = bx + 70, cDist = bx + (comConf ? 150 : 192), cConf = bx + wr - 8;
+        const hr = (res.lados.length + 2.4) * lh;
+        return (
+          <g style={editavel ? { cursor: 'move' } : undefined}
+             onPointerDown={editavel ? (e) => { e.stopPropagation(); tedComum.onDragStart(idR, e); } : undefined}>
+            <rect x={bx} y={by} width={wr} height={hr} rx={4} fill="#ffffff" fillOpacity={0.95} stroke="#475569" strokeWidth={0.8} />
+            <rect x={bx} y={by} width={wr} height={lh + 2} rx={4} fill="#475569" />
+            <text x={bx + wr / 2} y={by + lh - 2} fontSize={fz} fontWeight="bold" fill="#fff" textAnchor="middle">ROTEIRO PERIMÉTRICO</text>
+            <text x={cV} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569">VÉRTICE</text>
+            <text x={cAz} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569">AZIMUTE</text>
+            <text x={cDist} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">DIST (m)</text>
+            {comConf && <text x={cConf} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">CONFRONTANTE</text>}
+            {res.lados.map((l, i) => {
+              const y = by + lh * (3 + i);
+              return (
+                <g key={i}>
+                  <text x={cV} y={y} fontSize={fz} fill="#0f172a">{l.de.codigoSigef || l.de.nome}</text>
+                  <text x={cAz} y={y} fontSize={fz} fill="#0f172a">{azimuteDMS(l.azimute)}</text>
+                  <text x={cDist} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{numBR(l.distancia)}</text>
+                  {comConf && <text x={cConf} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{nomeConf(l.confrontanteId).slice(0, 20)}</text>}
+                </g>
+              );
+            })}
           </g>
         );
       })()}
