@@ -15,6 +15,8 @@ export interface PreferenciasApp {
   bloquearExportacaoIncompleta: boolean;
   /** Nível de experiência do agrimensor: muda a linguagem da ajuda/temas (iniciante = didática, experiente = objetiva). Padrão: iniciante. */
   nivelExperiencia: 'iniciante' | 'experiente';
+  /** Chaves de botões do cabeçalho cujo ÍCONE fica oculto (só o texto). Padrão: dados, trt, análise. */
+  iconesCabecalhoOcultos: string[];
 }
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {
@@ -24,6 +26,7 @@ export const PREFERENCIAS_PADRAO: PreferenciasApp = {
   mostrarDicasEducativas: true,
   bloquearExportacaoIncompleta: true,
   nivelExperiencia: 'iniciante',
+  iconesCabecalhoOcultos: ['dados', 'trt', 'analise'],
 };
 
 const KEY = 'metrica.preferencias';

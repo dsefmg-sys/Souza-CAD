@@ -66,6 +66,7 @@ import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/st
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
 import { termosAceitosLocal, termosAceitosNuvem, sincronizarPerfil, registrarProjetoSalvo } from '@/lib/store/perfilUso';
+import { carregarPreferencias, salvarPreferencias, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { souMaster } from '@/lib/store/suporte';
 import TermosModal from '@/components/TermosModal';
 import MasterPainelModal from '@/components/MasterPainelModal';
@@ -181,6 +182,8 @@ export default function EditorPage() {
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
   const [corPickerAberto, setCorPickerAberto] = useState(false); // painel de ajuste rápido das cores de divisa
   const [corBump, setCorBump] = useState(0); // força re-render após trocar uma cor (cores vivem em módulo)
+  const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
+  const iconeCab = (chave: string, icone: React.ReactNode) => (prefs.iconesCabecalhoOcultos.includes(chave) ? null : icone);
   const [termosOk, setTermosOk] = useState(true); // aceite dos termos de uso (bloqueia até aceitar)
   const [masterAberto, setMasterAberto] = useState(false); // painel do titular (só master)
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
@@ -282,6 +285,7 @@ export default function EditorPage() {
     setTema(t);
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
     iniciarCoresDivisa(); // aplica as cores de divisa personalizadas do projetista
+    setPrefs(carregarPreferencias()); // preferências de interface (ícones do cabeçalho etc.)
     // termos de uso: bloqueia até aceitar (checa local, depois nuvem)
     if (termosAceitosLocal()) setTermosOk(true);
     else { setTermosOk(false); termosAceitosNuvem().then((ok) => { if (ok) setTermosOk(true); }).catch(() => {}); }
@@ -2054,7 +2058,7 @@ export default function EditorPage() {
         {/* 1) Importar e checar vizinhos */}
         <Etapa st={etapas.txt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
         <Etapa st={etapas.sigef}>{parcelasCert.length > 0 ? (
-          <Button size="sm" variant="outline" className="shrink-0" title="Vizinhos certificados já baixados — ver relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}><ShieldCheck className="size-4 text-indigo-400" /> ANÁLISE</Button>
+          <Button size="sm" variant="outline" className="shrink-0" title="Vizinhos certificados já baixados — ver relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}>{iconeCab('analise', <ShieldCheck className="size-4 text-indigo-400" />)} ANÁLISE</Button>
         ) : (
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Search /> SIGEF</Button>
         )}</Etapa>
@@ -2062,7 +2066,7 @@ export default function EditorPage() {
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 2) Dados do projeto atual */}
-        <Etapa st={etapas.dados}><Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório"><BookUser /> DADOS</Button></Link></Etapa>
+        <Etapa st={etapas.dados}><Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório">{iconeCab('dados', <BookUser />)} DADOS</Button></Link></Etapa>
         <Button size="sm" variant="outline" className="shrink-0 px-2" title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /></Button>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
@@ -2072,7 +2076,7 @@ export default function EditorPage() {
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 5) Peças */}
-        <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button></Etapa>
+        <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}>{iconeCab('trt', <FileText />)} TRT</Button></Etapa>
         <Etapa st={etapas.memorial}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEM</Button></Etapa>
         <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button></Etapa>
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
@@ -2841,9 +2845,9 @@ export default function EditorPage() {
       />
       <ConfiguracoesModal
         open={configAberta}
-        onOpenChange={setConfigAberta}
+        onOpenChange={(o) => { setConfigAberta(o); if (!o) setPrefs(carregarPreferencias()); }}
         abaInicial={configAba}
-        onConfigChange={() => { setTecnico(carregarTecnico()); }}
+        onConfigChange={() => { setTecnico(carregarTecnico()); setPrefs(carregarPreferencias()); }}
       />
       {tecnico && escritorio && (
         <GestaoProjetoModal
