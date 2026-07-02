@@ -3,6 +3,8 @@ import type { ImovelData, TecnicoData, PessoaQualificada } from '../topo/types';
 import { numBR, numBRmilhar } from '../topo/geometry';
 import { valorPorExtenso } from '../topo/extenso';
 
+export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento';
+
 export interface RequerimentoInput {
   imovel: ImovelData;
   tecnico: TecnicoData;
@@ -11,6 +13,49 @@ export interface RequerimentoInput {
   areaRealHa: number;     // área levantada (efetiva)
   comarca?: string;       // padrão = município do imóvel
   dataExtenso?: string;   // ex.: "17 de março de 2026"
+  /** Tipo do ato que motiva a retificação — muda os rótulos das partes e o texto de contextualização. Padrão: 'venda'. */
+  tipoAto?: TipoAtoRequerimento;
+}
+
+const ROTULOS_ATO: Record<TipoAtoRequerimento, { requerente: string; transmitente: string; assinaReq: string; assinaTrans: string }> = {
+  venda: {
+    requerente: 'REQUERENTE (ADQUIRENTE / COMPRADOR)',
+    transmitente: 'PROPRIETÁRIO REGISTRAL (TRANSMITENTE / VENDEDOR)',
+    assinaReq: '(Requerente / Adquirente)',
+    assinaTrans: '(Proprietário Registral / Transmitente)',
+  },
+  doacao: {
+    requerente: 'REQUERENTE (DONATÁRIO)',
+    transmitente: 'DOADOR (PROPRIETÁRIO REGISTRAL)',
+    assinaReq: '(Requerente / Donatário)',
+    assinaTrans: '(Doador / Proprietário Registral)',
+  },
+  unificacao: {
+    requerente: 'REQUERENTE (PROPRIETÁRIO)',
+    transmitente: 'COPROPRIETÁRIO / CÔNJUGE (SE HOUVER)',
+    assinaReq: '(Requerente / Proprietário)',
+    assinaTrans: '(Coproprietário / Cônjuge)',
+  },
+  desmembramento: {
+    requerente: 'REQUERENTE (PROPRIETÁRIO)',
+    transmitente: 'COPROPRIETÁRIO / CÔNJUGE (SE HOUVER)',
+    assinaReq: '(Requerente / Proprietário)',
+    assinaTrans: '(Coproprietário / Cônjuge)',
+  },
+};
+
+function fraseContextoAto(tipo: TipoAtoRequerimento): string {
+  switch (tipo) {
+    case 'doacao':
+      return 'considerando que o mesmo é objeto de doação ao requerente';
+    case 'unificacao':
+      return 'considerando que o requerente promove a unificação deste imóvel com outro(s) de sua propriedade';
+    case 'desmembramento':
+      return 'considerando que o requerente promove o desmembramento de parte deste imóvel';
+    case 'venda':
+    default:
+      return 'considerando que o mesmo encontra-se em processo de transmissão ao requerente';
+  }
 }
 
 function titulo(t: string) {
@@ -47,13 +92,16 @@ function blocoPessoa(p: PessoaQualificada): Paragraph[] {
   return out;
 }
 
-const TXT_REQUERIMENTO =
-  'O requerente, em conjunto com o proprietário registral acima qualificado, vem, ' +
-  'respeitosamente, à presença de Vossa Senhoria, com fundamento no art. 176, §3º e §4º, e ' +
-  'art. 213, inciso II, da Lei nº 6.015/73, com redação dada pela Lei nº 10.931/04, c/c o ' +
-  'Decreto nº 4.449/02, requerer a averbação do georreferenciamento com retificação da área e ' +
-  'da descrição do imóvel rural, visando a adequação da descrição tabular à realidade física ' +
-  'do imóvel, considerando que o mesmo encontra-se em processo de transmissão ao requerente.';
+function txtRequerimento(tipo: TipoAtoRequerimento): string {
+  return (
+    'O requerente, em conjunto com o proprietário registral acima qualificado, vem, ' +
+    'respeitosamente, à presença de Vossa Senhoria, com fundamento no art. 176, §3º e §4º, e ' +
+    'art. 213, inciso II, da Lei nº 6.015/73, com redação dada pela Lei nº 10.931/04, c/c o ' +
+    'Decreto nº 4.449/02, requerer a averbação do georreferenciamento com retificação da área e ' +
+    'da descrição do imóvel rural, visando a adequação da descrição tabular à realidade física ' +
+    `do imóvel, ${fraseContextoAto(tipo)}.`
+  );
+}
 
 const TXT_CONFRONTANTES = [
   'Declaram os requerentes que: não houve qualquer invasão ou sobreposição de áreas de imóveis ' +
@@ -74,6 +122,8 @@ const TXT_RESPONSABILIDADE =
 
 export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<Blob> {
   const { imovel, tecnico, requerente, transmitente, areaRealHa } = input;
+  const tipo = input.tipoAto ?? 'venda';
+  const rot = ROTULOS_ATO[tipo];
   const comarca = input.comarca || imovel.municipio || '—';
   const c: Paragraph[] = [];
 
@@ -81,14 +131,14 @@ export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<B
   c.push(par('(Art. 176, §3º e §4º, e Art. 213, II, da Lei 6.015/73 c/c Decreto 4.449/02)', AlignmentType.CENTER));
   c.push(par(`Ilustríssimo Senhor(a) Oficial do Cartório de Registro de Imóveis da Comarca de ${comarca},`));
 
-  c.push(titulo('REQUERENTE (ADQUIRENTE / COMPRADOR)'));
+  c.push(titulo(rot.requerente));
   blocoPessoa(requerente).forEach((x) => c.push(x));
 
-  c.push(titulo('PROPRIETÁRIO REGISTRAL (TRANSMITENTE / VENDEDOR)'));
+  c.push(titulo(rot.transmitente));
   blocoPessoa(transmitente).forEach((x) => c.push(x));
 
   c.push(titulo('DO REQUERIMENTO'));
-  c.push(par(TXT_REQUERIMENTO));
+  c.push(par(txtRequerimento(tipo)));
 
   c.push(titulo('DA IDENTIFICAÇÃO DO IMÓVEL'));
   c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, encontra-se registrado neste Cartório sob a matrícula nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${transmitente.nome || imovel.proprietario || '—'}.`));
@@ -113,8 +163,11 @@ export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<B
     c.push(par('Declaram, para fins fiscais e de cálculo dos emolumentos, que o valor do imóvel é de: R$ _______ (____________).'));
   }
 
+  const finalidadePedido = tipo === 'venda' || tipo === 'doacao'
+    ? 'para viabilizar o registro da futura transmissão da propriedade'
+    : 'para regularizar a base tabular do imóvel perante este Cartório';
   c.push(titulo('DO PEDIDO'));
-  c.push(par('Diante do exposto, requerem: a averbação do georreferenciamento do imóvel; a retificação da área e da descrição constante da matrícula, adequando-a à realidade física; a consequente regularização da base tabular do imóvel para viabilizar o registro da futura transmissão da propriedade.'));
+  c.push(par(`Diante do exposto, requerem: a averbação do georreferenciamento do imóvel; a retificação da área e da descrição constante da matrícula, adequando-a à realidade física; a consequente regularização da base tabular do imóvel ${finalidadePedido}.`));
   c.push(par('Nestes termos, pede deferimento.'));
 
   const data = input.dataExtenso ? `${comarca}, ${input.dataExtenso}.` : `${comarca}, ____ de __________ de ______.`;
@@ -125,8 +178,8 @@ export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<B
     c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300 }, children: [new TextRun({ text: '____________________________________', size: 22 })] }));
     linhas.forEach((l) => c.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: l, size: 22 })] })));
   };
-  assina([requerente.nome, '(Requerente / Adquirente)']);
-  assina([transmitente.nome, '(Proprietário Registral / Transmitente)']);
+  assina([requerente.nome, rot.assinaReq]);
+  assina([transmitente.nome, rot.assinaTrans]);
   assina([tecnico.nome, `CFT ${tecnico.cft} - INCRA: ${tecnico.credenciamentoIncra}`]);
 
   const doc = new Document({

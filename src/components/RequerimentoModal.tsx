@@ -8,8 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad } from '@/lib/topo/types';
-import { gerarRequerimentoDocx } from '@/lib/export/requerimento';
+import { gerarRequerimentoDocx, type TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { numBR } from '@/lib/topo/geometry';
+
+const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string }[] = [
+  { valor: 'venda', rotulo: 'Compra e venda' },
+  { valor: 'doacao', rotulo: 'Doação' },
+  { valor: 'unificacao', rotulo: 'Unificação / remembramento' },
+  { valor: 'desmembramento', rotulo: 'Desmembramento' },
+];
 
 export const PESSOA_VAZIA: PessoaQualificada = {
   nome: '', rg: '', cpf: '', nacionalidade: 'Brasileira', naturalidade: '', dataNascimento: '',
@@ -77,7 +84,15 @@ function transVazio(imovel: ImovelData): PessoaQualificada {
 export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, onChangePessoas, sugProp, onBaixar }: Props) {
   const [req, setReq] = useState<PessoaQualificada>(requerente ?? PESSOA_VAZIA);
   const [trans, setTrans] = useState<PessoaQualificada>(transmitente ?? transVazio(imovel));
+  const [tipoAto, setTipoAto] = useState<TipoAtoRequerimento>('venda');
   const [msg, setMsg] = useState('');
+
+  const rotulos = {
+    venda: { req: 'Requerente (adquirente / comprador)', trans: 'Proprietário registral (transmitente / vendedor)' },
+    doacao: { req: 'Requerente (donatário)', trans: 'Doador (proprietário registral)' },
+    unificacao: { req: 'Requerente (proprietário)', trans: 'Coproprietário / cônjuge (se houver)' },
+    desmembramento: { req: 'Requerente (proprietário)', trans: 'Coproprietário / cônjuge (se houver)' },
+  }[tipoAto];
 
   useEffect(() => {
     if (open) {
@@ -92,7 +107,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     if (!req.nome?.trim() || !trans.nome?.trim()) { setMsg('Preencha o nome do requerente e do transmitente.'); return; }
     if (!req.cpf?.trim() || !trans.cpf?.trim()) { setMsg('Preencha o CPF/CNPJ do requerente e do transmitente.'); return; }
     onChangePessoas(req, trans);
-    const blob = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje() });
+    const blob = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje(), tipoAto });
     saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);
     onBaixar?.();
     setMsg('Requerimento gerado.');
@@ -105,6 +120,22 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           <DialogTitle>Requerimento ao cartório (retificação de área)</DialogTitle>
         </DialogHeader>
         <datalist id="lista-pessoas">{sugProp.map((p) => <option key={p.id} value={p.nome} />)}</datalist>
+
+        <div className="space-y-1">
+          <Label>Tipo de ato</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {OPCOES_ATO.map((o) => (
+              <Button key={o.valor} type="button" size="sm" variant={tipoAto === o.valor ? 'default' : 'outline'} onClick={() => setTipoAto(o.valor)}>
+                {o.rotulo}
+              </Button>
+            ))}
+          </div>
+          {tipoAto !== 'venda' && (
+            <p className="text-[11px] text-amber-500">
+              Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.
+            </p>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-3 rounded border bg-muted/30 p-3 text-sm">
           <div><b>Imóvel:</b> {imovel.denominacao || '—'} · Matrícula {imovel.matricula || '—'}</div>
@@ -119,8 +150,8 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           </div>
         </div>
 
-        <Bloco titulo="Requerente (adquirente / comprador)" pessoa={req} onChange={setReq} sugProp={sugProp} />
-        <Bloco titulo="Proprietário registral (transmitente / vendedor)" pessoa={trans} onChange={setTrans} sugProp={sugProp} />
+        <Bloco titulo={rotulos.req} pessoa={req} onChange={setReq} sugProp={sugProp} />
+        <Bloco titulo={rotulos.trans} pessoa={trans} onChange={setTrans} sugProp={sugProp} />
 
         <div className="flex items-center gap-3 border-t pt-3">
           <Button onClick={gerar}><FileSignature /> Gerar requerimento (.docx)</Button>
