@@ -275,6 +275,7 @@ export interface ImovelData {
   esquinaRua?: string;
   numeroTrt?: string;          // nº do TRT/ART emitido no conselho (por projeto)
   financeiro?: FinanceiroProjeto; // gestão financeira do projeto (valor cobrado, gastos, recebimentos)
+  ficticio?: boolean;          // projeto de DEMONSTRAÇÃO: as peças saem marcadas como dados fictícios
 }
 
 /** Um lançamento financeiro do projeto: um gasto (custo) ou um recebimento (entrada). */

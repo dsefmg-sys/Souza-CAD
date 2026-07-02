@@ -44,6 +44,9 @@ export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
   const c: Paragraph[] = [];
 
   // Cabeçalho
+  if (imovel.ficticio) {
+    c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: '*** DADOS FICTÍCIOS — DOCUMENTO DE DEMONSTRAÇÃO, SEM VALIDADE LEGAL ***', bold: true, size: 20, color: 'B91C1C' })] }));
+  }
   c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, children: [new TextRun({ text: 'ERRATA FORMAL DE MEMORIAL DESCRITIVO E PROJETO TÉCNICO', bold: true, size: 24 })] }));
   c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [new TextRun({ text: `AO OFICIAL DE REGISTRO DE IMÓVEIS DA COMARCA DE ${comarca.toUpperCase()} – MG`, bold: true, size: 22 })] }));
 

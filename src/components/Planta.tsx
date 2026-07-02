@@ -675,6 +675,12 @@ export default function Planta({
       {/* linha horizontal separando a área do desenho da faixa inferior (situação/convenções/coordenadas) */}
       <line x1={95} y1={DRAW.y1} x2={W - CARW} y2={DRAW.y1} stroke="#000" strokeWidth={1.2} />
 
+      {/* marca d'água de DADOS FICTÍCIOS (projeto de demonstração) */}
+      {imovel.ficticio && (() => {
+        const mx = (DRAW.x0 + DRAW.x1) / 2, my = (DRAW.y0 + DRAW.y1) / 2;
+        return <text x={mx} y={my} fontSize={110} fontWeight="bold" fill="#ef4444" fillOpacity={0.12} textAnchor="middle" transform={`rotate(-28 ${mx} ${my})`} style={{ pointerEvents: 'none' }}>DADOS FICTÍCIOS</text>;
+      })()}
+
       {/* superfície de captura para edição (transparente; não aparece no PDF) */}
       {editavel && <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="transparent" style={{ pointerEvents: 'all' }} />}
 

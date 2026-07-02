@@ -60,12 +60,23 @@ function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, la
   return y + 8;
 }
 
+/** Faixa de aviso quando o projeto é fictício (demonstração). Devolve o novo y. */
+function avisoFicticio(doc: jsPDF, imovel: ImovelData, larg: number, y: number): number {
+  if (!imovel.ficticio) return y;
+  doc.setTextColor(185, 28, 28);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+  doc.text('*** DADOS FICTÍCIOS — DOCUMENTO DE DEMONSTRAÇÃO, SEM VALIDADE ***', larg / 2, y, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+  return y + 7;
+}
+
 /** Recibo de pagamento do serviço, pronto para imprimir/assinar. */
 export function gerarReciboPdf(a: BaseArgs & { valor: number; referente?: string; numero?: string }): void {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const larg = doc.internal.pageSize.getWidth();
   const margem = 18;
   let y = cabecalhoEscritorio(doc, a.escritorio, margem, larg);
+  y = avisoFicticio(doc, a.imovel, larg, y);
 
   // título + caixa de valor
   doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
@@ -103,6 +114,7 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
   const alt = doc.internal.pageSize.getHeight();
   const margem = 18;
   let y = cabecalhoEscritorio(doc, a.escritorio, margem, larg);
+  y = avisoFicticio(doc, a.imovel, larg, y);
 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
   doc.text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE GEORREFERENCIAMENTO', larg / 2, y, { align: 'center', maxWidth: larg - margem * 2 });

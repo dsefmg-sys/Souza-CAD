@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette, BarChart3,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette, BarChart3, FlaskConical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +64,7 @@ import { useAuth, sair } from '@/lib/firebase/auth';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
+import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
 import { termosAceitosLocal, termosAceitosNuvem, sincronizarPerfil, registrarProjetoSalvo } from '@/lib/store/perfilUso';
 import { carregarPreferencias, salvarPreferencias, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
@@ -1901,6 +1902,24 @@ export default function EditorPage() {
     }, 150);
   }
 
+  // Carrega um projeto completo FICTÍCIO (demonstração). As peças saem marcadas como dados fictícios.
+  function carregarProjetoFicticio() {
+    if (temConteudoTrabalho() && !window.confirm('Carregar o projeto fictício de demonstração? O trabalho atual não salvo será descartado.')) return;
+    const f = gerarProjetoFicticio();
+    const gleba: Gleba = { ...novaGlebaVazia(1), denominacao: f.imovel.denominacao, vertices: f.vertices, confrontantes: f.confrontantes, confrontantePorLado: f.confrontantePorLado };
+    setProjetoId(null);
+    setNomeProjeto(f.nome); setNomeProjetoManual(true);
+    setImovel(f.imovel);
+    setZona(f.zona); setHemisferio(f.hemisferio);
+    setRequerente(undefined); setTransmitente(undefined);
+    setParcelasCert([]); setReferencias([]); setSituacaoUrl(undefined);
+    setPlantaConfig({});
+    setSigefStatus('idle'); setBaixou({}); setSalvoOk(false);
+    setGlebas([gleba]);
+    carregarGleba(gleba);
+    aviso('Projeto fictício carregado. Use para demonstração — todas as peças saem marcadas como DADOS FICTÍCIOS.');
+  }
+
   function converterPolilinhaEmPerimetro() {
     if (!objetoSelId) return;
     const o = objetos.find((x) => x.id === objetoSelId);
@@ -2282,6 +2301,7 @@ export default function EditorPage() {
                       ['RT', 'Dados do responsável técnico: nome, CFT, código do credenciado e contadores', <UserCheck key="i" className="size-4" />, () => { setConfigAba('pessoal'); setConfigAberta(true); }],
                       ['Config.', 'Configurações gerais', <Settings key="i" className="size-4" />, () => { setConfigAba(undefined); setConfigAberta(true); }],
                       ...(souMaster() ? [['Uso', 'Painel do titular: contas e uso do sistema (só você vê)', <BarChart3 key="i" className="size-4" />, () => setMasterAberto(true)]] : []),
+                      ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio()]] : []),
                       ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => sair()]] : []),
                     ] as [string, string, React.ReactNode, () => void][]).map(([rotuloBtn, dica, icone, acao]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline" className="h-11 flex-col gap-0.5 p-0" title={dica} onClick={acao}>

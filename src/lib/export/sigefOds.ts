@@ -169,7 +169,7 @@ function injetarIdentificacao(xml: string, imovel: ImovelData): string {
   };
   add(5, imovel.proprietario);        // Nome:
   add(6, imovel.cpfProprietario);     // CPF:
-  add(9, imovel.denominacao);         // Denominação:
+  add(9, imovel.ficticio ? `(FICTICIO) ${imovel.denominacao}` : imovel.denominacao); // Denominação:
   add(12, imovel.codigoImovelIncra);  // Código do Imóvel (SNCR/INCRA):
   add(13, imovel.cns);                // Código do cartório (CNS):
   add(14, imovel.matricula);          // Matrícula:

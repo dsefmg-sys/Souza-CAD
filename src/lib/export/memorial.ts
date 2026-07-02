@@ -290,6 +290,13 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
 
   const children: (Paragraph | Table)[] = [];
 
+  // Aviso de dados fictícios (projeto de demonstração)
+  if (imovel.ficticio) {
+    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+      new TextRun({ text: '*** DADOS FICTÍCIOS — DOCUMENTO DE DEMONSTRAÇÃO, SEM VALIDADE LEGAL ***', bold: true, size: 20, color: 'B91C1C' }),
+    ] }));
+  }
+
   // Título
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 220 }, children: [
     new TextRun({ text: 'MEMORIAL DESCRITIVO', bold: true, size: 28 }),
