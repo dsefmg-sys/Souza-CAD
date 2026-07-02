@@ -146,7 +146,6 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
   y += 6;
   doc.text(`${a.tecnico.cidadeAssinatura || a.imovel.municipio || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 24;
-  const meio = larg / 2;
   doc.setLineWidth(0.3);
   doc.line(margem, y, margem + 70, y);
   doc.line(larg - margem - 70, y, larg - margem, y);
@@ -155,9 +154,6 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
   doc.text(a.imovel.proprietario || '', margem + 35, y + 10, { align: 'center' });
   doc.text('CONTRATADO', larg - margem - 35, y + 5, { align: 'center' });
   doc.text(a.escritorio.nome || '', larg - margem - 35, y + 10, { align: 'center' });
-  y += 24;
-  doc.line(meio - 70, y, meio - 10, y); doc.text('Testemunha', meio - 40, y + 5, { align: 'center' });
-  doc.line(meio + 10, y, meio + 70, y); doc.text('Testemunha', meio + 40, y + 5, { align: 'center' });
 
   doc.save(`Contrato - ${a.imovel.denominacao || 'cliente'}.pdf`);
 }

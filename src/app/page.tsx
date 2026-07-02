@@ -2324,9 +2324,9 @@ export default function EditorPage() {
           {/* Detalhes do projeto: botão flutuante no canto superior direito (fora do cabeçalho, pra
               liberar espaço). Laranja até ser aberto, verde depois. */}
           <button type="button"
-            className={`absolute right-3 top-3 z-[1150] flex size-10 items-center justify-center rounded-lg border shadow-lg backdrop-blur ${infoJaVista(projetoId) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
+            className={`absolute right-3 top-3 z-[1150] flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-bold shadow-lg backdrop-blur ${infoJaVista(projetoId) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
             title="Detalhes do projeto, arquivos anexados e pendências (o que ainda falta pra exportar)"
-            onClick={() => setInfoAberto(true)}><FileText className="size-5" /></button>
+            onClick={() => setInfoAberto(true)}><FileText className="size-4" /> DETALHES</button>
           {/* BARRA FLUTUANTE (arrastável): dados do projeto + ações úteis, numa linha só */}
           <div className={`absolute z-[1100] flex select-none items-stretch gap-1.5 rounded-xl border bg-background/95 p-1.5 shadow-xl backdrop-blur [&_button.act]:flex [&_button.act]:size-10 [&_button.act]:items-center [&_button.act]:justify-center [&_button.act]:rounded-lg ${dadosPos ? '' : 'bottom-4 left-4'}`} style={dadosPos ? { left: dadosPos.x, top: dadosPos.y } : undefined}>
             {/* alça de arraste */}

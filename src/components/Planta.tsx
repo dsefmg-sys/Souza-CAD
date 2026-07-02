@@ -1550,9 +1550,10 @@ function CarimboA3(props: {
     }
     return [pal.slice(0, melhor).join(' '), pal.slice(melhor).join(' ')];
   })();
-  const hCabTitulo = tituloLinhas.length > 1 ? 44 : 24;
+  const hCabTitulo = tituloLinhas.length > 1 ? 48 : 26;
   const campoStart = hCabTitulo + 20; // início dos campos, com folga do cabeçalho
-  const gap = Math.min(27, Math.floor((264 - campoStart - 10) / Math.max(1, campos.length - 1)));
+  const H_DADOS = 276; // caixa de Dados um pouco mais alta (título com folga no topo)
+  const gap = Math.min(27, Math.floor((H_DADOS - campoStart - 10) / Math.max(1, campos.length - 1)));
 
   // Coordenadas verticais do carimbo. O antigo box de TÍTULO saiu: o título virou o CABEÇALHO da
   // seção de Dados (que já traz o nome do imóvel), liberando ~84px que foram redistribuídos para
@@ -1563,12 +1564,12 @@ function CarimboA3(props: {
   //   y=786 : Declaração confrontantes (h=110) → 896
   //   y=906 : Escritório             (h=185) → 1091
   const Y_DADOS       = 32;
-  const Y_PROP        = 306;
-  const H_PROP        = 230;
-  const Y_LAUDO       = 546;
+  const Y_PROP        = 318; // desceu: dá mais altura ao box de Dados (título sem aperto no topo)
+  const H_PROP        = 224;
+  const Y_LAUDO       = 552;
   const Y_CONF        = 786;
   const Y_ESC         = 906;
-  const H_LAUDO       = 230;
+  const H_LAUDO       = 224;
   const H_ESC         = 185;
   // caixas iguais e barras na MESMA altura relativa: o Laudo tem 3 linhas abaixo da barra e o
   // Proprietário 2, mas o espaço de FIRMA (acima da barra) fica igual nos dois.
@@ -1615,7 +1616,7 @@ function CarimboA3(props: {
 
       {/* ── BOX 3: DADOS DO IMÓVEL ────────────────────────────────────────── */}
       <g>
-        <rect x={lx} y={Y_DADOS} width={wBox} height={264} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
+        <rect x={lx} y={Y_DADOS} width={wBox} height={H_DADOS} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
         {/* título principal da planta: fonte maior pra destaque; quebra em até 2 linhas quando é longo.
             Duplo clique edita direto na planta (ou escolha um modelo no painel de Planta). */}
         {(() => {
@@ -1632,7 +1633,7 @@ function CarimboA3(props: {
                 <g style={ed?.ativo ? { cursor: 'text' } : undefined}
                    onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT); } : undefined}>
                   {tituloLinhas.map((ln, k) => (
-                    <text key={k} x={cxc} y={Y_DADOS + (duas ? 15 + k * 18 : 16)} fontSize={fs(10.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
+                    <text key={k} x={cxc} y={Y_DADOS + (duas ? 19 + k * 18 : 17)} fontSize={fs(10.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
                   ))}
                 </g>
               )}
