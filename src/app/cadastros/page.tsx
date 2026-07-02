@@ -11,24 +11,40 @@ import type { ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad } from '@
 import { proprietarios, confrontantesCad, imoveisCad, cartoriosCad } from '@/lib/store/cadastros';
 import { carregarProjeto } from '@/lib/store/projects';
 import { cpfValido, cnpjValido } from '@/lib/topo/validation';
+import { useAuth } from '@/lib/firebase/auth';
 
 type Aba = 'proprietarios' | 'confrontantes' | 'imoveis' | 'cartorios' | 'global';
 
+const normalizarTexto = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+
+function CampoBusca({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <div className="relative">
+      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Input type="search" placeholder={placeholder} className="pl-8" value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
 // Enfileira um cadastro para inserir no projeto aberto e volta ao editor (que aplica a fila).
 // O editor guarda o trabalho automaticamente, então voltar não perde nada.
+// Chave com o uid (mesmo esquema de metrica.rascunho:${uid}): sem isso, num navegador
+// compartilhado, a fila de um usuário podia ser aplicada na conta de outro que logasse depois.
 type TipoInsercao = 'prop' | 'conf' | 'imovel' | 'cartorio';
-function enviarParaProjeto(tipo: TipoInsercao, item: unknown) {
+function enviarParaProjeto(tipo: TipoInsercao, item: unknown, uid: string | undefined) {
   try {
-    const raw = localStorage.getItem('metrica.filaInserir');
+    const chave = `metrica.filaInserir:${uid ?? 'local'}`;
+    const raw = localStorage.getItem(chave);
     const fila = raw ? JSON.parse(raw) : [];
     fila.push({ tipo, item });
-    localStorage.setItem('metrica.filaInserir', JSON.stringify(fila));
+    localStorage.setItem(chave, JSON.stringify(fila));
   } catch { /* ignore */ }
   window.location.href = '/';
 }
 function BtnInserir({ tipo, item }: { tipo: TipoInsercao; item: unknown }) {
+  const { user } = useAuth();
   return (
-    <Button size="sm" variant="outline" className="h-8 shrink-0 gap-1" title="Inserir no projeto aberto (volta ao editor)" onClick={() => enviarParaProjeto(tipo, item)}>
+    <Button size="sm" variant="outline" className="h-8 shrink-0 gap-1" title="Inserir no projeto aberto (volta ao editor)" onClick={() => enviarParaProjeto(tipo, item, user?.uid)}>
       <FolderInput className="h-3.5 w-3.5" /> Inserir no projeto
     </Button>
   );
@@ -211,6 +227,7 @@ function Proprietarios({
 }: TabProps<ProprietarioCad> & { propsList: ProprietarioCad[]; confsList: ConfrontanteCad[] }) {
   const vazio: ProprietarioCad = { id: '', nome: '', cpf: '', tipoPessoa: 'Física' };
   const [form, setForm] = useState<ProprietarioCad>(vazio);
+  const [busca, setBusca] = useState('');
 
   useEffect(() => {
     if (preset) {
@@ -257,7 +274,10 @@ function Proprietarios({
     }
   }
 
-  const listaExibicao = propsList.filter((p) => !projetoId || p.projetoId === projetoId);
+  const q = normalizarTexto(busca);
+  const listaExibicao = propsList
+    .filter((p) => !projetoId || p.projetoId === projetoId)
+    .filter((p) => !q || normalizarTexto(p.nome).includes(q) || normalizarTexto(p.cpf).includes(q));
 
   return (
     <div className="space-y-4">
@@ -269,6 +289,7 @@ function Proprietarios({
           {form.id && <Button size="sm" variant="ghost" onClick={() => setForm(vazio)}>Cancelar</Button>}
         </div>
       </CardContent></Card>
+      <CampoBusca value={busca} onChange={setBusca} placeholder="Buscar por nome ou CPF/CNPJ..." />
       <div className="space-y-1">
         {listaExibicao.map((p) => (
           <div key={p.id} className="flex items-center justify-between rounded border p-2 text-sm">
@@ -283,7 +304,7 @@ function Proprietarios({
         ))}
         {listaExibicao.length === 0 && (
           <div className="text-center py-6 text-sm text-muted-foreground">
-            Nenhum proprietário associado a este projeto.
+            {busca ? 'Nenhum proprietário encontrado para essa busca.' : 'Nenhum proprietário associado a este projeto.'}
           </div>
         )}
       </div>
@@ -301,6 +322,7 @@ function Confrontantes({
 }: TabProps<ConfrontanteCad> & { propsList: ProprietarioCad[]; confsList: ConfrontanteCad[] }) {
   const vazio: ConfrontanteCad = { id: '', nome: '', cpf: '', matricula: '', cns: '', descricaoExtra: '', condicao: 'proprietario' };
   const [form, setForm] = useState<ConfrontanteCad>(vazio);
+  const [busca, setBusca] = useState('');
 
   useEffect(() => {
     if (preset) {
@@ -363,7 +385,10 @@ function Confrontantes({
     avisoInv = 'CPF do inventariante inválido.';
   }
 
-  const listaExibicao = confsList.filter((c) => !projetoId || c.projetoId === projetoId);
+  const qc = normalizarTexto(busca);
+  const listaExibicao = confsList
+    .filter((c) => !projetoId || c.projetoId === projetoId)
+    .filter((c) => !qc || normalizarTexto(c.nome).includes(qc) || normalizarTexto(c.cpf).includes(qc) || normalizarTexto(c.matricula).includes(qc));
 
   return (
     <div className="space-y-4">
@@ -391,6 +416,7 @@ function Confrontantes({
           {form.id && <Button size="sm" variant="ghost" onClick={() => setForm(vazio)}>Cancelar</Button>}
         </div>
       </CardContent></Card>
+      <CampoBusca value={busca} onChange={setBusca} placeholder="Buscar por nome, CPF/CNPJ ou matrícula..." />
       <div className="space-y-1">
         {listaExibicao.map((c) => (
           <div key={c.id} className="flex items-center justify-between rounded border p-2 text-sm">
@@ -405,7 +431,7 @@ function Confrontantes({
         ))}
         {listaExibicao.length === 0 && (
           <div className="text-center py-6 text-sm text-muted-foreground">
-            Nenhum confrontante associado a este projeto.
+            {busca ? 'Nenhum confrontante encontrado para essa busca.' : 'Nenhum confrontante associado a este projeto.'}
           </div>
         )}
       </div>
@@ -422,6 +448,7 @@ function Imoveis({
 }: TabProps<ImovelCad> & { imoveisList: ImovelCad[] }) {
   const vazio: ImovelCad = { id: '', denominacao: '', matricula: '', cns: '', codigoImovelIncra: '', municipio: '' };
   const [form, setForm] = useState<ImovelCad>(vazio);
+  const [busca, setBusca] = useState('');
 
   useEffect(() => {
     if (preset) {
@@ -443,7 +470,10 @@ function Imoveis({
     onRefresh();
   }
 
-  const listaExibicao = imoveisList.filter((i) => !projetoId || i.projetoId === projetoId);
+  const qi = normalizarTexto(busca);
+  const listaExibicao = imoveisList
+    .filter((i) => !projetoId || i.projetoId === projetoId)
+    .filter((i) => !qi || normalizarTexto(i.denominacao).includes(qi) || normalizarTexto(i.matricula).includes(qi) || normalizarTexto(i.municipio).includes(qi));
 
   return (
     <div className="space-y-4">
@@ -458,6 +488,7 @@ function Imoveis({
           {form.id && <Button size="sm" variant="ghost" onClick={() => setForm(vazio)}>Cancelar</Button>}
         </div>
       </CardContent></Card>
+      <CampoBusca value={busca} onChange={setBusca} placeholder="Buscar por denominação, matrícula ou município..." />
       <div className="space-y-1">
         {listaExibicao.map((m) => (
           <div key={m.id} className="flex items-center justify-between rounded border p-2 text-sm">
@@ -472,7 +503,7 @@ function Imoveis({
         ))}
         {listaExibicao.length === 0 && (
           <div className="text-center py-6 text-sm text-muted-foreground">
-            Nenhum imóvel associado a este projeto.
+            {busca ? 'Nenhum imóvel encontrado para essa busca.' : 'Nenhum imóvel associado a este projeto.'}
           </div>
         )}
       </div>
@@ -488,6 +519,7 @@ function Cartorios({
 }: Omit<TabProps<CartorioCad>, 'projetoId'> & { cartoriosList: CartorioCad[] }) {
   const vazio: CartorioCad = { id: '', cns: '', nome: '', municipio: '' };
   const [form, setForm] = useState<CartorioCad>(vazio);
+  const [busca, setBusca] = useState('');
 
   useEffect(() => {
     if (preset) {
@@ -508,6 +540,9 @@ function Cartorios({
     onRefresh();
   }
 
+  const qCart = normalizarTexto(busca);
+  const cartoriosFiltrados = cartoriosList.filter((c) => !qCart || normalizarTexto(c.cns).includes(qCart) || normalizarTexto(c.nome).includes(qCart) || normalizarTexto(c.municipio).includes(qCart));
+
   return (
     <div className="space-y-4">
       <Card><CardContent className="grid grid-cols-2 gap-3 p-4">
@@ -519,8 +554,9 @@ function Cartorios({
           {form.id && <Button size="sm" variant="ghost" onClick={() => setForm(vazio)}>Cancelar</Button>}
         </div>
       </CardContent></Card>
+      <CampoBusca value={busca} onChange={setBusca} placeholder="Buscar por CNS, nome ou município..." />
       <div className="space-y-1">
-        {cartoriosList.map((c) => (
+        {cartoriosFiltrados.map((c) => (
           <div key={c.id} className="flex items-center justify-between rounded border p-2 text-sm">
             <span onClick={() => setForm(c)} className="cursor-pointer font-medium hover:text-primary transition-colors">
               {c.cns} — {c.nome} {c.municipio ? `(${c.municipio})` : ''}
@@ -531,6 +567,9 @@ function Cartorios({
             </div>
           </div>
         ))}
+        {cartoriosFiltrados.length === 0 && busca && (
+          <div className="text-center py-6 text-sm text-muted-foreground">Nenhum cartório encontrado para essa busca.</div>
+        )}
       </div>
     </div>
   );
@@ -562,11 +601,7 @@ function GlobalSearch({
   onEditarCartorio,
 }: GlobalSearchProps) {
   const [busca, setBusca] = useState('');
-
-  const normalizar = (s: string) => (s || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '');
+  const normalizar = normalizarTexto;
 
   const q = normalizar(busca);
 
