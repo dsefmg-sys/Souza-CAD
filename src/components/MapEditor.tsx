@@ -6,6 +6,7 @@ import L from 'leaflet';
 import type { Vertex, ObjetoDesenho, Confrontante } from '@/lib/topo/types';
 import { distanciaCota } from '@/lib/topo/objetos';
 import { corDivisa } from '@/lib/topo/sigefVocab';
+import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { numBR } from '@/lib/topo/geometry';
 
 export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'cota' | 'texto' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi';
@@ -75,7 +76,7 @@ function valido(v: Vertex): boolean {
 
 // símbolo do vértice por tipo, igual ao da legenda da planta: M = losango, P = círculo, V = triângulo
 function iconeVertice(v: Vertex, selecionado: boolean) {
-  const cor = v.tipo === 'M' ? '#f59e0b' : v.tipo === 'V' ? '#a855f7' : '#22c55e';
+  const cor = v.tipo === 'M' ? '#f59e0b' : v.tipo === 'V' ? '#a855f7' : '#1e3a8a';
   const borda = selecionado ? '#ef4444' : '#ffffff';
   const sw = selecionado ? 2.5 : 1.6;
   let shape: string;
@@ -373,15 +374,16 @@ export default function MapEditor(props: Props) {
 
         const a: [number, number] = [v.lat, v.lon];
         const b: [number, number] = [prox.lat, prox.lon];
+        const corConf = corPorConfrontante(conf.id);
 
         return (
-          <Polyline 
-            key={`conf-seg-${v.id}`} 
-            positions={[a, b]} 
-            pathOptions={{ color: '#2563eb', weight: 4, opacity: 0.85, dashArray: '4 8' }}
+          <Polyline
+            key={`conf-seg-${v.id}`}
+            positions={[a, b]}
+            pathOptions={{ color: corConf, weight: 4, opacity: 0.85, dashArray: '4 8' }}
           >
             <Tooltip sticky direction="top" opacity={0.9}>
-              <span className="font-bold text-blue-900">Confrontante: {conf.nome || '(sem nome)'}</span>
+              <span className="font-bold" style={{ color: corConf }}>Confrontante: {conf.nome || '(sem nome)'}</span>
             </Tooltip>
           </Polyline>
         );
@@ -557,6 +559,24 @@ export default function MapEditor(props: Props) {
           }}
         />
       ))}
+
+      {/* Legenda de cores dos confrontantes (só os já aplicados em algum lado) */}
+      {confrontantePorLado && confrontantes && (() => {
+        const usados = new Set(Object.values(confrontantePorLado));
+        const lista = confrontantes.filter((c) => usados.has(c.id));
+        if (!lista.length) return null;
+        return (
+          <div className="absolute bottom-6 right-2 z-[1000] max-h-40 max-w-56 overflow-y-auto rounded border bg-background/90 px-2 py-1.5 text-[11px] shadow backdrop-blur">
+            <div className="mb-1 font-semibold text-muted-foreground">Confrontantes</div>
+            {lista.map((c) => (
+              <div key={c.id} className="flex items-center gap-1.5 py-0.5">
+                <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id) }} />
+                <span className="truncate">{c.nome || '(sem nome)'}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </MapContainer>
   );
 }

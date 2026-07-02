@@ -43,7 +43,7 @@ export function escolherZonaPorAncora(
   norte: number,
   hemisferio: 'N' | 'S',
   ancora: { lat: number; lon: number },
-  fusosPermitidos: number[] = [22, 23, 24, 25]
+  fusosPermitidos: number[] = [18, 19, 20, 21, 22, 23, 24, 25]
 ): number {
   let melhor = fusosPermitidos[0];
   let melhorD = Infinity;

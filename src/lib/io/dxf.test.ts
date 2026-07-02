@@ -61,4 +61,38 @@ describe('DXF georreferenciado', () => {
     expect(ent.pontos.length).toBeGreaterThan(0);
     expect(ent.textos.some((t) => /COIN-/.test(t.texto))).toBe(true);
   });
+
+  it('monta o perímetro a partir de LINHAS SOLTAS (sem polilinha), fora de ordem e sentido', () => {
+    // quadrado 1000,1000 -> 1100,1000 -> 1100,1100 -> 1000,1100, desenhado como 4 LINE
+    // separadas, embaralhadas e com sentidos trocados (comum em DXF de campo)
+    const dxf = [
+      '0', 'SECTION', '2', 'ENTITIES',
+      '0', 'LINE', '8', 'PERIMETRO', '10', '1100', '20', '1100', '11', '1100', '21', '1000',
+      '0', 'LINE', '8', 'PERIMETRO', '10', '1000', '20', '1000', '11', '1100', '21', '1000',
+      '0', 'LINE', '8', 'PERIMETRO', '10', '1000', '20', '1100', '11', '1000', '21', '1000',
+      '0', 'LINE', '8', 'PERIMETRO', '10', '1100', '20', '1100', '11', '1000', '21', '1100',
+      '0', 'ENDSEC', '0', 'EOF', '',
+    ].join('\n');
+    const ent = importarDxf(dxf);
+    expect(ent.polilinhas).toHaveLength(0);
+    expect(ent.linhas).toHaveLength(4);
+    const anel = anelDeDxf(ent);
+    expect(anel).not.toBeNull();
+    expect(anel).toHaveLength(4);
+    const xs = anel!.map((p) => p.x).sort((a, b) => a - b);
+    const ys = anel!.map((p) => p.y).sort((a, b) => a - b);
+    expect(xs).toEqual([1000, 1000, 1100, 1100]);
+    expect(ys).toEqual([1000, 1000, 1100, 1100]);
+  });
+
+  it('não inventa perímetro quando há menos de 3 linhas soltas', () => {
+    const dxf = [
+      '0', 'SECTION', '2', 'ENTITIES',
+      '0', 'LINE', '8', '0', '10', '0', '20', '0', '11', '10', '21', '0',
+      '0', 'LINE', '8', '0', '10', '10', '20', '0', '11', '10', '21', '10',
+      '0', 'ENDSEC', '0', 'EOF', '',
+    ].join('\n');
+    const ent = importarDxf(dxf);
+    expect(anelDeDxf(ent)).toBeNull();
+  });
 });

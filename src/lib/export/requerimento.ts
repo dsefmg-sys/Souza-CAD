@@ -2,6 +2,7 @@ import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 import type { ImovelData, TecnicoData, PessoaQualificada } from '../topo/types';
 import { numBR, numBRmilhar } from '../topo/geometry';
 import { valorPorExtenso } from '../topo/extenso';
+import { sanitizarProfundo } from './sanitizar';
 
 export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento';
 
@@ -122,7 +123,8 @@ const TXT_RESPONSABILIDADE =
   'não serem verdadeiros os fatos constantes do memorial descritivo, responderão os requerentes e ' +
   'o profissional que o elaborou pelos prejuízos causados.”';
 
-export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<Blob> {
+export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Promise<Blob> {
+  const input = sanitizarProfundo(inputBruto);
   const { imovel, tecnico, requerente, transmitente, areaRealHa } = input;
   const tipo = input.tipoAto ?? 'venda';
   const rot = ROTULOS_ATO[tipo];
@@ -149,7 +151,12 @@ export async function gerarRequerimentoDocx(input: RequerimentoInput): Promise<B
   c.push(par(txtRequerimento(tipo)));
 
   c.push(titulo('DA IDENTIFICAÇÃO DO IMÓVEL'));
-  c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, encontra-se registrado neste Cartório sob a matrícula nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${transmitente.nome || imovel.proprietario || '—'}.`));
+  const origens = (imovel.matriculasOrigem ?? []).filter((m) => m.trim());
+  if (tipo === 'unificacao' && origens.length > 0) {
+    c.push(par(`O imóvel resulta da unificação das matrículas nº ${origens.join(', nº ')}, situado no município de ${imovel.municipio || '—'}, passando a constituir uma só matrícula sob nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${transmitente.nome || imovel.proprietario || '—'}.`));
+  } else {
+    c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, encontra-se registrado neste Cartório sob a matrícula nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${transmitente.nome || imovel.proprietario || '—'}.`));
+  }
 
   c.push(titulo('DO LEVANTAMENTO E DA RETIFICAÇÃO'));
   const areaAnt = imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)}` : '—';

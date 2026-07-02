@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Save, FileCog, FileSpreadsheet, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Save, FileCog, FileSpreadsheet, RotateCcw, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,15 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { TecnicoData, EscritorioData } from '@/lib/topo/types';
 import { carregarTecnico, salvarTecnico, TECNICO_PADRAO, carregarEscritorio, salvarEscritorio, ESCRITORIO_PADRAO, salvarModeloSigef, temModeloSigefProprio, limparModeloSigef } from '@/lib/store/settings';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
+import ImportVerticesVizinhoConfigModal from '@/components/ImportVerticesVizinhoConfigModal';
 
-type AbaConfig = 'tecnico' | 'escritorio' | 'modelos';
+// Pessoal = só do usuário (sua assinatura técnica). Global = da empresa (todos usam o mesmo).
+type AbaConfig = 'pessoal' | 'escritorio' | 'numeracao' | 'modelos';
 
 export default function ConfiguracoesPage() {
-  const [aba, setAba] = useState<AbaConfig>('tecnico');
+  const [aba, setAba] = useState<AbaConfig>('pessoal');
   const [t, setT] = useState<TecnicoData>(TECNICO_PADRAO);
   const [esc, setEsc] = useState<EscritorioData>(ESCRITORIO_PADRAO);
   const [msg, setMsg] = useState('');
   const [importTxtAberto, setImportTxtAberto] = useState(false);
+  const [importVizinhoAberto, setImportVizinhoAberto] = useState(false);
   const [modeloProprio, setModeloProprio] = useState(false);
   const sigefRef = useRef<HTMLInputElement>(null);
 
@@ -44,8 +47,7 @@ export default function ConfiguracoesPage() {
   function salvar() {
     salvarTecnico(t);
     salvarEscritorio(esc);
-    setMsg('Configurações salvas.');
-    setTimeout(() => setMsg(''), 3000);
+    flash('Configurações salvas.');
   }
 
   function lerLogo(file: File) {
@@ -54,6 +56,11 @@ export default function ConfiguracoesPage() {
     r.readAsDataURL(file);
   }
 
+  const TabBtn = ({ a, rotulo }: { a: AbaConfig; rotulo: string }) => (
+    <button onClick={() => setAba(a)}
+      className={`px-3 py-2 text-sm ${aba === a ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground'}`}>{rotulo}</button>
+  );
+
   return (
     <div className="mx-auto max-w-2xl p-6">
       <div className="mb-4 flex items-center gap-2">
@@ -61,51 +68,34 @@ export default function ConfiguracoesPage() {
         <h1 className="text-xl font-semibold">Configurações</h1>
       </div>
 
-      <div className="mb-4 flex gap-1 overflow-x-auto whitespace-nowrap border-b">
-        {([['tecnico', 'Responsável Técnico'], ['escritorio', 'Escritório / Carimbo'], ['modelos', 'Importação e Modelos']] as [AbaConfig, string][]).map(([a, rotulo]) => (
-          <button key={a} onClick={() => setAba(a)}
-            className={`px-3 py-2 text-sm ${aba === a ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground'}`}>{rotulo}</button>
-        ))}
+      <p className="mb-4 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+        As configurações <strong>Globais</strong> são da empresa: valem para todos os usuários e para
+        todos os projetos. As <strong>Pessoais</strong> são só suas, como a sua assinatura técnica.
+      </p>
+
+      <div className="mb-4 flex flex-wrap items-center gap-x-1 gap-y-2 border-b pb-1">
+        <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Pessoais</span>
+        <TabBtn a="pessoal" rotulo="Responsável Técnico" />
+        <span className="mx-2 h-5 w-px bg-border" />
+        <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Globais (da empresa)</span>
+        <TabBtn a="escritorio" rotulo="Escritório / Carimbo" />
+        <TabBtn a="numeracao" rotulo="Numeração e Fuso" />
+        <TabBtn a="modelos" rotulo="Importação e Modelos" />
       </div>
 
-      {aba === 'tecnico' && (<>
+      {aba === 'pessoal' && (<>
       <Card>
-        <CardHeader><CardTitle>Dados que aparecem no memorial e na planilha</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Sua assinatura técnica (aparece no memorial e na planilha)</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <Campo wide label="Nome" value={t.nome} onChange={(v) => set('nome', v)} />
           <Campo wide label="Formação" value={t.formacao} onChange={(v) => set('formacao', v)} />
           <Campo label="CFT" value={t.cft} onChange={(v) => set('cft', v)} />
           <Campo label="TRT/ART" value={t.art} onChange={(v) => set('art', v)} />
-          <Campo label="Credenciamento INCRA (prefixo dos vértices)" value={t.credenciamentoIncra} onChange={(v) => set('credenciamentoIncra', v)} />
-          <Campo label="Cidade da assinatura" value={t.cidadeAssinatura} onChange={(v) => set('cidadeAssinatura', v)} />
-          <Campo label="Método de posicionamento" value={t.metodoPosicionamento} onChange={(v) => set('metodoPosicionamento', v)} />
-          <Campo label="Tipo de limite" value={t.tipoLimite} onChange={(v) => set('tipoLimite', v)} />
-          <div className="space-y-1">
-            <Label>Nº inicial dos marcos (M)</Label>
-            <Input type="number" value={t.contadorMarco} onChange={(e) => set('contadorMarco', Number(e.target.value))} />
-          </div>
-          <div className="space-y-1">
-            <Label>Nº inicial dos pontos (P)</Label>
-            <Input type="number" value={t.contadorPonto} onChange={(e) => set('contadorPonto', Number(e.target.value))} />
-          </div>
-          <div className="space-y-1">
-            <Label>Nº inicial dos virtuais (V)</Label>
-            <Input type="number" value={t.contadorVirtual ?? 1} onChange={(e) => set('contadorVirtual', Number(e.target.value))} />
-          </div>
-          <div className="space-y-1">
-            <Label>Fuso UTM principal</Label>
-            <Input type="number" value={t.zonaBase ?? 23} onChange={(e) => set('zonaBase', Number(e.target.value))} />
-          </div>
-          <div className="col-span-2 space-y-1">
-            <Label>Fusos permitidos (auto-detecção pela âncora do município)</Label>
-            <Input value={(t.fusosPermitidos ?? [22, 23, 24, 25]).join(', ')}
-              onChange={(e) => setT((p) => ({ ...p, fusosPermitidos: e.target.value.split(',').map((s) => Number(s.trim())).filter((n) => Number.isFinite(n)) }))} />
-          </div>
+          <Campo wide label="Cidade da assinatura" value={t.cidadeAssinatura} onChange={(v) => set('cidadeAssinatura', v)} />
         </CardContent>
       </Card>
       <p className="mt-3 text-xs text-muted-foreground">
-        Os contadores aqui são apenas a semente inicial. Depois que você salva projetos, o banco
-        de pontos passa a controlar a numeração para nunca repetir um vértice já usado.
+        Estes dados são pessoais: cada técnico da empresa assina com os seus.
       </p>
       </>)}
 
@@ -127,6 +117,42 @@ export default function ConfiguracoesPage() {
       </Card>
       )}
 
+      {aba === 'numeracao' && (<>
+      <Card>
+        <CardHeader><CardTitle>Credenciamento, numeração e fuso (padrão da empresa)</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3">
+          <Campo wide label="Credenciamento INCRA (prefixo dos vértices)" value={t.credenciamentoIncra} onChange={(v) => set('credenciamentoIncra', v)} />
+          <Campo label="Método de posicionamento" value={t.metodoPosicionamento} onChange={(v) => set('metodoPosicionamento', v)} />
+          <Campo label="Tipo de limite" value={t.tipoLimite} onChange={(v) => set('tipoLimite', v)} />
+          <div className="space-y-1">
+            <Label>Nº inicial dos marcos (M)</Label>
+            <Input type="number" value={t.contadorMarco} onChange={(e) => set('contadorMarco', Number(e.target.value))} />
+          </div>
+          <div className="space-y-1">
+            <Label>Nº inicial dos pontos (P)</Label>
+            <Input type="number" value={t.contadorPonto} onChange={(e) => set('contadorPonto', Number(e.target.value))} />
+          </div>
+          <div className="space-y-1">
+            <Label>Nº inicial dos virtuais (V)</Label>
+            <Input type="number" value={t.contadorVirtual ?? 1} onChange={(e) => set('contadorVirtual', Number(e.target.value))} />
+          </div>
+          <div className="space-y-1">
+            <Label>Fuso UTM principal</Label>
+            <Input type="number" value={t.zonaBase ?? 23} onChange={(e) => set('zonaBase', Number(e.target.value))} />
+          </div>
+          <div className="col-span-2 space-y-1">
+            <Label>Fusos permitidos (auto-detecção pela âncora do município)</Label>
+            <Input value={(t.fusosPermitidos ?? [18, 19, 20, 21, 22, 23, 24, 25]).join(', ')}
+              onChange={(e) => setT((p) => ({ ...p, fusosPermitidos: e.target.value.split(',').map((s) => Number(s.trim())).filter((n) => Number.isFinite(n)) }))} />
+          </div>
+        </CardContent>
+      </Card>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Os contadores aqui são apenas a semente inicial. Depois que você salva projetos, o banco
+        de pontos passa a controlar a numeração para nunca repetir um vértice já usado.
+      </p>
+      </>)}
+
       {aba === 'modelos' && (<>
       <Card>
         <CardHeader><CardTitle>Importação de TXT (ordem das colunas)</CardTitle></CardHeader>
@@ -138,6 +164,21 @@ export default function ConfiguracoesPage() {
           </p>
           <Button variant="outline" onClick={() => setImportTxtAberto(true)}>
             <FileCog /> Configurar importação de TXT
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader><CardTitle>Vértices de vizinho certificado (adotar código oficial)</CardTitle></CardHeader>
+        <CardContent>
+          <p className="mb-3 text-sm text-muted-foreground">
+            Quando um vizinho já certificado no SIGEF empresta o vértice de divisa (baixado por
+            vocês do Distribuidor de Coordenadas do Acervo Fundiário), o código dele deve ser
+            reaproveitado, não gerado de novo. Envie um arquivo de exemplo e diga qual coluna é o
+            nome/código do vértice e qual é a coordenada.
+          </p>
+          <Button variant="outline" onClick={() => setImportVizinhoAberto(true)}>
+            <UserCheck /> Configurar leitura de vértices do vizinho
           </Button>
         </CardContent>
       </Card>
@@ -160,7 +201,7 @@ export default function ConfiguracoesPage() {
       </Card>
       </>)}
 
-      {(aba === 'tecnico' || aba === 'escritorio') && (
+      {(aba === 'pessoal' || aba === 'escritorio' || aba === 'numeracao') && (
       <div className="mt-4 flex items-center gap-3">
         <Button onClick={salvar}><Save /> Salvar configurações</Button>
         {msg && <span className="text-sm text-primary">{msg}</span>}
@@ -169,6 +210,7 @@ export default function ConfiguracoesPage() {
       {aba === 'modelos' && msg && <div className="mt-3 text-sm text-primary">{msg}</div>}
 
       <ImportTxtConfigModal open={importTxtAberto} onOpenChange={setImportTxtAberto} />
+      <ImportVerticesVizinhoConfigModal open={importVizinhoAberto} onOpenChange={setImportVizinhoAberto} />
     </div>
   );
 }

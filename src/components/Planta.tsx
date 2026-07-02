@@ -35,6 +35,7 @@ interface Props {
   onCliquePlanta?: (lat: number, lon: number) => void;
   onSelecObjeto?: (id: string | null) => void;
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
+  onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
   onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
   onEditarConfrontante?: (id: string) => void;                     // duplo clique no rótulo: editar nome/matrícula
@@ -44,6 +45,8 @@ interface Props {
   onTextoMenu?: (id: string, atual: string, x: number, y: number) => void; // clique direito: formatar
   onMoverFolha?: (dx: number, dy: number) => void;                // arrastar o vazio: reposiciona a folha
   onTextoMover?: (id: string, dx: number, dy: number) => void;     // arrastar o texto: salva o offset
+  onConfigPatch?: (patch: Partial<PlantaConfig>) => void;          // muda config da planta (cor/linha do polígono) a partir da seleção
+  onAlternarTipoVertice?: (id: string) => void;                    // clicar num vértice na planta: cicla o tipo (M/P/V)
   folhaTravada?: boolean;
   editandoTextoId?: string | null;
   onSetEditandoTextoId?: (id: string | null) => void;
@@ -210,15 +213,19 @@ export default function Planta({
   zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
-  onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onMoverRotuloConf, onMoverRotuloVertice,
+  onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
-  onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, folhaTravada = true,
+  onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number }>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
+  // Arraste suave: em vez de atualizar o estado a cada micro-movimento do mouse (que redesenha o
+  // SVG inteiro e trava), juntamos as atualizações e aplicamos no máximo uma por quadro de tela.
+  const dragRaf = useRef<number | null>(null);
+  const dragPending = useRef<{ dx: number; dy: number; guiaX?: number; guiaY?: number } | null>(null);
 
   // Estados locais para seleção e edição em linha (in-place)
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
@@ -502,8 +509,16 @@ export default function Planta({
         }
       }
 
-      setDragTemp((prev) => prev ? { ...prev, dx, dy } : null);
-      setGuiaAlinhamento(guiaX != null || guiaY != null ? { x: guiaX, y: guiaY } : null);
+      // coalesce por quadro de tela: no máximo um re-render por frame → arraste suave
+      dragPending.current = { dx, dy, guiaX, guiaY };
+      if (dragRaf.current == null) {
+        dragRaf.current = requestAnimationFrame(() => {
+          dragRaf.current = null;
+          const p = dragPending.current; if (!p) return;
+          setDragTemp((prev) => prev ? { ...prev, dx: p.dx, dy: p.dy } : null);
+          setGuiaAlinhamento(p.guiaX != null || p.guiaY != null ? { x: p.guiaX, y: p.guiaY } : null);
+        });
+      }
     }
     if (d.kind === 'objPonto') {
       const g = paraGeo(u);
@@ -511,13 +526,23 @@ export default function Planta({
     }
   }
   function plantaUp(e: ReactPointerEvent) {
+    // garante que o último movimento pendente (ainda não aplicado pelo frame) entre no commit final
+    if (dragRaf.current != null) { cancelAnimationFrame(dragRaf.current); dragRaf.current = null; }
+    const pend = dragPending.current; dragPending.current = null;
     setGuiaAlinhamento(null);
     if (dragTemp && dragRef.current) {
       const d = dragRef.current;
-      let finalX = dragTemp.baseX + dragTemp.dx;
-      let finalY = dragTemp.baseY + dragTemp.dy;
+      let finalX = dragTemp.baseX + (pend ? pend.dx : dragTemp.dx);
+      let finalY = dragTemp.baseY + (pend ? pend.dy : dragTemp.dy);
       if (d.kind === 'ted') {
-        onTextoMover?.(dragTemp.id, finalX, finalY);
+        // Item de DESENHO (texto/cota/linha que o usuário adicionou) solto com o cursor FORA da
+        // folha A3 é EXCLUÍDO. Textos do carimbo e rótulos de vértice/confrontante não são objetos,
+        // então ficam protegidos.
+        const drop = svgPonto(e);
+        const ehObjeto = objetos.some((o) => o.id === dragTemp.id);
+        const foraDaFolha = !!drop && (drop.x < 0 || drop.y < 0 || drop.x > W || drop.y > H);
+        if (ehObjeto && foraDaFolha && onExcluirObjeto) onExcluirObjeto(dragTemp.id);
+        else onTextoMover?.(dragTemp.id, finalX, finalY);
       } else if (d.kind === 'divisaConf' && d.vx != null && d.vy != null) {
         // a ponta não pode sair do quadro do desenho
         finalX = Math.max(DRAW.x0, Math.min(DRAW.x1, finalX));
@@ -552,6 +577,19 @@ export default function Planta({
   const fatorK = 0.9996 * (1 + Math.pow(dLamb * Math.cos(phiRef), 2) / 2);
   const represUsadas = Array.from(new Set(vertices.map((v) => v.representacao || 'linha-ideal')));
 
+  // Rótulos da grade: mantém TODAS as linhas, mas só escreve o NÚMERO quando ele não ficaria
+  // colado no número anterior (evita a sobreposição dos valores E/N quando as linhas estão perto).
+  const gapGrade = fs(7.5) * 8.5;
+  const rotuloGrade = (vals: number[], pos: (n: number) => number, lo: number, hi: number) => {
+    const set = new Set<number>();
+    let last = -Infinity;
+    vals.map((v) => ({ v, p: pos(v) })).filter((o) => o.p >= lo && o.p <= hi).sort((a, b) => a.p - b.p)
+      .forEach((o) => { if (o.p - last >= gapGrade) { set.add(o.v); last = o.p; } });
+    return set;
+  };
+  const rotX = rotuloGrade(linhasX, sx, DRAW.x0, DRAW.x1);
+  const rotY = rotuloGrade(linhasY, sy, DRAW.y0, DRAW.y1);
+
   return (
     <svg ref={svgRef} id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%"
       style={{ background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'crosshair') : 'default', touchAction: editavel ? 'none' : undefined }}
@@ -578,7 +616,7 @@ export default function Planta({
         return (
           <g key={`x${x}`}>
             <line x1={valX} y1={DRAW.y0} x2={valX} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
-            <text x={valX} y={DRAW.y0 + 13} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>
+            {rotX.has(x) && <text x={valX} y={DRAW.y0 + 13} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>}
           </g>
         );
       })}
@@ -588,7 +626,7 @@ export default function Planta({
         return (
           <g key={`y${y}`}>
             <line x1={DRAW.x0} y1={valY} x2={DRAW.x1} y2={valY} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
-            <text x={DRAW.x0 + 13} y={valY} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${valY})`}>{`N ${numBR(y, 4)}`}</text>
+            {rotY.has(y) && <text x={DRAW.x0 + 13} y={valY} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${valY})`}>{`N ${numBR(y, 4)}`}</text>}
           </g>
         );
       })}
@@ -610,7 +648,35 @@ export default function Planta({
       })}
 
       {/* ---------- POLÍGONO (gleba ativa) ---------- */}
-      <polygon points={pts} fill={config.fillPoligono || '#15803d'} fillOpacity={0.08} stroke={config.corPoligono || '#334155'} strokeWidth={config.larguraPoligono ?? 1.8} />
+      <polygon points={pts} fill={config.fillPoligono || '#15803d'} fillOpacity={0.08} stroke={config.corPoligono || '#334155'} strokeWidth={config.larguraPoligono ?? 1.8}
+        style={editavel ? { cursor: 'pointer' } : undefined}
+        onClick={editavel ? (e) => { e.stopPropagation(); setSelecionadoId(selecionadoId === 'planta.poligono' ? null : 'planta.poligono'); } : undefined} />
+      {selecionadoId === 'planta.poligono' && (
+        <>
+          <polygon points={pts} fill="none" stroke="#3b82f6" strokeWidth={1.2} strokeDasharray="5 3" pointerEvents="none" />
+          <g style={{ pointerEvents: 'all' }} transform={`translate(${cx - 76}, ${cy - 70})`}>
+            <rect x={-8} y={-12} width={164} height={24} rx={7} fill="#ffffff" fillOpacity={0.97} stroke="#cbd5e1" strokeWidth={0.7} />
+            <g onClick={(e) => { e.stopPropagation(); onConfigPatch?.({ larguraPoligono: Math.max(0.5, +(((config.larguraPoligono ?? 1.8) - 0.4)).toFixed(1)) }); }} style={{ cursor: 'pointer' }}>
+              <circle cx={4} cy={0} r={7} fill="#f1f5f9" stroke="#94a3b8" strokeWidth={0.6} />
+              <text x={4} y={3.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ userSelect: 'none' }}>−</text>
+            </g>
+            <g onClick={(e) => { e.stopPropagation(); onConfigPatch?.({ larguraPoligono: Math.min(5, +(((config.larguraPoligono ?? 1.8) + 0.4)).toFixed(1)) }); }} style={{ cursor: 'pointer' }}>
+              <circle cx={22} cy={0} r={7} fill="#f1f5f9" stroke="#94a3b8" strokeWidth={0.6} />
+              <text x={22} y={3.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ userSelect: 'none' }}>+</text>
+            </g>
+            <line x1={34} y1={-9} x2={34} y2={9} stroke="#e2e8f0" strokeWidth={0.8} />
+            {['#15803d', '#1d4ed8', '#d97706', '#475569', '#dc2626'].map((c, i) => (
+              <g key={c} onClick={(e) => { e.stopPropagation(); onConfigPatch?.({ fillPoligono: c }); }} style={{ cursor: 'pointer' }}>
+                <circle cx={48 + i * 18} cy={0} r={7} fill={c} stroke={(config.fillPoligono || '#15803d') === c ? '#0f172a' : '#ffffff'} strokeWidth={(config.fillPoligono || '#15803d') === c ? 1.5 : 0.8} />
+              </g>
+            ))}
+            <g onClick={(e) => { e.stopPropagation(); setSelecionadoId(null); }} style={{ cursor: 'pointer' }}>
+              <circle cx={150} cy={0} r={7} fill="#fee2e2" stroke="#fca5a5" strokeWidth={0.6} />
+              <text x={150} y={3} fontSize={9} fontWeight="bold" textAnchor="middle" fill="#991b1b" style={{ userSelect: 'none' }}>×</text>
+            </g>
+          </g>
+        </>
+      )}
 
       {/* ---------- LINHAS DE APOIO DAS DIVISAS ---------- */}
       {vertices.map((v, i) => {
@@ -674,7 +740,7 @@ export default function Planta({
         const half = Math.max(86, fz * 9);
         const boxW = half * 2 + 16;
         const lineH = fz + 3;
-        const signRoom = 14;            // espaço acima de cada linha para a pessoa assinar
+        const signRoom = 32;            // espaço acima de cada linha para a pessoa assinar (cabe a firma)
         const nText = (matLine ? 1 : 0) + principalSemMat.length + conjLines.length;
         const nSig = temConjLinhas ? 2 : 1;
         const boxH = nText * lineH + nSig * (signRoom + 6) + 14;
@@ -755,12 +821,34 @@ export default function Planta({
       })()}
 
       {/* vértices + códigos (rótulo na posição arrastada, se houver; editável) */}
-      {rotuloVert.map(({ v, i, x, y }) => (
-        <g key={v.id}>
-          <SimboloVertice tipo={v.tipo} cx={sx(v.leste)} cy={sy(v.norte)} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6} />
-          <Ted x={x} y={y} base={nomeVertice(v, i)} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
-        </g>
-      ))}
+      {rotuloVert.map(({ v, i, x, y }) => {
+        const vx = sx(v.leste), vy = sy(v.norte);
+        const vsel = editavel && selecionadoId === `vsel.${v.id}`;
+        return (
+          <g key={v.id}>
+            {vsel && <circle cx={vx} cy={vy} r={9} fill="none" stroke="#3b82f6" strokeWidth={0.9} strokeDasharray="3 2" />}
+            <g style={editavel ? { cursor: 'pointer' } : undefined}
+               onClick={editavel ? (e) => { e.stopPropagation(); setSelecionadoId(selecionadoId === `vsel.${v.id}` ? null : `vsel.${v.id}`); } : undefined}>
+              {editavel && <circle cx={vx} cy={vy} r={8} fill="transparent" />}
+              <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6} />
+            </g>
+            <Ted x={x} y={y} base={nomeVertice(v, i)} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
+            {vsel && (
+              <g style={{ pointerEvents: 'all' }} transform={`translate(${vx}, ${vy - 24})`}>
+                <rect x={-34} y={-11} width={68} height={22} rx={6} fill="#ffffff" fillOpacity={0.97} stroke="#cbd5e1" strokeWidth={0.7} />
+                <g onClick={(e) => { e.stopPropagation(); onAlternarTipoVertice?.(v.id); }} style={{ cursor: 'pointer' }}>
+                  <rect x={-30} y={-7} width={40} height={14} rx={3} fill="#f1f5f9" stroke="#94a3b8" strokeWidth={0.5} />
+                  <text x={-10} y={2.5} fontSize={8} fontWeight="bold" textAnchor="middle" fill="#334155" style={{ userSelect: 'none' }}>Tipo: {v.tipo} ⟳</text>
+                </g>
+                <g onClick={(e) => { e.stopPropagation(); setSelecionadoId(null); }} style={{ cursor: 'pointer' }}>
+                  <circle cx={24} cy={0} r={7} fill="#fee2e2" stroke="#fca5a5" strokeWidth={0.6} />
+                  <text x={24} y={3} fontSize={9} fontWeight="bold" textAnchor="middle" fill="#991b1b" style={{ userSelect: 'none' }}>×</text>
+                </g>
+              </g>
+            )}
+          </g>
+        );
+      })}
 
       {/* edição: prévia do desenho em andamento + realce dos pontos do objeto selecionado */}
       {editavel && desenhoPts.length > 0 && (
@@ -910,6 +998,8 @@ export default function Planta({
         imovel={imovel} res={res} ef={ef} tecnico={tecnico} zona={zona} hemisferio={hemisferio}
         vref={vref} conv={conv} decl={decl} represUsadas={represUsadas} fatorK={fatorK}
         verConv={verConv} verNortes={verNortes} escala={escTxt} situacaoUrl={situacaoUrl} verSituacao={verSituacao}
+        coordOv={getOverride('planta.coordBox')} coordEditavel={editavel}
+        onCoordDown={(e) => { e.stopPropagation(); tedComum.onDragStart('planta.coordBox', e); }}
       />
 
       {/* ---------- CARIMBO (coluna direita - reformulada) ---------- */}
@@ -951,8 +1041,9 @@ function FaixaInferior(props: {
   imovel: ImovelData; res: ResultadoCalculo; ef: ReturnType<typeof valoresEfetivos>; tecnico: TecnicoData;
   zona: number; hemisferio: 'N' | 'S'; vref: Vertex; conv: number; decl: number; represUsadas: string[]; fatorK: number;
   verConv: boolean; verNortes: boolean; escala: number; situacaoUrl?: string; verSituacao: boolean;
+  coordOv?: TextoOverride; coordEditavel?: boolean; onCoordDown?: (e: ReactPointerEvent) => void;
 }) {
-  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao } = props;
+  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, coordOv, coordEditavel, onCoordDown } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -1026,8 +1117,11 @@ function FaixaInferior(props: {
         </g>
       )}
 
-      {/* --- BOX 3: INFORMAÇÕES DE COORDENADAS --- */}
-      <g>
+      {/* --- BOX 3: INFORMAÇÕES DE COORDENADAS (arrastável quando em edição) --- */}
+      <g transform={`translate(${coordOv?.dx ?? 0}, ${coordOv?.dy ?? 0})`}
+         style={coordEditavel ? { cursor: 'move' } : undefined}
+         onPointerDown={coordEditavel && onCoordDown ? onCoordDown : undefined}>
+        {coordEditavel && <rect x={x3} y={y0} width={w3} height={hBox} fill="transparent" />}
         <rect x={x3} y={y0} width={w3} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
         <rect x={x3} y={y0} width={w3} height={24} rx={6} ry={6} fill="#475569" />
         <rect x={x3} y={y0 + 18} width={w3} height={6} fill="#475569" />
@@ -1425,15 +1519,57 @@ function CarimboA3(props: {
       {/* ── CARD D: CARIMBO DO ESCRITÓRIO ─────────────────────────────────── */}
       <g>
         <rect x={lx} y={Y_ESC} width={wBox} height={212} rx={4} ry={4} fill="none" stroke="#000" strokeWidth={0.8} />
-        {temLogo ? (
-          <g>
-            {/* logo maior; o NOME não aparece (o próprio logo já identifica a empresa) */}
-            <image href={escritorio.logoDataUrl} x={lx + 12} y={Y_ESC + 10} width={wBox - 24} height={110} preserveAspectRatio="xMidYMid meet" />
-            {T('esc.ramo',    escritorio.ramo,                        { x: cxc, y: Y_ESC + 136, size: fs(8.5), anchor: 'middle' })}
-            {T('esc.endereco', escritorio.endereco,                   { x: cxc, y: Y_ESC + 152, size: fs(8.5), anchor: 'middle', slice: 64 })}
-            {T('esc.tel',    `Tel./WhatsApp: ${escritorio.telefone}`, { x: cxc, y: Y_ESC + 168, size: fs(8.5), anchor: 'middle' })}
-          </g>
-        ) : (
+        {temLogo ? (() => {
+          // Logo REDIMENSIONÁVEL (botão direito aumenta/diminui; escala guardada no override 'esc.logo').
+          const logoEsc = ed?.textos['esc.logo']?.escala ?? 1;
+          const logoW = (wBox - 24) * logoEsc;
+          const logoH = 110 * logoEsc;
+          const logoSel = !!ed?.ativo && ed?.selecionadoId === 'esc.logo';
+          const ajustarLogo = (d: number) => ed?.onTextoPatch?.('esc.logo', { escala: Math.max(0.4, Math.min(2.5, +(logoEsc + d).toFixed(2))) });
+          // Os contatos viram UM bloco de texto só (editável/arrastável), que acompanha a base do logo.
+          const idBloco = 'esc.bloco';
+          const ovB = ed?.textos[idBloco] || {};
+          const txtB = ovB.texto || `${escritorio.ramo}\n${escritorio.endereco}\nTel./WhatsApp: ${escritorio.telefone}`;
+          const fzB = fs(8.5) * (ovB.escala ?? 1);
+          const pxB = cxc + (ovB.dx ?? 0);
+          const pyB = (Y_ESC + 10 + logoH + 20) + (ovB.dy ?? 0);
+          return (
+            <g>
+              {logoSel && <rect x={cxc - logoW / 2 - 2} y={Y_ESC + 8} width={logoW + 4} height={logoH + 4} fill="none" stroke="#3b82f6" strokeWidth={0.8} strokeDasharray="3 2" />}
+              <image href={escritorio.logoDataUrl} x={cxc - logoW / 2} y={Y_ESC + 10} width={logoW} height={logoH} preserveAspectRatio="xMidYMid meet"
+                style={ed?.ativo ? { cursor: 'pointer' } : undefined}
+                onClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onSelect?.(ed.selecionadoId === 'esc.logo' ? null : 'esc.logo'); } : undefined}
+                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ajustarLogo(0.1); } : undefined} />
+              {logoSel && (
+                <g style={{ pointerEvents: 'all' }}>
+                  <g onClick={(e) => { e.stopPropagation(); ajustarLogo(-0.1); }} style={{ cursor: 'pointer' }}>
+                    <circle cx={rx - 30} cy={Y_ESC + 12} r={7} fill="#ffffff" fillOpacity={0.95} stroke="#94a3b8" strokeWidth={0.6} />
+                    <text x={rx - 30} y={Y_ESC + 15.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ userSelect: 'none' }}>−</text>
+                  </g>
+                  <g onClick={(e) => { e.stopPropagation(); ajustarLogo(0.1); }} style={{ cursor: 'pointer' }}>
+                    <circle cx={rx - 13} cy={Y_ESC + 12} r={7} fill="#ffffff" fillOpacity={0.95} stroke="#94a3b8" strokeWidth={0.6} />
+                    <text x={rx - 13} y={Y_ESC + 15.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ userSelect: 'none' }}>+</text>
+                  </g>
+                </g>
+              )}
+              {ed?.editandoId === idBloco ? (
+                <foreignObject x={pxB - 110} y={pyB - 14} width={220} height={70} style={{ overflow: 'visible' }}>
+                  <textarea autoFocus className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1 shadow-md rounded text-[9px]" style={{ resize: 'both', overflow: 'auto' }}
+                    value={txtB} onChange={(e) => ed.onEditar?.(idBloco, e.target.value)} onBlur={() => ed.onTerminarEditar?.(idBloco, txtB)} />
+                </foreignObject>
+              ) : (
+                <g style={ed?.ativo ? { cursor: 'move' } : undefined}
+                   onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idBloco); } : undefined}
+                   onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idBloco, txtB, e.clientX, e.clientY); } : undefined}
+                   onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idBloco, e); } : undefined}>
+                  {txtB.split('\n').map((l, k) => (
+                    <text key={k} x={pxB} y={pyB + k * (fzB + 3)} fontSize={fzB} textAnchor="middle" fill="#0f172a">{l}</text>
+                  ))}
+                </g>
+              )}
+            </g>
+          );
+        })() : (
           <g>
             {T('esc.nome',    escritorio.nome,                        { x: cxc, y: Y_ESC + 50, size: fs(12),  bold: true, anchor: 'middle' })}
             {T('esc.ramo',    escritorio.ramo,                        { x: cxc, y: Y_ESC + 80, size: fs(8.5), anchor: 'middle' })}

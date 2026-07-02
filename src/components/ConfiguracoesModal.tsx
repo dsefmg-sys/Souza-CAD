@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import {
   limparModeloSigef,
 } from '@/lib/store/settings';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
+import ImportVerticesVizinhoConfigModal from '@/components/ImportVerticesVizinhoConfigModal';
 
 interface Props {
   open: boolean;
@@ -26,14 +27,16 @@ interface Props {
   onConfigChange?: () => void; // Notifica a página principal caso mude algum contador ou fuso base
 }
 
-type AbaConfig = 'tecnico' | 'escritorio' | 'modelos';
+// Pessoal = só do usuário (assinatura técnica). Global = da empresa (todos usam o mesmo).
+type AbaConfig = 'pessoal' | 'escritorio' | 'numeracao' | 'modelos';
 
 export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange }: Props) {
-  const [aba, setAba] = useState<AbaConfig>('tecnico');
+  const [aba, setAba] = useState<AbaConfig>('pessoal');
   const [t, setT] = useState<TecnicoData>(TECNICO_PADRAO);
   const [esc, setEsc] = useState<EscritorioData>(ESCRITORIO_PADRAO);
   const [msg, setMsg] = useState('');
   const [importTxtAberto, setImportTxtAberto] = useState(false);
+  const [importVizinhoAberto, setImportVizinhoAberto] = useState(false);
   const [modeloProprio, setModeloProprio] = useState(false);
   const sigefRef = useRef<HTMLInputElement>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,6 +101,13 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
     r.readAsDataURL(file);
   }
 
+  const Tb = ({ a, rotulo }: { a: AbaConfig; rotulo: string }) => (
+    <button onClick={() => setAba(a)}
+      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${aba === a ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/50'}`}>
+      {rotulo}
+    </button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col bg-background/95 backdrop-blur-md border border-border/80 shadow-2xl p-6 rounded-lg text-foreground">
@@ -112,29 +122,19 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
               </span>
             )}
           </div>
-          <div className="flex gap-2 mt-3 border-b-0">
-            {([
-              ['tecnico', 'Responsável Técnico'],
-              ['escritorio', 'Escritório & Carimbo'],
-              ['modelos', 'Importação e Modelos'],
-            ] as [AbaConfig, string][]).map(([a, rotulo]) => (
-              <button
-                key={a}
-                onClick={() => setAba(a)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                  aba === a
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-muted/50'
-                }`}
-              >
-                {rotulo}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2 mt-3 border-b-0">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-600">Pessoais</span>
+            <Tb a="pessoal" rotulo="Responsável Técnico" />
+            <span className="mx-1 h-4 w-px bg-border" />
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Globais (empresa)</span>
+            <Tb a="escritorio" rotulo="Escritório & Carimbo" />
+            <Tb a="numeracao" rotulo="Numeração e Fuso" />
+            <Tb a="modelos" rotulo="Importação e Modelos" />
           </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto pr-1 py-3 text-sm">
-          {aba === 'tecnico' && (
+          {aba === 'pessoal' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3.5">
                 <div className="space-y-1">
@@ -156,16 +156,26 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Credenciamento INCRA (3 letras/números)</Label>
-                  <Input value={t.credenciamentoIncra} onChange={(e) => changeT('credenciamentoIncra', e.target.value)} />
-                </div>
-                <div className="space-y-1">
                   <Label className="text-xs font-semibold">Cidade da Assinatura (peças técnicas)</Label>
                   <Input value={t.cidadeAssinatura} onChange={(e) => changeT('cidadeAssinatura', e.target.value)} />
                 </div>
               </div>
 
               <div className="space-y-3.5 border-t md:border-t-0 md:border-l md:pl-4 pt-3.5 md:pt-0">
+                <div className="p-2.5 rounded bg-muted/40 text-[11px] leading-tight text-muted-foreground border">
+                  Estes dados são <strong>pessoais</strong>: cada técnico da empresa assina as peças com os seus. O escritório, a numeração, o fuso e os modelos são da empresa (abas Globais).
+                </div>
+              </div>
+            </div>
+          )}
+
+          {aba === 'numeracao' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3.5">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Credenciamento INCRA (prefixo dos vértices)</Label>
+                  <Input value={t.credenciamentoIncra} onChange={(e) => changeT('credenciamentoIncra', e.target.value)} />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold">Método Posicionamento</Label>
@@ -190,6 +200,9 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
                     <Input type="number" value={t.contadorVirtual ?? 1} onChange={(e) => changeT('contadorVirtual', Number(e.target.value))} />
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-3.5 border-t md:border-t-0 md:border-l md:pl-4 pt-3.5 md:pt-0">
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Fuso UTM principal</Label>
                   <Input type="number" value={t.zonaBase ?? 23} onChange={(e) => changeT('zonaBase', Number(e.target.value))} />
@@ -197,7 +210,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Fusos permitidos (auto-detecção)</Label>
                   <Input
-                    value={(t.fusosPermitidos ?? [22, 23, 24, 25]).join(', ')}
+                    value={(t.fusosPermitidos ?? [18, 19, 20, 21, 22, 23, 24, 25]).join(', ')}
                     onChange={(e) =>
                       changeT(
                         'fusosPermitidos',
@@ -330,6 +343,20 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
                   </span>
                 </div>
               </div>
+
+              <div className="border rounded p-4 bg-muted/20 flex flex-col justify-between space-y-4">
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                    <UserCheck className="size-4" /> Vértices de Vizinho Certificado
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Quando um vizinho já certificado empresta o vértice de divisa, o código dele deve ser reaproveitado, não gerado de novo. Diga qual coluna do arquivo é o nome/código do vértice e qual é a coordenada.
+                  </p>
+                </div>
+                <Button variant="outline" className="w-full font-semibold gap-1.5" onClick={() => setImportVizinhoAberto(true)}>
+                  <UserCheck className="size-4" /> Configurar leitura de vértices do vizinho
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -342,6 +369,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange 
         </div>
       </DialogContent>
       <ImportTxtConfigModal open={importTxtAberto} onOpenChange={setImportTxtAberto} />
+      <ImportVerticesVizinhoConfigModal open={importVizinhoAberto} onOpenChange={setImportVizinhoAberto} />
     </Dialog>
   );
 }

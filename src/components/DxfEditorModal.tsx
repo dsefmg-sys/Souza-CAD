@@ -1,86 +1,96 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Upload, Download, MousePointer2, PenTool, Type, Trash2, Maximize } from 'lucide-react';
+import { Upload, Download, FileText, MousePointer2, PenTool, Type, Trash2, Maximize, Waypoints, Square, Circle, Spline, Check, X, Undo2, Redo2, Magnet, Copy, RotateCw, Expand, FlipHorizontal, FlipVertical, Layers, Eye, EyeOff, Lock, LockOpen, Plus } from 'lucide-react';
 import { importarDxf } from '@/lib/io/dxf';
+import {
+  type Pt, type Ent, type Camada, novoId, dxfParaEnts, pontosDe, moverEnt, gerarDxf,
+  criarPolilinha, criarRetangulo, criarCirculo, criarArco,
+  todosPontosSnap, encontrarSnap, pivoDe, girarEnt, escalarEnt, espelharEnt, copiarEnt,
+  camadaDe, camadasPadrao,
+} from '@/lib/cad/dxfEngine';
+import { gerarPdfDesenho } from '@/lib/cad/dxfPdf';
 
 // Editor de DXF GENÉRICO e ISOLADO (ex.: projeto elétrico). Não toca no projeto de agrimensura.
-// Visualiza linhas, polilinhas, círculos, arcos, textos e pontos; permite mover/apagar/adicionar
-// linha e texto; exporta o DXF editado (R12 ASCII).
-
-type Pt = { x: number; y: number };
-type Ent =
-  | { id: number; t: 'line'; a: Pt; b: Pt }
-  | { id: number; t: 'poly'; pts: Pt[]; fechada: boolean }
-  | { id: number; t: 'circle'; c: Pt; r: number }
-  | { id: number; t: 'arc'; c: Pt; r: number; a0: number; a1: number }
-  | { id: number; t: 'text'; pos: Pt; texto: string; altura: number }
-  | { id: number; t: 'point'; p: Pt };
+// Esta é a CASCA VISUAL (modal, botões, SVG); a geometria/edição pura vive em lib/cad/dxfEngine.ts
+// (zero dependência de React/UI — copiável para outro app junto com dxf.ts).
 
 const VW = 1100, VH = 720, PAD = 30;
 
-let _seq = 1;
-const nid = () => _seq++;
-
-function dxfParaEnts(d: ReturnType<typeof importarDxf>): Ent[] {
-  const e: Ent[] = [];
-  d.linhas.forEach((l) => e.push({ id: nid(), t: 'line', a: l.a, b: l.b }));
-  d.polilinhas.forEach((p) => e.push({ id: nid(), t: 'poly', pts: p.pontos, fechada: p.fechada }));
-  d.circulos.forEach((c) => e.push({ id: nid(), t: 'circle', c: c.c, r: c.r }));
-  d.arcos.forEach((a) => e.push({ id: nid(), t: 'arc', c: a.c, r: a.r, a0: a.a0, a1: a.a1 }));
-  d.textos.forEach((t) => e.push({ id: nid(), t: 'text', pos: t.pos, texto: t.texto, altura: t.altura ?? 0 }));
-  d.pontos.forEach((p) => e.push({ id: nid(), t: 'point', p }));
-  return e;
-}
-
-function pontosDe(e: Ent): Pt[] {
-  switch (e.t) {
-    case 'line': return [e.a, e.b];
-    case 'poly': return e.pts;
-    case 'circle': return [{ x: e.c.x - e.r, y: e.c.y - e.r }, { x: e.c.x + e.r, y: e.c.y + e.r }];
-    case 'arc': return [{ x: e.c.x - e.r, y: e.c.y - e.r }, { x: e.c.x + e.r, y: e.c.y + e.r }];
-    case 'text': return [e.pos];
-    case 'point': return [e.p];
-  }
-}
-
-function moverEnt(e: Ent, dx: number, dy: number): Ent {
-  const m = (p: Pt): Pt => ({ x: p.x + dx, y: p.y + dy });
-  switch (e.t) {
-    case 'line': return { ...e, a: m(e.a), b: m(e.b) };
-    case 'poly': return { ...e, pts: e.pts.map(m) };
-    case 'circle': return { ...e, c: m(e.c) };
-    case 'arc': return { ...e, c: m(e.c) };
-    case 'text': return { ...e, pos: m(e.pos) };
-    case 'point': return { ...e, p: m(e.p) };
-  }
-}
-
-function gerarDxf(ents: Ent[]): string {
-  const corpo: string[] = [];
-  const E = (tipo: string, linhas: (string | number)[]) => corpo.push('0', tipo, '8', '0', ...linhas.map(String));
-  for (const e of ents) {
-    if (e.t === 'line') E('LINE', ['10', e.a.x.toFixed(3), '20', e.a.y.toFixed(3), '11', e.b.x.toFixed(3), '21', e.b.y.toFixed(3)]);
-    else if (e.t === 'poly') { const p: (string | number)[] = ['90', e.pts.length, '70', e.fechada ? 1 : 0]; e.pts.forEach((q) => p.push('10', q.x.toFixed(3), '20', q.y.toFixed(3))); E('LWPOLYLINE', p); }
-    else if (e.t === 'circle') E('CIRCLE', ['10', e.c.x.toFixed(3), '20', e.c.y.toFixed(3), '40', e.r.toFixed(3)]);
-    else if (e.t === 'arc') E('ARC', ['10', e.c.x.toFixed(3), '20', e.c.y.toFixed(3), '40', e.r.toFixed(3), '50', e.a0.toFixed(3), '51', e.a1.toFixed(3)]);
-    else if (e.t === 'text') E('TEXT', ['10', e.pos.x.toFixed(3), '20', e.pos.y.toFixed(3), '40', (e.altura || 2).toFixed(3), '1', e.texto]);
-    else if (e.t === 'point') E('POINT', ['10', e.p.x.toFixed(3), '20', e.p.y.toFixed(3)]);
-  }
-  return ['0', 'SECTION', '2', 'ENTITIES', ...corpo, '0', 'ENDSEC', '0', 'EOF'].join('\n');
-}
+type Modo = 'sel' | 'linha' | 'texto' | 'poly' | 'ret' | 'circ' | 'arco';
 
 export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const [ents, setEnts] = useState<Ent[]>([]);
   const [nome, setNome] = useState('desenho.dxf');
   const [sel, setSel] = useState<number | null>(null);
-  const [modo, setModo] = useState<'sel' | 'linha' | 'texto'>('sel');
+  const [modo, setModo] = useState<Modo>('sel');
   const [view, setView] = useState({ s: 1, px: 0, py: 0 }); // escala + pan (em px de tela)
+  const [desenho, setDesenho] = useState<Pt[]>([]);   // pontos já clicados do desenho em andamento (coords do desenho)
+  const [cursor, setCursor] = useState<Pt | null>(null); // posição atual do mouse (coords do desenho), para a prévia
+  const [snapAtivo, setSnapAtivo] = useState(true);
+  const [snapAtual, setSnapAtual] = useState<Pt | null>(null); // ponto notável encaixado agora (para o marcador visual)
+  const [camadas, setCamadas] = useState<Camada[]>(camadasPadrao());
+  const [camadaAtual, setCamadaAtual] = useState('0'); // camada em que novas entidades nascem
+  const [painelCamadas, setPainelCamadas] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const drag = useRef<{ tipo: 'pan' | 'ent'; x: number; y: number; id?: number } | null>(null);
-  const linhaTmp = useRef<Pt | null>(null);
+  const dragSnapped = useRef(false); // já guardou o "antes" deste arrasto? (snap só na 1ª mexida)
+
+  // ---- desfazer/refazer: pilha de estados anteriores de `ents` (transação = 1 edição completa) ----
+  const histRef = useRef<Ent[][]>([]);
+  const redoRef = useRef<Ent[][]>([]);
+  const [, setHistN] = useState(0); // só para forçar re-render dos botões (refs não disparam render)
+  function snap() {
+    histRef.current.push(ents);
+    if (histRef.current.length > 60) histRef.current.shift();
+    redoRef.current = [];
+    setHistN((n) => n + 1);
+  }
+  function desfazer() {
+    if (!histRef.current.length) return;
+    redoRef.current.push(ents);
+    const prev = histRef.current.pop()!;
+    setEnts(prev); setSel(null); setHistN((n) => n + 1);
+  }
+  function refazer() {
+    if (!redoRef.current.length) return;
+    histRef.current.push(ents);
+    const next = redoRef.current.pop()!;
+    setEnts(next); setSel(null); setHistN((n) => n + 1);
+  }
+
+  function trocarModo(m: Modo) { setModo(m); setDesenho([]); setCursor(null); setSnapAtual(null); }
+
+  // ---- camadas: cor/visibilidade/trava por camada; entidades sem `layer` pertencem à '0' ----
+  function camadaObj(nome: string): Camada { return camadas.find((c) => c.nome === nome) ?? camadas[0]; }
+  function camadaDeEnt(e: Ent): Camada { return camadaObj(camadaDe(e)); }
+  function novaCamadaPrompt() {
+    const nome = window.prompt('Nome da nova camada:');
+    if (!nome) return;
+    if (camadas.some((c) => c.nome === nome)) { window.alert('Já existe uma camada com esse nome.'); return; }
+    setCamadas((cs) => [...cs, { nome, cor: '#2563eb', visivel: true, travada: false }]);
+    setCamadaAtual(nome);
+  }
+  function removerCamada(nome: string) {
+    if (nome === '0') return;
+    if (!window.confirm(`Remover a camada "${nome}"? As entidades dela voltam para a camada "0".`)) return;
+    snap();
+    setEnts((es) => es.map((e) => (camadaDe(e) === nome ? { ...e, layer: '0' } : e)));
+    setCamadas((cs) => cs.filter((c) => c.nome !== nome));
+    if (camadaAtual === nome) setCamadaAtual('0');
+  }
+
+  // ---- snap aos pontos notáveis (extremidade/meio/centro) — só nos modos de desenho ----
+  const candidatosSnap = useMemo(() => todosPontosSnap(ents), [ents]);
+  /** Ponto notável mais perto de `g`, se o snap estiver ativo e dentro da tolerância (~9px de tela). */
+  function acharSnap(g: Pt) {
+    if (!snapAtivo || modo === 'sel') return null;
+    return encontrarSnap(g, candidatosSnap, 9 / view.s);
+  }
+  /** Resolve o ponto do clique: usa o encaixe notável quando houver um perto. */
+  function resolverPonto(g: Pt): Pt { const hit = acharSnap(g); return hit ? hit.p : g; }
 
   // DXF (y para cima) -> tela (y para baixo): tela.x = (x-minX)*s+px ; tela.y = VH-((y-minY)*s)-py
   const limites = useRef({ minX: 0, minY: 0 });
@@ -98,15 +108,25 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
     setView({ s, px: PAD, py: PAD });
   }
 
-  useEffect(() => { if (!open) { setEnts([]); setSel(null); setModo('sel'); } }, [open]);
+  useEffect(() => { if (!open) { setEnts([]); setSel(null); setModo('sel'); setDesenho([]); setCursor(null); setSnapAtual(null); setCamadas(camadasPadrao()); setCamadaAtual('0'); setPainelCamadas(false); histRef.current = []; redoRef.current = []; } }, [open]);
 
   async function abrir(file: File) {
-    const txt = await file.text();
-    const lista = dxfParaEnts(importarDxf(txt));
+    let lista: Ent[];
+    try {
+      const txt = await file.text();
+      lista = dxfParaEnts(importarDxf(txt));
+    } catch {
+      window.alert('Não consegui ler este arquivo como DXF. Verifique se é um .dxf válido (ASCII).');
+      return;
+    }
+    if (!lista.length) { window.alert('Nenhuma entidade reconhecida neste DXF (linha, polilinha, círculo, arco, texto ou ponto).'); return; }
     setNome(file.name);
     setEnts(lista);
     setSel(null);
+    setDesenho([]); setCursor(null); setSnapAtual(null);
+    setCamadas(camadasPadrao()); setCamadaAtual('0'); // novo documento: as camadas do arquivo original não são preservadas (todas entram na '0')
     enquadrar(lista);
+    histRef.current = []; redoRef.current = []; setHistN(0); // novo documento: histórico zera
   }
 
   function baixar() {
@@ -115,11 +135,14 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
     a.download = nome.replace(/\.dxf$/i, '') + ' (editado).dxf'; a.click();
     URL.revokeObjectURL(a.href);
   }
+  function baixarPdf() { gerarPdfDesenho(ents, camadas, nome); }
 
-  // pega a entidade mais próxima de um ponto de tela (para seleção)
+  // pega a entidade mais próxima de um ponto de tela (para seleção). Ignora camadas ocultas/travadas.
   function pegar(sx: number, sy: number): number | null {
     let melhor: number | null = null, dist = 10;
     for (const e of ents) {
+      const lay = camadaDeEnt(e);
+      if (!lay.visivel || lay.travada) continue;
       for (const p of pontosDe(e)) { const t = T(p); const d = Math.hypot(t.x - sx, t.y - sy); if (d < dist) { dist = d; melhor = e.id; } }
     }
     return melhor;
@@ -130,40 +153,186 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
     return { x: ((e.clientX - r.left) / r.width) * VW, y: ((e.clientY - r.top) / r.height) * VH };
   }
 
+  // Finaliza a polilinha em andamento (aberta ou fechada) e volta ao modo neutro dela.
+  function finalizarPoly(fechar: boolean) {
+    if (desenho.length >= 2) { snap(); setEnts((es) => [...es, { ...criarPolilinha(desenho, fechar), layer: camadaAtual }]); }
+    setDesenho([]); setCursor(null); setSnapAtual(null);
+  }
+
   function onDown(e: React.PointerEvent) {
     const { x, y } = svgXY(e);
-    if (modo === 'texto') { const t = window.prompt('Texto:'); if (t) { const g = inv(x, y); setEnts((es) => [...es, { id: nid(), t: 'text', pos: g, texto: t, altura: 12 / view.s }]); } return; }
-    if (modo === 'linha') {
-      const g = inv(x, y);
-      if (!linhaTmp.current) { linhaTmp.current = g; }
-      else { const a = linhaTmp.current; setEnts((es) => [...es, { id: nid(), t: 'line', a, b: g }]); linhaTmp.current = null; }
+    const g = resolverPonto(inv(x, y));
+
+    if (modo !== 'sel' && desenho.length === 0 && camadaObj(camadaAtual).travada) {
+      window.alert('A camada atual está travada. Escolha outra camada (painel Camadas) para desenhar.');
       return;
     }
+
+    if (modo === 'texto') { const t = window.prompt('Texto:'); if (t) { snap(); setEnts((es) => [...es, { id: novoId(), t: 'text', pos: g, texto: t, altura: 12 / view.s, layer: camadaAtual }]); } return; }
+
+    if (modo === 'linha') {
+      if (desenho.length === 0) { setDesenho([g]); return; }
+      snap(); setEnts((es) => [...es, { id: novoId(), t: 'line', a: desenho[0], b: g, layer: camadaAtual }]);
+      setDesenho([]); setCursor(null); setSnapAtual(null);
+      return;
+    }
+    if (modo === 'poly') {
+      // clicar perto do primeiro ponto (com 3+ pontos) fecha o polígono
+      if (desenho.length >= 3) {
+        const p0 = T(desenho[0]);
+        if (Math.hypot(p0.x - x, p0.y - y) < 10) { finalizarPoly(true); return; }
+      }
+      setDesenho((d) => [...d, g]);
+      return;
+    }
+    if (modo === 'ret') {
+      if (desenho.length === 0) { setDesenho([g]); return; }
+      snap(); setEnts((es) => [...es, { ...criarRetangulo(desenho[0], g), layer: camadaAtual }]);
+      setDesenho([]); setCursor(null); setSnapAtual(null);
+      return;
+    }
+    if (modo === 'circ') {
+      if (desenho.length === 0) { setDesenho([g]); return; }
+      snap(); setEnts((es) => [...es, { ...criarCirculo(desenho[0], g), layer: camadaAtual }]);
+      setDesenho([]); setCursor(null); setSnapAtual(null);
+      return;
+    }
+    if (modo === 'arco') {
+      if (desenho.length < 2) { setDesenho((d) => [...d, g]); return; }
+      snap(); setEnts((es) => [...es, { ...criarArco(desenho[0], desenho[1], g), layer: camadaAtual }]);
+      setDesenho([]); setCursor(null); setSnapAtual(null);
+      return;
+    }
+
     const id = pegar(x, y);
     setSel(id);
-    if (id != null) { drag.current = { tipo: 'ent', x, y, id }; }
+    if (id != null) { drag.current = { tipo: 'ent', x, y, id }; dragSnapped.current = false; }
     else { drag.current = { tipo: 'pan', x, y }; }
     (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
   }
   function onMove(e: React.PointerEvent) {
-    if (!drag.current) return;
     const { x, y } = svgXY(e);
+    if (modo !== 'sel') {
+      const g = inv(x, y);
+      const hit = acharSnap(g);
+      setSnapAtual(hit ? hit.p : null);
+      setCursor(hit ? hit.p : g);
+    }
+    if (!drag.current) return;
     const dx = x - drag.current.x, dy = y - drag.current.y;
     if (drag.current.tipo === 'pan') { setView((v) => ({ ...v, px: v.px + dx, py: v.py - dy })); }
-    else if (drag.current.id != null) { const gdx = dx / view.s, gdy = -dy / view.s; const id = drag.current.id; setEnts((es) => es.map((en) => (en.id === id ? moverEnt(en, gdx, gdy) : en))); }
+    else if (drag.current.id != null) {
+      if (!dragSnapped.current) { snap(); dragSnapped.current = true; } // 1ª mexida do arrasto: guarda o "antes"
+      const gdx = dx / view.s, gdy = -dy / view.s; const id = drag.current.id;
+      setEnts((es) => es.map((en) => (en.id === id ? moverEnt(en, gdx, gdy) : en)));
+    }
     drag.current.x = x; drag.current.y = y;
   }
   function onUp() { drag.current = null; }
   function onWheel(e: React.WheelEvent) { const f = e.deltaY < 0 ? 1.15 : 1 / 1.15; setView((v) => ({ ...v, s: Math.max(0.01, v.s * f) })); }
 
-  function apagar() { if (sel != null) { setEnts((es) => es.filter((e) => e.id !== sel)); setSel(null); } }
+  function apagar() { if (sel != null) { snap(); setEnts((es) => es.filter((e) => e.id !== sel)); setSel(null); } }
+
+  // ---- Modificar (agem sobre a entidade SELECIONADA): copiar, girar, escalar, espelhar ----
+  const entSel = sel != null ? ents.find((e) => e.id === sel) ?? null : null;
+  function copiarSel() {
+    if (!entSel) return;
+    snap();
+    const off = 24 / view.s; // desloca a cópia (~24px de tela) para não empilhar em cima do original
+    const nova = copiarEnt(entSel, off, -off);
+    setEnts((es) => [...es, nova]);
+    setSel(nova.id);
+  }
+  function girarSel() {
+    if (!entSel) return;
+    const txt = window.prompt('Girar quantos graus? (positivo = anti-horário)', '90');
+    if (txt == null) return;
+    const ang = Number(txt.replace(',', '.'));
+    if (!Number.isFinite(ang) || ang === 0) return;
+    snap();
+    const c = pivoDe(entSel);
+    setEnts((es) => es.map((e) => (e.id === sel ? girarEnt(e, c, ang) : e)));
+  }
+  function escalarSel() {
+    if (!entSel) return;
+    const txt = window.prompt('Fator de escala (ex.: 2 dobra o tamanho, 0.5 reduz à metade)', '1.5');
+    if (txt == null) return;
+    const k = Number(txt.replace(',', '.'));
+    if (!Number.isFinite(k) || k <= 0 || k === 1) return;
+    snap();
+    const c = pivoDe(entSel);
+    setEnts((es) => es.map((e) => (e.id === sel ? escalarEnt(e, c, k) : e)));
+  }
+  function espelharSel(eixo: 'h' | 'v') {
+    if (!entSel) return;
+    const c = pivoDe(entSel);
+    // eixo 'h' inverte esquerda/direita (reflete pela reta VERTICAL que passa no centro);
+    // eixo 'v' inverte cima/baixo (reflete pela reta HORIZONTAL que passa no centro).
+    const p2 = eixo === 'h' ? { x: c.x, y: c.y + 1 } : { x: c.x + 1, y: c.y };
+    snap();
+    setEnts((es) => es.map((e) => (e.id === sel ? espelharEnt(e, c, p2) : e)));
+  }
 
   useEffect(() => {
-    function k(e: KeyboardEvent) { if ((e.key === 'Delete' || e.key === 'Backspace') && sel != null) { e.preventDefault(); apagar(); } }
+    function k(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setDesenho([]); setCursor(null); setSnapAtual(null); return; }
+      if (e.key === 'Enter' && modo === 'poly' && desenho.length >= 2) { finalizarPoly(false); return; }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && sel != null && modo === 'sel') { e.preventDefault(); apagar(); return; }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); desfazer(); return; }
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); refazer(); return; }
+    }
     if (open) window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, sel]);
+  }, [open, sel, modo, desenho, ents]);
+
+  // ---- prévia (ghost) do que está sendo desenhado, seguindo o cursor ----
+  function Previa() {
+    if (!cursor) return null;
+    const c = T(cursor);
+    if (modo === 'linha' && desenho.length === 1) { const a = T(desenho[0]); return <line x1={a.x} y1={a.y} x2={c.x} y2={c.y} stroke="#2563eb" strokeWidth={1} strokeDasharray="4 3" />; }
+    if (modo === 'poly' && desenho.length >= 1) {
+      const pp = [...desenho, cursor].map((p) => { const t = T(p); return `${t.x},${t.y}`; }).join(' ');
+      return <polyline points={pp} fill="none" stroke="#2563eb" strokeWidth={1} strokeDasharray="4 3" />;
+    }
+    if (modo === 'ret' && desenho.length === 1) {
+      const a = T(desenho[0]);
+      return <rect x={Math.min(a.x, c.x)} y={Math.min(a.y, c.y)} width={Math.abs(c.x - a.x)} height={Math.abs(c.y - a.y)} fill="none" stroke="#2563eb" strokeWidth={1} strokeDasharray="4 3" />;
+    }
+    if (modo === 'circ' && desenho.length === 1) {
+      const a = T(desenho[0]); const r = Math.hypot(c.x - a.x, c.y - a.y);
+      return <circle cx={a.x} cy={a.y} r={r} fill="none" stroke="#2563eb" strokeWidth={1} strokeDasharray="4 3" />;
+    }
+    if (modo === 'arco') {
+      if (desenho.length === 1) { const a = T(desenho[0]); return <line x1={a.x} y1={a.y} x2={c.x} y2={c.y} stroke="#2563eb" strokeWidth={1} strokeDasharray="4 3" />; }
+      if (desenho.length === 2) {
+        const cc = T(desenho[0]); const r = Math.hypot(T(desenho[1]).x - cc.x, T(desenho[1]).y - cc.y);
+        return <>
+          <circle cx={cc.x} cy={cc.y} r={r} fill="none" stroke="#94a3b8" strokeWidth={0.6} strokeDasharray="2 3" />
+          <line x1={cc.x} y1={cc.y} x2={c.x} y2={c.y} stroke="#2563eb" strokeWidth={1} strokeDasharray="4 3" />
+        </>;
+      }
+    }
+    return null;
+  }
+
+  /** Marcador (quadrado verde) sobre o ponto notável encaixado agora, para o usuário ver o snap acontecendo. */
+  function MarcadorSnap() {
+    if (!snapAtual) return null;
+    const p = T(snapAtual);
+    return <rect x={p.x - 5} y={p.y - 5} width={10} height={10} fill="none" stroke="#16a34a" strokeWidth={1.6} />;
+  }
+
+  const emDesenho = modo !== 'sel' && modo !== 'texto';
+  const dica: Record<Modo, string> = {
+    sel: 'Arraste o fundo para mover · roda do mouse dá zoom · clique numa entidade para selecionar e arrastar · Delete apaga.',
+    texto: 'Clique no desenho para inserir um texto.',
+    linha: 'Clique o ponto inicial e depois o ponto final. Esc cancela.',
+    poly: 'Clique cada vértice. Clique perto do 1º ponto para fechar, Enter finaliza aberta, Esc cancela.',
+    ret: 'Clique um canto e depois o canto oposto. Esc cancela.',
+    circ: 'Clique o centro e depois um ponto da borda (define o raio). Esc cancela.',
+    arco: 'Clique o centro, depois o início e depois o fim do arco. Esc cancela.',
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -176,24 +345,75 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
           <input ref={fileRef} type="file" accept=".dxf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) abrir(f); e.currentTarget.value = ''; }} />
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload className="size-4" /> Abrir DXF</Button>
           <div className="mx-1 h-6 w-px bg-border" />
-          <Button size="sm" variant={modo === 'sel' ? 'default' : 'outline'} onClick={() => { setModo('sel'); linhaTmp.current = null; }} title="Selecionar e mover"><MousePointer2 className="size-4" /> Selecionar</Button>
-          <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} onClick={() => { setModo('linha'); }} title="Adicionar linha (2 cliques)"><PenTool className="size-4" /> Linha</Button>
-          <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} onClick={() => { setModo('texto'); }} title="Adicionar texto"><Type className="size-4" /> Texto</Button>
+          <Button size="sm" variant={modo === 'sel' ? 'default' : 'outline'} onClick={() => trocarModo('sel')} title="Selecionar e mover"><MousePointer2 className="size-4" /> Selecionar</Button>
+          <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} onClick={() => trocarModo('linha')} title="Linha (2 cliques)"><PenTool className="size-4" /> Linha</Button>
+          <Button size="sm" variant={modo === 'poly' ? 'default' : 'outline'} onClick={() => trocarModo('poly')} title="Polilinha (vários cliques)"><Waypoints className="size-4" /> Polilinha</Button>
+          <Button size="sm" variant={modo === 'ret' ? 'default' : 'outline'} onClick={() => trocarModo('ret')} title="Retângulo (2 cantos)"><Square className="size-4" /> Retângulo</Button>
+          <Button size="sm" variant={modo === 'circ' ? 'default' : 'outline'} onClick={() => trocarModo('circ')} title="Círculo (centro + raio)"><Circle className="size-4" /> Círculo</Button>
+          <Button size="sm" variant={modo === 'arco' ? 'default' : 'outline'} onClick={() => trocarModo('arco')} title="Arco (centro, início, fim)"><Spline className="size-4" /> Arco</Button>
+          <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} onClick={() => trocarModo('texto')} title="Adicionar texto"><Type className="size-4" /> Texto</Button>
+          <div className="mx-1 h-6 w-px bg-border" />
+          {modo === 'poly' && desenho.length >= 2 && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => finalizarPoly(false)} title="Finalizar polilinha aberta (Enter)"><Check className="size-4" /> Finalizar</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setDesenho([]); setCursor(null); setSnapAtual(null); }} title="Cancelar (Esc)"><X className="size-4" /></Button>
+            </>
+          )}
           <Button size="sm" variant="outline" disabled={sel == null} onClick={apagar} title="Apagar selecionado (Delete)"><Trash2 className="size-4" /> Apagar</Button>
+          {entSel && (
+            <>
+              <div className="mx-1 h-6 w-px bg-border" />
+              <Button size="sm" variant="outline" onClick={copiarSel} title="Copiar a entidade selecionada"><Copy className="size-4" /></Button>
+              <Button size="sm" variant="outline" onClick={girarSel} title="Girar a entidade selecionada (pergunta o ângulo)"><RotateCw className="size-4" /></Button>
+              <Button size="sm" variant="outline" onClick={escalarSel} title="Escalar a entidade selecionada (pergunta o fator)"><Expand className="size-4" /></Button>
+              <Button size="sm" variant="outline" onClick={() => espelharSel('h')} title="Espelhar esquerda/direita"><FlipHorizontal className="size-4" /></Button>
+              <Button size="sm" variant="outline" onClick={() => espelharSel('v')} title="Espelhar cima/baixo"><FlipVertical className="size-4" /></Button>
+            </>
+          )}
+          <div className="mx-1 h-6 w-px bg-border" />
+          <Button size="sm" variant="outline" disabled={histRef.current.length === 0} onClick={desfazer} title="Desfazer (Ctrl+Z)"><Undo2 className="size-4" /></Button>
+          <Button size="sm" variant="outline" disabled={redoRef.current.length === 0} onClick={refazer} title="Refazer (Ctrl+Y)"><Redo2 className="size-4" /></Button>
           <Button size="sm" variant="outline" onClick={() => enquadrar(ents)} title="Enquadrar"><Maximize className="size-4" /> Enquadrar</Button>
+          <Button size="sm" variant="outline" className={snapAtivo ? 'bg-emerald-600 text-white hover:bg-emerald-700' : ''} onClick={() => setSnapAtivo((v) => !v)} title="Snap aos pontos notáveis (extremidade, meio, centro)"><Magnet className="size-4" /></Button>
+          <Button size="sm" variant={painelCamadas ? 'default' : 'outline'} onClick={() => setPainelCamadas((v) => !v)} title="Camadas"><Layers className="size-4" /> Camadas</Button>
           <span className="ml-auto text-xs text-muted-foreground">{ents.length} entidade(s) · {nome}</span>
+          <Button size="sm" variant="outline" disabled={!ents.length} onClick={baixarPdf} title="Exporta uma folha A4 paisagem, com o desenho enquadrado e centralizado sozinho"><FileText className="size-4" /> PDF A4</Button>
           <Button size="sm" disabled={!ents.length} onClick={baixar}><Download className="size-4" /> Baixar DXF</Button>
         </div>
 
+        {painelCamadas && (
+          <div className="flex flex-wrap items-center gap-2 border-y py-2 text-xs">
+            <span className="font-semibold">Nova entidade vai para:</span>
+            {camadas.map((c) => (
+              <div key={c.nome} className={`flex items-center gap-1 rounded border px-1.5 py-1 ${c.nome === camadaAtual ? 'ring-2 ring-primary' : ''}`}>
+                <button onClick={() => setCamadaAtual(c.nome)} title="Usar esta camada para novos desenhos" className="font-medium">{c.nome}</button>
+                <input type="color" value={c.cor} title="Cor da camada"
+                  onChange={(ev) => setCamadas((cs) => cs.map((x) => (x.nome === c.nome ? { ...x, cor: ev.target.value } : x)))}
+                  className="size-5 cursor-pointer rounded border-0 p-0" />
+                <button onClick={() => setCamadas((cs) => cs.map((x) => (x.nome === c.nome ? { ...x, visivel: !x.visivel } : x)))} title={c.visivel ? 'Ocultar camada' : 'Mostrar camada'}>
+                  {c.visivel ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5 text-muted-foreground" />}
+                </button>
+                <button onClick={() => setCamadas((cs) => cs.map((x) => (x.nome === c.nome ? { ...x, travada: !x.travada } : x)))} title={c.travada ? 'Destravar (voltar a poder editar)' : 'Travar (impede editar/apagar)'}>
+                  {c.travada ? <Lock className="size-3.5 text-amber-600" /> : <LockOpen className="size-3.5" />}
+                </button>
+                {c.nome !== '0' && (
+                  <button onClick={() => removerCamada(c.nome)} title="Remover camada (entidades voltam para a '0')"><X className="size-3.5" /></button>
+                )}
+              </div>
+            ))}
+            <Button size="sm" variant="outline" onClick={novaCamadaPrompt}><Plus className="size-3.5" /> Nova camada</Button>
+          </div>
+        )}
+
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border bg-white">
-          {ents.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Abra um arquivo DXF para visualizar e editar.</div>
+          {ents.length === 0 && !emDesenho ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Abra um arquivo DXF, ou escolha uma ferramenta acima para desenhar do zero.</div>
           ) : (
             <svg viewBox={`0 0 ${VW} ${VH}`} width="100%" height="100%" style={{ touchAction: 'none', cursor: modo === 'sel' ? 'default' : 'crosshair' }}
               onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onWheel={onWheel}>
-              {ents.map((e) => {
+              {ents.filter((e) => camadaDeEnt(e).visivel).map((e) => {
                 const on = e.id === sel;
-                const cor = on ? '#dc2626' : '#0f172a';
+                const cor = on ? '#dc2626' : camadaDeEnt(e).cor;
                 const sw = on ? 1.8 : 0.8;
                 if (e.t === 'line') { const a = T(e.a), b = T(e.b); return <line key={e.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={cor} strokeWidth={sw} />; }
                 if (e.t === 'poly') { const pp = e.pts.map((p) => { const t = T(p); return `${t.x.toFixed(1)},${t.y.toFixed(1)}`; }).join(' '); return e.fechada ? <polygon key={e.id} points={pp} fill="none" stroke={cor} strokeWidth={sw} /> : <polyline key={e.id} points={pp} fill="none" stroke={cor} strokeWidth={sw} />; }
@@ -208,10 +428,12 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
                 if (e.t === 'text') { const p = T(e.pos); const fz = Math.max(7, (e.altura || 2) * view.s); return <text key={e.id} x={p.x} y={p.y} fontSize={fz} fill={cor}>{e.texto}</text>; }
                 const pt = T(e.p); return <circle key={e.id} cx={pt.x} cy={pt.y} r={on ? 3 : 1.6} fill={cor} />;
               })}
+              <Previa />
+              <MarcadorSnap />
             </svg>
           )}
         </div>
-        <p className="text-[11px] text-muted-foreground">Arraste o fundo para mover · roda do mouse dá zoom · clique numa entidade para selecionar e arrastar · Delete apaga. Símbolos em BLOCO (INSERT) ainda não são desenhados nesta versão.</p>
+        <p className="text-[11px] text-muted-foreground">{dica[modo]} {snapAtivo ? 'Snap ligado: encaixa em pontas, meios e centros (quadrado verde).' : 'Snap desligado.'} Símbolos em BLOCO (INSERT) ainda não são desenhados nesta versão.</p>
       </DialogContent>
     </Dialog>
   );

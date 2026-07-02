@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,12 +24,16 @@ import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
 import ConsultarModal from '@/components/ConsultarModal';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
+import GestaoProjetoModal from '@/components/GestaoProjetoModal';
+import TutorialModal from '@/components/TutorialModal';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
 import CalculadoraModal from '@/components/CalculadoraModal';
 import ConfrontanteEditModal from '@/components/ConfrontanteEditModal';
 import DxfEditorModal from '@/components/DxfEditorModal';
 import PorcentagemModal from '@/components/PorcentagemModal';
 import EstudioModal from '@/components/EstudioModal';
+import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
+import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
@@ -44,15 +48,18 @@ import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
 import { parseParcelasSigef, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas } from '@/lib/io/sigefVizinhos';
+import { parseVerticesVizinho } from '@/lib/io/verticesVizinho';
 import { ufsNoBbox, temaIncra, TEMAS_CONFRONTANTE, INCRA_UFS } from '@/lib/io/incraTemas';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
 import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
+import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
+import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS, azimute } from '@/lib/topo/geometry';
-import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef } from '@/lib/store/settings';
+import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef, carregarImportVerticesVizinho, tutorialJaVisto, marcarTutorialVisto } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
@@ -225,6 +232,13 @@ export default function EditorPage() {
   const [errataAberto, setErrataAberto] = useState(false);
   const [consultarAberto, setConsultarAberto] = useState(false);
   const [configAberta, setConfigAberta] = useState(false);
+  const [gestaoAberta, setGestaoAberta] = useState(false);
+  const [tutorialAberto, setTutorialAberto] = useState(false);
+  // primeira vez neste navegador: abre o tutorial sozinho (independe de login/rascunho).
+  useEffect(() => { if (!tutorialJaVisto()) setTutorialAberto(true); }, []);
+  function fecharTutorial(o: boolean) { setTutorialAberto(o); if (!o) marcarTutorialVisto(); }
+  const [infoAberto, setInfoAberto] = useState(false);
+  const [pontosAberto, setPontosAberto] = useState(false);
   const [previewData, setPreviewData] = useState<any | null>(null);
   const [situacaoVersSnapshot, setSituacaoVersSnapshot] = useState<string>('');
   const rascunhoRestaurado = useRef(false); // garante restaurar o rascunho só uma vez
@@ -242,6 +256,7 @@ export default function EditorPage() {
   const dxfRef = useRef<HTMLInputElement>(null);
   const geojsonRef = useRef<HTMLInputElement>(null);
   const vizinhosRef = useRef<HTMLInputElement>(null);
+  const verticesVizinhoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTecnico(carregarTecnico());
@@ -341,9 +356,12 @@ export default function EditorPage() {
     if (filaInserirAplicada.current || !temaCarregadoDaNuvem) return;
     filaInserirAplicada.current = true;
     try {
-      const raw = localStorage.getItem('metrica.filaInserir');
+      // Chave com o uid: evita que a fila de um usuário seja aplicada na conta de outro que
+      // logue depois no mesmo navegador (mesmo esquema de metrica.rascunho:${uid}).
+      const chave = `metrica.filaInserir:${user?.uid ?? 'local'}`;
+      const raw = localStorage.getItem(chave);
       if (!raw) return;
-      localStorage.removeItem('metrica.filaInserir');
+      localStorage.removeItem(chave);
       const fila = JSON.parse(raw) as { tipo: string; item: ProprietarioCad & ConfrontanteCad & ImovelCad & CartorioCad }[];
       for (const f of fila) {
         if (f.tipo === 'prop') inserirPropConsulta(f.item);
@@ -678,7 +696,7 @@ export default function EditorPage() {
       const novoImovel = { ...imovel, municipio, local: `${municipio}` };
 
       const tec = tecnico ?? carregarTecnico();
-      const fusos = tec.fusosPermitidos ?? [22, 23, 24, 25];
+      const fusos = tec.fusosPermitidos ?? [18, 19, 20, 21, 22, 23, 24, 25];
       
       // Fuso AUTOMÁTICO pela região (não precisa do município): testa cada fuso e fica com o que
       // coloca o ponto dentro da nossa área de trabalho (resolve a divisa 23/24 sozinho).
@@ -728,9 +746,11 @@ export default function EditorPage() {
     const importar = selecao?.importar ?? vsRepro.map(() => true);
     const noPoligono = selecao?.noPoligono ?? vsRepro.map(() => true);
     const importados = ordem.filter((i) => importar[i]).map((i) => ({ v: vsRepro[i], poligono: noPoligono[i] !== false }));
-    // vértices do anel = importados marcados "no polígono"; ignorados = importados fora do polígono
-    const anel = importados.filter((p) => p.poligono).map((p) => p.v);
-    const ignorados = importados.filter((p) => !p.poligono).map((p) => p.v);
+    // "Só vértices" (gerarPoligono=false): NENHUM ponto forma o perímetro — todos entram como
+    // pontos soltos (verticesIgnorados) e o anel fica vazio, então nenhum polígono é desenhado.
+    // "Gerar polígono": anel = importados marcados "no polígono"; ignorados = os fora do polígono.
+    const anel = gerarPoligono ? importados.filter((p) => p.poligono).map((p) => p.v) : [];
+    const ignorados = gerarPoligono ? importados.filter((p) => !p.poligono).map((p) => p.v) : importados.map((p) => p.v);
     // renumera o anel na ordem final (M/P sequenciais a partir do contador do banco)
     const vs = recodificar(anel, prefixo || 'COIN', contM, contP);
 
@@ -756,11 +776,11 @@ export default function EditorPage() {
       const auto = gerarTituloAutomatico(novoImovel);
       setNomeProjeto(auto || importPendingFile?.name.replace(/\.[^.]+$/, '') || '');
     }
-    const extra = ignorados.length ? ` (${ignorados.length} fora do polígono)` : '';
     if (gerarPoligono) {
+      const extra = ignorados.length ? ` (${ignorados.length} fora do polígono)` : '';
       aviso(`${vs.length} vértices importados e perímetro gerado na Parcela 1${extra} — fuso ${z}${hemisferio} (${municipio}).`);
     } else {
-      aviso(`${vs.length} vértices importados na Parcela 1${extra} — fuso ${z}${hemisferio} (${municipio}). Pinte as divisas/confrontantes manualmente.`);
+      aviso(`${ignorados.length} vértices importados como pontos soltos, SEM perímetro — fuso ${z}${hemisferio} (${municipio}). Use a ferramenta "Considerar" para formar o polígono quando quiser.`);
     }
     setPreviewData(null);
     setImportPendingFile(null);
@@ -791,7 +811,7 @@ export default function EditorPage() {
     const anc = ancoraMunicipio(novo);
     if (anc && vertices.length) {
       const tec = tecnico ?? carregarTecnico();
-      const z = escolherZonaPorAncora(vertices[0].leste, vertices[0].norte, hemisferio, anc, tec.fusosPermitidos ?? [22, 23, 24, 25]);
+      const z = escolherZonaPorAncora(vertices[0].leste, vertices[0].norte, hemisferio, anc, tec.fusosPermitidos ?? [18, 19, 20, 21, 22, 23, 24, 25]);
       if (z !== zona) { trocarZona(z); aviso(`Fuso ajustado para ${z}${hemisferio} pelo município.`); }
     }
   }
@@ -1027,16 +1047,28 @@ export default function EditorPage() {
     });
   }
 
-  function inserirVertice(lat: number, lon: number) {
+  /**
+   * Insere um vértice no perímetro. Quando `codigoOficial` é informado (vértice ADOTADO de um
+   * vizinho já certificado), o vértice nasce com esse código e `registrado: true` — isso faz o
+   * sistema de numeração (atribuirProvisorio/atribuirDefinitivo) NUNCA reescrever nem tentar
+   * registrar esse código no NOSSO banco de pontos, porque ele já foi registrado pelo outro
+   * agrimensor sob o credenciamento dele. Sem `codigoOficial`, gera um código provisório nosso,
+   * como sempre.
+   */
+  function inserirVertice(lat: number, lon: number, codigoOficial?: string) {
     snap();
     let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
     if (snapAtivo) {
       const s = snapUtm(leste, norte, alvosSnap(), { tolVerticeM: 2 });
       if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
     }
+    const base = novoVertice({ lat, lon, leste, norte, elevacao: 0 });
+    const novo = codigoOficial
+      ? { ...base, codigoSigef: codigoOficial, nome: codigoOficial, codigoCampo: codigoOficial, registrado: true }
+      : base;
     let out: Vertex[];
     if (vertices.length < 2) {
-      out = reordenar([...vertices, novoVertice({ lat, lon, leste, norte, elevacao: 0 })]);
+      out = reordenar([...vertices, novo]);
     } else {
       // acha o lado mais próximo (no plano UTM) e insere ali
       let melhor = 0, melhorD = Infinity;
@@ -1046,10 +1078,20 @@ export default function EditorPage() {
         if (d < melhorD) { melhorD = d; melhor = i; }
       }
       const out2 = [...vertices];
-      out2.splice(melhor + 1, 0, novoVertice({ lat, lon, leste, norte, elevacao: 0 }));
+      out2.splice(melhor + 1, 0, novo);
       out = reordenar(out2);
     }
-    aplicarCodigos(out); // já atribui código para não deixar vértice sem código
+    aplicarCodigos(out); // já atribui código aos que ainda não têm (o adotado é preservado)
+  }
+
+  /** Adota um vértice de um imóvel vizinho certificado (clique na divisa dele no mapa): pede o
+   * código oficial que o outro agrimensor já usou, se o dono souber (do memorial do vizinho). */
+  function adotarVerticeVizinho(lat: number, lon: number) {
+    const digitado = window.prompt(
+      'Se você já sabe o código oficial que o agrimensor vizinho usou para este vértice (ex.: CODI-P-0007), digite aqui — ele será reaproveitado em vez de gerar um novo.\n\nDeixe em branco se não souber (o sistema gera um código provisório seu).'
+    );
+    const codigo = digitado?.trim();
+    inserirVertice(lat, lon, codigo ? codigo.toUpperCase() : undefined);
   }
 
   async function renumerar() {
@@ -1336,9 +1378,26 @@ export default function EditorPage() {
     return true;
   }
 
+  /**
+   * Verifica se o projeto está pronto para gerar uma peça oficial. Problema GRAVE (geometria
+   * incompleta ou código de vértice repetido) TRAVA de verdade, sem opção de ignorar — o SIGEF
+   * rejeitaria mesmo. Problema leve (campo de cadastro faltando, CPF com cara de inválido) só
+   * avisa, com opção de prosseguir.
+   */
+  function verificarProntoParaExportar(): boolean {
+    const { ok, problemas, graves } = conferirProntoParaExportar(imovel, vertices, confrontantes, tecnico, confrontantePorLado);
+    if (ok) return true;
+    if (graves.length > 0) {
+      window.alert(`Não é possível exportar — há um problema grave que o SIGEF rejeitaria:\n\n- ${graves.join('\n- ')}\n\nCorrija antes de tentar de novo.`);
+      return false;
+    }
+    return window.confirm(`Atenção, faltam dados antes de exportar:\n\n- ${problemas.join('\n- ')}\n\nDeseja exportar mesmo assim?`);
+  }
+
   async function exportarMemorial() {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     if (!verificarConciliacaoSigef()) return;
+    if (!verificarProntoParaExportar()) return;
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
@@ -1351,6 +1410,7 @@ export default function EditorPage() {
 
   async function exportarOds() {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
+    if (!verificarProntoParaExportar()) return;
     const tec = tecnico;
     try {
       // usa o modelo SIGEF do usuário, se ele substituiu; senão, o modelo embutido do sistema
@@ -1402,6 +1462,7 @@ export default function EditorPage() {
   async function exportarPlanta() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     if (!verificarConciliacaoSigef()) return;
+    if (!verificarProntoParaExportar()) return;
     await comCodigos();
     setVista('planta');
     setObjetoSelId(null); setDesenhoBuffer([]); // limpa realces de edição (a superfície de captura é invisível no PDF)
@@ -1448,6 +1509,38 @@ export default function EditorPage() {
 
   // Importa parcelas certificadas (GeoJSON do INCRA/SIGEF): desenha ao lado, e as que ENCOSTAM na
   // nossa divisa viram confrontantes automaticamente (dados + vértices encaixados).
+  // Importa o arquivo de vértices de um imóvel VIZINHO já certificado (baixado manualmente pelo
+  // agrimensor do Distribuidor de Coordenadas do Acervo Fundiário — exige o login gov.br dele,
+  // por isso não dá pra automatizar). Compara cada vértice do arquivo com os do NOSSO perímetro
+  // por proximidade; os que baterem ADOTAM o código oficial do vizinho (e ficam marcados como já
+  // registrados, para o sistema nunca reescrever nem tentar registrar esse código de novo).
+  async function importarVerticesVizinho(file: File) {
+    const TOL_M = 2; // mesma tolerância usada no snap de vértice
+    try {
+      const texto = await file.text();
+      const cfg = carregarImportVerticesVizinho();
+      const lidos = parseVerticesVizinho(texto, cfg, zona, hemisferio)
+        .filter((l) => l.nome)
+        .map((l) => ({ ...l, ...geoParaUtm(l.lat, l.lon, zona, hemisferio) }));
+      if (!lidos.length) { aviso('Nenhum vértice com nome/código reconhecido neste arquivo. Confira o mapeamento de colunas em Configurações → Importação e Modelos.'); return; }
+      let adotados = 0;
+      const novos = vertices.map((v) => {
+        let melhor: (typeof lidos)[number] | null = null, melhorD = TOL_M;
+        for (const l of lidos) {
+          const d = Math.hypot(l.leste - v.leste, l.norte - v.norte);
+          if (d < melhorD) { melhorD = d; melhor = l; }
+        }
+        if (!melhor) return v;
+        adotados++;
+        return { ...v, codigoSigef: melhor.nome, nome: melhor.nome, codigoCampo: melhor.nome, registrado: true };
+      });
+      if (!adotados) { aviso(`Nenhum vértice do seu perímetro bateu (dentro de ${TOL_M} m) com o arquivo do vizinho.`); return; }
+      snap();
+      setVertices(novos);
+      aviso(`${adotados} vértice(s) do seu perímetro bateram com o arquivo do vizinho e adotaram o código oficial dele.`);
+    } catch { aviso('Não consegui ler o arquivo de vértices do vizinho.'); }
+  }
+
   async function importarVizinhosCertificados(file: File) {
     try {
       const texto = await file.text();
@@ -1561,13 +1654,13 @@ export default function EditorPage() {
     try {
       const texto = await file.text();
       let anel = anelDeDxf(importarDxf(texto));
-      if (!anel || anel.length < 3) { aviso('Não encontrei uma poligonal fechada no DXF.'); return; }
+      if (!anel || anel.length < 3) { aviso('Não encontrei um perímetro no DXF (nem como polilinha, nem como linhas soltas conectadas pelas pontas).'); return; }
       // remove ponto de fechamento duplicado, se houver
       const f = anel[0], l = anel[anel.length - 1];
       if (Math.hypot(f.x - l.x, f.y - l.y) < 0.01) anel = anel.slice(0, -1);
       const tec = tecnico ?? carregarTecnico();
       // fuso automático por região (igual ao TXT), a partir do 1º ponto do DXF
-      const z = detectarFusoPorRegiao(anel[0].x, anel[0].y, hemisferio, tec.fusosPermitidos ?? [22, 23, 24, 25]).zona;
+      const z = detectarFusoPorRegiao(anel[0].x, anel[0].y, hemisferio, tec.fusosPermitidos ?? [18, 19, 20, 21, 22, 23, 24, 25]).zona;
       setZona(z);
       const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
       let vs: Vertex[] = anel.map((p) => {
@@ -1623,7 +1716,7 @@ export default function EditorPage() {
       } catch { registrou = false; }
       const p: Projeto = {
         id, nome: nomeProjeto || imovel.denominacao || 'Sem nome', criadoEm: Date.now(), atualizadoEm: Date.now(),
-        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, plantaConfig,
+        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, plantaConfig, parcelasCert,
       };
       try {
         await salvarProjeto(p);
@@ -1690,7 +1783,13 @@ export default function EditorPage() {
     return vertices.length > 0 || glebas.some((g) => g.vertices.length > 0) || !!imovel.denominacao || !!imovel.proprietario || !!imovel.matricula;
   }
   function montarRascunho() {
-    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, plantaConfig, glebaAtivaId };
+    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, plantaConfig, glebaAtivaId, parcelasCert };
+  }
+  // Recria as referências tracejadas (desenho) a partir das parcelas certificadas gravadas —
+  // usado ao reabrir/restaurar um projeto, para não precisar buscar de novo no INCRA.
+  function referenciasDeParcelasCert(pc: Projeto['parcelasCert'], z: number, h: 'N' | 'S') {
+    if (!pc?.length) return [];
+    return parcelasParaReferencias(pc.map((p) => ({ anel: p.anel.map(([lat, lon]) => ({ lat, lon })) })), z, h);
   }
   function aplicarRascunho(d: ReturnType<typeof montarRascunho>): boolean {
     if (!d || !Array.isArray(d.glebas) || d.glebas.length === 0) return false;
@@ -1705,6 +1804,9 @@ export default function EditorPage() {
     setPlantaConfig(d.plantaConfig ?? {});
     setGlebas(d.glebas);
     carregarGleba(d.glebas.find((g) => g.id === d.glebaAtivaId) ?? d.glebas[0]);
+    const pc = d.parcelasCert ?? [];
+    setParcelasCert(pc);
+    setReferencias(referenciasDeParcelasCert(pc, d.zona, d.hemisferio));
     return true;
   }
 
@@ -1811,6 +1913,9 @@ export default function EditorPage() {
     setPlantaConfig(p.plantaConfig ?? {});
     setGlebas(p.glebas);
     carregarGleba(p.glebas[0]);
+    const pc = p.parcelasCert ?? [];
+    setParcelasCert(pc);
+    setReferencias(referenciasDeParcelasCert(pc, p.zonaUtm, p.hemisferio));
     acabouDeSalvar.current = true; setSalvarLaranja(false); setSalvoOk(true); // recém-carregado = "salvo"
     aviso(`Projeto carregado (${p.glebas.length} gleba(s)).`);
   }
@@ -1901,22 +2006,28 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarReferenciaGeoJson(f); e.currentTarget.value = ''; }} />
         <input ref={vizinhosRef} type="file" accept=".geojson,.json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
+        <input ref={verticesVizinhoRef} type="file" accept=".txt,.csv,text/plain" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVerticesVizinho(f); e.currentTarget.value = ''; }} />
 
         {/* 1) Importar e checar vizinhos */}
         <Etapa st={etapas.txt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
-        <Etapa st={etapas.sigef}><Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Search /> SIGEF</Button></Etapa>
-        <ChevronRight className="mt-1.5 size-5 shrink-0 self-start text-amber-500/60" aria-hidden />
+        <Etapa st={etapas.sigef}>{parcelasCert.length > 0 ? (
+          <Button size="sm" variant="outline" className="shrink-0" title="Vizinhos certificados já baixados — ver relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}><ShieldCheck className="size-4 text-indigo-400" /> ANÁLISE</Button>
+        ) : (
+          <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Search /> SIGEF</Button>
+        )}</Etapa>
+        <Button size="sm" variant="outline" className="shrink-0 px-2" disabled={vertices.length < 3} title="Adotar códigos de vértice de um imóvel vizinho já certificado (arquivo baixado do Distribuidor de Coordenadas do Acervo Fundiário — mapeamento de colunas em Configurações)" onClick={() => verticesVizinhoRef.current?.click()}><UserCheck className="size-4" /></Button>
+        <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 2) Dados do projeto atual */}
         <Etapa st={etapas.dados}><Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório"><BookUser /> DADOS</Button></Link></Etapa>
         <Button size="sm" variant="outline" className="shrink-0 px-2" title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /></Button>
-        <ChevronRight className="mt-1.5 size-5 shrink-0 self-start text-amber-500/60" aria-hidden />
+        <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
         <Etapa st={etapas.confro}><Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className="shrink-0" title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> CONFRO</Button></Etapa>
         <Etapa st={etapas.divisas}><Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className="shrink-0" title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> DIVISAS</Button></Etapa>
-        <Button size="sm" variant="outline" className="shrink-0" title="Verificar relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}><ShieldCheck className="size-4 text-indigo-400" /> ANÁLISE</Button>
-        <ChevronRight className="mt-1.5 size-5 shrink-0 self-start text-amber-500/60" aria-hidden />
+        <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 5) Peças */}
         <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}><FileText /> TRT</Button></Etapa>
@@ -1968,9 +2079,10 @@ export default function EditorPage() {
               {vista === 'mapa' && modo === 'confrontante' && (
                 <>
                   <span className="text-muted-foreground">Pintando confrontante:</span>
+                  {confrontantePincelId && <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(confrontantePincelId) }} title="Cor deste confrontante no mapa" />}
                   <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
                     <option value="">— escolher —</option>
-                    {confrontantes.map((c) => <option key={c.id} value={c.id}>{c.nome || '(sem nome)'}</option>)}
+                    {confrontantes.map((c) => <option key={c.id} value={c.id} style={{ color: corPorConfrontante(c.id) }}>{'━ '}{c.nome || '(sem nome)'}</option>)}
                   </select>
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus className="size-3" /> Novo confront.</Button>
                 </>
@@ -2087,6 +2199,7 @@ export default function EditorPage() {
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Porcentagem entre dois polígonos (área de um em relação ao outro e ao total)" onClick={() => setPorcentagemAberta(true)}><Percent /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Estúdio: edição de imagem (mini-Canva, isolado do projeto)" onClick={() => setEstudioAberto(true)}><ImagePlus /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Tema claro/escuro" onClick={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))}>{tema === 'claro' ? <Moon /> : <Sun />}</Button>
+                    <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Tutorial: como usar o Métrica, passo a passo" onClick={() => setTutorialAberto(true)}><HelpCircle /></Button>
                     <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title="Configurações" onClick={() => setConfigAberta(true)}><Settings /></Button>
                     {nuvemDisponivel && user && (
                       <Button size="sm" variant="ghost" className="h-8 flex-1 p-0" title={`Sair (${user.email ?? ''})`} onClick={() => sair()}><LogOut /></Button>
@@ -2114,6 +2227,9 @@ export default function EditorPage() {
             </div>
             <div className="w-px bg-border" />
             <button type="button" className="act border bg-background hover:bg-muted" title="Focalizar/enquadrar o desenho" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())}><Target className="size-5" /></button>
+            <button type="button" className="act border bg-background hover:bg-muted" title="Informações e gestão financeira do projeto (valor cobrado, gastos, recebimentos, recibo e contrato)" onClick={() => setGestaoAberta(true)}><Info className="size-5" /></button>
+            <button type="button" className={`act ${infoJaVista(projetoId) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`} title="Detalhes do projeto, arquivos anexados e pendências (o que ainda falta pra exportar)" onClick={() => setInfoAberto(true)}><FileText className="size-5" /></button>
+            <button type="button" className="act border bg-background hover:bg-muted" title="Banco de pontos do credenciado (consultar códigos já usados)" onClick={() => setPontosAberto(true)}><Database className="size-5" /></button>
             {(() => {
               const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
               const cor = !situacaoUrl ? 'bg-amber-500 text-white hover:bg-amber-600' : stale ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-600 text-white hover:bg-emerald-700';
@@ -2169,7 +2285,7 @@ export default function EditorPage() {
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                 confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
-                parcelasCert={parcelasCert} onAdotarVertice={inserirVertice}
+                parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
                 selMulti={selMulti} onToggleMulti={alternarMulti} onBoxSelect={adicionarMulti}
                 onDblClick={(lat, lon) => { const t = window.prompt('Texto a inserir:'); if (t) setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }}
@@ -2248,7 +2364,8 @@ export default function EditorPage() {
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
-                      onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta} />
+                      onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
+                      onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} />
                   </div>
                 )}
               </div>
@@ -2454,7 +2571,7 @@ export default function EditorPage() {
               <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} />
             )}
             {aba === 'planta' && (
-              <PainelPlanta config={plantaConfig} onChange={setPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl}
+              <PainelPlanta config={plantaConfig} onChange={setPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} numGlebas={glebas.length}
                 onVerPlanta={() => setVista('planta')} onSalvarPadrao={() => { salvarPlantaPadrao(plantaConfig); aviso('Ajustes da planta salvos como padrão para os próximos trabalhos.'); }} />
             )}
             {aba === 'conferencia' && (
@@ -2649,6 +2766,37 @@ export default function EditorPage() {
         onOpenChange={setConfigAberta}
         onConfigChange={() => { setTecnico(carregarTecnico()); }}
       />
+      {tecnico && escritorio && (
+        <GestaoProjetoModal
+          open={gestaoAberta}
+          onOpenChange={setGestaoAberta}
+          imovel={imovel}
+          financeiro={imovel.financeiro ?? {}}
+          onChange={(f) => setImovel((im) => ({ ...im, financeiro: f }))}
+          nomeProjeto={nomeProjeto}
+          areaHa={res?.areaHa ?? 0}
+          perimetro={res?.perimetro ?? 0}
+          tecnico={tecnico}
+          escritorio={escritorio}
+          dataExtenso={dataPorExtenso()}
+        />
+      )}
+      <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
+      <ProjetoInfoModal
+        open={infoAberto}
+        onOpenChange={setInfoAberto}
+        projetoId={projetoId}
+        nome={nomeProjeto}
+        imovel={imovel}
+        tecnico={tecnico}
+        areaHa={res?.areaHa ?? 0}
+        perimetro={res?.perimetro ?? 0}
+        vertices={vertices}
+        confrontantes={confrontantes}
+        confrontantePorLado={confrontantePorLado}
+        numGlebas={glebas.length}
+      />
+      <PontosBancoModal open={pontosAberto} onOpenChange={setPontosAberto} />
       <ImportPreviewModal
         open={!!previewData}
         onOpenChange={(open) => { if (!open) setPreviewData(null); }}
@@ -2931,7 +3079,8 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
           <Card key={c.id}>
             <CardContent className="space-y-2 p-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id) }} title="Cor deste confrontante no mapa" />
                   {idxs.length} lado(s){lados.length ? `: ${idxs.map((i) => lados[i]?.de.codigoSigef).filter(Boolean).join(', ')}` : ''}
                 </span>
                 <button className="text-[10px] text-primary hover:underline" onClick={() => onSalvarCadastro(c)}>salvar no cadastro</button>
@@ -2988,9 +3137,10 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
   );
 }
 
-function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta, onSalvarPadrao }: {
-  config: PlantaConfig; onChange: (c: PlantaConfig) => void; temSituacao: boolean; temLogo: boolean; onVerPlanta: () => void; onSalvarPadrao: () => void;
+function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVerPlanta, onSalvarPadrao }: {
+  config: PlantaConfig; onChange: (c: PlantaConfig) => void; temSituacao: boolean; temLogo: boolean; numGlebas: number; onVerPlanta: () => void; onSalvarPadrao: () => void;
 }) {
+  const multiplasGlebas = numGlebas > 1;
   const set = (patch: Partial<PlantaConfig>) => onChange({ ...config, ...patch });
   type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao' | 'mostrarDivisaConf';
   const chk = (label: string, key: BoolKey) => (
@@ -3043,10 +3193,14 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta, onS
       <div className="space-y-1 rounded border p-2">
         <div className="text-[10px] uppercase text-muted-foreground">Estilização das Linhas (Planta)</div>
         <div className="grid grid-cols-2 gap-2 mt-1">
-          <div className="space-y-1">
-            <Label className="text-[10px]">Cor do perímetro</Label>
-            <Input type="text" placeholder="#7c2d12" value={config.corPoligono ?? ''} onChange={(e) => set({ corPoligono: e.target.value || undefined })} className="h-7 text-xs" />
-          </div>
+          {multiplasGlebas ? (
+            <div className="space-y-1">
+              <Label className="text-[10px]">Cor do perímetro (gleba ativa)</Label>
+              <Input type="text" placeholder="#7c2d12" value={config.corPoligono ?? ''} onChange={(e) => set({ corPoligono: e.target.value || undefined })} className="h-7 text-xs" />
+            </div>
+          ) : (
+            <p className="col-span-2 text-[10px] text-muted-foreground">A cor do perímetro só é personalizável quando o projeto tem mais de uma gleba (serve para diferenciar uma da outra na planta).</p>
+          )}
           <div className="space-y-1">
             <Label className="text-[10px]">Espessura perímetro</Label>
             <Input type="number" step="0.1" placeholder="1.8" value={config.larguraPoligono ? String(config.larguraPoligono) : ''} onChange={(e) => set({ larguraPoligono: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
@@ -3062,16 +3216,18 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, onVerPlanta, onS
             <Input type="number" step="0.1" placeholder="3.2" value={config.larguraDivisasApoio ? String(config.larguraDivisasApoio) : ''} onChange={(e) => set({ larguraDivisasApoio: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          <div className="space-y-1">
-            <Label className="text-[10px]">Cor outras glebas</Label>
-            <Input type="text" placeholder="#c2410c" value={config.corOutrasGlebas ?? ''} onChange={(e) => set({ corOutrasGlebas: e.target.value || undefined })} className="h-7 text-xs" />
+        {multiplasGlebas && (
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="space-y-1">
+              <Label className="text-[10px]">Cor outras glebas</Label>
+              <Input type="text" placeholder="#c2410c" value={config.corOutrasGlebas ?? ''} onChange={(e) => set({ corOutrasGlebas: e.target.value || undefined })} className="h-7 text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Espessura outras glebas</Label>
+              <Input type="number" step="0.1" placeholder="1.2" value={config.larguraOutrasGlebas ? String(config.larguraOutrasGlebas) : ''} onChange={(e) => set({ larguraOutrasGlebas: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[10px]">Espessura outras glebas</Label>
-            <Input type="number" step="0.1" placeholder="1.2" value={config.larguraOutrasGlebas ? String(config.larguraOutrasGlebas) : ''} onChange={(e) => set({ larguraOutrasGlebas: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
-          </div>
-        </div>
+        )}
       </div>
       <div className="space-y-1">
         <Label>Laudo técnico (carimbo)</Label>

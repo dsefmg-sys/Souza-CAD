@@ -18,10 +18,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
-  const [local, setLocal] = useState(false);
 
-  // Sem Firebase configurado → segue local. Logado ou escolheu local → entra.
-  if (!disponivel || user || local) return <>{children}</>;
+  // Login OBRIGATÓRIO quando há nuvem configurada. Sem Firebase (ambiente sem variáveis), segue local.
+  if (!disponivel || user) return <>{children}</>;
   if (carregando) {
     return <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">Carregando…</div>;
   }
@@ -49,9 +48,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           </div>
         </div>
         {erro && <p className="text-xs text-destructive">{erro}</p>}
-        <button className="block w-full text-center text-[11px] text-muted-foreground hover:underline" onClick={() => setLocal(true)}>
-          usar sem login (somente neste navegador)
-        </button>
+        <p className="text-center text-[11px] text-muted-foreground">
+          Entre com sua conta para acessar seus projetos e as configurações da empresa.
+        </p>
       </div>
     </div>
   );

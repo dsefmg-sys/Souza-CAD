@@ -13,6 +13,19 @@ function colProjetos(uid: string): CollectionReference {
   return collection(fdb()!, 'users', uid, 'projetos');
 }
 
+// Marca de "dono" de um projeto guardado LOCALMENTE (IndexedDB): evita que, no mesmo navegador,
+// o trabalho de um usuário logado apareça pra outro — por exemplo, dois agrimensores usando o
+// mesmo computador, cada um na sua própria conta, num momento em que a nuvem falhou pra um deles
+// (fica guardado local como reserva). Sem login (ou sem Firebase configurado), cai no balde
+// 'local' — não existe "outro usuário" a proteger nesse caso. Registros salvos ANTES desta
+// correção não tinham essa marca; tratamos como 'local' para não sumir com projeto antigo.
+function marcaLocal(): string {
+  return (firebaseConfigurado ? auth()?.currentUser?.uid : null) ?? 'local';
+}
+function ehMeuLocal(p: { _uidLocal?: string }): boolean {
+  return (p._uidLocal ?? 'local') === marcaLocal();
+}
+
 /** Erro sinalizando que a nuvem negou e o projeto foi guardado localmente como reserva. */
 export class NuvemSemPermissao extends Error {
   constructor() { super('NUVEM_SEM_PERMISSAO'); this.name = 'NuvemSemPermissao'; }
@@ -28,7 +41,7 @@ export async function salvarProjeto(p: Projeto): Promise<void> {
     } catch (e) {
       // Sem permissão (regras não publicadas) ou offline: guarda local como reserva e sinaliza,
       // para o usuário não perder o trabalho nem ver um erro cru.
-      try { const d = await db(); await d.put('projetos', reg); } catch { /* ignore */ }
+      try { const d = await db(); await d.put('projetos', { ...reg, _uidLocal: marcaLocal() }); } catch { /* ignore */ }
       if (String((e as { code?: string }).code) === 'permission-denied' || /permission/i.test((e as Error).message)) {
         throw new NuvemSemPermissao();
       }
@@ -36,7 +49,7 @@ export async function salvarProjeto(p: Projeto): Promise<void> {
     }
   }
   const d = await db();
-  await d.put('projetos', reg);
+  await d.put('projetos', { ...reg, _uidLocal: marcaLocal() });
 }
 
 export async function listarProjetos(): Promise<Projeto[]> {
@@ -48,7 +61,8 @@ export async function listarProjetos(): Promise<Projeto[]> {
     } catch { /* nuvem indisponível/negada → cai para o local */ }
   }
   const d = await db();
-  return (await d.getAll('projetos')).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+  const todos = await d.getAll('projetos');
+  return todos.filter(ehMeuLocal).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
 }
 
 export async function carregarProjeto(id: string): Promise<Projeto | undefined> {
@@ -58,13 +72,16 @@ export async function carregarProjeto(id: string): Promise<Projeto | undefined> 
     return s.exists() ? (s.data() as Projeto) : undefined;
   }
   const d = await db();
-  return d.get('projetos', id);
+  const reg = await d.get('projetos', id);
+  return reg && ehMeuLocal(reg) ? reg : undefined;
 }
 
 export async function excluirProjeto(id: string): Promise<void> {
   const uid = uidNuvem();
   if (uid) { await deleteDoc(doc(colProjetos(uid), id)); return; }
   const d = await db();
+  const reg = await d.get('projetos', id);
+  if (reg && !ehMeuLocal(reg)) return; // não é seu (dono diferente no mesmo navegador) — não apaga
   await d.delete('projetos', id);
 }
 
@@ -73,16 +90,18 @@ export async function sincronizarProjetosLocalParaNuvem(): Promise<void> {
   if (!uid) return;
   try {
     const d = await db();
-    const localProjects = await d.getAll('projetos');
+    const localProjects = (await d.getAll('projetos')).filter(ehMeuLocal);
     if (localProjects.length === 0) return;
-    
+
     const snap = await getDocs(colProjetos(uid));
     const cloudProjectsMap = new Map(snap.docs.map((doc) => [doc.id, doc.data() as Projeto]));
-    
+
     for (const p of localProjects) {
       const cloudP = cloudProjectsMap.get(p.id);
       if (!cloudP || p.atualizadoEm > cloudP.atualizadoEm) {
-        await setDoc(doc(colProjetos(uid), p.id), p);
+        const { _uidLocal, ...limpo } = p; // marca é só de armazenamento local — não vai pra nuvem
+        void _uidLocal;
+        await setDoc(doc(colProjetos(uid), p.id), limpo);
       }
       await d.delete('projetos', p.id);
     }

@@ -1,9 +1,10 @@
-import type { TecnicoData, EscritorioData, PlantaConfig, ImportTxtConfig } from '../topo/types';
+import type { TecnicoData, EscritorioData, PlantaConfig, ImportTxtConfig, ImportVerticesVizinhoConfig } from '../topo/types';
 
 const KEY = 'metrica.tecnico';
 const KEY_ESCRITORIO = 'metrica.escritorio';
 const KEY_PLANTA = 'metrica.plantaPadrao';
 const KEY_IMPORT_TXT = 'metrica.importTxt';
+const KEY_IMPORT_VIZINHO = 'metrica.importVerticesVizinho';
 
 // Mapeamento padrão das colunas do TXT (formato observado do GNSS).
 export const IMPORT_TXT_PADRAO: ImportTxtConfig = {
@@ -28,6 +29,31 @@ export function carregarImportTxt(): ImportTxtConfig {
 export function salvarImportTxt(c: ImportTxtConfig): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(KEY_IMPORT_TXT, JSON.stringify(c));
+}
+
+// Mapeamento padrão do arquivo de vértices do vizinho: chute razoável (nome, latitude, longitude);
+// o usuário ajusta em Configurações a partir de um exemplo real.
+export const IMPORT_VIZINHO_PADRAO: ImportVerticesVizinhoConfig = {
+  separador: ';',
+  decimal: '.',
+  temCabecalho: true,
+  colunas: ['nome', 'latitude', 'longitude'],
+};
+
+export function carregarImportVerticesVizinho(): ImportVerticesVizinhoConfig {
+  if (typeof window === 'undefined') return IMPORT_VIZINHO_PADRAO;
+  try {
+    const raw = localStorage.getItem(KEY_IMPORT_VIZINHO);
+    if (!raw) return IMPORT_VIZINHO_PADRAO;
+    return { ...IMPORT_VIZINHO_PADRAO, ...JSON.parse(raw) };
+  } catch {
+    return IMPORT_VIZINHO_PADRAO;
+  }
+}
+
+export function salvarImportVerticesVizinho(c: ImportVerticesVizinhoConfig): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(KEY_IMPORT_VIZINHO, JSON.stringify(c));
 }
 
 // ----- Modelo de planilha SIGEF (.ods) personalizado pelo usuário -----
@@ -78,7 +104,7 @@ export const TECNICO_PADRAO: TecnicoData = {
   contadorPonto: 1,
   contadorVirtual: 1,
   zonaBase: 23,
-  fusosPermitidos: [22, 23, 24, 25],
+  fusosPermitidos: [18, 19, 20, 21, 22, 23, 24, 25],
 };
 
 export const ESCRITORIO_PADRAO: EscritorioData = {
@@ -121,6 +147,17 @@ export function salvarTecnico(t: TecnicoData): void {
   localStorage.setItem(KEY, JSON.stringify(t));
 }
 
+// ----- Numeração automática dos recibos (sequencial, por navegador) -----
+const KEY_RECIBO_SEQ = 'metrica.reciboSeq';
+/** Devolve o próximo número de recibo no formato "0001/AAAA" e já avança o contador. */
+export function consumirNumeroRecibo(ano: number): string {
+  if (typeof window === 'undefined') return `0001/${ano}`;
+  let seq = 1;
+  try { seq = Math.max(1, Math.floor(Number(localStorage.getItem(KEY_RECIBO_SEQ) || '1')) || 1); } catch { /* ignore */ }
+  try { localStorage.setItem(KEY_RECIBO_SEQ, String(seq + 1)); } catch { /* ignore */ }
+  return `${String(seq).padStart(4, '0')}/${ano}`;
+}
+
 /** Configuração-padrão da planta (tamanhos de fonte, blocos, textos) — vale para trabalhos futuros. */
 export function carregarPlantaPadrao(): PlantaConfig {
   if (typeof window === 'undefined') return {};
@@ -135,6 +172,17 @@ export function carregarPlantaPadrao(): PlantaConfig {
 export function salvarPlantaPadrao(c: PlantaConfig): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(KEY_PLANTA, JSON.stringify(c));
+}
+
+// ----- Tutorial de boas-vindas: já visto? (por navegador, não por projeto) -----
+const KEY_TUTORIAL = 'metrica.onboarded';
+export function tutorialJaVisto(): boolean {
+  if (typeof window === 'undefined') return true;
+  try { return localStorage.getItem(KEY_TUTORIAL) === '1'; } catch { return true; }
+}
+export function marcarTutorialVisto(): void {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(KEY_TUTORIAL, '1'); } catch { /* ignore */ }
 }
 
 import { db as fdb } from '../firebase/client';

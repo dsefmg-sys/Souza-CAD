@@ -14,7 +14,9 @@ export interface ArquivoProjeto {
 }
 
 export interface MetricaDB extends DBSchema {
-  projetos: { key: string; value: Projeto };
+  // `_uidLocal` é só de armazenamento (marca o dono do registro LOCAL, ver projects.ts) — nunca
+  // aparece no tipo `Projeto` usado no resto do app, nem é escrito na nuvem.
+  projetos: { key: string; value: Projeto & { _uidLocal?: string } };
   contadores: { key: string; value: Contadores };
   pontos: { key: string; value: PontoRegistro; indexes: { 'por-imovel': string } };
   proprietarios: { key: string; value: ProprietarioCad };

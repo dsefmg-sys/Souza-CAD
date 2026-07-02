@@ -33,6 +33,24 @@ export interface ImportTxtConfig {
   colunas: CampoTxt[]; // colunas[i] = papel da coluna i
 }
 
+/** Campo que uma coluna do arquivo de vértices do VIZINHO representa. */
+export type CampoVerticeVizinho = 'ignorar' | 'nome' | 'latitude' | 'longitude' | 'leste' | 'norte' | 'elevacao';
+
+/**
+ * Configuração de como ler o arquivo de vértices de um imóvel VIZINHO já certificado (baixado
+ * pelo agrimensor de dentro da própria conta gov.br dele no Acervo Fundiário/Distribuidor de
+ * Coordenadas — não temos acesso automático a esse serviço, é sempre um upload manual). Aceita
+ * coordenada geográfica (latitude/longitude) OU UTM (leste/norte); se vierem as duas, a geográfica
+ * tem prioridade. Definida pelo usuário em Configurações a partir de um arquivo de exemplo, no
+ * mesmo espírito do `ImportTxtConfig`.
+ */
+export interface ImportVerticesVizinhoConfig {
+  separador: ';' | ',' | 'tab' | 'espaco';
+  decimal: '.' | ',';
+  temCabecalho: boolean;
+  colunas: CampoVerticeVizinho[]; // colunas[i] = papel da coluna i
+}
+
 /** Tipo de vértice na lógica do SIGEF. M = marco (canto de divisa), P = ponto, V = virtual. */
 export type TipoVertice = 'M' | 'P' | 'V';
 
@@ -239,9 +257,13 @@ export interface ImovelData {
   areaSigefHa?: number;
   perimetroSigef?: number;
   usarValoresSigef?: boolean;
+  tipoAzimute?: 'plano' | 'geodesico';
   // Para o requerimento de retificação:
   areaAnterior?: number;  // área que consta na matrícula (ha)
   valorImovel?: number;   // valor declarado (R$)
+  // Matrículas de origem, para remembramento/unificação de mais de uma matrícula numa só.
+  // Vazio/ausente = comportamento normal (uma matrícula só, em `matricula`).
+  matriculasOrigem?: string[];
   // Para a planta:
   declinacaoMagnetica?: number; // graus (negativo = oeste), do serviço de declinação
   variacaoAnual?: number;       // minutos/ano
@@ -252,6 +274,23 @@ export interface ImovelData {
   distanciaEsquinaM?: number;
   esquinaRua?: string;
   numeroTrt?: string;          // nº do TRT/ART emitido no conselho (por projeto)
+  financeiro?: FinanceiroProjeto; // gestão financeira do projeto (valor cobrado, gastos, recebimentos)
+}
+
+/** Um lançamento financeiro do projeto: um gasto (custo) ou um recebimento (entrada). */
+export interface LancamentoFinanceiro {
+  id: string;
+  tipo: 'gasto' | 'recebimento';
+  descricao: string;
+  valor: number;  // em reais (R$)
+  data: string;   // 'AAAA-MM-DD'
+}
+
+/** Controle financeiro de um projeto: o quanto foi cobrado e o histórico de gastos/recebimentos. */
+export interface FinanceiroProjeto {
+  valorCobrado?: number;                 // valor total combinado com o cliente (R$)
+  lancamentos?: LancamentoFinanceiro[];
+  observacoes?: string;
 }
 
 /**
@@ -350,6 +389,9 @@ export interface Projeto {
   transmitente?: PessoaQualificada;
   // Configuração editável da planta (opcional)
   plantaConfig?: PlantaConfig;
+  // Parcelas certificadas do SIGEF/INCRA baixadas como referência (vizinhos): ficam gravadas no
+  // projeto para não precisar buscar de novo a cada vez que ele é reaberto.
+  parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
   // Campos legados (projetos salvos antes do multi-gleba) — migrados ao abrir.
   vertices?: Vertex[];
   confrontantes?: Confrontante[];

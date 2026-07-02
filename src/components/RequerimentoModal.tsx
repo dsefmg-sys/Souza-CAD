@@ -176,6 +176,16 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
             <Label>Valor do imóvel (R$)</Label>
             <Input type="number" step="0.01" value={imovel.valorImovel ?? ''} onChange={(e) => onChangeImovel({ ...imovel, valorImovel: e.target.value ? Number(e.target.value) : undefined })} />
           </div>
+          {tipoAto === 'unificacao' && (
+            <div className="col-span-2 space-y-1">
+              <Label>Matrículas de origem (separadas por vírgula)</Label>
+              <Input
+                placeholder="ex.: 1234, 5678, 9012"
+                value={(imovel.matriculasOrigem ?? []).join(', ')}
+                onChange={(e) => onChangeImovel({ ...imovel, matriculasOrigem: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+              />
+            </div>
+          )}
         </div>
 
         <Bloco titulo={rotulos.req} pessoa={req} onChange={setReq} sugProp={sugProp} />

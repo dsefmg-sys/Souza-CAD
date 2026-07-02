@@ -83,7 +83,7 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
   }), [pontos, zonaSel, hemisferio]);
 
   const foraDaFaixa = ll.some(([la, lo]) => !Number.isFinite(la) || !Number.isFinite(lo) || la > 6 || la < -34 || lo > -28 || lo < -74);
-  const fusos = (fusosPermitidos && fusosPermitidos.length ? fusosPermitidos : [22, 23, 24, 25]);
+  const fusos = (fusosPermitidos && fusosPermitidos.length ? fusosPermitidos : [18, 19, 20, 21, 22, 23, 24, 25]);
 
   // dados do mapa: polígono passa só pelos importados + no polígono; marcadores = todos importados.
   // Guarda contra índices "velhos" (logo após reabrir com outra quantidade de pontos, antes do

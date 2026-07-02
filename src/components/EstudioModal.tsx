@@ -3,27 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Image as ImageIcon, Type, Square, Circle, Trash2, Download, ArrowUp, ArrowDown, AlignCenterHorizontal, AlignCenterVertical, Palette, Search, Shapes } from 'lucide-react';
+import { Image as ImageIcon, Type, Square, Circle, Trash2, Download, ArrowUp, ArrowDown, AlignCenterHorizontal, AlignCenterVertical, Palette, Search, Shapes, Images, RefreshCw } from 'lucide-react';
+import { type El, FORMATOS_PADRAO as FORMATOS, novoId as nid, reordenarCamada, centralizarEm, escalaParaCaber } from '@/lib/canvas/canvasEngine';
 
 // ESTÚDIO isolado (mini-Canva): tela com formato escolhido, elementos de imagem/texto/forma,
 // mover/redimensionar/alinhar/camadas e exportar PNG. Não toca no projeto de agrimensura.
-
-type Base = { id: number; x: number; y: number; w: number; h: number };
-type El =
-  | (Base & { t: 'img'; src: string })
-  | (Base & { t: 'text'; texto: string; size: number; cor: string; bold: boolean })
-  | (Base & { t: 'rect'; fill: string; radius: number })
-  | (Base & { t: 'ellipse'; fill: string });
-
-const FORMATOS: { nome: string; w: number; h: number }[] = [
-  { nome: 'Quadrado 1080×1080', w: 1080, h: 1080 },
-  { nome: 'Paisagem 1920×1080', w: 1920, h: 1080 },
-  { nome: 'Retrato 1080×1920', w: 1080, h: 1920 },
-  { nome: 'Story 1080×1920', w: 1080, h: 1920 },
-];
-
-let _seq = 1;
-const nid = () => _seq++;
+// Esta é a CASCA VISUAL (modal, botões, DOM); os tipos e as funções de camada/alinhamento puras
+// vivem em lib/canvas/canvasEngine.ts (zero dependência de React/UI — copiável para outro app).
 
 export default function EstudioModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const [fmt, setFmt] = useState({ w: 1080, h: 1080 });
@@ -36,14 +22,22 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
   const [busca, setBusca] = useState('');
   const [resultados, setResultados] = useState<string[]>([]);
   const [buscando, setBuscando] = useState(false);
+  const [painelFotos, setPainelFotos] = useState(false);
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [buscaArte, setBuscaArte] = useState('');
+  const [resultadosArte, setResultadosArte] = useState<{ titulo: string; url: string }[]>([]);
+  const [buscandoArte, setBuscandoArte] = useState(false);
+  const [pexelsKey, setPexelsKey] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const palcoRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: number; sx: number; sy: number; ox: number; oy: number; modo: 'mover' | 'resize'; ow: number; oh: number } | null>(null);
 
-  const escala = Math.min(box.w / fmt.w, box.h / fmt.h, 1) || 0.1;
+  const escala = escalaParaCaber(fmt, box);
 
-  useEffect(() => { if (!open) { setEls([]); setSel(null); } }, [open]);
+  // chave Pexels do dono como padrão; pode ser trocada no campo (fica salva no navegador)
+  useEffect(() => { if (!open) { setEls([]); setSel(null); } else { setPexelsKey(localStorage.getItem('metrica.pexelsApiKey') || 'uEXpsEUk50vq3Ppp8uyM9gD2ukz8dYV0kuw28LpIDSAjWWieJgkFurF8'); } }, [open]);
+  function salvarPexelsKey(v: string) { setPexelsKey(v); localStorage.setItem('metrica.pexelsApiKey', v.trim()); }
   useEffect(() => {
     if (!open) return;
     const medir = () => { const r = areaRef.current?.getBoundingClientRect(); if (r) setBox({ w: r.width - 24, h: r.height - 24 }); };
@@ -124,12 +118,64 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
     } catch { alert('Não consegui carregar este elemento.'); }
   }
 
-  function apagar() { if (sel != null) { setEls((es) => es.filter((e) => e.id !== sel)); setSel(null); } }
-  function camada(dir: number) {
-    if (sel == null) return;
-    setEls((es) => { const i = es.findIndex((e) => e.id === sel); if (i < 0) return es; const j = i + dir; if (j < 0 || j >= es.length) return es; const c = [...es]; [c[i], c[j]] = [c[j], c[i]]; return c; });
+  // banco de fotos: Picsum (picsum.photos), gratuito e sem chave — fotos aleatórias, sem busca por palavra
+  function novasFotos() {
+    const semente = Date.now();
+    setFotos(Array.from({ length: 12 }, (_, i) => `https://picsum.photos/seed/${semente}-${i}/400/300`));
   }
-  function centrar(eixo: 'h' | 'v') { if (!selEl) return; if (eixo === 'h') patch(selEl.id, { x: (fmt.w - selEl.w) / 2 } as Partial<El>); else patch(selEl.id, { y: (fmt.h - selEl.h) / 2 } as Partial<El>); }
+  function addFoto(url: string) {
+    const img = new window.Image();
+    img.onload = () => {
+      const max = Math.min(fmt.w, fmt.h) * 0.7;
+      const r = Math.min(max / img.width, max / img.height, 1);
+      const w = img.width * r, h = img.height * r;
+      const id = nid();
+      setEls((es) => [...es, { id, t: 'img', src: url, x: (fmt.w - w) / 2, y: (fmt.h - h) / 2, w, h }]);
+      setSel(id);
+    };
+    img.crossOrigin = 'anonymous';
+    img.src = url;
+  }
+
+  // busca de obras de arte de domínio público: Art Institute of Chicago (grátis, sem chave)
+  async function buscarArtInstitute(q: string): Promise<{ titulo: string; url: string }[]> {
+    try {
+      const r = await fetch(`https://api.artic.edu/api/v1/artworks/search?q=${encodeURIComponent(q)}&query[term][is_public_domain]=true&fields=id,title,image_id&limit=24`);
+      const j = await r.json();
+      return (Array.isArray(j.data) ? j.data : [])
+        .filter((a: { image_id?: string }) => a.image_id)
+        .map((a: { title?: string; image_id: string }) => ({ titulo: a.title || '', url: `https://www.artic.edu/iiif/2/${a.image_id}/full/400,/0/default.jpg` }));
+    } catch { return []; }
+  }
+
+  // banco de fotos Pexels (fotos e vídeos reais) — precisa de chave grátis gerada em pexels.com/api
+  async function buscarPexels(q: string): Promise<{ titulo: string; url: string }[]> {
+    if (!pexelsKey.trim()) return [];
+    try {
+      const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=24`, { headers: { Authorization: pexelsKey.trim() } });
+      const j = await r.json();
+      return (Array.isArray(j.photos) ? j.photos : [])
+        .map((p: { alt?: string; src?: { medium?: string } }) => ({ titulo: p.alt || '', url: p.src?.medium || '' }))
+        .filter((p: { url: string }) => p.url);
+    } catch { return []; }
+  }
+
+  async function buscarArte() {
+    const q = buscaArte.trim(); if (!q) return;
+    setBuscandoArte(true);
+    try {
+      const [arte, fotosPexels] = await Promise.all([buscarArtInstitute(q), buscarPexels(q)]);
+      setResultadosArte([...fotosPexels, ...arte]);
+    } finally { setBuscandoArte(false); }
+  }
+
+  function apagar() { if (sel != null) { setEls((es) => es.filter((e) => e.id !== sel)); setSel(null); } }
+  function camada(dir: 1 | -1) { if (sel != null) setEls((es) => reordenarCamada(es, sel, dir)); }
+  function centrar(eixo: 'h' | 'v') {
+    if (!selEl) return;
+    const v = centralizarEm(selEl, fmt, eixo);
+    patch(selEl.id, (eixo === 'h' ? { x: v } : { y: v }) as Partial<El>);
+  }
 
   useEffect(() => {
     function k(e: KeyboardEvent) { const t = e.target as HTMLElement; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return; if ((e.key === 'Delete' || e.key === 'Backspace') && sel != null) { e.preventDefault(); apagar(); } }
@@ -190,6 +236,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
           <Button size="sm" variant="outline" onClick={() => addForma('rect')}><Square className="size-4" /> Retângulo</Button>
           <Button size="sm" variant="outline" onClick={() => addForma('ellipse')}><Circle className="size-4" /> Elipse</Button>
           <Button size="sm" variant={painelElem ? 'default' : 'outline'} onClick={() => setPainelElem((v) => !v)}><Shapes className="size-4" /> Elementos</Button>
+          <Button size="sm" variant={painelFotos ? 'default' : 'outline'} onClick={() => { setPainelFotos((v) => !v); if (!painelFotos && fotos.length === 0) novasFotos(); }}><Images className="size-4" /> Fotos</Button>
           <div className="mx-1 h-6 w-px bg-border" />
           <Button size="sm" variant="outline" disabled={sel == null} onClick={() => centrar('h')} title="Centralizar na horizontal"><AlignCenterVertical className="size-4" /></Button>
           <Button size="sm" variant="outline" disabled={sel == null} onClick={() => centrar('v')} title="Centralizar na vertical"><AlignCenterHorizontal className="size-4" /></Button>
@@ -207,13 +254,55 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
               <input className="h-8 w-64 rounded border bg-background px-2 text-sm" placeholder="Buscar ícone (ex.: casa, sol, raio, seta)" value={busca}
                 onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') buscarElementos(); }} />
               <Button size="sm" variant="outline" disabled={buscando} onClick={buscarElementos}><Search className="size-4" /> {buscando ? 'Buscando…' : 'Buscar'}</Button>
-              <span className="text-muted-foreground">Ícones gratuitos. Fotos de banco de imagem virão com uma chave (grátis) que você gera.</span>
+              <span className="text-muted-foreground">Ícones gratuitos. Fotos de banco de imagem já estão no botão "Fotos" ao lado.</span>
             </div>
             {resultados.length > 0 && (
               <div className="grid max-h-28 grid-flow-col grid-rows-2 gap-1 overflow-x-auto rounded border bg-muted/20 p-1.5">
                 {resultados.map((n) => (
                   <button key={n} type="button" title={n} onClick={() => addIcone(n)} className="flex size-11 shrink-0 items-center justify-center rounded border bg-background hover:bg-muted">
                     <img src={`https://api.iconify.design/${n}.svg?height=28`} alt={n} width={28} height={28} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* banco de fotos: busca por palavra (obras de arte de domínio público) + fotos aleatórias */}
+        {painelFotos && (
+          <div className="flex flex-col gap-2 border-y py-2">
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="font-semibold">Buscar fotos:</span>
+              <input className="h-8 w-64 rounded border bg-background px-2 text-sm" placeholder="Buscar fotos ou obras de arte (ex.: praia, cachorro, montanha)" value={buscaArte}
+                onChange={(e) => setBuscaArte(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') buscarArte(); }} />
+              <Button size="sm" variant="outline" disabled={buscandoArte} onClick={buscarArte}><Search className="size-4" /> {buscandoArte ? 'Buscando…' : 'Buscar'}</Button>
+              <span className="text-muted-foreground">Sempre busca no acervo público do Art Institute of Chicago (grátis, sem chave).</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="font-semibold">Chave Pexels (opcional):</span>
+              <input className="h-7 w-72 rounded border bg-background px-2 text-xs font-mono" placeholder="Cole aqui a chave grátis de pexels.com/api para incluir fotos reais na busca"
+                value={pexelsKey} onChange={(e) => salvarPexelsKey(e.target.value)} />
+              <span className="text-muted-foreground">Gere grátis em pexels.com/api. Fica salva só neste navegador.</span>
+            </div>
+            {resultadosArte.length > 0 && (
+              <div className="grid grid-flow-col grid-rows-2 gap-1.5 overflow-x-auto rounded border bg-muted/20 p-1.5">
+                {resultadosArte.map((a) => (
+                  <button key={a.url} type="button" title={a.titulo} onClick={() => addFoto(a.url)} className="size-20 shrink-0 overflow-hidden rounded border bg-background hover:opacity-80">
+                    <img src={a.url} alt={a.titulo} className="size-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="font-semibold">Fotos aleatórias:</span>
+              <Button size="sm" variant="outline" onClick={novasFotos}><RefreshCw className="size-4" /> Novas fotos</Button>
+              <span className="text-muted-foreground">Picsum, grátis e sem chave.</span>
+            </div>
+            {fotos.length > 0 && (
+              <div className="grid grid-flow-col grid-rows-2 gap-1.5 overflow-x-auto rounded border bg-muted/20 p-1.5">
+                {fotos.map((url) => (
+                  <button key={url} type="button" title="Adicionar esta foto" onClick={() => addFoto(url)} className="size-20 shrink-0 overflow-hidden rounded border bg-background hover:opacity-80">
+                    <img src={url} alt="" className="size-full object-cover" />
                   </button>
                 ))}
               </div>
