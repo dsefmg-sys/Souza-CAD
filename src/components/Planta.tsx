@@ -759,23 +759,7 @@ export default function Planta({
         if ((mx - cx) * nx + (my - cy) * ny < 0) { nx = -nx; ny = -ny; }
         const off = 3.2;
         const ax = a.x + nx * off, ay = a.y + ny * off, bx = b.x + nx * off, by = b.y + ny * off;
-        // cerca: além da linha cinza, tiques perpendiculares como palanques (símbolo clássico)
-        if (v.representacao === 'cerca') {
-          const compr = Math.hypot(bx - ax, by - ay);
-          const tx = (bx - ax) / (compr || 1), ty = (by - ay) / (compr || 1);
-          const passo = 11;
-          const nTiques = Math.max(0, Math.floor(compr / passo) - 1);
-          return (
-            <g key={`div${v.id}`} opacity={0.9}>
-              <line x1={ax} y1={ay} x2={bx} y2={by} stroke={cor} strokeWidth={(config.larguraDivisasApoio ?? 3.2) * 0.5} strokeLinecap="round" />
-              {Array.from({ length: nTiques }, (_, k) => {
-                const t = (k + 1) * passo;
-                const px = ax + tx * t, py = ay + ty * t;
-                return <line key={k} x1={px - nx * 2.4} y1={py - ny * 2.4} x2={px + nx * 2.4} y2={py + ny * 2.4} stroke={cor} strokeWidth={0.9} />;
-              })}
-            </g>
-          );
-        }
+        // toda divisa (inclusive cerca) sai como uma BARRA colorida contínua, externa à linha
         return (
           <line key={`div${v.id}`} x1={ax} y1={ay} x2={bx} y2={by}
             stroke={cor} strokeWidth={config.larguraDivisasApoio ?? 3.2} strokeLinecap="round" opacity={0.9} />
@@ -1556,7 +1540,7 @@ function CarimboA3(props: {
     }
     return [pal.slice(0, melhor).join(' '), pal.slice(melhor).join(' ')];
   })();
-  const hCabTitulo = tituloLinhas.length > 1 ? 40 : 24;
+  const hCabTitulo = tituloLinhas.length > 1 ? 44 : 24;
   const campoStart = hCabTitulo + 20; // início dos campos, com folga do cabeçalho
   const gap = Math.min(27, Math.floor((264 - campoStart - 10) / Math.max(1, campos.length - 1)));
 
@@ -1564,21 +1548,22 @@ function CarimboA3(props: {
   // seção de Dados (que já traz o nome do imóvel), liberando ~84px que foram redistribuídos para
   // dar mais FOLGA às assinaturas (proprietários e responsável técnico).
   //   y=32  : Dados do imóvel        (h=264) → 296   (cabeçalho = título do levantamento + Folha)
-  //   y=306 : Declaração proprietários (h=240) → 546  (ganhou altura: faltava espaço)
-  //   y=556 : Laudo técnico          (h=220) → 776   (encolheu: tinha espaço de sobra)
+  //   y=306 : Declaração proprietários (h=230) → 536
+  //   y=546 : Laudo técnico          (h=230) → 776   (mesma altura da declaração — espaços iguais)
   //   y=786 : Declaração confrontantes (h=110) → 896
-  //   y=906 : Escritório             (h=185) → 1091  (desceu pra base, alinhado à faixa inferior,
-  //           liberando a altura extra do Laudo Técnico)
+  //   y=906 : Escritório             (h=185) → 1091
   const Y_DADOS       = 32;
   const Y_PROP        = 306;
-  const H_PROP        = 240;
-  const Y_LAUDO       = 556;
+  const H_PROP        = 230;
+  const Y_LAUDO       = 546;
   const Y_CONF        = 786;
   const Y_ESC         = 906;
-  const H_LAUDO       = 220;
+  const H_LAUDO       = 230;
   const H_ESC         = 185;
-  const Y_ASSINA_PROP = Y_PROP  + 165; // firma mais baixa: aproveita a altura extra da declaração
-  const Y_ASSINA_RT   = Y_LAUDO + 150; // firma bem posicionada na caixa menor do laudo
+  // caixas iguais e barras na MESMA altura relativa: o Laudo tem 3 linhas abaixo da barra e o
+  // Proprietário 2, mas o espaço de FIRMA (acima da barra) fica igual nos dois.
+  const Y_ASSINA_PROP = Y_PROP  + 150;
+  const Y_ASSINA_RT   = Y_LAUDO + 150;
 
   // Assinatura num intervalo livre (xa..xb): linha + nome + detalhes (o rótulo "Assinatura do..."
   // foi removido — era redundante com o cabeçalho da seção e só ocupava espaço). Bloco móvel e coeso.
@@ -1632,12 +1617,12 @@ function CarimboA3(props: {
               <rect x={lx} y={Y_DADOS} width={wBox} height={hCabTitulo} rx={6} ry={6} fill="#475569" />
               <rect x={lx} y={Y_DADOS + hCabTitulo - 6} width={wBox} height={6} fill="#475569" />
               {editando ? (
-                T(idT, tituloTxt, { x: cxc, y: Y_DADOS + 16, size: fs(12), bold: true, anchor: 'middle', fill: '#fff' })
+                T(idT, tituloTxt, { x: cxc, y: Y_DADOS + 16, size: fs(10.5), bold: true, anchor: 'middle', fill: '#fff' })
               ) : (
                 <g style={ed?.ativo ? { cursor: 'text' } : undefined}
                    onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT); } : undefined}>
                   {tituloLinhas.map((ln, k) => (
-                    <text key={k} x={cxc} y={Y_DADOS + (duas ? 15 + k * 16 : 16)} fontSize={fs(12)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
+                    <text key={k} x={cxc} y={Y_DADOS + (duas ? 15 + k * 18 : 16)} fontSize={fs(10.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
                   ))}
                 </g>
               )}

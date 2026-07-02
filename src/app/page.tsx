@@ -2246,6 +2246,16 @@ export default function EditorPage() {
                         <span className="text-[10px] font-bold mr-1 shrink-0">ARQUIVO KML</span>
                         <Button size="sm" variant="ghost" className="size-7 p-0" title="Baixar o KML (Google Earth / GPS)" onClick={() => exportarKML(vertices, imovel)}><Download className="size-4" /></Button>
                       </div>
+                      {/* Planta de situação (recorte de satélite): capturar/atualizar — veio da barra inferior */}
+                      {(() => {
+                        const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
+                        const cor = !situacaoUrl || stale ? 'text-amber-600 border-amber-500/40 hover:bg-amber-500 hover:text-white' : 'text-emerald-600 border-emerald-600/40 hover:bg-emerald-600 hover:text-white';
+                        return (
+                          <Button size="sm" variant="outline" className={`w-full justify-start gap-2 ${cor}`} title={!situacaoUrl ? 'Capturar a planta de situação (recorte de satélite)' : stale ? 'Situação desatualizada — clique para refazer' : 'Situação pronta — clique para refazer'} onClick={gerarSituacaoPlanta}>
+                            <Camera className="size-4" /> {L(!situacaoUrl ? 'Capturar situação' : stale ? 'Atualizar situação' : 'Situação pronta')}
+                          </Button>
+                        );
+                      })()}
                     </div>
                   </>
                 )}
@@ -2308,21 +2318,15 @@ export default function EditorPage() {
               <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Vértices</div><div className="text-base font-bold">{vertices.length}</div></div>
             </div>
             <div className="w-px bg-border" />
-            <button type="button" className="act flex-col border bg-background hover:bg-muted" title="Focalizar/enquadrar o desenho" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())}><Target className="size-4" /><span className="text-[8px] font-bold leading-none">FOCO</span></button>
-            <button type="button" className="act border bg-background hover:bg-muted" title="Informações e gestão financeira do projeto (valor cobrado, gastos, recebimentos, recibo e contrato)" onClick={() => setGestaoAberta(true)}><Info className="size-5" /></button>
-            <button type="button" className="act border bg-background hover:bg-muted" title="Banco de pontos do credenciado (consultar códigos já usados)" onClick={() => setPontosAberto(true)}><Database className="size-5" /></button>
-            {(() => {
-              const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
-              const cor = !situacaoUrl ? 'bg-amber-500 text-white hover:bg-amber-600' : stale ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-600 text-white hover:bg-emerald-700';
-              const titulo = !situacaoUrl ? 'Capturar a planta de situação (recorte de satélite) — PENDENTE' : stale ? 'Situação DESATUALIZADA — clique para refazer' : 'Situação pronta — clique para refazer';
-              return <button type="button" onClick={gerarSituacaoPlanta} title={titulo} className={`act ${cor}`}><Camera className="size-5" /></button>;
-            })()}
+            <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Focalizar/enquadrar o desenho" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())}><Target className="size-4" /><span className="text-[8px] font-bold leading-none">FOCO</span></button>
+            <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Informações e gestão financeira do projeto (valor cobrado, gastos, recebimentos, recibo e contrato)" onClick={() => setGestaoAberta(true)}><Info className="size-4" /><span className="text-[8px] font-bold leading-none">GESTÃO</span></button>
+            <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Banco de pontos do credenciado (consultar códigos já usados)" onClick={() => setPontosAberto(true)}><Database className="size-4" /><span className="text-[8px] font-bold leading-none">PONTOS</span></button>
             {vista === 'planta' && (
               <>
                 <button type="button" onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} title={folhaTravada ? 'Folha FIXA — clique para liberar e arrastá-la (já ativa a ferramenta Mover)' : 'Folha LIVRE (cuidado) — clique para fixar'}
-                  className={`act ${folhaTravada ? 'border bg-background text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>{folhaTravada ? <Lock className="size-5" /> : <LockOpen className="size-5" />}</button>
+                  className={`act flex-col gap-0.5 ${folhaTravada ? 'border bg-background text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>{folhaTravada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}<span className="text-[8px] font-bold leading-none">FOLHA</span></button>
                 <button type="button" onClick={() => setPlantaDark((v) => !v)} title={plantaDark ? 'Folha clara' : 'Folha escura (conforto noturno; não afeta o PDF)'}
-                  className={`act ${plantaDark ? 'bg-slate-800 text-amber-300 hover:bg-slate-700' : 'border bg-background text-foreground hover:bg-muted'}`}>{plantaDark ? <Sun className="size-5" /> : <Moon className="size-5" />}</button>
+                  className={`act flex-col gap-0.5 ${plantaDark ? 'bg-slate-800 text-amber-300 hover:bg-slate-700' : 'border bg-background text-foreground hover:bg-muted'}`}>{plantaDark ? <Sun className="size-4" /> : <Moon className="size-4" />}<span className="text-[8px] font-bold leading-none">TEMA</span></button>
                 {/* escala: [-] 1/X [+] */}
                 <div className="flex items-center gap-1 rounded-lg border bg-background px-1" title="Escala da planta (− aumenta o desenho, + diminui)">
                   <button type="button" className="flex size-7 items-center justify-center rounded hover:bg-muted" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: Math.max(250, (c.escalaManual ?? 1000) - 250) }))}><span className="text-base font-bold">−</span></button>
