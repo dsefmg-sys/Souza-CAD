@@ -10,12 +10,25 @@ import { Label } from '@/components/ui/label';
 import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad } from '@/lib/topo/types';
 import { gerarRequerimentoDocx, type TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { numBR } from '@/lib/topo/geometry';
+import { carregarPreferencias } from '@/lib/store/preferencias';
 
-const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string }[] = [
-  { valor: 'venda', rotulo: 'Compra e venda' },
-  { valor: 'doacao', rotulo: 'Doação' },
-  { valor: 'unificacao', rotulo: 'Unificação / remembramento' },
-  { valor: 'desmembramento', rotulo: 'Desmembramento' },
+const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string; explicacao: string }[] = [
+  {
+    valor: 'venda', rotulo: 'Compra e venda',
+    explicacao: 'O imóvel está sendo vendido e o comprador (requerente) pede a retificação da área já em nome dele. Precisa do CPF/RG de quem vende e de quem compra.',
+  },
+  {
+    valor: 'doacao', rotulo: 'Doação',
+    explicacao: 'O proprietário (doador) está doando o imóvel a alguém (donatário). O documento usa os termos "doador" e "donatário" em vez de vendedor/comprador.',
+  },
+  {
+    valor: 'unificacao', rotulo: 'Unificação / remembramento',
+    explicacao: 'Duas ou mais matrículas do mesmo dono estão sendo unidas numa só, depois do levantamento. Preencha as "matrículas de origem" para o cartório saber quais matrículas somem e viram uma.',
+  },
+  {
+    valor: 'desmembramento', rotulo: 'Desmembramento',
+    explicacao: 'Uma parte do imóvel está sendo separada para virar uma matrícula nova (o dono continua o mesmo dos dois pedaços). Costuma vir acompanhado da ferramenta de dividir gleba por área.',
+  },
 ];
 
 export const PESSOA_VAZIA: PessoaQualificada = {
@@ -87,7 +100,10 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   const [tipoAto, setTipoAto] = useState<TipoAtoRequerimento>('venda');
   const [partesAdicionais, setPartesAdicionais] = useState<PessoaQualificada[]>([]);
   const [msg, setMsg] = useState('');
+  const [mostrarDicas, setMostrarDicas] = useState(true);
   const permiteVariasPartes = tipoAto === 'doacao' || tipoAto === 'unificacao';
+
+  useEffect(() => { setMostrarDicas(carregarPreferencias().mostrarDicasEducativas); }, []);
 
   function addParte() { setPartesAdicionais((ps) => [...ps, { ...PESSOA_VAZIA }]); }
   function setParte(i: number, p: PessoaQualificada) { setPartesAdicionais((ps) => ps.map((x, k) => (k === i ? p : x))); }
@@ -137,6 +153,11 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
               </Button>
             ))}
           </div>
+          {mostrarDicas && (
+            <p className="rounded border border-dashed bg-muted/30 p-2 text-xs text-muted-foreground">
+              {OPCOES_ATO.find((o) => o.valor === tipoAto)?.explicacao}
+            </p>
+          )}
           {tipoAto !== 'venda' && (
             <p className="text-[11px] text-amber-500">
               Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.
