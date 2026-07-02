@@ -1007,15 +1007,21 @@ export default function Planta({
             })()}
             <Ted x={x} y={y} base={nomeVertice(v, i)} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
             {vsel && (
-              <g style={{ pointerEvents: 'all' }} transform={`translate(${vx}, ${vy - 24})`}>
-                <rect x={-34} y={-11} width={68} height={22} rx={6} fill="#ffffff" fillOpacity={0.97} stroke="#cbd5e1" strokeWidth={0.7} />
-                <g onClick={(e) => { e.stopPropagation(); onAlternarTipoVertice?.(v.id); }} style={{ cursor: 'pointer' }}>
-                  <rect x={-30} y={-7} width={40} height={14} rx={3} fill="#f1f5f9" stroke="#94a3b8" strokeWidth={0.5} />
-                  <text x={-10} y={2.5} fontSize={8} fontWeight="bold" textAnchor="middle" fill="#334155" style={{ userSelect: 'none' }}>Tipo: {v.tipo} ⟳</text>
-                </g>
+              <g style={{ pointerEvents: 'all' }} transform={`translate(${vx}, ${vy - 40})`}>
+                <rect x={-72} y={-17} width={144} height={34} rx={8} fill="#ffffff" fillOpacity={0.98} stroke="#94a3b8" strokeWidth={1} />
+                {/* botões diretos M / P / V (o atual fica destacado) */}
+                {(['M', 'P', 'V'] as const).map((t, k) => {
+                  const bx = -64 + k * 34, ativo = v.tipo === t;
+                  return (
+                    <g key={t} onClick={(e) => { e.stopPropagation(); if (!ativo) { let cur = v.tipo; let guard = 0; while (cur !== t && guard++ < 3) { onAlternarTipoVertice?.(v.id); cur = cur === 'M' ? 'P' : cur === 'P' ? 'V' : 'M'; } } }} style={{ cursor: 'pointer' }}>
+                      <rect x={bx} y={-11} width={30} height={22} rx={4} fill={ativo ? '#334155' : '#f1f5f9'} stroke="#94a3b8" strokeWidth={0.6} />
+                      <text x={bx + 15} y={4} fontSize={12} fontWeight="bold" textAnchor="middle" fill={ativo ? '#fff' : '#334155'} style={{ userSelect: 'none' }}>{t}</text>
+                    </g>
+                  );
+                })}
                 <g onClick={(e) => { e.stopPropagation(); setSelecionadoId(null); }} style={{ cursor: 'pointer' }}>
-                  <circle cx={24} cy={0} r={7} fill="#fee2e2" stroke="#fca5a5" strokeWidth={0.6} />
-                  <text x={24} y={3} fontSize={9} fontWeight="bold" textAnchor="middle" fill="#991b1b" style={{ userSelect: 'none' }}>×</text>
+                  <circle cx={56} cy={0} r={11} fill="#fee2e2" stroke="#fca5a5" strokeWidth={0.8} />
+                  <text x={56} y={4} fontSize={14} fontWeight="bold" textAnchor="middle" fill="#991b1b" style={{ userSelect: 'none' }}>×</text>
                 </g>
               </g>
             )}
