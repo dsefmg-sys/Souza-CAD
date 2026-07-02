@@ -1,4 +1,5 @@
 import { Vertex, ImovelData } from '../topo/types';
+import { escaparXml } from './sanitizar';
 
 /**
  * Gera uma string contendo o conteúdo XML GPX da gleba e seus vértices, para uso em
@@ -13,7 +14,7 @@ export function gerarGPX(vertices: Vertex[], imovel: ImovelData): string {
 
   const waypoints = ptsValidos
     .map((v, i) => {
-      const nome = v.codigoSigef || `P${i + 1}`;
+      const nome = escaparXml(v.codigoSigef) || `P${i + 1}`;
       return `  <wpt lat="${v.lat.toFixed(8)}" lon="${v.lon.toFixed(8)}">
     <ele>${v.elevacao || 0}</ele>
     <name>${nome}</name>
@@ -30,7 +31,7 @@ export function gerarGPX(vertices: Vertex[], imovel: ImovelData): string {
 <gpx version="1.1" creator="Souza-CAD" xmlns="http://www.topografix.com/GPX/1/1">
 ${waypoints}
   <trk>
-    <name>${imovel.denominacao || 'Imovel Sem Nome'}</name>
+    <name>${escaparXml(imovel.denominacao) || 'Imovel Sem Nome'}</name>
     <trkseg>
 ${trkpts}
     </trkseg>

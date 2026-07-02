@@ -14,6 +14,19 @@ export function sanitizarTexto(texto: string | undefined | null): string {
 }
 
 /**
+ * Sanitiza E escapa um texto para uso dentro de XML (GPX, KML, ODS…): remove os caracteres de
+ * controle (proibidos no XML 1.0) e converte &, <, > e aspas nas entidades corretas. Sem isso,
+ * um nome como "Sítio Barro & Água" corrompe o arquivo gerado.
+ */
+export function escaparXml(texto: string | undefined | null): string {
+  return sanitizarTexto(texto)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
  * Aplica sanitizarTexto recursivamente em toda string dentro de um objeto/array, sem tocar em
  * outros tipos (número, boolean, Date). Usado na entrada dos geradores de documento para blindar
  * qualquer campo de texto livre digitado ou colado pelo usuário, sem precisar sanitizar campo a

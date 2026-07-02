@@ -2,19 +2,16 @@ import JSZip from 'jszip';
 import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex } from '../topo/types';
 import { grausParaDMS } from '../topo/coords';
 import { numBR, formatMatricula } from '../topo/geometry';
+import { escaparXml } from './sanitizar';
 
 // Preenche o template oficial do SIGEF (ODS) sem recriar abas/validações:
 //  - regenera as linhas de vértice da aba "perimetro_1";
 //  - substitui os valores de texto da aba "identificacao".
 // O template vem de public/templates/sigef.ods (cópia do modelo do dono).
 
-function esc(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+// além das entidades XML, remove caracteres de controle invisíveis (proibidos no XML 1.0 —
+// corrompem a planilha se vierem colados de outro programa junto com o texto)
+const esc = escaparXml;
 
 const TRAILING_FILLER =
   '<table:table-cell table:style-name="ce26" table:number-columns-repeated="1010"/>' +

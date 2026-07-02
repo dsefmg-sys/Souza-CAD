@@ -1,4 +1,5 @@
 import { Vertex, ImovelData } from '../topo/types';
+import { escaparXml } from './sanitizar';
 
 /**
  * Gera uma string contendo o conteúdo XML KML da gleba e seus vértices.
@@ -18,7 +19,7 @@ export function gerarKML(vertices: Vertex[], imovel: ImovelData): string {
   // Marcadores de vértice individuais
   const placemarksVertices = ptsValidos
     .map((v, i) => {
-      const nome = v.codigoSigef || `P${i + 1}`;
+      const nome = escaparXml(v.codigoSigef) || `P${i + 1}`;
       return `    <Placemark>
       <name>${nome}</name>
       <description><![CDATA[
@@ -40,7 +41,7 @@ export function gerarKML(vertices: Vertex[], imovel: ImovelData): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>${imovel.denominacao || 'Imovel Sem Nome'}</name>
+    <name>${escaparXml(imovel.denominacao) || 'Imovel Sem Nome'}</name>
     <description>Gleba e vértices exportados pelo Souza-CAD</description>
     
     <Style id="polygon_style">
@@ -64,7 +65,7 @@ export function gerarKML(vertices: Vertex[], imovel: ImovelData): string {
 
     <Placemark>
       <name>Limites da Área</name>
-      <description>${imovel.denominacao || 'Polígono principal do imóvel'}</description>
+      <description>${escaparXml(imovel.denominacao) || 'Polígono principal do imóvel'}</description>
       <styleUrl>#polygon_style</styleUrl>
       <Polygon>
         <tessellate>1</tessellate>
