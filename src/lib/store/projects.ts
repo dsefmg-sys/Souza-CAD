@@ -31,12 +31,30 @@ export class NuvemSemPermissao extends Error {
   constructor() { super('NUVEM_SEM_PERMISSAO'); this.name = 'NuvemSemPermissao'; }
 }
 
+// O Firestore recusa três coisas que um Projeto real contém: nomes de campo com ponto (os ajustes
+// de posição da planta usam ids como "carimbo.titulo"), valores undefined e array dentro de array
+// (o anel das parcelas certificadas). Por isso o documento na nuvem vira um ENVELOPE: os campos de
+// listagem ficam soltos (id, nome, datas) e o projeto inteiro vai serializado em `dados`.
+// Sem isso, o salvar na nuvem falhava justamente nos projetos com ajustes feitos — e o abrir,
+// preferindo a nuvem, devolvia a versão antiga sem os ajustes.
+interface EnvelopeNuvem { id: string; nome: string; criadoEm: number; atualizadoEm: number; dados: string }
+
+function paraNuvem(p: Projeto): EnvelopeNuvem {
+  return { id: p.id, nome: p.nome, criadoEm: p.criadoEm, atualizadoEm: p.atualizadoEm, dados: JSON.stringify(p) };
+}
+function daNuvem(raw: Record<string, unknown>): Projeto {
+  if (typeof raw.dados === 'string') {
+    try { return JSON.parse(raw.dados) as Projeto; } catch { /* cai pro formato legado */ }
+  }
+  return raw as unknown as Projeto; // documento antigo, salvo antes do envelope
+}
+
 export async function salvarProjeto(p: Projeto): Promise<void> {
   const reg = { ...p, atualizadoEm: Date.now() };
   const uid = uidNuvem();
   if (uid) {
     try {
-      await setDoc(doc(colProjetos(uid), p.id), reg);
+      await setDoc(doc(colProjetos(uid), p.id), paraNuvem(reg));
       return;
     } catch (e) {
       // Sem permissão (regras não publicadas) ou offline: guarda local como reserva e sinaliza,
@@ -57,7 +75,7 @@ export async function listarProjetos(): Promise<Projeto[]> {
   if (uid) {
     try {
       const snap = await getDocs(colProjetos(uid));
-      return snap.docs.map((d) => d.data() as Projeto).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+      return snap.docs.map((d) => daNuvem(d.data())).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
     } catch { /* nuvem indisponível/negada → cai para o local */ }
   }
   const d = await db();
@@ -69,7 +87,7 @@ export async function carregarProjeto(id: string): Promise<Projeto | undefined> 
   const uid = uidNuvem();
   if (uid) {
     const s = await getDoc(doc(colProjetos(uid), id));
-    return s.exists() ? (s.data() as Projeto) : undefined;
+    return s.exists() ? daNuvem(s.data()) : undefined;
   }
   const d = await db();
   const reg = await d.get('projetos', id);
@@ -94,14 +112,14 @@ export async function sincronizarProjetosLocalParaNuvem(): Promise<void> {
     if (localProjects.length === 0) return;
 
     const snap = await getDocs(colProjetos(uid));
-    const cloudProjectsMap = new Map(snap.docs.map((doc) => [doc.id, doc.data() as Projeto]));
+    const cloudProjectsMap = new Map(snap.docs.map((doc) => [doc.id, daNuvem(doc.data())]));
 
     for (const p of localProjects) {
       const cloudP = cloudProjectsMap.get(p.id);
       if (!cloudP || p.atualizadoEm > cloudP.atualizadoEm) {
         const { _uidLocal, ...limpo } = p; // marca é só de armazenamento local — não vai pra nuvem
         void _uidLocal;
-        await setDoc(doc(colProjetos(uid), p.id), limpo);
+        await setDoc(doc(colProjetos(uid), p.id), paraNuvem(limpo as Projeto));
       }
       await d.delete('projetos', p.id);
     }

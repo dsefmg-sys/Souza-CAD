@@ -1631,6 +1631,8 @@ export default function EditorPage() {
     setSituacaoUrl(url ?? undefined);
     if (url) {
       setSituacaoVersSnapshot(JSON.stringify(vertices));
+      // guarda no projeto pra não precisar recapturar ao reabrir (limite: cabe no doc da nuvem)
+      setPlantaConfig((c) => ({ ...c, situacaoDataUrl: url.length < 700_000 ? url : undefined }));
       aviso('Planta de situação gerada.');
     } else {
       aviso('Não consegui carregar o satélite (rede/CORS).');
@@ -1804,6 +1806,11 @@ export default function EditorPage() {
     setPlantaConfig(d.plantaConfig ?? {});
     setGlebas(d.glebas);
     carregarGleba(d.glebas.find((g) => g.id === d.glebaAtivaId) ?? d.glebas[0]);
+    setSituacaoUrl(d.plantaConfig?.situacaoDataUrl);
+    if (d.plantaConfig?.situacaoDataUrl) {
+      const gAtiva = d.glebas.find((g) => g.id === d.glebaAtivaId) ?? d.glebas[0];
+      setSituacaoVersSnapshot(JSON.stringify(gAtiva.vertices));
+    }
     const pc = d.parcelasCert ?? [];
     setParcelasCert(pc);
     setReferencias(referenciasDeParcelasCert(pc, d.zona, d.hemisferio));
@@ -1913,6 +1920,9 @@ export default function EditorPage() {
     setPlantaConfig(p.plantaConfig ?? {});
     setGlebas(p.glebas);
     carregarGleba(p.glebas[0]);
+    // restaura a planta de situação salva (não precisa recapturar o satélite)
+    setSituacaoUrl(p.plantaConfig?.situacaoDataUrl);
+    if (p.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(JSON.stringify(p.glebas[0].vertices));
     const pc = p.parcelasCert ?? [];
     setParcelasCert(pc);
     setReferencias(referenciasDeParcelasCert(pc, p.zonaUtm, p.hemisferio));
@@ -2243,7 +2253,7 @@ export default function EditorPage() {
               return <button type="button" onClick={gerarSituacaoPlanta} title={titulo} className={`act ${cor}`}><Camera className="size-5" /></button>;
             })()}
             {situacaoUrl && (
-              <button type="button" onClick={() => { if (window.confirm('Remover a planta de situação?')) setSituacaoUrl(undefined); }} title="Remover a situação" className="act border bg-background text-destructive hover:bg-destructive hover:text-white"><X className="size-5" /></button>
+              <button type="button" onClick={() => { if (window.confirm('Remover a planta de situação?')) { setSituacaoUrl(undefined); setPlantaConfig((c) => ({ ...c, situacaoDataUrl: undefined })); } }} title="Remover a situação" className="act border bg-background text-destructive hover:bg-destructive hover:text-white"><X className="size-5" /></button>
             )}
             {vista === 'planta' && (
               <>
