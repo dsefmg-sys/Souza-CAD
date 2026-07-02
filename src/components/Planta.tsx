@@ -257,6 +257,14 @@ export default function Planta({
   } | null>(null);
   // guias de alinhamento coloridas mostradas durante o arraste de um elemento
   const [guias, setGuias] = useState<{ x?: number; y?: number; cor: string }[]>([]);
+  // seleção múltipla (Ctrl/Cmd+clique) de elementos 'ted' pra mover vários juntos
+  const [multiSel, setMultiSel] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!editavel) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMultiSel(new Set()); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editavel]);
 
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
@@ -398,6 +406,10 @@ export default function Planta({
       }
       return { ...base, dx: dragTemp.baseX + dragTemp.dx, dy: dragTemp.baseY + dragTemp.dy };
     }
+    // arrastando um item da seleção múltipla: os OUTROS selecionados acompanham o mesmo delta
+    if (dragTemp && dragTemp.kind === 'ted' && multiSel.has(id) && multiSel.has(dragTemp.id)) {
+      return { ...base, dx: (base.dx ?? 0) + dragTemp.dx, dy: (base.dy ?? 0) + dragTemp.dy };
+    }
     return base;
   };
 
@@ -422,6 +434,13 @@ export default function Planta({
         const rv = rotuloVert.find((x) => x.v.id === vId);
         if (rv) setDragTemp({ kind: 'rotVert', id: vId, dx: 0, dy: 0, baseX: rv.x, baseY: rv.y });
       } else {
+        // Ctrl/Cmd+clique: adiciona/remove da seleção múltipla (não arrasta ainda)
+        if (e.ctrlKey || e.metaKey) {
+          setMultiSel((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+          return;
+        }
+        // clique simples num item fora da seleção múltipla limpa a seleção
+        if (multiSel.size && !multiSel.has(id)) setMultiSel(new Set());
         const ov = textosOv[id];
         dragRef.current = { kind: 'ted', id, dx: ov?.dx ?? 0, dy: ov?.dy ?? 0 };
         // centro absoluto do elemento (para alinhar às referências do desenho)
@@ -556,7 +575,15 @@ export default function Planta({
         const ehObjeto = objetos.some((o) => o.id === dragTemp.id);
         const foraDaFolha = !!drop && (drop.x < 0 || drop.y < 0 || drop.x > W || drop.y > H);
         if (ehObjeto && foraDaFolha && onExcluirObjeto) onExcluirObjeto(dragTemp.id);
-        else onTextoMover?.(dragTemp.id, finalX, finalY);
+        else if (multiSel.has(dragTemp.id) && multiSel.size > 1) {
+          // move TODOS os selecionados pelo mesmo delta (cada um a partir do seu offset salvo)
+          const delDx = (pend ? pend.dx : dragTemp.dx);
+          const delDy = (pend ? pend.dy : dragTemp.dy);
+          for (const id of multiSel) {
+            const b = textosOv[id] || {};
+            onTextoMover?.(id, (b.dx ?? 0) + delDx, (b.dy ?? 0) + delDy);
+          }
+        } else onTextoMover?.(dragTemp.id, finalX, finalY);
       } else if (d.kind === 'divisaConf' && d.vx != null && d.vy != null) {
         // a ponta não pode sair do quadro do desenho
         finalX = Math.max(DRAW.x0, Math.min(DRAW.x1, finalX));
@@ -1161,6 +1188,12 @@ export default function Planta({
           {g.y != null && <line x1={DRAW.x0} y1={g.y} x2={DRAW.x1} y2={g.y} stroke={g.cor} strokeWidth={0.9} strokeDasharray="5 3" />}
         </g>
       ))}
+      {editavel && multiSel.size > 0 && (
+        <g>
+          <rect x={DRAW.x0 + 6} y={DRAW.y0 + 6} width={224} height={18} rx={4} fill="#1d4ed8" fillOpacity={0.9} />
+          <text x={DRAW.x0 + 12} y={DRAW.y0 + 18.5} fontSize={10} fill="#fff">{multiSel.size} selecionado(s) — arraste p/ mover juntos · Esc limpa</text>
+        </g>
+      )}
     </svg>
   );
 }
