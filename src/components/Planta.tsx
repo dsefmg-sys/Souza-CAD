@@ -1334,9 +1334,9 @@ function FaixaInferior(props: {
               {verNortes && bloco('coord.diagrama', (
                 <g>
                   <Nortes cx={x3 + 75} cy={y0 + 148} conv={conv} decl={decl} fs={fs} />
-                  {/* rótulo centralizado logo abaixo do diagrama (antes ficava solto à direita) */}
-                  <text x={x3 + 75} y={y0 + 172} fontSize={fs(7.5)} fontWeight="bold" textAnchor="middle" fill="#475569">Diagrama de</text>
-                  <text x={x3 + 75} y={y0 + 183} fontSize={fs(7.5)} fontWeight="bold" textAnchor="middle" fill="#475569">Convergência</text>
+                  {/* rótulo à direita do diagrama, alinhado ao centro vertical dele */}
+                  <text x={x3 + 128} y={y0 + 145} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Diagrama de</text>
+                  <text x={x3 + 128} y={y0 + 156} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Convergência</text>
                 </g>
               ))}
 
@@ -1525,20 +1525,21 @@ function CarimboA3(props: {
   // seção de Dados (que já traz o nome do imóvel), liberando ~84px que foram redistribuídos para
   // dar mais FOLGA às assinaturas (proprietários e responsável técnico).
   //   y=32  : Dados do imóvel        (h=264) → 296   (cabeçalho = título do levantamento + Folha)
-  //   y=306 : Declaração proprietários (h=200) → 506  (assinatura mais espaçada)
-  //   y=516 : Laudo técnico          (h=260) → 776   (mais alto: espaço real pra firma do RT)
+  //   y=306 : Declaração proprietários (h=240) → 546  (ganhou altura: faltava espaço)
+  //   y=556 : Laudo técnico          (h=220) → 776   (encolheu: tinha espaço de sobra)
   //   y=786 : Declaração confrontantes (h=110) → 896
   //   y=906 : Escritório             (h=185) → 1091  (desceu pra base, alinhado à faixa inferior,
   //           liberando a altura extra do Laudo Técnico)
   const Y_DADOS       = 32;
   const Y_PROP        = 306;
-  const Y_LAUDO       = 516;
+  const H_PROP        = 240;
+  const Y_LAUDO       = 556;
   const Y_CONF        = 786;
   const Y_ESC         = 906;
-  const H_LAUDO       = 260;
+  const H_LAUDO       = 220;
   const H_ESC         = 185;
-  const Y_ASSINA_PROP = Y_PROP  + 130;
-  const Y_ASSINA_RT   = Y_LAUDO + 195;
+  const Y_ASSINA_PROP = Y_PROP  + 165; // firma mais baixa: aproveita a altura extra da declaração
+  const Y_ASSINA_RT   = Y_LAUDO + 150; // firma bem posicionada na caixa menor do laudo
 
   // Assinatura num intervalo livre (xa..xb): linha + nome + detalhes (o rótulo "Assinatura do..."
   // foi removido — era redundante com o cabeçalho da seção e só ocupava espaço). Bloco móvel e coeso.
@@ -1617,7 +1618,7 @@ function CarimboA3(props: {
 
       {/* ── CARD A: DECLARAÇÃO DO(S) PROPRIETÁRIO(S) ──────────────────────── */}
       <g>
-        <rect x={lx} y={Y_PROP} width={wBox} height={200} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
+        <rect x={lx} y={Y_PROP} width={wBox} height={H_PROP} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
         {Cab(Y_PROP, 'DECLARAÇÃO DO(S) PROPRIETÁRIO(S)', 'carimbo.tituloProp')}
 
         {(() => {
