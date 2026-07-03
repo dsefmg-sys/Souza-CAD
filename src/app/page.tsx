@@ -2387,6 +2387,13 @@ export default function EditorPage() {
             <div className="flex items-center gap-3 px-2 text-center leading-tight">
               <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Área SGL</div><div className="text-base font-bold">{res ? `${numBR(res.areaHa, 4)}` : '—'}<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">ha</span></div></div>
               <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Perímetro</div><div className="text-base font-bold">{res ? `${numBR(res.perimetro)}` : '—'}<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">m</span></div></div>
+              {/* transparência das parcelas INCRA importadas: fica aqui, antes dos vértices, só quando há parcela e no mapa */}
+              {vista === 'mapa' && parcelasCert.length > 0 && (
+                <div title="Transparência das parcelas INCRA importadas (arraste)">
+                  <div className="text-[9px] font-medium uppercase text-muted-foreground">INCRA</div>
+                  <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-16 accent-cyan-600 align-middle" />
+                </div>
+              )}
               <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Vértices</div><div className="text-base font-bold">{vertices.length}</div></div>
             </div>
             <div className="w-px bg-border" />
