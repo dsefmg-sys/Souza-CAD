@@ -3,12 +3,27 @@
 // copiado inteiro para qualquer outro projeto: é só tipos e funções puras sobre uma lista de
 // elementos. A casca visual (modal, botões, DOM) fica de fora de propósito.
 
-export type ElBase = { id: number; x: number; y: number; w: number; h: number };
+// rot = rotação em graus (0 = sem giro). Opcional para não quebrar elementos/desenhos já salvos.
+export type ElBase = { id: number; x: number; y: number; w: number; h: number; rot?: number };
 export type El =
   | (ElBase & { t: 'img'; src: string })
-  | (ElBase & { t: 'text'; texto: string; size: number; cor: string; bold: boolean })
+  | (ElBase & { t: 'text'; texto: string; size: number; cor: string; bold: boolean; fonte?: string })
   | (ElBase & { t: 'rect'; fill: string; radius: number })
   | (ElBase & { t: 'ellipse'; fill: string });
+
+// Fontes profissionais oferecidas no Estúdio (todas seguras/sem download; caem em famílias comuns).
+export const FONTES_ESTUDIO: { nome: string; css: string }[] = [
+  { nome: 'Arial', css: 'Arial, Helvetica, sans-serif' },
+  { nome: 'Helvetica', css: 'Helvetica, Arial, sans-serif' },
+  { nome: 'Georgia', css: 'Georgia, "Times New Roman", serif' },
+  { nome: 'Times', css: '"Times New Roman", Times, serif' },
+  { nome: 'Garamond', css: 'Garamond, "Times New Roman", serif' },
+  { nome: 'Trebuchet', css: '"Trebuchet MS", Verdana, sans-serif' },
+  { nome: 'Verdana', css: 'Verdana, Geneva, sans-serif' },
+  { nome: 'Tahoma', css: 'Tahoma, Geneva, sans-serif' },
+  { nome: 'Impact', css: 'Impact, Haettenschweiler, sans-serif' },
+  { nome: 'Courier', css: '"Courier New", Courier, monospace' },
+];
 
 export interface Formato { nome: string; w: number; h: number; }
 export const FORMATOS_PADRAO: Formato[] = [

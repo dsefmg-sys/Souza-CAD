@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Image as ImageIcon, Type, Square, Circle, Trash2, Download, ArrowUp, ArrowDown, AlignCenterHorizontal, AlignCenterVertical, Palette, Search, Shapes, Images, RefreshCw } from 'lucide-react';
-import { type El, FORMATOS_PADRAO as FORMATOS, novoId as nid, reordenarCamada, centralizarEm, escalaParaCaber } from '@/lib/canvas/canvasEngine';
+import { type El, FORMATOS_PADRAO as FORMATOS, FONTES_ESTUDIO, novoId as nid, reordenarCamada, centralizarEm, escalaParaCaber } from '@/lib/canvas/canvasEngine';
 
 // ESTÚDIO isolado (mini-Canva): tela com formato escolhido, elementos de imagem/texto/forma,
 // mover/redimensionar/alinhar/camadas e exportar PNG. Não toca no projeto de agrimensura.
@@ -209,7 +209,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
 
   function renderEl(e: El) {
     const on = e.id === sel;
-    const comum: React.CSSProperties = { position: 'absolute', left: e.x, top: e.y, width: e.w, height: e.h, cursor: 'move', outline: on ? '2px solid #2563eb' : 'none' };
+    const comum: React.CSSProperties = { position: 'absolute', left: e.x, top: e.y, width: e.w, height: e.h, cursor: 'move', outline: on ? '2px solid #2563eb' : 'none', transform: e.rot ? `rotate(${e.rot}deg)` : undefined };
     const handle = on && (
       <div onPointerDown={(ev) => down(ev, e.id, 'resize')} style={{ position: 'absolute', right: -7, bottom: -7, width: 14, height: 14, background: '#2563eb', border: '2px solid #fff', borderRadius: 3, cursor: 'nwse-resize' }} />
     );
@@ -217,7 +217,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
     if (e.t === 'rect') return <div key={e.id} style={{ ...comum, background: e.fill, borderRadius: e.radius }} onPointerDown={(ev) => down(ev, e.id, 'mover')}>{handle}</div>;
     if (e.t === 'ellipse') return <div key={e.id} style={{ ...comum, background: e.fill, borderRadius: '50%' }} onPointerDown={(ev) => down(ev, e.id, 'mover')}>{handle}</div>;
     return (
-      <div key={e.id} style={{ ...comum, display: 'flex', alignItems: 'center', justifyContent: 'center', color: e.cor, fontSize: e.size, fontWeight: e.bold ? 700 : 400, textAlign: 'center', lineHeight: 1.1, fontFamily: 'Arial, Helvetica, sans-serif', overflow: 'visible' }}
+      <div key={e.id} style={{ ...comum, display: 'flex', alignItems: 'center', justifyContent: 'center', color: e.cor, fontSize: e.size, fontWeight: e.bold ? 700 : 400, textAlign: 'center', lineHeight: 1.1, fontFamily: FONTES_ESTUDIO.find((f) => f.nome === e.fonte)?.css ?? 'Arial, Helvetica, sans-serif', overflow: 'visible' }}
         onPointerDown={(ev) => down(ev, e.id, 'mover')}
         onDoubleClick={() => { const t = window.prompt('Texto:', e.texto); if (t != null) patch(e.id, { texto: t } as Partial<El>); }}>
         {e.texto}{handle}
@@ -341,6 +341,21 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
             <span>Tam.</span><input type="number" className="h-7 w-16 rounded border bg-background px-2 text-sm" value={selEl.size} onChange={(e) => patch(selEl.id, { size: Math.max(6, Number(e.target.value) || 6) } as Partial<El>)} />
             <input type="color" value={selEl.cor} onChange={(e) => patch(selEl.id, { cor: e.target.value } as Partial<El>)} className="h-7 w-7 cursor-pointer rounded border" />
             <Button size="sm" variant={selEl.bold ? 'default' : 'outline'} className="h-7 px-2" onClick={() => patch(selEl.id, { bold: !selEl.bold } as Partial<El>)}>Negrito</Button>
+            <span>Fonte</span>
+            <select className="h-7 rounded border bg-background px-1 text-sm" value={selEl.fonte ?? 'Arial'} onChange={(e) => patch(selEl.id, { fonte: e.target.value } as Partial<El>)}>
+              {FONTES_ESTUDIO.map((f) => <option key={f.nome} value={f.nome}>{f.nome}</option>)}
+            </select>
+          </div>
+        )}
+
+        {/* rotação: vale para qualquer elemento selecionado */}
+        {selEl && (
+          <div className="flex flex-wrap items-center gap-2 border-b py-1.5 text-xs">
+            <span className="font-semibold">Girar</span>
+            <input type="range" min={0} max={360} step={1} value={selEl.rot ?? 0} onChange={(e) => patch(selEl.id, { rot: Number(e.target.value) } as Partial<El>)} className="w-40" />
+            <input type="number" min={0} max={360} className="h-7 w-16 rounded border bg-background px-2 text-sm" value={selEl.rot ?? 0} onChange={(e) => patch(selEl.id, { rot: ((Number(e.target.value) || 0) % 360 + 360) % 360 } as Partial<El>)} />
+            <span className="text-muted-foreground">graus</span>
+            {!!selEl.rot && <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => patch(selEl.id, { rot: 0 } as Partial<El>)}>Zerar</Button>}
           </div>
         )}
 
