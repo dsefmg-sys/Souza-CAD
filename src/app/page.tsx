@@ -2555,20 +2555,21 @@ export default function EditorPage() {
                   {/* ferramentas e sistema: duas linhas de botões rotulados (não mais ícones espremidos) */}
                   <div className="grid grid-cols-4 gap-1">
                     {([
-                      ['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-4" />, () => setCalcAberta(true)],
-                      ['DXF', 'Editor de DXF (abrir e editar um DXF qualquer, ex.: projeto elétrico — isolado do projeto)', <PencilRuler key="i" className="size-4" />, () => setDxfEditorAberto(true)],
-                      ['% Área', 'Porcentagem entre dois polígonos (área de um em relação ao outro e ao total)', <Percent key="i" className="size-4" />, () => setPorcentagemAberta(true)],
-                      ['Estúdio', 'Estúdio: edição de imagem (mini-Canva, isolado do projeto)', <ImagePlus key="i" className="size-4" />, () => setEstudioAberto(true)],
-                      ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))],
-                      ['Ajuda', 'Tutorial: como usar o Métrica, passo a passo', <HelpCircle key="i" className="size-4" />, () => setTutorialAberto(true)],
-                      ['RT', 'Dados do responsável técnico: nome, CFT, código do credenciado e contadores', <UserCheck key="i" className="size-4" />, () => { setConfigAba('pessoal'); setConfigAberta(true); }],
-                      ['Config.', 'Configurações gerais', <Settings key="i" className="size-4" />, () => { setConfigAba(undefined); setConfigAberta(true); }],
-                      ...(souMaster() ? [['Uso', 'Painel do titular: contas e uso do sistema (só você vê)', <BarChart3 key="i" className="size-4" />, () => setMasterAberto(true)]] : []),
-                      ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio()]] : []),
-                      ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => sair()]] : []),
-                    ] as [string, string, React.ReactNode, () => void][]).map(([rotuloBtn, dica, icone, acao]) => (
-                      <Button key={rotuloBtn} size="sm" variant="outline" className="h-11 min-w-0 flex-col gap-0.5 overflow-hidden p-0 px-0.5" title={dica} onClick={acao}>
-                        {icone}
+                      // 5º item = cor do ícone por categoria (ferramentas=índigo, sistema=neutro, master=âmbar, sair=vermelho)
+                      ['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-4" />, () => setCalcAberta(true), 'text-indigo-600 dark:text-indigo-400'],
+                      ['DXF', 'Editor de DXF (abrir e editar um DXF qualquer, ex.: projeto elétrico — isolado do projeto)', <PencilRuler key="i" className="size-4" />, () => setDxfEditorAberto(true), 'text-indigo-600 dark:text-indigo-400'],
+                      ['% Área', 'Porcentagem entre dois polígonos (área de um em relação ao outro e ao total)', <Percent key="i" className="size-4" />, () => setPorcentagemAberta(true), 'text-indigo-600 dark:text-indigo-400'],
+                      ['Estúdio', 'Estúdio: edição de imagem (mini-Canva, isolado do projeto)', <ImagePlus key="i" className="size-4" />, () => setEstudioAberto(true), 'text-indigo-600 dark:text-indigo-400'],
+                      ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')), 'text-slate-500'],
+                      ['Ajuda', 'Tutorial: como usar o Métrica, passo a passo', <HelpCircle key="i" className="size-4" />, () => setTutorialAberto(true), 'text-slate-500'],
+                      ['RT', 'Dados do responsável técnico: nome, CFT, código do credenciado e contadores', <UserCheck key="i" className="size-4" />, () => { setConfigAba('pessoal'); setConfigAberta(true); }, 'text-slate-500'],
+                      ['Config.', 'Configurações gerais', <Settings key="i" className="size-4" />, () => { setConfigAba(undefined); setConfigAberta(true); }, 'text-slate-500'],
+                      ...(souMaster() ? [['Uso', 'Painel do titular: contas e uso do sistema (só você vê)', <BarChart3 key="i" className="size-4" />, () => setMasterAberto(true), 'text-amber-600 dark:text-amber-400']] : []),
+                      ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400']] : []),
+                      ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => sair(), 'text-red-600 dark:text-red-400']] : []),
+                    ] as [string, string, React.ReactNode, () => void, string][]).map(([rotuloBtn, dica, icone, acao, cor]) => (
+                      <Button key={rotuloBtn} size="sm" variant="outline" className={`h-11 min-w-0 flex-col gap-0.5 overflow-hidden p-0 px-0.5 [&_svg]:${cor}`} title={dica} onClick={acao}>
+                        <span className={cor}>{icone}</span>
                         <span className="w-full truncate text-center text-[10px] leading-none">{rotuloBtn}</span>
                       </Button>
                     ))}
