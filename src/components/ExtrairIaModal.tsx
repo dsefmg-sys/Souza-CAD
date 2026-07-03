@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Sparkles, Wand2 } from 'lucide-react';
 import type { ImovelData } from '@/lib/topo/types';
+import { extrairImovelFirebaseIA } from '@/lib/ia/gemini';
 
 // Cola-se um texto (matrícula, escritura, etc.), a IA (Gemini, no servidor) extrai os campos do
 // imóvel/proprietário, o usuário CONFERE e ajusta, e só então aplica ao projeto. Nada é gravado
@@ -38,17 +39,24 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar }: Props)
   async function extrair() {
     setErro(''); setCarregando(true); setCampos(null);
     try {
-      const r = await fetch('/api/ia/extrair-imovel', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }),
-      });
-      const j = await r.json();
-      if (!r.ok) { setErro(j.erro || 'A IA não conseguiu processar.'); return; }
-      const d = (j.dados ?? {}) as Record<string, string>;
+      let d: Record<string, string> = {};
+      try {
+        // caminho preferido: IA no navegador via Firebase AI Logic (protegido pelo App Check)
+        d = await extrairImovelFirebaseIA(texto);
+      } catch {
+        // reserva: rota de servidor (chave no .env.local) — funciona mesmo sem App Check
+        const r = await fetch('/api/ia/extrair-imovel', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }),
+        });
+        const j = await r.json();
+        if (!r.ok) { setErro(j.erro || 'A IA não conseguiu processar.'); return; }
+        d = (j.dados ?? {}) as Record<string, string>;
+      }
       // garante que todos os campos existam para edição
       const base: Record<string, string> = {};
       for (const c of CAMPOS) base[c.chave] = (d[c.chave] ?? '').toString();
       setCampos(base);
-    } catch (e) { setErro('Falha de rede ao chamar a IA: ' + ((e as Error).message || 'erro')); }
+    } catch (e) { setErro('Falha ao chamar a IA: ' + ((e as Error).message || 'erro')); }
     finally { setCarregando(false); }
   }
 
