@@ -1271,9 +1271,19 @@ export default function EditorPage() {
         const lats = desenhoBuffer.map((q) => q.lat), lons = desenhoBuffer.map((q) => q.lon);
         const ext = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons)) || 0.0005;
         if (Math.hypot(p.lat - first.lat, p.lon - first.lon) < ext * 0.05) {
-          setObjetos((os) => [...os, novaPolilinha(desenhoBuffer, { preenchido: true })]);
+          const buf = desenhoBuffer;
           setDesenhoBuffer([]);
-          aviso('Polilinha fechada — virou polígono.');
+          // pergunta o que é o polígono: uma GLEBA (entra na área/peças) ou um item do mapa (casa etc.)
+          const ehGleba = window.confirm('Polígono fechado. O que ele representa?\n\nOK = uma GLEBA / parcela do imóvel (entra na área e nas peças)\nCancelar = um item do mapa (casa, benfeitoria, mata…)');
+          if (ehGleba) {
+            const novos: Vertex[] = buf.map((q, i) => ({ id: `v_${Date.now().toString(36)}_${i}`, lat: q.lat, lon: q.lon, leste: q.leste, norte: q.norte, tipo: 'P', codigoSigef: `P${i + 1}`, isDivisa: false, ordem: i + 1, nome: `P${i + 1}`, codigoCampo: `P${i + 1}`, elevacao: 0 }));
+            snap();
+            if (vertices.length < 3) { setVertices(novos); aviso('Polígono definido como perímetro da gleba.'); }
+            else { const gs = sincronizarGlebas(); const nova = { ...novaGlebaVazia(gs.length + 1), vertices: novos }; setGlebas([...gs, nova]); carregarGleba(nova); aviso('Nova gleba criada a partir do polígono.'); }
+          } else {
+            setObjetos((os) => [...os, novaPolilinha(buf, { preenchido: true })]);
+            aviso('Polígono adicionado como item do mapa.');
+          }
           return;
         }
       }
@@ -1808,10 +1818,12 @@ export default function EditorPage() {
   async function gerarSituacaoPlanta() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     aviso('Buscando satélite da situação…');
-    // todas as glebas (a ativa primeiro), para a situação mostrar mais de um polígono
+    // todas as glebas (a ativa primeiro), para a situação mostrar mais de um polígono; e também os
+    // polígonos DESENHADOS (polilinha fechada/preenchida) — assim um polígono novo aparece na situação.
     const aneis = [
       vertices.map((v) => ({ lat: v.lat, lon: v.lon })),
       ...glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.map((v) => ({ lat: v.lat, lon: v.lon }))),
+      ...objetos.filter((o) => o.tipo === 'polilinha' && o.preenchido && o.pontos.length >= 3).map((o) => o.pontos.map((p) => ({ lat: p.lat, lon: p.lon }))),
     ];
     const url = await gerarSituacao(aneis);
     if (url) {
