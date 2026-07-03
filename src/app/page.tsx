@@ -508,9 +508,9 @@ export default function EditorPage() {
       else if (k === 'F7') { e.preventDefault(); setModo('polilinha'); setDesenhoBuffer([]); }
       else if (k === 'F8') { e.preventDefault(); setModo('texto'); }
       else if (k === 'F9') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
-      else if (k === 'F10') { e.preventDefault(); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
-      else if (k === 'F11') { e.preventDefault(); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
-      else if (k === 'F12') { e.preventDefault(); setModo('inserir'); }
+      else if (k === 'F10') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
+      else if (k === 'F11') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
+      else if (k === 'F12') { e.preventDefault(); setVista('mapa'); setModo('inserir'); }
       else if ((k === 'Delete' || k === 'Backspace') && modo === 'multi') {
         e.preventDefault();
         apagarMultiSelecionados();
@@ -2380,11 +2380,11 @@ export default function EditorPage() {
                       <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (ex.: estrada); clique vários pontos e depois Finalizar"><PenTool className="opacity-70" /> {L('Tracejado')}</Button>
                       <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F8)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F8</span></Button>
                       <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F9)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
-                      <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'ignorar' ? 'navegar' : 'ignorar')} title="Ignorar vértice (F10): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
-                      <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'considerar' ? 'navegar' : 'considerar')} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo (F11)"><Plus /> {L('Considerar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
-                      <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => setModo('inserir')} title="Inserir vértice (F12)"><Plus /> {L('Inserir vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
-                      <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => setModo('apagar')} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
-                      <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'multi' ? 'navegar' : 'multi')} title="Selecionar vários vértices: clique um a um ou arraste uma caixa; Delete apaga os marcados">
+                      <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F10): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
+                      <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'considerar' ? 'navegar' : 'considerar'); }} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo (F11)"><Plus /> {L('Considerar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
+                      <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice (F12)"><Plus /> {L('Inserir vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
+                      <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
+                      <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'multi' ? 'navegar' : 'multi'); }} title="Selecionar vários vértices: clique um a um ou arraste uma caixa; Delete apaga os marcados">
                         <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
                           <circle cx="12" cy="5" r="2.4" fill="currentColor" />
                           <circle cx="5" cy="18" r="2.4" fill="currentColor" />
