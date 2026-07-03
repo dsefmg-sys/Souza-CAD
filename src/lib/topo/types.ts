@@ -223,6 +223,7 @@ export interface ObjetoDesenho {
   preenchido?: boolean;       // polilinha fechada com cor sólida (ex.: lago)
   tracejado?: boolean;        // polilinha com traço tracejado (ex.: estrada)
   simbolo?: string;           // elemento cartográfico (arvore, arbusto, casa, poste, pedra)
+  carTema?: 'app' | 'reservaLegal' | 'vegetacao' | 'usoConsolidado'; // camada ambiental (CAR) do polígono
 }
 
 /** Um lado da poligonal (vértice i → vértice i+1). */

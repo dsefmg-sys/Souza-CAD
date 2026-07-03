@@ -38,7 +38,7 @@ import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
-import { novaPolilinha, novoTexto, novaCota, novoSimbolo } from '@/lib/topo/objetos';
+import { novaPolilinha, novoTexto, novaCota, novoSimbolo, areaPoligonoObjeto, CAR_TEMAS } from '@/lib/topo/objetos';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
@@ -2992,7 +2992,8 @@ export default function EditorPage() {
       <PorcentagemModal open={porcentagemAberta} onOpenChange={setPorcentagemAberta} glebas={glebas.map((g) => ({ id: g.id, nome: g.denominacao, vertices: g.id === glebaAtivaId ? vertices : g.vertices }))} />
       <ErrorBoundary onReset={() => setEstudioAberto(false)}><EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} /></ErrorBoundary>
       <ExtrairIaModal open={iaAberta} onOpenChange={setIaAberta} onAplicar={(parcial) => { setImovel((im) => ({ ...im, ...parcial })); aviso('Dados da IA aplicados ao imóvel — confira antes de gerar as peças.'); }} />
-      <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
+      <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
+        areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()} />
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}
@@ -3149,6 +3150,17 @@ export default function EditorPage() {
                 )}
                 {menuContexto.objetoTipo === 'polilinha' && (
                   <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ preenchido: !o?.preenchido }); setMenuContexto(null); }}><Brush className="size-3.5" /> Preencher (liga/desliga)</button>
+                )}
+                {menuContexto.objetoTipo === 'polilinha' && (
+                  <div className="border-t pt-0.5">
+                    <div className="px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">Camada CAR</div>
+                    {CAR_TEMAS.map((t) => (
+                      <button key={t.chave} className="flex w-full items-center gap-2 px-2 py-1 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ carTema: t.chave, preenchido: true, cor: t.cor }); setMenuContexto(null); aviso(`Polígono marcado como ${t.rotulo} (entra no CAR).`); }}>
+                        <span className="size-3 rounded-sm" style={{ background: t.cor }} /> {t.rotulo}
+                      </button>
+                    ))}
+                    <button className="flex w-full items-center gap-2 px-2 py-1 text-left rounded hover:bg-accent text-muted-foreground" onClick={() => { editarObjetoSel({ carTema: undefined }); setMenuContexto(null); }}><X className="size-3.5" /> Não é camada CAR</button>
+                  </div>
                 )}
                 <button className="flex items-center gap-2 w-full border-t px-2 py-1.5 text-left rounded hover:bg-accent text-destructive" onClick={() => { apagarObjetoSel(); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Apagar</button>
               </div>

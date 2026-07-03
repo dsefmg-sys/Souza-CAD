@@ -29,6 +29,25 @@ export function distanciaCota(o: ObjetoDesenho): number {
   return Math.hypot(b.leste - a.leste, b.norte - a.norte);
 }
 
+/** Área (ha) de uma polilinha fechada, pela fórmula do agrimensor (shoelace) no plano UTM. */
+export function areaPoligonoObjeto(o: ObjetoDesenho): number {
+  if (o.tipo !== 'polilinha' || o.pontos.length < 3) return 0;
+  let a = 0;
+  for (let i = 0; i < o.pontos.length; i++) {
+    const p = o.pontos[i], q = o.pontos[(i + 1) % o.pontos.length];
+    a += p.leste * q.norte - q.leste * p.norte;
+  }
+  return Math.abs(a / 2) / 10000; // m² → ha
+}
+
+/** Camadas ambientais do CAR: rótulo e cor de cada tema. */
+export const CAR_TEMAS: { chave: NonNullable<ObjetoDesenho['carTema']>; rotulo: string; cor: string }[] = [
+  { chave: 'app', rotulo: 'APP', cor: '#0ea5e9' },
+  { chave: 'reservaLegal', rotulo: 'Reserva legal', cor: '#16a34a' },
+  { chave: 'vegetacao', rotulo: 'Vegetação nativa', cor: '#4d7c0f' },
+  { chave: 'usoConsolidado', rotulo: 'Uso consolidado', cor: '#d97706' },
+];
+
 /** Comprimento total de uma polilinha (m). */
 export function comprimentoPolilinha(o: ObjetoDesenho): number {
   let t = 0;

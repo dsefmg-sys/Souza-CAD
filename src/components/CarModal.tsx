@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Leaf } from 'lucide-react';
 import { type Bioma, resumirCar, appMargemRio, appLago, APP_NASCENTE_M } from '@/lib/car/car';
@@ -18,13 +18,27 @@ const BIOMAS: { v: Bioma; rot: string }[] = [
 
 const num = (n: number, d = 2) => n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
 
-export default function CarModal({ open, onOpenChange, areaHa }: { open: boolean; onOpenChange: (o: boolean) => void; areaHa: number }) {
+interface AreasCamadas { app: number; reservaLegal: number; vegetacao: number; usoConsolidado: number }
+
+export default function CarModal({ open, onOpenChange, areaHa, areasCamadas }: { open: boolean; onOpenChange: (o: boolean) => void; areaHa: number; areasCamadas?: AreasCamadas }) {
   const [bioma, setBioma] = useState<Bioma>('demais');
   const [moduloFiscal, setModuloFiscal] = useState('');
   const [reservaHa, setReservaHa] = useState('');
   const [appHa, setAppHa] = useState('');
   const [vegHa, setVegHa] = useState('');
   const [usoHa, setUsoHa] = useState('');
+
+  // ao abrir, se houver camadas CAR desenhadas no mapa, já preenche as áreas com o que foi medido
+  const temCamadas = !!areasCamadas && (areasCamadas.app + areasCamadas.reservaLegal + areasCamadas.vegetacao + areasCamadas.usoConsolidado) > 0;
+  useEffect(() => {
+    if (!open || !areasCamadas) return;
+    const f = (n: number) => (n > 0 ? n.toFixed(2) : '');
+    if (areasCamadas.reservaLegal > 0) setReservaHa(f(areasCamadas.reservaLegal));
+    if (areasCamadas.app > 0) setAppHa(f(areasCamadas.app));
+    if (areasCamadas.vegetacao > 0) setVegHa(f(areasCamadas.vegetacao));
+    if (areasCamadas.usoConsolidado > 0) setUsoHa(f(areasCamadas.usoConsolidado));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const numIn = (s: string) => parseFloat((s || '').replace(',', '.')) || 0;
   const mf = parseFloat(moduloFiscal.replace(',', '.'));
@@ -46,8 +60,13 @@ export default function CarModal({ open, onOpenChange, areaHa }: { open: boolean
         </DialogHeader>
 
         <p className="text-xs text-muted-foreground">
-          Cálculos do Código Florestal a partir da área do imóvel. O desenho das camadas ambientais e a exportação para o SICAR entram nas próximas etapas.
+          Cálculos do Código Florestal a partir da área do imóvel. A exportação para o SICAR entra na próxima etapa.
         </p>
+        {temCamadas && (
+          <p className="rounded border border-green-600/30 bg-green-500/10 px-2 py-1 text-xs text-green-700 dark:text-green-400">
+            As áreas abaixo já vieram dos polígonos que você marcou como camada CAR no mapa (medidas automaticamente). Você pode ajustar.
+          </p>
+        )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
