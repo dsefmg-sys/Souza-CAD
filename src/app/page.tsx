@@ -499,7 +499,7 @@ export default function EditorPage() {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       const k = e.key;
-      if (k === 'F1') { e.preventDefault(); setVista((v) => (v === 'mapa' ? 'planta' : 'mapa')); }
+      if (k === 'F1') { e.preventDefault(); setModo('navegar'); } // MOVER / EDITAR
       else if (k === 'F2') { e.preventDefault(); setModo('navegar'); }
       else if (k === 'F3') { e.preventDefault(); setSnapAtivo((s) => !s); }
       else if (k === 'F4') { e.preventDefault(); setMostrarRotulos((m) => !m); }
@@ -522,6 +522,8 @@ export default function EditorPage() {
           cancelarDesenho();
           setModo('navegar');
         }
+        // sem desenho pra cancelar: Esc alterna entre mapa e planta
+        else { e.preventDefault(); setVista((v) => (v === 'mapa' ? 'planta' : 'mapa')); }
       }
     }
     window.addEventListener('keydown', onKey);
@@ -2373,8 +2375,8 @@ export default function EditorPage() {
                 {/* CONTROLES DA PLANTA (na visão da planta) — deixa a folha limpa */}
                 {vista === 'planta' && (
                   <div className="flex flex-col gap-1 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                    <Button size="sm" variant="ghost" title="Voltar ao mapa (F1)" onClick={() => setVista('mapa')}><MapIcon /> <span className="truncate text-xs font-semibold">VER MAPA</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
-                    <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-9 w-full justify-start gap-2" title="Mover: arrastar textos, rótulos e a folha. Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span></Button>
+                    {/* (VER MAPA saiu daqui: a alternância vive no quadrado do canto superior esquerdo, atalho Esc) */}
+                    <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-9 w-full justify-start gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
                     <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
                   </div>
                 )}
@@ -2494,13 +2496,13 @@ export default function EditorPage() {
         })()}
         <main className="relative isolate min-w-0 flex-1">
           {/* Alternância MAPA/PLANTA: botão quadrado dedicado no canto superior esquerdo. É a troca
-              mais usada do app, por isso ganha lugar fixo e exclusivo. Mostra pra onde vai + o atalho F1. */}
+              mais usada do app, por isso ganha lugar fixo e exclusivo. Mostra pra onde vai + o atalho Esc. */}
           <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
-            title="Alternar entre mapa e planta (F1)"
+            title="Alternar entre mapa e planta (Esc)"
             className="absolute left-3 top-3 z-[1160] flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-primary/50 bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
             {vista === 'mapa' ? <Eye className="size-5 text-primary" /> : <MapIcon className="size-5 text-primary" />}
             <span className="text-[10px] font-bold leading-none">{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
-            <span className="text-[8px] font-bold leading-none text-amber-500">F1</span>
+            <span className="text-[8px] font-bold leading-none text-amber-500">Esc</span>
           </button>
           {/* BARRA FLUTUANTE (arrastável): dados do projeto + ações úteis, numa linha só.
               Nasce no topo, baixinha, pra não tampar o desenho. Traz também o DETALHES.
@@ -2537,22 +2539,10 @@ export default function EditorPage() {
                   className={`act flex-col gap-0.5 ${folhaTravada ? 'border bg-background text-foreground hover:bg-muted' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>{folhaTravada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}<span className="text-[8px] font-bold leading-none">FOLHA</span></button>
                 <button type="button" onClick={() => setPlantaDark((v) => !v)} title={plantaDark ? 'Folha clara' : 'Folha escura (conforto noturno; não afeta o PDF)'}
                   className={`act flex-col gap-0.5 ${plantaDark ? 'bg-slate-800 text-amber-300 hover:bg-slate-700' : 'border bg-background text-foreground hover:bg-muted'}`}>{plantaDark ? <Sun className="size-4" /> : <Moon className="size-4" />}<span className="text-[8px] font-bold leading-none">TEMA</span></button>
-                {/* escala: [-] 1/X [+] */}
-                <div className="flex items-center gap-1 rounded-lg border bg-background px-1" title="Escala da planta (− aumenta o desenho, + diminui)">
+                {/* ESCALA: [−] ESCALA [+] (− aumenta o desenho, + diminui). O valor exato ajusta-se no painel. */}
+                <div className="flex items-center gap-1 rounded-lg border bg-background px-1" title="Escala da planta (− aumenta o desenho, + diminui). Para digitar um valor exato, use o painel da planta.">
                   <button type="button" className="flex size-7 items-center justify-center rounded hover:bg-muted" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: Math.max(250, (c.escalaManual ?? 1000) - 250) }))}><span className="text-base font-bold">−</span></button>
-                  <select
-                    className="bg-transparent text-center text-xs font-bold outline-none cursor-pointer py-1 px-0.5"
-                    value={plantaConfig.escalaManual || ''}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setPlantaConfig((c) => ({ ...c, escalaManual: v ? parseInt(v, 10) : undefined }));
-                    }}
-                  >
-                    <option value="">Auto</option>
-                    {[250, 500, 750, 1000, 1250, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000].map((d) => (
-                      <option key={d} value={d}>1/{d}</option>
-                    ))}
-                  </select>
+                  <span className="px-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Escala</span>
                   <button type="button" className="flex size-7 items-center justify-center rounded hover:bg-muted" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: (c.escalaManual ?? 1000) + 250 }))}><span className="text-base font-bold">+</span></button>
                 </div>
               </>
