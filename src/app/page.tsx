@@ -2428,8 +2428,8 @@ export default function EditorPage() {
               </>
             )}
             <div className="w-px bg-border" />
-            <button type="button" onClick={salvar} disabled={processando} title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar' : 'Salvar o projeto'} className={`act disabled:opacity-50 ${salvarLaranja ? 'bg-amber-500 text-white hover:bg-amber-600' : 'border bg-background hover:bg-muted'}`}><Save className={`size-5 ${!salvarLaranja && salvoOk ? 'text-emerald-600' : ''}`} /></button>
-            <button type="button" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto" className="act border bg-background hover:bg-muted disabled:opacity-50"><Plus className="size-5" /></button>
+            <button type="button" onClick={salvar} disabled={processando} title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar' : 'Salvar o projeto'} className={`act flex-col gap-0.5 disabled:opacity-50 ${salvarLaranja ? 'bg-amber-500 text-white hover:bg-amber-600' : 'border bg-background hover:bg-muted'}`}><Save className={`size-4 ${!salvarLaranja && salvoOk ? 'text-emerald-600' : ''}`} /><span className="text-[8px] font-bold leading-none">SALVAR</span></button>
+            <button type="button" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto" className="act flex-col gap-0.5 border bg-background hover:bg-muted disabled:opacity-50"><Plus className="size-4" /><span className="text-[8px] font-bold leading-none">NOVO</span></button>
             {glebas.length > 1 && (
               <>
                 <div className="w-px bg-border" />
@@ -2471,19 +2471,13 @@ export default function EditorPage() {
             </div>
           )}
 
-          {/* CAMADA INCRA: controle de visibilidade/opacidade (acima da câmera de situação) */}
+          {/* CAMADA INCRA: só o liga/desliga aqui (a opacidade foi pra barra flutuante, junto dos dados) */}
           {vista === 'mapa' && parcelasCert.length > 0 && (
             <div className="absolute bottom-16 left-3 z-[1000] w-56 rounded-lg border bg-background/95 p-2 text-xs shadow-lg backdrop-blur">
               <label className="flex items-center justify-between font-semibold">
                 <span className="flex items-center gap-1.5"><Users className="size-3.5 text-cyan-600" /> Parcelas INCRA ({parcelasCert.length})</span>
                 <input type="checkbox" className="size-4 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
               </label>
-              {mostrarCert && (
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-muted-foreground">Opacidade</span>
-                  <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} className="flex-1 accent-cyan-600" onChange={(e) => setOpacidadeCert(Number(e.target.value))} />
-                </div>
-              )}
             </div>
           )}
 
