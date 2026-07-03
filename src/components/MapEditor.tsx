@@ -46,6 +46,7 @@ interface Props {
   onInserir: (lat: number, lon: number) => void;
   onCliqueDesenho?: (lat: number, lon: number) => void;
   onSelecObjeto?: (id: string | null) => void;
+  onContextMenuObjeto?: (id: string, tipo: string, x: number, y: number) => void;
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onMoverRotulo?: (id: string, lat: number, lon: number) => void;
   onPintarDivisa?: (id: string) => void;
@@ -272,7 +273,7 @@ export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
-    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
+    onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
     conflitos = [],
     focoLatLng = null,
@@ -474,8 +475,8 @@ export default function MapEditor(props: Props) {
           return (
             <Fragment key={o.id}>
               {fechado
-                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor: o.cor ?? '#2563eb', fillOpacity: 0.4 }} eventHandlers={{ click: () => onSelecObjeto?.(o.id) }} />
-                : <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => onSelecObjeto?.(o.id) }} />}
+                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor: o.cor ?? '#2563eb', fillOpacity: 0.4 }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
+                : <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />}
               {sel && pos.map((p, idx) => (
                 <CircleMarker key={`c${idx}`} center={p} radius={5} pathOptions={{ color: '#ef4444', fillColor: '#fff', fillOpacity: 1 }} />
               ))}
@@ -493,7 +494,7 @@ export default function MapEditor(props: Props) {
           const mid: [number, number] = [(o.pontos[0].lat + o.pontos[1].lat) / 2, (o.pontos[0].lon + o.pontos[1].lon) / 2];
           return (
             <Fragment key={o.id}>
-              <Polyline positions={pos} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 1 + (sel ? 1 : 0) }} eventHandlers={{ click: () => onSelecObjeto?.(o.id) }} />
+              <Polyline positions={pos} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 1 + (sel ? 1 : 0) }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
               <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:#b91c1c;background:#fff;padding:0 2px;border:1px solid #b91c1c;border-radius:2px;width:max-content;display:inline-block">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })} />
               {sel && pos.map((p, idx) => (
                 <Marker key={`hc${idx}`} position={p} draggable opacity={0}
@@ -510,6 +511,7 @@ export default function MapEditor(props: Props) {
           <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable icon={iconeTexto(o, sel)}
             eventHandlers={{
               click: () => onSelecObjeto?.(o.id),
+              contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY),
               drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); },
               dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
             }} />

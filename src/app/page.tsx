@@ -156,7 +156,7 @@ export default function EditorPage() {
   const [editarPlanta, setEditarPlanta] = useState(true); // planta abre já no modo edição
   const [folhaTravada, setFolhaTravada] = useState(true); // por padrão, reposicionamento da moldura travado
   const [menuContexto, setMenuContexto] = useState<{
-    tipo: 'texto' | 'vertice' | 'divisa' | 'mapa';
+    tipo: 'texto' | 'vertice' | 'divisa' | 'mapa' | 'objeto';
     x: number;
     y: number;
     id?: string;
@@ -165,6 +165,7 @@ export default function EditorPage() {
     verticeIdx?: number;
     lat?: number;
     lon?: number;
+    objetoTipo?: string;
   } | null>(null);
   const aviseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
@@ -2647,7 +2648,7 @@ export default function EditorPage() {
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={rotulosConf} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
-                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
+                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
                 conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}
                 verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
                 onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
@@ -3111,6 +3112,26 @@ export default function EditorPage() {
                 >
                   <Target className="size-3.5" /> Centralizar Desenho
                 </button>
+              </div>
+            )}
+
+            {menuContexto.tipo === 'objeto' && (
+              <div className="flex flex-col gap-0.5">
+                {menuContexto.objetoTipo === 'texto' && (
+                  <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); const t = window.prompt('Texto:', o?.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); setMenuContexto(null); }}>
+                    <Pencil className="size-3.5" /> Editar texto…
+                  </button>
+                )}
+                {menuContexto.objetoTipo === 'texto' && (
+                  <>
+                    <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ tamanho: (o?.tamanho ?? 12) + 2 }); }}><span className="w-3.5 text-center font-bold">A+</span> Aumentar</button>
+                    <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ tamanho: Math.max(6, (o?.tamanho ?? 12) - 2) }); }}><span className="w-3.5 text-center font-bold">A-</span> Diminuir</button>
+                  </>
+                )}
+                {menuContexto.objetoTipo === 'polilinha' && (
+                  <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ preenchido: !o?.preenchido }); setMenuContexto(null); }}><Brush className="size-3.5" /> Preencher (liga/desliga)</button>
+                )}
+                <button className="flex items-center gap-2 w-full border-t px-2 py-1.5 text-left rounded hover:bg-accent text-destructive" onClick={() => { apagarObjetoSel(); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Apagar</button>
               </div>
             )}
 
