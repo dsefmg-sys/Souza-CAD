@@ -160,12 +160,26 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
     } catch { return []; }
   }
 
+  // Openverse (WordPress): acervo grande de imagens livres de boa qualidade, sem chave.
+  // Uso a miniatura (thumbnail), que vem pelo proxy deles com CORS liberado — importante pra
+  // conseguir exportar o PNG depois sem a imagem "sujar" o canvas.
+  async function buscarOpenverse(q: string): Promise<{ titulo: string; url: string }[]> {
+    try {
+      const r = await fetch(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&page_size=24`);
+      const j = await r.json();
+      return (Array.isArray(j.results) ? j.results : [])
+        .map((p: { title?: string; thumbnail?: string; url?: string }) => ({ titulo: p.title || '', url: p.thumbnail || p.url || '' }))
+        .filter((p: { url: string }) => p.url);
+    } catch { return []; }
+  }
+
   async function buscarArte() {
     const q = buscaArte.trim(); if (!q) return;
     setBuscandoArte(true);
     try {
-      const [arte, fotosPexels] = await Promise.all([buscarArtInstitute(q), buscarPexels(q)]);
-      setResultadosArte([...fotosPexels, ...arte]);
+      // Pexels primeiro (melhor qualidade), depois Openverse (bom e vasto), depois obras de arte
+      const [arte, fotosPexels, openv] = await Promise.all([buscarArtInstitute(q), buscarPexels(q), buscarOpenverse(q)]);
+      setResultadosArte([...fotosPexels, ...openv, ...arte]);
     } finally { setBuscandoArte(false); }
   }
 
