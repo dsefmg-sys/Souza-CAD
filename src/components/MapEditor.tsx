@@ -286,8 +286,9 @@ export default function MapEditor(props: Props) {
   } = props;
 
   const [zoom, setZoom] = useState(16);
-  // rótulos crescem junto com o zoom (a partir do 16) pra não ficarem minúsculos perto do terreno
-  const fzZoom = Math.min(2, Math.max(1, 1 + (zoom - 16) * 0.22));
+  // rótulos acompanham o zoom nos DOIS sentidos: encolhem ao afastar (não tampam o desenho) e
+  // crescem ao aproximar. Antes ficavam travados em 1x ao afastar, e os blocos ficavam enormes.
+  const fzZoom = Math.min(2.2, Math.max(0.6, 1 + (zoom - 16) * 0.2));
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
   const centro = useMemo<[number, number]>(() => (validos.length ? [validos[0].lat, validos[0].lon] : ESPERA_FELIZ), [validos]);
   const anel = validos.map((v) => [v.lat, v.lon] as [number, number]);
