@@ -199,7 +199,9 @@ export default function EditorPage() {
   const [corBump, setCorBump] = useState(0); // força re-render após trocar uma cor (cores vivem em módulo)
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
   const iconeCab = (chave: string, icone: React.ReactNode) => (prefs.iconesCabecalhoOcultos.includes(chave) ? null : icone);
-  const [termosOk, setTermosOk] = useState(true); // aceite dos termos de uso (bloqueia até aceitar)
+  const [termosOk, setTermosOk] = useState(true); // aceite dos termos de uso
+  const [termosModalAberto, setTermosModalAberto] = useState(false); // abre ao CRIAR projeto (não na 1ª abertura)
+  const acaoAposTermos = useRef<null | (() => void)>(null);
   const [setupOk, setSetupOk] = useState(true); // primeiro acesso: cadastro de empresa/autônomo
   const [planilhaConfAberta, setPlanilhaConfAberta] = useState(false); // conferência da planilha SIGEF
   const [masterAberto, setMasterAberto] = useState(false); // painel do titular (só master)
@@ -2035,6 +2037,8 @@ export default function EditorPage() {
   }
 
   async function criarNovoProjeto() {
+    // termo de aceite: pede na hora de CRIAR o projeto (não na 1ª abertura do app)
+    if (!termosOk) { acaoAposTermos.current = () => { void criarNovoProjeto(); }; setTermosModalAberto(true); return; }
     if (temConteudoTrabalho()) {
       const ok = window.confirm('Deseja SALVAR o projeto atual antes de criar um novo?\n\n[OK] = Sim, salvar projeto e criar novo\n[Cancelar] = Não, descartar e criar novo');
       if (ok) {
@@ -2136,6 +2140,7 @@ export default function EditorPage() {
 
   // antes de importar um novo TXT, oferece salvar o trabalho atual (que será substituído)
   async function iniciarImportTxt() {
+    if (!termosOk) { acaoAposTermos.current = () => { void iniciarImportTxt(); }; setTermosModalAberto(true); return; }
     if (temConteudoTrabalho()) {
       const ok = window.confirm('Há um trabalho em andamento. Deseja SALVÁ-LO como projeto antes de importar um novo arquivo?\n\nOK = salvar e importar  ·  Cancelar = importar sem salvar');
       if (ok) { await salvar(); }
@@ -3134,8 +3139,8 @@ export default function EditorPage() {
         />
       )}
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
-      <TermosModal open={!termosOk} onAceitar={() => setTermosOk(true)} />
-      <PrimeiroAcessoModal open={termosOk && !setupOk} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); }} />
+      <TermosModal open={termosModalAberto} onAceitar={() => { setTermosOk(true); setTermosModalAberto(false); const a = acaoAposTermos.current; acaoAposTermos.current = null; a?.(); }} />
+      <PrimeiroAcessoModal open={!setupOk} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); }} />
       <MasterPainelModal open={masterAberto} onOpenChange={setMasterAberto} />
       <ProjetoInfoModal
         open={infoAberto}
