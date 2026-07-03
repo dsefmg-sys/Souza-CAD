@@ -1700,6 +1700,20 @@ export default function EditorPage() {
     saveAs(new Blob([dxf], { type: 'application/dxf' }), `${imovel.denominacao || nomeProjeto || 'desenho'}${sufixo}.dxf`);
   }
 
+  // Baixa o polígono de uma parcela certificada (importada do SIGEF) como DXF.
+  function baixarDxfParcela(idx: number) {
+    const pc = parcelasCert[idx];
+    if (!pc || pc.anel.length < 3) { aviso('Parcela sem contorno para exportar.'); return; }
+    const vs = pc.anel.map(([lat, lon], i) => {
+      const u = geoParaUtm(lat, lon, zona, hemisferio);
+      return { leste: u.leste, norte: u.norte, codigoSigef: `V${String(i + 1).padStart(2, '0')}`, tipo: 'M' as const };
+    });
+    const dxf = gerarDxf(vs, { zona, hemisferio, titulo: pc.info.titulo });
+    const nome = (pc.info.titulo || 'parcela-sigef').replace(/[^\w.-]+/g, '_');
+    saveAs(new Blob([dxf], { type: 'application/dxf' }), `${nome}.dxf`);
+    aviso('DXF da parcela certificada baixado.');
+  }
+
   async function importarDxfArquivo(file: File) {
     if (processando) return;
     setProcessando(true);
@@ -2444,7 +2458,7 @@ export default function EditorPage() {
 
           {/* PAINEL DE INFO da parcela selecionada (não tampa o mapa: canto superior direito, estreito) */}
           {vista === 'mapa' && parcelaSel != null && parcelasCert[parcelaSel] && (
-            <div className="absolute right-3 top-3 z-[1000] w-72 rounded-lg border bg-background/95 p-3 text-xs shadow-xl backdrop-blur">
+            <div className="absolute right-3 top-16 z-[1000] w-72 rounded-lg border bg-background/95 p-3 text-xs shadow-xl backdrop-blur">
               <div className="mb-1.5 flex items-start justify-between gap-2">
                 <span className="font-bold text-cyan-700 dark:text-cyan-300">{parcelasCert[parcelaSel].info.titulo}</span>
                 <button className="rounded p-0.5 hover:bg-muted" onClick={() => setParcelaSel(null)} title="Fechar"><X className="size-4" /></button>
@@ -2454,6 +2468,7 @@ export default function EditorPage() {
                   ? parcelasCert[parcelaSel].info.linhas.map((l, k) => <div key={k} className="border-b border-dashed border-border/50 pb-0.5">{l}</div>)
                   : <div className="text-muted-foreground">Sem metadados extras (o serviço público do INCRA não trouxe).</div>}
                 <div className="pt-1 text-[10px] text-muted-foreground">{parcelasCert[parcelaSel].anel.length} vértices. Clique num ponto da divisa para adotá-lo no seu projeto.</div>
+                <Button size="sm" variant="outline" className="mt-1.5 w-full gap-1.5" onClick={() => baixarDxfParcela(parcelaSel)}><Download className="size-3.5" /> Baixar DXF desta parcela</Button>
               </div>
             </div>
           )}
