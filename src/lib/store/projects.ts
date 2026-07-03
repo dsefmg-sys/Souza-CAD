@@ -75,12 +75,63 @@ export async function listarProjetos(): Promise<Projeto[]> {
   if (uid) {
     try {
       const snap = await getDocs(colProjetos(uid));
-      return snap.docs.map((d) => daNuvem(d.data())).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+      return snap.docs.map((d) => daNuvem(d.data())).filter((p) => !p.excluidoEm).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
     } catch { /* nuvem indisponível/negada → cai para o local */ }
   }
   const d = await db();
   const todos = await d.getAll('projetos');
-  return todos.filter(ehMeuLocal).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+  return todos.filter(ehMeuLocal).filter((p) => !p.excluidoEm).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+}
+
+/** Projetos na LIXEIRA (excluídos, ainda restauráveis), mais recentes primeiro. */
+export async function listarLixeira(): Promise<Projeto[]> {
+  const uid = uidNuvem();
+  if (uid) {
+    try {
+      const snap = await getDocs(colProjetos(uid));
+      return snap.docs.map((d) => daNuvem(d.data())).filter((p) => p.excluidoEm).sort((a, b) => (b.excluidoEm ?? 0) - (a.excluidoEm ?? 0));
+    } catch { /* cai pro local */ }
+  }
+  const d = await db();
+  return (await d.getAll('projetos')).filter(ehMeuLocal).filter((p) => p.excluidoEm).sort((a, b) => (b.excluidoEm ?? 0) - (a.excluidoEm ?? 0));
+}
+
+/** Escreve o projeto no destino atual (nuvem ou local) SEM mexer em atualizadoEm — uso interno da lixeira. */
+async function escreverProjeto(p: Projeto): Promise<void> {
+  const uid = uidNuvem();
+  if (uid) {
+    try { await setDoc(doc(colProjetos(uid), p.id), paraNuvem(p)); return; }
+    catch { try { const d = await db(); await d.put('projetos', { ...p, _uidLocal: marcaLocal() }); } catch { /* ignore */ } return; }
+  }
+  const d = await db();
+  await d.put('projetos', { ...p, _uidLocal: marcaLocal() });
+}
+
+/** Restaura um projeto da lixeira (volta a aparecer na lista). */
+export async function restaurarProjeto(id: string): Promise<void> {
+  const p = await carregarProjeto(id);
+  if (!p) return;
+  const { excluidoEm, ...resto } = p; void excluidoEm;
+  await escreverProjeto(resto as Projeto);
+}
+
+/** Apaga DE VEZ (sem passar pela lixeira). */
+export async function excluirDefinitivo(id: string): Promise<void> {
+  const uid = uidNuvem();
+  if (uid) { await deleteDoc(doc(colProjetos(uid), id)); return; }
+  const d = await db();
+  const reg = await d.get('projetos', id);
+  if (reg && !ehMeuLocal(reg)) return;
+  await d.delete('projetos', id);
+}
+
+/** Limpa da lixeira o que já passou do prazo (padrão 30 dias). */
+export async function purgarLixeiraAntiga(dias = 30): Promise<void> {
+  const limite = Date.now() - dias * 24 * 60 * 60 * 1000;
+  const lixo = await listarLixeira();
+  for (const p of lixo) {
+    if ((p.excluidoEm ?? 0) < limite) { try { await excluirDefinitivo(p.id); } catch { /* segue */ } }
+  }
 }
 
 export async function carregarProjeto(id: string): Promise<Projeto | undefined> {
@@ -94,13 +145,11 @@ export async function carregarProjeto(id: string): Promise<Projeto | undefined> 
   return reg && ehMeuLocal(reg) ? reg : undefined;
 }
 
+/** Exclusão SUAVE: manda para a lixeira (some da lista, mas dá pra restaurar por um prazo). */
 export async function excluirProjeto(id: string): Promise<void> {
-  const uid = uidNuvem();
-  if (uid) { await deleteDoc(doc(colProjetos(uid), id)); return; }
-  const d = await db();
-  const reg = await d.get('projetos', id);
-  if (reg && !ehMeuLocal(reg)) return; // não é seu (dono diferente no mesmo navegador) — não apaga
-  await d.delete('projetos', id);
+  const p = await carregarProjeto(id);
+  if (!p) return;
+  await escreverProjeto({ ...p, excluidoEm: Date.now() });
 }
 
 export async function sincronizarProjetosLocalParaNuvem(): Promise<void> {

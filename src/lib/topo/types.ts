@@ -406,4 +406,7 @@ export interface Projeto {
   vertices?: Vertex[];
   confrontantes?: Confrontante[];
   confrontantePorLado?: Record<number, string>;
+  // Lixeira: quando preenchido, o projeto foi "excluído" (some da lista, mas dá pra restaurar por
+  // um prazo antes da limpeza definitiva). Ausente = projeto ativo.
+  excluidoEm?: number;
 }
