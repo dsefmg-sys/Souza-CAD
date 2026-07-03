@@ -2,6 +2,7 @@ import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 import type { ImovelData, TecnicoData, PessoaQualificada } from '../topo/types';
 import { numBR, numBRmilhar } from '../topo/geometry';
 import { valorPorExtenso } from '../topo/extenso';
+import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
 
 export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento';
@@ -164,8 +165,9 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   c.push(titulo('DO LEVANTAMENTO E DA RETIFICAÇÃO'));
   const areaAnt = imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)}` : '—';
   c.push(par(`O imóvel possui, conforme registro anterior, área de ${areaAnt} hectares. Após a realização de levantamento topográfico georreferenciado, executado pelo profissional habilitado:`));
+  const rotProf = rotulosProfissional(tecnico);
   c.push(campo('Nome:', tecnico.nome));
-  c.push(campo('CFT:', `${tecnico.cft} - Código INCRA (SIGEF): ${tecnico.credenciamentoIncra}`));
+  c.push(campo(`${rotProf.registro}:`, `${tecnico.cft} - Código INCRA (SIGEF): ${tecnico.credenciamentoIncra}`));
   c.push(par(`apurou-se que a área real do imóvel corresponde a ${numBR(areaRealHa, 4)} hectares, divergindo da área constante na matrícula, razão pela qual se requer a devida retificação.`));
 
   c.push(titulo('DOS CONFRONTANTES'));
@@ -200,7 +202,7 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   assina([requerente.nome, rot.assinaReq]);
   assina([transmitente.nome, rot.assinaTrans]);
   partesAdicionais.forEach((p) => assina([p.nome, '(Parte adicional)']));
-  assina([tecnico.nome, `CFT ${tecnico.cft} - INCRA: ${tecnico.credenciamentoIncra}`]);
+  assina([tecnico.nome, `${rotProf.registro} ${tecnico.cft} - INCRA: ${tecnico.credenciamentoIncra}`]);
 
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial' } } } },

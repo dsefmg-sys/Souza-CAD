@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import type { ImovelData, TecnicoData } from '@/lib/topo/types';
 import { numBR } from '@/lib/topo/geometry';
+import { rotulosProfissional } from '@/lib/topo/profissional';
 
 interface Props {
   open: boolean;
@@ -19,11 +20,14 @@ interface Props {
 
 export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, perimetro, onChangeImovel }: Props) {
   const [copiado, setCopiado] = useState<string | null>(null);
+  const rot = rotulosProfissional(tecnico);
+  // Onde emitir o termo: TRT do técnico via SINCETI; ART do engenheiro via CONFEA/CREA.
+  const linkEmitir = rot.termo === 'ART' ? 'https://www.confea.org.br/' : 'https://servicos.sinceti.net.br/';
 
   const linhas: [string, string][] = [
     ['Responsável técnico', tecnico?.nome ?? ''],
     ['Título profissional', tecnico?.formacao ?? ''],
-    ['CFT', tecnico?.cft ?? ''],
+    [rot.registro, tecnico?.cft ?? ''],
     ['Credenciamento INCRA', tecnico?.credenciamentoIncra ?? ''],
     ['Atividade técnica', 'Georreferenciamento de imóvel rural — levantamento topográfico georreferenciado (SIGEF/INCRA)'],
     ['Proprietário / contratante', imovel.proprietario],
@@ -59,9 +63,9 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Dados para o TRT</DialogTitle>
+          <DialogTitle>Dados para o {rot.termo}</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground">Confira e copie os campos para preencher o Termo de Responsabilidade Técnica no conselho.</p>
+        <p className="text-xs text-muted-foreground">Confira e copie os campos para preencher a {rot.termoExtenso} ({rot.termo}) no conselho.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded border p-3 bg-muted/20 overflow-y-auto">
           {linhas.map(([k, v]) => (
             <div key={k} className="flex items-center justify-between gap-2 p-2 border rounded bg-background text-sm">
@@ -71,19 +75,19 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
           ))}
         </div>
         <div className="flex justify-between items-center mt-3 border-t pt-3">
-          <a href="https://servicos.sinceti.net.br/" target="_blank" rel="noopener noreferrer">
+          <a href={linkEmitir} target="_blank" rel="noopener noreferrer">
             <Button size="sm" variant="default" className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1">
-              EMITIR TRT
+              EMITIR {rot.termo}
             </Button>
           </a>
           <Button size="sm" className="gap-1" onClick={copiarTudo}>{copiado === '__tudo__' ? <CheckCheck className="size-4" /> : <Copy className="size-4" />} Copiar tudo</Button>
         </div>
         {/* Nº do TRT emitido — no FIM; vira dado do projeto e aparece na planta na hora */}
         <div className="mt-3 flex items-center gap-2 rounded border p-3 bg-background">
-          <label className="text-sm font-semibold whitespace-nowrap">Nº do TRT/ART emitido</label>
+          <label className="text-sm font-semibold whitespace-nowrap">Nº do {rot.termo} emitido</label>
           <input
             className="flex-1 rounded border bg-background px-2 py-1 text-sm"
-            placeholder="Depois de emitir, cole aqui o número — conclui a etapa TRT e aparece na planta"
+            placeholder={`Depois de emitir, cole aqui o número — conclui a etapa ${rot.termo} e aparece na planta`}
             value={imovel.numeroTrt ?? ''}
             onChange={(e) => onChangeImovel?.({ ...imovel, numeroTrt: e.target.value })}
           />

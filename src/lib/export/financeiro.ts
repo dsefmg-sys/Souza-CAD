@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import type { ImovelData, EscritorioData, TecnicoData } from '../topo/types';
+import { rotulosProfissional } from '../topo/profissional';
 import { carregarModelos, preencherModelo } from '../store/modelos';
 
 /** Variáveis dos modelos (recibo/contrato) a partir dos dados do serviço. */
@@ -131,7 +132,7 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
   doc.text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE GEORREFERENCIAMENTO', larg / 2, y, { align: 'center', maxWidth: larg - margem * 2 });
   y += 12;
 
-  const repres = [a.tecnico.nome, a.tecnico.formacao, a.tecnico.cft && `CFT ${a.tecnico.cft}`].filter(Boolean).join(', ');
+  const repres = [a.tecnico.nome, a.tecnico.formacao, a.tecnico.cft && `${rotulosProfissional(a.tecnico).registro} ${a.tecnico.cft}`].filter(Boolean).join(', ');
   const clausulas: [string, string][] = [
     ['CONTRATANTE', `${a.imovel.proprietario || '—'}${a.imovel.cpfProprietario ? `, CPF nº ${a.imovel.cpfProprietario}` : ''}, doravante denominado(a) CONTRATANTE.`],
     ['CONTRATADO', `${a.escritorio.nome || '—'}${a.escritorio.cnpj ? `, CNPJ nº ${a.escritorio.cnpj}` : ''}, neste ato representado por ${repres || '—'}, doravante denominado CONTRATADO.`],

@@ -6,6 +6,7 @@ import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex, P
 import { grausParaDMS } from '../topo/coords';
 import { azimuteDMS, numBR, numBRmilhar, formatMatricula } from '../topo/geometry';
 import { valoresEfetivos } from '../topo/conferencia';
+import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo, sanitizarTexto } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
 
@@ -330,11 +331,12 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   // Data e assinatura do técnico
   const data = input.dataExtenso ? `, ${input.dataExtenso}` : '';
   children.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 40 }, children: [new TextRun({ text: `${tecnico.cidadeAssinatura}${data}.`, size: 22 })] }));
+  const rot = rotulosProfissional(tecnico);
   assinatura([
     tecnico.nome.toUpperCase(),
     tecnico.formacao,
-    `CFT: ${tecnico.cft}`,
-    `TRT nº ${imovel.numeroTrt || tecnico.art}`,
+    `${rot.registro}: ${tecnico.cft}`,
+    `${rot.termo} nº ${imovel.numeroTrt || tecnico.art}`,
     `Credenciamento INCRA: ${tecnico.credenciamentoIncra}`,
   ], true).forEach((c) => children.push(c));
 

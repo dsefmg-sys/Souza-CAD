@@ -8,6 +8,7 @@ import { listarArquivos, salvarArquivo, excluirArquivo, type ArquivoProjeto } fr
 import { numBR } from '@/lib/topo/geometry';
 import type { ImovelData, TecnicoData, Vertex, Confrontante } from '@/lib/topo/types';
 import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
+import { rotulosProfissional } from '@/lib/topo/profissional';
 
 interface Props {
   open: boolean;
@@ -89,7 +90,7 @@ export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, 
     ['Cartório (CNS)', imovel.cns || '—'],
     ['Código INCRA', imovel.codigoImovelIncra || '—'],
     ['Município', imovel.municipio || '—'],
-    ['TRT', imovel.numeroTrt || tecnico?.art || '—'],
+    [rotulosProfissional(tecnico).termo, imovel.numeroTrt || tecnico?.art || '—'],
     ['Responsável técnico', tecnico?.nome || '—'],
     ['Área SGL', `${numBR(areaHa, 4)} ha`],
     ['Perímetro', `${numBR(perimetro)} m`],

@@ -88,9 +88,16 @@ export default function ConfiguracoesPage() {
         <CardHeader><CardTitle>Sua assinatura técnica (aparece no memorial e na planilha)</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-3">
           <Campo wide label="Nome" value={t.nome} onChange={(v) => set('nome', v)} />
+          <div className="col-span-2 space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Conselho / categoria</label>
+            <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={t.conselho ?? 'CFT'} onChange={(e) => setT((p) => ({ ...p, conselho: e.target.value as 'CFT' | 'CREA' }))}>
+              <option value="CFT">Técnico — CFT (emite TRT)</option>
+              <option value="CREA">Engenheiro — CREA (emite ART)</option>
+            </select>
+          </div>
           <Campo wide label="Formação" value={t.formacao} onChange={(v) => set('formacao', v)} />
-          <Campo label="CFT" value={t.cft} onChange={(v) => set('cft', v)} />
-          <Campo label="TRT/ART" value={t.art} onChange={(v) => set('art', v)} />
+          <Campo label={`Registro ${(t.conselho ?? 'CFT') === 'CREA' ? 'CREA' : 'CFT'}`} value={t.cft} onChange={(v) => set('cft', v)} />
+          <Campo label={(t.conselho ?? 'CFT') === 'CREA' ? 'ART' : 'TRT'} value={t.art} onChange={(v) => set('art', v)} />
           <Campo wide label="Cidade da assinatura" value={t.cidadeAssinatura} onChange={(v) => set('cidadeAssinatura', v)} />
         </CardContent>
       </Card>

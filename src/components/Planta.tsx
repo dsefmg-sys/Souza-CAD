@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, type PointerEvent as ReactPointerEvent } f
 import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante, PlantaConfig, PessoaQualificada, PontoLL } from '@/lib/topo/types';
 import { numBR, formatMatricula, azimuteDMS } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
+import { rotulosProfissional } from '@/lib/topo/profissional';
 import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { distanciaCota } from '@/lib/topo/objetos';
 import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
@@ -1509,8 +1510,9 @@ function CarimboA3(props: {
   ];
   campos.push(
     ['MUNICÍPIO(S):', imovel.municipio || '—'],
-    // TRT do PROJETO (informado no modal TRT) tem prioridade; senão, o ART do técnico
-    ['TRT:', imovel.numeroTrt || tecnico.art || '—'],
+    // Termo do PROJETO (informado no modal) tem prioridade; senão, o do cadastro. Sigla TRT/ART
+    // conforme o conselho (técnico=TRT, engenheiro=ART).
+    [`${rotulosProfissional(tecnico).termo}:`, imovel.numeroTrt || tecnico.art || '—'],
     ['MAT./TRANSC.:', imovel.matricula || '—'],
   );
   if (imovel.tipoImovel === 'urbano') {
@@ -1751,7 +1753,7 @@ function CarimboA3(props: {
           );
         })()}
 
-        {assina(lx + 90, rx - 90, Y_ASSINA_RT, tecnico.nome, [tecnico.formacao || '', `CFT: ${tecnico.cft || '—'}  ·  INCRA: ${tecnico.credenciamentoIncra || '—'}`], 'responsavel')}
+        {assina(lx + 90, rx - 90, Y_ASSINA_RT, tecnico.nome, [tecnico.formacao || '', `${rotulosProfissional(tecnico).registro}: ${tecnico.cft || '—'}  ·  INCRA: ${tecnico.credenciamentoIncra || '—'}`], 'responsavel')}
       </g>
 
       {/* ── CARD C: DECLARAÇÃO DOS CONFRONTANTES ──────────────────────────── */}

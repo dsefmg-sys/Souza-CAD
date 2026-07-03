@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ImovelData, EscritorioData, TecnicoData, FinanceiroProjeto, LancamentoFinanceiro, Projeto } from '@/lib/topo/types';
+import { rotulosProfissional } from '@/lib/topo/profissional';
 import { moedaBR, gerarReciboPdf, gerarContratoPdf } from '@/lib/export/financeiro';
 import { listarProjetos } from '@/lib/store/projects';
 import { consumirNumeroRecibo } from '@/lib/store/settings';
@@ -84,7 +85,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
               <Info rotulo="Município" valor={imovel.municipio || '—'} />
               <Info rotulo="Área" valor={`${areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha`} />
               <Info rotulo="Perímetro" valor={`${perimetro.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m`} />
-              <Info rotulo="TRT/ART" valor={imovel.numeroTrt || tecnico.art || '—'} />
+              <Info rotulo={rotulosProfissional(tecnico).termo} valor={imovel.numeroTrt || tecnico.art || '—'} />
             </div>
           </section>
 

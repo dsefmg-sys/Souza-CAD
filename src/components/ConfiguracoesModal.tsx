@@ -152,13 +152,21 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <Label className="text-xs font-semibold">Nome Completo</Label>
                   <Input value={t.nome} onChange={(e) => changeT('nome', e.target.value)} />
                 </div>
+                {/* conselho: define as siglas das peças — técnico (CFT/TRT) x engenheiro (CREA/ART) */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Conselho / categoria</Label>
+                  <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={t.conselho ?? 'CFT'} onChange={(e) => changeT('conselho', e.target.value as 'CFT' | 'CREA')}>
+                    <option value="CFT">Técnico — CFT (emite TRT)</option>
+                    <option value="CREA">Engenheiro — CREA (emite ART)</option>
+                  </select>
+                </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Formação Profissional</Label>
                   <Input value={t.formacao} onChange={(e) => changeT('formacao', e.target.value)} />
                 </div>
-                {/* o TRT é sempre por projeto (emitido no TrtModal, campo imovel.numeroTrt) — não existe "TRT padrão" */}
+                {/* o TRT/ART é sempre por projeto (emitido no modal, campo imovel.numeroTrt) — não existe "padrão" */}
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Registro CFT/CREA</Label>
+                  <Label className="text-xs font-semibold">Registro {(t.conselho ?? 'CFT') === 'CREA' ? 'CREA' : 'CFT'}</Label>
                   <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
                 </div>
                 <div className="space-y-1">
