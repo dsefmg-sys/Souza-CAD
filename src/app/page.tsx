@@ -71,6 +71,7 @@ import { carregarPreferencias, salvarPreferencias, PREFERENCIAS_PADRAO, type Pre
 import { souMaster } from '@/lib/store/suporte';
 import TermosModal from '@/components/TermosModal';
 import MasterPainelModal from '@/components/MasterPainelModal';
+import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
 import { gerarMemorialDocx } from '@/lib/export/memorial';
 import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
@@ -186,6 +187,7 @@ export default function EditorPage() {
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
   const iconeCab = (chave: string, icone: React.ReactNode) => (prefs.iconesCabecalhoOcultos.includes(chave) ? null : icone);
   const [termosOk, setTermosOk] = useState(true); // aceite dos termos de uso (bloqueia até aceitar)
+  const [setupOk, setSetupOk] = useState(true); // primeiro acesso: cadastro de empresa/autônomo
   const [masterAberto, setMasterAberto] = useState(false); // painel do titular (só master)
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
@@ -290,6 +292,8 @@ export default function EditorPage() {
     // termos de uso: bloqueia até aceitar (checa local, depois nuvem)
     if (termosAceitosLocal()) setTermosOk(true);
     else { setTermosOk(false); termosAceitosNuvem().then((ok) => { if (ok) setTermosOk(true); }).catch(() => {}); }
+    // primeiro acesso: só pede cadastro pra quem não é o titular e ainda não configurou
+    try { setSetupOk(souMaster() || localStorage.getItem('metrica.setupFeito') === '1'); } catch { setSetupOk(true); }
     // registra/atualiza o perfil de uso (o titular acompanha empresa, RT, projetos)
     const esc = carregarEscritorio(); const tec = carregarTecnico();
     sincronizarPerfil({ ultimoAcessoEm: Date.now(), empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {});
@@ -2920,6 +2924,7 @@ export default function EditorPage() {
       )}
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
       <TermosModal open={!termosOk} onAceitar={() => setTermosOk(true)} />
+      <PrimeiroAcessoModal open={termosOk && !setupOk} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); }} />
       <MasterPainelModal open={masterAberto} onOpenChange={setMasterAberto} />
       <ProjetoInfoModal
         open={infoAberto}
