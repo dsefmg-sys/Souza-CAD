@@ -52,6 +52,7 @@ interface Props {
   onAlternarTipoVertice?: (id: string) => void;                    // clicar num vértice na planta: cicla o tipo (M/P/V)
   onRenomearVertice?: (id: string) => void;                        // renomear o código do vértice
   onIgnorarVertice?: (id: string) => void;                         // ignorar o vértice (o desenho passa direto)
+  onCiclarEstilo?: (campo: 'estiloRosa' | 'estiloEscala' | 'estiloDiagrama', total: number) => void; // botão direito troca o estilo
   folhaTravada?: boolean;
   editandoTextoId?: string | null;
   onSetEditandoTextoId?: (id: string | null) => void;
@@ -225,7 +226,7 @@ export default function Planta({
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
-  onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, folhaTravada = true,
+  onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
 }: Props) {
   // hooks antes de qualquer retorno condicional
@@ -1133,7 +1134,9 @@ export default function Planta({
             y={DRAW.y1 - 40}
             transform={`translate(${bx}, ${by})`}
             style={editavel ? { cursor: 'move' } : undefined}
+            onContextMenu={editavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloEscala', 2); } : undefined}
             onPointerDown={editavel ? (e) => {
+              if (e.button === 2) return; // direito troca o estilo, não arrasta
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;
               dragRef.current = { kind: 'ted', id: idEscala, dx: ovEscala.dx ?? 0, dy: ovEscala.dy ?? 0 };
@@ -1145,11 +1148,15 @@ export default function Planta({
             {/* cartão de fundo */}
             <rect x={-12} y={-20} width={barPx + 46} height={48} fill="#ffffff" fillOpacity={0.92} stroke="#cbd5e1" strokeWidth={0.7} rx={5} ry={5} />
             <text x={0} y={-9} fontSize={fs(7)} fontWeight="bold" letterSpacing="0.5" fill="#0f172a">ESCALA  1:{escalaDenom}</text>
-            {/* segmentos alternados com moldura única */}
-            {[0, 1, 2, 3].map((k) => (
-              <rect key={k} x={k * seg} y={0} width={seg} height={h} fill={k % 2 ? '#ffffff' : '#0f172a'} />
-            ))}
-            <rect x={0} y={0} width={barPx} height={h} fill="none" stroke="#0f172a" strokeWidth={0.8} />
+            {(config.estiloEscala ?? 0) === 1
+              ? (/* régua: só a linha base, sem blocos preenchidos */ <line x1={0} y1={h} x2={barPx} y2={h} stroke="#0f172a" strokeWidth={1} />)
+              : (<>
+                {/* blocos alternados com moldura única */}
+                {[0, 1, 2, 3].map((k) => (
+                  <rect key={k} x={k * seg} y={0} width={seg} height={h} fill={k % 2 ? '#ffffff' : '#0f172a'} />
+                ))}
+                <rect x={0} y={0} width={barPx} height={h} fill="none" stroke="#0f172a" strokeWidth={0.8} />
+              </>)}
             {/* marcas e rótulos em metros */}
             {[0, 1, 2, 3, 4].map((k) => (
               <g key={k}>
@@ -1176,7 +1183,9 @@ export default function Planta({
             x={DRAW.x1 - 72}
             y={DRAW.y0 + 74}
             style={editavel ? { cursor: 'move' } : undefined}
+            onContextMenu={editavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloRosa', 2); } : undefined}
             onPointerDown={editavel ? (e) => {
+              if (e.button === 2) return; // direito troca o estilo, não arrasta
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;
               dragRef.current = { kind: 'ted', id: idRosa, dx: ovRosa.dx ?? 0, dy: ovRosa.dy ?? 0 };
@@ -1185,7 +1194,7 @@ export default function Planta({
               captura(e);
             } : undefined}
           >
-            <RosaDosVentos cx={rcx} cy={rcy} fs={fs} />
+            <RosaDosVentos cx={rcx} cy={rcy} fs={fs} variante={config.estiloRosa ?? 0} />
           </g>
         );
       })()}
@@ -1198,6 +1207,7 @@ export default function Planta({
         imovel={imovel} res={res} ef={ef} tecnico={tecnico} zona={zona} hemisferio={hemisferio}
         vref={vref} conv={conv} decl={decl} represUsadas={represUsadas} fatorK={fatorK}
         verConv={verConv} verNortes={verNortes} escala={escTxt} situacaoUrl={situacaoUrl} verSituacao={verSituacao}
+        estiloDiagrama={config.estiloDiagrama ?? 0} onCiclarEstilo={onCiclarEstilo}
         coordEditavel={editavel} coordGetOv={getOverride}
         onCoordItemDown={(id, e) => { e.stopPropagation(); tedComum.onDragStart(id, e); }}
         situacaoSel={situacaoSel} onSituacaoClick={() => setSituacaoSel((s) => !s)}
@@ -1247,10 +1257,11 @@ function FaixaInferior(props: {
   imovel: ImovelData; res: ResultadoCalculo; ef: ReturnType<typeof valoresEfetivos>; tecnico: TecnicoData;
   zona: number; hemisferio: 'N' | 'S'; vref: Vertex; conv: number; decl: number; represUsadas: string[]; fatorK: number;
   verConv: boolean; verNortes: boolean; escala: number; situacaoUrl?: string; verSituacao: boolean;
+  estiloDiagrama?: number; onCiclarEstilo?: (campo: 'estiloRosa' | 'estiloEscala' | 'estiloDiagrama', total: number) => void;
   coordEditavel?: boolean; coordGetOv?: (id: string) => TextoOverride; onCoordItemDown?: (id: string, e: ReactPointerEvent) => void;
   situacaoSel?: boolean; onSituacaoClick?: () => void; onRemoverSituacao?: () => void;
 }) {
-  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao } = props;
+  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -1377,10 +1388,10 @@ function FaixaInferior(props: {
 
               {/* Diagrama técnico de convergência (NV/NQ/NM) — bloco próprio, arrastável sozinho */}
               {verNortes && bloco('coord.diagrama', (
-                <g>
+                <g onContextMenu={coordEditavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloDiagrama', 2); } : undefined}>
                   {/* área transparente de captura: sem ela, só as linhas finas pegavam o arraste */}
                   <rect x={x3 + 40} y={y0 + 100} width={72} height={94} fill="transparent" />
-                  <Nortes cx={x3 + 75} cy={y0 + 148} conv={conv} decl={decl} fs={fs} />
+                  <Nortes cx={x3 + 75} cy={y0 + 148} conv={conv} decl={decl} fs={fs} variante={estiloDiagrama} />
                 </g>
               ))}
               {/* rótulo do diagrama — bloco SEPARADO, move livre do diagrama */}
@@ -1422,8 +1433,28 @@ function FaixaInferior(props: {
 // ---------------- RosaDosVentos e Nortes ----------------
 // Rosa dos ventos BÁSICA: seta de Norte limpa (metade clara/escura) num anel discreto, só a
 // letra "N". Sem vermelho, sem excesso de letras.
-function RosaDosVentos({ cx, cy, fs }: { cx: number; cy: number; conv?: number; decl?: number; fs: (n: number) => number }) {
+function RosaDosVentos({ cx, cy, fs, variante = 0 }: { cx: number; cy: number; conv?: number; decl?: number; fs: (n: number) => number; variante?: number }) {
   const R = 34;
+  if (variante === 1) {
+    // Variação: rosa dos ventos com 4 pontas (N/S/L/O) — estrela clássica de bússola.
+    const pta = (ang: number, comp: number, larg: number) => {
+      const a = (ang * Math.PI) / 180, p = (a2: number, r: number) => [cx + r * Math.sin(a2), cy - r * Math.cos(a2)] as const;
+      const [px, py] = p(a, comp), [lx1, ly1] = p(a + Math.PI / 2, larg), [lx2, ly2] = p(a - Math.PI / 2, larg);
+      return `${px},${py} ${lx1},${ly1} ${cx},${cy} ${lx2},${ly2}`;
+    };
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={R} fill="#ffffff" fillOpacity={0.9} stroke="#cbd5e1" strokeWidth={0.7} />
+        {[0, 90, 180, 270].map((ang) => <polygon key={`b${ang}`} points={pta(ang, R - 6, 5)} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={0.5} />)}
+        <polygon points={pta(0, R - 4, 6)} fill="#1f2937" />
+        <circle cx={cx} cy={cy} r={2} fill="#1f2937" />
+        <text x={cx} y={cy - R + 1} fontSize={fs(8)} fontWeight="bold" textAnchor="middle" fill="#0f172a">N</text>
+        <text x={cx + R - 1} y={cy + 3} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#64748b">L</text>
+        <text x={cx - R + 1} y={cy + 3} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#64748b">O</text>
+        <text x={cx} y={cy + R + 2} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#64748b">S</text>
+      </g>
+    );
+  }
   return (
     <g>
       <circle cx={cx} cy={cy} r={R} fill="#ffffff" fillOpacity={0.9} stroke="#cbd5e1" strokeWidth={0.7} />
@@ -1442,7 +1473,7 @@ function RosaDosVentos({ cx, cy, fs }: { cx: number; cy: number; conv?: number; 
 // Diagrama de CONVERGÊNCIA (NV/NQ/NM) para o carimbo. Os ângulos reais são minúsculos, então são
 // EXAGERADOS visualmente (preservando o sinal) só para leitura — os valores exatos ficam no texto
 // ao lado. É um diagrama técnico, diferente da rosa dos ventos (orientação) do desenho.
-function Nortes({ cx, cy, conv, decl, fs }: { cx: number; cy: number; conv: number; decl: number; fs: (n: number) => number }) {
+function Nortes({ cx, cy, conv, decl, fs, variante = 0 }: { cx: number; cy: number; conv: number; decl: number; fs: (n: number) => number; variante?: number }) {
   const L = 34; // Compacto para evitar colisões
   const ponto = (deg: number, len: number) => { const a = (deg * Math.PI) / 180; return [cx + len * Math.sin(a), cy - len * Math.cos(a)] as const; };
   const vq = conv === 0 ? 0 : (conv > 0 ? 1 : -1) * 16;  // quadrícula (ângulo exagerado pra leitura)
@@ -1460,6 +1491,8 @@ function Nortes({ cx, cy, conv, decl, fs }: { cx: number; cy: number; conv: numb
   const temNM = decl !== 0;
   return (
     <g>
+      {/* variação 1: um arco/círculo de referência atrás das linhas (visual de bússola técnica) */}
+      {variante === 1 && <circle cx={cx} cy={cy} r={L} fill="#ffffff" fillOpacity={0.6} stroke="#cbd5e1" strokeWidth={0.6} />}
       {/* linhas (coloridas só pra distinguir; o texto é escuro e fica fora delas) */}
       {temNM && <line x1={cx} y1={cy} x2={mx} y2={my} stroke="#b91c1c" strokeWidth={0.9} strokeDasharray="3 2" />}
       {temNQ && <line x1={cx} y1={cy} x2={qx} y2={qy} stroke="#1d4ed8" strokeWidth={0.9} />}

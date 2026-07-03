@@ -684,6 +684,14 @@ export default function EditorPage() {
   function restaurarTextoPlanta(id: string) {
     setPlantaConfig((c) => { const m = { ...(c.textos ?? {}) }; delete m[id]; return { ...c, textos: m }; });
   }
+  // Botão direito na rosa dos ventos / barra de escala / diagrama: cicla o estilo e já grava como
+  // PADRÃO dos próximos projetos do usuário (planta padrão).
+  function ciclarEstiloPlanta(campo: 'estiloRosa' | 'estiloEscala' | 'estiloDiagrama', total: number) {
+    const prox = (((plantaConfig[campo] as number | undefined) ?? 0) + 1) % total;
+    setPlantaConfig((c) => ({ ...c, [campo]: prox }));
+    try { salvarPlantaPadrao({ ...carregarPlantaPadrao(), [campo]: prox }); } catch { /* ignore */ }
+    aviso('Estilo trocado e salvo como padrão dos próximos projetos.');
+  }
   const escTextoAtual = (id: string) => plantaConfig.textos?.[id]?.escala ?? 1;
 
   // redimensionar o painel da direita
@@ -2692,7 +2700,7 @@ export default function EditorPage() {
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
-                      onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} />
+                      onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} onCiclarEstilo={ciclarEstiloPlanta} />
                     </ErrorBoundary>
                   </div>
                 )}
