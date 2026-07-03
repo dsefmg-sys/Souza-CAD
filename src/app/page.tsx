@@ -2368,14 +2368,9 @@ export default function EditorPage() {
           );
         })()}
         <main className="relative isolate min-w-0 flex-1">
-          {/* Detalhes do projeto: botão flutuante no canto superior direito (fora do cabeçalho, pra
-              liberar espaço). Laranja até ser aberto, verde depois. */}
-          <button type="button"
-            className={`absolute right-3 top-3 z-[1150] flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-bold shadow-lg backdrop-blur ${infoJaVista(projetoId) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
-            title="Detalhes do projeto, arquivos anexados e pendências (o que ainda falta pra exportar)"
-            onClick={() => setInfoAberto(true)}><FileText className="size-4" /> DETALHES</button>
-          {/* BARRA FLUTUANTE (arrastável): dados do projeto + ações úteis, numa linha só */}
-          <div className={`absolute z-[1100] flex select-none items-stretch gap-1.5 rounded-xl border bg-background/95 p-1.5 shadow-xl backdrop-blur [&_button.act]:flex [&_button.act]:size-10 [&_button.act]:items-center [&_button.act]:justify-center [&_button.act]:rounded-lg ${dadosPos ? '' : 'bottom-4 left-4'}`} style={dadosPos ? { left: dadosPos.x, top: dadosPos.y } : undefined}>
+          {/* BARRA FLUTUANTE (arrastável): dados do projeto + ações úteis, numa linha só.
+              Nasce no topo, baixinha, pra não tampar o desenho. Traz também o DETALHES. */}
+          <div className={`absolute z-[1150] flex select-none items-stretch gap-1.5 rounded-xl border bg-background/95 p-1.5 shadow-xl backdrop-blur [&_button.act]:flex [&_button.act]:size-10 [&_button.act]:items-center [&_button.act]:justify-center [&_button.act]:rounded-lg ${dadosPos ? '' : 'top-3 left-3'}`} style={dadosPos ? { left: dadosPos.x, top: dadosPos.y } : undefined}>
             {/* alça de arraste */}
             <div className="flex cursor-move items-center rounded-lg bg-muted/60 px-1.5 text-muted-foreground hover:bg-muted" onPointerDown={dadosDown} onPointerMove={dadosMove} onPointerUp={dadosUp} title="Arraste para mover esta barra"><Move className="size-4" /></div>
             {/* dados em linha */}
@@ -2385,6 +2380,7 @@ export default function EditorPage() {
               <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Vértices</div><div className="text-base font-bold">{vertices.length}</div></div>
             </div>
             <div className="w-px bg-border" />
+            <button type="button" className={`act flex-col gap-0.5 ${infoJaVista(projetoId) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`} title="Detalhes do projeto, arquivos anexados e pendências (o que ainda falta pra exportar)" onClick={() => setInfoAberto(true)}><FileText className="size-4" /><span className="text-[8px] font-bold leading-none">DETALHES</span></button>
             <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Focalizar/enquadrar o desenho" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())}><Target className="size-4" /><span className="text-[8px] font-bold leading-none">FOCO</span></button>
             <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Informações e gestão financeira do projeto (valor cobrado, gastos, recebimentos, recibo e contrato)" onClick={() => setGestaoAberta(true)}><Info className="size-4" /><span className="text-[8px] font-bold leading-none">GESTÃO</span></button>
             <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Banco de pontos do credenciado (consultar códigos já usados)" onClick={() => setPontosAberto(true)}><Database className="size-4" /><span className="text-[8px] font-bold leading-none">PONTOS</span></button>
