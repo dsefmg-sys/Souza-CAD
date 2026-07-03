@@ -45,6 +45,7 @@ import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, divid
 import { calcular } from '@/lib/topo/calcular';
 import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
+import { gerarShapefileZip } from '@/lib/io/shapefile';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
 import { parseParcelasSigef, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas } from '@/lib/io/sigefVizinhos';
@@ -1720,6 +1721,17 @@ export default function EditorPage() {
     aviso('DXF da parcela certificada baixado.');
   }
 
+  // Baixa o polígono de uma parcela certificada como Shapefile (.zip com shp/shx/dbf/prj).
+  async function baixarShapefileParcela(idx: number) {
+    const pc = parcelasCert[idx];
+    if (!pc || pc.anel.length < 3) { aviso('Parcela sem contorno para exportar.'); return; }
+    const pts = pc.anel.map(([lat, lon]) => geoParaUtm(lat, lon, zona, hemisferio));
+    const nome = (pc.info.titulo || 'parcela-sigef').replace(/[^\w.-]+/g, '_');
+    const blob = await gerarShapefileZip(pts, { zona, hemisferio, nome });
+    saveAs(blob, `${nome}-shapefile.zip`);
+    aviso('Shapefile da parcela certificada baixado.');
+  }
+
   async function importarDxfArquivo(file: File) {
     if (processando) return;
     setProcessando(true);
@@ -2474,7 +2486,10 @@ export default function EditorPage() {
                   ? parcelasCert[parcelaSel].info.linhas.map((l, k) => <div key={k} className="border-b border-dashed border-border/50 pb-0.5">{l}</div>)
                   : <div className="text-muted-foreground">Sem metadados extras (o serviço público do INCRA não trouxe).</div>}
                 <div className="pt-1 text-[10px] text-muted-foreground">{parcelasCert[parcelaSel].anel.length} vértices. Clique num ponto da divisa para adotá-lo no seu projeto.</div>
-                <Button size="sm" variant="outline" className="mt-1.5 w-full gap-1.5" onClick={() => baixarDxfParcela(parcelaSel)}><Download className="size-3.5" /> Baixar DXF desta parcela</Button>
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => baixarDxfParcela(parcelaSel)}><Download className="size-3.5" /> DXF</Button>
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => baixarShapefileParcela(parcelaSel)}><Download className="size-3.5" /> Shapefile</Button>
+                </div>
               </div>
             </div>
           )}
