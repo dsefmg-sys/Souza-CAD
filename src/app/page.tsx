@@ -3623,6 +3623,15 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
             <Input type="text" placeholder="#fde68a" value={config.fillPoligono ?? ''} onChange={(e) => set({ fillPoligono: e.target.value || undefined })} className="h-7 text-xs" />
           </div>
           <div className="space-y-1">
+            <Label className="text-[10px]">Hachura (preenchimento)</Label>
+            <select className="h-7 w-full rounded border bg-background px-1 text-xs" value={config.hachura ?? 'nenhuma'} onChange={(e) => set({ hachura: e.target.value as PlantaConfig['hachura'] })}>
+              <option value="nenhuma">Cor sólida (sem hachura)</option>
+              <option value="diagonal">Diagonal</option>
+              <option value="cruzada">Cruzada</option>
+              <option value="pontos">Pontos</option>
+            </select>
+          </div>
+          <div className="space-y-1">
             <Label className="text-[10px]">Espessura divisas apoio</Label>
             <Input type="number" step="0.1" placeholder="3.2" value={config.larguraDivisasApoio ? String(config.larguraDivisasApoio) : ''} onChange={(e) => set({ larguraDivisasApoio: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
           </div>

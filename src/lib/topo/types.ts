@@ -322,6 +322,7 @@ export interface PlantaConfig {
   estiloRosa?: number;         // variação visual da rosa dos ventos (0..n) — botão direito troca
   estiloEscala?: number;       // variação da barra de escala (0 = blocos, 1 = régua)
   estiloDiagrama?: number;     // variação do diagrama de convergência
+  hachura?: 'nenhuma' | 'diagonal' | 'cruzada' | 'pontos'; // padrão de preenchimento do polígono
   textoLaudo?: string;         // texto do laudo técnico (carimbo)
   textoConfrontantes?: string; // declaração dos confrontantes (carimbo)
   // ajustes por texto (chave = id do texto na planta): conteúdo, escala própria e negrito

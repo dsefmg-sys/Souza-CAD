@@ -677,6 +677,23 @@ export default function Planta({
       style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'crosshair') : 'default', touchAction: editavel ? 'none' : undefined }}
       onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
       xmlns="http://www.w3.org/2000/svg">
+      {/* padrões de hachura pro preenchimento do polígono (escolhidos no painel, na cor do perímetro) */}
+      {(() => {
+        const cor = config.corPoligono || '#334155';
+        return (
+          <defs>
+            <pattern id="hach-diagonal" patternUnits="userSpaceOnUse" width={8} height={8} patternTransform="rotate(45)">
+              <line x1={0} y1={0} x2={0} y2={8} stroke={cor} strokeWidth={0.8} />
+            </pattern>
+            <pattern id="hach-cruzada" patternUnits="userSpaceOnUse" width={8} height={8}>
+              <path d="M0,0 L8,8 M8,0 L0,8" stroke={cor} strokeWidth={0.7} />
+            </pattern>
+            <pattern id="hach-pontos" patternUnits="userSpaceOnUse" width={7} height={7}>
+              <circle cx={3.5} cy={3.5} r={1} fill={cor} />
+            </pattern>
+          </defs>
+        );
+      })()}
       {/* Moldura externa (Margem NBR: esquerda=25mm/95px, outras=7mm/26px) */}
       <rect x={0} y={0} width={W} height={H} fill="#fff" />
       <rect x={95} y={26} width={W - 95 - 26} height={H - 26 - 26} fill="none" stroke="#000" strokeWidth={1.5} />
@@ -735,7 +752,10 @@ export default function Planta({
       })}
 
       {/* ---------- POLÍGONO (gleba ativa) ---------- */}
-      <polygon points={pts} fill={config.fillPoligono || '#15803d'} fillOpacity={0.08} stroke={config.corPoligono || '#334155'} strokeWidth={config.larguraPoligono ?? 1.8}
+      <polygon points={pts}
+        fill={config.hachura && config.hachura !== 'nenhuma' ? `url(#hach-${config.hachura})` : (config.fillPoligono || '#15803d')}
+        fillOpacity={config.hachura && config.hachura !== 'nenhuma' ? 1 : 0.08}
+        stroke={config.corPoligono || '#334155'} strokeWidth={config.larguraPoligono ?? 1.8}
         style={editavel ? { cursor: 'pointer' } : undefined}
         onClick={editavel ? (e) => { e.stopPropagation(); setSelecionadoId(selecionadoId === 'planta.poligono' ? null : 'planta.poligono'); } : undefined} />
       {selecionadoId === 'planta.poligono' && (
