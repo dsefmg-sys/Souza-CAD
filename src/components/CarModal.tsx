@@ -22,13 +22,20 @@ export default function CarModal({ open, onOpenChange, areaHa }: { open: boolean
   const [bioma, setBioma] = useState<Bioma>('demais');
   const [moduloFiscal, setModuloFiscal] = useState('');
   const [reservaHa, setReservaHa] = useState('');
+  const [appHa, setAppHa] = useState('');
+  const [vegHa, setVegHa] = useState('');
+  const [usoHa, setUsoHa] = useState('');
 
+  const numIn = (s: string) => parseFloat((s || '').replace(',', '.')) || 0;
   const mf = parseFloat(moduloFiscal.replace(',', '.'));
   const r = resumirCar({
     areaImovelHa: areaHa,
     bioma,
     moduloFiscalHa: Number.isFinite(mf) ? mf : 0,
-    reservaLegalHa: parseFloat(reservaHa.replace(',', '.')) || 0,
+    reservaLegalHa: numIn(reservaHa),
+    appTotalHa: numIn(appHa),
+    vegetacaoNativaHa: numIn(vegHa),
+    usoConsolidadoHa: numIn(usoHa),
   });
 
   return (
@@ -61,7 +68,27 @@ export default function CarModal({ open, onOpenChange, areaHa }: { open: boolean
             <label className="text-xs font-medium text-muted-foreground">Reserva legal já averbada (ha) — opcional</label>
             <input className="w-full rounded border bg-background px-3 py-2 text-sm" placeholder="ex.: 4" value={reservaHa} onChange={(e) => setReservaHa(e.target.value)} />
           </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">APP total (ha) — opcional</label>
+            <input className="w-full rounded border bg-background px-3 py-2 text-sm" placeholder="ex.: 1,5" value={appHa} onChange={(e) => setAppHa(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Vegetação nativa (ha) — opcional</label>
+            <input className="w-full rounded border bg-background px-3 py-2 text-sm" placeholder="ex.: 6" value={vegHa} onChange={(e) => setVegHa(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Área de uso consolidado (ha) — opcional</label>
+            <input className="w-full rounded border bg-background px-3 py-2 text-sm" placeholder="ex.: 40" value={usoHa} onChange={(e) => setUsoHa(e.target.value)} />
+          </div>
         </div>
+
+        {(appHa.trim() || vegHa.trim() || usoHa.trim()) && (
+          <div className="mt-1 grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="rounded border p-2"><div className="text-[10px] uppercase text-muted-foreground">APP</div><div className="font-bold">{num(r.appTotalHa)} ha</div></div>
+            <div className="rounded border p-2"><div className="text-[10px] uppercase text-muted-foreground">Veg. nativa</div><div className="font-bold">{num(r.vegetacaoNativaHa)} ha</div></div>
+            <div className="rounded border p-2"><div className="text-[10px] uppercase text-muted-foreground">Uso consolidado</div><div className="font-bold">{num(r.usoConsolidadoHa)} ha</div></div>
+          </div>
+        )}
 
         <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
           <div className="rounded-lg border p-3 text-center">
