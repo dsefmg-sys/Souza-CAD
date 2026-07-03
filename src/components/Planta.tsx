@@ -50,6 +50,8 @@ interface Props {
   onTextoMover?: (id: string, dx: number, dy: number) => void;     // arrastar o texto: salva o offset
   onConfigPatch?: (patch: Partial<PlantaConfig>) => void;          // muda config da planta (cor/linha do polígono) a partir da seleção
   onAlternarTipoVertice?: (id: string) => void;                    // clicar num vértice na planta: cicla o tipo (M/P/V)
+  onRenomearVertice?: (id: string) => void;                        // renomear o código do vértice
+  onIgnorarVertice?: (id: string) => void;                         // ignorar o vértice (o desenho passa direto)
   folhaTravada?: boolean;
   editandoTextoId?: string | null;
   onSetEditandoTextoId?: (id: string | null) => void;
@@ -223,7 +225,7 @@ export default function Planta({
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
-  onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, folhaTravada = true,
+  onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
 }: Props) {
   // hooks antes de qualquer retorno condicional
@@ -1011,21 +1013,31 @@ export default function Planta({
             })()}
             <Ted x={x} y={y} base={nomeVertice(v, i)} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
             {vsel && (
-              <g style={{ pointerEvents: 'all' }} transform={`translate(${vx}, ${vy - 40})`}>
-                <rect x={-72} y={-17} width={144} height={34} rx={8} fill="#ffffff" fillOpacity={0.98} stroke="#94a3b8" strokeWidth={1} />
-                {/* botões diretos M / P / V (o atual fica destacado) */}
+              <g style={{ pointerEvents: 'all' }} transform={`translate(${vx}, ${vy - 52})`}>
+                <rect x={-78} y={-30} width={156} height={62} rx={8} fill="#ffffff" fillOpacity={0.98} stroke="#94a3b8" strokeWidth={1} />
+                {/* LINHA 1 — tipo do vértice: M / P / V (o atual fica destacado) */}
                 {(['M', 'P', 'V'] as const).map((t, k) => {
-                  const bx = -64 + k * 34, ativo = v.tipo === t;
+                  const bx = -70 + k * 32, ativo = v.tipo === t;
                   return (
                     <g key={t} onClick={(e) => { e.stopPropagation(); if (!ativo) { let cur = v.tipo; let guard = 0; while (cur !== t && guard++ < 3) { onAlternarTipoVertice?.(v.id); cur = cur === 'M' ? 'P' : cur === 'P' ? 'V' : 'M'; } } }} style={{ cursor: 'pointer' }}>
-                      <rect x={bx} y={-11} width={30} height={22} rx={4} fill={ativo ? '#334155' : '#f1f5f9'} stroke="#94a3b8" strokeWidth={0.6} />
-                      <text x={bx + 15} y={4} fontSize={12} fontWeight="bold" textAnchor="middle" fill={ativo ? '#fff' : '#334155'} style={{ userSelect: 'none' }}>{t}</text>
+                      <rect x={bx} y={-26} width={28} height={20} rx={4} fill={ativo ? '#334155' : '#f1f5f9'} stroke="#94a3b8" strokeWidth={0.6} />
+                      <text x={bx + 14} y={-12} fontSize={12} fontWeight="bold" textAnchor="middle" fill={ativo ? '#fff' : '#334155'} style={{ userSelect: 'none' }}>{t}</text>
                     </g>
                   );
                 })}
+                {/* fechar (canto superior direito) */}
                 <g onClick={(e) => { e.stopPropagation(); setSelecionadoId(null); }} style={{ cursor: 'pointer' }}>
-                  <circle cx={56} cy={0} r={11} fill="#fee2e2" stroke="#fca5a5" strokeWidth={0.8} />
-                  <text x={56} y={4} fontSize={14} fontWeight="bold" textAnchor="middle" fill="#991b1b" style={{ userSelect: 'none' }}>×</text>
+                  <circle cx={64} cy={-16} r={10} fill="#fee2e2" stroke="#fca5a5" strokeWidth={0.8} />
+                  <text x={64} y={-11} fontSize={13} fontWeight="bold" textAnchor="middle" fill="#991b1b" style={{ userSelect: 'none' }}>×</text>
+                </g>
+                {/* LINHA 2 — ações: Renomear | Ignorar */}
+                <g onClick={(e) => { e.stopPropagation(); onRenomearVertice?.(v.id); }} style={{ cursor: 'pointer' }}>
+                  <rect x={-70} y={4} width={80} height={22} rx={4} fill="#eef2ff" stroke="#c7d2fe" strokeWidth={0.6} />
+                  <text x={-30} y={19} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#3730a3" style={{ userSelect: 'none' }}>Renomear</text>
+                </g>
+                <g onClick={(e) => { e.stopPropagation(); setSelecionadoId(null); onIgnorarVertice?.(v.id); }} style={{ cursor: 'pointer' }}>
+                  <rect x={16} y={4} width={56} height={22} rx={4} fill="#fef9c3" stroke="#fde047" strokeWidth={0.6} />
+                  <text x={44} y={19} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#854d0e" style={{ userSelect: 'none' }}>Ignorar</text>
                 </g>
               </g>
             )}

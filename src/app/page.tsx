@@ -953,6 +953,15 @@ export default function EditorPage() {
   }
 
   // Ignorar vértice: tira-o do desenho do polígono (vai para a lista de ignorados, pode voltar).
+  function renomearVertice(id: string) {
+    const v = vertices.find((x) => x.id === id);
+    if (!v) return;
+    const novo = window.prompt('Novo código/nome do vértice:', v.codigoSigef || '');
+    if (novo == null) return;
+    snap();
+    setVertices((vs) => vs.map((x) => (x.id === id ? { ...x, codigoSigef: novo.trim().toUpperCase() } : x)));
+  }
+
   function ignorarVertice(id: string) {
     const v = vertices.find((x) => x.id === id);
     if (!v) return;
@@ -2646,7 +2655,7 @@ export default function EditorPage() {
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
-                      onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} />
+                      onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} />
                     </ErrorBoundary>
                   </div>
                 )}
