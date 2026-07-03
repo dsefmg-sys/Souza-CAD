@@ -49,13 +49,16 @@ function daNuvem(raw: Record<string, unknown>): Projeto {
   return raw as unknown as Projeto; // documento antigo, salvo antes do envelope
 }
 
-export async function salvarProjeto(p: Projeto): Promise<void> {
+/** Onde o projeto foi de fato gravado: na nuvem (Firestore) ou só localmente (IndexedDB). */
+export type DestinoSalvamento = 'nuvem' | 'local';
+
+export async function salvarProjeto(p: Projeto): Promise<DestinoSalvamento> {
   const reg = { ...p, atualizadoEm: Date.now() };
   const uid = uidNuvem();
   if (uid) {
     try {
       await setDoc(doc(colProjetos(uid), p.id), paraNuvem(reg));
-      return;
+      return 'nuvem';
     } catch (e) {
       // Sem permissão (regras não publicadas) ou offline: guarda local como reserva e sinaliza,
       // para o usuário não perder o trabalho nem ver um erro cru.
@@ -68,6 +71,7 @@ export async function salvarProjeto(p: Projeto): Promise<void> {
   }
   const d = await db();
   await d.put('projetos', { ...reg, _uidLocal: marcaLocal() });
+  return 'local';
 }
 
 export async function listarProjetos(): Promise<Projeto[]> {

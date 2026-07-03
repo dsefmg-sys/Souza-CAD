@@ -250,6 +250,7 @@ export default function EditorPage() {
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean }>({});
   const [salvoOk, setSalvoOk] = useState(false);
+  const [salvoNuvem, setSalvoNuvem] = useState(false); // verde só quando gravou no banco (nuvem); amarelo se só local
   const [salvarLaranja, setSalvarLaranja] = useState(false); // disquete laranja: há mudança não salva há >1s
   const ultimoSalvoSig = useRef<string>('');
   const acabouDeSalvar = useRef(false);
@@ -1894,18 +1895,20 @@ export default function EditorPage() {
         imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, plantaConfig, parcelasCert,
       };
       try {
-        await salvarProjeto(p);
+        const destino = await salvarProjeto(p);
         setProjetoId(id);
-        setSalvoOk(true);
+        setSalvoOk(true); setSalvoNuvem(destino === 'nuvem'); // verde só se foi pro banco na nuvem
         ultimoSalvoSig.current = projSig; acabouDeSalvar.current = true; setSalvarLaranja(false);
-        aviso(registrou ? 'Projeto salvo e pontos registrados.' : 'Projeto salvo, mas falhou registrar os pontos — tente salvar de novo.');
+        aviso(destino === 'nuvem'
+          ? (registrou ? 'Projeto salvo na nuvem e pontos registrados.' : 'Projeto salvo na nuvem, mas falhou registrar os pontos — tente salvar de novo.')
+          : 'Projeto salvo localmente (sem login/nuvem).');
         registrarProjetoSalvo(p.nome).catch(() => {}); // atualiza o perfil de uso (painel do titular)
       } catch (e) {
         setProjetoId(id);
         if (e instanceof NuvemSemPermissao) {
-          // o projeto FOI salvo localmente (só a nuvem negou) — então o trabalho está seguro e o
-          // botão deve ficar verde igual a um salvamento normal, senão parece que não salvou nada
-          setSalvoOk(true);
+          // o projeto FOI salvo localmente (só a nuvem negou) — trabalho seguro, mas o botão fica
+          // AMARELO (não verde) pra deixar claro que ainda não subiu pro banco
+          setSalvoOk(true); setSalvoNuvem(false);
           ultimoSalvoSig.current = projSig; acabouDeSalvar.current = true; setSalvarLaranja(false);
           aviso('Salvo localmente. A nuvem negou: publique as regras do Firestore (firebase deploy --only firestore:rules).');
         } else {
@@ -2507,7 +2510,7 @@ export default function EditorPage() {
               <div title={projPronto ? 'Sem problema grave — pode gerar as peças' : 'Falta algo (abra DETALHES para ver o quê)'}><div className="text-[9px] font-medium uppercase text-muted-foreground">Status</div><div className={`text-sm font-bold ${projPronto ? 'text-emerald-600' : 'text-amber-500'}`}>{projPronto ? 'Pronto' : 'Incompleto'}</div></div>
             </div>
             <div className="w-px bg-border" />
-            <button type="button" className={`act flex-col gap-0.5 ${infoJaVista(projetoId) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`} title="Detalhes do projeto, arquivos anexados e pendências (o que ainda falta pra exportar)" onClick={() => setInfoAberto(true)}><FileText className="size-4" /><span className="text-[8px] font-bold leading-none">DETALHES</span></button>
+            <button type="button" className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-bold ${infoJaVista(projetoId) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`} title="Detalhes do projeto, arquivos anexados e pendências (o que ainda falta pra exportar)" onClick={() => setInfoAberto(true)}><FileText className="size-4 shrink-0" /> DETALHES</button>
             <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Focalizar/enquadrar o desenho" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())}><Target className="size-4" /><span className="text-[8px] font-bold leading-none">FOCO</span></button>
             <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Informações e gestão financeira do projeto (valor cobrado, gastos, recebimentos, recibo e contrato)" onClick={() => setGestaoAberta(true)}><Info className="size-4" /><span className="text-[8px] font-bold leading-none">GESTÃO</span></button>
             <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Banco de pontos do credenciado (consultar códigos já usados)" onClick={() => setPontosAberto(true)}><Database className="size-4" /><span className="text-[8px] font-bold leading-none">PONTOS</span></button>
@@ -2538,7 +2541,10 @@ export default function EditorPage() {
               </>
             )}
             <div className="w-px bg-border" />
-            <button type="button" onClick={salvar} disabled={processando} title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar' : 'Salvar o projeto'} className={`act flex-col gap-0.5 disabled:opacity-50 ${salvarLaranja ? 'bg-amber-500 text-white hover:bg-amber-600' : 'border bg-background hover:bg-muted'}`}><Save className={`size-4 ${!salvarLaranja && salvoOk ? 'text-emerald-600' : ''}`} /><span className="text-[8px] font-bold leading-none">SALVAR</span></button>
+            <button type="button" onClick={salvar} disabled={processando}
+              title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar' : salvoOk ? (salvoNuvem ? 'Salvo no banco (nuvem)' : 'Salvo localmente — ainda não subiu para o banco. Publique as regras do Firestore para salvar na nuvem.') : 'Salvar o projeto'}
+              className={`act flex-col gap-0.5 disabled:opacity-50 ${salvarLaranja ? 'bg-amber-500 text-white hover:bg-amber-600' : 'border bg-background hover:bg-muted'}`}>
+              <Save className={`size-4 ${salvarLaranja ? '' : salvoOk ? (salvoNuvem ? 'text-emerald-600' : 'text-amber-500') : ''}`} /><span className="text-[8px] font-bold leading-none">SALVAR</span></button>
             <button type="button" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto" className="act flex-col gap-0.5 border bg-background hover:bg-muted disabled:opacity-50"><Plus className="size-4" /><span className="text-[8px] font-bold leading-none">NOVO</span></button>
             {glebas.length > 1 && (
               <>
