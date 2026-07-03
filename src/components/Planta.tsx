@@ -158,7 +158,7 @@ function Ted(props: {
   const endX = anchor === 'middle' ? posX + textW / 2 : anchor === 'end' ? posX : posX + textW;
 
   return (
-    <g style={ed ? { cursor: 'move' } : undefined}
+    <g id={id} style={ed ? { cursor: 'move' } : undefined}
        onClick={ed ? (e) => { e.stopPropagation(); onSelect?.(id); } : undefined}
        onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id); } : undefined}
        onContextMenu={ed ? (e) => { e.preventDefault(); e.stopPropagation(); onMenu?.(id, conteudo, e.clientX, e.clientY); } : undefined}
@@ -373,6 +373,7 @@ export default function Planta({
   const ptsScr = vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
   const nV = ptsScr.length;
   const offBase = Math.max(14, fzRot * 1.7); // folga do vértice, proporcional à fonte
+  const raioDens = offBase * 4;              // raio (tela) para medir aglomeração de vértices
   const initialRotuloVert = vertices.map((v, i) => {
     const vx = ptsScr[i].x, vy = ptsScr[i].y;
     if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, i, x: sx(u.leste), y: sy(u.norte), hasPos: true }; }
@@ -386,7 +387,12 @@ export default function Planta({
     const cdx = vx - cx, cdy = vy - cy;
     if (ol < 0.15 || (ox * cdx + oy * cdy) < 0) { ox = cdx; oy = cdy; ol = Math.hypot(ox, oy) || 1; }
     ox /= ol; oy /= ol;
-    return { v, i, x: vx + ox * offBase, y: vy + oy * offBase, hasPos: false };
+    // AGLOMERAÇÃO: onde há muitos vértices pertinho, o rótulo já NASCE mais longe do polígono,
+    // pra não embolar (a linha-guia tracejada continua ligando o rótulo ao ponto).
+    let vizinhos = 0;
+    for (let k = 0; k < nV; k++) { if (k === i) continue; if (Math.hypot(ptsScr[k].x - vx, ptsScr[k].y - vy) < raioDens) vizinhos++; }
+    const off = offBase + Math.min(fzRot * 10, vizinhos * fzRot * 1.6);
+    return { v, i, x: vx + ox * off, y: vy + oy * off, hasPos: false };
   });
 
   // Afasta rótulos que se sobrepõem entre si E que caem em cima de qualquer vértice.
@@ -1715,7 +1721,7 @@ function CarimboA3(props: {
           }
 
           return (
-            <g key={idProp}
+            <g key={idProp} id={idProp}
                style={ed?.ativo ? { cursor: 'move' } : undefined}
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
@@ -1761,7 +1767,7 @@ function CarimboA3(props: {
           }
 
           return (
-            <g key={idLaudo}
+            <g key={idLaudo} id={idLaudo}
                style={ed?.ativo ? { cursor: 'move' } : undefined}
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
@@ -1807,7 +1813,7 @@ function CarimboA3(props: {
           }
 
           return (
-            <g key={idConf}
+            <g key={idConf} id={idConf}
                style={ed?.ativo ? { cursor: 'move' } : undefined}
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
