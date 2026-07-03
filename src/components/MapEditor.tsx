@@ -9,7 +9,7 @@ import { corDivisa, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { numBR } from '@/lib/topo/geometry';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'cota' | 'texto' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
@@ -242,14 +242,14 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
   useMapEvents({
     click(e) {
       if (modo === 'inserir') onInserir(e.latlng.lat, e.latlng.lng);
-      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
+      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
     },
     dblclick(e) {
       // duplo clique abre o editor de texto (não dá zoom — doubleClickZoom desligado)
       onDblClick?.(e.latlng.lat, e.latlng.lng);
     },
     contextmenu(e) {
-      if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
+      if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto') {
         e.originalEvent.preventDefault();
         onCancelDesenho?.();
       }
@@ -468,7 +468,7 @@ export default function MapEditor(props: Props) {
         const pos = o.pontos.map((p) => [p.lat, p.lon] as [number, number]);
         const sel = o.id === objetoSelId;
         if (o.tipo === 'polilinha') {
-          const comum = { color: o.cor ?? '#2563eb', weight: (o.espessura ?? 1.5) + (sel ? 1 : 0) };
+          const comum = { color: o.cor ?? '#2563eb', weight: (o.espessura ?? 1.5) + (sel ? 1 : 0), ...(o.tracejado ? { dashArray: '8 6' } : {}) };
           const fechado = o.preenchido && pos.length >= 3;
           return (
             <Fragment key={o.id}>

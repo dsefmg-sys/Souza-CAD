@@ -221,6 +221,7 @@ export interface ObjetoDesenho {
   cor?: string;
   espessura?: number;
   preenchido?: boolean;       // polilinha fechada com cor sólida (ex.: lago)
+  tracejado?: boolean;        // polilinha com traço tracejado (ex.: estrada)
 }
 
 /** Um lado da poligonal (vértice i → vértice i+1). */

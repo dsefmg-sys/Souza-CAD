@@ -499,7 +499,7 @@ export default function EditorPage() {
       }
       else if (k === 'Escape') {
         if (modo === 'multi' && selMulti.size > 0) { e.preventDefault(); setSelMulti(new Set()); }
-        else if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
+        else if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto') {
           e.preventDefault();
           cancelarDesenho();
           setModo('navegar');
@@ -1203,10 +1203,13 @@ export default function EditorPage() {
         }
       }
       setDesenhoBuffer((buf) => [...buf, p]);
+    } else if (modo === 'tracejado') {
+      // tracejado = polilinha tracejada aberta (ex.: estrada); finaliza no botão
+      setDesenhoBuffer((buf) => [...buf, p]);
     }
   }
   function finalizarLinha() {
-    if (desenhoBuffer.length >= 2) setObjetos((os) => [...os, novaPolilinha(desenhoBuffer)]);
+    if (desenhoBuffer.length >= 2) setObjetos((os) => [...os, novaPolilinha(desenhoBuffer, modo === 'tracejado' ? { tracejado: true, cor: '#334155' } : {})]);
     setDesenhoBuffer([]);
   }
   function cancelarDesenho() {
@@ -2226,6 +2229,7 @@ export default function EditorPage() {
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
                       <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)"><PenTool /> {L('Linha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F6</span></Button>
                       <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; ao fechar (clicar no 1º ponto) vira polígono (F7; botão direito cancela)"><PenTool /> {L('Polilinha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F7</span></Button>
+                      <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (ex.: estrada); clique vários pontos e depois Finalizar"><PenTool className="opacity-70" /> {L('Tracejado')}</Button>
                       <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F8)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F8</span></Button>
                       <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F9)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
                       <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => setModo(modo === 'ignorar' ? 'navegar' : 'ignorar')} title="Ignorar vértice (F10): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
@@ -2249,7 +2253,7 @@ export default function EditorPage() {
                       )}
 
                       {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
-                      {modo === 'polilinha' && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
+                      {(modo === 'polilinha' || modo === 'tracejado') && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
                       {objSel?.tipo === 'texto' && (
                         <>
                           <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold">A-</span> {L('Diminuir')}</Button>
