@@ -94,6 +94,7 @@ export async function gerarShapefileZip(
   // registro
   dbf.setUint8(65, 0x20);                   // flag "não deletado"
   for (let i = 0; i < 50; i++) dbf.setUint8(66 + i, nomeBytes[i] || 0x20);
+  dbf.setUint8(headerSize + recordSize, 0x1a); // marcador de fim do arquivo (EOF), exigido pelo formato dBASE
 
   const prj = wktSirgasUtm(opts.zona, opts.hemisferio);
 

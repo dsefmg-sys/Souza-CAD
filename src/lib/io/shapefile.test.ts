@@ -28,5 +28,10 @@ describe('gerarShapefileZip', () => {
     const prj = await zip.file('Teste.prj')!.async('string');
     expect(prj).toContain('UTM zone 23S');
     expect(prj).toContain('central_meridian",-45');
+
+    // o .dbf tem que terminar com o marcador de fim (0x1A), senão alguns GIS reclamam
+    const dbfBuf = await zip.file('Teste.dbf')!.async('arraybuffer');
+    const dbf = new DataView(dbfBuf);
+    expect(dbf.getUint8(dbfBuf.byteLength - 1)).toBe(0x1a);
   });
 });
