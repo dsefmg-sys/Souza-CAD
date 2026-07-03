@@ -79,6 +79,7 @@ import { gerarMemorialDocx } from '@/lib/export/memorial';
 import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
 import { exportarKML } from '@/lib/export/kml';
 import RelatorioSobreposicaoModal from '@/components/RelatorioSobreposicaoModal';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const MapEditor = dynamic(() => import('@/components/MapEditor'), {
   ssr: false,
@@ -2552,6 +2553,7 @@ export default function EditorPage() {
                   // isso, quando a área era mais estreita que 1587 a folha já nascia menor e o Foco
                   // encolhia demais (não enchia a tela).
                   <div className={`bg-white shadow ${plantaDark ? 'a3-dark' : ''}`} style={{ width: 1587, height: 1123, transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'left top' }}>
+                    <ErrorBoundary onReset={() => setVista('mapa')}>
                     <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                       confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
                       glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
@@ -2567,6 +2569,7 @@ export default function EditorPage() {
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
                       onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} />
+                    </ErrorBoundary>
                   </div>
                 )}
               </div>
@@ -2816,9 +2819,9 @@ export default function EditorPage() {
         onBaixar={() => setBaixou((b) => ({ ...b, req: true }))}
       />
       <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
-      <DxfEditorModal open={dxfEditorAberto} onOpenChange={setDxfEditorAberto} />
+      <ErrorBoundary onReset={() => setDxfEditorAberto(false)}><DxfEditorModal open={dxfEditorAberto} onOpenChange={setDxfEditorAberto} /></ErrorBoundary>
       <PorcentagemModal open={porcentagemAberta} onOpenChange={setPorcentagemAberta} glebas={glebas.map((g) => ({ id: g.id, nome: g.denominacao, vertices: g.id === glebaAtivaId ? vertices : g.vertices }))} />
-      <EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} />
+      <ErrorBoundary onReset={() => setEstudioAberto(false)}><EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} /></ErrorBoundary>
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}
