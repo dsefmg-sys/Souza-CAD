@@ -2458,12 +2458,33 @@ export default function EditorPage() {
                 <div className="mt-auto flex flex-col gap-1 border-t pt-1.5">
                   {/* Errata: botão próprio de largura cheia (mesmo padrão do "capturar situação"), logo abaixo dele */}
                   <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-amber-500 border-amber-500/40 hover:bg-amber-500 hover:text-black dark:text-amber-400 dark:hover:bg-amber-400 dark:hover:text-black" title="Errata: gerar correção formal ao cartório (uso raro)" onClick={() => setErrataAberto(true)}><FileWarning className="size-4" /> {L('Errata')}</Button>
-                  {/* A- / A+ contextual (mapa = nomes dos vértices; planta = escala dos textos) — em linha própria */}
-                  <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1" title={vista === 'mapa' ? 'Tamanho dos nomes dos vértices no mapa' : 'Escala dos textos na planta'}>
-                    <span className="mr-auto pl-1 text-[10px] font-medium text-muted-foreground">{vista === 'mapa' ? 'Nomes' : 'Textos'}</span>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.max(7, n - 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.5) - 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A-</span></Button>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.min(22, n + 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A+</span></Button>
-                  </div>
+                  {/* Tamanho dos textos: no mapa mexe nos nomes dos vértices; na planta, 4 escopos separados */}
+                  {vista === 'mapa' ? (
+                    <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1" title="Tamanho dos nomes dos vértices no mapa">
+                      <span className="mr-auto pl-1 text-[10px] font-medium text-muted-foreground">Nomes</span>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-[10px] font-bold">A-</span></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-[10px] font-bold">A+</span></Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-0.5" title="Tamanho dos textos da planta, por escopo">
+                      {([
+                        { rot: 'Tudo', campo: 'escalaTextos', base: 1.5 },
+                        { rot: 'Rótulos', campo: 'fonteRotulos', base: 10, passo: 0.5, min: 5, max: 20 },
+                        { rot: 'Declarações', campo: 'escalaDeclaracoes', base: 1 },
+                        { rot: 'Confront.', campo: 'escalaConfront', base: 1 },
+                      ] as { rot: string; campo: 'escalaTextos' | 'fonteRotulos' | 'escalaDeclaracoes' | 'escalaConfront'; base: number; passo?: number; min?: number; max?: number }[]).map((r) => {
+                        const passo = r.passo ?? 0.05, min = r.min ?? 0.4, max = r.max ?? 3;
+                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
+                        return (
+                          <div key={r.campo} className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1">
+                            <span className="mr-auto pl-1 text-[10px] font-medium text-muted-foreground">{r.rot}</span>
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => aj(-passo)}><span className="text-[10px] font-bold">A-</span></Button>
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => aj(passo)}><span className="text-[10px] font-bold">A+</span></Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   {/* ferramentas e sistema: duas linhas de botões rotulados (não mais ícones espremidos) */}
                   <div className="grid grid-cols-4 gap-1">
                     {([

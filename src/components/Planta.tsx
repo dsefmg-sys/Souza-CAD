@@ -1206,6 +1206,8 @@ export default function Planta({
         escalaDenom={escalaDenom} dataExtenso={dataExtenso}
         titulo={(config.titulo || 'Levantamento Planimétrico Georreferenciado').toUpperCase()} folha={config.folha || 'Única'}
         textoLaudo={config.textoLaudo || LAUDO_PADRAO} textoConfront={config.textoConfrontantes || CONFRONT_PADRAO} escala={escTxt}
+        escalaDecl={config.escalaDeclaracoes && config.escalaDeclaracoes > 0 ? config.escalaDeclaracoes : 1}
+        escalaConf={config.escalaConfront && config.escalaConfront > 0 ? config.escalaConfront : 1}
         requerente={requerente} transmitente={transmitente}
         ed={{
           ativo: editavel,
@@ -1472,6 +1474,7 @@ function CarimboA3(props: {
   imovel: ImovelData; ef: ReturnType<typeof valoresEfetivos>; tecnico: TecnicoData; escritorio: EscritorioData;
   glebaNome?: string; escalaDenom: number; dataExtenso?: string;
   titulo: string; folha: string; textoLaudo: string; textoConfront: string; escala: number;
+  escalaDecl?: number; escalaConf?: number;
   requerente?: PessoaQualificada; transmitente?: PessoaQualificada;
   ed?: {
     ativo: boolean;
@@ -1487,8 +1490,10 @@ function CarimboA3(props: {
     onTextoPatch?: (id: string, patch: { escala?: number }) => void;
   };
 }) {
-  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, ed } = props;
+  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, escalaDecl = 1, escalaConf = 1, ed } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
+  const fsDecl = (n: number) => +(n * escala * escalaDecl).toFixed(2); // declarações (proprietário/laudo)
+  const fsConf = (n: number) => +(n * escala * escalaConf).toFixed(2); // texto/assinatura dos confrontantes
   // texto editável do carimbo (atalho para o helper Ted, já ligado ao modo edição)
   const T = (id: string, base: string, o: { x: number; y: number; size: number; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; fill?: string; slice?: number }) => (
     <Ted id={id} base={base} x={o.x} y={o.y} size={o.size} bold={o.bold} anchor={o.anchor} fill={o.fill} slice={o.slice}
@@ -1715,7 +1720,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
-              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fs(9)} larguraChars={ovProp.larguraChars ?? 66} textAnchor="middle" texto={txtProp} maxHeight={100} />
+              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(9)} larguraChars={ovProp.larguraChars ?? 66} textAnchor="middle" texto={txtProp} maxHeight={100} />
             </g>
           );
         })()}
@@ -1761,7 +1766,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
-              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fs(9)} larguraChars={ovLaudo.larguraChars ?? 66} textAnchor="middle" texto={txtLaudo} maxHeight={100} />
+              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(9)} larguraChars={ovLaudo.larguraChars ?? 66} textAnchor="middle" texto={txtLaudo} maxHeight={100} />
             </g>
           );
         })()}
@@ -1807,7 +1812,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idConf, e); } : undefined}>
-              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fs(8)} larguraChars={ovConf.larguraChars ?? 82} textAnchor="middle" texto={txtConf} maxHeight={70} />
+              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fsConf(8)} larguraChars={ovConf.larguraChars ?? 82} textAnchor="middle" texto={txtConf} maxHeight={70} />
             </g>
           );
         })()}
