@@ -202,6 +202,38 @@ export interface GlebaSigef {
   parcela: string;
 }
 
+/** Uma linha de conferência do perímetro (os mesmos valores que vão pra planilha SIGEF). */
+export interface LinhaConferencia {
+  codigo: string; longitude: string; sigmaX: string; latitude: string; sigmaY: string;
+  altitude: string; sigmaZ: string; metodo: string; tipoLimite: string; cns: string;
+  matricula: string; confrontante: string;
+}
+
+/** Monta os dados do perímetro (para conferir na tela ANTES de baixar a planilha .ods). */
+export function linhasConferencia(
+  res: ResultadoCalculo, confrontantes: Confrontante[], confrontantePorLado: Record<number, string>,
+  tec: TecnicoData, cnsImovel: string,
+): LinhaConferencia[] {
+  const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
+  return res.vertices.map((v, i) => {
+    const conf = confrontantePorLado[i] ? mapaC.get(confrontantePorLado[i]) : undefined;
+    return {
+      codigo: v.codigoSigef,
+      longitude: grausParaDMS(v.lon, { estilo: 'sigef', eixo: 'lon', casas: 3 }),
+      sigmaX: sigmaBR(v.sigmaX, '0,00'),
+      latitude: grausParaDMS(v.lat, { estilo: 'sigef', eixo: 'lat', casas: 3 }),
+      sigmaY: sigmaBR(v.sigmaY, '0,00'),
+      altitude: numBR(v.elevacao),
+      sigmaZ: sigmaBR(v.sigmaZ, '0,01'),
+      metodo: v.metodo || tec.metodoPosicionamento || 'PG6',
+      tipoLimite: v.tipoLimite || tec.tipoLimite || 'LA6',
+      cns: (conf?.cns || cnsImovel || '').trim(),
+      matricula: conf?.matricula ? formatMatricula(conf.matricula) : '',
+      confrontante: descritivoConfrontante(conf),
+    };
+  });
+}
+
 function linhasDaGleba(g: GlebaSigef, tecnico: TecnicoData, cnsImovel: string): string[] {
   const sem = g.res.vertices.filter((v) => !v.codigoSigef).length;
   if (sem > 0) throw new Error(`${sem} vértice(s) sem código. Renumere os vértices antes de gerar a planilha.`);

@@ -72,6 +72,7 @@ import { souMaster } from '@/lib/store/suporte';
 import TermosModal from '@/components/TermosModal';
 import MasterPainelModal from '@/components/MasterPainelModal';
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
+import PlanilhaConferenciaModal from '@/components/PlanilhaConferenciaModal';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
 import { gerarMemorialDocx } from '@/lib/export/memorial';
 import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
@@ -188,6 +189,7 @@ export default function EditorPage() {
   const iconeCab = (chave: string, icone: React.ReactNode) => (prefs.iconesCabecalhoOcultos.includes(chave) ? null : icone);
   const [termosOk, setTermosOk] = useState(true); // aceite dos termos de uso (bloqueia até aceitar)
   const [setupOk, setSetupOk] = useState(true); // primeiro acesso: cadastro de empresa/autônomo
+  const [planilhaConfAberta, setPlanilhaConfAberta] = useState(false); // conferência da planilha SIGEF
   const [masterAberto, setMasterAberto] = useState(false); // painel do titular (só master)
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
@@ -2129,7 +2131,7 @@ export default function EditorPage() {
         {/* 5) Peças */}
         <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}>{iconeCab('trt', <FileText />)} TRT</Button></Etapa>
         <Etapa st={etapas.memorial}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEM</Button></Etapa>
-        <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planilha SIGEF (.ods)" onClick={exportarOds}><Download /> ODS</Button></Etapa>
+        <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
@@ -2941,6 +2943,11 @@ export default function EditorPage() {
         numGlebas={glebas.length}
       />
       <PontosBancoModal open={pontosAberto} onOpenChange={setPontosAberto} />
+      <PlanilhaConferenciaModal
+        open={planilhaConfAberta} onOpenChange={setPlanilhaConfAberta}
+        imovel={imovel} res={res} confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} tecnico={tecnico}
+        onBaixar={() => { setPlanilhaConfAberta(false); exportarOds(); }}
+      />
       <ImportPreviewModal
         open={!!previewData}
         onOpenChange={(open) => { if (!open) setPreviewData(null); }}
