@@ -213,7 +213,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[94vh] w-[96vw] max-w-[96vw] flex-col p-3">
+      <DialogContent className="flex h-screen w-screen max-w-none flex-col gap-0 rounded-none border-0 p-3 sm:rounded-none">
         <DialogHeader className="border-b pb-2">
           <DialogTitle className="flex items-center gap-2 text-base font-bold"><ImageIcon className="size-5 text-primary" /> Estúdio (edição de imagem — isolado do projeto)</DialogTitle>
         </DialogHeader>

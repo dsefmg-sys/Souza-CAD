@@ -2368,9 +2368,19 @@ export default function EditorPage() {
           );
         })()}
         <main className="relative isolate min-w-0 flex-1">
+          {/* Alternância MAPA/PLANTA: botão quadrado dedicado no canto superior esquerdo. É a troca
+              mais usada do app, por isso ganha lugar fixo e exclusivo. Mostra pra onde vai + o atalho F1. */}
+          <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
+            title="Alternar entre mapa e planta (F1)"
+            className="absolute left-3 top-3 z-[1160] flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-primary/50 bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
+            {vista === 'mapa' ? <Eye className="size-5 text-primary" /> : <MapIcon className="size-5 text-primary" />}
+            <span className="text-[10px] font-bold leading-none">{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
+            <span className="text-[8px] font-bold leading-none text-amber-500">F1</span>
+          </button>
           {/* BARRA FLUTUANTE (arrastável): dados do projeto + ações úteis, numa linha só.
-              Nasce no topo, baixinha, pra não tampar o desenho. Traz também o DETALHES. */}
-          <div className={`absolute z-[1150] flex select-none items-stretch gap-1.5 rounded-xl border bg-background/95 p-1.5 shadow-xl backdrop-blur [&_button.act]:flex [&_button.act]:size-10 [&_button.act]:items-center [&_button.act]:justify-center [&_button.act]:rounded-lg ${dadosPos ? '' : 'top-3 left-3'}`} style={dadosPos ? { left: dadosPos.x, top: dadosPos.y } : undefined}>
+              Nasce no topo, baixinha, pra não tampar o desenho. Traz também o DETALHES.
+              Começa depois do botão de alternância pra não colidir com ele. */}
+          <div className={`absolute z-[1150] flex select-none items-stretch gap-1.5 rounded-xl border bg-background/95 p-1.5 shadow-xl backdrop-blur [&_button.act]:flex [&_button.act]:size-10 [&_button.act]:items-center [&_button.act]:justify-center [&_button.act]:rounded-lg ${dadosPos ? '' : 'top-3 left-20'}`} style={dadosPos ? { left: dadosPos.x, top: dadosPos.y } : undefined}>
             {/* alça de arraste */}
             <div className="flex cursor-move items-center rounded-lg bg-muted/60 px-1.5 text-muted-foreground hover:bg-muted" onPointerDown={dadosDown} onPointerMove={dadosMove} onPointerUp={dadosUp} title="Arraste para mover esta barra"><Move className="size-4" /></div>
             {/* dados em linha */}
@@ -2775,7 +2785,13 @@ export default function EditorPage() {
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}
         vertices={vertices}
-        outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))}
+        outrasGlebas={[
+          // outras glebas do próprio projeto
+          ...glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) })),
+          // parcelas certificadas importadas do SIGEF/INCRA (o motivo real de existir a análise) —
+          // convertidas de lat/lon para UTM do projeto pra comparar geometria com a nossa
+          ...parcelasCert.map((p, i) => ({ nome: p.info?.titulo || `Parcela INCRA ${i + 1}`, pts: p.anel.map(([lat, lon]) => geoParaUtm(lat, lon, zona, hemisferio)) })),
+        ]}
       />
       <ConfrontanteEditModal
         open={confEditId != null}
