@@ -5,6 +5,7 @@ import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo,
 import { numBR, formatMatricula, azimuteDMS } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { rotulosProfissional } from '@/lib/topo/profissional';
+import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { distanciaCota } from '@/lib/topo/objetos';
 import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
@@ -886,6 +887,9 @@ export default function Planta({
       {/* ---------- OBJETOS DE DESENHO ---------- */}
       {objetos.map((o) => {
         const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
+        if (o.tipo === 'simbolo' && sp[0]) {
+          return <g key={o.id} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(1.5)`} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
+        }
         if (o.tipo === 'texto' && sp[0]) {
           const anchor = o.alinhamento === 'center' ? 'middle' : o.alinhamento === 'right' ? 'end' : 'start';
           return (

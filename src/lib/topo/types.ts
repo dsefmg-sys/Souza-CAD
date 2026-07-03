@@ -209,7 +209,7 @@ export interface Confrontante {
 }
 
 /** Objeto de desenho livre (georreferenciado) sobreposto ao mapa/planta. */
-export type ObjetoTipo = 'polilinha' | 'texto' | 'cota';
+export type ObjetoTipo = 'polilinha' | 'texto' | 'cota' | 'simbolo';
 export interface PontoLL { lat: number; lon: number; leste: number; norte: number; }
 export interface ObjetoDesenho {
   id: string;
@@ -222,6 +222,7 @@ export interface ObjetoDesenho {
   espessura?: number;
   preenchido?: boolean;       // polilinha fechada com cor sólida (ex.: lago)
   tracejado?: boolean;        // polilinha com traço tracejado (ex.: estrada)
+  simbolo?: string;           // elemento cartográfico (arvore, arbusto, casa, poste, pedra)
 }
 
 /** Um lado da poligonal (vértice i → vértice i+1). */

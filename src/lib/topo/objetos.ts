@@ -14,6 +14,10 @@ export function novoTexto(pt: PontoLL, texto: string, opts: { tamanho?: number; 
   return { id: novoObjetoId(), tipo: 'texto', pontos: [pt], texto, tamanho: opts.tamanho ?? 12, alinhamento: opts.alinhamento ?? 'left', cor: opts.cor ?? '#000000' };
 }
 
+export function novoSimbolo(pt: PontoLL, simbolo: string): ObjetoDesenho {
+  return { id: novoObjetoId(), tipo: 'simbolo', pontos: [pt], simbolo };
+}
+
 export function novaCota(a: PontoLL, b: PontoLL, opts: { cor?: string } = {}): ObjetoDesenho {
   return { id: novoObjetoId(), tipo: 'cota', pontos: [a, b], cor: opts.cor ?? '#b91c1c', espessura: 1 };
 }

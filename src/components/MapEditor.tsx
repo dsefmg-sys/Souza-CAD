@@ -5,11 +5,12 @@ import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Recta
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho, Confrontante } from '@/lib/topo/types';
 import { distanciaCota } from '@/lib/topo/objetos';
+import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { corDivisa, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { numBR } from '@/lib/topo/geometry';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
@@ -243,7 +244,7 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
   useMapEvents({
     click(e) {
       if (modo === 'inserir') onInserir(e.latlng.lat, e.latlng.lng);
-      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
+      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'simbolo') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
     },
     dblclick(e) {
       // duplo clique abre o editor de texto (não dá zoom — doubleClickZoom desligado)
@@ -504,6 +505,19 @@ export default function MapEditor(props: Props) {
                   }} />
               ))}
             </Fragment>
+          );
+        }
+        if (o.tipo === 'simbolo') {
+          const html = `<svg viewBox="-14 -14 28 28" width="30" height="30" style="overflow:visible;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))">${simboloSvgInterno(o.simbolo ?? '')}</svg>`;
+          return (
+            <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable
+              icon={L.divIcon({ className: 'simbolo-obj', html, iconSize: [30, 30], iconAnchor: [15, 15] })}
+              eventHandlers={{
+                click: () => onSelecObjeto?.(o.id),
+                contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY),
+                drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); },
+                dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
+              }} />
           );
         }
         // texto

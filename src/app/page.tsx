@@ -38,7 +38,8 @@ import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
-import { novaPolilinha, novoTexto, novaCota } from '@/lib/topo/objetos';
+import { novaPolilinha, novoTexto, novaCota, novoSimbolo } from '@/lib/topo/objetos';
+import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
 import { montarVertices, reordenar, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
@@ -192,6 +193,8 @@ export default function EditorPage() {
   const [selMulti, setSelMulti] = useState<Set<string>>(new Set()); // vértices marcados no modo "triângulo"
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [tamNomes, setTamNomes] = useState(11); // tamanho da fonte dos nomes dos vértices no mapa
+  const [simboloSel, setSimboloSel] = useState('arvore'); // elemento cartográfico ativo (modo 'simbolo')
+  const [elementosAberto, setElementosAberto] = useState(false); // popover do seletor de elementos
   const [escalaInterface, setEscalaInterface] = useState(1); // acessibilidade: escala das letras da interface
   const [snapAtivo, setSnapAtivo] = useState(false);
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
@@ -1249,7 +1252,10 @@ export default function EditorPage() {
   }
   function onCliqueDesenho(lat: number, lon: number) {
     const p = pontoDesenho(lat, lon);
-    if (modo === 'texto') {
+    if (modo === 'simbolo') {
+      setObjetos((os) => [...os, novoSimbolo(p, simboloSel)]);
+      return;
+    } else if (modo === 'texto') {
       const t = window.prompt('Texto a inserir:'); if (!t) return;
       setObjetos((os) => [...os, novoTexto(p, t)]);
     } else if (modo === 'cota') {
@@ -2435,6 +2441,18 @@ export default function EditorPage() {
                           : <span className="ml-auto text-[9px] font-bold text-amber-400">F8</span>}</Button>
                       <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
                       <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F10)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
+                      <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos: inserir símbolos (árvore, casa, poste…) clicando no desenho"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /> {L('Elementos')}<span className="ml-auto text-[9px] font-bold text-muted-foreground">{modo === 'simbolo' ? SIMBOLOS.find((s) => s.chave === simboloSel)?.rotulo : ''}</span></Button>
+                      {elementosAberto && (
+                        <div className="grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
+                          {SIMBOLOS.map((s) => (
+                            <button key={s.chave} type="button" title={s.rotulo}
+                              className={`flex items-center justify-center rounded p-1 hover:bg-background ${modo === 'simbolo' && simboloSel === s.chave ? 'bg-background ring-1 ring-primary' : ''}`}
+                              onClick={() => { setSimboloSel(s.chave); setModo('simbolo'); setElementosAberto(false); }}>
+                              <svg viewBox="-14 -14 28 28" className="size-6" dangerouslySetInnerHTML={{ __html: simboloSvgInterno(s.chave) }} />
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta para inserir um ponto"><Plus /> {L('Inserir vértice')}</Button>
                       <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
                       <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'considerar' ? 'navegar' : 'considerar'); }} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo (F11)"><Plus /> {L('Considerar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
