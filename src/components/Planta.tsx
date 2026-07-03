@@ -1702,7 +1702,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
-              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fs(9)} larguraChars={ovProp.larguraChars ?? 66} textAnchor="middle" texto={txtProp} />
+              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fs(9)} larguraChars={ovProp.larguraChars ?? 66} textAnchor="middle" texto={txtProp} maxHeight={100} />
             </g>
           );
         })()}
@@ -1748,7 +1748,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
-              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fs(9)} larguraChars={ovLaudo.larguraChars ?? 66} textAnchor="middle" texto={txtLaudo} />
+              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fs(9)} larguraChars={ovLaudo.larguraChars ?? 66} textAnchor="middle" texto={txtLaudo} maxHeight={100} />
             </g>
           );
         })()}
@@ -1794,7 +1794,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idConf, e); } : undefined}>
-              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fs(8)} larguraChars={ovConf.larguraChars ?? 74} textAnchor="middle" texto={txtConf} />
+              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fs(8)} larguraChars={ovConf.larguraChars ?? 82} textAnchor="middle" texto={txtConf} maxHeight={70} />
             </g>
           );
         })()}
@@ -1893,7 +1893,7 @@ function SimboloDivisa({ tipo, x, y }: { tipo: string; x: number; y: number }) {
 }
 
 // SVG não quebra texto sozinho; quebramos em linhas por contagem de caracteres (texto nativo)
-function TextoQuebrado({ x, y, fontSize, larguraChars, texto, textAnchor = 'start', lineHeight = 1.45 }: { x: number; y: number; fontSize: number; larguraChars: number; texto: string; textAnchor?: 'start' | 'middle' | 'end'; lineHeight?: number }) {
+function TextoQuebrado({ x, y, fontSize, larguraChars, texto, textAnchor = 'start', lineHeight = 1.45, maxHeight }: { x: number; y: number; fontSize: number; larguraChars: number; texto: string; textAnchor?: 'start' | 'middle' | 'end'; lineHeight?: number; maxHeight?: number }) {
   const palavras = texto.split(' ');
   const linhas: string[] = [];
   let atual = '';
@@ -1902,10 +1902,16 @@ function TextoQuebrado({ x, y, fontSize, larguraChars, texto, textAnchor = 'star
     else atual = (atual + ' ' + p).trim();
   }
   if (atual) linhas.push(atual.trim());
+  // encolhe a fonte só o necessário para o texto caber na altura do bloco (evita vazar o quadro)
+  let fs = fontSize;
+  if (maxHeight && linhas.length > 0) {
+    const precisa = linhas.length * fs * lineHeight;
+    if (precisa > maxHeight) fs = Math.max(4, maxHeight / (linhas.length * lineHeight));
+  }
   return (
-    <text x={x} y={y} fontSize={fontSize} fill="#000" textAnchor={textAnchor}>
+    <text x={x} y={y} fontSize={fs} fill="#000" textAnchor={textAnchor}>
       {linhas.map((l, i) => (
-        <tspan key={i} x={x} dy={i === 0 ? 0 : fontSize * lineHeight} textAnchor={textAnchor}>{l}</tspan>
+        <tspan key={i} x={x} dy={i === 0 ? 0 : fs * lineHeight} textAnchor={textAnchor}>{l}</tspan>
       ))}
     </text>
   );
