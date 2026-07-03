@@ -7,6 +7,7 @@ import { calcular } from '../topo/calcular';
 import { gerarMemorialDocx } from '../export/memorial';
 import { montarContentXml } from '../export/sigefOds';
 import { validarIntegridadeDocx, validarIntegridadeOds } from '../export/integridade';
+import { cpfOuCnpjValido } from '../topo/validation';
 import type { TecnicoData } from '../topo/types';
 
 const tecnico: TecnicoData = {
@@ -25,6 +26,15 @@ describe('projeto fictício → peças íntegras', () => {
     expect(f.imovel.ficticio).toBe(true);
     expect(f.vertices.length).toBeGreaterThanOrEqual(3);
     expect(res.areaHa).toBeGreaterThan(0);
+  });
+
+  it('usa CPFs VÁLIDOS (a demo não pode mostrar aviso de CPF inválido)', () => {
+    expect(cpfOuCnpjValido(f.imovel.cpfProprietario!)).toBe(true);
+    expect(cpfOuCnpjValido(f.imovel.cpfConjugeProprietario!)).toBe(true);
+    for (const c of f.confrontantes) {
+      if (c.cpf?.trim()) expect(cpfOuCnpjValido(c.cpf), `CPF do confrontante ${c.nome}`).toBe(true);
+      if (c.conjugeCpf?.trim()) expect(cpfOuCnpjValido(c.conjugeCpf), `CPF do cônjuge de ${c.nome}`).toBe(true);
+    }
   });
 
   it('memorial gera um .docx íntegro (com marca de dados fictícios)', async () => {

@@ -48,7 +48,7 @@ export function gerarProjetoFicticio(): ProjetoFicticio {
     if (/antonio/i.test(c.nome)) { c.cpf = '111.444.777-35'; c.matricula = '2451'; c.cns = '01.234-5'; }
     else if (/maria/i.test(c.nome)) { c.cpf = '529.982.247-25'; c.matricula = '1897'; c.cns = '01.234-5'; c.conjugeNome = 'Pedro Modelo'; c.conjugeCpf = '390.533.447-05'; }
     else if (/corrego/i.test(c.nome)) { c.nome = 'Córrego do Exemplo'; c.condicao = 'posseiro'; }
-    else { c.cpf = '087.575.606-64'; c.matricula = '3320'; c.cns = '01.234-5'; }
+    else { c.cpf = '087.575.606-92'; c.matricula = '3320'; c.cns = '01.234-5'; }
   }
 
   const imovel: ImovelData = {
@@ -57,9 +57,9 @@ export function gerarProjetoFicticio(): ProjetoFicticio {
     cns: '01.234-5',
     codigoImovelIncra: '9012345678901',
     proprietario: 'José Demonstração da Silva',
-    cpfProprietario: '231.002.999-00',
+    cpfProprietario: '231.002.999-81',
     conjugeProprietario: 'Ana Demonstração da Silva',
-    cpfConjugeProprietario: '648.375.190-40',
+    cpfConjugeProprietario: '648.375.190-75',
     tipoPessoa: 'Física',
     municipio: 'Espera Feliz-MG',
     local: 'Córrego do Exemplo, Zona Rural, Espera Feliz-MG',
