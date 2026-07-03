@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette, BarChart3, FlaskConical,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette, BarChart3, FlaskConical, Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ import ModalImport from '@/components/ModalImport';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
-import RequerimentoModal from '@/components/RequerimentoModal';
+import RequerimentoModal, { PESSOA_VAZIA } from '@/components/RequerimentoModal';
 import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
 import ConsultarModal from '@/components/ConsultarModal';
@@ -80,6 +80,8 @@ import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
 import { exportarKML } from '@/lib/export/kml';
 import RelatorioSobreposicaoModal from '@/components/RelatorioSobreposicaoModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import JSZip from 'jszip';
+import { gerarRequerimentoDocx } from '@/lib/export/requerimento';
 
 const MapEditor = dynamic(() => import('@/components/MapEditor'), {
   ssr: false,
@@ -1578,6 +1580,67 @@ export default function EditorPage() {
     }, 450);
   }
 
+  // Gera o PDF da planta como Blob (mesma rasterização do exportarPlanta), sem baixar — pro pacote.
+  function gerarPlantaPdfBlob(): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      setVista('planta'); setObjetoSelId(null); setDesenhoBuffer([]);
+      setTimeout(() => {
+        const svg = document.getElementById('planta-svg') as SVGSVGElement | null;
+        if (!svg) { resolve(null); return; }
+        const xml = new XMLSerializer().serializeToString(svg);
+        const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
+        const img = new Image();
+        img.onload = () => {
+          const scale = 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = 1587 * scale; canvas.height = 1123 * scale;
+          const ctx = canvas.getContext('2d')!;
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
+          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 420, 297);
+          resolve(pdf.output('blob'));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+        img.src = url;
+      }, 500);
+    });
+  }
+
+  // Pacote de entrega num clique: memorial + planilha SIGEF + requerimento + planta (PDF), num zip só.
+  async function baixarPacoteEntrega() {
+    if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
+    if (!verificarConciliacaoSigef()) return;
+    if (!verificarProntoParaExportar()) return;
+    setProcessando(true);
+    aviso('Montando o pacote de entrega (memorial, planilha, requerimento e planta)…');
+    try {
+      const vs = await comCodigos();
+      const r = calcular(vs, confrontantePorLado);
+      const ef = valoresEfetivos(r, imovel);
+      const nome = imovel.denominacao || nomeProjeto || 'imovel';
+      const memorial = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente });
+      const modeloProprio = carregarModeloSigef();
+      const tpl: ArrayBuffer = modeloProprio !== null ? modeloProprio : await fetch('/templates/sigef.ods').then((rr) => rr.arrayBuffer());
+      const ods = await gerarSigefOds({ templateBytes: tpl, res: r, imovel, tecnico, confrontantes, confrontantePorLado });
+      // se requerente/transmitente ainda não foram preenchidos, cai no proprietário do imóvel
+      const propComoParte: PessoaQualificada = { ...PESSOA_VAZIA, nome: imovel.proprietario || '—', cpf: imovel.cpfProprietario || '', cidadeUf: imovel.municipio || '' };
+      const requerimento = await gerarRequerimentoDocx({ imovel, tecnico, requerente: requerente ?? propComoParte, transmitente: transmitente ?? propComoParte, areaRealHa: ef.areaHa, dataExtenso: dataPorExtenso() });
+      const planta = await gerarPlantaPdfBlob();
+      const zip = new JSZip();
+      zip.file(`Memorial - ${nome}.docx`, memorial);
+      zip.file(`SIGEF - ${nome}.ods`, ods);
+      zip.file(`Requerimento - ${nome}.docx`, requerimento);
+      if (planta) zip.file(`Planta - ${nome}.pdf`, planta);
+      const blob = await zip.generateAsync({ type: 'blob' });
+      saveAs(blob, `Pacote de entrega - ${nome}.zip`);
+      setBaixou((b) => ({ ...b, memorial: true, ods: true, req: true, planta: planta ? true : b.planta }));
+      aviso(planta ? 'Pacote de entrega gerado com todas as peças.' : 'Pacote gerado (a planta falhou ao rasterizar — gere-a à parte).');
+    } catch (e) { aviso((e as Error).message || 'Erro ao montar o pacote.'); }
+    finally { setProcessando(false); }
+  }
+
   async function importarReferenciaGeoJson(file: File) {
     try {
       const texto = await file.text();
@@ -2187,6 +2250,7 @@ export default function EditorPage() {
         <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
+        <Button size="sm" variant="outline" className="shrink-0 border-emerald-600/50 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:text-emerald-400" disabled={processando} title="Pacote de entrega num clique: memorial, planilha SIGEF, requerimento e planta juntos, num .zip" onClick={baixarPacoteEntrega}><Package /> PACOTE</Button>
         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
         </a>
