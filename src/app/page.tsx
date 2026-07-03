@@ -1839,6 +1839,10 @@ export default function EditorPage() {
       } catch (e) {
         setProjetoId(id);
         if (e instanceof NuvemSemPermissao) {
+          // o projeto FOI salvo localmente (só a nuvem negou) — então o trabalho está seguro e o
+          // botão deve ficar verde igual a um salvamento normal, senão parece que não salvou nada
+          setSalvoOk(true);
+          ultimoSalvoSig.current = projSig; acabouDeSalvar.current = true; setSalvarLaranja(false);
           aviso('Salvo localmente. A nuvem negou: publique as regras do Firestore (firebase deploy --only firestore:rules).');
         } else {
           aviso('Não consegui salvar na nuvem: ' + ((e as Error).message || 'erro'));
@@ -2416,18 +2420,21 @@ export default function EditorPage() {
           {/* BARRA FLUTUANTE (arrastável): dados do projeto + ações úteis, numa linha só.
               Nasce no topo, baixinha, pra não tampar o desenho. Traz também o DETALHES.
               Começa depois do botão de alternância pra não colidir com ele. */}
-          <div className={`absolute z-[1150] flex select-none items-stretch gap-1.5 rounded-xl border bg-background/95 p-1.5 shadow-xl backdrop-blur [&_button.act]:flex [&_button.act]:size-10 [&_button.act]:items-center [&_button.act]:justify-center [&_button.act]:rounded-lg ${dadosPos ? '' : 'top-3 left-20'}`} style={dadosPos ? { left: dadosPos.x, top: dadosPos.y } : undefined}>
+          <div className={`absolute z-[1150] flex select-none items-stretch gap-1.5 rounded-xl border bg-background/95 p-1.5 shadow-xl backdrop-blur [&_button.act]:flex [&_button.act]:size-10 [&_button.act]:items-center [&_button.act]:justify-center [&_button.act]:rounded-lg ${dadosPos ? '' : 'top-3 right-14'}`} style={dadosPos ? { left: dadosPos.x, top: dadosPos.y } : undefined}>
             {/* alça de arraste */}
             <div className="flex cursor-move items-center rounded-lg bg-muted/60 px-1.5 text-muted-foreground hover:bg-muted" onPointerDown={dadosDown} onPointerMove={dadosMove} onPointerUp={dadosUp} title="Arraste para mover esta barra"><Move className="size-4" /></div>
             {/* dados em linha */}
             <div className="flex items-center gap-3 px-2 text-center leading-tight">
               <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Área SGL</div><div className="text-base font-bold">{res ? `${numBR(res.areaHa, 4)}` : '—'}<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">ha</span></div></div>
               <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Perímetro</div><div className="text-base font-bold">{res ? `${numBR(res.perimetro)}` : '—'}<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">m</span></div></div>
-              {/* transparência das parcelas INCRA importadas: fica aqui, antes dos vértices, só quando há parcela e no mapa */}
+              {/* parcelas INCRA importadas: liga/desliga + transparência, aqui na barra, antes dos vértices */}
               {vista === 'mapa' && parcelasCert.length > 0 && (
-                <div title="Transparência das parcelas INCRA importadas (arraste)">
-                  <div className="text-[9px] font-medium uppercase text-muted-foreground">INCRA</div>
-                  <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-16 accent-cyan-600 align-middle" />
+                <div title="Parcelas INCRA importadas: marque para mostrar, arraste para a transparência">
+                  <label className="flex cursor-pointer items-center gap-1 text-[9px] font-medium uppercase text-muted-foreground">
+                    <input type="checkbox" className="size-3 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
+                    INCRA ({parcelasCert.length})
+                  </label>
+                  <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} disabled={!mostrarCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-16 accent-cyan-600 align-middle disabled:opacity-40" />
                 </div>
               )}
               <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Vértices</div><div className="text-base font-bold">{vertices.length}</div></div>
@@ -2509,15 +2516,7 @@ export default function EditorPage() {
             </div>
           )}
 
-          {/* CAMADA INCRA: só o liga/desliga aqui (a opacidade foi pra barra flutuante, junto dos dados) */}
-          {vista === 'mapa' && parcelasCert.length > 0 && (
-            <div className="absolute bottom-16 left-3 z-[1000] w-56 rounded-lg border bg-background/95 p-2 text-xs shadow-lg backdrop-blur">
-              <label className="flex items-center justify-between font-semibold">
-                <span className="flex items-center gap-1.5"><Users className="size-3.5 text-cyan-600" /> Parcelas INCRA ({parcelasCert.length})</span>
-                <input type="checkbox" className="size-4 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
-              </label>
-            </div>
-          )}
+          {/* (o liga/desliga e a transparência das parcelas INCRA agora vivem na barra flutuante) */}
 
           {/* PAINEL DE INFO da parcela selecionada (não tampa o mapa: canto superior direito, estreito) */}
           {vista === 'mapa' && parcelaSel != null && parcelasCert[parcelaSel] && (
