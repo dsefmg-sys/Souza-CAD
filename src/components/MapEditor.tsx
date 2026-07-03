@@ -575,7 +575,7 @@ export default function MapEditor(props: Props) {
         const mLat = 111320, mLon = 111320 * Math.cos((cLat * Math.PI) / 180);
         const lats = validos.map((v) => v.lat), lons = validos.map((v) => v.lon);
         const wM = (Math.max(...lons) - Math.min(...lons)) * mLon, hM = (Math.max(...lats) - Math.min(...lats)) * mLat;
-        const L = Math.min(80, Math.max(10, Math.hypot(wM, hM) * 0.08)); // metros
+        const L = Math.min(160, Math.max(20, Math.hypot(wM, hM) * 0.16)); // metros (dobro do tamanho, mais visível)
         const arrastavel = modo === 'navegar' && !!onAjustarDivisaConf;
         return validos.filter((v) => v.tipo === 'M').map((v) => {
           let az = v.divisaConfAz;
@@ -585,7 +585,9 @@ export default function MapEditor(props: Props) {
           const eLon = v.lon + (L * Math.sin(a)) / mLon;
           return (
             <Fragment key={`dc${v.id}`}>
-              <Polyline positions={[[v.lat, v.lon], [eLat, eLon]]} pathOptions={{ color: '#475569', weight: 1, dashArray: '4 3' }} />
+              {/* halo escuro + linha branca grossa: bem visível sobre satélite ou mapa claro */}
+              <Polyline positions={[[v.lat, v.lon], [eLat, eLon]]} pathOptions={{ color: '#0f172a', weight: 6, opacity: 0.65 }} />
+              <Polyline positions={[[v.lat, v.lon], [eLat, eLon]]} pathOptions={{ color: '#ffffff', weight: 3 }} />
               {arrastavel && (
                 <Marker position={[eLat, eLon]} draggable
                   icon={L_DIVISA_ICON}

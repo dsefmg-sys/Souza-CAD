@@ -506,11 +506,11 @@ export default function EditorPage() {
       else if (k === 'F5') { e.preventDefault(); setBloqueado((b) => !b); }
       else if (k === 'F6') { e.preventDefault(); setModo('linha'); setDesenhoBuffer([]); }
       else if (k === 'F7') { e.preventDefault(); setModo('polilinha'); setDesenhoBuffer([]); }
-      else if (k === 'F8') { e.preventDefault(); setModo('texto'); }
-      else if (k === 'F9') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
-      else if (k === 'F10') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
+      else if (k === 'F8') { e.preventDefault(); setModo('tracejado'); setDesenhoBuffer([]); }
+      else if (k === 'F9') { e.preventDefault(); setModo('texto'); }
+      else if (k === 'F10') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
       else if (k === 'F11') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
-      else if (k === 'F12') { e.preventDefault(); setVista('mapa'); setModo('inserir'); }
+      else if (k === 'F12') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
       else if ((k === 'Delete' || k === 'Backspace') && modo === 'multi') {
         e.preventDefault();
         apagarMultiSelecionados();
@@ -2389,12 +2389,12 @@ export default function EditorPage() {
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
                       <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)"><PenTool /> {L('Linha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F6</span></Button>
                       <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; ao fechar (clicar no 1º ponto) vira polígono (F7; botão direito cancela)"><PenTool /> {L('Polilinha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F7</span></Button>
-                      <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (ex.: estrada); clique vários pontos e depois Finalizar"><PenTool className="opacity-70" /> {L('Tracejado')}</Button>
-                      <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F8)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F8</span></Button>
-                      <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F9)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
-                      <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F10): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
+                      <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (ex.: estrada); clique vários pontos e depois Finalizar (F8)"><PenTool className="opacity-70" /> {L('Tracejado')}<span className="ml-auto text-[9px] font-bold text-amber-400">F8</span></Button>
+                      <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
+                      <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F10)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
+                      <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta para inserir um ponto"><Plus /> {L('Inserir vértice')}</Button>
+                      <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
                       <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'considerar' ? 'navegar' : 'considerar'); }} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo (F11)"><Plus /> {L('Considerar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
-                      <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice (F12)"><Plus /> {L('Inserir vértice')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
                       <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
                       <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'multi' ? 'navegar' : 'multi'); }} title="Selecionar vários vértices: clique um a um ou arraste uma caixa; Delete apaga os marcados">
                         <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
@@ -2948,6 +2948,13 @@ export default function EditorPage() {
         onInserirImovel={inserirImovelConsulta} onInserirCartorio={inserirCartorioConsulta} />
 
       {/* menu de contexto multiuso (clique direito dependendo do elemento/situação) */}
+      {/* aviso de projeto de demonstração: verde-claro pulsante na base da tela (não vai no PDF) */}
+      {imovel.ficticio && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-2 z-[1500] flex justify-center">
+          <span className="animate-pulse rounded-full border border-green-400/40 bg-green-500/10 px-4 py-1 text-sm font-bold text-green-400 shadow-lg backdrop-blur">DADOS FICTÍCIOS — projeto de demonstração</span>
+        </div>
+      )}
+
       {menuContexto && (
         <>
           <div className="fixed inset-0 z-[1190]" onClick={() => setMenuContexto(null)} onContextMenu={(e) => { e.preventDefault(); setMenuContexto(null); }} />

@@ -688,11 +688,7 @@ export default function Planta({
       {/* linha horizontal separando a área do desenho da faixa inferior (situação/convenções/coordenadas) */}
       <line x1={95} y1={DRAW.y1} x2={W - CARW} y2={DRAW.y1} stroke="#000" strokeWidth={1.2} />
 
-      {/* marca d'água de DADOS FICTÍCIOS (projeto de demonstração) */}
-      {imovel.ficticio && (() => {
-        const mx = (DRAW.x0 + DRAW.x1) / 2, my = (DRAW.y0 + DRAW.y1) / 2;
-        return <text x={mx} y={my} fontSize={110} fontWeight="bold" fill="#ef4444" fillOpacity={0.12} textAnchor="middle" transform={`rotate(-28 ${mx} ${my})`} style={{ pointerEvents: 'none' }}>DADOS FICTÍCIOS</text>;
-      })()}
+      {/* (a marca de DADOS FICTÍCIOS saiu da planta; agora é um aviso verde pulsante abaixo da tela) */}
 
       {/* superfície de captura para edição (transparente; não aparece no PDF) */}
       {editavel && <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="transparent" style={{ pointerEvents: 'all' }} />}
@@ -1726,7 +1722,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
-              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(9)} larguraChars={ovProp.larguraChars ?? 66} textAnchor="middle" texto={txtProp} maxHeight={100} />
+              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(9) * (ovProp.escala ?? 1)} larguraChars={ovProp.larguraChars ?? 66} textAnchor="middle" texto={txtProp} maxHeight={100} />
             </g>
           );
         })()}
@@ -1772,7 +1768,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
-              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(9)} larguraChars={ovLaudo.larguraChars ?? 66} textAnchor="middle" texto={txtLaudo} maxHeight={100} />
+              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(9) * (ovLaudo.escala ?? 1)} larguraChars={ovLaudo.larguraChars ?? 66} textAnchor="middle" texto={txtLaudo} maxHeight={100} />
             </g>
           );
         })()}
@@ -1818,7 +1814,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idConf, e); } : undefined}>
-              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fsConf(8)} larguraChars={ovConf.larguraChars ?? 82} textAnchor="middle" texto={txtConf} maxHeight={70} />
+              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fsConf(8) * (ovConf.escala ?? 1)} larguraChars={ovConf.larguraChars ?? 82} textAnchor="middle" texto={txtConf} maxHeight={70} />
             </g>
           );
         })()}
