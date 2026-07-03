@@ -462,6 +462,7 @@ export default function Planta({
     onTextoPatch,
     onDragStart: (id: string, e: ReactPointerEvent) => {
       if (e.button === 2) return; // botão direito é do menu de contexto — não inicia arraste
+      if (e.detail >= 2) return;  // 2º clique de um duplo clique — deixa o duplo clique abrir a edição
       const u = svgPonto(e); if (!u) return;
       if (id.startsWith('vert.')) {
         const vId = id.slice(5);

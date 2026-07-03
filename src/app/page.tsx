@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette, BarChart3, FlaskConical, Package, Sparkles,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette, BarChart3, FlaskConical, Package, Sparkles, Leaf,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
 import RequerimentoModal, { PESSOA_VAZIA } from '@/components/RequerimentoModal';
 import ExtrairIaModal from '@/components/ExtrairIaModal';
+import CarModal from '@/components/CarModal';
 import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
 import ConsultarModal from '@/components/ConsultarModal';
@@ -263,6 +264,7 @@ export default function EditorPage() {
   const [errataAberto, setErrataAberto] = useState(false);
   const [consultarAberto, setConsultarAberto] = useState(false);
   const [iaAberta, setIaAberta] = useState(false);
+  const [carAberto, setCarAberto] = useState(false);
   const [configAberta, setConfigAberta] = useState(false);
   const [configAba, setConfigAba] = useState<'pessoal' | 'escritorio' | 'numeracao' | 'modelos' | undefined>(undefined);
   const [gestaoAberta, setGestaoAberta] = useState(false);
@@ -2259,7 +2261,7 @@ export default function EditorPage() {
         {/* 2) Dados do projeto atual */}
         <Etapa st={etapas.dados}><Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" className={COR_DADOS} title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório">{iconeCab('dados', <BookUser />)} DADOS</Button></Link></Etapa>
         <Button size="sm" variant="outline" className={`shrink-0 px-2 ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /></Button>
-        <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_DADOS}`} title="Extrair dados do imóvel com IA a partir de um texto colado (matrícula, escritura…)" onClick={() => setIaAberta(true)}><Sparkles className="size-4" /> IA</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 px-2 ${COR_DADOS}`} title="Extrair dados do imóvel com IA a partir de um texto colado (matrícula, escritura…)" onClick={() => setIaAberta(true)}><Sparkles className="size-4" /></Button>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
@@ -2277,6 +2279,8 @@ export default function EditorPage() {
         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
         </a>
+        <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
+        <Button size="sm" variant="outline" className="shrink-0 gap-1 border-green-600/40 bg-green-500/10 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400" title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf className="size-4" /> CAR</Button>
        </div>
        {/* Botão de Dados do Projeto que abre o dropdown superior */}
        <div className="no-print mr-2 flex items-center shrink-0">
@@ -2413,7 +2417,7 @@ export default function EditorPage() {
                       )}
 
                       {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
-                      {(modo === 'polilinha' || modo === 'tracejado') && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" onClick={finalizarLinha}><CheckCircle2 /> {L('Finalizar')}</Button>}
+                      {(modo === 'polilinha' || modo === 'tracejado') && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" title="Encerrar este traço e começar outro (a ferramenta continua ativa)" onClick={finalizarLinha}><Plus className="size-5" /></Button>}
                       {objSel?.tipo === 'texto' && (
                         <>
                           <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold">A-</span> {L('Diminuir')}</Button>
@@ -2500,9 +2504,9 @@ export default function EditorPage() {
                       ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio()]] : []),
                       ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => sair()]] : []),
                     ] as [string, string, React.ReactNode, () => void][]).map(([rotuloBtn, dica, icone, acao]) => (
-                      <Button key={rotuloBtn} size="sm" variant="outline" className="h-11 flex-col gap-0.5 p-0" title={dica} onClick={acao}>
+                      <Button key={rotuloBtn} size="sm" variant="outline" className="h-11 min-w-0 flex-col gap-0.5 overflow-hidden p-0 px-0.5" title={dica} onClick={acao}>
                         {icone}
-                        <span className="text-[11px] leading-none">{rotuloBtn}</span>
+                        <span className="w-full truncate text-center text-[10px] leading-none">{rotuloBtn}</span>
                       </Button>
                     ))}
                   </div>
@@ -2640,6 +2644,8 @@ export default function EditorPage() {
 
           {vista === 'planta' && (
             <div id="planta-print" className="relative h-full select-none overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
+              {/* folha DESTRAVADA: borda verde-clara pulsante avisando que dá pra arrastar (não vai no PDF) */}
+              {!folhaTravada && <div className="pointer-events-none absolute inset-0 z-[5] animate-pulse rounded-sm ring-4 ring-inset ring-green-400/70" />}
               {/* controles da planta movidos para a coluna esquerda; aqui a folha fica limpa */}
               <div className={`absolute inset-0 overflow-hidden py-2 pr-2 pl-0 ${editarPlanta ? '' : 'cursor-grab touch-none active:cursor-grabbing'}`}
                 onPointerDown={(e) => { if (e.button === 1) { e.preventDefault(); plantaPanDown(e); } else if (!editarPlanta) plantaPanDown(e); }}
@@ -2922,6 +2928,7 @@ export default function EditorPage() {
       <PorcentagemModal open={porcentagemAberta} onOpenChange={setPorcentagemAberta} glebas={glebas.map((g) => ({ id: g.id, nome: g.denominacao, vertices: g.id === glebaAtivaId ? vertices : g.vertices }))} />
       <ErrorBoundary onReset={() => setEstudioAberto(false)}><EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} /></ErrorBoundary>
       <ExtrairIaModal open={iaAberta} onOpenChange={setIaAberta} onAplicar={(parcial) => { setImovel((im) => ({ ...im, ...parcial })); aviso('Dados da IA aplicados ao imóvel — confira antes de gerar as peças.'); }} />
+      <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}
