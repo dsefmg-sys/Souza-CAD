@@ -287,6 +287,7 @@ export default function Planta({
   const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1.5;
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
   const fonteRot = fs(config.fonteRotulos ?? 10);
+  const escVert = config.escalaVertices && config.escalaVertices > 0 ? config.escalaVertices : 1; // tamanho dos símbolos de vértice
   const textosOv = config.textos ?? {};
   const ef = valoresEfetivos(res, imovel);
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
@@ -996,7 +997,7 @@ export default function Planta({
             <g style={editavel ? { cursor: 'pointer' } : undefined}
                onClick={editavel ? (e) => { e.stopPropagation(); setSelecionadoId(selecionadoId === `vsel.${v.id}` ? null : `vsel.${v.id}`); } : undefined}>
               {editavel && <circle cx={vx} cy={vy} r={8} fill="transparent" />}
-              <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6} />
+              <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} />
             </g>
             {(() => {
               // linha-guia tracejada ligando o rótulo ao seu vértice (deixa claro de quem é o nome).

@@ -318,6 +318,7 @@ export interface PlantaConfig {
   escalaTextos?: number;       // multiplicador de TODOS os textos da planta (1 = padrão)
   escalaDeclaracoes?: number;  // multiplicador só das declarações (proprietário + laudo), 1 = padrão
   escalaConfront?: number;     // multiplicador só do texto/assinatura dos confrontantes, 1 = padrão
+  escalaVertices?: number;     // multiplicador do tamanho dos símbolos dos vértices (M/P/V), 1 = padrão
   textoLaudo?: string;         // texto do laudo técnico (carimbo)
   textoConfrontantes?: string; // declaração dos confrontantes (carimbo)
   // ajustes por texto (chave = id do texto na planta): conteúdo, escala própria e negrito

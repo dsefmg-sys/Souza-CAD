@@ -191,6 +191,7 @@ export default function EditorPage() {
   const [selMulti, setSelMulti] = useState<Set<string>>(new Set()); // vértices marcados no modo "triângulo"
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [tamNomes, setTamNomes] = useState(11); // tamanho da fonte dos nomes dos vértices no mapa
+  const [escalaInterface, setEscalaInterface] = useState(1); // acessibilidade: escala das letras da interface
   const [snapAtivo, setSnapAtivo] = useState(false);
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
@@ -315,6 +316,7 @@ export default function EditorPage() {
     sincronizarPerfil({ ultimoAcessoEm: Date.now(), empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {});
     try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 320) setToolW(w); } catch { /* ignore */ }
     try { const n = Number(localStorage.getItem('metrica.tamNomes')); if (n >= 7 && n <= 22) setTamNomes(n); } catch { /* ignore */ }
+    try { const s = Number(localStorage.getItem('metrica.escalaInterface')); if (s >= 0.8 && s <= 1.6) setEscalaInterface(s); } catch { /* ignore */ }
     try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680) setAsideW(w); } catch { /* ignore */ }
     // começa com uma gleba
     const g = glebaDe(1, [], [], {}, 'Parcela 1');
@@ -435,6 +437,11 @@ export default function EditorPage() {
   // salva posição/altura da barra de ferramentas
   useEffect(() => { try { localStorage.setItem('metrica.toolW', String(toolW)); } catch { /* ignore */ } }, [toolW]);
   useEffect(() => { try { localStorage.setItem('metrica.tamNomes', String(tamNomes)); } catch { /* ignore */ } }, [tamNomes]);
+  // acessibilidade: escala das letras da interface (afeta o app inteiro; textos em rem crescem)
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${(16 * escalaInterface).toFixed(1)}px`;
+    try { localStorage.setItem('metrica.escalaInterface', String(escalaInterface)); } catch { /* ignore */ }
+  }, [escalaInterface]);
   useEffect(() => { try { localStorage.setItem('metrica.asideW', String(asideW)); } catch { /* ignore */ } }, [asideW]);
 
   // Avisa sobre alterações não salvas antes de fechar ou recarregar a página e salva rascunho preventivo
@@ -2392,8 +2399,14 @@ export default function EditorPage() {
                     <div className="my-0.5 h-px w-full bg-border" />
                     <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
                       <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)"><PenTool /> {L('Linha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F6</span></Button>
-                      <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; ao fechar (clicar no 1º ponto) vira polígono (F7; botão direito cancela)"><PenTool /> {L('Polilinha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F7</span></Button>
-                      <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (ex.: estrada); clique vários pontos e depois Finalizar (F8)"><PenTool className="opacity-70" /> {L('Tracejado')}<span className="ml-auto text-[9px] font-bold text-amber-400">F8</span></Button>
+                      <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; ao fechar (clicar no 1º ponto) vira polígono (F7; botão direito cancela)"><PenTool /> {L('Polilinha')}
+                        {modo === 'polilinha' && desenhoBuffer.length >= 2
+                          ? <><span onClick={(e) => { e.stopPropagation(); finalizarLinha(); }} className="ml-auto cursor-pointer rounded bg-emerald-500/25 px-1.5 font-bold text-emerald-700 hover:bg-emerald-500/40 dark:text-emerald-300" title="Encerrar este traço e começar outro">+</span><span className="text-[9px] font-bold text-amber-400">F7</span></>
+                          : <span className="ml-auto text-[9px] font-bold text-amber-400">F7</span>}</Button>
+                      <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (ex.: estrada); clique vários pontos; use o + para encerrar e começar outro (F8)"><PenTool className="opacity-70" /> {L('Tracejado')}
+                        {modo === 'tracejado' && desenhoBuffer.length >= 2
+                          ? <><span onClick={(e) => { e.stopPropagation(); finalizarLinha(); }} className="ml-auto cursor-pointer rounded bg-emerald-500/25 px-1.5 font-bold text-emerald-700 hover:bg-emerald-500/40 dark:text-emerald-300" title="Encerrar este traço e começar outro">+</span><span className="text-[9px] font-bold text-amber-400">F8</span></>
+                          : <span className="ml-auto text-[9px] font-bold text-amber-400">F8</span>}</Button>
                       <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
                       <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F10)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
                       <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta para inserir um ponto"><Plus /> {L('Inserir vértice')}</Button>
@@ -2417,7 +2430,6 @@ export default function EditorPage() {
                       )}
 
                       {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
-                      {(modo === 'polilinha' || modo === 'tracejado') && desenhoBuffer.length >= 2 && <Button size="sm" variant="secondary" title="Encerrar este traço e começar outro (a ferramenta continua ativa)" onClick={finalizarLinha}><Plus className="size-5" /></Button>}
                       {objSel?.tipo === 'texto' && (
                         <>
                           <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold">A-</span> {L('Diminuir')}</Button>
@@ -2474,9 +2486,10 @@ export default function EditorPage() {
                       {([
                         { rot: 'Tudo', campo: 'escalaTextos', base: 1.5 },
                         { rot: 'Rótulos', campo: 'fonteRotulos', base: 10, passo: 0.5, min: 5, max: 20 },
+                        { rot: 'Símbolos', campo: 'escalaVertices', base: 1 },
                         { rot: 'Declarações', campo: 'escalaDeclaracoes', base: 1 },
                         { rot: 'Confront.', campo: 'escalaConfront', base: 1 },
-                      ] as { rot: string; campo: 'escalaTextos' | 'fonteRotulos' | 'escalaDeclaracoes' | 'escalaConfront'; base: number; passo?: number; min?: number; max?: number }[]).map((r) => {
+                      ] as { rot: string; campo: 'escalaTextos' | 'fonteRotulos' | 'escalaVertices' | 'escalaDeclaracoes' | 'escalaConfront'; base: number; passo?: number; min?: number; max?: number }[]).map((r) => {
                         const passo = r.passo ?? 0.05, min = r.min ?? 0.4, max = r.max ?? 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
@@ -2489,6 +2502,12 @@ export default function EditorPage() {
                       })}
                     </div>
                   )}
+                  {/* INTERFACE (acessibilidade): aumenta/diminui as letras do app inteiro — vale nos dois modos */}
+                  <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
+                    <span className="mr-auto pl-1 text-[10px] font-medium text-muted-foreground">Interface</span>
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}><span className="text-[10px] font-bold">A-</span></Button>
+                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}><span className="text-[10px] font-bold">A+</span></Button>
+                  </div>
                   {/* ferramentas e sistema: duas linhas de botões rotulados (não mais ícones espremidos) */}
                   <div className="grid grid-cols-4 gap-1">
                     {([
