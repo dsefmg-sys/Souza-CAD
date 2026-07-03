@@ -1137,6 +1137,33 @@ export default function EditorPage() {
     inserirVertice(lat, lon, codigo ? codigo.toUpperCase() : undefined);
   }
 
+  // Casa AUTOMATICAMENTE os vértices do imóvel com os vértices certificados das parcelas INCRA
+  // importadas: para cada ponto meu quase em cima de um ponto certificado (dentro da tolerância),
+  // adoto a coordenada oficial exata. É o que o SIGEF exige na divisa comum — sem clicar ponto a ponto.
+  function casarVerticesCertificados() {
+    if (!parcelasCert.length) { aviso('Importe as parcelas do INCRA primeiro (botão SIGEF).'); return; }
+    const TOL = 0.5; // metros
+    const cert = parcelasCert.flatMap((p) => p.anel.map(([lat, lon]) => ({ ...geoParaUtm(lat, lon, zona, hemisferio), lat, lon })));
+    if (!cert.length) { aviso('As parcelas importadas não têm vértices utilizáveis.'); return; }
+    let casados = 0;
+    const novos = vertices.map((v) => {
+      let melhor: typeof cert[number] | null = null; let dmin = TOL;
+      for (const c of cert) {
+        const d = Math.hypot(c.leste - v.leste, c.norte - v.norte);
+        if (d <= dmin) { dmin = d; melhor = c; }
+      }
+      if (melhor && (Math.abs(melhor.leste - v.leste) > 1e-4 || Math.abs(melhor.norte - v.norte) > 1e-4)) {
+        casados++;
+        return { ...v, lat: melhor.lat, lon: melhor.lon, leste: melhor.leste, norte: melhor.norte };
+      }
+      return v;
+    });
+    if (!casados) { aviso(`Nenhum vértice seu está a menos de ${TOL} m de um vértice certificado. Nada a casar.`); return; }
+    snap();
+    setVertices(novos);
+    aviso(`${casados} vértice(s) casado(s) com a coordenada oficial certificada do INCRA.`);
+  }
+
   async function renumerar() {
     snap();
     await aplicarCodigos(vertices);
@@ -2069,6 +2096,12 @@ export default function EditorPage() {
     };
   }, [vertices, imovel, confrontantePorLado, sigefStatus, baixou, salvoOk]);
 
+  // status resumido pra barra de dados: pronto (sem problema grave) x incompleto (falta algo)
+  const projPronto = useMemo(() => {
+    if (vertices.length < 3) return false;
+    return conferirProntoParaExportar(imovel, vertices, confrontantes, tecnico, confrontantePorLado).ok;
+  }, [imovel, vertices, confrontantes, tecnico, confrontantePorLado]);
+
   // rótulos de confrontante arrastáveis no mapa (posRotulo manual ou centróide dos lados)
   const rotulosConf: RotuloMapa[] = useMemo(() => {
     const out: RotuloMapa[] = [];
@@ -2127,6 +2160,9 @@ export default function EditorPage() {
         ) : (
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Search /> SIGEF</Button>
         )}</Etapa>
+        {parcelasCert.length > 0 && (
+          <Button size="sm" variant="outline" className="shrink-0 gap-1 px-2 text-cyan-600 border-cyan-500/40 hover:bg-cyan-600 hover:text-white" disabled={vertices.length < 3} title="Casar automaticamente seus vértices com os certificados do INCRA: nos pontos de divisa comum (até 0,5 m), adota a coordenada oficial exata" onClick={casarVerticesCertificados}><Magnet className="size-4" /> CASAR</Button>
+        )}
         <Button size="sm" variant="outline" className="shrink-0 px-2" disabled={vertices.length < 3} title="Adotar códigos de vértice de um imóvel vizinho já certificado (arquivo baixado do Distribuidor de Coordenadas do Acervo Fundiário — mapeamento de colunas em Configurações)" onClick={() => verticesVizinhoRef.current?.click()}><UserCheck className="size-4" /></Button>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
@@ -2328,13 +2364,13 @@ export default function EditorPage() {
 
                 {/* RODAPÉ FIXO: ajuste de texto + sistema (calculadora, tema, config, sair) */}
                 <div className="mt-auto flex flex-col gap-1 border-t pt-1.5">
-                  {/* Errata (retangular) + A- / A+ contextual (mapa = nomes dos vértices; planta = escala dos textos) */}
-                  <div className="flex items-center gap-1">
-                    <Button size="sm" variant="outline" className="h-7 flex-1 gap-1 px-1 text-amber-500 border-amber-500/40 hover:bg-amber-500 hover:text-black dark:text-amber-400 dark:hover:bg-amber-400 dark:hover:text-black" title="Errata: gerar correção formal ao cartório (uso raro)" onClick={() => setErrataAberto(true)}><FileWarning className="size-3.5" /> <span className="text-[10px] font-bold uppercase">Errata</span></Button>
-                    <div className="flex items-center gap-0.5 rounded bg-muted/40 px-1" title={vista === 'mapa' ? 'Tamanho dos nomes dos vértices no mapa' : 'Escala dos textos na planta'}>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.max(7, n - 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.5) - 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A-</span></Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.min(22, n + 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A+</span></Button>
-                    </div>
+                  {/* Errata: botão próprio de largura cheia (mesmo padrão do "capturar situação"), logo abaixo dele */}
+                  <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-amber-500 border-amber-500/40 hover:bg-amber-500 hover:text-black dark:text-amber-400 dark:hover:bg-amber-400 dark:hover:text-black" title="Errata: gerar correção formal ao cartório (uso raro)" onClick={() => setErrataAberto(true)}><FileWarning className="size-4" /> {L('Errata')}</Button>
+                  {/* A- / A+ contextual (mapa = nomes dos vértices; planta = escala dos textos) — em linha própria */}
+                  <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1" title={vista === 'mapa' ? 'Tamanho dos nomes dos vértices no mapa' : 'Escala dos textos na planta'}>
+                    <span className="mr-auto pl-1 text-[10px] font-medium text-muted-foreground">{vista === 'mapa' ? 'Nomes' : 'Textos'}</span>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.max(7, n - 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.6, +(((c.escalaTextos ?? 1.5) - 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A-</span></Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (vista === 'mapa') setTamNomes((n) => Math.min(22, n + 1)); else setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, +(((c.escalaTextos ?? 1.5) + 0.05).toFixed(2))) })); }}><span className="text-[10px] font-bold">A+</span></Button>
                   </div>
                   {/* ferramentas e sistema: duas linhas de botões rotulados (não mais ícones espremidos) */}
                   <div className="grid grid-cols-4 gap-1">
@@ -2395,6 +2431,8 @@ export default function EditorPage() {
                 </div>
               )}
               <div><div className="text-[9px] font-medium uppercase text-muted-foreground">Vértices</div><div className="text-base font-bold">{vertices.length}</div></div>
+              <div title="Fuso UTM do projeto — errar o fuso é um erro clássico e caro"><div className="text-[9px] font-medium uppercase text-muted-foreground">Fuso</div><div className="text-base font-bold">{zona}{hemisferio}</div></div>
+              <div title={projPronto ? 'Sem problema grave — pode gerar as peças' : 'Falta algo (abra DETALHES para ver o quê)'}><div className="text-[9px] font-medium uppercase text-muted-foreground">Status</div><div className={`text-sm font-bold ${projPronto ? 'text-emerald-600' : 'text-amber-500'}`}>{projPronto ? 'Pronto' : 'Incompleto'}</div></div>
             </div>
             <div className="w-px bg-border" />
             <button type="button" className={`act flex-col gap-0.5 ${infoJaVista(projetoId) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`} title="Detalhes do projeto, arquivos anexados e pendências (o que ainda falta pra exportar)" onClick={() => setInfoAberto(true)}><FileText className="size-4" /><span className="text-[8px] font-bold leading-none">DETALHES</span></button>
