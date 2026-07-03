@@ -1795,14 +1795,15 @@ export default function EditorPage() {
       ...glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.map((v) => ({ lat: v.lat, lon: v.lon }))),
     ];
     const url = await gerarSituacao(aneis);
-    setSituacaoUrl(url ?? undefined);
     if (url) {
+      setSituacaoUrl(url);
       setSituacaoVersSnapshot(JSON.stringify(vertices));
       // guarda no projeto pra não precisar recapturar ao reabrir (limite: cabe no doc da nuvem)
       setPlantaConfig((c) => ({ ...c, situacaoDataUrl: url.length < 700_000 ? url : undefined }));
-      aviso('Planta de situação gerada.');
+      aviso('Planta de situação atualizada.');
     } else {
-      aviso('Não consegui carregar o satélite (rede/CORS).');
+      // NÃO apaga a situação anterior quando a rebusca falha (antes zerava e a imagem sumia)
+      aviso('Não consegui atualizar o satélite agora (rede/CORS). A situação anterior foi mantida — tente de novo.');
     }
   }
 
