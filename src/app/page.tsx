@@ -114,8 +114,13 @@ type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'planta' | 'conferencia' | 
 // municípios mais atendidos (atalho na importação; cada um ancora o fuso 23/24)
 const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-MG', 'Guaçuí-ES', 'Carangola-MG', 'Caparaó-MG'];
 
-const COR_IMPORT = 'bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20 border-sky-500/30';
-const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30';
+// Linguagem de cor por FUNÇÃO do botão (deixa o cabeçalho intuitivo: a cor diz o que o grupo faz).
+// O ícone ainda muda de cor pelo progresso (verde=feito, azul=andamento) por cima disso.
+const COR_IMPORT = 'bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20 border-sky-500/30';       // entrada de dados
+const COR_VIZINHO = 'bg-teal-500/10 text-teal-700 dark:text-teal-300 hover:bg-teal-500/20 border-teal-500/30'; // vizinho certificado (SIGEF/INCRA)
+const COR_DADOS = 'bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20 border-violet-500/30'; // cadastro e IA
+const COR_MARCAR = 'bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 border-amber-500/30';    // marcar no mapa
+const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30'; // peças de saída
 
 type EtapaEstado = 'feito' | 'andamento' | 'pendente';
 // Acende o ÍCONE do botão do fluxo: verde = etapa feita, azul = em andamento, neutro = pendente.
@@ -2229,25 +2234,25 @@ export default function EditorPage() {
         {/* 1) Importar e checar vizinhos */}
         <Etapa st={etapas.txt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
         <Etapa st={etapas.sigef}>{parcelasCert.length > 0 ? (
-          <Button size="sm" variant="outline" className="shrink-0" title="Vizinhos certificados já baixados — ver relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}>{iconeCab('analise', <ShieldCheck className="size-4 text-indigo-400" />)} ANÁLISE</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 ${COR_VIZINHO}`} title="Vizinhos certificados já baixados — ver relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}>{iconeCab('analise', <ShieldCheck className="size-4" />)} ANÁLISE</Button>
         ) : (
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Search /> SIGEF</Button>
         )}</Etapa>
         {parcelasCert.length > 0 && (
-          <Button size="sm" variant="outline" className="shrink-0 gap-1 px-2 text-cyan-600 border-cyan-500/40 hover:bg-cyan-600 hover:text-white" disabled={vertices.length < 3} title="Casar automaticamente seus vértices com os certificados do INCRA: nos pontos de divisa comum (até 0,5 m), adota a coordenada oficial exata" onClick={casarVerticesCertificados}><Magnet className="size-4" /> CASAR</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Casar automaticamente seus vértices com os certificados do INCRA: nos pontos de divisa comum (até 0,5 m), adota a coordenada oficial exata" onClick={casarVerticesCertificados}><Magnet className="size-4" /> CASAR</Button>
         )}
-        <Button size="sm" variant="outline" className="shrink-0 px-2" disabled={vertices.length < 3} title="Adotar códigos de vértice de um imóvel vizinho já certificado (arquivo baixado do Distribuidor de Coordenadas do Acervo Fundiário — mapeamento de colunas em Configurações)" onClick={() => verticesVizinhoRef.current?.click()}><UserCheck className="size-4" /></Button>
+        <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Importar um ARQUIVO de coordenadas de um imóvel vizinho já certificado (que você baixou do Acervo Fundiário do INCRA) e adotar os vértices dele. As colunas do arquivo se ajustam em Configurações. Se você já usou SIGEF + CASAR, normalmente NÃO precisa deste." onClick={() => verticesVizinhoRef.current?.click()}><UserCheck className="size-4" /> VÉRTICES VIZINHO</Button>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 2) Dados do projeto atual */}
-        <Etapa st={etapas.dados}><Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório">{iconeCab('dados', <BookUser />)} DADOS</Button></Link></Etapa>
-        <Button size="sm" variant="outline" className="shrink-0 px-2" title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /></Button>
-        <Button size="sm" variant="outline" className="shrink-0 gap-1 px-2 text-violet-600 border-violet-500/40 hover:bg-violet-600 hover:text-white" title="Extrair dados do imóvel com IA a partir de um texto colado (matrícula, escritura…)" onClick={() => setIaAberta(true)}><Sparkles className="size-4" /> IA</Button>
+        <Etapa st={etapas.dados}><Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" className={COR_DADOS} title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório">{iconeCab('dados', <BookUser />)} DADOS</Button></Link></Etapa>
+        <Button size="sm" variant="outline" className={`shrink-0 px-2 ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /></Button>
+        <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_DADOS}`} title="Extrair dados do imóvel com IA a partir de um texto colado (matrícula, escritura…)" onClick={() => setIaAberta(true)}><Sparkles className="size-4" /> IA</Button>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
-        <Etapa st={etapas.confro}><Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className="shrink-0" title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> CONFRO</Button></Etapa>
-        <Etapa st={etapas.divisas}><Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className="shrink-0" title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> DIVISAS</Button></Etapa>
+        <Etapa st={etapas.confro}><Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'confrontante' ? '' : COR_MARCAR}`} title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> CONFRO</Button></Etapa>
+        <Etapa st={etapas.divisas}><Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'divisa' ? '' : COR_MARCAR}`} title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> DIVISAS</Button></Etapa>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 5) Peças */}
@@ -2256,7 +2261,7 @@ export default function EditorPage() {
         <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
-        <Button size="sm" variant="outline" className="shrink-0 border-emerald-600/50 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:text-emerald-400" disabled={processando} title="Pacote de entrega num clique: memorial, planilha SIGEF, requerimento e planta juntos, num .zip" onClick={baixarPacoteEntrega}><Package /> PACOTE</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 font-semibold ${COR_PECA}`} disabled={processando} title="Pacote de entrega num clique: memorial, planilha SIGEF, requerimento e planta juntos, num .zip" onClick={baixarPacoteEntrega}><Package /> PACOTE</Button>
         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
           <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
         </a>
