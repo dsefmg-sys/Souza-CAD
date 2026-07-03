@@ -1,5 +1,16 @@
 import { jsPDF } from 'jspdf';
 import type { ImovelData, EscritorioData, TecnicoData } from '../topo/types';
+import { carregarModelos, preencherModelo } from '../store/modelos';
+
+/** Variáveis dos modelos (recibo/contrato) a partir dos dados do serviço. */
+function varsFinanceiro(a: { imovel: ImovelData; tecnico: TecnicoData; areaHa: number }): Record<string, string> {
+  return {
+    proprietario: a.imovel.proprietario || '', cpf: a.imovel.cpfProprietario || '', denominacao: a.imovel.denominacao || '',
+    matricula: a.imovel.matricula || '', municipio: a.imovel.municipio || '',
+    area: `${a.areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha`,
+    perimetro: '', tecnico: a.tecnico.nome || '', cft: a.tecnico.cft || '', cidade: a.tecnico.cidadeAssinatura || '',
+  };
+}
 
 /** Formata um número como moeda brasileira: 1234.5 -> "R$ 1.234,50". */
 export function moedaBR(v: number): string {
@@ -88,7 +99,7 @@ export function gerarReciboPdf(a: BaseArgs & { valor: number; referente?: string
   doc.text(moedaBR(a.valor), larg - margem - 30, y + 6, { align: 'center' });
   y += 22;
 
-  const refer = a.referente || `serviços de georreferenciamento e certificação do imóvel "${a.imovel.denominacao || '—'}"${a.imovel.matricula ? `, matrícula nº ${a.imovel.matricula}` : ''}, situado em ${a.imovel.municipio || '—'}, com área de ${a.areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha`;
+  const refer = a.referente || preencherModelo(carregarModelos().reciboReferente, varsFinanceiro(a));
   const corpo = `Recebi(emos) de ${a.imovel.proprietario || '—'}${a.imovel.cpfProprietario ? `, inscrito(a) no CPF sob o nº ${a.imovel.cpfProprietario}` : ''}, a importância de ${moedaBR(a.valor)} (${extensoReais(a.valor)}), referente a ${refer}.`;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
   doc.text(doc.splitTextToSize(corpo, larg - margem * 2), margem, y, { lineHeightFactor: 1.5 });
@@ -120,12 +131,11 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
   doc.text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE GEORREFERENCIAMENTO', larg / 2, y, { align: 'center', maxWidth: larg - margem * 2 });
   y += 12;
 
-  const area = a.areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
   const repres = [a.tecnico.nome, a.tecnico.formacao, a.tecnico.cft && `CFT ${a.tecnico.cft}`].filter(Boolean).join(', ');
   const clausulas: [string, string][] = [
     ['CONTRATANTE', `${a.imovel.proprietario || '—'}${a.imovel.cpfProprietario ? `, CPF nº ${a.imovel.cpfProprietario}` : ''}, doravante denominado(a) CONTRATANTE.`],
     ['CONTRATADO', `${a.escritorio.nome || '—'}${a.escritorio.cnpj ? `, CNPJ nº ${a.escritorio.cnpj}` : ''}, neste ato representado por ${repres || '—'}, doravante denominado CONTRATADO.`],
-    ['CLÁUSULA 1ª – DO OBJETO', `Prestação de serviços técnicos de georreferenciamento e certificação junto ao SIGEF/INCRA do imóvel "${a.imovel.denominacao || '—'}"${a.imovel.matricula ? `, matrícula nº ${a.imovel.matricula}` : ''}, situado em ${a.imovel.municipio || '—'}, com área aproximada de ${area} ha, incluindo levantamento, memorial descritivo, planta e peças técnicas.`],
+    ['CLÁUSULA 1ª – DO OBJETO', preencherModelo(carregarModelos().contratoObjeto, varsFinanceiro(a))],
     ['CLÁUSULA 2ª – DO VALOR E PAGAMENTO', `Pelos serviços, o CONTRATANTE pagará ao CONTRATADO o valor de ${moedaBR(a.valor)} (${extensoReais(a.valor)}), ${a.formaPagamento || 'na forma combinada entre as partes'}.`],
     ['CLÁUSULA 3ª – DO PRAZO', `O CONTRATADO executará os serviços no prazo de ${a.prazoDias ?? '____'} dias, ressalvadas as etapas que dependam de terceiros (cartório, INCRA, confrontantes) e de condições de campo.`],
     ['CLÁUSULA 4ª – DAS OBRIGAÇÕES', `O CONTRATANTE fornecerá documentos e informações necessárias e indicará as divisas em campo; o CONTRATADO executará os serviços com zelo técnico e responsabilidade profissional.`],

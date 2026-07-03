@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2 } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText } from 'lucide-react';
+import ModelosDocsModal from './ModelosDocsModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const [modeloProprio, setModeloProprio] = useState(false);
   const [zapSuporte, setZapSuporte] = useState('');
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO);
+  const [modelosAberto, setModelosAberto] = useState(false);
   const sigefRef = useRef<HTMLInputElement>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -394,6 +396,20 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               <div className="border rounded p-4 bg-muted/20 flex flex-col justify-between space-y-4">
                 <div className="space-y-2">
                   <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                    <FileText className="size-4" /> Textos das peças (modelos)
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Personalize os blocos de texto das peças (declarações, laudo, objeto do contrato, recibo) usando variáveis como <code className="font-mono">{'{proprietario}'}</code>. A narrativa do memorial e a estrutura continuam automáticas.
+                  </p>
+                </div>
+                <Button variant="outline" className="w-full font-semibold gap-1.5" onClick={() => setModelosAberto(true)}>
+                  <FileText className="size-4" /> Editar modelos de texto
+                </Button>
+              </div>
+
+              <div className="border rounded p-4 bg-muted/20 flex flex-col justify-between space-y-4">
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm flex items-center gap-1.5">
                     <UserCheck className="size-4" /> Vértices de Vizinho Certificado
                   </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
@@ -415,6 +431,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
           </span>
         </div>
       </DialogContent>
+      <ModelosDocsModal open={modelosAberto} onOpenChange={setModelosAberto} />
       <ImportTxtConfigModal open={importTxtAberto} onOpenChange={setImportTxtAberto} />
       <ImportVerticesVizinhoConfigModal open={importVizinhoAberto} onOpenChange={setImportVizinhoAberto} />
     </Dialog>

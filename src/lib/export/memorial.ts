@@ -6,7 +6,8 @@ import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex, P
 import { grausParaDMS } from '../topo/coords';
 import { azimuteDMS, numBR, numBRmilhar, formatMatricula } from '../topo/geometry';
 import { valoresEfetivos } from '../topo/conferencia';
-import { sanitizarProfundo } from './sanitizar';
+import { sanitizarProfundo, sanitizarTexto } from './sanitizar';
+import { carregarModelos, preencherModelo } from '../store/modelos';
 
 function coordTexto(v: Vertex): string {
   const lon = grausParaDMS(v.lon, { estilo: 'memorial', casas: 3 });
@@ -297,6 +298,16 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     ] }));
   }
 
+  // Modelos de texto personalizáveis (declarações). {variáveis} trocadas pelos dados reais.
+  const efMod = valoresEfetivos(res, imovel);
+  const modelos = carregarModelos();
+  const varsModelo: Record<string, string> = {
+    proprietario: imovel.proprietario || '', cpf: imovel.cpfProprietario || '', denominacao: imovel.denominacao || '',
+    matricula: imovel.matricula || '', municipio: imovel.municipio || '', area: `${numBR(efMod.areaHa, 4)} ha`,
+    perimetro: `${numBR(efMod.perimetro)} m`, tecnico: tecnico.nome || '', cft: tecnico.cft || '', cidade: tecnico.cidadeAssinatura || '',
+  };
+  const mod = (chave: keyof typeof modelos) => sanitizarTexto(preencherModelo(modelos[chave], varsModelo));
+
   // Título
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 220 }, children: [
     new TextRun({ text: 'MEMORIAL DESCRITIVO', bold: true, size: 28 }),
@@ -329,7 +340,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
 
   // Bloco proprietários (com cônjuge, se houver)
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'PROPRIETÁRIOS', bold: true, size: 24 })] }));
-  children.push(p('Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas neste memorial e na planta que o acompanha.'));
+  children.push(p(mod('declProprietario')));
   
   const propLinhas = [
     `Nome: ${imovel.proprietario}`,
@@ -348,7 +359,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   // Bloco comprador (se houver)
   if (imovel.comprador) {
     children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'COMPRADORES', bold: true, size: 24 })] }));
-    children.push(p('Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas neste memorial e na planta que o acompanha.'));
+    children.push(p(mod('declProprietario')));
     
     const compLinhas = [
       `Nome: ${imovel.comprador}`,
@@ -366,7 +377,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
 
   // Bloco confrontantes (respeita posseiro/espólio e cônjuge)
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'CONFRONTANTES', bold: true, size: 24 })] }));
-  children.push(p('Concordamos com as medidas apresentadas neste memorial e na planta anexa no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade. Estamos cientes de que, nos termos do §10 do artigo 213 da LRP, nossa anuência supre a participação do cônjuge e de eventuais outros condôminos titulares de nosso imóvel.'));
+  children.push(p(mod('declConfrontantes')));
   confrontantes.forEach((c) => {
     if (!c.nome) return;
     blocoAssinaturaConfrontante(c).forEach((x) => children.push(x));
