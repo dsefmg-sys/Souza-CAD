@@ -395,7 +395,7 @@ export default function Planta({
     if (!svgEl) return;
 
     const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) {
+      if (!folhaTravada || e.ctrlKey) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? 250 : -250;
         const arredondado = Math.round(escalaDenom / 250) * 250;
@@ -417,7 +417,7 @@ export default function Planta({
       svgEl.removeEventListener('wheel', handleWheel);
       svgEl.removeEventListener('mousedown', handleMousedown);
     };
-  }, [escalaDenom, onConfigPatch]);
+  }, [escalaDenom, onConfigPatch, folhaTravada]);
 
   // ---- confrontantes por trecho: posição do rótulo (fora do polígono) ----
   const trechos = new Map<string, number[]>();
