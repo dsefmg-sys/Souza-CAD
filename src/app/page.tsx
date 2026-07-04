@@ -52,7 +52,7 @@ import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarShapefileZip } from '@/lib/io/shapefile';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
-import { parseParcelasSigef, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas } from '@/lib/io/sigefVizinhos';
+import { parseParcelasSigef, parseGmlParcelas, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas } from '@/lib/io/sigefVizinhos';
 import { parseVerticesVizinho } from '@/lib/io/verticesVizinho';
 import { ufsNoBbox, temaIncra, TEMAS_CONFRONTANTE, INCRA_UFS } from '@/lib/io/incraTemas';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
@@ -1777,8 +1777,11 @@ export default function EditorPage() {
   async function importarVizinhosCertificados(file: File) {
     try {
       const texto = await file.text();
-      const parcelas = parseParcelasSigef(texto);
-      if (!parcelas.length) { aviso('Nenhuma parcela certificada encontrada no arquivo.'); return; }
+      let parcelas = parseParcelasSigef(texto);
+      if (!parcelas.length) {
+        parcelas = parseGmlParcelas(texto);
+      }
+      if (!parcelas.length) { aviso('Nenhuma parcela certificada encontrada no arquivo (aceita GeoJSON e GML do SIGEF).'); return; }
       setReferencias(parcelasParaReferencias(parcelas, zona, hemisferio));
       const meuAnel = vertices.map((v) => ({ lat: v.lat, lon: v.lon }));
       const vizinhas = vertices.length >= 3 ? parcelasVizinhas(meuAnel, parcelas, 15) : [];

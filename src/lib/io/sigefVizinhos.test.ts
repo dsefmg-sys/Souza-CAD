@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseParcelasSigef, parcelasVizinhas, confrontantesDeVizinhas, parcelasParaReferencias, type ParcelaSigef } from './sigefVizinhos';
+import { parseParcelasSigef, parseGmlParcelas, parcelasVizinhas, confrontantesDeVizinhas, parcelasParaReferencias, type ParcelaSigef } from './sigefVizinhos';
 
 // quadrado ~100m de lado perto de Espera Feliz (graus aproximados)
 const d = 0.001; // ~110 m em latitude
@@ -38,6 +38,29 @@ describe('sigefVizinhos', () => {
     expect(parcelas[0].codigoImovel).toBe('ABC123');
     expect(parcelas[0].detentor).toBe('Fulano de Tal');
     expect(parcelas[0].anel.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('parseia GML de parcelas do WFS INCRA', () => {
+    const xml = `
+      <gml:featureMember>
+        <ms:codigo_imovel>123456</ms:codigo_imovel>
+        <ms:nome_area>Fazenda Teste</ms:nome_area>
+        <ms:codigo_municipio>3124808</ms:codigo_municipio>
+        <ms:registro_matricula>9876</ms:registro_matricula>
+        <gml:outerBoundaryIs>
+          <gml:LinearRing>
+            <gml:coordinates>-41.91,-20.65 -41.90,-20.65 -41.90,-20.64 -41.91,-20.64 -41.91,-20.65</gml:coordinates>
+          </gml:LinearRing>
+        </gml:outerBoundaryIs>
+      </gml:featureMember>
+    `;
+    const parcelas = parseGmlParcelas(xml);
+    expect(parcelas.length).toBe(1);
+    expect(parcelas[0].codigoImovel).toBe('123456');
+    expect(parcelas[0].denominacao).toBe('Fazenda Teste');
+    expect(parcelas[0].anel.length).toBe(5);
+    expect(parcelas[0].anel[0].lon).toBe(-41.91);
+    expect(parcelas[0].anel[0].lat).toBe(-20.65);
   });
 
   it('monta confrontantes a partir das parcelas (nome = detentor; código na descrição)', () => {
