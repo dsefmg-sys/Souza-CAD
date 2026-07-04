@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileText, RotateCcw } from 'lucide-react';
+import { FileText, RotateCcw, Download, Upload } from 'lucide-react';
 import { carregarModelos, salvarModelos, MODELOS_PADRAO, VARIAVEIS_MODELO, type ModelosDocs } from '@/lib/store/modelos';
 
 interface Props {
@@ -37,11 +37,38 @@ const CAMPOS: { chave: keyof ModelosDocs; titulo: string; grupo: string }[] = [
 // pelos dados reais na geração. A estrutura das peças (tabela, narrativa, assinaturas) segue automática.
 export default function ModelosDocsModal({ open, onOpenChange }: Props) {
   const [m, setM] = useState<ModelosDocs>(MODELOS_PADRAO);
+  const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (open) setM(carregarModelos()); }, [open]);
 
   function set(chave: keyof ModelosDocs, valor: string) {
     const novo = { ...m, [chave]: valor };
     setM(novo); salvarModelos(novo);
+  }
+
+  // Baixa os modelos atuais num arquivo, pra guardar ou passar pra outra empresa.
+  function baixarModelos() {
+    const blob = new Blob([JSON.stringify(m, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'modelos-souzacad.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Importa modelos de um arquivo baixado antes (substitui os campos que vierem no arquivo).
+  async function importarModelos(file: File) {
+    try {
+      const dados = JSON.parse(await file.text()) as Partial<ModelosDocs>;
+      // Só aceita chaves conhecidas; o resto do padrão preenche o que faltar.
+      const limpo: Partial<ModelosDocs> = {};
+      for (const c of CAMPOS) if (typeof dados[c.chave] === 'string') limpo[c.chave] = dados[c.chave];
+      const novo = { ...MODELOS_PADRAO, ...limpo };
+      setM(novo); salvarModelos(novo);
+    } catch { /* arquivo inválido — ignora silenciosamente */ }
+  }
+
+  function restaurarTudo() {
+    setM(MODELOS_PADRAO); salvarModelos(MODELOS_PADRAO);
   }
 
   return (
@@ -79,9 +106,15 @@ export default function ModelosDocsModal({ open, onOpenChange }: Props) {
           ))}
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">Salvo automaticamente. A narrativa do memorial e a estrutura das peças continuam automáticas.</span>
-          <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[10px] text-muted-foreground">Salvo automaticamente. Empresas novas já começam com estes modelos; edite ou restaure quando quiser.</span>
+          <div className="flex items-center gap-1.5">
+            <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importarModelos(f); e.target.value = ''; }} />
+            <Button size="sm" variant="outline" className="gap-1" onClick={baixarModelos} title="Baixar os modelos atuais num arquivo"><Download className="size-3.5" /> Baixar</Button>
+            <Button size="sm" variant="outline" className="gap-1" onClick={() => fileRef.current?.click()} title="Carregar modelos de um arquivo baixado antes"><Upload className="size-3.5" /> Importar</Button>
+            <Button size="sm" variant="outline" className="gap-1" onClick={restaurarTudo} title="Voltar todos os modelos ao padrão do sistema"><RotateCcw className="size-3.5" /> Restaurar tudo</Button>
+            <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
