@@ -57,20 +57,20 @@ interface Props {
 }
 
 const CAMPOS: { k: keyof PessoaQualificada; label: string; span: string }[] = [
-  { k: 'nome', label: 'Nome', span: 'col-span-4' },
-  { k: 'rg', label: 'RG', span: 'col-span-2 md:col-span-1' },
-  { k: 'cpf', label: 'CPF/CNPJ', span: 'col-span-2 md:col-span-1' },
-  { k: 'nacionalidade', label: 'Nacionalidade', span: 'col-span-2 md:col-span-1' },
-  { k: 'naturalidade', label: 'Naturalidade', span: 'col-span-2 md:col-span-1' },
-  { k: 'dataNascimento', label: 'Data Nasc.', span: 'col-span-2 md:col-span-1' },
-  { k: 'profissao', label: 'Profissão', span: 'col-span-2 md:col-span-1' },
-  { k: 'estadoCivil', label: 'Estado Civil', span: 'col-span-2 md:col-span-1' },
-  { k: 'conjugeNome', label: 'Cônjuge (se houver)', span: 'col-span-4 md:col-span-3' },
-  { k: 'conjugeCpf', label: 'CPF Cônjuge', span: 'col-span-4 md:col-span-1' },
-  { k: 'filiacao', label: 'Filiação (mãe / pai)', span: 'col-span-4' },
-  { k: 'endereco', label: 'Residente e domiciliado(a) em (Endereço)', span: 'col-span-4' },
-  { k: 'cidadeUf', label: 'Cidade/UF', span: 'col-span-3' },
-  { k: 'cep', label: 'CEP', span: 'col-span-1' },
+  { k: 'nome', label: 'Nome', span: 'col-span-6 md:col-span-4' },
+  { k: 'rg', label: 'RG', span: 'col-span-3 md:col-span-1' },
+  { k: 'cpf', label: 'CPF/CNPJ', span: 'col-span-3 md:col-span-1' },
+  { k: 'nacionalidade', label: 'Nacionalidade', span: 'col-span-2' },
+  { k: 'naturalidade', label: 'Naturalidade', span: 'col-span-2' },
+  { k: 'dataNascimento', label: 'Data Nasc.', span: 'col-span-2' },
+  { k: 'profissao', label: 'Profissão', span: 'col-span-3' },
+  { k: 'estadoCivil', label: 'Estado Civil', span: 'col-span-3' },
+  { k: 'conjugeNome', label: 'Cônjuge (se houver)', span: 'col-span-4' },
+  { k: 'conjugeCpf', label: 'CPF Cônjuge', span: 'col-span-2' },
+  { k: 'filiacao', label: 'Filiação (mãe / pai)', span: 'col-span-6' },
+  { k: 'endereco', label: 'Residente e domiciliado(a) em (Endereço)', span: 'col-span-6' },
+  { k: 'cidadeUf', label: 'Cidade/UF', span: 'col-span-4' },
+  { k: 'cep', label: 'CEP', span: 'col-span-2' },
 ];
 
 function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: PessoaQualificada; onChange: (p: PessoaQualificada) => void; sugProp: ProprietarioCad[] }) {
@@ -79,15 +79,15 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
     onChange(m ? { ...pessoa, ...m, nome: v } as PessoaQualificada : { ...pessoa, nome: v });
   }
   return (
-    <div className="space-y-2 border rounded-lg bg-muted/10 p-3">
-      {titulo && <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b pb-1 mb-2">{titulo}</h3>}
-      <div className="grid grid-cols-4 gap-2">
+    <div className="space-y-1.5 border rounded-lg bg-muted/10 p-2.5">
+      {titulo && <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b pb-0.5 mb-1.5">{titulo}</h3>}
+      <div className="grid grid-cols-6 gap-x-2 gap-y-1.5">
         {CAMPOS.map((c) => (
           <div key={c.k} className={`space-y-0.5 ${c.span}`}>
-            <Label className="text-[10px] text-muted-foreground font-semibold">{c.label}</Label>
+            <Label className="text-[9px] text-muted-foreground font-semibold leading-none">{c.label}</Label>
             {c.k === 'nome'
-              ? <Input list="lista-pessoas" value={pessoa.nome} onChange={(e) => setNome(e.target.value)} className="h-8 text-xs" />
-              : <Input value={pessoa[c.k]} onChange={(e) => onChange({ ...pessoa, [c.k]: e.target.value })} className="h-8 text-xs" />}
+              ? <Input list="lista-pessoas" value={pessoa.nome} onChange={(e) => setNome(e.target.value)} className="h-7 text-[11px]" />
+              : <Input value={pessoa[c.k]} onChange={(e) => onChange({ ...pessoa, [c.k]: e.target.value })} className="h-7 text-[11px]" />}
           </div>
         ))}
       </div>
@@ -145,7 +145,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-6">
+      <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-6">
         <DialogHeader className="shrink-0">
           <DialogTitle>Requerimento ao cartório (retificação de área)</DialogTitle>
         </DialogHeader>
