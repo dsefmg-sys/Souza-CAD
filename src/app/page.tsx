@@ -3221,93 +3221,93 @@ export default function EditorPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 gap-1 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
-                      <span className="text-[10px] font-bold uppercase text-foreground col-span-3 px-1 mb-0.5">Ajuste de Tamanhos</span>
+                    <div className="grid grid-cols-2 gap-x-1.5 gap-y-1 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
+                      <span className="text-[10px] font-bold uppercase text-foreground col-span-2 px-1 mb-0.5">Ajuste de Tamanhos</span>
                       
-                      {/* Row 1, Col 1: Interface (bold) */}
-                      <div className="flex flex-col items-center rounded bg-muted/40 p-1">
-                        <span className="text-[10px] font-bold text-foreground truncate">Interface</span>
-                        <div className="flex gap-0.5 mt-1">
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}><span className="text-[9px]">A-</span></Button>
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}><span className="text-[9px]">A+</span></Button>
+                      {/* Interface */}
+                      <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                        <span className="truncate">Interface</span>
+                        <div className="flex items-center gap-0.5">
+                          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}>-</Button>
+                          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}>+</Button>
                         </div>
                       </div>
 
-                      {/* Row 1, Col 2: Tudo (bold) */}
+                      {/* Tudo */}
                       {(() => {
                         const r = { rot: 'Tudo', campo: 'escalaTextos' as const, base: 1.5 };
                         const passo = 0.05, min = 0.4, max = 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex flex-col items-center rounded bg-muted/40 p-1">
-                            <span className="text-[10px] font-bold text-foreground truncate">Tudo</span>
-                            <div className="flex gap-0.5 mt-1">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(-passo)}><span className="text-[9px]">A-</span></Button>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(passo)}><span className="text-[9px]">A+</span></Button>
+                          <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                            <span className="truncate">Tudo</span>
+                            <div className="flex items-center gap-0.5">
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
                             </div>
                           </div>
                         );
                       })()}
 
-                      {/* Row 1, Col 3: Rótulos */}
+                      {/* Rótulos */}
                       {(() => {
                         const r = { rot: 'Rótulos', campo: 'fonteRotulos' as const, base: 10 };
                         const passo = 0.5, min = 5, max = 20;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex flex-col items-center rounded bg-muted/40 p-1">
-                            <span className="text-[10px] font-medium text-foreground truncate">Rótulos</span>
-                            <div className="flex gap-0.5 mt-1">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(-passo)}><span className="text-[9px]">A-</span></Button>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(passo)}><span className="text-[9px]">A+</span></Button>
+                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                            <span className="truncate">Rótulos</span>
+                            <div className="flex items-center gap-0.5">
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
                             </div>
                           </div>
                         );
                       })()}
 
-                      {/* Row 2, Col 1: Símbolos */}
+                      {/* Símbolos */}
                       {(() => {
                         const r = { rot: 'Símbolos', campo: 'escalaVertices' as const, base: 1 };
                         const passo = 0.05, min = 0.4, max = 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex flex-col items-center rounded bg-muted/40 p-1">
-                            <span className="text-[10px] font-medium text-foreground truncate">Símbolos</span>
-                            <div className="flex gap-0.5 mt-1">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(-passo)}><span className="text-[9px]">A-</span></Button>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(passo)}><span className="text-[9px]">A+</span></Button>
+                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                            <span className="truncate">Símbolos</span>
+                            <div className="flex items-center gap-0.5">
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
                             </div>
                           </div>
                         );
                       })()}
 
-                      {/* Row 2, Col 2: Declarações */}
+                      {/* Declarações */}
                       {(() => {
                         const r = { rot: 'Declarações', campo: 'escalaDeclaracoes' as const, base: 1 };
                         const passo = 0.05, min = 0.4, max = 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex flex-col items-center rounded bg-muted/40 p-1">
-                            <span className="text-[10px] font-medium text-foreground truncate">Declarações</span>
-                            <div className="flex gap-0.5 mt-1">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(-passo)}><span className="text-[9px]">A-</span></Button>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(passo)}><span className="text-[9px]">A+</span></Button>
+                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                            <span className="truncate">Declarações</span>
+                            <div className="flex items-center gap-0.5">
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
                             </div>
                           </div>
                         );
                       })()}
 
-                      {/* Row 2, Col 3: Confrontantes */}
+                      {/* Confrontantes */}
                       {(() => {
                         const r = { rot: 'Confront.', campo: 'escalaConfront' as const, base: 1 };
                         const passo = 0.05, min = 0.4, max = 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex flex-col items-center rounded bg-muted/40 p-1">
-                            <span className="text-[10px] font-medium text-foreground truncate">Confront.</span>
-                            <div className="flex gap-0.5 mt-1">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(-passo)}><span className="text-[9px]">A-</span></Button>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(passo)}><span className="text-[9px]">A+</span></Button>
+                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                            <span className="truncate">Confront.</span>
+                            <div className="flex items-center gap-0.5">
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
+                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
                             </div>
                           </div>
                         );
