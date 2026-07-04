@@ -2735,7 +2735,7 @@ export default function EditorPage() {
                             </Button>
                           </div>
                           <div className="grid grid-cols-3 gap-1">
-                            <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)} className={snapAtivo ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}>
+                            <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar (linha, cota, polilinha, elemento) GRUDA no vértice mais próximo do imóvel, dentro de 2 m. Serve para amarrar exatamente num canto: cotar de vértice a vértice, ligar um detalhe a um ponto, ou fechar uma polilinha bem no vértice, sem ficar "quase" em cima. Se você não desenha à mão perto dos vértices, pode deixar desligado — não atrapalha o cálculo nem as peças.`} onClick={() => setSnapAtivo((s) => !s)} className={snapAtivo ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}>
                               <Magnet className="size-3.5" /> <span className="text-[9px] font-bold">F3</span>
                             </Button>
                             <Button size="sm" variant={mostrarRotulos ? 'default' : 'outline'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={mostrarRotulos ? 'bg-sky-600 text-white hover:bg-sky-700' : ''}>
