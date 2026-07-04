@@ -57,11 +57,8 @@ function removerAtributosETagsPos2007(xml: string): string {
     // Remove atributos como w14:paraId="..." ou w15:var="..."
     xml = xml.replace(new RegExp(`\\s+${ns}:[a-zA-Z0-9]+="[^"]*"`, 'g'), '');
     
-    // Remove tags vazias autocompletadas ex: <w14:paraId />
+    // Remove tags vazias autocompletadas ex: <w14:paraId /> ou <w14:textId />
     xml = xml.replace(new RegExp(`<${ns}:[a-zA-Z0-9]+[^>]*\\/>`, 'g'), '');
-    
-    // Remove tags com conteúdo ex: <w14:paraId>...</w14:paraId>
-    xml = xml.replace(new RegExp(`<${ns}:[a-zA-Z0-9]+[^>]*>[\\s\\S]*?<\\/${ns}:[a-zA-Z0-9]+>`, 'g'), '');
   }
   return xml;
 }

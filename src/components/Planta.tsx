@@ -397,6 +397,7 @@ export default function Planta({
     const handleWheel = (e: WheelEvent) => {
       if (!folhaTravada || e.ctrlKey) {
         e.preventDefault();
+        e.stopPropagation(); // Impede o borbulhamento para evitar conflito com o zoom do contêiner pai
         const delta = e.deltaY > 0 ? 250 : -250;
         const arredondado = Math.round(escalaDenom / 250) * 250;
         const nova = Math.max(250, arredondado + delta);
