@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { confirmar, avisar } from '@/lib/ui/dialogos';
+import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
 import { Input } from '@/components/ui/input';
 import ModalSpreadsheet from '@/components/ModalSpreadsheet';
 import { Logo } from '@/components/Logo';
@@ -2964,7 +2964,7 @@ export default function EditorPage() {
                     {completo && (vista === 'mapa' || editarPlanta) && (
                       <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
                         <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
-                          <span>Ferramentas de Desenho</span>
+                          <span>Desenho e Geometria</span>
                           <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                         </span>
                         {mostrandoCoresHeader && (
@@ -3016,32 +3016,9 @@ export default function EditorPage() {
                             </div>
                           )}
                         </div>
-                      </div>
-                    )}
 
-                    {/* CARD 4: VÉRTICES E GEOMETRIA */}
-                    {completo && (vista === 'mapa' || editarPlanta) && (
-                      <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
-                        <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
-                          <span>Vértices e Geometria</span>
-                          <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
-                        </span>
-                        {mostrandoCoresHeader && (
-                          <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded border border-dashed mb-1 animate-in fade-in duration-200">
-                            {CORES_CABECALHO.map((c) => (
-                              <button
-                                key={c.id}
-                                type="button"
-                                title={c.label}
-                                className={`size-3.5 rounded-full hover:scale-110 transition-transform ${c.bg} ${corCabecalho === c.id ? 'ring-2 ring-primary ring-offset-1' : ''}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  salvarCorCabecalho(c.id);
-                                }}
-                              />
-                            ))}
-                          </div>
-                        )}
+                        {/* Vértices e geometria — mesmo cartão, separados por um traço fino (economiza espaço) */}
+                        <div className="my-0.5 h-px bg-border/50" />
                         <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:px-2 [&>button]:gap-1.5 [&_svg]:size-3.5 [&>button]:min-w-0">
                           <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta">
                             <Plus className="text-emerald-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Inserir Vtx</span>

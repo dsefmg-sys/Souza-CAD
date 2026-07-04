@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth, entrarGoogle, entrarEmail, cadastrarEmail, traduzErroAuth } from '@/lib/firebase/auth';
-import { LogoHorizontal, FundoRedeMarca, Splash } from '@/components/Logo';
+import { LogoHorizontal, FundoRedeMarca } from '@/components/Logo';
 
 /**
  * Exige login na entrada quando o Firebase está configurado. Sem nuvem (sem variáveis), libera
@@ -23,7 +23,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   // Login OBRIGATÓRIO quando há nuvem configurada. Sem Firebase (ambiente sem variáveis), segue local.
   if (!disponivel || user) return <>{children}</>;
   if (carregando) {
-    return <Splash legenda="Carregando…" />;
+    // Tela de carregamento NEUTRA (preta), sem a arte estática — assim nenhuma imagem aparece antes
+    // do vídeo de abertura, que também começa no preto. A transição fica limpa: preto → vídeo.
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-black">
+        <span className="text-xs font-medium tracking-wide text-white/40">Carregando…</span>
+      </div>
+    );
   }
 
   async function fazer(fn: () => Promise<void>) {
