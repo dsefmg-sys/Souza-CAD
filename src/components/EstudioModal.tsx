@@ -138,7 +138,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
       const s = Math.min(fmt.w, fmt.h) * 0.25; const id = nid();
       setEls((es) => [...es, { id, t: 'img', src: url, x: (fmt.w - s) / 2, y: (fmt.h - s) / 2, w: s, h: s }]);
       setSel(id);
-    } catch { alert('Não consegui carregar este elemento.'); }
+    } catch { await avisar({ titulo: 'Elemento', mensagem: 'Não consegui carregar este elemento.' }); }
   }
 
   // banco de fotos: Picsum (picsum.photos), gratuito e sem chave — fotos aleatórias, sem busca por palavra
@@ -242,7 +242,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
     return (
       <div key={e.id} style={{ ...comum, display: 'flex', alignItems: 'center', justifyContent: 'center', color: e.cor, fontSize: e.size, fontWeight: e.bold ? 700 : 400, textAlign: 'center', lineHeight: 1.1, fontFamily: FONTES_ESTUDIO.find((f) => f.nome === e.fonte)?.css ?? 'Arial, Helvetica, sans-serif', overflow: 'visible' }}
         onPointerDown={(ev) => down(ev, e.id, 'mover')}
-        onDoubleClick={() => { const t = window.prompt('Texto:', e.texto); if (t != null) patch(e.id, { texto: t } as Partial<El>); }}>
+        onDoubleClick={async () => { const t = await perguntar({ titulo: 'Texto', valorInicial: e.texto }); if (t != null) patch(e.id, { texto: t } as Partial<El>); }}>
         {e.texto}{handle}
       </div>
     );

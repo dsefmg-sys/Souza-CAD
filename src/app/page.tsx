@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -76,6 +76,7 @@ import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, RE
 import { numBR, azimuteDMS, azimute } from '@/lib/topo/geometry';
 import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef, carregarImportVerticesVizinho, tutorialJaVisto, marcarTutorialVisto } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
+import { puxarConfigDaNuvem, empurrarConfigParaNuvem, limparConfigLocalNaSaida } from '@/lib/store/configNuvem';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
@@ -97,6 +98,7 @@ import RelatorioSobreposicaoModal from '@/components/RelatorioSobreposicaoModal'
 import ErrorBoundary from '@/components/ErrorBoundary';
 import JSZip from 'jszip';
 import { gerarRequerimentoDocx } from '@/lib/export/requerimento';
+import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 
 const MapEditor = dynamic(() => import('@/components/MapEditor'), {
   ssr: false,
@@ -143,12 +145,12 @@ const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-M
 
 // Linguagem de cor por FUNÇÃO do botão (deixa o cabeçalho intuitivo: a cor diz o que o grupo faz).
 // O ícone ainda muda de cor pelo progresso (verde=feito, azul=andamento) por cima disso.
-const COR_IMPORT = 'bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20 border-sky-500/30';       // entrada de dados
-const COR_VIZINHO = 'bg-teal-500/10 text-teal-700 dark:text-teal-300 hover:bg-teal-500/20 border-teal-500/30'; // vizinho certificado (SIGEF/INCRA)
-const COR_DADOS = 'bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20 border-violet-500/30'; // cadastro e IA
-const COR_MARCAR = 'bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 border-amber-500/30';    // marcar no mapa
-const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30'; // peças de saída
-const PREM_BTN = 'shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 font-semibold border-input';
+const COR_IMPORT = 'bg-background hover:bg-muted/60 text-sky-600 dark:text-sky-400 border-border/70 hover:border-border';       // entrada de dados
+const COR_VIZINHO = 'bg-background hover:bg-muted/60 text-teal-600 dark:text-teal-400 border-border/70 hover:border-border'; // vizinho certificado (SIGEF/INCRA)
+const COR_DADOS = 'bg-background hover:bg-muted/60 text-violet-600 dark:text-violet-400 border-border/70 hover:border-border'; // cadastro e IA
+const COR_MARCAR = 'bg-background hover:bg-muted/60 text-amber-600 dark:text-amber-400 border-border/70 hover:border-border';    // marcar no mapa
+const COR_PECA = 'bg-background hover:bg-muted/60 text-emerald-600 dark:text-emerald-400 border-border/70 hover:border-border'; // peças de saída
+const PREM_BTN = 'shadow-xs hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 font-bold border rounded-lg';
 
 type EtapaEstado = 'feito' | 'andamento' | 'pendente';
 // Sinaliza o progresso da etapa por um SELO no canto do botão (não mais pela cor do ícone, que
@@ -301,6 +303,52 @@ export default function EditorPage() {
   const [estudioAberto, setEstudioAberto] = useState(false);
   const [confEditId, setConfEditId] = useState<string | null>(null);
 
+  const [posBarra, setPosBarra] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const salva = localStorage.getItem('metrica:pos_barra_flutuante');
+      if (salva) {
+        try {
+          const p = JSON.parse(salva);
+          if (typeof p.x === 'number' && typeof p.y === 'number') {
+            return p;
+          }
+        } catch (_) {}
+      }
+    }
+    return { x: 80, y: 12 };
+  });
+
+  const [arrastandoBarra, setArrastandoBarra] = useState<{
+    startX: number;
+    startY: number;
+    startPosX: number;
+    startPosY: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!arrastandoBarra) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - arrastandoBarra.startX;
+      const dy = e.clientY - arrastandoBarra.startY;
+      const novoX = Math.max(10, Math.min(window.innerWidth - 120, arrastandoBarra.startPosX + dx));
+      const novoY = Math.max(5, Math.min(window.innerHeight - 50, arrastandoBarra.startPosY + dy));
+      setPosBarra({ x: novoX, y: novoY });
+    };
+
+    const handleMouseUp = () => {
+      localStorage.setItem('metrica:pos_barra_flutuante', JSON.stringify(posBarra));
+      setArrastandoBarra(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [arrastandoBarra, posBarra]);
+
   const [plantaDark, setPlantaDark] = useState(true); // modo escuro só da folha A3 (conforto noturno)
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
@@ -341,7 +389,10 @@ export default function EditorPage() {
   // Novo usuário começa no simples. Fica salvo nas preferências e vale no app inteiro.
   const [modoApp, setModoApp] = useState<'simples' | 'completo'>('simples');
   const [tempoCompletoMs, setTempoCompletoMs] = useState(0);
-  const [introTocando, setIntroTocando] = useState(false); // enquanto a abertura roda, escondemos a chave de modo
+  const [introTocando, setIntroTocando] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return carregarPreferencias().introVideoAtiva;
+  }); // enquanto a abertura roda, escondemos a chave de modo
   useEffect(() => { try { const p = carregarPreferencias(); setModoApp(p.modo); setTempoCompletoMs(p.tempoCompletoMs || 0); } catch { /* ignore */ } }, []);
   useEffect(() => {
     const h = (e: Event) => setIntroTocando(!!(e as CustomEvent<boolean>).detail);
@@ -462,6 +513,15 @@ export default function EditorPage() {
         setTemaCarregadoDaNuvem(true);
       });
 
+      // Cadastro do RT/escritório é POR CONTA (multi-empresa): puxa da nuvem, atualiza a tela e
+      // decide se ainda precisa do primeiro acesso. Se a conta for nova, o cache local é resetado
+      // (em branco), então um usuário nunca herda o cadastro de outro no mesmo navegador.
+      puxarConfigDaNuvem().then((configurado) => {
+        setTecnico(carregarTecnico());
+        setEscritorio(carregarEscritorio());
+        setSetupOk(souMaster() || configurado);
+      }).catch(() => {});
+
       // Sincroniza dados locais (salvos enquanto offline/sem permissão) com a nuvem
       sincronizarProjetosLocalParaNuvem().then(() => {
         atualizarLista();
@@ -475,6 +535,9 @@ export default function EditorPage() {
       // Auth já resolveu e não há usuário logado (modo local): pode liberar a restauração do
       // rascunho na chave 'local'. Enquanto a auth ainda carrega, NÃO liberamos — senão a tela
       // restauraria cedo demais a chave errada e o trabalho salvo sob o uid se perderia.
+      limparConfigLocalNaSaida();
+      setTecnico(carregarTecnico());
+      setEscritorio(carregarEscritorio());
       setTemaCarregadoDaNuvem(true);
     }
   }, [user, authCarregando]);
@@ -890,8 +953,8 @@ export default function EditorPage() {
     carregarGleba(nova);
     aviso(`Gleba "${nova.denominacao}" criada.`);
   }
-  function removerGleba(id: string) {
-    if (sincronizarGlebas().length > 1 && !confirmarApagar('Remover esta gleba do imóvel?')) return;
+  async function removerGleba(id: string) {
+    if (sincronizarGlebas().length > 1 && !(await confirmarApagar('Remover esta gleba do imóvel?'))) return;
     const gs = sincronizarGlebas().filter((g) => g.id !== id);
     if (gs.length === 0) { aviso('O imóvel precisa de ao menos uma gleba.'); return; }
     setGlebas(gs);
@@ -1115,18 +1178,18 @@ export default function EditorPage() {
   function adicionarMulti(ids: string[]) {
     setSelMulti((s) => { const n = new Set(s); ids.forEach((i) => n.add(i)); return n; });
   }
-  function apagarMultiSelecionados() {
+  async function apagarMultiSelecionados() {
     if (selMulti.size === 0) return;
-    if (!confirmarApagar(`Apagar ${selMulti.size} vértice(s) selecionado(s)?`)) return;
+    if (!(await confirmarApagar(`Apagar ${selMulti.size} vértice(s) selecionado(s)?`))) return;
     snap();
     setVertices((vs) => reordenar(vs.filter((v) => !selMulti.has(v.id))));
     setSelMulti(new Set());
   }
 
   // Apaga TODO o polígono (vértices + ignorados + trechos), para redesenhar à mão depois.
-  function limparPoligono() {
+  async function limparPoligono() {
     if (vertices.length === 0 && verticesIgnorados.length === 0) return;
-    if (!confirmarApagar(`Apagar todo o polígono (${vertices.length} vértices)? Você poderá desenhar de novo com a ferramenta "Inserir vértice".`)) return;
+    if (!(await confirmarApagar(`Apagar todo o polígono (${vertices.length} vértices)? Você poderá desenhar de novo com a ferramenta "Inserir vértice".`))) return;
     snap();
     setVertices([]);
     setVerticesIgnorados([]);
@@ -1137,10 +1200,10 @@ export default function EditorPage() {
   }
 
   // Ignorar vértice: tira-o do desenho do polígono (vai para a lista de ignorados, pode voltar).
-  function renomearVertice(id: string) {
+  async function renomearVertice(id: string) {
     const v = vertices.find((x) => x.id === id);
     if (!v) return;
-    const novo = window.prompt('Novo código/nome do vértice:', v.codigoSigef || '');
+    const novo = await perguntar({ titulo: 'Renomear vértice', mensagem: 'Novo código/nome do vértice:', valorInicial: v.codigoSigef || '' });
     if (novo == null) return;
     snap();
     setVertices((vs) => vs.map((x) => (x.id === id ? { ...x, codigoSigef: novo.trim().toUpperCase() } : x)));
@@ -1175,7 +1238,7 @@ export default function EditorPage() {
     aviso('Vértice reincluído no segmento mais próximo.');
   }
 
-  function executarDivisaoGleba() {
+  async function executarDivisaoGleba() {
     if (!vSplitInicioId || !vSplitFimId) return;
     try {
       const { verticesA, confrontantePorLadoA, verticesB, confrontantePorLadoB } = dividirGleba(
@@ -1189,8 +1252,8 @@ export default function EditorPage() {
       const gAtiva = glebas.find(g => g.id === glebaAtivaId);
       if (!gAtiva) return;
 
-      const nomeA = window.prompt("Nome da Parcela A:", `${gAtiva.denominacao} - Parte A`) || `${gAtiva.denominacao} - Parte A`;
-      const nomeB = window.prompt("Nome da Parcela B:", `${gAtiva.denominacao} - Parte B`) || `${gAtiva.denominacao} - Parte B`;
+      const nomeA = (await perguntar({ titulo: 'Dividir gleba', mensagem: 'Nome da Parcela A:', valorInicial: `${gAtiva.denominacao} - Parte A` })) || `${gAtiva.denominacao} - Parte A`;
+      const nomeB = (await perguntar({ titulo: 'Dividir gleba', mensagem: 'Nome da Parcela B:', valorInicial: `${gAtiva.denominacao} - Parte B` })) || `${gAtiva.denominacao} - Parte B`;
 
       const gA = glebaDe(glebas.length + 1, verticesA, confrontantes, confrontantePorLadoA, nomeA);
       const gB = glebaDe(glebas.length + 2, verticesB, confrontantes, confrontantePorLadoB, nomeB);
@@ -1206,17 +1269,17 @@ export default function EditorPage() {
       setVSplitFimId(null);
       setSelecionadoId(null);
 
-      alert("Gleba desmembrada com sucesso!");
+      await avisar({ titulo: 'Gleba desmembrada', mensagem: 'Gleba desmembrada com sucesso!' });
     } catch (e) {
-      alert((e as Error).message);
+      await avisar({ titulo: 'Erro', mensagem: (e as Error).message });
     }
   }
 
   // Divide a gleba ativa por ÁREA ALVO: a linha de corte fica paralela à reta De→Até.
-  function executarDivisaoPorArea() {
+  async function executarDivisaoPorArea() {
     const alvoHa = Number(String(areaAlvoHa).replace(',', '.'));
-    if (!(alvoHa > 0)) { alert('Informe a área alvo em hectares (ex.: 0,4).'); return; }
-    if (!vSplitInicioId || !vSplitFimId) { alert('Selecione dois vértices (De e Até): a linha de divisão sai paralela a eles.'); return; }
+    if (!(alvoHa > 0)) { await avisar({ titulo: 'Área alvo', mensagem: 'Informe a área alvo em hectares (ex.: 0,4).' }); return; }
+    if (!vSplitInicioId || !vSplitFimId) { await avisar({ titulo: 'Divisão por área', mensagem: 'Selecione dois vértices (De e Até): a linha de divisão sai paralela a eles.' }); return; }
     const vi = vertices.find((v) => v.id === vSplitInicioId), vf = vertices.find((v) => v.id === vSplitFimId);
     if (!vi || !vf) return;
     const az = azimute({ e: vi.leste, n: vi.norte }, { e: vf.leste, n: vf.norte });
@@ -1243,15 +1306,15 @@ export default function EditorPage() {
       setVerticesIgnorados([]);
       setVSplitInicioId(null); setVSplitFimId(null); setAreaAlvoHa('');
       aviso(`Gleba dividida: ${numBR(areaA / 10000, 4)} ha e ${numBR(areaB / 10000, 4)} ha. Repinte as divisas da nova linha.`);
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { await avisar({ titulo: 'Erro', mensagem: (e as Error).message }); }
   }
 
-  function executarFusaoGlebas(gAlvoId: string) {
+  async function executarFusaoGlebas(gAlvoId: string) {
     const gAtiva = glebas.find(g => g.id === glebaAtivaId);
     const gAlvo = glebas.find(g => g.id === gAlvoId);
     if (!gAtiva || !gAlvo) return;
 
-    if (confirm(`Deseja unir a gleba ativa "${gAtiva.denominacao}" com a gleba "${gAlvo.denominacao}"?`)) {
+    if (await confirmar({ titulo: 'Unir glebas', mensagem: `Deseja unir a gleba ativa "${gAtiva.denominacao}" com a gleba "${gAlvo.denominacao}"?`, okLabel: 'Unir' })) {
       try {
         const { vertices: vFuso, confrontantePorLado: cFuso } = unirGlebas(
           vertices,
@@ -1260,11 +1323,11 @@ export default function EditorPage() {
           gAlvo.confrontantePorLado
         );
 
-        const novoNome = window.prompt("Nome da Gleba Unificada:", `${gAtiva.denominacao} + ${gAlvo.denominacao}`) || `${gAtiva.denominacao} + ${gAlvo.denominacao}`;
+        const novoNome = (await perguntar({ titulo: 'Unir glebas', mensagem: 'Nome da Gleba Unificada:', valorInicial: `${gAtiva.denominacao} + ${gAlvo.denominacao}` })) || `${gAtiva.denominacao} + ${gAlvo.denominacao}`;
 
         const gUnida = glebaDe(glebas.length + 1, vFuso, confrontantes, cFuso, novoNome);
         const novasGlebas = glebas.filter(g => g.id !== glebaAtivaId && g.id !== gAlvoId).concat(gUnida);
-        
+
         setGlebas(novasGlebas);
         setGlebaAtivaId(gUnida.id);
 
@@ -1272,9 +1335,9 @@ export default function EditorPage() {
         setConfrontantePorLado(cFuso);
         setSelecionadoId(null);
 
-        alert("Glebas unificadas com sucesso!");
+        await avisar({ titulo: 'Glebas unificadas', mensagem: 'Glebas unificadas com sucesso!' });
       } catch (e) {
-        alert((e as Error).message);
+        await avisar({ titulo: 'Erro', mensagem: (e as Error).message });
       }
     }
   }
@@ -1346,10 +1409,11 @@ export default function EditorPage() {
 
   /** Adota um vértice de um imóvel vizinho certificado (clique na divisa dele no mapa): pede o
    * código oficial que o outro agrimensor já usou, se o dono souber (do memorial do vizinho). */
-  function adotarVerticeVizinho(lat: number, lon: number) {
-    const digitado = window.prompt(
-      'Se você já sabe o código oficial que o agrimensor vizinho usou para este vértice (ex.: CODI-P-0007), digite aqui — ele será reaproveitado em vez de gerar um novo.\n\nDeixe em branco se não souber (o sistema gera um código provisório seu).'
-    );
+  async function adotarVerticeVizinho(lat: number, lon: number) {
+    const digitado = await perguntar({
+      titulo: 'Vértice de vizinho',
+      mensagem: 'Se você já sabe o código oficial que o agrimensor vizinho usou para este vértice (ex.: CODI-P-0007), digite aqui — ele será reaproveitado em vez de gerar um novo.\n\nDeixe em branco se não souber (o sistema gera um código provisório seu).',
+    });
     const codigo = digitado?.trim();
     inserirVertice(lat, lon, codigo ? codigo.toUpperCase() : undefined);
   }
@@ -1432,13 +1496,13 @@ export default function EditorPage() {
     if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
     return { lat, lon, leste, norte };
   }
-  function onCliqueDesenho(lat: number, lon: number) {
+  async function onCliqueDesenho(lat: number, lon: number) {
     const p = pontoDesenho(lat, lon);
     if (modo === 'simbolo') {
       setObjetos((os) => [...os, novoSimbolo(p, simboloSel)]);
       return;
     } else if (modo === 'texto') {
-      const t = window.prompt('Texto a inserir:'); if (!t) return;
+      const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' }); if (!t) return;
       setObjetos((os) => [...os, novoTexto(p, t)]);
     } else if (modo === 'cota') {
       setDesenhoBuffer((buf) => {
@@ -1463,7 +1527,7 @@ export default function EditorPage() {
           const buf = desenhoBuffer;
           setDesenhoBuffer([]);
           // pergunta o que é o polígono: uma GLEBA (entra na área/peças) ou um item do mapa (casa etc.)
-          const ehGleba = window.confirm('Polígono fechado. O que ele representa?\n\nOK = uma GLEBA / parcela do imóvel (entra na área e nas peças)\nCancelar = um item do mapa (casa, benfeitoria, mata…)');
+          const ehGleba = await confirmar({ titulo: 'Polígono fechado', mensagem: 'O que este polígono representa?', okLabel: 'Gleba do imóvel', cancelLabel: 'Item do mapa' });
           if (ehGleba) {
             const novos: Vertex[] = buf.map((q, i) => ({ id: `v_${Date.now().toString(36)}_${i}`, lat: q.lat, lon: q.lon, leste: q.leste, norte: q.norte, tipo: 'P', codigoSigef: `P${i + 1}`, isDivisa: false, ordem: i + 1, nome: `P${i + 1}`, codigoCampo: `P${i + 1}`, elevacao: 0 }));
             snap();
@@ -1663,8 +1727,8 @@ export default function EditorPage() {
   }
 
   // Cria um confrontante novo já como pincel ativo (nome preenchível depois na aba Confront.).
-  function novoConfrontantePincel() {
-    const nome = window.prompt('Nome do confrontante (pode completar depois):') ?? '';
+  async function novoConfrontantePincel() {
+    const nome = (await perguntar({ titulo: 'Novo confrontante', mensagem: 'Nome do confrontante (pode completar depois):' })) ?? '';
     const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
     setConfrontantes((cs) => [...cs, { id, nome: nome.trim(), cpf: '', matricula: '', cns: '' }]);
     setConfrontantePincelId(id);
@@ -1769,9 +1833,11 @@ export default function EditorPage() {
         }));
         const nome = imovel.denominacao || nomeProjeto || 'imovel';
         // escolha: uma planilha com várias abas, ou planilhas separadas (zip)
-        const unica = window.confirm(
-          `Planilha SIGEF com ${glebasSigef.length} glebas:\n\nOK = uma planilha única (uma aba por gleba).\nCancelar = planilhas separadas (uma por gleba), num arquivo .zip.`
-        );
+        const unica = await confirmar({
+          titulo: 'Planilha SIGEF',
+          mensagem: `Planilha SIGEF com ${glebasSigef.length} glebas: gerar uma planilha única (uma aba por gleba) ou planilhas separadas num .zip?`,
+          okLabel: 'Planilha única', cancelLabel: 'Separadas (.zip)',
+        });
         if (unica) {
           const blob = await gerarSigefOds({ templateBytes: tpl, res: glebasSigef[0].res, imovel, tecnico: tec, confrontantes: glebasSigef[0].confrontantes, confrontantePorLado: glebasSigef[0].confrontantePorLado, glebas: glebasSigef });
           saveAs(blob, `SIGEF - ${nome} (${glebasSigef.length} glebas).ods`);
@@ -1782,7 +1848,22 @@ export default function EditorPage() {
       } else {
         const vs = await comCodigos();
         const r = calcular(vs, confrontantePorLado);
-        const blob = await gerarSigefOds({ templateBytes: tpl, res: r, imovel, tecnico: tec, confrontantes, confrontantePorLado });
+        const ativa = glebas.find((g) => g.id === glebaAtivaId);
+        const blob = await gerarSigefOds({
+          templateBytes: tpl,
+          res: r,
+          imovel,
+          tecnico: tec,
+          confrontantes,
+          confrontantePorLado,
+          glebas: ativa ? [{
+            res: r,
+            confrontantes,
+            confrontantePorLado,
+            denominacao: ativa.denominacao || 'Parcela 1',
+            parcela: ativa.parcela || '001'
+          }] : undefined
+        });
         saveAs(blob, `SIGEF - ${imovel.denominacao || nomeProjeto || 'imovel'}.ods`);
       }
       setBaixou((b) => ({ ...b, ods: true }));
@@ -1867,7 +1948,22 @@ export default function EditorPage() {
       const memorial = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente });
       const modeloProprio = carregarModeloSigef();
       const tpl: ArrayBuffer = modeloProprio !== null ? modeloProprio : await fetch('/templates/sigef.ods').then((rr) => rr.arrayBuffer());
-      const ods = await gerarSigefOds({ templateBytes: tpl, res: r, imovel, tecnico, confrontantes, confrontantePorLado });
+      const ativa = glebas.find((g) => g.id === glebaAtivaId);
+      const ods = await gerarSigefOds({
+        templateBytes: tpl,
+        res: r,
+        imovel,
+        tecnico,
+        confrontantes,
+        confrontantePorLado,
+        glebas: ativa ? [{
+          res: r,
+          confrontantes,
+          confrontantePorLado,
+          denominacao: ativa.denominacao || 'Parcela 1',
+          parcela: ativa.parcela || '001'
+        }] : undefined
+      });
       // se requerente/transmitente ainda não foram preenchidos, cai no proprietário do imóvel
       const propComoParte: PessoaQualificada = { ...PESSOA_VAZIA, nome: imovel.proprietario || '—', cpf: imovel.cpfProprietario || '', cidadeUf: imovel.municipio || '' };
       const requerimento = await gerarRequerimentoDocx({ imovel, tecnico, requerente: requerente ?? propComoParte, transmitente: transmitente ?? propComoParte, areaRealHa: ef.areaHa, dataExtenso: dataPorExtenso() });
@@ -2362,11 +2458,11 @@ export default function EditorPage() {
     // termo de aceite: pede na hora de CRIAR o projeto (não na 1ª abertura do app)
     if (!termosOk) { acaoAposTermos.current = () => { void criarNovoProjeto(); }; setTermosModalAberto(true); return; }
     if (temConteudoTrabalho()) {
-      const ok = window.confirm('Deseja SALVAR o projeto atual antes de criar um novo?\n\n[OK] = Sim, salvar projeto e criar novo\n[Cancelar] = Não, descartar e criar novo');
+      const ok = await confirmar({ titulo: 'Criar novo projeto', mensagem: 'Deseja SALVAR o projeto atual antes de criar um novo?', okLabel: 'Salvar e criar novo', cancelLabel: 'Descartar e criar novo' });
       if (ok) {
         await salvar();
       } else {
-        const confirmarDescarte = window.confirm('Atenção: Você escolheu não salvar. Deseja realmente DESCARTAR as alterações não salvas e iniciar um novo projeto?');
+        const confirmarDescarte = await confirmar({ titulo: 'Descartar alterações', mensagem: 'Você escolheu não salvar. Deseja realmente DESCARTAR as alterações não salvas e iniciar um novo projeto?', okLabel: 'Descartar', perigo: true });
         if (!confirmarDescarte) return;
       }
     }
@@ -2414,8 +2510,8 @@ export default function EditorPage() {
   }
 
   // Carrega um projeto completo FICTÍCIO (demonstração). As peças saem marcadas como dados fictícios.
-  function carregarProjetoFicticio() {
-    if (temConteudoTrabalho() && !window.confirm('Carregar o projeto fictício de demonstração? O trabalho atual não salvo será descartado.')) return;
+  async function carregarProjetoFicticio() {
+    if (temConteudoTrabalho() && !(await confirmar({ titulo: 'Projeto de demonstração', mensagem: 'Carregar o projeto fictício de demonstração? O trabalho atual não salvo será descartado.', okLabel: 'Carregar demonstração' }))) return;
     const f = gerarProjetoFicticio();
     const gleba: Gleba = { ...novaGlebaVazia(1), denominacao: f.imovel.denominacao, vertices: f.vertices, confrontantes: f.confrontantes, confrontantePorLado: f.confrontantePorLado };
     setProjetoId(null);
@@ -2431,14 +2527,14 @@ export default function EditorPage() {
     aviso('Projeto fictício carregado. Use para demonstração — todas as peças saem marcadas como DADOS FICTÍCIOS.');
   }
 
-  function converterPolilinhaEmPerimetro() {
+  async function converterPolilinhaEmPerimetro() {
     if (!objetoSelId) return;
     const o = objetos.find((x) => x.id === objetoSelId);
     if (!o || o.tipo !== 'polilinha' || o.pontos.length < 3) {
-      alert('Selecione uma polilinha com pelo menos 3 pontos para converter em perímetro.');
+      await avisar({ titulo: 'Converter em perímetro', mensagem: 'Selecione uma polilinha com pelo menos 3 pontos para converter em perímetro.' });
       return;
     }
-    if (window.confirm('Deseja substituir o perímetro atual do imóvel por esta polilinha?')) {
+    if (await confirmar({ titulo: 'Substituir perímetro', mensagem: 'Deseja substituir o perímetro atual do imóvel por esta polilinha?', okLabel: 'Substituir' })) {
       snap();
       const novosVertices: Vertex[] = o.pontos.map((p, i) => {
         return {
@@ -2469,7 +2565,7 @@ export default function EditorPage() {
   async function iniciarImportTxt() {
     if (!termosOk) { acaoAposTermos.current = () => { void iniciarImportTxt(); }; setTermosModalAberto(true); return; }
     if (temConteudoTrabalho()) {
-      const ok = window.confirm('Há um trabalho em andamento. Deseja SALVÁ-LO como projeto antes de importar um novo arquivo?\n\nOK = salvar e importar  ·  Cancelar = importar sem salvar');
+      const ok = await confirmar({ titulo: 'Importar novo arquivo', mensagem: 'Há um trabalho em andamento. Deseja SALVÁ-LO como projeto antes de importar um novo arquivo?', okLabel: 'Salvar e importar', cancelLabel: 'Importar sem salvar' });
       if (ok) { await salvar(); }
     }
     fileRef.current?.click();
@@ -2498,11 +2594,11 @@ export default function EditorPage() {
     aviso(`Projeto carregado (${p.glebas.length} gleba(s)).`);
   }
   async function remover(id: string) {
-    if (!confirmarApagar('Excluir este projeto do banco de dados? Esta ação não pode ser desfeita.')) return;
+    if (!(await confirmarApagar('Excluir este projeto do banco de dados? Esta ação não pode ser desfeita.'))) return;
     await excluirProjeto(id); atualizarLista();
   }
   async function renomear(p: Projeto) {
-    const novo = window.prompt('Novo nome do projeto:', p.nome);
+    const novo = await perguntar({ titulo: 'Renomear projeto', mensagem: 'Novo nome do projeto:', valorInicial: p.nome });
     if (!novo || novo === p.nome) return;
     await salvarProjeto({ ...p, nome: novo });
     if (p.id === projetoId) setNomeProjeto(novo);
@@ -2567,15 +2663,15 @@ export default function EditorPage() {
         setSalvarLaranja(false);
         setSalvoOk(true);
         
-        const salvarBanco = window.confirm(`Deseja salvar o projeto importado "${proj.nome}" no seu banco de dados para acessá-lo facilmente no futuro?`);
+        const salvarBanco = await confirmar({ titulo: 'Salvar no banco', mensagem: `Deseja salvar o projeto importado "${proj.nome}" no seu banco de dados para acessá-lo facilmente no futuro?`, okLabel: 'Salvar no banco' });
         if (salvarBanco) {
           await salvarProjeto(proj);
           atualizarLista();
         }
-        
+
         aviso(`Projeto "${proj.nome}" importado com sucesso!`);
       } catch (err) {
-        alert(err instanceof Error ? err.message : 'Erro ao importar projeto.');
+        await avisar({ titulo: 'Erro', mensagem: err instanceof Error ? err.message : 'Erro ao importar projeto.' });
       } finally {
         setProcessando(false);
       }
@@ -2748,7 +2844,6 @@ export default function EditorPage() {
             <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
           </a>
         )}
-        {completo && <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />}
         {completo && (
           <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} border-green-600/40 bg-green-500/10 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf className="size-4" /> CAR</Button>
         )}
@@ -2758,11 +2853,7 @@ export default function EditorPage() {
            FLUTUANTE na lateral direita — ver logo abaixo do <header>. */}
       </header>
 
-      {/* No modo MAPA a chave fica flutuante no canto superior direito. No modo PLANTA ela vive dentro
-          da barra flutuante, à direita do "Situação Pronta" (ver mais abaixo). */}
-      {vista === 'mapa' && chaveModo && (
-        <div className="no-print fixed right-2 top-14 z-[1100] shadow-lg">{chaveModo}</div>
-      )}
+      {/* No modo MAPA e PLANTA a chave Fácil/Completo agora fica integrada nas respectivas barras flutuantes. */}
 
       <div className="relative flex min-h-0 flex-1">
         {/* Faixa de status/controles — sobreposta (não empurra o mapa/planta); some sozinha */}
@@ -2844,38 +2935,11 @@ export default function EditorPage() {
                         </div>
                       )}
                       
-                      {/* Card de Informações Resumidas do Levantamento */}
-                      <div className="rounded-lg border bg-muted/30 p-2 space-y-1.5 text-[11px] leading-tight">
-                        <div className="grid grid-cols-2 gap-1.5 border-b pb-1.5">
-                          <div>
-                            <div className="text-[8px] font-medium uppercase text-muted-foreground">Área SGL</div>
-                            <div className="font-bold text-sm text-foreground">{res ? `${numBR(res.areaHa, casasTela(4))}` : '—'} <span className="text-[9px] font-normal text-muted-foreground">ha</span></div>
-                          </div>
-                          <div>
-                            <div className="text-[8px] font-medium uppercase text-muted-foreground">Perímetro</div>
-                            <div className="font-bold text-sm text-foreground">{res ? `${numBR(res.perimetro)}` : '—'} <span className="text-[9px] font-normal text-muted-foreground">m</span></div>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1">
-                          <div>
-                            <div className="text-[8px] font-medium uppercase text-muted-foreground">Vértices</div>
-                            <div className="font-bold text-foreground">{vertices.length}</div>
-                          </div>
-                          <div>
-                            <div className="text-[8px] font-medium uppercase text-muted-foreground">Fuso</div>
-                            <div className="font-bold text-foreground">{zona}{hemisferio}</div>
-                          </div>
-                          <div>
-                            <div className="text-[8px] font-medium uppercase text-muted-foreground">Status</div>
-                            <div className={`font-bold ${projPronto ? 'text-emerald-600' : 'text-amber-500'}`}>{projPronto ? 'Pronto' : 'Pendente'}</div>
-                          </div>
-                        </div>
-                        {/* O controle das parcelas INCRA saiu daqui — vira barra flutuante no mapa, só quando há parcelas. */}
-                      </div>
+
 
                       {/* Botões de Gestão — grade de 3 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo
                           (sem botão de largura total; menos rolagem). */}
-                      <div className="grid grid-cols-3 gap-1 [&>button]:h-14 [&>button]:flex-col [&>button]:justify-center [&>button]:gap-1 [&>button]:p-1 [&>button]:min-w-0 [&_span]:w-full [&_span]:truncate [&_span]:text-center [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none [&_svg]:size-4 [&_svg]:shrink-0">
+                      <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
                         <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''} onClick={salvar} disabled={processando} title="Salvar o projeto (Ctrl+S)">
                           <Save /> <span>Salvar</span>
                         </Button>
@@ -2944,7 +3008,7 @@ export default function EditorPage() {
                         <>
                           <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
                           {/* Mover + ímã + rótulos + travar numa grade de 3 colunas (sem botão de largura total) */}
-                          <div className="grid grid-cols-3 gap-1 [&>button]:h-14 [&>button]:flex-col [&>button]:justify-center [&>button]:gap-1 [&>button]:p-1 [&>button]:min-w-0 [&_span]:w-full [&_span]:truncate [&_span]:text-center [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none [&_svg]:size-4 [&_svg]:shrink-0">
+                          <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
                             <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
                               <MousePointer2 className="text-cyan-500" /> <span>Mover</span>
                             </Button>
@@ -2954,8 +3018,8 @@ export default function EditorPage() {
                             <Button size="sm" variant={mostrarRotulos ? 'default' : 'outline'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={mostrarRotulos ? 'bg-sky-600 text-white hover:bg-sky-700' : ''}>
                               {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
                             </Button>
-                            <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
-                              {bloqueado ? <Lock /> : <LockOpen />} <span>{bloqueado ? 'Travado' : 'Solto'}</span>
+                            <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={`col-span-3 ${bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'}`} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
+                              {bloqueado ? <Lock /> : <LockOpen />} <span>{bloqueado ? 'Vértices travados' : 'Vértices soltos'}</span>
                             </Button>
                           </div>
                         </>
@@ -2992,28 +3056,28 @@ export default function EditorPage() {
                             ))}
                           </div>
                         )}
-                        <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:px-2 [&>button]:gap-1.5 [&_svg]:size-3.5 [&>button]:min-w-0">
+                        <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
                           <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)">
-                            <PenTool className="text-amber-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Linha</span>
+                            <PenTool className="text-amber-500 shrink-0" /> <span className="truncate">Linha</span>
                           </Button>
                           <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'outline'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
-                            <PenTool className="text-cyan-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Polilinha</span>
+                            <PenTool className="text-cyan-500 shrink-0" /> <span className="truncate">Polilinha</span>
                           </Button>
                           <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'outline'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (F8)">
-                            <PenTool className="text-indigo-500 opacity-80 shrink-0" /> <span className="truncate text-[11px] font-semibold">Tracejado</span>
+                            <PenTool className="text-indigo-500 opacity-80 shrink-0" /> <span className="truncate">Tracejado</span>
                           </Button>
                           <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos para medir (F10)">
-                            <RotateCcw className="text-rose-500 rotate-90 shrink-0" /> <span className="truncate text-[11px] font-semibold">Cota</span>
+                            <RotateCcw className="text-rose-500 rotate-90 shrink-0" /> <span className="truncate">Cota</span>
                           </Button>
                           <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)">
-                            <FileText className="text-emerald-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Texto</span>
+                            <FileText className="text-emerald-500 shrink-0" /> <span className="truncate">Texto</span>
                           </Button>
                           <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'outline'} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
                             <div className="shrink-0 text-sky-500"><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
-                            <span className="truncate text-[11px] font-semibold">Símbolos</span>
+                            <span className="truncate">Símbolos</span>
                           </Button>
                           {modo === 'simbolo' && (
-                            <div className="col-span-2 grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
+                            <div className="col-span-3 grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
                               {SIMBOLOS.map((s) => (
                                 <button key={s.chave} type="button" title={s.rotulo}
                                   className={`flex flex-col items-center justify-center rounded p-1 hover:bg-background transition-all ${simboloSel === s.chave ? 'bg-background ring-1 ring-primary' : ''}`}
@@ -3028,21 +3092,21 @@ export default function EditorPage() {
 
                         {/* Vértices e geometria — mesmo cartão, separados por um traço fino (economiza espaço) */}
                         <div className="my-0.5 h-px bg-border/50" />
-                        <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:px-2 [&>button]:gap-1.5 [&_svg]:size-3.5 [&>button]:min-w-0">
+                        <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
                           <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta">
-                            <Plus className="text-emerald-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Inserir Vtx</span>
+                            <Plus className="text-emerald-500 shrink-0" /> <span className="truncate">Inserir</span>
                           </Button>
                           <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice">
-                            <Trash2 className="text-rose-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Apagar Vtx</span>
+                            <Trash2 className="text-rose-500 shrink-0" /> <span className="truncate">Apagar</span>
                           </Button>
                           <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
-                            <EyeOff className="text-amber-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Ignorar</span>
+                            <EyeOff className="text-amber-500 shrink-0" /> <span className="truncate">Ignorar</span>
                           </Button>
                           <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('considerar'); }} title="Considerar vértice (F11)">
-                            <Plus className="text-cyan-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Considerar</span>
+                            <Plus className="text-cyan-500 shrink-0" /> <span className="truncate">Considerar</span>
                           </Button>
                           <Button size="sm" variant={modo === 'medir' ? 'default' : 'outline'} onClick={() => { setModo('medir'); setDesenhoBuffer([]); }} title="Régua: medir distância e azimute no mapa">
-                            <Ruler className="text-sky-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Medir</span>
+                            <Ruler className="text-sky-500 shrink-0" /> <span className="truncate">Medir</span>
                           </Button>
                           <Button size="sm" variant={modo === 'multi' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo(modo === 'multi' ? 'navegar' : 'multi'); }} title="Selecionar vários vértices">
                             <div className="shrink-0 text-indigo-500">
@@ -3066,7 +3130,7 @@ export default function EditorPage() {
                             <div className="col-span-2 grid grid-cols-3 gap-1 mt-1">
                               <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold font-mono">A-</span></Button>
                               <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold font-mono">A+</span></Button>
-                              <Button size="sm" variant="outline" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5 text-cyan-500" /></Button>
+                              <Button size="sm" variant="outline" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: objSel.texto ?? '' }); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5 text-cyan-500" /></Button>
                             </div>
                           )}
                           {objSel?.tipo === 'polilinha' && (
@@ -3139,21 +3203,25 @@ export default function EditorPage() {
                 <div className="mt-auto flex flex-col gap-1 border-t pt-1.5">
                   {/* Tamanho dos textos: no mapa mexe nos nomes dos vértices; na planta, 4 escopos separados */}
                   {vista === 'mapa' ? (
-                    <div className="flex flex-col gap-0.5 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
-                      <span className="text-[10px] font-bold uppercase text-foreground px-1 mb-1 block">AJUSTE DE TAMANHOS</span>
-                      <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1 py-0.5" title="Tamanho dos nomes/códigos que aparecem nos vértices">
-                        <span className="mr-auto pl-1 text-[10px] font-bold uppercase text-foreground">RÓTULOS</span>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-[10px]">A-</span></Button>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-[10px]">A+</span></Button>
+                    <div className="grid grid-cols-2 gap-1 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
+                      <span className="text-[10px] font-bold uppercase text-foreground col-span-2 px-1 mb-0.5">Ajuste de Tamanhos</span>
+                      <div className="flex flex-col items-center rounded bg-muted/40 p-1" title="Tamanho dos nomes/códigos que aparecem nos vértices">
+                        <span className="text-[10px] font-bold text-foreground truncate">Rótulos</span>
+                        <div className="flex gap-0.5 mt-1">
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-[9px]">A-</span></Button>
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-[9px]">A+</span></Button>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1 py-0.5 mt-1" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
-                        <span className="mr-auto pl-1 text-[10px] font-bold uppercase text-foreground">INTERFACE</span>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}><span className="text-[10px] font-bold">A-</span></Button>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}><span className="text-[10px] font-bold">A+</span></Button>
+                      <div className="flex flex-col items-center rounded bg-muted/40 p-1" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
+                        <span className="text-[10px] font-bold text-foreground truncate">Interface</span>
+                        <div className="flex gap-0.5 mt-1">
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}><span className="text-[9px]">A-</span></Button>
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}><span className="text-[9px]">A+</span></Button>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 gap-1.5 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
+                    <div className="grid grid-cols-3 gap-1 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
                       <span className="text-[10px] font-bold uppercase text-foreground col-span-3 px-1 mb-0.5">Ajuste de Tamanhos</span>
                       
                       {/* Row 1, Col 1: Interface (bold) */}
@@ -3263,7 +3331,7 @@ export default function EditorPage() {
                       ['Planos', souMaster() ? 'Cobrança do app: planos, preços e nível de cada cliente (admin)' : 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400'],
                       ...(souMaster() ? [['Uso', 'Painel do titular: contas e uso do sistema (só você vê)', <BarChart3 key="i" className="size-4" />, () => setMasterAberto(true), 'text-amber-600 dark:text-amber-400']] : []),
                       ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400']] : []),
-                      ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => sair(), 'text-red-600 dark:text-red-400']] : []),
+                      ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => { limparConfigLocalNaSaida(); sair(); }, 'text-red-600 dark:text-red-400']] : []),
                     ] as [string, string, React.ReactNode, () => void, string][]).map(([rotuloBtn, dica, icone, acao, cor]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline" className={`h-11 min-w-0 flex-col gap-0.5 overflow-hidden p-0 px-0.5 [&_svg]:${cor}`} title={dica} onClick={acao}>
                         <span className={cor}>{icone}</span>
@@ -3272,7 +3340,7 @@ export default function EditorPage() {
                     ))}
                   </div>
                   {/* Convite pro modo Completo: no Simples a pessoa vê que existe mais e vira a chave quando quiser. */}
-                  {!completo && (
+                  {!completo && rotulo && (
                     <button type="button" onClick={() => trocarModoApp('completo')}
                       title="Toque para abrir o modo Completo, com todas as ferramentas."
                       className="mt-1 block !h-auto w-full rounded-lg border border-dashed border-primary/40 bg-primary/5 !p-2 text-left !text-[10px] leading-snug text-muted-foreground hover:bg-primary/10">
@@ -3300,98 +3368,161 @@ export default function EditorPage() {
             <span className="text-[8px] font-bold leading-none text-amber-500">Esc</span>
           </button>
 
-          {/* Parcelas INCRA (SIGEF): controle flutuante no MAPA, só quando existem parcelas importadas. */}
-          {vista === 'mapa' && parcelasCert.length > 0 && (
-            <div className="no-print absolute left-20 top-3 z-[1160] flex items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 shadow-xl backdrop-blur">
-              <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-foreground">
-                <input type="checkbox" className="size-3.5 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
-                INCRA ({parcelasCert.length})
-              </label>
-              <span className="text-[9px] uppercase text-muted-foreground">opacidade</span>
-              <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} disabled={!mostrarCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-16 accent-cyan-600 disabled:opacity-40" title="Opacidade do preenchimento das parcelas" />
-            </div>
-          )}
-
-          {vista === 'planta' && (
-            <div className="absolute left-20 top-3 z-[1160] flex items-center gap-1 rounded-xl border border-border bg-background/95 p-1 shadow-xl backdrop-blur no-print">
-              <Button
-                size="sm"
-                variant={folhaTravada ? 'outline' : 'default'}
-                className={folhaTravada ? 'size-7 p-0' : 'size-7 p-0 bg-amber-500 hover:bg-amber-600 text-white'}
-                onClick={() => {
-                  const nova = !folhaTravada;
-                  setFolhaTravada(nova);
-                  if (!nova) setModo('navegar');
+          {/* Barra flutuante de ferramentas unificada (Mapa/Planta) — arrastável e persistente */}
+          {(vista === 'mapa' || vista === 'planta') && (
+            <div
+              className="no-print absolute z-[1160] flex items-center gap-2 select-none"
+              style={{ left: `${posBarra.x}px`, top: `${posBarra.y}px` }}
+            >
+              {/* Alça de Arrasto (Drag Handle) */}
+              <div
+                className="flex size-7 cursor-grab items-center justify-center rounded-full border border-border bg-background/95 shadow-xl backdrop-blur active:cursor-grabbing text-muted-foreground hover:bg-accent transition-colors"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setArrastandoBarra({
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    startPosX: posBarra.x,
+                    startPosY: posBarra.y,
+                  });
                 }}
-                title={folhaTravada ? "Moldura travada — clique para soltar e arrastar a prancha A3 para enquadrar o desenho" : "Moldura solta — clique para travar o layout da folha e evitar arraste acidental"}
+                title="Clique e arraste para mover este painel de controles"
               >
-                {folhaTravada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
-              </Button>
-
-              <Button
-                size="sm"
-                variant={plantaDark ? 'default' : 'outline'}
-                className="size-7 p-0"
-                onClick={() => setPlantaDark((v) => !v)}
-                title={plantaDark ? 'Modo escuro ligado — clique para voltar ao claro' : 'Modo claro — clique para o modo escuro (visualização noturna)'}
-              >
-                {plantaDark ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
-              </Button>
-
-              <div className="h-5 w-px bg-border mx-0.5" />
-
-              {(() => {
-                const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
-                const pronto = !!situacaoUrl && !stale;
-                // Pílula compacta e discreta (mesma linguagem do alternador de modo): tom suave em vez de
-                // botão sólido saturado, texto pequeno. Verde = pronta; âmbar = capturar/atualizar.
-                const cor = pronto
-                  ? 'border-emerald-600/40 bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400'
-                  : 'border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400';
-                return (
-                  <button type="button" onClick={gerarSituacaoPlanta}
-                    title={!situacaoUrl ? 'Capturar a planta de situação (satélite)' : stale ? 'A situação está desatualizada — clique para atualizar' : 'Situação pronta'}
-                    className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold transition-colors ${cor}`}>
-                    {pronto ? <Check className="size-3.5" /> : <Camera className="size-3.5" />}
-                    {!situacaoUrl ? 'Capturar situação' : stale ? 'Atualizar situação' : 'Situação pronta'}
-                  </button>
-                );
-              })()}
-
-              {/* Chave Fácil/Completo — à direita do "Situação Pronta", como pedido */}
-              {chaveModo}
-
-              <div className="h-5 w-px bg-border mx-0.5" />
-
-              <div className="flex items-center rounded-md border border-input bg-background overflow-hidden h-7">
-                <button
-                  type="button"
-                  className="h-full px-3 hover:bg-accent text-foreground font-bold border-r border-input transition-colors text-sm flex items-center justify-center"
-                  title="Zoom Out / Reduzir escala (aumenta o denominador em 250)"
-                  onClick={() => alterarEscala(250)}
-                >
-                  -
-                </button>
-                <button
-                  type="button"
-                  className={`h-full px-3.5 hover:bg-accent font-bold transition-colors text-[10px] tracking-wider flex items-center justify-center ${!plantaConfig.escalaManual ? 'text-primary' : 'text-foreground/80'}`}
-                  title="Escala da Planta (clique para alternar para Automática)"
-                  onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}
-                >
-                  ESCALA{!plantaConfig.escalaManual ? ' (AUTO)' : ''}
-                </button>
-                <button
-                  type="button"
-                  className="h-full px-3 hover:bg-accent text-foreground font-bold border-l border-input transition-colors text-sm flex items-center justify-center"
-                  title="Zoom In / Aumentar escala (reduz o denominador em 250)"
-                  onClick={() => alterarEscala(-250)}
-                >
-                  +
-                </button>
+                <GripVertical className="size-3.5" />
               </div>
 
-              {mostrarEscalaToast && (
-                <div className="flex items-center bg-black text-white h-8 px-3.5 rounded-md text-[10px] tracking-wider font-bold border border-black animate-in fade-in slide-in-from-left-2 duration-200">
+              {/* Seletor de Glebas (se houver múltiplas glebas no projeto) */}
+              {glebas.length > 1 && (
+                <div className="flex items-center gap-1 rounded-full border border-border bg-background/95 px-2.5 py-1 shadow-xl backdrop-blur text-[11px] font-semibold text-foreground">
+                  <Waypoints className="size-3.5 text-primary shrink-0 mr-1" />
+                  <select
+                    value={glebaAtivaId}
+                    onChange={(e) => trocarGleba(e.target.value)}
+                    className="bg-transparent border-0 outline-none text-xs font-bold font-sans cursor-pointer text-foreground pr-2 focus:ring-0 max-w-[120px] truncate"
+                  >
+                    {glebas.map((g, idx) => (
+                      <option key={g.id} value={g.id} className="text-foreground bg-background">
+                        {g.denominacao || `Gleba ${idx + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Se estiver no MAPA e tiver parcelas INCRA */}
+              {vista === 'mapa' && parcelasCert.length > 0 && (
+                <div className="flex items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 shadow-xl backdrop-blur">
+                  <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-foreground">
+                    <input type="checkbox" className="size-3.5 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
+                    INCRA ({parcelasCert.length})
+                  </label>
+                  <span className="text-[9px] uppercase text-muted-foreground">opacidade</span>
+                  <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} disabled={!mostrarCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-16 accent-cyan-600 disabled:opacity-40" title="Opacidade do preenchimento das parcelas" />
+                </div>
+              )}
+
+              {/* Área e Perímetro (sempre visíveis, em ambos os modos!) */}
+              {res && (
+                <div className="flex items-center gap-3 rounded-full border border-border bg-background/95 px-3.5 py-1.5 shadow-xl backdrop-blur text-[11px] font-semibold text-foreground">
+                  <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider animate-pulse-slow">Área SGL:</span>
+                    <span>{numBR(res.areaHa, casasTela(4))} <span className="text-[9px] font-normal text-muted-foreground">ha</span></span>
+                  </div>
+                  <div className="h-3 w-px bg-border" />
+                  <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider">Perímetro:</span>
+                    <span>{numBR(res.perimetro)} <span className="text-[9px] font-normal text-muted-foreground">m</span></span>
+                  </div>
+                </div>
+              )}
+
+              {/* Chave Fácil/Completo (sempre visível, em ambos os modos!) */}
+              {chaveModo && (
+                <div className="shadow-xl rounded-full">
+                  {chaveModo}
+                </div>
+              )}
+
+              {/* Controles específicos do modo PLANTA */}
+              {vista === 'planta' && (
+                <>
+                  {/* Travamento da folha e modo escuro */}
+                  <div className="flex items-center gap-1 rounded-full border border-border bg-background/95 p-1 shadow-xl backdrop-blur">
+                    <Button
+                      size="sm"
+                      variant={folhaTravada ? 'outline' : 'default'}
+                      className={folhaTravada ? 'size-7 rounded-full p-0' : 'size-7 rounded-full p-0 bg-amber-500 hover:bg-amber-600 text-white'}
+                      onClick={() => {
+                        const nova = !folhaTravada;
+                        setFolhaTravada(nova);
+                        if (!nova) setModo('navegar');
+                      }}
+                      title={folhaTravada ? "Moldura travada — clique para soltar e arrastar a prancha" : "Moldura solta — clique para travar o layout da folha"}
+                    >
+                      {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant={plantaDark ? 'default' : 'outline'}
+                      className="size-7 rounded-full p-0"
+                      onClick={() => setPlantaDark((v) => !v)}
+                      title={plantaDark ? 'Modo escuro ligado — clique para voltar ao claro' : 'Modo claro — clique para o modo escuro (noturno)'}
+                    >
+                      {plantaDark ? <Sun className="size-3.5 text-amber-400" /> : <Moon className="size-3.5" />}
+                    </Button>
+                  </div>
+
+                  {/* Situação da Planta */}
+                  {(() => {
+                    const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
+                    const pronto = !!situacaoUrl && !stale;
+                    const cor = pronto
+                      ? 'border-emerald-600/40 bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400'
+                      : 'border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400';
+                    return (
+                      <button type="button" onClick={gerarSituacaoPlanta}
+                        title={!situacaoUrl ? 'Capturar a planta de situação (satélite)' : stale ? 'A situação está desatualizada — clique para atualizar' : 'Situação pronta'}
+                        className={`flex items-center gap-1 rounded-full border px-3 py-1.5 text-[10px] font-bold shadow-xl bg-background/95 transition-colors ${cor}`}>
+                        {pronto ? <Check className="size-3.5" /> : <Camera className="size-3.5" />}
+                        {!situacaoUrl ? 'Situação' : stale ? 'Atualizar Situação' : 'Situação Pronta'}
+                      </button>
+                    );
+                  })()}
+
+                  {/* Escala da Planta */}
+                  <div className="flex items-center rounded-full border border-border bg-background/95 overflow-hidden h-8 p-1 shadow-xl gap-0.5">
+                    <button
+                      type="button"
+                      className="h-6 w-6 rounded-full hover:bg-accent text-foreground font-bold transition-colors text-sm flex items-center justify-center"
+                      title="Zoom Out / Reduzir escala"
+                      onClick={() => alterarEscala(250)}
+                    >
+                      -
+                    </button>
+                    <button
+                      type="button"
+                      className={`h-6 px-2.5 rounded-full hover:bg-accent font-bold transition-colors text-[9px] tracking-wider flex items-center justify-center ${!plantaConfig.escalaManual ? 'text-primary' : 'text-foreground/80'}`}
+                      title="Escala da Planta (clique para alternar para Automática)"
+                      onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}
+                    >
+                      ESCALA{!plantaConfig.escalaManual ? ' (AUTO)' : ''}
+                    </button>
+                    <button
+                      type="button"
+                      className="h-6 w-6 rounded-full hover:bg-accent text-foreground font-bold transition-colors text-sm flex items-center justify-center"
+                      title="Zoom In / Aumentar escala"
+                      onClick={() => alterarEscala(-250)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Toast indicador de Escala efetiva */}
+              {vista === 'planta' && mostrarEscalaToast && (
+                <div className="flex items-center bg-black text-white h-8 px-3.5 rounded-full text-[10px] tracking-wider font-bold border border-black shadow-xl animate-in fade-in slide-in-from-left-2 duration-200">
                   1 : {obterEscalaEfetiva()}
                 </div>
               )}
@@ -3407,7 +3538,7 @@ export default function EditorPage() {
                 parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho} verticesVizinho={verticesVizinho}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
                 selMulti={selMulti} onToggleMulti={alternarMulti} onBoxSelect={adicionarMulti}
-                onDblClick={(lat, lon) => { const t = window.prompt('Texto a inserir:'); if (t) setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }}
+                onDblClick={async (lat, lon) => { const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' }); if (t) setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
@@ -3521,7 +3652,7 @@ export default function EditorPage() {
               </button>
             ))}
             <Button size="sm" variant="ghost" disabled={processando} onClick={novaGleba} title="Nova gleba"><Plus /></Button>
-            <Button size="sm" variant="ghost" onClick={() => { const n = window.prompt('Nome da gleba:', glebaAtivaNome); if (n) renomearGlebaAtiva(n); }} title="Renomear gleba"><Pencil /></Button>
+            <Button size="sm" variant="ghost" onClick={async () => { const n = await perguntar({ titulo: 'Renomear gleba', mensagem: 'Nome da gleba:', valorInicial: glebaAtivaNome }); if (n) renomearGlebaAtiva(n); }} title="Renomear gleba"><Pencil /></Button>
             {glebas.length > 1 && <Button size="sm" variant="ghost" disabled={processando} onClick={() => removerGleba(glebaAtivaId)} title="Remover gleba"><Trash2 /></Button>}
           </div>
           {/* resumo movido para o painel flutuante (canto sup. esquerdo do mapa/planta) */}
@@ -3704,14 +3835,14 @@ export default function EditorPage() {
                           <div className="col-span-2 grid grid-cols-2 gap-1 mt-1">
                             <button
                               type="button"
-                              onClick={() => { setVSplitInicioId(v.id); alert(`Vértice ${v.codigoSigef || v.nome} definido como Início da divisão.`); }}
+                              onClick={async () => { setVSplitInicioId(v.id); await avisar({ titulo: 'Início da divisão', mensagem: `Vértice ${v.codigoSigef || v.nome} definido como Início da divisão.` }); }}
                               className="rounded border border-input bg-background h-6 px-1 text-[9px] hover:bg-accent font-medium text-foreground transition-colors"
                             >
                               Definir como Início
                             </button>
                             <button
                               type="button"
-                              onClick={() => { setVSplitFimId(v.id); alert(`Vértice ${v.codigoSigef || v.nome} definido como Fim da divisão.`); }}
+                              onClick={async () => { setVSplitFimId(v.id); await avisar({ titulo: 'Fim da divisão', mensagem: `Vértice ${v.codigoSigef || v.nome} definido como Fim da divisão.` }); }}
                               className="rounded border border-input bg-background h-6 px-1 text-[9px] hover:bg-accent font-medium text-foreground transition-colors"
                             >
                               Definir como Fim
@@ -3951,8 +4082,8 @@ export default function EditorPage() {
                 </button>
                 <button
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent"
-                  onClick={() => {
-                    const txt = window.prompt('Texto a inserir:');
+                  onClick={async () => {
+                    const txt = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' });
                     if (txt) {
                       snap();
                       const utm = geoParaUtm(menuContexto.lat!, menuContexto.lon!, zona, hemisferio);
@@ -3985,7 +4116,7 @@ export default function EditorPage() {
             {menuContexto.tipo === 'objeto' && (
               <div className="flex flex-col gap-0.5">
                 {menuContexto.objetoTipo === 'texto' && (
-                  <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); const t = window.prompt('Texto:', o?.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); setMenuContexto(null); }}>
+                  <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={async () => { const o = objetos.find((x) => x.id === menuContexto.id); const t = await perguntar({ titulo: 'Editar texto', valorInicial: o?.texto ?? '' }); if (t != null) editarObjetoSel({ texto: t }); setMenuContexto(null); }}>
                     <Pencil className="size-3.5" /> Editar texto…
                   </button>
                 )}
@@ -4032,7 +4163,7 @@ export default function EditorPage() {
         open={configAberta}
         onOpenChange={(o) => { setConfigAberta(o); if (!o) { const p = carregarPreferencias(); setPrefs(p); setModoApp(p.modo); setTempoCompletoMs(p.tempoCompletoMs || 0); } }}
         abaInicial={configAba}
-        onConfigChange={() => { setTecnico(carregarTecnico()); const p = carregarPreferencias(); setPrefs(p); setModoApp(p.modo); setTempoCompletoMs(p.tempoCompletoMs || 0); }}
+        onConfigChange={() => { setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); empurrarConfigParaNuvem().catch(() => {}); const p = carregarPreferencias(); setPrefs(p); setModoApp(p.modo); setTempoCompletoMs(p.tempoCompletoMs || 0); }}
       />
       {tecnico && escritorio && (
         <GestaoProjetoModal
@@ -4315,8 +4446,8 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
           <button
             type="button"
             className="text-[10px] text-primary hover:underline font-bold"
-            onClick={() => {
-              if (window.confirm(`Deseja promover o comprador "${imovel.comprador}" a proprietário do imóvel? As informações atuais do proprietário serão substituídas.`)) {
+            onClick={async () => {
+              if (await confirmar({ titulo: 'Promover comprador', mensagem: `Deseja promover o comprador "${imovel.comprador}" a proprietário do imóvel? As informações atuais do proprietário serão substituídas.`, okLabel: 'Promover' })) {
                 onChange({
                   ...imovel,
                   proprietario: imovel.comprador || '',
@@ -4525,7 +4656,7 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
 
   const exportarAnuenciaConfrontante = async (c: Confrontante) => {
     if (!tecnico) {
-      alert('Configure o responsável técnico primeiro nas configurações.');
+      await avisar({ titulo: 'Responsável técnico', mensagem: 'Configure o responsável técnico primeiro nas configurações.' });
       return;
     }
     try {
@@ -4539,10 +4670,11 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
         verticesCompartilhados: compartilhados
       });
       
-      const blob = await Packer.toBlob(doc);
+      const blobBruto = await Packer.toBlob(doc);
+      const blob = await compatibilizarWord2007(blobBruto);
       saveAs(blob, `Carta de Anuencia - ${c.nome || 'Confrontante'}.docx`);
     } catch (err) {
-      alert('Erro ao gerar a Carta de Anuência.');
+      await avisar({ titulo: 'Carta de Anuência', mensagem: 'Erro ao gerar a Carta de Anuência.' });
     }
   };
 

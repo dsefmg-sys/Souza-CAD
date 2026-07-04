@@ -55,21 +55,21 @@ interface Props {
   onBaixar?: () => void;
 }
 
-const CAMPOS: { k: keyof PessoaQualificada; label: string; wide?: boolean }[] = [
-  { k: 'nome', label: 'Nome', wide: true },
-  { k: 'rg', label: 'RG' },
-  { k: 'cpf', label: 'CPF' },
-  { k: 'nacionalidade', label: 'Nacionalidade' },
-  { k: 'naturalidade', label: 'Naturalidade' },
-  { k: 'dataNascimento', label: 'Data de Nascimento' },
-  { k: 'profissao', label: 'Profissão' },
-  { k: 'estadoCivil', label: 'Estado Civil' },
-  { k: 'filiacao', label: 'Filiação', wide: true },
-  { k: 'conjugeNome', label: 'Cônjuge' },
-  { k: 'conjugeCpf', label: 'CPF do cônjuge' },
-  { k: 'endereco', label: 'Residente e domiciliado em', wide: true },
-  { k: 'cidadeUf', label: 'Cidade/UF' },
-  { k: 'cep', label: 'CEP' },
+const CAMPOS: { k: keyof PessoaQualificada; label: string; span: string }[] = [
+  { k: 'nome', label: 'Nome', span: 'col-span-4' },
+  { k: 'rg', label: 'RG', span: 'col-span-2 md:col-span-1' },
+  { k: 'cpf', label: 'CPF/CNPJ', span: 'col-span-2 md:col-span-1' },
+  { k: 'nacionalidade', label: 'Nacionalidade', span: 'col-span-2 md:col-span-1' },
+  { k: 'naturalidade', label: 'Naturalidade', span: 'col-span-2 md:col-span-1' },
+  { k: 'dataNascimento', label: 'Data Nasc.', span: 'col-span-2 md:col-span-1' },
+  { k: 'profissao', label: 'Profissão', span: 'col-span-2 md:col-span-1' },
+  { k: 'estadoCivil', label: 'Estado Civil', span: 'col-span-2 md:col-span-1' },
+  { k: 'conjugeNome', label: 'Cônjuge (se houver)', span: 'col-span-4 md:col-span-3' },
+  { k: 'conjugeCpf', label: 'CPF Cônjuge', span: 'col-span-4 md:col-span-1' },
+  { k: 'filiacao', label: 'Filiação (mãe / pai)', span: 'col-span-4' },
+  { k: 'endereco', label: 'Residente e domiciliado(a) em (Endereço)', span: 'col-span-4' },
+  { k: 'cidadeUf', label: 'Cidade/UF', span: 'col-span-3' },
+  { k: 'cep', label: 'CEP', span: 'col-span-1' },
 ];
 
 function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: PessoaQualificada; onChange: (p: PessoaQualificada) => void; sugProp: ProprietarioCad[] }) {
@@ -78,15 +78,15 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
     onChange(m ? { ...pessoa, ...m, nome: v } as PessoaQualificada : { ...pessoa, nome: v });
   }
   return (
-    <div className="space-y-2">
-      {titulo && <h3 className="text-sm font-semibold">{titulo}</h3>}
-      <div className="grid grid-cols-2 gap-2">
+    <div className="space-y-2 border rounded-lg bg-muted/10 p-3">
+      {titulo && <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b pb-1 mb-2">{titulo}</h3>}
+      <div className="grid grid-cols-4 gap-2">
         {CAMPOS.map((c) => (
-          <div key={c.k} className={`space-y-1 ${c.wide ? 'col-span-2' : ''}`}>
-            <Label>{c.label}</Label>
+          <div key={c.k} className={`space-y-0.5 ${c.span}`}>
+            <Label className="text-[10px] text-muted-foreground font-semibold">{c.label}</Label>
             {c.k === 'nome'
-              ? <Input list="lista-pessoas" value={pessoa.nome} onChange={(e) => setNome(e.target.value)} />
-              : <Input value={pessoa[c.k]} onChange={(e) => onChange({ ...pessoa, [c.k]: e.target.value })} />}
+              ? <Input list="lista-pessoas" value={pessoa.nome} onChange={(e) => setNome(e.target.value)} className="h-8 text-xs" />
+              : <Input value={pessoa[c.k]} onChange={(e) => onChange({ ...pessoa, [c.k]: e.target.value })} className="h-8 text-xs" />}
           </div>
         ))}
       </div>
@@ -143,83 +143,97 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-6">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Requerimento ao cartório (retificação de área)</DialogTitle>
         </DialogHeader>
         <datalist id="lista-pessoas">{sugProp.map((p) => <option key={p.id} value={p.nome} />)}</datalist>
 
-        <div className="space-y-1">
-          <Label>Tipo de ato</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {OPCOES_ATO.map((o) => (
-              <Button key={o.valor} type="button" size="sm" variant={tipoAto === o.valor ? 'default' : 'outline'} onClick={() => setTipoAto(o.valor)}>
-                {o.rotulo}
-              </Button>
-            ))}
-          </div>
-          {mostrarDicas && (
-            <p className="rounded border border-dashed bg-muted/30 p-2 text-xs text-muted-foreground">
-              {OPCOES_ATO.find((o) => o.valor === tipoAto)?.explicacao}
-            </p>
-          )}
-          {tipoAto !== 'venda' && (
-            <p className="text-[11px] text-amber-500">
-              Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.
-            </p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 rounded border bg-muted/30 p-3 text-sm">
-          <div><b>Imóvel:</b> {imovel.denominacao || '—'} · Matrícula {imovel.matricula || '—'}</div>
-          <div><b>Área real (levantada):</b> {numBR(areaRealHa, 4)} ha</div>
+        {/* Área Central Rolável */}
+        <div className="flex-1 overflow-y-auto space-y-4 pr-1 my-2">
+          {/* Tipo de Ato */}
           <div className="space-y-1">
-            <Label>Área anterior na matrícula (ha)</Label>
-            <Input type="number" step="0.0001" value={imovel.areaAnterior ?? ''} onChange={(e) => onChangeImovel({ ...imovel, areaAnterior: e.target.value ? Number(e.target.value) : undefined })} />
-          </div>
-          <div className="space-y-1">
-            <Label>Valor do imóvel (R$)</Label>
-            <Input type="number" step="0.01" value={imovel.valorImovel ?? ''} onChange={(e) => onChangeImovel({ ...imovel, valorImovel: e.target.value ? Number(e.target.value) : undefined })} />
-          </div>
-          {tipoAto === 'unificacao' && (
-            <div className="col-span-2 space-y-1">
-              <Label>Matrículas de origem (separadas por vírgula)</Label>
-              <Input
-                placeholder="ex.: 1234, 5678, 9012"
-                value={(imovel.matriculasOrigem ?? []).join(', ')}
-                onChange={(e) => onChangeImovel({ ...imovel, matriculasOrigem: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-              />
+            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Tipo de ato</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {OPCOES_ATO.map((o) => (
+                <Button key={o.valor} type="button" size="sm" variant={tipoAto === o.valor ? 'default' : 'outline'} onClick={() => setTipoAto(o.valor)} className="h-8 text-xs">
+                  {o.rotulo}
+                </Button>
+              ))}
             </div>
-          )}
-        </div>
+            {mostrarDicas && (
+              <p className="rounded border border-dashed bg-muted/30 p-2 text-xs text-muted-foreground">
+                {OPCOES_ATO.find((o) => o.valor === tipoAto)?.explicacao}
+              </p>
+            )}
+            {tipoAto !== 'venda' && (
+              <p className="text-[11px] text-amber-500 font-semibold">
+                Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.
+              </p>
+            )}
+          </div>
 
-        {/* Requerente e transmitente lado a lado — aproveita a largura e reduz a rolagem */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <Bloco titulo={rotulos.req} pessoa={req} onChange={setReq} sugProp={sugProp} />
-          <Bloco titulo={rotulos.trans} pessoa={trans} onChange={setTrans} sugProp={sugProp} />
-        </div>
-
-        {permiteVariasPartes && (
-          <div className="space-y-3 rounded border border-dashed p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground">Partes adicionais (mais de um donatário/coproprietário)</span>
-              <Button type="button" size="sm" variant="outline" onClick={addParte}><UserPlus className="size-3.5" /> Adicionar parte</Button>
+          {/* Dados do Imóvel */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 rounded-lg border bg-muted/10 p-3 text-xs">
+            <div className="col-span-2">
+              <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">Imóvel</span>
+              <span className="font-semibold text-foreground">{imovel.denominacao || '—'} · Matrícula {imovel.matricula || '—'}</span>
             </div>
-            {partesAdicionais.map((p, i) => (
-              <div key={i} className="space-y-1 rounded border p-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Parte adicional {i + 1}</span>
-                  <Button type="button" size="sm" variant="ghost" className="h-6 px-1" onClick={() => rmParte(i)}><Trash2 className="size-3.5 text-destructive" /></Button>
-                </div>
-                <Bloco titulo="" pessoa={p} onChange={(np) => setParte(i, np)} sugProp={sugProp} />
+            <div className="col-span-2">
+              <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">Área real (levantada)</span>
+              <span className="font-semibold text-foreground">{numBR(areaRealHa, 4)} ha</span>
+            </div>
+            <div className="space-y-1 col-span-2">
+              <Label className="text-[10px] text-muted-foreground font-semibold">Área anterior na matrícula (ha)</Label>
+              <Input type="number" step="0.0001" value={imovel.areaAnterior ?? ''} onChange={(e) => onChangeImovel({ ...imovel, areaAnterior: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
+            </div>
+            <div className="space-y-1 col-span-2">
+              <Label className="text-[10px] text-muted-foreground font-semibold">Valor do imóvel (R$)</Label>
+              <Input type="number" step="0.01" value={imovel.valorImovel ?? ''} onChange={(e) => onChangeImovel({ ...imovel, valorImovel: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
+            </div>
+            {tipoAto === 'unificacao' && (
+              <div className="col-span-4 space-y-1">
+                <Label className="text-[10px] text-muted-foreground font-semibold">Matrículas de origem (separadas por vírgula)</Label>
+                <Input
+                  placeholder="ex.: 1234, 5678, 9012"
+                  value={(imovel.matriculasOrigem ?? []).join(', ')}
+                  onChange={(e) => onChangeImovel({ ...imovel, matriculasOrigem: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                  className="h-8 text-xs"
+                />
               </div>
-            ))}
+            )}
           </div>
-        )}
 
-        <div className="flex items-center gap-3 border-t pt-3">
+          {/* Requerente e Transmitente */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Bloco titulo={rotulos.req} pessoa={req} onChange={setReq} sugProp={sugProp} />
+            <Bloco titulo={rotulos.trans} pessoa={trans} onChange={setTrans} sugProp={sugProp} />
+          </div>
+
+          {/* Partes Adicionais */}
+          {permiteVariasPartes && (
+            <div className="space-y-3 rounded-lg border border-dashed p-3 bg-muted/5">
+              <div className="flex items-center justify-between border-b pb-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Partes adicionais (mais de um donatário/coproprietário)</span>
+                <Button type="button" size="sm" variant="outline" onClick={addParte} className="h-7 text-xs"><UserPlus className="size-3 mr-1" /> Adicionar parte</Button>
+              </div>
+              {partesAdicionais.map((p, i) => (
+                <div key={i} className="space-y-1 rounded-lg border p-3 bg-background/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-muted-foreground">Parte adicional {i + 1}</span>
+                    <Button type="button" size="sm" variant="ghost" className="h-6 px-1 hover:bg-destructive/10" onClick={() => rmParte(i)}><Trash2 className="size-3.5 text-destructive" /></Button>
+                  </div>
+                  <Bloco titulo="" pessoa={p} onChange={(np) => setParte(i, np)} sugProp={sugProp} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Rodapé Fixo */}
+        <div className="flex items-center justify-between border-t pt-3 mt-auto shrink-0">
           <Button onClick={gerar}><FileSignature /> Gerar requerimento (.docx)</Button>
-          {msg && <span className="text-sm text-primary">{msg}</span>}
+          {msg && <span className="text-sm text-primary font-semibold">{msg}</span>}
         </div>
       </DialogContent>
     </Dialog>

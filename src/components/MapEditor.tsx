@@ -142,7 +142,7 @@ const iconeRotulo = (r: RotuloMapa, fator = 1) => {
   const linhas = r.linhas.map((l) => `<div>${(l || '').replace(/</g, '&lt;')}</div>`).join('');
   return L.divIcon({
     className: 'objeto-rotulo',
-    html: `<div style="font-size:${fs}px;line-height:1.3;color:#000;background:#fff;border:1.5px solid #222;border-radius:4px;padding:3px 7px;white-space:nowrap;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.5);width:max-content;display:inline-block">${linhas}<div style="border-top:1px solid #000;margin-top:8px;padding-top:1px;font-size:${Math.max(8, fs - 2)}px;color:#333">Assinatura</div></div>`,
+    html: `<div style="font-size:${fs}px;line-height:1.3;color:#000;background:#fff;border:1.5px solid #222;border-radius:4px;padding:3px 7px;white-space:nowrap;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.5);width:max-content;display:inline-block">${linhas}</div>`,
     iconSize: [1, 1], iconAnchor: [0, 8],
   });
 };

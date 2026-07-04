@@ -5,6 +5,7 @@ import { valorPorExtenso } from '../topo/extenso';
 import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo, preencherModeloParagrafos } from '../store/modelos';
+import { compatibilizarWord2007 } from './compatWord2007';
 
 export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao';
 
@@ -212,5 +213,6 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     styles: { default: { document: { run: { font: 'Arial' } } } },
     sections: [{ properties: { page: { margin: { top: 1133, bottom: 1133, left: 1133, right: 1133 } } }, children: c }],
   });
-  return Packer.toBlob(doc);
+  const blob = await Packer.toBlob(doc);
+  return compatibilizarWord2007(blob);
 }

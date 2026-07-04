@@ -2,6 +2,8 @@
 // navegador. Diferente de TecnicoData/EscritorioData (dados fixos da assinatura/empresa), aqui
 // ficam só interruptores de comportamento da interface e das validações.
 
+import { confirmar } from '../ui/dialogos';
+
 export interface PreferenciasApp {
   /** Exige nome do cônjuge preenchido (proprietário/confrontante) antes de prosseguir. Padrão: false. */
   exigirConjuge: boolean;
@@ -121,10 +123,10 @@ export function casasTela(casasPadrao: number): number {
  * Confirmação antes de apagar, respeitando o ajuste. Se o ajuste estiver desligado, apaga
  * direto (devolve true). Devolve true quando pode prosseguir.
  */
-export function confirmarApagar(mensagem: string): boolean {
+export async function confirmarApagar(mensagem: string): Promise<boolean> {
   if (typeof window === 'undefined') return true;
   if (!carregarPreferencias().confirmarAntesApagar) return true;
-  return window.confirm(mensagem);
+  return confirmar({ titulo: 'Confirmar exclusão', mensagem, okLabel: 'Apagar', perigo: true });
 }
 
 /** Modo atual da interface (a chave Simples/Completo). */

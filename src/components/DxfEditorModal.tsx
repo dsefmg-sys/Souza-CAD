@@ -12,6 +12,7 @@ import {
   camadaDe, camadasPadrao,
 } from '@/lib/cad/dxfEngine';
 import { gerarPdfDesenho } from '@/lib/cad/dxfPdf';
+import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
 
 // Editor de DXF GENÉRICO e ISOLADO (ex.: projeto elétrico). Não toca no projeto de agrimensura.
 // Esta é a CASCA VISUAL (modal, botões, SVG); a geometria/edição pura vive em lib/cad/dxfEngine.ts
@@ -66,16 +67,16 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
   // ---- camadas: cor/visibilidade/trava por camada; entidades sem `layer` pertencem à '0' ----
   function camadaObj(nome: string): Camada { return camadas.find((c) => c.nome === nome) ?? camadas[0]; }
   function camadaDeEnt(e: Ent): Camada { return camadaObj(camadaDe(e)); }
-  function novaCamadaPrompt() {
-    const nome = window.prompt('Nome da nova camada:');
+  async function novaCamadaPrompt() {
+    const nome = await perguntar({ titulo: 'Nova camada', mensagem: 'Nome da nova camada:' });
     if (!nome) return;
-    if (camadas.some((c) => c.nome === nome)) { window.alert('Já existe uma camada com esse nome.'); return; }
+    if (camadas.some((c) => c.nome === nome)) { await avisar({ titulo: 'Camada', mensagem: 'Já existe uma camada com esse nome.' }); return; }
     setCamadas((cs) => [...cs, { nome, cor: '#2563eb', visivel: true, travada: false }]);
     setCamadaAtual(nome);
   }
-  function removerCamada(nome: string) {
+  async function removerCamada(nome: string) {
     if (nome === '0') return;
-    if (!window.confirm(`Remover a camada "${nome}"? As entidades dela voltam para a camada "0".`)) return;
+    if (!(await confirmar({ titulo: 'Remover camada', mensagem: `Remover a camada "${nome}"? As entidades dela voltam para a camada "0".`, okLabel: 'Remover', perigo: true }))) return;
     snap();
     setEnts((es) => es.map((e) => (camadaDe(e) === nome ? { ...e, layer: '0' } : e)));
     setCamadas((cs) => cs.filter((c) => c.nome !== nome));
@@ -116,10 +117,10 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
       const txt = await file.text();
       lista = dxfParaEnts(importarDxf(txt));
     } catch {
-      window.alert('Não consegui ler este arquivo como DXF. Verifique se é um .dxf válido (ASCII).');
+      await avisar({ titulo: 'Abrir DXF', mensagem: 'Não consegui ler este arquivo como DXF. Verifique se é um .dxf válido (ASCII).' });
       return;
     }
-    if (!lista.length) { window.alert('Nenhuma entidade reconhecida neste DXF (linha, polilinha, círculo, arco, texto ou ponto).'); return; }
+    if (!lista.length) { await avisar({ titulo: 'Abrir DXF', mensagem: 'Nenhuma entidade reconhecida neste DXF (linha, polilinha, círculo, arco, texto ou ponto).' }); return; }
     setNome(file.name);
     setEnts(lista);
     setSel(null);
@@ -159,16 +160,16 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
     setDesenho([]); setCursor(null); setSnapAtual(null);
   }
 
-  function onDown(e: React.PointerEvent) {
+  async function onDown(e: React.PointerEvent) {
     const { x, y } = svgXY(e);
     const g = resolverPonto(inv(x, y));
 
     if (modo !== 'sel' && desenho.length === 0 && camadaObj(camadaAtual).travada) {
-      window.alert('A camada atual está travada. Escolha outra camada (painel Camadas) para desenhar.');
+      await avisar({ titulo: 'Camada travada', mensagem: 'A camada atual está travada. Escolha outra camada (painel Camadas) para desenhar.' });
       return;
     }
 
-    if (modo === 'texto') { const t = window.prompt('Texto:'); if (t) { snap(); setEnts((es) => [...es, { id: novoId(), t: 'text', pos: g, texto: t, altura: 12 / view.s, layer: camadaAtual }]); } return; }
+    if (modo === 'texto') { const t = await perguntar({ titulo: 'Texto' }); if (t) { snap(); setEnts((es) => [...es, { id: novoId(), t: 'text', pos: g, texto: t, altura: 12 / view.s, layer: camadaAtual }]); } return; }
 
     if (modo === 'linha') {
       if (desenho.length === 0) { setDesenho([g]); return; }
@@ -243,9 +244,9 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
     setEnts((es) => [...es, nova]);
     setSel(nova.id);
   }
-  function girarSel() {
+  async function girarSel() {
     if (!entSel) return;
-    const txt = window.prompt('Girar quantos graus? (positivo = anti-horário)', '90');
+    const txt = await perguntar({ titulo: 'Girar', mensagem: 'Girar quantos graus? (positivo = anti-horário)', valorInicial: '90' });
     if (txt == null) return;
     const ang = Number(txt.replace(',', '.'));
     if (!Number.isFinite(ang) || ang === 0) return;
@@ -253,9 +254,9 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
     const c = pivoDe(entSel);
     setEnts((es) => es.map((e) => (e.id === sel ? girarEnt(e, c, ang) : e)));
   }
-  function escalarSel() {
+  async function escalarSel() {
     if (!entSel) return;
-    const txt = window.prompt('Fator de escala (ex.: 2 dobra o tamanho, 0.5 reduz à metade)', '1.5');
+    const txt = await perguntar({ titulo: 'Escala', mensagem: 'Fator de escala (ex.: 2 dobra o tamanho, 0.5 reduz à metade)', valorInicial: '1.5' });
     if (txt == null) return;
     const k = Number(txt.replace(',', '.'));
     if (!Number.isFinite(k) || k <= 0 || k === 1) return;

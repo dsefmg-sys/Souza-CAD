@@ -60,63 +60,74 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-6">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Errata para o cartório</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground">
+        
+        <p className="text-xs text-muted-foreground shrink-0">
           Liste o que precisa ser corrigido. Para cada item, diga onde está o erro, o que constava e o
           que passa a constar. A errata sai pronta, já explicando ao cartório e com a linha de assinatura
           do responsável técnico.
         </p>
 
-        <div className="flex flex-wrap gap-1">
-          <span className="self-center text-xs text-muted-foreground">Atalhos:</span>
-          {sugestoes.map((s, i) => (
-            <Button key={i} size="sm" variant="outline" className="h-7 text-xs"
-              onClick={() => addCor({ onde: s.onde, constava: s.constava })} title={`Adicionar correção de ${s.onde}`}>
-              <Plus className="size-3" /> {s.rotulo}
-            </Button>
-          ))}
-        </div>
-
-        <div className="space-y-3">
-          {correcoes.map((c, i) => (
-            <div key={i} className="rounded border p-2">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground">Correção {i + 1}</span>
-                <Button size="sm" variant="ghost" className="h-6 px-1" onClick={() => rmCor(i)} title="Remover"><Trash2 className="size-3.5 text-destructive" /></Button>
-              </div>
-              <div className="grid grid-cols-1 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Onde está o erro</Label>
-                  <Input value={c.onde} onChange={(e) => setCor(i, { onde: e.target.value })} placeholder="ex.: Confrontante João Alves" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Onde se lê (errado)</Label>
-                    <Input value={c.constava} onChange={(e) => setCor(i, { constava: e.target.value })} placeholder="ex.: Matrícula nº 3383" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Leia-se (correto)</Label>
-                    <Input value={c.passa} onChange={(e) => setCor(i, { passa: e.target.value })} placeholder="ex.: Matrícula nº 5.378" />
-                  </div>
-                </div>
-              </div>
+        {/* Área Central Rolável */}
+        <div className="flex-1 overflow-y-auto space-y-4 pr-1 my-2">
+          {/* Atalhos de Sugestões */}
+          <div className="space-y-1 shrink-0">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Atalhos de preenchimento:</span>
+            <div className="flex flex-wrap gap-1">
+              {sugestoes.map((s, i) => (
+                <Button key={i} size="sm" type="button" variant="outline" className="h-7 text-xs px-2"
+                  onClick={() => addCor({ onde: s.onde, constava: s.constava })} title={`Adicionar correção de ${s.onde}`}>
+                  <Plus className="size-3 mr-1" /> {s.rotulo}
+                </Button>
+              ))}
             </div>
-          ))}
-          <Button size="sm" variant="outline" onClick={() => addCor()}><Plus /> Adicionar correção</Button>
+          </div>
+
+          {/* Lista de Correções */}
+          <div className="space-y-3 rounded-lg border bg-muted/10 p-3">
+            <div className="flex items-center justify-between border-b pb-1.5 mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Itens de Correção</span>
+              <Button size="sm" type="button" variant="outline" className="h-7 text-xs" onClick={() => addCor()}><Plus className="size-3 mr-1" /> Adicionar correção</Button>
+            </div>
+            
+            <div className="space-y-3 divide-y divide-border/60">
+              {correcoes.map((c, i) => (
+                <div key={i} className="flex items-end gap-2 pt-3 first:pt-0">
+                  <div className="flex-grow grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground font-semibold">Onde está o erro</Label>
+                      <Input value={c.onde} onChange={(e) => setCor(i, { onde: e.target.value })} placeholder="ex.: Confrontante João" className="h-8 text-xs" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground font-semibold">Onde se lê (errado)</Label>
+                      <Input value={c.constava} onChange={(e) => setCor(i, { constava: e.target.value })} placeholder="ex.: Matrícula 3383" className="h-8 text-xs" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-muted-foreground font-semibold">Leia-se (correto)</Label>
+                      <Input value={c.passa} onChange={(e) => setCor(i, { passa: e.target.value })} placeholder="ex.: Matrícula 5378" className="h-8 text-xs" />
+                    </div>
+                  </div>
+                  <Button size="sm" type="button" variant="ghost" className="h-8 w-8 p-0 shrink-0 hover:bg-destructive/10" onClick={() => rmCor(i)} title="Remover"><Trash2 className="size-3.5 text-destructive" /></Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Acréscimo RT */}
+          <div className="space-y-1 rounded-lg border p-3 bg-muted/10">
+            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Acréscimo de Responsabilidade Técnica (opcional)</Label>
+            <Input value={acrescimoRT} onChange={(e) => setAcrescimoRT(e.target.value)}
+              placeholder="ex.: Número CFT/TRT 2605638774 (só se precisar acrescentar o registro na assinatura)" className="h-8 text-xs" />
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <Label className="text-xs">Acréscimo de Responsabilidade Técnica (opcional)</Label>
-          <Input value={acrescimoRT} onChange={(e) => setAcrescimoRT(e.target.value)}
-            placeholder="ex.: Número CFT/TRT 2605638774 (só se precisar acrescentar o registro)" />
-        </div>
-
-        <div className="flex items-center gap-3 border-t pt-3">
+        {/* Rodapé Fixo */}
+        <div className="flex items-center justify-between border-t pt-3 mt-auto shrink-0">
           <Button onClick={gerar}><FileWarning /> Gerar errata (.docx)</Button>
-          {msg && <span className="text-sm text-primary">{msg}</span>}
+          {msg && <span className="text-sm text-primary font-semibold">{msg}</span>}
         </div>
       </DialogContent>
     </Dialog>

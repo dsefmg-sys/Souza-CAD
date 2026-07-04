@@ -51,6 +51,21 @@ const PARTES_REMOVIVEIS = [
   'word/_rels/fontTable.xml.rels',
 ];
 
+/** Remove atributos e elementos com namespaces pós-2007 para evitar XML inválido. */
+function removerAtributosETagsPos2007(xml: string): string {
+  for (const ns of NS_POS_2007) {
+    // Remove atributos como w14:paraId="..." ou w15:var="..."
+    xml = xml.replace(new RegExp(`\\s+${ns}:[a-zA-Z0-9]+="[^"]*"`, 'g'), '');
+    
+    // Remove tags vazias autocompletadas ex: <w14:paraId />
+    xml = xml.replace(new RegExp(`<${ns}:[a-zA-Z0-9]+[^>]*\\/>`, 'g'), '');
+    
+    // Remove tags com conteúdo ex: <w14:paraId>...</w14:paraId>
+    xml = xml.replace(new RegExp(`<${ns}:[a-zA-Z0-9]+[^>]*>[\\s\\S]*?<\\/${ns}:[a-zA-Z0-9]+>`, 'g'), '');
+  }
+  return xml;
+}
+
 /**
  * Recebe um Blob de .docx gerado pela lib `docx` e devolve um Blob compatível com Word 2007.
  * O processamento é idempotente — rodar duas vezes produz o mesmo resultado.
@@ -94,6 +109,7 @@ export async function compatibilizarWord2007(blob: Blob): Promise<Blob> {
     let xml = await zip.files[nome].async('string');
     xml = removerDeclaracoesNs(xml);
     xml = removerMcIgnorable(xml);
+    xml = removerAtributosETagsPos2007(xml);
 
     // settings.xml: ajustar compatibilityMode
     if (nome === 'word/settings.xml') {

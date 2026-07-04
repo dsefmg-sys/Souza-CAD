@@ -13,6 +13,7 @@ import type { ObjetoDesenho } from '@/lib/topo/types';
 
 import { Button } from '@/components/ui/button';
 import { Pencil, X, Save, Trash2 } from 'lucide-react';
+import { confirmar, avisar } from '@/lib/ui/dialogos';
 
 interface Props {
   vertices: Vertex[];
@@ -68,8 +69,8 @@ interface Props {
 /** Ajuste salvo de um texto (conteúdo/escala/negrito/deslocamento). */
 export type TextoOverride = { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number };
 
-const LAUDO_PADRAO = 'LAUDO TÉCNICO: Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.';
-const CONFRONT_PADRAO = 'Concordamos com as medidas apresentadas nesta planta e no memorial anexo, no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade (§10 do art. 213 da LRP).';
+const LAUDO_PADRAO = 'Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.';
+const CONFRONT_PADRAO = 'Concordamos com as medidas apresentadas nesta planta e no memorial anexo nos trechos de confrontação com nosso imóvel (§10 do art. 213 da LRP).';
 
 // A3 paisagem @96dpi: 420x297mm
 const W = 1587;
@@ -403,9 +404,18 @@ export default function Planta({
       }
     };
 
+    const handleMousedown = (e: MouseEvent) => {
+      if (e.button === 1) {
+        // Cancela o auto-scroll de botão do meio nativo
+        e.preventDefault();
+      }
+    };
+
     svgEl.addEventListener('wheel', handleWheel, { passive: false });
+    svgEl.addEventListener('mousedown', handleMousedown, { passive: false });
     return () => {
       svgEl.removeEventListener('wheel', handleWheel);
+      svgEl.removeEventListener('mousedown', handleMousedown);
     };
   }, [escalaDenom, onConfigPatch]);
 
@@ -431,10 +441,35 @@ export default function Planta({
     let dx = mx - cx, dy = my - cy;
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
-    let dist = 85;
-    if (dy > 0.1) dist += 35 * dy;
-    if (Math.abs(dx) > 0.4) dist += 30 * Math.abs(dx);
-    return { c, x: clampX(mx + dx * dist), y: clampY(my + dy * dist) };
+    
+    // Tenta encontrar uma posição inicial livre de colisão com os vértices do polígono,
+    // empurrando para as áreas vazias nas margens externas do desenho.
+    let dist = 135;
+    if (dy > 0.1) dist += 40 * dy;
+    if (Math.abs(dx) > 0.4) dist += 35 * Math.abs(dx);
+    
+    let px = mx + dx * dist;
+    let py = my + dy * dist;
+    
+    // Se colidir com algum vértice do desenho a menos de 95px de distância, afasta mais
+    for (let step = 0; step < 5; step++) {
+      let colidiu = false;
+      for (const pt of ptsScr) {
+        if (Math.hypot(px - pt.x, py - pt.y) < 95) {
+          colidiu = true;
+          break;
+        }
+      }
+      if (colidiu) {
+        dist += 40;
+        px = mx + dx * dist;
+        py = my + dy * dist;
+      } else {
+        break;
+      }
+    }
+    
+    return { c, x: clampX(px), y: clampY(py) };
   });
 
   // posição do rótulo de cada vértice: FORA do polígono (não cobre a linha), a uma folga do
@@ -442,8 +477,8 @@ export default function Planta({
   const fzRot = Math.max(6, fonteRot - 0.5);
   const ptsScr = vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
   const nV = ptsScr.length;
-  const offBase = Math.max(14, fzRot * 1.7); // folga do vértice, proporcional à fonte
-  const raioDens = offBase * 4;              // raio (tela) para medir aglomeração de vértices
+  const offBase = Math.max(24, fzRot * 2.5); // folga do vértice, proporcional à fonte (aumentada de 14 para 24)
+  const raioDens = offBase * 3.5;            // raio (tela) para medir aglomeração de vértices
   const initialRotuloVert = vertices.map((v, i) => {
     const vx = ptsScr[i].x, vy = ptsScr[i].y;
     if (v.posRotulo) { const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio); return { v, i, x: sx(u.leste), y: sy(u.norte), hasPos: true }; }
@@ -461,13 +496,13 @@ export default function Planta({
     // pra não embolar (a linha-guia tracejada continua ligando o rótulo ao ponto).
     let vizinhos = 0;
     for (let k = 0; k < nV; k++) { if (k === i) continue; if (Math.hypot(ptsScr[k].x - vx, ptsScr[k].y - vy) < raioDens) vizinhos++; }
-    const off = offBase + Math.min(fzRot * 10, vizinhos * fzRot * 1.6);
+    const off = offBase + Math.min(fzRot * 10, vizinhos * fzRot * 1.8);
     return { v, i, x: vx + ox * off, y: vy + oy * off, hasPos: false };
   });
 
   // Afasta rótulos que se sobrepõem entre si E que caem em cima de qualquer vértice.
-  const minLbl = fzRot * 3.6;   // separação mínima entre dois rótulos
-  const minVtx = offBase - 1;   // distância mínima de um rótulo a qualquer vértice
+  const minLbl = fzRot * 4.6;   // separação mínima entre dois rótulos (aumentado de 3.6 para 4.6)
+  const minVtx = offBase + 8;   // distância mínima de um rótulo a qualquer vértice (aumentado de offBase - 1 para offBase + 8)
   for (let step = 0; step < 24; step++) {
     for (let i = 0; i < initialRotuloVert.length; i++) {
       const r1 = initialRotuloVert[i];
@@ -1159,7 +1194,7 @@ export default function Planta({
           <g key={i}
             style={editavel ? { cursor: 'move' } : undefined}
             onDoubleClick={editavel ? (e) => { e.stopPropagation(); onEditarConfrontante?.(c.id); } : undefined}
-            onContextMenu={editavel && onTamRotuloConf ? (e) => { e.preventDefault(); e.stopPropagation(); const maior = window.confirm('Aumentar o tamanho deste rótulo?\n\nOK = aumentar · Cancelar = diminuir'); onTamRotuloConf(c.id, maior ? 1 : -1); } : undefined}
+            onContextMenu={editavel && onTamRotuloConf ? async (e) => { e.preventDefault(); e.stopPropagation(); const maior = await confirmar({ titulo: 'Tamanho do rótulo', mensagem: 'Aumentar ou diminuir o tamanho deste rótulo?', okLabel: 'Aumentar', cancelLabel: 'Diminuir' }); onTamRotuloConf(c.id, maior ? 1 : -1); } : undefined}
             onPointerDown={editavel ? (e) => {
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;
@@ -1291,8 +1326,9 @@ export default function Planta({
       {(() => {
         const idCentro = 'planta.centroInfo';
         const ov = textosOv[idCentro] || {};
-        const px = cx + (ov.dx ?? 0);
-        const py = cy + (ov.dy ?? 0);
+        const isDragging = dragTemp && dragTemp.kind === 'ted' && dragTemp.id === idCentro;
+        const px = cx + (ov.dx ?? 0) + (isDragging ? dragTemp.dx : 0);
+        const py = cy + (ov.dy ?? 0) + (isDragging ? dragTemp.dy : 0);
         const esc = ov.escala ?? 1;
         const neg = ov.negrito ?? false;
 
@@ -1316,7 +1352,7 @@ export default function Planta({
               onPointerDown={editavel ? (e) => {
                 e.stopPropagation();
                 const u = svgPonto(e); if (!u) return;
-                dragRef.current = { kind: 'ted', id: idCentro, dx: ov.dx ?? 0, dy: ov.dy ?? 0 };
+                dragRef.current = { kind: 'ted', id: idCentro, dx: 0, dy: 0, baseX: ov.dx ?? 0, baseY: ov.dy ?? 0 };
                 setDragTemp({ kind: 'ted', id: idCentro, dx: 0, dy: 0, baseX: ov.dx ?? 0, baseY: ov.dy ?? 0 });
                 folhaLast.current = u;
                 captura(e);
@@ -1362,12 +1398,12 @@ export default function Planta({
             y={DRAW.y1 - 40}
             transform={`translate(${bx}, ${by})`}
             style={editavel ? { cursor: 'move' } : undefined}
-            onContextMenu={editavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloEscala', 2); } : undefined}
+            onContextMenu={editavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloEscala', 5); } : undefined}
             onPointerDown={editavel ? (e) => {
               if (e.button === 2) return; // direito troca o estilo, não arrasta
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;
-              dragRef.current = { kind: 'ted', id: idEscala, dx: ovEscala.dx ?? 0, dy: ovEscala.dy ?? 0 };
+              dragRef.current = { kind: 'ted', id: idEscala, dx: 0, dy: 0, baseX: ovEscala.dx ?? 0, baseY: ovEscala.dy ?? 0 };
               setDragTemp({ kind: 'ted', id: idEscala, dx: 0, dy: 0, baseX: ovEscala.dx ?? 0, baseY: ovEscala.dy ?? 0 });
               folhaLast.current = u;
               captura(e);
@@ -1376,15 +1412,55 @@ export default function Planta({
             {/* cartão de fundo */}
             <rect x={-12} y={-20} width={barPx + 46} height={48} fill="#ffffff" fillOpacity={0.92} stroke="#cbd5e1" strokeWidth={0.7} rx={5} ry={5} />
             <text x={0} y={-9} fontSize={fs(7)} fontWeight="bold" letterSpacing="0.5" fill="#0f172a">ESCALA  1:{escalaDenom}</text>
-            {(config.estiloEscala ?? 0) === 1
-              ? (/* régua: só a linha base, sem blocos preenchidos */ <line x1={0} y1={h} x2={barPx} y2={h} stroke="#0f172a" strokeWidth={1} />)
-              : (<>
-                {/* blocos alternados com moldura única */}
-                {[0, 1, 2, 3].map((k) => (
-                  <rect key={k} x={k * seg} y={0} width={seg} height={h} fill={k % 2 ? '#ffffff' : '#0f172a'} />
-                ))}
-                <rect x={0} y={0} width={barPx} height={h} fill="none" stroke="#0f172a" strokeWidth={0.8} />
-              </>)}
+            {(() => {
+              const estilo = config.estiloEscala ?? 0;
+              if (estilo === 1) {
+                // Variante 1: Linha simples sem blocos
+                return <line x1={0} y1={h} x2={barPx} y2={h} stroke="#0f172a" strokeWidth={1} />;
+              }
+              if (estilo === 2) {
+                // Variante 2: Régua dupla estilo Engenharia (duas linhas finas horizontais paralelas)
+                return (
+                  <>
+                    <line x1={0} y1={0} x2={barPx} y2={0} stroke="#0f172a" strokeWidth={0.8} />
+                    <line x1={0} y1={h} x2={barPx} y2={h} stroke="#0f172a" strokeWidth={0.8} />
+                    {[0, 1, 2, 3, 4].map((k) => (
+                      <line key={k} x1={k * seg} y1={0} x2={k * seg} y2={h} stroke="#0f172a" strokeWidth={0.8} />
+                    ))}
+                  </>
+                );
+              }
+              if (estilo === 3) {
+                // Variante 3: Bloco preenchido estilo cartografia moderna (metade preta, metade branca)
+                return (
+                  <>
+                    <rect x={0} y={0} width={barPx / 2} height={h} fill="#0f172a" />
+                    <rect x={barPx / 2} y={0} width={barPx / 2} height={h} fill="#ffffff" stroke="#0f172a" strokeWidth={0.8} />
+                    <rect x={0} y={0} width={barPx} height={h} fill="none" stroke="#0f172a" strokeWidth={0.8} />
+                  </>
+                );
+              }
+              if (estilo === 4) {
+                // Variante 4: Linha central com ticks cruzados (Ticks centrais)
+                return (
+                  <>
+                    <line x1={0} y1={h / 2} x2={barPx} y2={h / 2} stroke="#0f172a" strokeWidth={1} />
+                    {[0, 1, 2, 3, 4].map((k) => (
+                      <line key={k} x1={k * seg} y1={0} x2={k * seg} y2={h} stroke="#0f172a" strokeWidth={0.8} />
+                    ))}
+                  </>
+                );
+              }
+              // Variante 0: Blocos alternados clássicos (INCRA)
+              return (
+                <>
+                  {[0, 1, 2, 3].map((k) => (
+                    <rect key={k} x={k * seg} y={0} width={seg} height={h} fill={k % 2 ? '#ffffff' : '#0f172a'} />
+                  ))}
+                  <rect x={0} y={0} width={barPx} height={h} fill="none" stroke="#0f172a" strokeWidth={0.8} />
+                </>
+              );
+            })()}
             {/* marcas e rótulos em metros */}
             {[0, 1, 2, 3, 4].map((k) => (
               <g key={k}>
@@ -1411,12 +1487,12 @@ export default function Planta({
             x={DRAW.x1 - 72}
             y={DRAW.y0 + 74}
             style={editavel ? { cursor: 'move' } : undefined}
-            onContextMenu={editavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloRosa', 2); } : undefined}
+            onContextMenu={editavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloRosa', 5); } : undefined}
             onPointerDown={editavel ? (e) => {
               if (e.button === 2) return; // direito troca o estilo, não arrasta
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;
-              dragRef.current = { kind: 'ted', id: idRosa, dx: ovRosa.dx ?? 0, dy: ovRosa.dy ?? 0 };
+              dragRef.current = { kind: 'ted', id: idRosa, dx: 0, dy: 0, baseX: ovRosa.dx ?? 0, baseY: ovRosa.dy ?? 0 };
               setDragTemp({ kind: 'ted', id: idRosa, dx: 0, dy: 0, baseX: ovRosa.dx ?? 0, baseY: ovRosa.dy ?? 0 });
               folhaLast.current = u;
               captura(e);
@@ -1520,10 +1596,10 @@ export default function Planta({
                   size="sm" 
                   variant="outline" 
                   className="h-10 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 gap-1 shrink-0"
-                  onClick={() => {
+                  onClick={async () => {
                     if (tempTitulo.trim()) {
                       salvarTituloCustom(tempTitulo);
-                      alert('Título salvo nos seus modelos de uso rápido!');
+                      await avisar({ titulo: 'Título salvo', mensagem: 'Título salvo nos seus modelos de uso rápido!' });
                     }
                   }}
                 >
@@ -1658,7 +1734,7 @@ function FaixaInferior(props: {
               style={coordEditavel ? { cursor: 'pointer' } : undefined}
               onClick={coordEditavel && onSituacaoClick ? (e) => { e.stopPropagation(); onSituacaoClick(); } : undefined} />
             {coordEditavel && situacaoSel && (
-              <g style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); if (window.confirm('Remover a planta de situação?')) onRemoverSituacao?.(); }}>
+              <g style={{ cursor: 'pointer' }} onClick={async (e) => { e.stopPropagation(); if (await confirmar({ titulo: 'Remover situação', mensagem: 'Remover a planta de situação?', okLabel: 'Remover', perigo: true })) onRemoverSituacao?.(); }}>
                 <circle cx={x1 + w1 - 14} cy={y0 + 38} r={8} fill="#fee2e2" stroke="#dc2626" strokeWidth={1} />
                 <text x={x1 + w1 - 14} y={y0 + 41.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#dc2626" style={{ userSelect: 'none' }}>×</text>
               </g>
@@ -1801,7 +1877,7 @@ function FaixaInferior(props: {
 function RosaDosVentos({ cx, cy, fs, variante = 0 }: { cx: number; cy: number; conv?: number; decl?: number; fs: (n: number) => number; variante?: number }) {
   const R = 34;
   if (variante === 1) {
-    // Variação: rosa dos ventos com 4 pontas (N/S/L/O) — estrela clássica de bússola.
+    // Variante 1: Estrela clássica de bússola com 4 pontas
     const pta = (ang: number, comp: number, larg: number) => {
       const a = (ang * Math.PI) / 180, p = (a2: number, r: number) => [cx + r * Math.sin(a2), cy - r * Math.cos(a2)] as const;
       const [px, py] = p(a, comp), [lx1, ly1] = p(a + Math.PI / 2, larg), [lx2, ly2] = p(a - Math.PI / 2, larg);
@@ -1820,14 +1896,62 @@ function RosaDosVentos({ cx, cy, fs, variante = 0 }: { cx: number; cy: number; c
       </g>
     );
   }
+
+  if (variante === 2) {
+    // Variante 2: Seta minimalista moderna e fina
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={R} fill="#ffffff" fillOpacity={0.9} stroke="#cbd5e1" strokeWidth={0.7} />
+        <line x1={cx} y1={cy + 22} x2={cx} y2={cy - 22} stroke="#1f2937" strokeWidth={1.5} />
+        <polygon points={`${cx},${cy - 24} ${cx - 5},${cy - 12} ${cx + 5},${cy - 12}`} fill="#1f2937" />
+        <circle cx={cx} cy={cy} r={3} fill="#ffffff" stroke="#1f2937" strokeWidth={1.5} />
+        <text x={cx} y={cy - R + 2} fontSize={fs(8.5)} fontWeight="bold" textAnchor="middle" fill="#0f172a">N</text>
+      </g>
+    );
+  }
+
+  if (variante === 3) {
+    // Variante 3: Anel graduado com marcações (ticks) e seta sólida estilizada
+    const ticks = Array.from({ length: 12 }).map((_, i) => {
+      const a = (i * 30 * Math.PI) / 180;
+      const x1 = cx + (R - 5) * Math.sin(a), y1 = cy - (R - 5) * Math.cos(a);
+      const x2 = cx + R * Math.sin(a), y2 = cy - R * Math.cos(a);
+      return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#94a3b8" strokeWidth={0.8} />;
+    });
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={R} fill="#ffffff" fillOpacity={0.9} stroke="#cbd5e1" strokeWidth={0.7} />
+        {ticks}
+        <polygon points={`${cx},${cy - (R - 3)} ${cx - 7},${cy + 4} ${cx},${cy - 1} ${cx + 7},${cy + 4}`} fill="#1f2937" />
+        <text x={cx} y={cy - R + 3} fontSize={fs(9)} fontWeight="extrabold" textAnchor="middle" fill="#0f172a" stroke="#fff" strokeWidth={1} paintOrder="stroke">N</text>
+      </g>
+    );
+  }
+
+  if (variante === 4) {
+    // Variante 4: Bússola clássica vintage com agulha preta/branca completa e círculo graduado
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={R} fill="#ffffff" fillOpacity={0.9} stroke="#1f2937" strokeWidth={1.2} />
+        <circle cx={cx} cy={cy} r={R - 3} fill="none" stroke="#e2e8f0" strokeWidth={0.7} />
+        <polygon points={`${cx},${cy - (R - 4)} ${cx - 5},${cy} ${cx},${cy - 2}`} fill="#1f2937" stroke="#1f2937" strokeWidth={0.5} />
+        <polygon points={`${cx},${cy - (R - 4)} ${cx + 5},${cy} ${cx},${cy - 2}`} fill="#ffffff" stroke="#1f2937" strokeWidth={0.5} />
+        <polygon points={`${cx},${cy + (R - 4)} ${cx - 5},${cy} ${cx},${cy + 2}`} fill="#94a3b8" stroke="#1f2937" strokeWidth={0.5} />
+        <polygon points={`${cx},${cy + (R - 4)} ${cx + 5},${cy} ${cx},${cy + 2}`} fill="#ffffff" stroke="#1f2937" strokeWidth={0.5} />
+        <circle cx={cx} cy={cy} r={3.5} fill="#1f2937" />
+        <text x={cx} y={cy - R + 2} fontSize={fs(9)} fontWeight="extrabold" textAnchor="middle" fill="#0f172a" stroke="#fff" strokeWidth={1} paintOrder="stroke">N</text>
+        <text x={cx} y={cy + R - 1} fontSize={fs(6.5)} fontWeight="bold" textAnchor="middle" fill="#64748b">S</text>
+      </g>
+    );
+  }
+
+  // Variante 0: Seta clássica dupla padrão
   return (
     <g>
       <circle cx={cx} cy={cy} r={R} fill="#ffffff" fillOpacity={0.9} stroke="#cbd5e1" strokeWidth={0.7} />
       <circle cx={cx} cy={cy} r={R - 6} fill="none" stroke="#e2e8f0" strokeWidth={0.5} />
-      {/* seta Norte: dois triângulos (claro/escuro) do centro até o topo */}
       <polygon points={`${cx},${cy - (R - 4)} ${cx - 6},${cy + 9} ${cx},${cy + 2}`} fill="#1f2937" />
       <polygon points={`${cx},${cy - (R - 4)} ${cx + 6},${cy + 9} ${cx},${cy + 2}`} fill="#94a3b8" />
-      {/* haste sul discreta */}
       <line x1={cx} y1={cy + 2} x2={cx} y2={cy + 12} stroke="#94a3b8" strokeWidth={1} />
       <circle cx={cx} cy={cy} r={1.8} fill="#1f2937" />
       <text x={cx} y={cy - R + 1} fontSize={fs(9)} fontWeight="bold" textAnchor="middle" fill="#0f172a">N</text>

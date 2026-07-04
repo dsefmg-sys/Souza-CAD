@@ -4,6 +4,7 @@ import { numBR } from '../topo/geometry';
 import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
+import { compatibilizarWord2007 } from './compatWord2007';
 
 /** Uma correção da errata: onde, o que constava (onde se lê) e o que passa a constar (leia-se). */
 export interface CorrecaoErrata {
@@ -110,5 +111,6 @@ export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
     styles: { default: { document: { run: { font: 'Arial' } } } },
     sections: [{ properties: { page: { margin: { top: 1133, bottom: 1133, left: 1133, right: 1133 } } }, children: c }],
   });
-  return Packer.toBlob(doc);
+  const blob = await Packer.toBlob(doc);
+  return compatibilizarWord2007(blob);
 }
