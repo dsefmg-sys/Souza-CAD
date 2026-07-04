@@ -13,6 +13,7 @@ import {
   Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, Palette, BarChart3, FlaskConical, Package, Sparkles, Leaf,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { confirmar, avisar } from '@/lib/ui/dialogos';
 import { Input } from '@/components/ui/input';
 import ModalSpreadsheet from '@/components/ModalSpreadsheet';
 import ModalImport from '@/components/ModalImport';
@@ -190,6 +191,8 @@ export default function EditorPage() {
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [realceId, setRealceId] = useState<string | null>(null); // vértice destacado ao passar o mouse na lista
   const [modo, setModo] = useState<ModoEdicao>('navegar');
+  const ignorouRef = useRef(false);       // ignorou vértice desde que entrou no modo ignorar
+  const modoAntesRef = useRef<ModoEdicao>('navegar');
   const [selMulti, setSelMulti] = useState<Set<string>>(new Set()); // vértices marcados no modo "triângulo"
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [tamNomes, setTamNomes] = useState(11); // tamanho da fonte dos nomes dos vértices no mapa
@@ -449,6 +452,22 @@ export default function EditorPage() {
     try { localStorage.setItem('metrica.escalaInterface', String(escalaInterface)); } catch { /* ignore */ }
   }, [escalaInterface]);
   useEffect(() => { try { localStorage.setItem('metrica.asideW', String(asideW)); } catch { /* ignore */ } }, [asideW]);
+  // ao SAIR do modo "ignorar" tendo ignorado algum vértice, oferece renumerar o polígono novo
+  useEffect(() => {
+    const antes = modoAntesRef.current;
+    modoAntesRef.current = modo;
+    if (antes === 'ignorar' && modo !== 'ignorar' && ignorouRef.current) {
+      ignorouRef.current = false;
+      (async () => {
+        const ok = await confirmar({
+          titulo: 'Renomear os vértices?',
+          mensagem: 'Você ignorou vértices e o polígono mudou. Deseja renumerar os vértices automaticamente para a nova configuração?',
+          okLabel: 'Sim, renumerar', cancelLabel: 'Manter como está',
+        });
+        if (ok) await renumerar();
+      })();
+    }
+  }, [modo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Avisa sobre alterações não salvas antes de fechar ou recarregar a página e salva rascunho preventivo
   useEffect(() => {
@@ -990,6 +1009,7 @@ export default function EditorPage() {
   function ignorarVertice(id: string) {
     const v = vertices.find((x) => x.id === id);
     if (!v) return;
+    ignorouRef.current = true; // marca que houve mudança no polígono (pergunta ao sair do modo)
     setVertices((vs) => reordenar(vs.filter((x) => x.id !== id)));
     setVerticesIgnorados((xs) => (xs.some((x) => x.id === id) ? xs : [...xs, v]));
     if (selecionadoId === id) setSelecionadoId(null);
@@ -1511,11 +1531,13 @@ export default function EditorPage() {
     return vs;
   }
 
-  function verificarConciliacaoSigef(): boolean {
+  async function verificarConciliacaoSigef(): Promise<boolean> {
     if (!imovel.areaSigefHa || !imovel.perimetroSigef) {
-      return window.confirm(
-        "Atenção: A área oficial (SGL) ou o perímetro oficial do SIGEF não foram preenchidos na aba 'Imóvel' (Reconciliação com o SIGEF).\n\nRecomenda-se realizar a reconciliação antes de exportar as peças oficiais.\n\nDeseja exportar mesmo assim utilizando os valores calculados?"
-      );
+      return confirmar({
+        titulo: 'Reconciliar com o SIGEF antes de exportar?',
+        mensagem: "A área oficial (SGL) ou o perímetro oficial do SIGEF ainda não foram preenchidos na aba 'Imóvel' (Reconciliação com o SIGEF). O recomendado é reconciliar antes de gerar as peças oficiais.\n\nDeseja exportar assim mesmo, usando os valores calculados?",
+        okLabel: 'Exportar assim mesmo', cancelLabel: 'Voltar e reconciliar',
+      });
     }
     return true;
   }
@@ -1526,20 +1548,20 @@ export default function EditorPage() {
    * rejeitaria mesmo. Problema leve (campo de cadastro faltando, CPF com cara de inválido) só
    * avisa, com opção de prosseguir.
    */
-  function verificarProntoParaExportar(): boolean {
+  async function verificarProntoParaExportar(): Promise<boolean> {
     const { ok, problemas, graves } = conferirProntoParaExportar(imovel, vertices, confrontantes, tecnico, confrontantePorLado);
     if (ok) return true;
     if (graves.length > 0) {
-      window.alert(`Não é possível exportar — há um problema grave que o SIGEF rejeitaria:\n\n- ${graves.join('\n- ')}\n\nCorrija antes de tentar de novo.`);
+      await avisar({ titulo: 'Não dá para exportar ainda', mensagem: `Há um problema grave que o SIGEF rejeitaria:\n\n• ${graves.join('\n• ')}\n\nCorrija antes de tentar de novo.` });
       return false;
     }
-    return window.confirm(`Atenção, faltam dados antes de exportar:\n\n- ${problemas.join('\n- ')}\n\nDeseja exportar mesmo assim?`);
+    return confirmar({ titulo: 'Faltam dados — exportar assim mesmo?', mensagem: `Antes de exportar, notei que faltam:\n\n• ${problemas.join('\n• ')}`, okLabel: 'Exportar assim mesmo', cancelLabel: 'Voltar e completar' });
   }
 
   async function exportarMemorial() {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
-    if (!verificarConciliacaoSigef()) return;
-    if (!verificarProntoParaExportar()) return;
+    if (!(await verificarConciliacaoSigef())) return;
+    if (!(await verificarProntoParaExportar())) return;
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
@@ -1552,7 +1574,7 @@ export default function EditorPage() {
 
   async function exportarOds() {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
-    if (!verificarProntoParaExportar()) return;
+    if (!(await verificarProntoParaExportar())) return;
     const tec = tecnico;
     try {
       // usa o modelo SIGEF do usuário, se ele substituiu; senão, o modelo embutido do sistema
@@ -1603,8 +1625,8 @@ export default function EditorPage() {
 
   async function exportarPlanta() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
-    if (!verificarConciliacaoSigef()) return;
-    if (!verificarProntoParaExportar()) return;
+    if (!(await verificarConciliacaoSigef())) return;
+    if (!(await verificarProntoParaExportar())) return;
     await comCodigos();
     setVista('planta');
     setObjetoSelId(null); setDesenhoBuffer([]); // limpa realces de edição (a superfície de captura é invisível no PDF)
@@ -1666,8 +1688,8 @@ export default function EditorPage() {
   // Pacote de entrega num clique: memorial + planilha SIGEF + requerimento + planta (PDF), num zip só.
   async function baixarPacoteEntrega() {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
-    if (!verificarConciliacaoSigef()) return;
-    if (!verificarProntoParaExportar()) return;
+    if (!(await verificarConciliacaoSigef())) return;
+    if (!(await verificarProntoParaExportar())) return;
     setProcessando(true);
     aviso('Montando o pacote de entrega (memorial, planilha, requerimento e planta)…');
     try {
