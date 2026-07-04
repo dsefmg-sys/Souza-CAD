@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 7010
+    },
+    {
+      "name": "metrica-teste",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "-p", "7011"],
+      "port": 7011
     }
   ]
 }

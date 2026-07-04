@@ -80,6 +80,16 @@ export function detectarFusoPorRegiao(
   return { zona: melhor, distancia: melhorD };
 }
 
+/**
+ * Extrai a UF (sigla de 2 letras) do campo de município, que é gravado no formato "Cidade-UF"
+ * (ex.: "Cuiabá-MT" → "MT"). Devolve em maiúsculas, ou null quando não há sufixo de UF. Serve para
+ * ligar/desligar recursos por estado (ex.: padrão INTERMAT só quando o imóvel é de Mato Grosso).
+ */
+export function ufDoMunicipio(municipio: string | undefined): string | null {
+  const m = (municipio || '').trim().match(/-\s*([A-Za-z]{2})\s*$/);
+  return m ? m[1].toUpperCase() : null;
+}
+
 /** Devolve a âncora do município (se conhecido). Aceita com ou sem UF. */
 export function ancoraMunicipio(nome: string): { lat: number; lon: number } | null {
   const n = normaliza(nome);

@@ -38,7 +38,7 @@ import GestaoProjetoModal from '@/components/GestaoProjetoModal';
 import TutorialModal from '@/components/TutorialModal';
 import AssinaturaModal from '@/components/AssinaturaModal';
 import IntroVideo from '@/components/IntroVideo';
-import IntroAudio from '@/components/IntroAudio';
+import { IntroAudioPill, TutorialAudioPill } from '@/components/IntroAudio';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
 import CalculadoraModal from '@/components/CalculadoraModal';
 import VerticeVirtualModal, { type DadosVerticeVirtual } from '@/components/VerticeVirtualModal';
@@ -68,7 +68,7 @@ import { parseParcelasSigef, parseGmlParcelas, parcelasParaReferencias, parcelas
 import { parseVerticesVizinho } from '@/lib/io/verticesVizinho';
 import { ufsNoBbox, temaIncra, TEMAS_CONFRONTANTE, INCRA_UFS } from '@/lib/io/incraTemas';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
-import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao } from '@/lib/topo/municipios';
+import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao, ufDoMunicipio } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
@@ -2811,25 +2811,6 @@ export default function EditorPage() {
 
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
 
-  // Chave Fácil/Completo — pílula compacta reutilizada: no MAPA fica flutuante no canto; na PLANTA
-  // entra na barra flutuante, à direita do "Situação Pronta". Some enquanto a abertura toca e depois
-  // de 5 h de Completo (aí volta só pelas Configurações).
-  const chaveModo = (chaveTopoVisivel && !introTocando) ? (
-    <div className="flex items-center gap-0.5 rounded-full border bg-background/95 p-0.5 pl-1.5" role="group" aria-label="Modo da interface">
-      <GraduationCap className="size-3.5 shrink-0 text-primary" aria-hidden />
-      {(['simples', 'completo'] as const).map((m) => (
-        <button key={m} type="button" onClick={() => trocarModoApp(m)}
-          aria-pressed={modoApp === m}
-          title={m === 'simples'
-            ? 'Modo Fácil: só o caminho essencial na tela, pra qualquer nível se adaptar ao software — e ainda assim dá pra entregar um trabalho básico completo.'
-            : 'Modo Completo: todas as ferramentas à mostra. Pra quem já se acostumou com o app.'}
-          className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors ${modoApp === m ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted'}`}>
-          {m === 'simples' ? 'Fácil' : 'Completo'}
-        </button>
-      ))}
-    </div>
-  ) : null;
-
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       {/* Topo */}
@@ -3304,14 +3285,14 @@ export default function EditorPage() {
                         </div>
                       </div>
 
-                      {/* Tudo */}
+                      {/* Tabelas (roteiro perimétrico, quadro de áreas, coordenadas) */}
                       {(() => {
-                        const r = { rot: 'Tudo', campo: 'escalaTextos' as const, base: 1.5 };
+                        const r = { rot: 'Tabelas', campo: 'escalaTabelas' as const, base: 1 };
                         const passo = 0.05, min = 0.4, max = 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
-                            <span className="truncate">Tudo</span>
+                          <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded" title="Tamanho só das tabelas: roteiro perimétrico, quadro de áreas e de coordenadas">
+                            <span className="truncate">Tabelas</span>
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
                               <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
@@ -3429,15 +3410,50 @@ export default function EditorPage() {
           );
         })()}
         <main className="relative isolate min-w-0 flex-1">
-          {/* Alternância MAPA/PLANTA: botão quadrado dedicado no canto superior esquerdo. É a troca
-              mais usada do app, por isso ganha lugar fixo e exclusivo. Mostra pra onde vai + o atalho Esc. */}
-          <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
-            title="Alternar entre mapa e planta (Esc)"
-            className="absolute left-3 top-3 z-[1160] flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-primary/50 bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
-            {vista === 'mapa' ? <Eye className="size-5 text-primary" /> : <MapIcon className="size-5 text-primary" />}
-            <span className="text-[10px] font-bold leading-none">{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
-            <span className="text-[8px] font-bold leading-none text-amber-500">Esc</span>
-          </button>
+          {/* Coluna de atalhos no canto superior esquerdo. A alternância MAPA/PLANTA (troca mais
+              usada) fica no topo, com destaque; abaixo, no mesmo padrão quadrado, o modo
+              Fácil/Completo e — só na planta — travar a folha e o tema da prancha. Ficam aqui pra
+              liberar a barra flutuante de cima. */}
+          <div className="absolute left-3 top-3 z-[1160] flex flex-col gap-2">
+            <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
+              title="Alternar entre mapa e planta (Esc)"
+              className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-primary/50 bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
+              {vista === 'mapa' ? <Eye className="size-5 text-primary" /> : <MapIcon className="size-5 text-primary" />}
+              <span className="text-[10px] font-bold leading-none">{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
+              <span className="text-[8px] font-bold leading-none text-amber-500">Esc</span>
+            </button>
+
+            {/* Modo Fácil/Completo — vale no app inteiro; some durante a abertura e após as 5 h de Completo */}
+            {chaveTopoVisivel && !introTocando && (
+              <button type="button" onClick={() => trocarModoApp(completo ? 'simples' : 'completo')}
+                title={completo
+                  ? 'Modo Completo: todas as ferramentas à mostra. Clique para o Fácil.'
+                  : 'Modo Fácil: só o caminho essencial. Clique para o Completo.'}
+                className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
+                <GraduationCap className="size-5 text-primary" />
+                <span className="text-[10px] font-bold leading-none">{completo ? 'COMPL.' : 'FÁCIL'}</span>
+              </button>
+            )}
+
+            {/* Só na planta: travar a folha e alternar o tema da prancha */}
+            {vista === 'planta' && (
+              <>
+                <button type="button"
+                  onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
+                  title={folhaTravada ? 'Moldura travada — clique para soltar e arrastar a prancha' : 'Moldura solta — clique para travar o layout da folha'}
+                  className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${folhaTravada ? 'border-border bg-background/95 hover:bg-muted' : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'}`}>
+                  {folhaTravada ? <Lock className="size-5" /> : <LockOpen className="size-5" />}
+                  <span className="text-[10px] font-bold leading-none">{folhaTravada ? 'TRAVADA' : 'SOLTA'}</span>
+                </button>
+                <button type="button" onClick={() => setPlantaDark((v) => !v)}
+                  title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
+                  className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
+                  {plantaDark ? <Sun className="size-5 text-amber-400" /> : <Moon className="size-5" />}
+                  <span className="text-[10px] font-bold leading-none">{plantaDark ? 'ESCURA' : 'CLARA'}</span>
+                </button>
+              </>
+            )}
+          </div>
 
           {/* Barra flutuante de ferramentas unificada (Mapa/Planta) — arrastável e persistente */}
           {(vista === 'mapa' || vista === 'planta') && (
@@ -3507,43 +3523,18 @@ export default function EditorPage() {
                 </div>
               )}
 
-              {/* Chave Fácil/Completo (sempre visível, em ambos os modos!) */}
-              {chaveModo && (
-                <div className="shadow-xl rounded-full">
-                  {chaveModo}
+              {/* Player de áudio de introdução e tutorial (some durante o vídeo).
+                  O contêiner é transparente, então cada pill carrega a própria sombra. */}
+              {!introTocando && (
+                <div className="flex items-center gap-1">
+                  <IntroAudioPill />
+                  <TutorialAudioPill />
                 </div>
               )}
 
-              {/* Controles específicos do modo PLANTA */}
+              {/* Controles específicos do modo PLANTA (travar folha e tema foram pra coluna esquerda) */}
               {vista === 'planta' && (
                 <>
-                  {/* Travamento da folha e modo escuro */}
-                  <div className="flex items-center gap-1 rounded-full border border-border bg-background/95 p-1 shadow-xl backdrop-blur">
-                    <Button
-                      size="sm"
-                      variant={folhaTravada ? 'outline' : 'default'}
-                      className={folhaTravada ? 'size-7 rounded-full p-0' : 'size-7 rounded-full p-0 bg-amber-500 hover:bg-amber-600 text-white'}
-                      onClick={() => {
-                        const nova = !folhaTravada;
-                        setFolhaTravada(nova);
-                        if (!nova) setModo('navegar');
-                      }}
-                      title={folhaTravada ? "Moldura travada — clique para soltar e arrastar a prancha" : "Moldura solta — clique para travar o layout da folha"}
-                    >
-                      {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant={plantaDark ? 'default' : 'outline'}
-                      className="size-7 rounded-full p-0"
-                      onClick={() => setPlantaDark((v) => !v)}
-                      title={plantaDark ? 'Modo escuro ligado — clique para voltar ao claro' : 'Modo claro — clique para o modo escuro (noturno)'}
-                    >
-                      {plantaDark ? <Sun className="size-3.5 text-amber-400" /> : <Moon className="size-3.5" />}
-                    </Button>
-                  </div>
-
                   {/* Situação da Planta */}
                   {(() => {
                     const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
@@ -3677,6 +3668,7 @@ export default function EditorPage() {
                       resumoGlebas={resumoGlebas} verticesVizinho={verticesVizinho}
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
+                      onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}
                       onExcluirObjeto={(id) => setObjetos((os) => os.filter((o) => o.id !== id))}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
                       onRemoverSituacao={() => { setSituacaoUrl(undefined); setPlantaConfig((c) => ({ ...c, situacaoDataUrl: undefined })); }}
@@ -4548,7 +4540,7 @@ export default function EditorPage() {
       </Dialog>
 
       <IntroVideo />
-      <IntroAudio />
+
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
       <TermosModal open={termosModalAberto} onAceitar={() => { setTermosOk(true); setTermosModalAberto(false); const a = acaoAposTermos.current; acaoAposTermos.current = null; a?.(); }} />
@@ -4705,7 +4697,34 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
           </div>
         </>
       ) : (
-        <Campo label="Código do Imóvel (SNCR/INCRA)" value={imovel.codigoImovelIncra} onChange={(v) => set('codigoImovelIncra', v)} />
+        <>
+          <Campo label="Código do Imóvel (SNCR/INCRA)" value={imovel.codigoImovelIncra} onChange={(v) => set('codigoImovelIncra', v)} />
+          {/* Padrão do memorial: só oferecido quando o imóvel é de Mato Grosso (INTERMAT). */}
+          {ufDoMunicipio(imovel.municipio) === 'MT' && (
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Padrão do memorial</Label>
+              <div className="flex rounded-md bg-secondary p-0.5 text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...imovel, padraoMemorial: 'incra' })}
+                  className={`flex-1 rounded py-1 text-center transition-all ${(imovel.padraoMemorial ?? 'incra') === 'incra' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  INCRA / SIGEF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...imovel, padraoMemorial: 'intermat' })}
+                  className={`flex-1 rounded py-1 text-center transition-all ${imovel.padraoMemorial === 'intermat' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  INTERMAT (MT)
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                INTERMAT adiciona ao memorial a referência ao Instituto de Terras de Mato Grosso e o parágrafo de finalidade da regularização estadual. O restante da peça é o mesmo padrão do Incra.
+              </p>
+            </div>
+          )}
+        </>
       )}
       <SecaoTitulo>Proprietário e partes</SecaoTitulo>
       <div className="space-y-1">

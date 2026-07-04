@@ -1,7 +1,4 @@
-import {
-  Document, Packer, Paragraph, TextRun, AlignmentType,
-  Table, TableRow, TableCell, WidthType, BorderStyle,
-} from 'docx';
+import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex, PessoaQualificada } from '../topo/types';
 import { grausParaDMS, convergenciaMeridiana } from '../topo/coords';
 import { azimute, distancia, azimuteDMS, numBR, numBRmilhar, formatMatricula } from '../topo/geometry';
@@ -208,6 +205,10 @@ function seguePor(representacao: string): string {
   }
 }
 
+// Tipografia do memorial: Times New Roman 12 pt (tamanho 24 em meios-pontos) em TODO o corpo —
+// padrão de peça técnica de cartório. Só o título principal sobe pra 14 pt.
+const CORPO = 24;
+
 function p(text: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; size?: number } = {}) {
   const lines = (text || '').split('\n');
   const runChildren: TextRun[] = [];
@@ -215,7 +216,7 @@ function p(text: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[
     if (index > 0) {
       runChildren.push(new TextRun({ break: 1 }));
     }
-    runChildren.push(new TextRun({ text: line, bold: opts.bold, size: opts.size ?? 22 }));
+    runChildren.push(new TextRun({ text: line, bold: opts.bold, size: opts.size ?? CORPO }));
   });
   return new Paragraph({
     alignment: opts.align ?? AlignmentType.JUSTIFIED,
@@ -228,162 +229,40 @@ function p(text: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[
 // de assinatura e o nome, ou entre uma linha de dado e a próxima (bloco sempre atômico).
 function assinatura(linhas: string[], boldPrimeira = false) {
   const filhos = [
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360 }, keepNext: true, keepLines: true, children: [new TextRun({ text: '________________________________________', size: 22 })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360 }, keepNext: true, keepLines: true, children: [new TextRun({ text: '________________________________________', size: CORPO })] }),
   ];
   linhas.forEach((l, i) =>
-    filhos.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, keepNext: true, keepLines: true, children: [new TextRun({ text: l, bold: boldPrimeira && i === 0, size: 22 })] }))
+    filhos.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, keepNext: true, keepLines: true, children: [new TextRun({ text: l, bold: boldPrimeira && i === 0, size: CORPO })] }))
   );
   return filhos;
 }
 
-/** Célula da tabela de cabeçalho: rótulo em negrito + valor. */
-function celulaCab(rotulo: string, valor: string): TableCell {
-  return new TableCell({
-    width: { size: 50, type: WidthType.PERCENTAGE },
-    margins: { top: 30, bottom: 30, left: 90, right: 90 },
-    children: [new Paragraph({ children: [
-      new TextRun({ text: `${rotulo} `, bold: true, size: 20 }),
-      new TextRun({ text: valor || '—', size: 20 }),
-    ] })],
-  });
-}
-
-const border = () => ({ style: BorderStyle.SINGLE, size: 4, color: '000000' });
-
-function celulaTabela(texto: string, width: number, opts: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; size?: number } = {}): TableCell {
-  return new TableCell({
-    width: { size: width, type: WidthType.PERCENTAGE },
-    margins: { top: 60, bottom: 60, left: 60, right: 60 },
-    children: [new Paragraph({
-      alignment: opts.align ?? AlignmentType.CENTER,
-      children: [new TextRun({ text: texto || '—', bold: opts.bold, size: opts.size ?? 18 })]
-    })]
-  });
-}
-
-function celulaHeader(texto: string, width: number): TableCell {
-  return new TableCell({
-    width: { size: width, type: WidthType.PERCENTAGE },
-    margins: { top: 80, bottom: 80, left: 60, right: 60 },
-    children: [new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({ text: texto || '—', bold: true, size: 18 })]
-    })]
-  });
-}
-
-function tabelaRoteiroGeometrico(
-  res: ResultadoCalculo,
-  imovel: ImovelData,
-  confrontantes: Confrontante[],
-  confrontantePorLado: Record<number, string>,
-  zonaUtm?: number
-): Table {
-  const { lados } = res;
-  const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
-  
-  const usarGeodesico = imovel.tipoAzimute !== 'plano';
-  const zona = zonaUtm ?? 23;
-
-  const obterAzimuteEfetivo = (l: typeof lados[0]) => {
-    if (!usarGeodesico) {
-      return azimute({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
-    }
-    const v = l.de;
-    if (v.lat != null && v.lon != null) {
-      const cm = convergenciaMeridiana(v.lat, v.lon, zona);
-      const azPlano = azimute({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
-      return (azPlano + cm + 360) % 360;
-    }
-    return l.azimute;
-  };
-
-  const obterDistanciaEfetiva = (l: typeof lados[0]) => {
-    if (!usarGeodesico) {
-      return distancia({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
-    }
-    return l.distancia;
-  };
-
-  const rows = [
-    new TableRow({
-      children: [
-        celulaHeader('De', 8),
-        celulaHeader('Para', 8),
-        celulaHeader('Azimute', 12),
-        celulaHeader('Dist. (m)', 12),
-        celulaHeader('Leste (m)', 14),
-        celulaHeader('Norte (m)', 14),
-        celulaHeader('Alt. (m)', 9),
-        celulaHeader('Confrontante / Limite', 23),
-      ]
-    })
-  ];
-
-  lados.forEach((l, idx) => {
-    const azEfetivo = obterAzimuteEfetivo(l);
-    const distEfetiva = obterDistanciaEfetiva(l);
-    const cid = confrontantePorLado[idx] ?? l.confrontanteId ?? null;
-    const c = cid ? mapaC.get(cid) : undefined;
-    const confNome = c ? nomeConfrontante(c) : 'Não informado';
-    const limite = l.de.tipoLimite || 'LA6';
-
-    rows.push(
-      new TableRow({
-        children: [
-          celulaTabela(l.de.codigoSigef || l.de.nome, 8, { bold: true }),
-          celulaTabela(l.para.codigoSigef || l.para.nome, 8, { bold: true }),
-          celulaTabela(azimuteDMS(azEfetivo), 12),
-          celulaTabela(numBR(distEfetiva), 12),
-          celulaTabela(numBR(l.de.leste, 3), 14),
-          celulaTabela(numBR(l.de.norte, 3), 14),
-          celulaTabela(numBR(Number.isFinite(l.de.elevacao) ? l.de.elevacao : 0, 2), 9),
-          celulaTabela(`${confNome} (${limite})`, 23, { align: AlignmentType.LEFT }),
-        ]
-      })
-    );
-  });
-
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: {
-      top: border(),
-      bottom: border(),
-      left: border(),
-      right: border(),
-      insideHorizontal: border(),
-      insideVertical: border(),
-    },
-    rows,
-  });
-}
-
-/** Tabela de identificação no topo do memorial (com bordas), como no modelo do dono. */
-function tabelaCabecalho(imovel: ImovelData, areaHa: number, perimetro: number): Table {
+/** Identificação no topo do memorial: linhas simples de texto (rótulo em negrito), sem tabela nem moldura. */
+function linhasCabecalho(imovel: ImovelData, areaHa: number, perimetro: number): Paragraph[] {
   const isUrbano = imovel.tipoImovel === 'urbano';
   const labelArea = isUrbano ? 'Área SGL (m²):' : 'Área SGL (ha):';
   const valArea = isUrbano ? `${numBR(areaHa * 10000)} m²` : `${numBR(areaHa, 4)} ha`;
-  
+
   const idMunicipal = isUrbano && imovel.inscricaoMunicipal
     ? ` / Insc.: ${imovel.inscricaoMunicipal}`
     : '';
 
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: {
-      top: border(),
-      bottom: border(),
-      left: border(),
-      right: border(),
-      insideHorizontal: border(),
-      insideVertical: border(),
-    },
-    rows: [
-      new TableRow({ children: [celulaCab(isUrbano ? 'Imóvel/Lote:' : 'Imóvel:', imovel.denominacao), celulaCab('Matrícula:', `${imovel.matricula}${idMunicipal}`)] }),
-      new TableRow({ children: [celulaCab('Proprietário(a):', imovel.proprietario), celulaCab(labelArea, valArea)] }),
-      new TableRow({ children: [celulaCab('Local:', imovel.local), celulaCab('Perímetro (m):', `${numBR(perimetro)} m`)] }),
+  const linha = (rotulo: string, valor: string) => new Paragraph({
+    spacing: { after: 40 },
+    children: [
+      new TextRun({ text: `${rotulo} `, bold: true, size: CORPO }),
+      new TextRun({ text: valor || '—', size: CORPO }),
     ],
   });
+
+  return [
+    linha(isUrbano ? 'Imóvel/Lote:' : 'Imóvel:', imovel.denominacao),
+    linha('Matrícula:', `${imovel.matricula}${idMunicipal}`),
+    linha('Proprietário(a):', imovel.proprietario),
+    linha(labelArea, valArea),
+    linha('Local:', imovel.local),
+    linha('Perímetro (m):', `${numBR(perimetro)} m`),
+  ];
 }
 
 /** Assinatura de uma pessoa e, se houver, do seu cônjuge logo abaixo. */
@@ -418,7 +297,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   if (semCodigo > 0) throw new Error(`${semCodigo} vértice(s) sem código. Renumere os vértices antes de gerar o memorial.`);
   const narrativaSegs = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado, imovel, zonaUtm);
 
-  const children: (Paragraph | Table)[] = [];
+  const children: Paragraph[] = [];
 
   // Aviso de dados fictícios (projeto de demonstração)
   if (imovel.ficticio) {
@@ -446,9 +325,19 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     new TextRun({ text: ehServidao ? 'MEMORIAL DESCRITIVO DE SERVIDÃO' : 'MEMORIAL DESCRITIVO', bold: true, size: 28 }),
   ] }));
 
-  // Cabeçalho em tabela (usa os valores oficiais do SIGEF quando o usuário escolheu reconciliar)
+  // Identificação em texto simples (usa os valores oficiais do SIGEF quando o usuário escolheu reconciliar)
   const ef = valoresEfetivos(res, imovel);
-  children.push(tabelaCabecalho(imovel, ef.areaHa, ef.perimetro));
+  linhasCabecalho(imovel, ef.areaHa, ef.perimetro).forEach((c) => children.push(c));
+
+  // Variante INTERMAT (Mato Grosso): referência ao órgão estadual + parágrafo de finalidade próprio,
+  // logo abaixo do cabeçalho. O restante do memorial (perímetro, tabelas, assinaturas) é o mesmo do
+  // padrão INCRA, porque o INTERMAT reaproveita a peça certificada pelo Incra.
+  if (imovel.padraoMemorial === 'intermat') {
+    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200, after: 60 }, children: [
+      new TextRun({ text: 'INSTITUTO DE TERRAS DE MATO GROSSO — INTERMAT', bold: true, size: CORPO }),
+    ] }));
+    children.push(p(mod('memorialIntermatFinalidade')));
+  }
 
   // Abertura própria da servidão (texto editável), antes da descrição do perímetro.
   if (ehServidao) {
@@ -458,7 +347,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 280, after: 160 }, children: [new TextRun({ text: ehServidao ? 'DESCRIÇÃO DO PERÍMETRO DA SERVIDÃO' : 'DESCRIÇÃO DO PERÍMETRO', bold: true, size: 24 })] }));
   children.push(new Paragraph({
     alignment: AlignmentType.JUSTIFIED, spacing: { after: 120 },
-    children: narrativaSegs.map((s) => new TextRun({ text: s.t, bold: s.b, size: 22 })),
+    children: narrativaSegs.map((s) => new TextRun({ text: s.t, bold: s.b, size: CORPO })),
   }));
 
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 240, after: 120 }, children: [new TextRun({ text: 'INFORMAÇÕES TÉCNICAS', bold: true, size: 24 })] }));
@@ -469,7 +358,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
 
   // Data e assinatura do técnico
   const data = input.dataExtenso ? `, ${input.dataExtenso}` : '';
-  children.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 40 }, children: [new TextRun({ text: `${tecnico.cidadeAssinatura}${data}.`, size: 22 })] }));
+  children.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 40 }, children: [new TextRun({ text: `${tecnico.cidadeAssinatura}${data}.`, size: CORPO })] }));
   const rot = rotulosProfissional(tecnico);
   assinatura([
     tecnico.nome.toUpperCase(),
@@ -524,18 +413,8 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     blocoAssinaturaConfrontante(c).forEach((x) => children.push(x));
   });
 
-  // Tabela de Roteiro Geométrico (Anexo em página separada)
-  children.push(new Paragraph({
-    alignment: AlignmentType.CENTER,
-    spacing: { before: 240, after: 180 },
-    pageBreakBefore: true,
-    keepNext: true,
-    children: [new TextRun({ text: 'TABELA DE ROTEIRO GEOMÉTRICO (ANEXO)', bold: true, size: 24 })]
-  }));
-  children.push(tabelaRoteiroGeometrico(res, imovel, confrontantes, confrontantePorLado, zonaUtm));
-
   const doc = new Document({
-    styles: { default: { document: { run: { font: 'Arial' } } } },
+    styles: { default: { document: { run: { font: 'Times New Roman', size: CORPO } } } },
     sections: [{
       properties: { page: { margin: { top: 1133, bottom: 1133, left: 1133, right: 1133 } } },
       children,

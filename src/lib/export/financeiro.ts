@@ -65,7 +65,20 @@ function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, la
   doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
   doc.text(esc.nome || 'Escritório', larg / 2, margem + 4, { align: 'center' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-  const linhas = [esc.ramo, esc.endereco, [esc.cnpj && `CNPJ ${esc.cnpj}`, esc.telefone && `Tel./WhatsApp ${esc.telefone}`].filter(Boolean).join('  ·  ')].filter(Boolean) as string[];
+  // Endereço + cidade/UF/CEP numa linha só; documentos, inscrições e contatos noutras.
+  const cidadeUf = [esc.cidade, esc.uf].filter(Boolean).join('-');
+  const localLinha = [esc.endereco, [cidadeUf, esc.cep].filter(Boolean).join('  ')].filter(Boolean).join(' — ');
+  const docsLinha = [
+    esc.cnpj && `CNPJ/CPF ${esc.cnpj}`,
+    esc.inscricaoEstadual && `IE ${esc.inscricaoEstadual}`,
+    esc.inscricaoMunicipal && `IM ${esc.inscricaoMunicipal}`,
+  ].filter(Boolean).join('  ·  ');
+  const contatoLinha = [
+    esc.telefone && `Tel./WhatsApp ${esc.telefone}`,
+    esc.email,
+    esc.site,
+  ].filter(Boolean).join('  ·  ');
+  const linhas = [esc.ramo, localLinha, docsLinha, contatoLinha].filter(Boolean) as string[];
   let y = margem + 9;
   linhas.forEach((l) => { doc.text(l, larg / 2, y, { align: 'center' }); y += 4.2; });
   doc.setDrawColor(120); doc.line(margem, y + 1, larg - margem, y + 1);

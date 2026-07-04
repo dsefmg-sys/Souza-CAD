@@ -52,7 +52,7 @@ async function montar(titulo: string, corpo: string, assinaNome: string, assinaR
   c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepLines: true, children: [new TextRun({ text: assinaRotulo, size: 20 })] }));
 
   const doc = new Document({
-    styles: { default: { document: { run: { font: 'Arial' } } } },
+    styles: { default: { document: { run: { font: 'Times New Roman' } } } },
     sections: [{ properties: { page: { margin: { top: 1133, bottom: 1133, left: 1133, right: 1133 } } }, children: c }],
   });
   return Packer.toBlob(doc);

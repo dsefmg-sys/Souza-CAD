@@ -69,6 +69,94 @@ export async function removerAudioIntroIdb(): Promise<void> {
   window.dispatchEvent(new CustomEvent('souzacad:intro-audio-updated'));
 }
 
+/**
+ * Player mini ("pill") genérico, pra viver dentro da barra flutuante ao lado da chave
+ * Fácil/Completo. Cada pill toca um áudio e mostra um rótulo curto pra distinguir.
+ */
+export function AudioPill({ src, rotulo, titulo }: { src: string; rotulo: string; titulo: string }) {
+  const [tocando, setTocando] = useState(false);
+  const [progresso, setProgresso] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const a = new Audio(src);
+    a.preload = 'metadata';
+    audioRef.current = a;
+    // O estado segue os EVENTOS do elemento — assim pausa externa (tecla de mídia, fone) e
+    // falha de play (arquivo ausente, autoplay bloqueado) não deixam o ícone mentindo.
+    const onPlay = () => setTocando(true);
+    const onPause = () => setTocando(false);
+    const onTime = () => { if (a.duration) setProgresso(a.currentTime / a.duration); };
+    const onEnd = () => { setProgresso(0); a.currentTime = 0; };
+    a.addEventListener('play', onPlay);
+    a.addEventListener('pause', onPause);
+    a.addEventListener('timeupdate', onTime);
+    a.addEventListener('ended', onEnd);
+    return () => {
+      a.pause();
+      a.removeEventListener('play', onPlay);
+      a.removeEventListener('pause', onPause);
+      a.removeEventListener('timeupdate', onTime);
+      a.removeEventListener('ended', onEnd);
+      a.removeAttribute('src'); a.load(); // libera o player de mídia do navegador
+      audioRef.current = null;
+      setTocando(false); setProgresso(0);
+    };
+  }, [src]);
+
+  function toggle() {
+    const a = audioRef.current;
+    if (!a) return;
+    if (a.paused) a.play().catch(() => {});
+    else a.pause();
+  }
+
+  function seek(e: React.MouseEvent<HTMLDivElement>) {
+    const a = audioRef.current;
+    if (!a || !a.duration) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    a.currentTime = ratio * a.duration;
+    setProgresso(ratio);
+  }
+
+  return (
+    <div className="flex items-center gap-1 rounded-full border bg-background/95 pl-1.5 pr-1 py-0.5 shadow-xl" title={titulo}>
+      <Volume2 className="size-3 text-muted-foreground shrink-0" />
+      <span className="text-[8px] font-bold uppercase tracking-wide text-muted-foreground select-none shrink-0">{rotulo}</span>
+      {/* barra de progresso minúscula — clicável pra retomar de onde parou */}
+      <div className="relative h-1 w-10 cursor-pointer rounded-full bg-border overflow-hidden shrink-0" onClick={seek} title="Clique para avançar">
+        <div className="absolute left-0 top-0 h-full rounded-full bg-primary transition-all duration-150" style={{ width: `${progresso * 100}%` }} />
+      </div>
+      <button
+        onClick={toggle}
+        className={`flex size-5 shrink-0 items-center justify-center rounded-full transition-all ${tocando ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
+        title={tocando ? 'Pausar' : titulo}
+      >
+        {tocando ? <Pause className="size-2.5" /> : <Play className="size-2.5 translate-x-px" />}
+      </button>
+    </div>
+  );
+}
+
+/** Pill da introdução: toca o áudio salvo pelo admin no IndexedDB ou o padrão /introducao.mp3. */
+export function IntroAudioPill() {
+  const [src, setSrc] = useState<string>(DEFAULT_SRC);
+  useEffect(() => {
+    let vivo = true;
+    const carregar = () => { lerAudioIdb().then((salvo) => { if (vivo) setSrc(salvo ?? DEFAULT_SRC); }); };
+    carregar();
+    window.addEventListener('souzacad:intro-audio-updated', carregar);
+    return () => { vivo = false; window.removeEventListener('souzacad:intro-audio-updated', carregar); };
+  }, []);
+  return <AudioPill src={src} rotulo="INTRODUÇÃO" titulo="Áudio de introdução ao sistema" />;
+}
+
+/** Pill do tutorial: toca /tutorial.mp3 (estático em /public). */
+export function TutorialAudioPill() {
+  return <AudioPill src="/tutorial.mp3" rotulo="TUTORIAL" titulo="Áudio tutorial: como usar o sistema" />;
+}
+
 export default function IntroAudio() {
   const [src, setSrc] = useState<string>(DEFAULT_SRC);
   const [tocando, setTocando] = useState(false);

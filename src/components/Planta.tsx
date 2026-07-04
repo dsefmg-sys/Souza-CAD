@@ -42,6 +42,7 @@ interface Props {
   desenhoAtual?: PontoLL[];
   onCliquePlanta?: (lat: number, lon: number) => void;
   onSelecObjeto?: (id: string | null) => void;
+  onContextMenuObjeto?: (id: string, tipo: string, x: number, y: number) => void; // clique direito num objeto desenhado: abre o menu de edição
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
@@ -230,7 +231,7 @@ export default function Planta({
   zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], verticesVizinho = [], resumoGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
-  onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
+  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
@@ -333,6 +334,7 @@ export default function Planta({
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
   const fonteRot = fs(config.fonteRotulos ?? 10);
   const escVert = config.escalaVertices && config.escalaVertices > 0 ? config.escalaVertices : 1; // tamanho dos símbolos de vértice
+  const escTab = config.escalaTabelas && config.escalaTabelas > 0 ? config.escalaTabelas : 1; // fonte só das tabelas (roteiro, coordenadas, áreas)
   const textosOv = config.textos ?? {};
   const ef = valoresEfetivos(res, imovel);
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
@@ -952,14 +954,19 @@ export default function Planta({
         const ovQ = getOverride(idQ);
         const bx = DRAW.x0 + 24 + (ovQ.dx ?? 0);
         const by = DRAW.y0 + 24 + (ovQ.dy ?? 0);
-        const fz = Math.max(7, fonteRot);
+        const fz = Math.max(7, fonteRot * escTab);
         const lh = fz + 5;
-        const wq = 250;
+        // Larguras em função da fonte REAL (fz escala com a escala de textos) — pixel fixo sobrepõe
+        const ch = 0.62 * fz;
+        const WN = 16 * ch;   // Polígono (nome cortado em 15 caracteres)
+        const WA = 11 * ch;   // Área (ha), anchor end
+        const WP = 10.5 * ch; // Perím. (m), anchor end (o cabeçalho "PERÍM. (m)" é o texto mais largo)
+        const wq = 8 + WN + WA + WP + 8;
         const linhas = resumoGlebas;
         const totalHa = linhas.reduce((s, g) => s + g.areaHa, 0);
         const totalPer = linhas.reduce((s, g) => s + g.perimetro, 0);
         const hq = (linhas.length + 3.4) * lh;
-        const colNome = bx + 8, colArea = bx + wq - 128, colPer = bx + wq - 8;
+        const colNome = bx + 8, colArea = bx + 8 + WN + WA, colPer = bx + wq - 8;
         return (
           <g style={editavel ? { cursor: 'move' } : undefined}
              onPointerDown={editavel ? (e) => { e.stopPropagation(); tedComum.onDragStart(idQ, e); } : undefined}>
@@ -973,7 +980,7 @@ export default function Planta({
               const y = by + lh * (3 + i);
               return (
                 <g key={i}>
-                  <text x={colNome} y={y} fontSize={fz} fill="#0f172a">{g.nome.slice(0, 22)}</text>
+                  <text x={colNome} y={y} fontSize={fz} fill="#0f172a">{g.nome.slice(0, 15)}</text>
                   <text x={colArea} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{numBR(g.areaHa, 4)}</text>
                   <text x={colPer} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{numBR(g.perimetro)}</text>
                 </g>
@@ -993,14 +1000,27 @@ export default function Planta({
         const ovR = getOverride(idR);
         const comConf = config.roteiroComConfrontante !== false;
         const nomeConf = (cid: string | null) => (cid ? (confrontantes.find((c) => c.id === cid)?.nome || '—') : '—');
-        const fz = Math.max(6.5, fonteRot - 1);
+        const fz = Math.max(6.5, (fonteRot - 1) * escTab);
         const lh = fz + 4;
-        const wr = comConf ? 300 : 200;
+        // Larguras das colunas em função da fonte REAL (fz já vem multiplicado pela escala de
+        // textos, então pixel fixo não serve — ch ≈ largura média de um caractere nesta fonte).
+        const ch = 0.62 * fz;
+        const WV = 13 * ch;                  // Vértice (nome cortado em 12 caracteres)
+        const WAZ = 11.5 * ch;               // Azimute DDD°MM'SS"
+        const WD = 10 * ch;                  // Distância
+        const WC = comConf ? 19.5 * ch : 0;  // Confrontante (cortado em 18)
+        // Divide os lados em colunas de no máximo 18 linhas, como o quadro de coordenadas —
+        // senão o roteiro cresce pra cima sem limite e invade o resto da folha.
+        const colH = 18;
+        const numCols = Math.ceil(res.lados.length / colH);
+        const colW = 8 + WV + WAZ + WD + WC;
+        const gap = 10;
+        const wr = numCols * colW + (numCols - 1) * gap + 8;
+        const hr = (Math.min(res.lados.length, colH) + 2.4) * lh;
         const bx = DRAW.x0 + 24 + (ovR.dx ?? 0);
-        const by = DRAW.y1 - 24 - (res.lados.length + 2.5) * lh + (ovR.dy ?? 0);
-        const cV = bx + 8, cAz = bx + 70, cDist = bx + (comConf ? 150 : 192), cConf = bx + wr - 8;
-        const hr = (res.lados.length + 2.4) * lh;
-        
+        const by = DRAW.y1 - 24 - hr + (ovR.dy ?? 0);
+        const clipId = `clip-rot-${idR.replace('.', '-')}`;
+
         const usarGeodesico = imovel.tipoAzimute !== 'plano';
         const obterAzimuteEfetivo = (l: typeof res.lados[0]) => {
           if (!usarGeodesico) {
@@ -1024,26 +1044,56 @@ export default function Planta({
         return (
           <g style={editavel ? { cursor: 'move' } : undefined}
              onPointerDown={editavel ? (e) => { e.stopPropagation(); tedComum.onDragStart(idR, e); } : undefined}>
+            <defs>
+              <clipPath id={clipId}>
+                <rect x={bx} y={by} width={wr} height={hr} />
+              </clipPath>
+            </defs>
             <rect x={bx} y={by} width={wr} height={hr} rx={4} fill="#ffffff" fillOpacity={0.95} stroke="#475569" strokeWidth={0.8} />
             <rect x={bx} y={by} width={wr} height={lh + 2} rx={4} fill="#475569" />
             <text x={bx + wr / 2} y={by + lh - 2} fontSize={fz} fontWeight="bold" fill="#fff" textAnchor="middle">ROTEIRO PERIMÉTRICO</text>
-            <text x={cV} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569">VÉRTICE</text>
-            <text x={cAz} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569">AZIMUTE</text>
-            <text x={cDist} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">DIST (m)</text>
-            {comConf && <text x={cConf} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">CONFRONTANTE</text>}
-            {res.lados.map((l, i) => {
-              const y = by + lh * (3 + i);
-              const azEfetivo = obterAzimuteEfetivo(l);
-              const distEfetiva = obterDistanciaEfetiva(l);
-              return (
-                <g key={i}>
-                  <text x={cV} y={y} fontSize={fz} fill="#0f172a">{l.de.codigoSigef || l.de.nome}</text>
-                  <text x={cAz} y={y} fontSize={fz} fill="#0f172a">{azimuteDMS(azEfetivo)}</text>
-                  <text x={cDist} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{numBR(distEfetiva)}</text>
-                  {comConf && <text x={cConf} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{nomeConf(l.confrontanteId).slice(0, 20)}</text>}
-                </g>
-              );
-            })}
+            {/* tudo que pode vazar fica num grupo com clip na caixa inteira */}
+            <g clipPath={`url(#${clipId})`}>
+              {Array.from({ length: numCols }).map((_, colIdx) => {
+                const lados = res.lados.slice(colIdx * colH, colIdx * colH + colH);
+                const off = bx + colIdx * (colW + gap);
+                const xV   = off + 8;
+                const xAzR = off + 8 + WV + WAZ;          // azimute: anchor end
+                const xDR  = off + 8 + WV + WAZ + WD;     // distância: anchor end
+                const xCR  = off + 8 + WV + WAZ + WD + WC; // confrontante: anchor end
+                const headerY = by + lh * 2;
+                return (
+                  <g key={colIdx}>
+                    {/* zebra primeiro; separadores DEPOIS, senão as listras cobrem as linhas */}
+                    {lados.map((l, i) => (i % 2 === 1
+                      ? <rect key={i} x={off + 2} y={by + lh * (2 + i) + 2} width={colW - 4} height={lh} fill="#f8fafc" />
+                      : null))}
+                    <line x1={xAzR + 4} y1={by + lh + 2} x2={xAzR + 4} y2={by + hr - 4} stroke="#e2e8f0" strokeWidth={0.5} />
+                    <line x1={xDR  + 4} y1={by + lh + 2} x2={xDR  + 4} y2={by + hr - 4} stroke="#e2e8f0" strokeWidth={0.5} />
+                    <text x={xV}   y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">VÉRTICE</text>
+                    <text x={xAzR} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">AZIMUTE</text>
+                    <text x={xDR}  y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">DIST (m)</text>
+                    {comConf && <text x={xCR} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">CONFRONTANTE</text>}
+                    {lados.map((l, i) => {
+                      const y = by + lh * (3 + i);
+                      const azEfetivo = obterAzimuteEfetivo(l);
+                      const distEfetiva = obterDistanciaEfetiva(l);
+                      return (
+                        <g key={i}>
+                          <text x={xV}   y={y} fontSize={fz} fill="#0f172a">{(l.de.codigoSigef || l.de.nome).slice(0, 12)}</text>
+                          <text x={xAzR} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{azimuteDMS(azEfetivo)}</text>
+                          <text x={xDR}  y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{numBR(distEfetiva)}</text>
+                          {comConf && <text x={xCR} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{nomeConf(l.confrontanteId).slice(0, 18)}</text>}
+                        </g>
+                      );
+                    })}
+                    {colIdx < numCols - 1 && (
+                      <line x1={off + colW + gap / 2} y1={by + lh} x2={off + colW + gap / 2} y2={by + hr - 6} stroke="#cbd5e1" strokeWidth={0.6} />
+                    )}
+                  </g>
+                );
+              })}
+            </g>
           </g>
         );
       })()}
@@ -1052,74 +1102,98 @@ export default function Planta({
       {config.mostrarCoordenadas && vertices.length > 0 && (() => {
         const idC = 'planta.coordenadas';
         const ovC = getOverride(idC);
-        const fz = Math.max(6.5, fonteRot - 1);
+        const fz = Math.max(6.5, (fonteRot - 1) * escTab);
         const lh = fz + 4;
-        
+
+        // Larguras das colunas em função da fonte REAL (fz escala com a escala de textos do
+        // usuário; pixel fixo estourava). ch ≈ largura média de um caractere nesta fonte.
+        const ch = 0.62 * fz;
+        const WV = 13 * ch;    // Vértice (nome cortado em 12 caracteres)
+        const WE = 12.5 * ch;  // ESTE: até 10 caracteres (833123,456), anchor end
+        const WN = 13 * ch;    // NORTE: até 11 caracteres (8123456,789), anchor end
+        const WH = 8.5 * ch;   // ALT: até 7 caracteres, anchor end
+        const WM = 9 * ch;     // LIM/MÉT (LA6/PG6)
+        const colW = 8 + WV + WE + WN + WH + 4 + WM;
+        const gap = 10;
         // Divide os vértices em colunas de no máximo 18 linhas
         const colH = 18;
         const numCols = Math.ceil(vertices.length / colH);
-        const colW = 280;
-        const gap = 12;
-        const wBox = numCols * colW + (numCols - 1) * gap + 16;
+        const wBox = numCols * colW + (numCols - 1) * gap + 8;
         const hr = (Math.min(vertices.length, colH) + 2.4) * lh;
-        
+
         const bx = DRAW.x0 + 24 + (ovC.dx ?? 0);
         const by = DRAW.y0 + 24 + (ovC.dy ?? 0);
-        
+        const clipId = `clip-coord-${idC.replace('.', '-')}`;
+
         return (
           <g style={editavel ? { cursor: 'move' } : undefined}
              onPointerDown={editavel ? (e) => { e.stopPropagation(); tedComum.onDragStart(idC, e); } : undefined}>
+            <defs>
+              <clipPath id={clipId}>
+                <rect x={bx} y={by} width={wBox} height={hr} />
+              </clipPath>
+            </defs>
             <rect x={bx} y={by} width={wBox} height={hr} rx={4} fill="#ffffff" fillOpacity={0.95} stroke="#475569" strokeWidth={0.8} />
             <rect x={bx} y={by} width={wBox} height={lh + 2} rx={4} fill="#475569" />
             <text x={bx + wBox / 2} y={by + lh - 2} fontSize={fz} fontWeight="bold" fill="#fff" textAnchor="middle">QUADRO DE COORDENADAS (SIRGAS 2000)</text>
-            
-            {Array.from({ length: numCols }).map((_, colIdx) => {
-              const startIdx = colIdx * colH;
-              const subVertices = vertices.slice(startIdx, startIdx + colH);
-              const colOffset = colIdx * (colW + gap);
-              
-              const cV = bx + colOffset + 8;
-              const cE = bx + colOffset + 75;
-              const cN = bx + colOffset + 140;
-              const cH = bx + colOffset + 200;
-              const cM = bx + colOffset + 235;
-              
-              const headerY = by + lh * 2;
-              
-              return (
-                <g key={colIdx}>
-                  {/* Cabeçalho da coluna */}
-                  <text x={cV} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">VÉRTICE</text>
-                  <text x={cE} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">ESTE (E)</text>
-                  <text x={cN} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">NORTE (N)</text>
-                  <text x={cH} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">ALT (h)</text>
-                  <text x={cM} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">LIM/MÉT</text>
-                  
-                  {subVertices.map((v, i) => {
-                    const rowY = by + lh * (3 + i);
-                    const vName = v.codigoSigef || v.nome;
-                    const eStr = numBR(v.leste, 3);
-                    const nStr = numBR(v.norte, 3);
-                    const hStr = numBR(v.elevacao, 2);
-                    const lmStr = `${v.tipoLimite || 'LA6'}/${v.metodo || 'PG6'}`;
-                    
-                    return (
-                      <g key={v.id}>
-                        <text x={cV} y={rowY} fontSize={fz} fill="#0f172a">{vName}</text>
-                        <text x={cE} y={rowY} fontSize={fz} fill="#0f172a">{eStr}</text>
-                        <text x={cN} y={rowY} fontSize={fz} fill="#0f172a">{nStr}</text>
-                        <text x={cH} y={rowY} fontSize={fz} fill="#0f172a">{hStr}</text>
-                        <text x={cM} y={rowY} fontSize={fz} fill="#0f172a">{lmStr}</text>
-                      </g>
-                    );
-                  })}
-                  
-                  {colIdx < numCols - 1 && (
-                    <line x1={bx + colOffset + colW + gap/2} y1={by + lh} x2={bx + colOffset + colW + gap/2} y2={by + hr - 6} stroke="#cbd5e1" strokeWidth={0.6} />
-                  )}
-                </g>
-              );
-            })}
+
+            {/* tudo que pode vazar fica num grupo com clip na caixa inteira */}
+            <g clipPath={`url(#${clipId})`}>
+              {Array.from({ length: numCols }).map((_, colIdx) => {
+                const startIdx = colIdx * colH;
+                const subVertices = vertices.slice(startIdx, startIdx + colH);
+                const colOffset = colIdx * (colW + gap);
+
+                // Posições X dentro da coluna
+                const xV  = bx + colOffset + 8;
+                const xER = bx + colOffset + 8 + WV + WE;        // anchor end
+                const xNR = bx + colOffset + 8 + WV + WE + WN;   // anchor end
+                const xHR = bx + colOffset + 8 + WV + WE + WN + WH; // anchor end
+                const xM  = bx + colOffset + 8 + WV + WE + WN + WH + 4; // anchor start
+
+                const headerY = by + lh * 2;
+
+                return (
+                  <g key={colIdx}>
+                    {/* zebra primeiro; separadores DEPOIS, senão as listras cobrem as linhas */}
+                    {subVertices.map((v, i) => (i % 2 === 1
+                      ? <rect key={v.id} x={bx + colOffset + 2} y={by + lh * (2 + i) + 2} width={colW - 4} height={lh} fill="#f8fafc" />
+                      : null))}
+                    {[xER, xNR, xHR].map((xSep, si) => (
+                      <line key={si} x1={xSep + 2} y1={by + lh + 2} x2={xSep + 2} y2={by + hr - 4} stroke="#e2e8f0" strokeWidth={0.5} />
+                    ))}
+                    {/* Cabeçalho da coluna */}
+                    <text x={xV}  y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">VÉRTICE</text>
+                    <text x={xER} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">ESTE (E)</text>
+                    <text x={xNR} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">NORTE (N)</text>
+                    <text x={xHR} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">ALT (h)</text>
+                    <text x={xM}  y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">LIM/MÉT</text>
+
+                    {subVertices.map((v, i) => {
+                      const rowY = by + lh * (3 + i);
+                      const vName = (v.codigoSigef || v.nome).slice(0, 12);
+                      const eStr = numBR(v.leste, 3);
+                      const nStr = numBR(v.norte, 3);
+                      const hStr = v.elevacao != null ? numBR(v.elevacao, 2) : '—';
+                      const lmStr = `${v.tipoLimite || 'LA6'}/${v.metodo || 'PG6'}`;
+                      return (
+                        <g key={v.id}>
+                          <text x={xV}  y={rowY} fontSize={fz} fill="#0f172a">{vName}</text>
+                          <text x={xER} y={rowY} fontSize={fz} fill="#0f172a" textAnchor="end">{eStr}</text>
+                          <text x={xNR} y={rowY} fontSize={fz} fill="#0f172a" textAnchor="end">{nStr}</text>
+                          <text x={xHR} y={rowY} fontSize={fz} fill="#0f172a" textAnchor="end">{hStr}</text>
+                          <text x={xM}  y={rowY} fontSize={fz} fill="#0f172a">{lmStr}</text>
+                        </g>
+                      );
+                    })}
+
+                    {colIdx < numCols - 1 && (
+                      <line x1={bx + colOffset + colW + gap/2} y1={by + lh} x2={bx + colOffset + colW + gap/2} y2={by + hr - 6} stroke="#cbd5e1" strokeWidth={0.6} />
+                    )}
+                  </g>
+                );
+              })}
+            </g>
           </g>
         );
       })()}
@@ -1127,10 +1201,16 @@ export default function Planta({
       {/* ---------- OBJETOS DE DESENHO ---------- */}
       {objetos.map((o) => {
         const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
+        // Clique direito num objeto abre o mesmo menu de edição do mapa (aumentar, diminuir,
+        // cor, espessura, apagar…). Só quando a planta é editável. O texto já tem o seu via <Ted>.
+        const ctx = (editavel && onContextMenuObjeto) ? {
+          style: { cursor: 'context-menu' as const },
+          onContextMenu: (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); onSelecObjeto?.(o.id); onContextMenuObjeto(o.id, o.tipo, e.clientX, e.clientY); },
+        } : {};
         if (o.tipo === 'simbolo' && sp[0]) {
           const tam = o.tamanho ?? 30;
           const esc = (tam / 20).toFixed(2);
-          return <g key={o.id} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(${esc})`} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
+          return <g key={o.id} {...ctx} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(${esc})`} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
         }
         if (o.tipo === 'texto' && sp[0]) {
           const anchor = o.alinhamento === 'center' ? 'middle' : o.alinhamento === 'right' ? 'end' : 'start';
@@ -1156,7 +1236,7 @@ export default function Planta({
           const my = (svgAOffset.y + svgBOffset.y) / 2;
 
           return (
-            <g key={o.id}>
+            <g key={o.id} {...ctx}>
               {/* Linhas de extensão perpendiculares tracejadas */}
               <line x1={sp[0].x} y1={sp[0].y} x2={svgAOffset.x} y2={svgAOffset.y} stroke={o.cor ?? '#b91c1c'} strokeWidth={0.5} strokeDasharray="2 1" />
               <line x1={sp[1].x} y1={sp[1].y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={o.cor ?? '#b91c1c'} strokeWidth={0.5} strokeDasharray="2 1" />
@@ -1181,11 +1261,11 @@ export default function Planta({
               fillOp = 0.95;
             }
             return (
-              <polygon key={o.id} points={pp} fill={fillVal} fillOpacity={fillOp} stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
+              <polygon key={o.id} {...ctx} points={pp} fill={fillVal} fillOpacity={fillOp} stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
             );
           } else {
             return (
-              <polyline key={o.id} points={pp} fill="none" stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
+              <polyline key={o.id} {...ctx} points={pp} fill="none" stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
             );
           }
         }

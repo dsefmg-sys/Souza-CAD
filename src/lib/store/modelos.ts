@@ -25,6 +25,9 @@ export interface ModelosDocs {
   declPosse: string;                    // declaração de posse (do possuidor)
   declInexistenciaSobreposicao: string; // declaração de inexistência de sobreposição (do técnico)
   servidaoIntro: string;                // parágrafo de abertura do memorial de servidão/faixa de domínio
+  // Variante INTERMAT (Mato Grosso): parágrafo de finalidade que entra logo abaixo do cabeçalho do
+  // memorial quando o padrão escolhido é INTERMAT (só ofertado em imóveis de MT).
+  memorialIntermatFinalidade: string;
 }
 
 export const MODELOS_PADRAO: ModelosDocs = {
@@ -110,6 +113,13 @@ export const MODELOS_PADRAO: ModelosDocs = {
     'A faixa de servidão destina-se à sua finalidade específica (passagem, rede de energia, adutora, estrada ou ' +
     'outra), respeitando-se integralmente os limites do imóvel serviente e as divisas de terceiros, conforme a ' +
     'descrição do perímetro a seguir.',
+  memorialIntermatFinalidade:
+    'O presente memorial descritivo destina-se ao processo de regularização fundiária junto ao INSTITUTO DE ' +
+    'TERRAS DE MATO GROSSO — INTERMAT, relativo ao imóvel {denominacao}, situado em {municipio}, com área de ' +
+    '{area} e perímetro de {perimetro}. O levantamento georreferenciado ao Sistema Geodésico Brasileiro ' +
+    '(SIRGAS2000) observa a norma técnica do Incra para georreferenciamento de imóveis rurais e destina-se à ' +
+    'instrução do pedido de titulação/regularização de área pública estadual, sem prejuízo da certificação junto ' +
+    'ao Incra e da anuência dos confrontantes.',
 };
 
 // Variáveis oferecidas ao usuário (para o painel de ajuda do editor).

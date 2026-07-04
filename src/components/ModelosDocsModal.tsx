@@ -30,6 +30,7 @@ const CAMPOS: { chave: keyof ModelosDocs; titulo: string; grupo: string }[] = [
   { grupo: 'Declarações avulsas', chave: 'declPosse', titulo: 'Declaração de posse' },
   { grupo: 'Declarações avulsas', chave: 'declInexistenciaSobreposicao', titulo: 'Declaração de inexistência de sobreposição' },
   { grupo: 'Servidão', chave: 'servidaoIntro', titulo: 'Abertura do memorial de servidão' },
+  { grupo: 'Mato Grosso (INTERMAT)', chave: 'memorialIntermatFinalidade', titulo: 'Finalidade do memorial no padrão INTERMAT (só imóveis de MT)' },
 ];
 
 // Editor dos modelos de texto das peças. Cada empresa personaliza; as variáveis {chave} são trocadas

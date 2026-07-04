@@ -276,6 +276,10 @@ export interface ImovelData {
   declinacaoMagnetica?: number; // graus (negativo = oeste), do serviço de declinação
   variacaoAnual?: number;       // minutos/ano
   tipoImovel?: 'rural' | 'urbano';
+  // Padrão do memorial descritivo. 'incra' (padrão nacional SIGEF) ou 'intermat' (variante do
+  // Instituto de Terras de Mato Grosso, para regularização de terras públicas estaduais). O padrão
+  // INTERMAT só é oferecido quando o imóvel é de Mato Grosso. Ausente = 'incra'.
+  padraoMemorial?: 'incra' | 'intermat';
   inscricaoMunicipal?: string;
   frenteM?: number;
   fundosM?: number;
@@ -326,6 +330,7 @@ export interface PlantaConfig {
   escalaTextos?: number;       // multiplicador de TODOS os textos da planta (1 = padrão)
   escalaDeclaracoes?: number;  // multiplicador só das declarações (proprietário + laudo), 1 = padrão
   escalaConfront?: number;     // multiplicador só do texto/assinatura dos confrontantes, 1 = padrão
+  escalaTabelas?: number;      // multiplicador só das tabelas (roteiro, coordenadas, áreas), 1 = padrão
   escalaVertices?: number;     // multiplicador do tamanho dos símbolos dos vértices (M/P/V), 1 = padrão
   estiloRosa?: number;         // variação visual da rosa dos ventos (0..n) — botão direito troca
   estiloEscala?: number;       // variação da barra de escala (0 = blocos, 1 = régua)
@@ -351,14 +356,23 @@ export interface PlantaConfig {
   larguraDivisasApoio?: number;// espessura das linhas de apoio das divisas, padrão 3.2
 }
 
-/** Dados fixos do escritório (carimbo da planta). */
+/** Dados fixos do escritório (carimbo da planta, cabeçalho de recibos/contratos). */
 export interface EscritorioData {
-  nome: string;        // "SOUZA GESTÃO FUNDIÁRIA"
+  nome: string;        // razão social / "SOUZA GESTÃO FUNDIÁRIA"
   ramo: string;        // "Agrimensura e Georreferenciamento"
-  cnpj: string;        // "45.539.408/0001-74"
-  endereco: string;    // "Rua Doutor José Paixão 1400, Sala 02 Santa Inês, Espera Feliz"
+  cnpj: string;        // "45.539.408/0001-74" (aceita CNPJ ou CPF)
+  endereco: string;    // logradouro + número + bairro: "Rua Doutor José Paixão 1400, Sala 02, Santa Inês"
   telefone: string;    // "(32) 99911-6227"
   logoDataUrl?: string;// logotipo opcional (base64 data URL)
+  // Campos cadastrais complementares (opcionais p/ compatibilidade com cadastros antigos).
+  nomeFantasia?: string;      // nome fantasia, se diferente da razão social
+  inscricaoEstadual?: string; // IE ou "ISENTO"
+  inscricaoMunicipal?: string;// IM (alvará municipal)
+  cidade?: string;            // município do escritório
+  uf?: string;                // UF (2 letras)
+  cep?: string;               // "36830-000"
+  email?: string;             // e-mail de contato/comercial
+  site?: string;              // site ou rede social
 }
 
 /** Dados fixos do responsável técnico (Configurações). */

@@ -546,12 +546,18 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3.5">
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Nome da Empresa / Escritório</Label>
+                  <Label className="text-xs font-semibold">Razão Social / Nome do Escritório</Label>
                   <Input value={esc.nome} onChange={(e) => changeEsc('nome', e.target.value)} />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Ramo de Atuação</Label>
-                  <Input value={esc.ramo} onChange={(e) => changeEsc('ramo', e.target.value)} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Nome Fantasia</Label>
+                    <Input value={esc.nomeFantasia ?? ''} onChange={(e) => changeEsc('nomeFantasia', e.target.value)} placeholder="opcional" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Ramo de Atuação</Label>
+                    <Input value={esc.ramo} onChange={(e) => changeEsc('ramo', e.target.value)} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -563,9 +569,43 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     <Input value={esc.telefone} onChange={(e) => changeEsc('telefone', e.target.value)} />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Inscrição Estadual</Label>
+                    <Input value={esc.inscricaoEstadual ?? ''} onChange={(e) => changeEsc('inscricaoEstadual', e.target.value)} placeholder="IE ou ISENTO" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Inscrição Municipal</Label>
+                    <Input value={esc.inscricaoMunicipal ?? ''} onChange={(e) => changeEsc('inscricaoMunicipal', e.target.value)} placeholder="opcional" />
+                  </div>
+                </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Endereço Físico</Label>
-                  <Input value={esc.endereco} onChange={(e) => changeEsc('endereco', e.target.value)} />
+                  <Label className="text-xs font-semibold">Endereço (logradouro, número, bairro)</Label>
+                  <Input value={esc.endereco} onChange={(e) => changeEsc('endereco', e.target.value)} placeholder="Rua Exemplo, 123, Centro" />
+                </div>
+                <div className="grid grid-cols-[1fr_auto_auto] gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Cidade</Label>
+                    <Input value={esc.cidade ?? ''} onChange={(e) => changeEsc('cidade', e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">UF</Label>
+                    <Input className="w-16" maxLength={2} value={esc.uf ?? ''} onChange={(e) => changeEsc('uf', e.target.value.toUpperCase())} placeholder="MG" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">CEP</Label>
+                    <Input className="w-28" value={esc.cep ?? ''} onChange={(e) => changeEsc('cep', e.target.value)} placeholder="36830-000" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">E-mail</Label>
+                    <Input type="email" value={esc.email ?? ''} onChange={(e) => changeEsc('email', e.target.value)} placeholder="contato@exemplo.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Site / Rede Social</Label>
+                    <Input value={esc.site ?? ''} onChange={(e) => changeEsc('site', e.target.value)} placeholder="opcional" />
+                  </div>
                 </div>
                 {souMaster() && (
                   <div className="space-y-1 rounded border border-emerald-600/30 bg-emerald-600/5 p-2">

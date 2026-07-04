@@ -8,11 +8,9 @@ import type { ImovelData, TecnicoData, Confrontante, Vertex } from '@/lib/topo/t
 import { calcular } from '@/lib/topo/calcular';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { rotulosProfissional } from '@/lib/topo/profissional';
-import { construirNarrativaSegmentos, descreverConfrontante, rumoDMS } from '@/lib/export/memorial';
+import { construirNarrativaSegmentos } from '@/lib/export/memorial';
 import { carregarModelos, preencherModelo } from '@/lib/store/modelos';
-import { numBR, numBRmilhar, formatMatricula } from '@/lib/topo/geometry';
-import { azimute, distancia, azimuteDMS } from '@/lib/topo/geometry';
-import { convergenciaMeridiana } from '@/lib/topo/coords';
+import { numBR, formatMatricula } from '@/lib/topo/geometry';
 
 interface Props {
   open: boolean;
@@ -137,23 +135,6 @@ export default function MemorialPreviewModal({
     }
   };
 
-  const usarGeodesico = imovel.tipoAzimute !== 'plano';
-
-  const obterAzimuteEfetivo = (l: any) => {
-    if (!usarGeodesico) {
-      return azimute({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
-    }
-    const v = l.de;
-    if (v.lat != null && v.lon != null) {
-      const cm = convergenciaMeridiana(v.lat, v.lon, zona);
-      const azPlano = azimute({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
-      return (azPlano + cm + 360) % 360;
-    }
-    return l.azimute;
-  };
-
-  const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
-
   if (!open) return null;
 
   return (
@@ -189,7 +170,7 @@ export default function MemorialPreviewModal({
 
         {/* Papel A4 Virtual com Scroll */}
         <div className="flex-1 overflow-y-auto bg-neutral-100 dark:bg-neutral-950 p-4 md:p-8 flex justify-center">
-          <div className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 w-full max-w-[800px] shadow-lg rounded-md border border-neutral-200 dark:border-neutral-700 p-8 md:p-12 font-sans text-xs leading-relaxed space-y-6">
+          <div className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 w-full max-w-[800px] shadow-lg rounded-md border border-neutral-200 dark:border-neutral-700 p-8 md:p-12 font-serif text-[13px] leading-relaxed space-y-6">
             
             {/* Aviso de Demonstração */}
             {imovel.ficticio && (
@@ -205,40 +186,14 @@ export default function MemorialPreviewModal({
               </h2>
             </div>
 
-            {/* Tabela do Cabeçalho */}
-            <div className="border border-black dark:border-neutral-600">
-              <div className="grid grid-cols-2 border-b border-black dark:border-neutral-600">
-                <div className="p-2 border-r border-black dark:border-neutral-600">
-                  <strong>IMÓVEL:</strong> {imovel.denominacao || '—'}
-                </div>
-                <div className="p-2">
-                  <strong>ÁREA:</strong> {numBR(ef.areaHa, 4)} ha
-                </div>
-              </div>
-              <div className="grid grid-cols-2 border-b border-black dark:border-neutral-600">
-                <div className="p-2 border-r border-black dark:border-neutral-600">
-                  <strong>PROPRIETÁRIO:</strong> {imovel.proprietario || '—'}
-                </div>
-                <div className="p-2">
-                  <strong>PERÍMETRO:</strong> {numBR(ef.perimetro)} m
-                </div>
-              </div>
-              <div className="grid grid-cols-2 border-b border-black dark:border-neutral-600">
-                <div className="p-2 border-r border-black dark:border-neutral-600">
-                  <strong>MUNICÍPIO/UF:</strong> {imovel.municipio || '—'}
-                </div>
-                <div className="p-2">
-                  <strong>LOCAL:</strong> {imovel.local || '—'}
-                </div>
-              </div>
-              <div className="grid grid-cols-2">
-                <div className="p-2 border-r border-black dark:border-neutral-600">
-                  <strong>MATRÍCULA:</strong> {imovel.matricula || '—'} (CNS: {imovel.cns || '—'})
-                </div>
-                <div className="p-2">
-                  <strong>CÓDIGO INCRA:</strong> {imovel.codigoImovelIncra || '—'}
-                </div>
-              </div>
+            {/* Identificação em texto simples (sem moldura), espelhando o DOCX */}
+            <div className="space-y-0.5">
+              <div><strong>Imóvel:</strong> {imovel.denominacao || '—'}</div>
+              <div><strong>Matrícula:</strong> {imovel.matricula || '—'} (CNS: {imovel.cns || '—'})</div>
+              <div><strong>Proprietário(a):</strong> {imovel.proprietario || '—'}</div>
+              <div><strong>Área SGL (ha):</strong> {numBR(ef.areaHa, 4)} ha</div>
+              <div><strong>Local:</strong> {imovel.local || '—'}</div>
+              <div><strong>Perímetro (m):</strong> {numBR(ef.perimetro)} m</div>
             </div>
 
             {/* Abertura de Servidão se houver */}
@@ -393,48 +348,6 @@ export default function MemorialPreviewModal({
               </div>
             )}
 
-            {/* Tabela de Roteiro Geométrico (Anexo) */}
-            {res && (
-              <div className="pt-8 space-y-4 border-t border-dashed border-neutral-300">
-                <h4 className="font-bold text-center uppercase text-[11px] tracking-wider">
-                  TABELA DE ROTEIRO GEOMÉTRICO (ANEXO)
-                </h4>
-                
-                <table className="w-full border-collapse border border-black text-[9px] text-center dark:border-neutral-600">
-                  <thead>
-                    <tr className="bg-neutral-100 dark:bg-neutral-800">
-                      <th className="border border-black p-1 dark:border-neutral-600 font-bold">DE</th>
-                      <th className="border border-black p-1 dark:border-neutral-600 font-bold">PARA</th>
-                      <th className="border border-black p-1 dark:border-neutral-600 font-bold">AZIMUTE</th>
-                      <th className="border border-black p-1 dark:border-neutral-600 font-bold">RUMO</th>
-                      <th className="border border-black p-1 dark:border-neutral-600 font-bold">DISTÂNCIA (m)</th>
-                      <th className="border border-black p-1 dark:border-neutral-600 font-bold">CONFRONTANTE</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {res.lados.map((l, idx) => {
-                      const azEf = obterAzimuteEfetivo(l);
-                      const rumo = rumoDMS(azEf);
-                      const confId = confrontantePorLado[idx];
-                      const confObj = mapaC.get(confId);
-                      const nomeC = confObj ? descreverConfrontante(confObj) : '—';
-
-                      return (
-                        <tr key={idx}>
-                          <td className="border border-black p-1 dark:border-neutral-600 font-bold">{l.de.codigoSigef || l.de.nome}</td>
-                          <td className="border border-black p-1 dark:border-neutral-600 font-bold">{l.para.codigoSigef || l.para.nome}</td>
-                          <td className="border border-black p-1 dark:border-neutral-600">{azimuteDMS(azEf)}</td>
-                          <td className="border border-black p-1 dark:border-neutral-600">{rumo}</td>
-                          <td className="border border-black p-1 dark:border-neutral-600">{numBR(l.distancia)}</td>
-                          <td className="border border-black p-1 dark:border-neutral-600 text-left truncate max-w-[200px]">{nomeC}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            
           </div>
         </div>
       </DialogContent>
