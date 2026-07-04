@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX, SkipForward, Sparkles } from 'lucide-react';
+import { Volume2, VolumeX, SkipForward } from 'lucide-react';
 import { carregarPreferencias } from '@/lib/store/preferencias';
 
 /**
@@ -104,14 +104,14 @@ export default function IntroVideo() {
             onEnded={fechar}
           />
 
-          {/* Selo verde no canto inferior direito: cobre a marca d'água de IA (fica ACIMA da
-              faixa, onde a barra sozinha não alcança). Um brilho radial esconde o ícone e um
-              raiozinho de "software" dá o toque de marca. */}
+          {/* Apaga a marca d'água de IA: uma mancha verde macia centrada por PORCENTAGEM em cima
+              dela (canto inferior direito do vídeo), sólida no meio e esmaecendo pros lados, sem
+              borda dura nem ícone. Posição em % acompanha qualquer tamanho de tela. */}
           {tocando && (
-            <div className="pointer-events-none absolute bottom-12 right-3 z-[6] flex items-center gap-1.5 rounded-full bg-emerald-900/95 px-2.5 py-1 shadow-[0_0_30px_12px_rgba(6,78,59,0.95)] sm:bottom-14">
-              <Sparkles className="size-3.5 text-emerald-300" />
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-50">Souza CAD</span>
-            </div>
+            <div
+              className="pointer-events-none absolute inset-0 z-[6]"
+              style={{ background: 'radial-gradient(150px 95px at 88% 82%, rgb(6,78,59) 0%, rgb(6,78,59) 55%, rgba(6,78,59,0) 85%)' }}
+            />
           )}
 
           {/* Faixa em dois tons de verde na base — cobre a marca d'água de IA do vídeo
