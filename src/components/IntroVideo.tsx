@@ -77,7 +77,7 @@ export default function IntroVideo() {
   const marca = 'SOUZA CAD';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#0a1f14]">
+    <div className="pointer-events-auto fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#0a1f14]">
       {/* Barras decorativas de fundo em dois tons de verde, varrendo devagar — clima de
           "apresentação do software" atrás da moldura */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>

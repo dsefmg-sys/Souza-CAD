@@ -5,17 +5,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, User } from 'lucide-react';
+import { Building2, User, LogOut } from 'lucide-react';
 import { carregarEscritorio, salvarEscritorio, carregarTecnico, salvarTecnico } from '@/lib/store/settings';
 
 interface Props {
   open: boolean;
   onConcluir: () => void;
+  onVoltarLogin?: () => void; // sai da conta e volta pra tela de login (o cadastro é travado, então esta é a saída)
 }
 
 // Primeiro acesso: em vez de já abrir na empresa do dono, o novo usuário cadastra a SUA empresa
 // (ou se cadastra como profissional autônomo). Preenche escritório + responsável técnico.
-export default function PrimeiroAcessoModal({ open, onConcluir }: Props) {
+export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }: Props) {
   const [tipo, setTipo] = useState<'empresa' | 'autonomo' | null>(null);
   const [categoria, setCategoria] = useState<'tecnico' | 'engenheiro'>('tecnico');
   const [nomeEmpresa, setNomeEmpresa] = useState('');
@@ -57,8 +58,13 @@ export default function PrimeiroAcessoModal({ open, onConcluir }: Props) {
   return (
     <Dialog open={open} onOpenChange={() => { /* bloqueado até concluir */ }}>
       <DialogContent className="max-w-lg" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
-        <DialogHeader>
+        <DialogHeader className="flex-row items-start justify-between gap-2">
           <DialogTitle>Bem-vindo! Vamos configurar seu cadastro</DialogTitle>
+          {onVoltarLogin && (
+            <Button variant="ghost" size="sm" className="shrink-0 gap-1 text-xs text-muted-foreground" onClick={onVoltarLogin} title="Sair da conta e voltar para a tela de login">
+              <LogOut className="size-3.5" /> Sair
+            </Button>
+          )}
         </DialogHeader>
 
         {!tipo ? (
