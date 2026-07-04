@@ -120,6 +120,11 @@ export async function compatibilizarWord2007(blob: Blob): Promise<Blob> {
     xml = removerMcIgnorable(xml);
     xml = removerAtributosETagsPos2007(xml);
 
+    // Ajusta larguras de tabelas/células expressas em porcentagem (ex: w:w="100%")
+    // para cinquentavos de um por cento (ex: w:w="5000") exigido pelo Word 2007
+    xml = xml.replace(/\bw:w="(\d+)%"/g, (_, p1) => `w:w="${parseInt(p1, 10) * 50}"`);
+    xml = xml.replace(/\bw:w='(\d+)%'/g, (_, p1) => `w:w='${parseInt(p1, 10) * 50}'`);
+
     // settings.xml: ajustar compatibilityMode
     if (nome === 'word/settings.xml') {
       xml = ajustarCompatibilityMode(xml);
