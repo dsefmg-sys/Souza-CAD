@@ -24,6 +24,7 @@ export interface ModelosDocs {
   propostaTexto: string;                // corpo da proposta/orçamento comercial
   declPosse: string;                    // declaração de posse (do possuidor)
   declInexistenciaSobreposicao: string; // declaração de inexistência de sobreposição (do técnico)
+  servidaoIntro: string;                // parágrafo de abertura do memorial de servidão/faixa de domínio
 }
 
 export const MODELOS_PADRAO: ModelosDocs = {
@@ -103,6 +104,12 @@ export const MODELOS_PADRAO: ModelosDocs = {
     'situado em {municipio}, que os limites levantados e georreferenciados (SIRGAS2000) não incidem em sobreposição ' +
     'ou invasão sobre imóveis confrontantes, tampouco sobre áreas públicas, respeitando-se integralmente as divisas ' +
     'de terceiros, conforme apurado no levantamento de campo.',
+  servidaoIntro:
+    'O presente memorial descritivo tem por objeto a ÁREA DE SERVIDÃO instituída sobre o imóvel {denominacao}, ' +
+    'matrícula {matricula}, situado em {municipio}, com área de servidão de {area} e perímetro de {perimetro}. ' +
+    'A faixa de servidão destina-se à sua finalidade específica (passagem, rede de energia, adutora, estrada ou ' +
+    'outra), respeitando-se integralmente os limites do imóvel serviente e as divisas de terceiros, conforme a ' +
+    'descrição do perímetro a seguir.',
 };
 
 // Variáveis oferecidas ao usuário (para o painel de ajuda do editor).

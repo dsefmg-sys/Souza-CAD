@@ -90,7 +90,7 @@ export function limparModeloSigef(): void {
   localStorage.removeItem(KEY_MODELO_SIGEF);
 }
 
-// Dados padrão do responsável técnico (do modelo do dono). Editáveis em /configuracoes.
+// Dados padrão do responsável técnico (do modelo do dono). Editáveis nas Configurações (modal).
 export const TECNICO_PADRAO: TecnicoData = {
   nome: 'Darlan Gonçalves de Souza',
   formacao: 'TÉCNICO EM AGRIMENSURA',

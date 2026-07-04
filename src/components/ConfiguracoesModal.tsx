@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database } from 'lucide-react';
 import ModelosDocsModal from './ModelosDocsModal';
+import PontosBancoModal from './PontosBancoModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const [zapSuporte, setZapSuporte] = useState('');
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO);
   const [modelosAberto, setModelosAberto] = useState(false);
+  const [bancoAberto, setBancoAberto] = useState(false);
   const [padroes, setPadroes] = useState<PadroesProjeto>(PADROES_PADRAO);
   const [precos, setPrecos] = useState<PrecoServico[]>([]);
   const [reciboSeq, setReciboSeq] = useState(1);
@@ -243,10 +245,15 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <Label className="text-xs font-semibold">Formação Profissional</Label>
                   <Input value={t.formacao} onChange={(e) => changeT('formacao', e.target.value)} />
                 </div>
-                {/* o TRT/ART é sempre por projeto (emitido no modal, campo imovel.numeroTrt) — não existe "padrão" */}
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Registro {(t.conselho ?? 'CFT') === 'CREA' ? 'CREA' : 'CFT'}</Label>
                   <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
+                </div>
+                {/* O nº do TRT/ART normalmente é por projeto (imovel.numeroTrt). Este é só a RESERVA,
+                    usada nas peças quando o projeto não tem um número próprio preenchido. */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">{(t.conselho ?? 'CFT') === 'CREA' ? 'ART' : 'TRT'} padrão (reserva)</Label>
+                  <Input value={t.art} onChange={(e) => changeT('art', e.target.value)} placeholder="usado quando o projeto não tem número próprio" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Cidade da Assinatura (peças técnicas)</Label>
@@ -447,20 +454,25 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <Input type="number" min={1} className="w-32" value={reciboSeq} onChange={(e) => mudarReciboSeq(Number(e.target.value))} />
                 </div>
 
-                {/* Editar banco de vértices: excluir individual na tela do Banco de pontos; aqui, zerar tudo */}
+                {/* Gestão do banco de vértices: editar um a um (abre o Banco de pontos aqui mesmo) ou zerar tudo */}
                 <div className="space-y-1.5 rounded border p-2.5">
                   <div className="text-xs font-bold">Editar banco de vértices</div>
                   <p className="text-[11px] leading-tight text-muted-foreground">
-                    Abra o <strong>Banco de pontos</strong> (botão PONTOS na barra inferior) para <strong>excluir vértices um a um</strong> ou resgatar da lixeira. Aqui embaixo, você pode zerar TODOS de uma vez (também recuperável) — útil ao trocar de credenciado ou liberar códigos de uma certificação cancelada.
+                    Abra o <strong>Banco de pontos</strong> para <strong>ver, buscar e excluir vértices um a um</strong> ou resgatar da lixeira. Ou zere TODOS de uma vez (também recuperável) — útil ao trocar de credenciado ou liberar códigos de uma certificação cancelada.
                   </p>
-                  <Button size="sm" variant="outline" className="h-8 gap-1 border-red-600/40 text-red-700 hover:bg-red-600 hover:text-white dark:text-red-400"
-                    onClick={async () => {
-                      if (!window.confirm('Zerar o banco de vértices?\n\nTodos os vértices ativos vão para a lixeira (recuperáveis depois). Continuar?')) return;
-                      const n = await zerarBancoPontos();
-                      flash(n > 0 ? `${n} vértice(s) movidos para a lixeira.` : 'O banco já estava vazio.');
-                    }}>
-                    <Trash2 className="size-4" /> Zerar banco de vértices
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => setBancoAberto(true)}>
+                      <Database className="size-4" /> Abrir banco de pontos
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1 border-red-600/40 text-red-700 hover:bg-red-600 hover:text-white dark:text-red-400"
+                      onClick={async () => {
+                        if (!window.confirm('Zerar o banco de vértices?\n\nTodos os vértices ativos vão para a lixeira (recuperáveis depois). Continuar?')) return;
+                        const n = await zerarBancoPontos();
+                        flash(n > 0 ? `${n} vértice(s) movidos para a lixeira.` : 'O banco já estava vazio.');
+                      }}>
+                      <Trash2 className="size-4" /> Zerar banco de vértices
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -701,6 +713,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
         </div>
       </DialogContent>
       <ModelosDocsModal open={modelosAberto} onOpenChange={setModelosAberto} />
+      <PontosBancoModal open={bancoAberto} onOpenChange={setBancoAberto} />
       <ImportTxtConfigModal open={importTxtAberto} onOpenChange={setImportTxtAberto} />
       <ImportVerticesVizinhoConfigModal open={importVizinhoAberto} onOpenChange={setImportVizinhoAberto} />
     </Dialog>

@@ -315,15 +315,21 @@ export default function EditorPage() {
   const [iaAberta, setIaAberta] = useState(false);
   // arquivo já anexado que a IA vai ler (quando a extração parte de um documento guardado)
   const [iaArquivoInicial, setIaArquivoInicial] = useState<{ data: string; mimeType: string; nome: string } | null>(null);
-  // Abre a extração por IA já carregando um documento anexado do imóvel.
-  function extrairDocumento(a: ArquivoProjeto) {
+  // quando a extração parte de um documento de confrontante, guarda para quem aplicar (senão é o imóvel)
+  const [iaConfrontanteId, setIaConfrontanteId] = useState<string | null>(null);
+  function abrirExtracao(a: ArquivoProjeto, confrontanteId: string | null) {
     const r = new FileReader();
     r.onloadend = () => {
+      setIaConfrontanteId(confrontanteId);
       setIaArquivoInicial({ data: String(r.result), mimeType: a.tipo, nome: a.nome });
       setIaAberta(true);
     };
     r.readAsDataURL(a.blob);
   }
+  // Abre a extração por IA já carregando um documento anexado do imóvel.
+  function extrairDocumento(a: ArquivoProjeto) { abrirExtracao(a, null); }
+  // Idem, mirando um confrontante específico (os dados extraídos preenchem aquele confrontante).
+  function extrairDocumentoConfrontante(a: ArquivoProjeto, confrontanteId: string) { abrirExtracao(a, confrontanteId); }
   const [carAberto, setCarAberto] = useState(false);
   const [configAberta, setConfigAberta] = useState(false);
   const [configAba, setConfigAba] = useState<'pessoal' | 'escritorio' | 'numeracao' | 'modelos' | undefined>(undefined);
@@ -1718,16 +1724,17 @@ export default function EditorPage() {
     return confirmar({ titulo: 'Faltam dados — exportar assim mesmo?', mensagem: `Antes de exportar, notei que faltam:\n\n• ${problemas.join('\n• ')}`, okLabel: 'Exportar assim mesmo', cancelLabel: 'Voltar e completar' });
   }
 
-  async function exportarMemorial() {
+  async function exportarMemorial(modo: 'normal' | 'servidao' = 'normal') {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     if (!(await verificarConciliacaoSigef())) return;
     if (!(await verificarProntoParaExportar())) return;
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
-      const blob = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente, zonaUtm: zona });
+      const blob = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente, zonaUtm: zona, modo });
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
-      saveAs(blob, `Memorial - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`);
+      const prefixo = modo === 'servidao' ? 'Memorial de servidao' : 'Memorial';
+      saveAs(blob, `${prefixo} - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`);
       setBaixou((b) => ({ ...b, memorial: true }));
     } catch (e) { aviso((e as Error).message || 'Erro ao gerar o memorial.'); }
   }
@@ -2727,7 +2734,8 @@ export default function EditorPage() {
 
         {/* 5) Peças */}
         <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}>{iconeCab('trt', <FileText />)} TRT</Button></Etapa>
-        <Etapa st={etapas.memorial}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEM</Button></Etapa>
+        <Etapa st={etapas.memorial}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button></Etapa>
+        <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
         <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
@@ -2862,51 +2870,40 @@ export default function EditorPage() {
                             <div className={`font-bold ${projPronto ? 'text-emerald-600' : 'text-amber-500'}`}>{projPronto ? 'Pronto' : 'Pendente'}</div>
                           </div>
                         </div>
-                        {vista === 'mapa' && parcelasCert.length > 0 && (
-                          <div className="border-t pt-1.5 mt-1 space-y-0.5">
-                            <label className="flex cursor-pointer items-center justify-between text-[8px] font-medium uppercase text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <input type="checkbox" className="size-3 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
-                                INCRA ({parcelasCert.length})
-                              </span>
-                              <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} disabled={!mostrarCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-14 accent-cyan-600 align-middle disabled:opacity-40" />
-                            </label>
-                          </div>
-                        )}
+                        {/* O controle das parcelas INCRA saiu daqui — vira barra flutuante no mapa, só quando há parcelas. */}
                       </div>
 
-                      {/* Botões Principais de Gestão do Projeto */}
-                      <div className="flex flex-col gap-1.5 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                        <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold h-8' : 'h-8'} onClick={salvar} disabled={processando} title="Salvar o projeto (Ctrl+S)">
-                          <Save className="size-4" /> {L('Salvar')}
+                      {/* Botões de Gestão — grade de 3 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo
+                          (sem botão de largura total; menos rolagem). */}
+                      <div className="grid grid-cols-3 gap-1 [&>button]:h-14 [&>button]:flex-col [&>button]:justify-center [&>button]:gap-1 [&>button]:p-1 [&>button]:min-w-0 [&_span]:w-full [&_span]:truncate [&_span]:text-center [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none [&_svg]:size-4 [&_svg]:shrink-0">
+                        <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''} onClick={salvar} disabled={processando} title="Salvar o projeto (Ctrl+S)">
+                          <Save /> <span>Salvar</span>
                         </Button>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
-                            <Plus className="size-4 shrink-0 text-amber-500" /> {L('Novo')}
+                        <Button size="sm" variant="outline" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
+                          <Plus className="text-amber-500" /> <span>Novo</span>
+                        </Button>
+                        <Button size="sm" variant={painelAberto ? 'default' : 'outline'} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
+                          <Settings className="text-indigo-500" /> <span>Dados</span>
+                        </Button>
+                        <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
+                          <FileText className="text-cyan-500" /> <span>Detalhes</span>
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
+                          <Target className="text-rose-500" /> <span>Foco</span>
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setPrecoSugAberto(true)} title="Preço sugerido: quanto cobrar por este imóvel">
+                          <PencilRuler className="text-emerald-600" /> <span>Preço</span>
+                        </Button>
+                        {completo && (
+                          <Button size="sm" variant="outline" onClick={() => setPontosAberto(true)} title="Banco de pontos">
+                            <Database className="text-emerald-500" /> <span>Pontos</span>
                           </Button>
-                          <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={`justify-start gap-1.5 px-2 ${infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'}`} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
-                            <FileText className="size-4 shrink-0 text-cyan-500" /> {L('Detalhes')}
+                        )}
+                        {completo && (
+                          <Button size="sm" variant="outline" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
+                            <Info className="text-sky-500" /> <span>Financ.</span>
                           </Button>
-                          <Button size="sm" variant={painelAberto ? 'default' : 'outline'} className="justify-start gap-1.5 px-2" onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
-                            <Settings className="size-4 shrink-0 text-indigo-500" /> {L('Dados')}
-                          </Button>
-                          {completo && (
-                            <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={() => setPontosAberto(true)} title="Banco de pontos">
-                              <Database className="size-4 shrink-0 text-emerald-500" /> {L('Pontos')}
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
-                            <Target className="size-4 shrink-0 text-rose-500" /> {L('Foco')}
-                          </Button>
-                          {completo && (
-                            <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
-                              <Info className="size-4 shrink-0 text-sky-500" /> {L('Financeiro')}
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={() => setPrecoSugAberto(true)} title="Preço sugerido: quanto cobrar por este imóvel">
-                            <PencilRuler className="size-4 shrink-0 text-emerald-600" /> {L('Preço')}
-                          </Button>
-                        </div>
+                        )}
                       </div>
                       {glebas.length > 1 && (
                         <div className="flex flex-wrap gap-1 items-center justify-between border-t pt-1.5 mt-0.5">
@@ -2945,30 +2942,29 @@ export default function EditorPage() {
                       )}
                       {vista === 'mapa' ? (
                         <>
-                          <div className="flex flex-col gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                            <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')} className="h-8 w-full justify-start gap-2">
-                              <MousePointer2 className="size-4 text-cyan-500" /> <span className="truncate text-xs font-semibold">MOVER</span><span className="ml-auto text-[9px] font-bold text-amber-400">F2</span>
+                          <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
+                          {/* Mover + ímã + rótulos + travar numa grade de 3 colunas (sem botão de largura total) */}
+                          <div className="grid grid-cols-3 gap-1 [&>button]:h-14 [&>button]:flex-col [&>button]:justify-center [&>button]:gap-1 [&>button]:p-1 [&>button]:min-w-0 [&_span]:w-full [&_span]:truncate [&_span]:text-center [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none [&_svg]:size-4 [&_svg]:shrink-0">
+                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
+                              <MousePointer2 className="text-cyan-500" /> <span>Mover</span>
                             </Button>
-                          </div>
-                          <div className="grid grid-cols-3 gap-1">
-                            <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar (linha, cota, polilinha, elemento) GRUDA no vértice mais próximo do imóvel, dentro de 2 m. Serve para amarrar exatamente num canto: cotar de vértice a vértice, ligar um detalhe a um ponto, ou fechar uma polilinha bem no vértice, sem ficar "quase" em cima. Se você não desenha à mão perto dos vértices, pode deixar desligado — não atrapalha o cálculo nem as peças.`} onClick={() => setSnapAtivo((s) => !s)} className={snapAtivo ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}>
-                              <Magnet className="size-3.5" /> <span className="text-[9px] font-bold">F3</span>
+                            <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar GRUDA no vértice mais próximo do imóvel (2 m). Bom para cotar de vértice a vértice ou fechar polilinha bem no canto. Se você não desenha perto dos vértices, deixe desligado.`} onClick={() => setSnapAtivo((s) => !s)} className={snapAtivo ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}>
+                              <Magnet /> <span>Ímã</span>
                             </Button>
-                            <Button size="sm" variant={mostrarRotulos ? 'default' : 'outline'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={mostrarRotulos ? 'bg-sky-600 text-white hover:bg-sky-700' : ''}>
-                              {mostrarRotulos ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />} <span className="text-[9px] font-bold">F4</span>
+                            <Button size="sm" variant={mostrarRotulos ? 'default' : 'outline'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={mostrarRotulos ? 'bg-sky-600 text-white hover:bg-sky-700' : ''}>
+                              {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
                             </Button>
-                            <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white font-bold animate-pulse'} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
-                              {bloqueado ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />} <span className="text-[9px] font-bold">F5</span>
+                            <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
+                              {bloqueado ? <Lock /> : <LockOpen />} <span>{bloqueado ? 'Travado' : 'Solto'}</span>
                             </Button>
                           </div>
                         </>
                       ) : (
-                        <div className="flex flex-col gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-8 w-full justify-start gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}>
-                            <MousePointer2 className="size-4 text-cyan-500" /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span>
-                          </Button>
+                        <div className="flex flex-col gap-1">
                           <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
+                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-8 justify-center gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}>
+                            <MousePointer2 className="size-4 text-cyan-500" /> <span className="text-xs font-semibold uppercase">Mover / editar</span>
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -3143,15 +3139,15 @@ export default function EditorPage() {
                 <div className="mt-auto flex flex-col gap-1 border-t pt-1.5">
                   {/* Tamanho dos textos: no mapa mexe nos nomes dos vértices; na planta, 4 escopos separados */}
                   {vista === 'mapa' ? (
-                    <div className="flex flex-col gap-0.5 mt-1 pt-1 border-t" title="Tamanho dos nomes dos vértices no mapa">
-                      <span className="text-[10px] font-bold uppercase text-foreground px-1 mb-1 block">Ajuste de Tamanhos</span>
-                      <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1 py-0.5">
-                        <span className="mr-auto pl-1 text-[10px] font-bold text-foreground">Vértices</span>
+                    <div className="flex flex-col gap-0.5 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
+                      <span className="text-[10px] font-bold uppercase text-foreground px-1 mb-1 block">AJUSTE DE TAMANHOS</span>
+                      <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1 py-0.5" title="Tamanho dos nomes/códigos que aparecem nos vértices">
+                        <span className="mr-auto pl-1 text-[10px] font-bold uppercase text-foreground">RÓTULOS</span>
                         <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-[10px]">A-</span></Button>
                         <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-[10px]">A+</span></Button>
                       </div>
                       <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1 py-0.5 mt-1" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
-                        <span className="mr-auto pl-1 text-[10px] font-bold text-foreground">Interface</span>
+                        <span className="mr-auto pl-1 text-[10px] font-bold uppercase text-foreground">INTERFACE</span>
                         <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}><span className="text-[10px] font-bold">A-</span></Button>
                         <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}><span className="text-[10px] font-bold">A+</span></Button>
                       </div>
@@ -3303,6 +3299,18 @@ export default function EditorPage() {
             <span className="text-[10px] font-bold leading-none">{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
             <span className="text-[8px] font-bold leading-none text-amber-500">Esc</span>
           </button>
+
+          {/* Parcelas INCRA (SIGEF): controle flutuante no MAPA, só quando existem parcelas importadas. */}
+          {vista === 'mapa' && parcelasCert.length > 0 && (
+            <div className="no-print absolute left-20 top-3 z-[1160] flex items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 shadow-xl backdrop-blur">
+              <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-foreground">
+                <input type="checkbox" className="size-3.5 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
+                INCRA ({parcelasCert.length})
+              </label>
+              <span className="text-[9px] uppercase text-muted-foreground">opacidade</span>
+              <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} disabled={!mostrarCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-16 accent-cyan-600 disabled:opacity-40" title="Opacidade do preenchimento das parcelas" />
+            </div>
+          )}
 
           {vista === 'planta' && (
             <div className="absolute left-20 top-3 z-[1160] flex items-center gap-1 rounded-xl border border-border bg-background/95 p-1 shadow-xl backdrop-blur no-print">
@@ -3544,6 +3552,7 @@ export default function EditorPage() {
             </>}
             {aba === 'vertices' && (
               <div className="space-y-1">
+                <SecaoTitulo>Divisão e remembramento</SecaoTitulo>
                 {/* Painel de Desmembramento */}
                 <div className="mb-3 rounded-md border border-dashed p-2 bg-muted/20 text-xs">
                   <div className="font-semibold text-foreground text-[11px] mb-1 flex items-center justify-between">
@@ -3715,7 +3724,7 @@ export default function EditorPage() {
               </div>
             )}
             {aba === 'confrontantes' && (
-              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} />
+              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} projetoId={projetoId} onExtrairConfrontante={extrairDocumentoConfrontante} />
             )}
             {aba === 'planta' && (
               <PainelPlanta config={plantaConfig} onChange={setPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} numGlebas={glebas.length}
@@ -3786,7 +3795,25 @@ export default function EditorPage() {
       <ErrorBoundary onReset={() => setDxfEditorAberto(false)}><DxfEditorModal open={dxfEditorAberto} onOpenChange={setDxfEditorAberto} /></ErrorBoundary>
       <PorcentagemModal open={porcentagemAberta} onOpenChange={setPorcentagemAberta} glebas={glebas.map((g) => ({ id: g.id, nome: g.denominacao, vertices: g.id === glebaAtivaId ? vertices : g.vertices }))} />
       <ErrorBoundary onReset={() => setEstudioAberto(false)}><EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} /></ErrorBoundary>
-      <ExtrairIaModal open={iaAberta} onOpenChange={(o) => { setIaAberta(o); if (!o) setIaArquivoInicial(null); }} arquivoInicial={iaArquivoInicial} onAplicar={(parcial) => { setImovel((im) => ({ ...im, ...parcial })); aviso('Dados da IA aplicados ao imóvel — confira antes de gerar as peças.'); }} />
+      <ExtrairIaModal open={iaAberta} onOpenChange={(o) => { setIaAberta(o); if (!o) { setIaArquivoInicial(null); setIaConfrontanteId(null); } }} arquivoInicial={iaArquivoInicial}
+        onAplicar={(parcial) => {
+          if (iaConfrontanteId) {
+            // Documento de um confrontante: mapeia os campos de "pessoa" do imóvel para o confrontante.
+            const p = parcial as Record<string, string>;
+            const patch: Partial<Confrontante> = {};
+            if (p.proprietario) patch.nome = p.proprietario;
+            if (p.cpfProprietario) patch.cpf = p.cpfProprietario;
+            if (p.conjugeProprietario) patch.conjugeNome = p.conjugeProprietario;
+            if (p.cpfConjugeProprietario) patch.conjugeCpf = p.cpfConjugeProprietario;
+            if (p.matricula) patch.matricula = p.matricula;
+            if (p.cns) patch.cns = p.cns;
+            setConfrontantes((cs) => cs.map((c) => (c.id === iaConfrontanteId ? { ...c, ...patch } : c)));
+            aviso('Dados da IA aplicados ao confrontante — confira antes de gerar as peças.');
+          } else {
+            setImovel((im) => ({ ...im, ...parcial }));
+            aviso('Dados da IA aplicados ao imóvel — confira antes de gerar as peças.');
+          }
+        }} />
       <PrecoSugeridoModal open={precoSugAberto} onOpenChange={setPrecoSugAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
       <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
         areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
@@ -4154,6 +4181,11 @@ function MiniSelect({ label, value, options, onChange }: { label: string; value:
   );
 }
 
+// Título de uma seção do formulário de Dados — dá cara de cadastro profissional (maiúsculas + traço).
+function SecaoTitulo({ children }: { children: ReactNode }) {
+  return <div className="mt-1 border-b pb-1 text-[10px] font-bold uppercase tracking-wider text-primary/80">{children}</div>;
+}
+
 function Campo({ label, value, onChange, placeholder, list }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; list?: string }) {
   return (
     <div className="space-y-0.5">
@@ -4218,6 +4250,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         </button>
       )}
 
+      <SecaoTitulo>Identificação do imóvel</SecaoTitulo>
       <Campo label="Nome do projeto" value={nome} onChange={onNome} />
       <Campo label="Denominação do imóvel" value={imovel.denominacao} onChange={(v) => set('denominacao', v)} placeholder={imovel.tipoImovel === 'urbano' ? "Lote / Residencial..." : "Fazenda..."} />
       <div className="grid grid-cols-2 gap-2">
@@ -4250,6 +4283,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
       ) : (
         <Campo label="Código do Imóvel (SNCR/INCRA)" value={imovel.codigoImovelIncra} onChange={(v) => set('codigoImovelIncra', v)} />
       )}
+      <SecaoTitulo>Proprietário e partes</SecaoTitulo>
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Proprietário</Label>
@@ -4294,6 +4328,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
         <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} />
       </div>
+      <SecaoTitulo>Localização e fuso</SecaoTitulo>
       <div className="space-y-1">
         <Campo label="Município" value={imovel.municipio} onChange={onMunicipio} placeholder="Espera Feliz-MG" />
         <div className="flex flex-wrap gap-1">

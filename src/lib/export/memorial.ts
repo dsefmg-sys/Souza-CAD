@@ -406,6 +406,8 @@ export interface MemorialInput {
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
   zonaUtm?: number;
+  /** 'servidao' gera o memorial descritivo de área de servidão/faixa de domínio (título e abertura próprios). */
+  modo?: 'normal' | 'servidao';
 }
 
 export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob> {
@@ -438,16 +440,22 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   };
   const mod = (chave: keyof typeof modelos) => sanitizarTexto(preencherModelo(modelos[chave], varsModelo));
 
-  // Título
+  // Título (servidão tem título próprio)
+  const ehServidao = input.modo === 'servidao';
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 220 }, children: [
-    new TextRun({ text: 'MEMORIAL DESCRITIVO', bold: true, size: 28 }),
+    new TextRun({ text: ehServidao ? 'MEMORIAL DESCRITIVO DE SERVIDÃO' : 'MEMORIAL DESCRITIVO', bold: true, size: 28 }),
   ] }));
 
   // Cabeçalho em tabela (usa os valores oficiais do SIGEF quando o usuário escolheu reconciliar)
   const ef = valoresEfetivos(res, imovel);
   children.push(tabelaCabecalho(imovel, ef.areaHa, ef.perimetro));
 
-  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 280, after: 160 }, children: [new TextRun({ text: 'DESCRIÇÃO DO PERÍMETRO', bold: true, size: 24 })] }));
+  // Abertura própria da servidão (texto editável), antes da descrição do perímetro.
+  if (ehServidao) {
+    children.push(p(mod('servidaoIntro')));
+  }
+
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 280, after: 160 }, children: [new TextRun({ text: ehServidao ? 'DESCRIÇÃO DO PERÍMETRO DA SERVIDÃO' : 'DESCRIÇÃO DO PERÍMETRO', bold: true, size: 24 })] }));
   children.push(new Paragraph({
     alignment: AlignmentType.JUSTIFIED, spacing: { after: 120 },
     children: narrativaSegs.map((s) => new TextRun({ text: s.t, bold: s.b, size: 22 })),

@@ -29,6 +29,7 @@ const CAMPOS: { chave: keyof ModelosDocs; titulo: string; grupo: string }[] = [
   { grupo: 'Contrato, recibo e proposta', chave: 'propostaTexto', titulo: 'Corpo da proposta/orçamento' },
   { grupo: 'Declarações avulsas', chave: 'declPosse', titulo: 'Declaração de posse' },
   { grupo: 'Declarações avulsas', chave: 'declInexistenciaSobreposicao', titulo: 'Declaração de inexistência de sobreposição' },
+  { grupo: 'Servidão', chave: 'servidaoIntro', titulo: 'Abertura do memorial de servidão' },
 ];
 
 // Editor dos modelos de texto das peças. Cada empresa personaliza; as variáveis {chave} são trocadas
