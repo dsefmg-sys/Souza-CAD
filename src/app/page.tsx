@@ -13,6 +13,7 @@ import {
   Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
 import { Input } from '@/components/ui/input';
 import ModalSpreadsheet from '@/components/ModalSpreadsheet';
@@ -234,6 +235,9 @@ export default function EditorPage() {
   const [corPickerAberto, setCorPickerAberto] = useState(false); // painel de ajuste rápido das cores de divisa
   const [corBump, setCorBump] = useState(0); // força re-render após trocar uma cor (cores vivem em módulo)
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
+  const [avisoReconciliarAberto, setAvisoReconciliarAberto] = useState(false);
+  const [avisoReconciliarResolve, setAvisoReconciliarResolve] = useState<((v: 'exportar' | 'voltar' | 'conciliar') => void) | null>(null);
+  const [explicacaoReconciliarAberta, setExplicacaoReconciliarAberta] = useState(false);
   const iconeCab = (chave: string, icone: React.ReactNode) => (prefs.iconesCabecalhoOcultos.includes(chave) ? null : icone);
   const [termosOk, setTermosOk] = useState(true); // aceite dos termos de uso
   const [termosModalAberto, setTermosModalAberto] = useState(false); // abre ao CRIAR projeto (não na 1ª abertura)
@@ -1656,10 +1660,20 @@ export default function EditorPage() {
 
   async function verificarConciliacaoSigef(): Promise<boolean> {
     if (!imovel.areaSigefHa || !imovel.perimetroSigef) {
-      return confirmar({
-        titulo: 'Reconciliar com o SIGEF antes de exportar?',
-        mensagem: "A área oficial (SGL) ou o perímetro oficial do SIGEF ainda não foram preenchidos na aba 'Imóvel' (Reconciliação com o SIGEF). O recomendado é reconciliar antes de gerar as peças oficiais.\n\nDeseja exportar assim mesmo, usando os valores calculados?",
-        okLabel: 'Exportar assim mesmo', cancelLabel: 'Voltar e reconciliar',
+      return new Promise<'exportar' | 'voltar' | 'conciliar'>((resolve) => {
+        setAvisoReconciliarResolve(() => resolve);
+        setAvisoReconciliarAberto(true);
+      }).then((opcao) => {
+        if (opcao === 'exportar') {
+          return true;
+        } else if (opcao === 'conciliar') {
+          setExplicacaoReconciliarAberta(true);
+          setPainelAberto(true);
+          setAba('imovel');
+          return false;
+        } else {
+          return false;
+        }
       });
     }
     return true;
@@ -3251,7 +3265,7 @@ export default function EditorPage() {
                   {/* Convite pro modo Completo: no Simples a pessoa vê que existe mais e vira a chave quando quiser. */}
                   {!completo && (
                     <button type="button" onClick={() => trocarModoApp('completo')}
-                      className="mt-1 flex w-full items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-2 text-left text-[10px] leading-tight text-muted-foreground hover:bg-primary/10">
+                      className="mt-1 flex !h-auto w-full items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 !p-2 text-left !text-[10px] leading-tight text-muted-foreground hover:bg-primary/10">
                       <Sparkles className="size-4 shrink-0 text-primary" />
                       <span>Você está no <b className="text-foreground">modo Fácil</b>, com só o essencial — dá pra entregar um trabalho básico completo assim mesmo. Quando pegar o jeito, toque aqui pra abrir o <b className="text-primary">modo Completo</b> com todas as ferramentas.</span>
                     </button>
@@ -3449,9 +3463,11 @@ export default function EditorPage() {
         {/* Faixa sensível na borda DIREITA: encostar o mouse abre o painel de dados. Some quando o
             painel já está aberto (aí quem manda é o mouse-leave do próprio painel). */}
         {!painelAberto && (
-          <div className="no-print absolute right-0 top-0 bottom-0 z-[1999] w-2.5 cursor-pointer"
+          <div className="no-print absolute right-0 top-0 bottom-0 z-[1999] w-[18px] bg-green-900 dark:bg-emerald-950 cursor-pointer border-l border-emerald-950/20 shadow-md hover:bg-green-800 transition-all duration-200 flex items-center justify-center text-white/30 hover:text-white/60"
             onMouseEnter={() => setPainelAberto(true)}
-            title="Dados do projeto (encoste para abrir)" aria-hidden />
+            title="Dados do projeto (encoste para abrir)" aria-hidden>
+            <div className="w-[2px] h-10 rounded-full bg-current" />
+          </div>
         )}
 
         {/* Painel suspenso de dados do projeto — ocupa toda a altura disponível do fim da página ao cabeçalho */}
@@ -3961,6 +3977,99 @@ export default function EditorPage() {
           dataExtenso={dataPorExtenso()}
         />
       )}
+      <Dialog open={avisoReconciliarAberto} onOpenChange={(open) => {
+        if (!open) {
+          if (avisoReconciliarResolve) {
+            avisoReconciliarResolve('voltar');
+            setAvisoReconciliarResolve(null);
+          }
+          setAvisoReconciliarAberto(false);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reconciliar com o SIGEF antes de exportar?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              A área oficial (SGL) ou o perímetro oficial do SIGEF ainda não foram preenchidos na aba <strong>'Imóvel'</strong> (Reconciliação com o SIGEF).
+            </p>
+            <p>
+              O recomendado é conciliar antes de gerar as peças oficiais para que elas correspondam perfeitamente aos valores oficiais.
+            </p>
+          </div>
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => {
+              if (avisoReconciliarResolve) {
+                avisoReconciliarResolve('voltar');
+                setAvisoReconciliarResolve(null);
+              }
+              setAvisoReconciliarAberto(false);
+            }}>
+              Voltar
+            </Button>
+            <Button variant="outline" size="sm" className="border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:text-emerald-400"
+              title="Entenda a reconciliação com o SIGEF, abra a aba 'Imóvel' e preencha os valores oficiais."
+              onClick={() => {
+                if (avisoReconciliarResolve) {
+                  avisoReconciliarResolve('conciliar');
+                  setAvisoReconciliarResolve(null);
+                }
+                setAvisoReconciliarAberto(false);
+              }}>
+              Conciliar agora
+            </Button>
+            <Button size="sm" onClick={() => {
+              if (avisoReconciliarResolve) {
+                avisoReconciliarResolve('exportar');
+                setAvisoReconciliarResolve(null);
+              }
+              setAvisoReconciliarAberto(false);
+            }}>
+              Exportar mesmo assim
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={explicacaoReconciliarAberta} onOpenChange={setExplicacaoReconciliarAberta}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Como funciona a Reconciliação com o SIGEF?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1 text-xs text-muted-foreground leading-relaxed">
+            <p>
+              O SIGEF calcula a área no plano local (SGL) utilizando fórmulas geodésicas específicas e projeções que podem causar pequenas divergências (de alguns metros quadrados) em relação aos valores puramente calculados no sistema.
+            </p>
+            <p className="font-semibold text-foreground">
+              Para que as peças finais batam 100% com o SIGEF:
+            </p>
+            <ol className="list-decimal pl-4 space-y-1.5">
+              <li>
+                Envie a planilha ou os dados para gerar o rascunho oficial no site do <strong>SIGEF</strong>.
+              </li>
+              <li>
+                No rascunho gerado pelo SIGEF, copie os valores exatos de <strong>Área SGL oficial (ha)</strong> e <strong>Perímetro oficial (m)</strong>.
+              </li>
+              <li>
+                No painel à direita deste aplicativo, abra a aba <strong>'Imóvel'</strong> e localize a seção <strong>'Reconciliação com o SIGEF'</strong>.
+              </li>
+              <li>
+                Cole esses valores oficiais nos campos correspondentes e certifique-se de que a opção <strong>'Usar os valores do SIGEF nas peças finais'</strong> está marcada.
+              </li>
+            </ol>
+            <p>
+              As peças oficiais geradas (memorial descritivo, planta, etc.) passarão a usar estes valores, garantindo concordância jurídica total.
+            </p>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button size="sm" onClick={() => setExplicacaoReconciliarAberta(false)}>
+              Entendi
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <IntroVideo />
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />

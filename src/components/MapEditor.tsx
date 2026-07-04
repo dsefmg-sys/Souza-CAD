@@ -10,6 +10,7 @@ import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { corDivisa, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { numBR, azimute, distancia, azimuteDMS } from '@/lib/topo/geometry';
+import { casasTela } from '@/lib/store/preferencias';
 import { geoParaUtm } from '@/lib/topo/coords';
 
 export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir';
@@ -767,7 +768,7 @@ export default function MapEditor(props: Props) {
             <div className="space-y-1.5">
               <div className="flex justify-between items-baseline">
                 <span className="text-muted-foreground">Distância Total:</span>
-                <span className="text-base font-bold font-mono">{numBR(totalDist, 2)} m</span>
+                <span className="text-base font-bold font-mono">{numBR(totalDist, casasTela(2))} m</span>
               </div>
               
               <div className="flex justify-between">
