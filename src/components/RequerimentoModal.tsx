@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad } from '@/lib/topo/types';
 import { gerarRequerimentoDocx, type TipoAtoRequerimento } from '@/lib/export/requerimento';
+import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { numBR } from '@/lib/topo/geometry';
 import { carregarPreferencias } from '@/lib/store/preferencias';
 
@@ -135,7 +136,8 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     if (!req.nome?.trim() || !trans.nome?.trim()) { setMsg('Preencha o nome do requerente e do transmitente.'); return; }
     if (!req.cpf?.trim() || !trans.cpf?.trim()) { setMsg('Preencha o CPF/CNPJ do requerente e do transmitente.'); return; }
     onChangePessoas(req, trans);
-    const blob = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje(), tipoAto, partesAdicionais });
+    const blobBruto = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje(), tipoAto, partesAdicionais });
+    const blob = await compatibilizarWord2007(blobBruto);
     saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);
     onBaixar?.();
     setMsg('Requerimento gerado.');

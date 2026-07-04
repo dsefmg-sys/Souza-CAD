@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ImovelData, TecnicoData, Confrontante } from '@/lib/topo/types';
 import { gerarErrataDocx, type CorrecaoErrata } from '@/lib/export/errata';
+import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 
 interface Props {
   open: boolean;
@@ -52,7 +53,8 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
     if (!tecnico) { setMsg('Configure o responsável técnico primeiro.'); return; }
     const validas = correcoes.filter((c) => c.onde.trim() && c.passa.trim());
     if (!validas.length) { setMsg('Preencha ao menos uma correção (onde e o valor correto).'); return; }
-    const blob = await gerarErrataDocx({ imovel, tecnico, correcoes: validas, areaHa, acrescimoRT, dataExtenso: dataExtensoHoje() });
+    const blobBruto = await gerarErrataDocx({ imovel, tecnico, correcoes: validas, areaHa, acrescimoRT, dataExtenso: dataExtensoHoje() });
+    const blob = await compatibilizarWord2007(blobBruto);
     saveAs(blob, `Errata - ${imovel.denominacao || 'imovel'}.docx`);
     setMsg('Errata gerada.');
     onBaixar?.();

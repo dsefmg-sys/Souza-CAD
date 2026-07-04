@@ -29,6 +29,7 @@ import ExtrairIaModal from '@/components/ExtrairIaModal';
 import CarModal from '@/components/CarModal';
 import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
+import MemorialPreviewModal from '@/components/MemorialPreviewModal';
 import ConsultarModal from '@/components/ConsultarModal';
 import { Packer } from 'docx';
 import { gerarAnuenciaDocumento } from '@/lib/export/anuencia';
@@ -359,6 +360,8 @@ export default function EditorPage() {
   const ultimoSalvoSig = useRef<string>('');
   const acabouDeSalvar = useRef(false);
   const [errataAberto, setErrataAberto] = useState(false);
+  const [prevMemorialAberto, setPrevMemorialAberto] = useState(false);
+  const [prevMemorialModo, setPrevMemorialModo] = useState<'normal' | 'servidao'>('normal');
   const [consultarAberto, setConsultarAberto] = useState(false);
   const [iaAberta, setIaAberta] = useState(false);
   // arquivo já anexado que a IA vai ler (quando a extração parte de um documento guardado)
@@ -1795,7 +1798,8 @@ export default function EditorPage() {
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
-      const blob = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente, zonaUtm: zona, modo });
+      const blobBruto = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente, zonaUtm: zona, modo });
+      const blob = await compatibilizarWord2007(blobBruto);
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
       const prefixo = modo === 'servidao' ? 'Memorial de servidao' : 'Memorial';
       saveAs(blob, `${prefixo} - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`);
@@ -1945,7 +1949,8 @@ export default function EditorPage() {
       const r = calcular(vs, confrontantePorLado);
       const ef = valoresEfetivos(r, imovel);
       const nome = imovel.denominacao || nomeProjeto || 'imovel';
-      const memorial = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente });
+      const memorialBruto = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente });
+      const memorial = await compatibilizarWord2007(memorialBruto);
       const modeloProprio = carregarModeloSigef();
       const tpl: ArrayBuffer = modeloProprio !== null ? modeloProprio : await fetch('/templates/sigef.ods').then((rr) => rr.arrayBuffer());
       const ativa = glebas.find((g) => g.id === glebaAtivaId);
@@ -1966,7 +1971,8 @@ export default function EditorPage() {
       });
       // se requerente/transmitente ainda não foram preenchidos, cai no proprietário do imóvel
       const propComoParte: PessoaQualificada = { ...PESSOA_VAZIA, nome: imovel.proprietario || '—', cpf: imovel.cpfProprietario || '', cidadeUf: imovel.municipio || '' };
-      const requerimento = await gerarRequerimentoDocx({ imovel, tecnico, requerente: requerente ?? propComoParte, transmitente: transmitente ?? propComoParte, areaRealHa: ef.areaHa, dataExtenso: dataPorExtenso() });
+      const requerimentoBruto = await gerarRequerimentoDocx({ imovel, tecnico, requerente: requerente ?? propComoParte, transmitente: transmitente ?? propComoParte, areaRealHa: ef.areaHa, dataExtenso: dataPorExtenso() });
+      const requerimento = await compatibilizarWord2007(requerimentoBruto);
       const planta = await gerarPlantaPdfBlob();
       const zip = new JSZip();
       zip.file(`Memorial - ${nome}.docx`, memorial);
@@ -2830,8 +2836,16 @@ export default function EditorPage() {
 
         {/* 5) Peças */}
         <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}>{iconeCab('trt', <FileText />)} TRT</Button></Etapa>
-        <Etapa st={etapas.memorial}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button></Etapa>
-        <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
+        <Etapa st={etapas.memorial}>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Button size="sm" variant="outline" className={`${PREM_BTN} ${COR_PECA} rounded-r-none border-r-0`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
+            <Button size="sm" variant="outline" className={`px-1.5 ${PREM_BTN} ${COR_PECA} rounded-l-none border-amber-500/20 hover:border-amber-500 text-amber-600 hover:text-amber-700 dark:text-amber-400`} title="Pré-visualizar o memorial descritivo" onClick={() => { setPrevMemorialModo('normal'); setPrevMemorialAberto(true); }}><Eye className="size-4" /></Button>
+          </div>
+        </Etapa>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Button size="sm" variant="outline" className={`${PREM_BTN} ${COR_PECA} rounded-r-none border-r-0`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
+          <Button size="sm" variant="outline" className={`px-1.5 ${PREM_BTN} ${COR_PECA} rounded-l-none border-amber-500/20 hover:border-amber-500 text-amber-600 hover:text-amber-700 dark:text-amber-400`} title="Pré-visualizar o memorial descritivo de servidão" onClick={() => { setPrevMemorialModo('servidao'); setPrevMemorialAberto(true); }}><Eye className="size-4" /></Button>
+        </div>
         <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
@@ -3982,6 +3996,22 @@ export default function EditorPage() {
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
+      <MemorialPreviewModal
+        open={prevMemorialAberto}
+        onOpenChange={setPrevMemorialAberto}
+        vertices={vertices}
+        confrontantes={confrontantes}
+        confrontantePorLado={confrontantePorLado}
+        imovel={imovel}
+        tecnico={tecnico}
+        zona={zona}
+        hemisferio={hemisferio}
+        modo={prevMemorialModo}
+        dataExtenso={dataPorExtenso()}
+        requerente={requerente}
+        transmitente={transmitente}
+        onBaixar={() => exportarMemorial(prevMemorialModo)}
+      />
       <ConsultarModal open={consultarAberto} onOpenChange={setConsultarAberto}
         onInserirProprietario={inserirPropConsulta} onInserirConfrontante={inserirConfConsulta}
         onInserirImovel={inserirImovelConsulta} onInserirCartorio={inserirCartorioConsulta} />
