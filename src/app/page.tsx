@@ -3276,10 +3276,9 @@ export default function EditorPage() {
                   {/* Convite pro modo Completo: no Simples a pessoa vê que existe mais e vira a chave quando quiser. */}
                   {!completo && (
                     <button type="button" onClick={() => trocarModoApp('completo')}
-                      title="No modo Fácil aparece só o caminho essencial, e ainda assim dá pra entregar um trabalho básico completo. Toque para abrir o modo Completo, com todas as ferramentas."
-                      className="mt-1 flex !h-auto w-full items-start gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 !p-2 text-left !text-[10px] leading-snug text-muted-foreground hover:bg-primary/10">
-                      <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-                      <span className="min-w-0 break-words">Modo <b className="text-foreground">Fácil</b>: só o essencial. Toque para abrir o <b className="text-primary">Completo</b>.</span>
+                      title="Toque para abrir o modo Completo, com todas as ferramentas."
+                      className="mt-1 block !h-auto w-full rounded-lg border border-dashed border-primary/40 bg-primary/5 !p-2 text-left !text-[10px] leading-snug text-muted-foreground hover:bg-primary/10">
+                      Você está no modo <b className="text-foreground">Fácil</b>, ideal para se familiarizar com o sistema. Quando se sentir seguro, alterne para o modo <b className="text-primary">Completo</b>.
                     </button>
                   )}
                 </div>

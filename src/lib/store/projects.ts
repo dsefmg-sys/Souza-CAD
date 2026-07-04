@@ -62,7 +62,13 @@ export async function salvarProjeto(p: Projeto): Promise<DestinoSalvamento> {
     } catch (e) {
       // Sem permissão (regras não publicadas) ou offline: guarda local como reserva e sinaliza,
       // para o usuário não perder o trabalho nem ver um erro cru.
-      try { const d = await db(); await d.put('projetos', { ...reg, _uidLocal: marcaLocal() }); } catch { /* ignore */ }
+      let reservaOk = false;
+      try { const d = await db(); await d.put('projetos', { ...reg, _uidLocal: marcaLocal() }); reservaOk = true; } catch { /* reserva local falhou (ex.: sem espaço) */ }
+      if (!reservaOk) {
+        // Falhou na nuvem E não consegui a reserva local: o trabalho NÃO foi salvo. Avisa claro em
+        // vez de fingir que guardou como reserva (senão o usuário fecha e perde de verdade).
+        throw new Error('Não consegui salvar na nuvem nem guardar a reserva local (o navegador pode estar sem espaço). Libere espaço e tente de novo — seu trabalho continua aberto na tela.');
+      }
       if (String((e as { code?: string }).code) === 'permission-denied' || /permission/i.test((e as Error).message)) {
         throw new NuvemSemPermissao();
       }
