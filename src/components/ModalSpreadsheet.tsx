@@ -24,7 +24,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
   // Initialize prefix dynamically when opening the modal
   useEffect(() => {
     if (isOpen && contadorSugerido) {
-      const activePref = contadorSugerido.prefixo || 'COIN';
+      const activePref = contadorSugerido.prefixo || 'VER';
       const firstType = vertices[0]?.tipo || 'M';
       setPrefix(`${activePref}-${firstType}-`);
     }

@@ -22,6 +22,7 @@ export default function PrimeiroAcessoModal({ open, onConcluir }: Props) {
   const [nomeRt, setNomeRt] = useState('');
   const [formacao, setFormacao] = useState('');
   const [cft, setCft] = useState('');
+  const [credenciamento, setCredenciamento] = useState('');
   const [cidade, setCidade] = useState('');
   const [telefone, setTelefone] = useState('');
 
@@ -41,7 +42,8 @@ export default function PrimeiroAcessoModal({ open, onConcluir }: Props) {
     });
     const tec = carregarTecnico();
     salvarTecnico({
-      ...tec, nome: nomeRt.trim(), cft: cft.trim(), cidadeAssinatura: cidade.trim(), credenciamentoIncra: '',
+      ...tec, nome: nomeRt.trim(), cft: cft.trim(), cidadeAssinatura: cidade.trim(),
+      credenciamentoIncra: credenciamento.trim().toUpperCase(),
       conselho: eng ? 'CREA' : 'CFT',
       formacao: formacao.trim() || formacaoPadrao,
     });
@@ -95,6 +97,11 @@ export default function PrimeiroAcessoModal({ open, onConcluir }: Props) {
               <div className="space-y-1"><Label>Cidade da assinatura</Label><Input value={cidade} onChange={(e) => setCidade(e.target.value)} placeholder="Cidade-UF" /></div>
             </div>
             <p className="text-[11px] text-muted-foreground">O número do {termo} você emite e cola em cada projeto na hora de gerar as peças.</p>
+            <div className="space-y-1">
+              <Label>Código de credenciado no INCRA (prefixo dos vértices)</Label>
+              <Input value={credenciamento} onChange={(e) => setCredenciamento(e.target.value.toUpperCase())} placeholder="Ex.: SEU CÓDIGO — deixe em branco se ainda não tem" />
+              <p className="text-[10px] text-muted-foreground">É o seu código oficial que forma o nome dos vértices (ex.: <b>{(credenciamento.trim().toUpperCase() || 'SEU')}</b>-M-0001). É só seu — nunca use o de outra pessoa.</p>
+            </div>
             <div className="space-y-1"><Label>WhatsApp / telefone</Label><Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 90000-0000" /></div>
             <p className="text-[11px] text-muted-foreground">Você pode completar e ajustar tudo depois em Configurações.</p>
             <div className="flex justify-between">

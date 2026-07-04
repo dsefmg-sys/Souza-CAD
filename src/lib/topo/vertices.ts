@@ -22,7 +22,7 @@ export function montarVertices(
 ): Vertex[] {
   let nMarco = tecnico.contadorMarco;
   let nPonto = tecnico.contadorPonto;
-  const prefixo = tecnico.credenciamentoIncra || 'COIN';
+  const prefixo = tecnico.credenciamentoIncra || 'VER'; // neutro: nunca usar o credenciamento de outro (ex.: do dono). Cada RT informa o seu.
   const metodo = tecnico.metodoPosicionamento || METODO_PADRAO;
   const tipoLimite = tecnico.tipoLimite || TIPO_LIMITE_PADRAO;
 
@@ -89,7 +89,7 @@ export function recodificar(
 ): Vertex[] {
   let nM = contadorMarco;
   let nP = contadorPonto;
-  const pref = prefixo || 'COIN';
+  const pref = prefixo || 'VER';
   return vertices.map((v, i) => {
     const numero = v.tipo === 'M' ? nM++ : nP++;
     return { ...v, ordem: i, codigoSigef: `${pref}-${v.tipo}-${String(numero).padStart(4, '0')}` };

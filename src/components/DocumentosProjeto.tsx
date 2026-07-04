@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Upload, Download, Trash2, Eye, FileText, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { listarArquivosPorDono, salvarArquivo, excluirArquivo, type ArquivoProjeto } from '@/lib/store/arquivosProjeto';
+import { confirmar } from '@/lib/ui/dialogos';
 
 /**
  * Centro de documentos de um DONO (o imóvel/proprietário, ou um confrontante específico). Anexa,
@@ -57,7 +58,7 @@ export default function DocumentosProjeto({
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
   async function apagar(a: ArquivoProjeto) {
-    if (!window.confirm(`Remover o documento "${a.nome}"?`)) return;
+    if (!(await confirmar({ titulo: 'Remover documento', mensagem: `Remover o documento "${a.nome}"?`, okLabel: 'Remover', perigo: true }))) return;
     await excluirArquivo(a.id); recarregar();
   }
 

@@ -90,14 +90,16 @@ export function limparModeloSigef(): void {
   localStorage.removeItem(KEY_MODELO_SIGEF);
 }
 
-// Dados padrão do responsável técnico (do modelo do dono). Editáveis nas Configurações (modal).
+// Padrão do responsável técnico. IMPORTANTE (produto multi-empresa): NÃO traz dados pessoais de
+// ninguém — cada profissional cadastra os seus no primeiro acesso e em Configurações. Só ficam aqui
+// padrões TÉCNICOS neutros (método, tipo de limite, contadores iniciais, fuso), que valem pra todos.
 export const TECNICO_PADRAO: TecnicoData = {
-  nome: 'Darlan Gonçalves de Souza',
-  formacao: 'TÉCNICO EM AGRIMENSURA',
-  cft: '12287132600-MG',
-  art: 'CFT2505318024',
-  credenciamentoIncra: 'COIN',
-  cidadeAssinatura: 'Espera Feliz-MG',
+  nome: '',
+  formacao: '',
+  cft: '',
+  art: '',
+  credenciamentoIncra: '',
+  cidadeAssinatura: '',
   metodoPosicionamento: 'PG6',
   tipoLimite: 'LA6',
   contadorMarco: 1,
@@ -107,12 +109,13 @@ export const TECNICO_PADRAO: TecnicoData = {
   fusosPermitidos: [18, 19, 20, 21, 22, 23, 24, 25],
 };
 
+// Padrão do escritório: também SEM dados de nenhuma empresa. Só o ramo genérico como sugestão.
 export const ESCRITORIO_PADRAO: EscritorioData = {
-  nome: 'SOUZA GESTÃO FUNDIÁRIA',
+  nome: '',
   ramo: 'Agrimensura e Georreferenciamento',
-  cnpj: '45.539.408/0001-74',
-  endereco: 'Rua Doutor José Paixão 1400, Sala 02 Santa Inês, Espera Feliz',
-  telefone: '(32) 99911-6227',
+  cnpj: '',
+  endereco: '',
+  telefone: '',
 };
 
 export function carregarEscritorio(): EscritorioData {

@@ -13,9 +13,14 @@ import type { ImovelData } from '@/lib/topo/types';
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  onAplicar: (parcial: Partial<ImovelData>) => void;
+  /** Aplica os dados extraídos ao destino escolhido: 'imovel', 'novo' (novo confrontante) ou o id de um confrontante. */
+  onAplicar: (parcial: Partial<ImovelData>, destino: string) => void;
   /** Documento já anexado que a IA deve ler (parte da extração a partir de um arquivo guardado). */
   arquivoInicial?: { data: string; mimeType: string; nome: string } | null;
+  /** Confrontantes existentes, para o roteamento "a quem pertence" depois da leitura. */
+  confrontantes?: { id: string; nome: string }[];
+  /** Destino pré-selecionado ('imovel' por padrão, ou um id de confrontante quando parte do doc dele). */
+  destinoInicial?: string;
 }
 
 const CAMPOS: { chave: string; rotulo: string }[] = [
@@ -31,12 +36,13 @@ const CAMPOS: { chave: string; rotulo: string }[] = [
   { chave: 'areaAnteriorHa', rotulo: 'Área anterior (ha)' },
 ];
 
-export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoInicial }: Props) {
+export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoInicial, confrontantes = [], destinoInicial }: Props) {
   const [texto, setTexto] = useState('');
   const [arquivo, setArquivo] = useState<{ data: string; mimeType: string; nome: string } | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [campos, setCampos] = useState<Record<string, string> | null>(null);
+  const [destino, setDestino] = useState('imovel'); // a quem aplicar: 'imovel' | 'novo' | id do confrontante
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -44,6 +50,10 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
   useEffect(() => {
     if (open && arquivoInicial) { setArquivo(arquivoInicial); setCampos(null); setErro(''); setTexto(''); }
   }, [open, arquivoInicial]);
+  // Ao abrir, o destino começa no que foi pedido (imóvel, ou o confrontante de onde partiu o documento).
+  useEffect(() => {
+    if (open) setDestino(destinoInicial || 'imovel');
+  }, [open, destinoInicial]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,7 +123,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
     for (const [k, v] of Object.entries(resto)) if (v.trim()) (parcial as Record<string, string>)[k] = v.trim();
     const areaNum = parseFloat((areaAnteriorHa || '').replace(',', '.'));
     if (Number.isFinite(areaNum) && areaNum > 0) parcial.areaAnterior = areaNum;
-    onAplicar(parcial);
+    onAplicar(parcial, destino);
     onOpenChange(false);
     setTexto(''); setArquivo(null); setCampos(null);
   }
@@ -235,9 +245,32 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
                   </label>
                 ))}
               </div>
+              {/* A quem pertence este documento — o roteamento pedido: a IA leu, agora você decide o dono. */}
+              <div className="rounded-lg border border-border/70 bg-background p-2.5 space-y-1">
+                <span className="block text-[11px] font-semibold text-muted-foreground">A quem pertence este documento?</span>
+                <select
+                  className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={destino}
+                  onChange={(e) => setDestino(e.target.value)}
+                >
+                  <option value="imovel">Imóvel / proprietário deste levantamento</option>
+                  {confrontantes.map((c) => (
+                    <option key={c.id} value={c.id}>Confrontante: {c.nome || '(sem nome)'}</option>
+                  ))}
+                  <option value="novo">Novo confrontante (criar a partir deste documento)</option>
+                </select>
+                <p className="text-[10px] leading-snug text-muted-foreground">
+                  {destino === 'imovel'
+                    ? 'Os dados vão para o cadastro do imóvel e do proprietário.'
+                    : destino === 'novo'
+                    ? 'Cria um confrontante novo com estes dados — depois é só pintar as divisas dele no mapa.'
+                    : 'Os dados vão para o confrontante escolhido (nome, CPF, cônjuge, matrícula e cartório).'}
+                </p>
+              </div>
+
               <div className="mt-4 flex justify-end">
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={aplicar}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs"
                 >

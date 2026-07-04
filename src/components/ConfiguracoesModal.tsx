@@ -28,6 +28,7 @@ import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENC
 import { carregarPadroes, salvarPadroes, PADROES_PADRAO, type PadroesProjeto } from '@/lib/store/padroes';
 import { carregarPrecos, salvarPrecos, type PrecoServico } from '@/lib/store/precos';
 import { exportarConfiguracoesJson, importarConfiguracoesJson } from '@/lib/store/backup';
+import { confirmar } from '@/lib/ui/dialogos';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import ImportVerticesVizinhoConfigModal from '@/components/ImportVerticesVizinhoConfigModal';
 
@@ -139,7 +140,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   };
 
   async function importarConfig(file: File) {
-    if (!window.confirm('Restaurar as configurações deste arquivo?\n\nOs seus ajustes atuais (assinatura, escritório, modelos de texto, títulos, preços e padrões) serão substituídos pelos do arquivo. Os projetos não são afetados.')) return;
+    if (!(await confirmar({ titulo: 'Restaurar configurações', mensagem: 'Restaurar as configurações deste arquivo?\n\nOs seus ajustes atuais (assinatura, escritório, modelos de texto, títulos, preços e padrões) serão substituídos pelos do arquivo. Os projetos não são afetados.', okLabel: 'Restaurar' }))) return;
     try {
       const n = await importarConfiguracoesJson(file);
       // recarrega o que está na tela
@@ -154,9 +155,11 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
 
   async function atualizarModeloSigef(file: File) {
     if (
-      !window.confirm(
-        'Deseja realmente substituir a planilha SIGEF do sistema por este arquivo?\n\nEle passará a ser usado em TODAS as exportações de planilha (.ods), no lugar do modelo embutido.'
-      )
+      !(await confirmar({
+        titulo: 'Substituir planilha SIGEF',
+        mensagem: 'Deseja realmente substituir a planilha SIGEF do sistema por este arquivo?\n\nEle passará a ser usado em TODAS as exportações de planilha (.ods), no lugar do modelo embutido.',
+        okLabel: 'Substituir',
+      }))
     )
       return;
     salvarModeloSigef(await file.arrayBuffer());
@@ -166,8 +169,8 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function restaurarModeloSigef() {
-    if (!window.confirm('Voltar a usar o modelo de planilha SIGEF embutido do sistema?')) return;
+  async function restaurarModeloSigef() {
+    if (!(await confirmar({ titulo: 'Restaurar planilha SIGEF', mensagem: 'Voltar a usar o modelo de planilha SIGEF embutido do sistema?', okLabel: 'Restaurar' }))) return;
     limparModeloSigef();
     setModeloProprio(false);
     onConfigChange?.();
@@ -466,7 +469,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     </Button>
                     <Button size="sm" variant="outline" className="h-8 gap-1 border-red-600/40 text-red-700 hover:bg-red-600 hover:text-white dark:text-red-400"
                       onClick={async () => {
-                        if (!window.confirm('Zerar o banco de vértices?\n\nTodos os vértices ativos vão para a lixeira (recuperáveis depois). Continuar?')) return;
+                        if (!(await confirmar({ titulo: 'Zerar banco de vértices', mensagem: 'Zerar o banco de vértices?\n\nTodos os vértices ativos vão para a lixeira (recuperáveis depois). Continuar?', okLabel: 'Zerar', perigo: true }))) return;
                         const n = await zerarBancoPontos();
                         flash(n > 0 ? `${n} vértice(s) movidos para a lixeira.` : 'O banco já estava vazio.');
                       }}>

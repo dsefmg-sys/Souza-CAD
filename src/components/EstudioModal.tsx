@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Image as ImageIcon, Type, Square, Circle, Trash2, Download, ArrowUp, ArrowDown, AlignCenterHorizontal, AlignCenterVertical, Palette, Search, Shapes, Images, RefreshCw } from 'lucide-react';
 import { type El, FORMATOS_PADRAO as FORMATOS, FONTES_ESTUDIO, novoId as nid, reordenarCamada, centralizarEm, escalaParaCaber } from '@/lib/canvas/canvasEngine';
+import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
 
 // ESTÚDIO isolado (mini-Canva): tela com formato escolhido, elementos de imagem/texto/forma,
 // mover/redimensionar/alinhar/camadas e exportar PNG. Não toca no projeto de agrimensura.
@@ -70,8 +71,8 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
   function addForma(t: 'rect' | 'ellipse') { const id = nid(); const s = Math.min(fmt.w, fmt.h) * 0.3; setEls((es) => [...es, { id, t, x: (fmt.w - s) / 2, y: (fmt.h - s) / 2, w: s, h: s, fill: t === 'rect' ? '#2563eb' : '#16a34a', radius: 0 } as El]); setSel(id); }
 
   // modelos prontos: montam um layout inicial (capa de entrega, carimbo). Substituem o conteúdo atual.
-  function aplicarModelo(nome: string) {
-    if (els.length > 0 && !window.confirm('Aplicar o modelo vai substituir o conteúdo atual. Continuar?')) return;
+  async function aplicarModelo(nome: string) {
+    if (els.length > 0 && !(await confirmar({ titulo: 'Aplicar modelo', mensagem: 'Aplicar o modelo vai substituir o conteúdo atual. Continuar?', okLabel: 'Aplicar' }))) return;
     const W = fmt.w, H = fmt.h;
     if (nome === 'capa') {
       setBg('#0f172a');
@@ -115,7 +116,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
       const blob = await removeBackground(e.src);
       const url = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(blob); });
       patch(e.id, { src: url } as Partial<El>);
-    } catch (err) { alert('Não consegui remover o fundo: ' + ((err as Error).message || 'erro')); }
+    } catch (err) { await avisar({ titulo: 'Remover fundo', mensagem: 'Não consegui remover o fundo: ' + ((err as Error).message || 'erro') }); }
     finally { setProcFundo(false); }
   }
 

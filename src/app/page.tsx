@@ -980,7 +980,7 @@ export default function EditorPage() {
     const anel = gerarPoligono ? importados.filter((p) => p.poligono).map((p) => p.v) : [];
     const ignorados = gerarPoligono ? importados.filter((p) => !p.poligono).map((p) => p.v) : importados.map((p) => p.v);
     // renumera o anel na ordem final (M/P sequenciais a partir do contador do banco)
-    const vs = recodificar(anel, prefixo || 'COIN', contM, contP);
+    const vs = recodificar(anel, prefixo || 'VER', contM, contP);
 
     setImovel(novoImovel);
     setZona(z);
@@ -3636,6 +3636,7 @@ export default function EditorPage() {
                   </div>
                 )}
 
+                <SecaoTitulo>Vértices do polígono</SecaoTitulo>
                 <div className="mb-2 flex flex-wrap gap-1">
                   <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer última ação"><Undo2 /> Desfazer</Button>
                   <Button size="sm" variant="outline" onClick={ordenarNorteHorario} title="Começa no vértice mais ao norte e segue no sentido horário">Norte ↻</Button>
@@ -3735,6 +3736,7 @@ export default function EditorPage() {
             )}
             {aba === 'projetos' && (
               <div className="space-y-2">
+                <SecaoTitulo>Projeto atual</SecaoTitulo>
                 <Button size="sm" className="w-full" disabled={processando} onClick={salvar}><Save /> Salvar projeto atual</Button>
                 
                 {/* Botões de backup local JSON */}
@@ -3750,6 +3752,7 @@ export default function EditorPage() {
                 <div className="flex items-center gap-2 rounded border bg-muted/40 p-2 text-[11px] text-muted-foreground">
                   <Database className="size-3.5" /> {totalPontos} ponto(s) no banco do credenciado (nunca reusados).
                 </div>
+                <SecaoTitulo>Projetos salvos</SecaoTitulo>
                 {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
                 {projetos.map((p) => (
                   <div key={p.id} className="flex items-center justify-between rounded border p-2 text-xs">
@@ -3796,10 +3799,12 @@ export default function EditorPage() {
       <PorcentagemModal open={porcentagemAberta} onOpenChange={setPorcentagemAberta} glebas={glebas.map((g) => ({ id: g.id, nome: g.denominacao, vertices: g.id === glebaAtivaId ? vertices : g.vertices }))} />
       <ErrorBoundary onReset={() => setEstudioAberto(false)}><EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} /></ErrorBoundary>
       <ExtrairIaModal open={iaAberta} onOpenChange={(o) => { setIaAberta(o); if (!o) { setIaArquivoInicial(null); setIaConfrontanteId(null); } }} arquivoInicial={iaArquivoInicial}
-        onAplicar={(parcial) => {
-          if (iaConfrontanteId) {
-            // Documento de um confrontante: mapeia os campos de "pessoa" do imóvel para o confrontante.
-            const p = parcial as Record<string, string>;
+        confrontantes={confrontantes.map((c) => ({ id: c.id, nome: c.nome }))}
+        destinoInicial={iaConfrontanteId ?? 'imovel'}
+        onAplicar={(parcial, destino) => {
+          // Mapeia os campos de "pessoa" do imóvel para os de um confrontante (reaproveitado nos dois casos).
+          const p = parcial as Record<string, string>;
+          const patchConf = (): Partial<Confrontante> => {
             const patch: Partial<Confrontante> = {};
             if (p.proprietario) patch.nome = p.proprietario;
             if (p.cpfProprietario) patch.cpf = p.cpfProprietario;
@@ -3807,11 +3812,18 @@ export default function EditorPage() {
             if (p.cpfConjugeProprietario) patch.conjugeCpf = p.cpfConjugeProprietario;
             if (p.matricula) patch.matricula = p.matricula;
             if (p.cns) patch.cns = p.cns;
-            setConfrontantes((cs) => cs.map((c) => (c.id === iaConfrontanteId ? { ...c, ...patch } : c)));
-            aviso('Dados da IA aplicados ao confrontante — confira antes de gerar as peças.');
-          } else {
+            return patch;
+          };
+          if (destino === 'imovel') {
             setImovel((im) => ({ ...im, ...parcial }));
             aviso('Dados da IA aplicados ao imóvel — confira antes de gerar as peças.');
+          } else if (destino === 'novo') {
+            const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
+            setConfrontantes((cs) => [...cs, { id, nome: '', cpf: '', matricula: '', cns: '', ...patchConf() }]);
+            aviso('Confrontante criado a partir do documento — pinte as divisas dele no mapa.');
+          } else {
+            setConfrontantes((cs) => cs.map((c) => (c.id === destino ? { ...c, ...patchConf() } : c)));
+            aviso('Dados da IA aplicados ao confrontante — confira antes de gerar as peças.');
           }
         }} />
       <PrecoSugeridoModal open={precoSugAberto} onOpenChange={setPrecoSugAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />

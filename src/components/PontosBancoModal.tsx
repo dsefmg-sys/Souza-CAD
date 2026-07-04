@@ -9,6 +9,7 @@ import {
 } from '@/lib/store/registro';
 import type { PontoRegistro } from '@/lib/topo/types';
 import { numBR } from '@/lib/topo/geometry';
+import { confirmar } from '@/lib/ui/dialogos';
 
 interface Props {
   open: boolean;
@@ -55,7 +56,7 @@ export default function PontosBancoModal({ open, onOpenChange }: Props) {
   async function zerar() {
     const n = pontos.length;
     if (!n) return;
-    if (!window.confirm(`ZERAR o banco de pontos?\n\nOs ${n} ponto(s) ativos vão para a LIXEIRA (não somem de vez — dá pra resgatar depois). Use isto ao trocar de credenciado ou liberar códigos de uma certificação cancelada.\n\nContinuar?`)) return;
+    if (!(await confirmar({ titulo: 'Zerar banco de pontos', mensagem: `ZERAR o banco de pontos?\n\nOs ${n} ponto(s) ativos vão para a LIXEIRA (não somem de vez — dá pra resgatar depois). Use isto ao trocar de credenciado ou liberar códigos de uma certificação cancelada.\n\nContinuar?`, okLabel: 'Zerar', perigo: true }))) return;
     await zerarBancoPontos();
     await recarregar();
     setAba('lixeira');
@@ -64,7 +65,7 @@ export default function PontosBancoModal({ open, onOpenChange }: Props) {
   async function excluir(codigo: string) { await excluirPonto(codigo); await recarregar(); }
   async function resgatarTodos() {
     if (!lixeira.length) return;
-    if (!window.confirm(`Resgatar todos os ${lixeira.length} ponto(s) da lixeira de volta pro banco ativo?`)) return;
+    if (!(await confirmar({ titulo: 'Resgatar todos', mensagem: `Resgatar todos os ${lixeira.length} ponto(s) da lixeira de volta pro banco ativo?`, okLabel: 'Resgatar todos' }))) return;
     await resgatarTodosPontos(); await recarregar(); setAba('ativos');
   }
 

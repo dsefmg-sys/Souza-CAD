@@ -11,6 +11,7 @@ import { migrarProjeto } from '@/lib/topo/glebas';
 import { conferirProjetoGlebas } from '@/lib/topo/conferenciaExportacao';
 import { carregarTecnico } from '@/lib/store/settings';
 import { exportarBackupZip } from '@/lib/store/backup';
+import { confirmar, avisar } from '@/lib/ui/dialogos';
 
 type FiltroStatus = 'todos' | 'prontos' | 'incompletos';
 
@@ -29,7 +30,7 @@ export default function ProjetosPage() {
   async function baixarBackup() {
     setGerandoBackup(true);
     try { await exportarBackupZip(); }
-    catch (e) { window.alert('Não consegui gerar o backup: ' + ((e as Error).message || 'erro')); }
+    catch (e) { await avisar({ titulo: 'Backup', mensagem: 'Não consegui gerar o backup: ' + ((e as Error).message || 'erro') }); }
     finally { setGerandoBackup(false); }
   }
 
@@ -51,7 +52,7 @@ export default function ProjetosPage() {
     carregarTudo();
   }
   async function apagarDeVez(id: string, nome: string) {
-    if (!window.confirm(`Apagar DE VEZ o projeto "${nome}"? Isso não tem mais como desfazer.`)) return;
+    if (!(await confirmar({ titulo: 'Apagar de vez', mensagem: `Apagar DE VEZ o projeto "${nome}"? Isso não tem mais como desfazer.`, okLabel: 'Apagar de vez', perigo: true }))) return;
     await excluirDefinitivo(id);
     carregarTudo();
   }
@@ -99,7 +100,7 @@ export default function ProjetosPage() {
   }, [linhas, busca, filtro]);
 
   async function remover(id: string, nome: string) {
-    if (!window.confirm(`Enviar o projeto "${nome}" para a lixeira? Você pode restaurá-lo por ${DIAS_LIXEIRA} dias.`)) return;
+    if (!(await confirmar({ titulo: 'Enviar para a lixeira', mensagem: `Enviar o projeto "${nome}" para a lixeira? Você pode restaurá-lo por ${DIAS_LIXEIRA} dias.`, okLabel: 'Enviar para a lixeira' }))) return;
     await excluirProjeto(id);
     carregarTudo();
   }

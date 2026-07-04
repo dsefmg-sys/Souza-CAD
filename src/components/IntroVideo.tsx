@@ -62,7 +62,7 @@ export default function IntroVideo() {
       <video
         ref={videoRef}
         src="/marca/intro.mp4"
-        className="max-h-full max-w-full transition-opacity duration-150"
+        className="h-full w-full object-cover transition-opacity duration-150"
         style={{ opacity: tocando ? 1 : 0 }}
         autoPlay
         muted
