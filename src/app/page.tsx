@@ -3131,20 +3131,11 @@ export default function EditorPage() {
           onMouseLeave={() => { painelMouseDentro.current = false; if (!asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
           onBlurCapture={() => { setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 50); }}>
           <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background">
-            {/* Header do dropdown */}
-            <div className="flex items-center justify-between bg-[#475569] px-3 py-2 text-white shadow-sm">
-              <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 text-white">
-                <Settings className="size-3.5" />
-                Dados do Projeto
-              </span>
-              <div className="flex items-center gap-2">
-                <Link href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'} target="_blank" rel="noopener noreferrer" className="text-[10px] text-cyan-200 hover:text-cyan-100 hover:underline flex items-center gap-1">
-                  <Database className="size-3" /> Banco de Cadastros
-                </Link>
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white hover:bg-white/20 hover:text-white" onClick={() => setPainelAberto(false)} title="Fechar painel">
-                  <X className="size-4" />
-                </Button>
-              </div>
+            {/* Header do dropdown simplificado */}
+            <div className="flex items-center justify-end bg-[#475569]/80 px-2.5 py-1 text-white shadow-sm shrink-0">
+              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-white hover:bg-white/20 hover:text-white" onClick={() => setPainelAberto(false)} title="Fechar painel">
+                <X className="size-3.5" />
+              </Button>
             </div>
             {/* glebas */}
             <div className="flex flex-wrap items-center gap-1.5 border-b p-1.5 bg-muted/20">
