@@ -1822,6 +1822,38 @@ export default function EditorPage() {
     } finally { setProcessando(false); }
   }
 
+  // Exporta os shapefiles do CAR: o perímetro do imóvel + cada camada ambiental (APP, reserva legal,
+  // vegetação, uso consolidado) desenhada, num zip. É a base da entrega pro SICAR (o formato de
+  // campos exato do SICAR se ajusta quando o dono trouxer um CAR de referência).
+  async function exportarCarShapefiles() {
+    const camadas: { nome: string; pontos: { leste: number; norte: number }[] }[] = [];
+    if (vertices.length >= 3) camadas.push({ nome: 'imovel', pontos: vertices.map((v) => ({ leste: v.leste, norte: v.norte })) });
+    for (const t of CAR_TEMAS) {
+      for (const o of objetos.filter((o) => o.tipo === 'polilinha' && o.carTema === t.chave && o.pontos.length >= 3)) {
+        camadas.push({ nome: t.chave, pontos: o.pontos.map((p) => ({ leste: p.leste, norte: p.norte })) });
+      }
+    }
+    if (!camadas.length) { aviso('Desenhe ao menos o perímetro do imóvel ou uma camada CAR primeiro.'); return; }
+    setProcessando(true);
+    try {
+      const externo = new JSZip();
+      let i = 0;
+      for (const c of camadas) {
+        const nomeArq = `${c.nome}_${++i}`;
+        const blob = await gerarShapefileZip(c.pontos, { zona, hemisferio, nome: nomeArq });
+        const interno = await JSZip.loadAsync(await blob.arrayBuffer());
+        for (const fn of Object.keys(interno.files)) {
+          const ext = fn.split('.').pop();
+          externo.file(`${nomeArq}.${ext}`, await interno.file(fn)!.async('arraybuffer'));
+        }
+      }
+      const out = await externo.generateAsync({ type: 'blob' });
+      saveAs(out, `CAR shapefiles - ${imovel.denominacao || nomeProjeto || 'imovel'}.zip`);
+      aviso(`Shapefiles do CAR gerados (${camadas.length} camada(s)).`);
+    } catch (e) { aviso('Erro ao gerar os shapefiles: ' + ((e as Error).message || 'erro')); }
+    finally { setProcessando(false); }
+  }
+
   async function gerarSituacaoPlanta() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     aviso('Buscando satélite da situação…');
@@ -2993,7 +3025,8 @@ export default function EditorPage() {
       <ErrorBoundary onReset={() => setEstudioAberto(false)}><EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} /></ErrorBoundary>
       <ExtrairIaModal open={iaAberta} onOpenChange={setIaAberta} onAplicar={(parcial) => { setImovel((im) => ({ ...im, ...parcial })); aviso('Dados da IA aplicados ao imóvel — confira antes de gerar as peças.'); }} />
       <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
-        areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()} />
+        areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
+        onExportarShapefiles={exportarCarShapefiles} processando={processando} />
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}

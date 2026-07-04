@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Leaf } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Leaf, Download } from 'lucide-react';
 import { type Bioma, resumirCar, appMargemRio, appLago, APP_NASCENTE_M } from '@/lib/car/car';
 
 // Primeira tela do CAR (Cadastro Ambiental Rural): usa o motor de cálculo puro (lib/car/car.ts)
@@ -20,7 +21,7 @@ const num = (n: number, d = 2) => n.toLocaleString('pt-BR', { minimumFractionDig
 
 interface AreasCamadas { app: number; reservaLegal: number; vegetacao: number; usoConsolidado: number }
 
-export default function CarModal({ open, onOpenChange, areaHa, areasCamadas }: { open: boolean; onOpenChange: (o: boolean) => void; areaHa: number; areasCamadas?: AreasCamadas }) {
+export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onExportarShapefiles, processando }: { open: boolean; onOpenChange: (o: boolean) => void; areaHa: number; areasCamadas?: AreasCamadas; onExportarShapefiles?: () => void; processando?: boolean }) {
   const [bioma, setBioma] = useState<Bioma>('demais');
   const [moduloFiscal, setModuloFiscal] = useState('');
   const [reservaHa, setReservaHa] = useState('');
@@ -140,6 +141,13 @@ export default function CarModal({ open, onOpenChange, areaHa, areasCamadas }: {
             <li>Lago rural até 20 ha: <strong>{appLago(10)} m</strong> · acima de 20 ha: <strong>{appLago(30)} m</strong></li>
           </ul>
         </div>
+
+        {onExportarShapefiles && (
+          <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2">
+            <span className="text-[11px] text-muted-foreground">Exporta o perímetro do imóvel e as camadas CAR desenhadas como shapefiles (base para o SICAR).</span>
+            <Button size="sm" disabled={processando} className="shrink-0 gap-1" onClick={onExportarShapefiles}><Download className="size-4" /> Shapefiles (SICAR)</Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
