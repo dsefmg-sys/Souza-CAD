@@ -101,6 +101,19 @@ const IMOVEL_VAZIO: ImovelData = {
   tipoImovel: 'rural', usarValoresSigef: true, inscricaoMunicipal: '', frenteM: undefined, fundosM: undefined, distanciaEsquinaM: undefined, esquinaRua: '',
 };
 
+const CORES_CABECALHO = [
+  { id: 'cinza', label: 'Cinza', text: 'text-muted-foreground', border: 'border-muted', bg: 'bg-muted-foreground/30' },
+  { id: 'forest', label: 'Verde Floresta', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-600/30', bg: 'bg-emerald-500' },
+  { id: 'hydro', label: 'Azul Hidro', text: 'text-sky-600 dark:text-sky-400', border: 'border-sky-600/30', bg: 'bg-sky-500' },
+  { id: 'terra', label: 'Marrom Solo', text: 'text-amber-800 dark:text-amber-500', border: 'border-amber-800/30', bg: 'bg-amber-700' },
+  { id: 'olive', label: 'Verde Oliva', text: 'text-lime-700 dark:text-lime-500', border: 'border-lime-700/30', bg: 'bg-lime-600' },
+  { id: 'sigef', label: 'Ciano SIGEF', text: 'text-cyan-600 dark:text-cyan-400', border: 'border-cyan-600/30', bg: 'bg-cyan-500' },
+  { id: 'orange', label: 'Laranja Curvas', text: 'text-orange-600 dark:text-orange-400', border: 'border-orange-600/30', bg: 'bg-orange-500' },
+  { id: 'purple', label: 'Roxo Marcos', text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-600/30', bg: 'bg-indigo-500' },
+  { id: 'rose', label: 'Vermelho Divisas', text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-600/30', bg: 'bg-rose-500' },
+  { id: 'slate', label: 'Grafite Escuro', text: 'text-slate-700 dark:text-slate-300', border: 'border-slate-700/30', bg: 'bg-slate-500' },
+];
+
 function gerarTituloAutomatico(im: ImovelData): string {
   const partes: string[] = [];
   let propComp = (im.proprietario || '').trim();
@@ -300,6 +313,38 @@ export default function EditorPage() {
   const [totalPontos, setTotalPontos] = useState(0);
   const [msg, setMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [corCabecalho, setCorCabecalho] = useState('cinza');
+  const [mostrandoCoresHeader, setMostrandoCoresHeader] = useState(false);
+  const [mostrarEscalaToast, setMostrarEscalaToast] = useState(false);
+  const scaleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('metrica.corCabecalho');
+      if (saved) setCorCabecalho(saved);
+    } catch { /* ignore */ }
+  }, []);
+
+  const salvarCorCabecalho = (cor: string) => {
+    setCorCabecalho(cor);
+    try {
+      localStorage.setItem('metrica.corCabecalho', cor);
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    setMostrarEscalaToast(true);
+    if (scaleTimerRef.current) clearTimeout(scaleTimerRef.current);
+    scaleTimerRef.current = setTimeout(() => {
+      setMostrarEscalaToast(false);
+    }, 1500);
+    return () => {
+      if (scaleTimerRef.current) clearTimeout(scaleTimerRef.current);
+    };
+  }, [plantaConfig.escalaManual]);
+
+  const themeCabecalho = CORES_CABECALHO.find((c) => c.id === corCabecalho) ?? CORES_CABECALHO[0];
   const dxfRef = useRef<HTMLInputElement>(null);
   const geojsonRef = useRef<HTMLInputElement>(null);
   const vizinhosRef = useRef<HTMLInputElement>(null);
@@ -2560,7 +2605,26 @@ export default function EditorPage() {
                   <div className="flex flex-col gap-2 text-xs">
                     {/* CARD 1: GESTÃO DO PROJETO */}
                     <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
-                      <span className="text-[9px] font-extrabold uppercase text-muted-foreground tracking-wider pb-1 border-b mb-0.5">Gestão do Projeto</span>
+                      <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-1 border-b mb-0.5 cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
+                        <span>Gestão do Projeto</span>
+                        <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
+                      </span>
+                      {mostrandoCoresHeader && (
+                        <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded border border-dashed mb-1 animate-in fade-in duration-200">
+                          {CORES_CABECALHO.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              title={c.label}
+                              className={`size-3.5 rounded-full hover:scale-110 transition-transform ${c.bg} ${corCabecalho === c.id ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                salvarCorCabecalho(c.id);
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
                       
                       {/* Card de Informações Resumidas do Levantamento */}
                       <div className="rounded-lg border bg-muted/30 p-2 space-y-1.5 text-[11px] leading-tight">
@@ -2642,7 +2706,26 @@ export default function EditorPage() {
 
                     {/* CARD 2: VISUALIZAÇÃO & HISTÓRICO */}
                     <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
-                      <span className="text-[9px] font-extrabold uppercase text-muted-foreground tracking-wider pb-1 border-b mb-0.5">Visualização & Navegação</span>
+                      <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-1 border-b mb-0.5 cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
+                        <span>Visualização & Navegação</span>
+                        <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
+                      </span>
+                      {mostrandoCoresHeader && (
+                        <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded border border-dashed mb-1 animate-in fade-in duration-200">
+                          {CORES_CABECALHO.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              title={c.label}
+                              className={`size-3.5 rounded-full hover:scale-110 transition-transform ${c.bg} ${corCabecalho === c.id ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                salvarCorCabecalho(c.id);
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
                       {vista === 'mapa' ? (
                         <>
                           <div className="flex flex-col gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
@@ -2676,7 +2759,26 @@ export default function EditorPage() {
                     {/* CARD 3: FERRAMENTAS DE DESENHO */}
                     {(vista === 'mapa' || editarPlanta) && (
                       <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
-                        <span className="text-[9px] font-extrabold uppercase text-muted-foreground tracking-wider pb-1 border-b mb-0.5">Ferramentas de Desenho</span>
+                        <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-1 border-b mb-0.5 cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
+                          <span>Ferramentas de Desenho</span>
+                          <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
+                        </span>
+                        {mostrandoCoresHeader && (
+                          <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded border border-dashed mb-1 animate-in fade-in duration-200">
+                            {CORES_CABECALHO.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                title={c.label}
+                                className={`size-3.5 rounded-full hover:scale-110 transition-transform ${c.bg} ${corCabecalho === c.id ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  salvarCorCabecalho(c.id);
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
                         <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:px-2 [&>button]:gap-1.5 [&_svg]:size-3.5 [&>button]:min-w-0">
                           <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)">
                             <PenTool className="text-amber-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Linha</span>
@@ -2716,7 +2818,26 @@ export default function EditorPage() {
                     {/* CARD 4: VÉRTICES E GEOMETRIA */}
                     {(vista === 'mapa' || editarPlanta) && (
                       <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
-                        <span className="text-[9px] font-extrabold uppercase text-muted-foreground tracking-wider pb-1 border-b mb-0.5">Vértices e Geometria</span>
+                        <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-1 border-b mb-0.5 cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
+                          <span>Vértices e Geometria</span>
+                          <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
+                        </span>
+                        {mostrandoCoresHeader && (
+                          <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded border border-dashed mb-1 animate-in fade-in duration-200">
+                            {CORES_CABECALHO.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                title={c.label}
+                                className={`size-3.5 rounded-full hover:scale-110 transition-transform ${c.bg} ${corCabecalho === c.id ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  salvarCorCabecalho(c.id);
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
                         <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:px-2 [&>button]:gap-1.5 [&_svg]:size-3.5 [&>button]:min-w-0">
                           <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta">
                             <Plus className="text-emerald-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Inserir Vtx</span>
@@ -3013,7 +3134,19 @@ export default function EditorPage() {
                 <span className="text-xs font-semibold">{plantaDark ? 'Modo Escuro' : 'Modo Claro'}</span>
               </Button>
 
-              <div className="h-5 w-px bg-border mx-1" />
+              <div className="h-5 w-px bg-border mx-0.5" />
+
+              {(() => {
+                const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
+                const cor = !situacaoUrl || stale ? 'bg-amber-500 hover:bg-amber-600 text-white border-transparent' : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent';
+                return (
+                  <Button size="sm" className={`h-8 ${cor}`} title={!situacaoUrl ? 'Capturar planta de situação' : stale ? 'Situação desatualizada' : 'Situação pronta'} onClick={gerarSituacaoPlanta}>
+                    <Camera className="size-4 mr-1.5" /> <span className="text-xs font-semibold">{!situacaoUrl ? 'Capturar Situação' : stale ? 'Atualizar Situação' : 'Situação Pronta'}</span>
+                  </Button>
+                );
+              })()}
+
+              <div className="h-5 w-px bg-border mx-0.5" />
 
               <div className="flex items-center rounded-md border border-input bg-background overflow-hidden h-8">
                 <button
@@ -3041,6 +3174,12 @@ export default function EditorPage() {
                   +
                 </button>
               </div>
+
+              {mostrarEscalaToast && (
+                <div className="flex items-center bg-black text-white h-8 px-3.5 rounded-md text-[10px] tracking-wider font-bold border border-black animate-in fade-in slide-in-from-left-2 duration-200">
+                  1 : {obterEscalaEfetiva()}
+                </div>
+              )}
             </div>
           )}
 

@@ -257,8 +257,7 @@ export default function Planta({
   };
   const [guiaAlinhamento, setGuiaAlinhamento] = useState<{ x?: number; y?: number } | null>(null);
 
-  const [escalaMudouToast, setEscalaMudouToast] = useState(false);
-  const [escalaSalvaToast, setEscalaSalvaToast] = useState(0);
+
 
   const [modalTituloAberto, setModalTituloAberto] = useState(false);
   const [tempTitulo, setTempTitulo] = useState('');
@@ -360,18 +359,7 @@ export default function Planta({
   const sx = (e: number) => offX + (e - minX) * escala;
   const sy = (n: number) => offY + (maxY - n) * escala;
 
-  useEffect(() => {
-    if (escalaSalvaToast === 0) {
-      setEscalaSalvaToast(escalaDenom);
-      return;
-    }
-    if (escalaDenom !== escalaSalvaToast) {
-      setEscalaSalvaToast(escalaDenom);
-      setEscalaMudouToast(true);
-      const timer = setTimeout(() => setEscalaMudouToast(false), 1400);
-      return () => clearTimeout(timer);
-    }
-  }, [escalaDenom, escalaSalvaToast]);
+
 
   const eMin = minX + (DRAW.x0 - 200 - offX) / escala;
   const eMax = minX + (DRAW.x1 + 200 - offX) / escala;
@@ -1471,11 +1459,7 @@ export default function Planta({
         </g>
       )}
     </svg>
-    {escalaMudouToast && (
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none bg-indigo-600/90 text-white font-bold px-4 py-2 rounded-full shadow-lg backdrop-blur text-xs flex items-center gap-1.5 transition-all duration-300 animate-in fade-in slide-in-from-top-2">
-        <span className="opacity-80">Escala:</span> 1 : {escalaDenom}
-      </div>
-    )}
+
     {modalTituloAberto && (
       <div className="absolute inset-0 z-[4000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
         <div 
