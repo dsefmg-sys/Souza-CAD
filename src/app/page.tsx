@@ -215,7 +215,7 @@ export default function EditorPage() {
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
-  const [toolW, setToolW] = useState(200); // largura confortável pra não espremer os rótulos dos botões
+  const [toolW, setToolW] = useState(300); // largura confortável pra não espremer os rótulos dos botões
   const toolDrag = useRef(false);
   const [centralizarSig, setCentralizarSig] = useState(0); // incrementa para enquadrar o desenho
   // largura do painel da direita (redimensionável, salva por usuário)
@@ -322,7 +322,7 @@ export default function EditorPage() {
     // registra/atualiza o perfil de uso (o titular acompanha empresa, RT, projetos)
     const esc = carregarEscritorio(); const tec = carregarTecnico();
     sincronizarPerfil({ ultimoAcessoEm: Date.now(), empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {});
-    try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 320) setToolW(w); } catch { /* ignore */ }
+    try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 480) setToolW(w); } catch { /* ignore */ }
     try { const n = Number(localStorage.getItem('metrica.tamNomes')); if (n >= 7 && n <= 22) setTamNomes(n); } catch { /* ignore */ }
     try { const s = Number(localStorage.getItem('metrica.escalaInterface')); if (s >= 0.8 && s <= 1.6) setEscalaInterface(s); } catch { /* ignore */ }
     try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680) setAsideW(w); } catch { /* ignore */ }
@@ -558,7 +558,7 @@ export default function EditorPage() {
       }
       else if (k === 'Escape') {
         if (modo === 'multi' && selMulti.size > 0) { e.preventDefault(); setSelMulti(new Set()); }
-        else if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto') {
+        else if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'medir') {
           e.preventDefault();
           cancelarDesenho();
           setModo('navegar');
@@ -636,7 +636,7 @@ export default function EditorPage() {
 
   // redimensionar a barra de ferramentas (largura, arrastando a borda direita)
   function toolDown(e: ReactPointerEvent) { toolDrag.current = true; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
-  function toolMove(e: ReactPointerEvent) { if (toolDrag.current) setToolW(Math.min(320, Math.max(52, e.clientX))); }
+  function toolMove(e: ReactPointerEvent) { if (toolDrag.current) setToolW(Math.min(480, Math.max(52, e.clientX))); }
   function toolUp(e: ReactPointerEvent) { toolDrag.current = false; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ } }
 
   // centraliza/enquadra o desenho atual no mapa
@@ -1322,8 +1322,8 @@ export default function EditorPage() {
         }
       }
       setDesenhoBuffer((buf) => [...buf, p]);
-    } else if (modo === 'tracejado') {
-      // tracejado = polilinha tracejada aberta (ex.: estrada); finaliza no botão
+    } else if (modo === 'tracejado' || modo === 'medir') {
+      // tracejado/medir = adiciona pontos ao buffer de desenho
       setDesenhoBuffer((buf) => [...buf, p]);
     }
   }
@@ -2559,7 +2559,6 @@ export default function EditorPage() {
                 {/* CONTROLES DA PLANTA (na visão da planta) — deixa a folha limpa */}
                 {vista === 'planta' && (
                   <div className="flex flex-col gap-1 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                    {/* (VER MAPA saiu daqui: a alternância vive no quadrado do canto superior esquerdo, atalho Esc) */}
                     <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-9 w-full justify-start gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
                     <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
                   </div>
@@ -2569,88 +2568,139 @@ export default function EditorPage() {
                 {(vista === 'mapa' || editarPlanta) && (
                   <>
                     <div className="my-0.5 h-px w-full bg-border" />
-                    <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                      <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)"><PenTool /> {L('Linha')}<span className="ml-auto text-[9px] font-bold text-amber-400">F6</span></Button>
-                      <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; ao fechar (clicar no 1º ponto) vira polígono (F7; botão direito cancela)"><PenTool /> {L('Polilinha')}
-                        {modo === 'polilinha' && desenhoBuffer.length >= 2
-                          ? <><span onClick={(e) => { e.stopPropagation(); finalizarLinha(); }} className="ml-auto cursor-pointer rounded bg-emerald-500/25 px-1.5 font-bold text-emerald-700 hover:bg-emerald-500/40 dark:text-emerald-300" title="Encerrar este traço e começar outro">+</span><span className="text-[9px] font-bold text-amber-400">F7</span></>
-                          : <span className="ml-auto text-[9px] font-bold text-amber-400">F7</span>}</Button>
-                      <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (ex.: estrada); clique vários pontos; use o + para encerrar e começar outro (F8)"><PenTool className="opacity-70" /> {L('Tracejado')}
-                        {modo === 'tracejado' && desenhoBuffer.length >= 2
-                          ? <><span onClick={(e) => { e.stopPropagation(); finalizarLinha(); }} className="ml-auto cursor-pointer rounded bg-emerald-500/25 px-1.5 font-bold text-emerald-700 hover:bg-emerald-500/40 dark:text-emerald-300" title="Encerrar este traço e começar outro">+</span><span className="text-[9px] font-bold text-amber-400">F8</span></>
-                          : <span className="ml-auto text-[9px] font-bold text-amber-400">F8</span>}</Button>
-                      <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)"><FileText /> {L('Texto')}<span className="ml-auto text-[9px] font-bold text-amber-400">F9</span></Button>
-                      <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos (F10)"><RotateCcw className="rotate-90" /> {L('Cota')}<span className="ml-auto text-[9px] font-bold text-amber-400">F10</span></Button>
-                      <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos: inserir símbolos (árvore, casa, poste…) clicando no desenho"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /> {L('Elementos')}<span className="ml-auto text-[9px] font-bold text-muted-foreground">{modo === 'simbolo' ? SIMBOLOS.find((s) => s.chave === simboloSel)?.rotulo : ''}</span></Button>
-                      {elementosAberto && (
-                        <div className="grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
-                          {SIMBOLOS.map((s) => (
-                            <button key={s.chave} type="button" title={s.rotulo}
-                              className={`flex items-center justify-center rounded p-1 hover:bg-background ${modo === 'simbolo' && simboloSel === s.chave ? 'bg-background ring-1 ring-primary' : ''}`}
-                              onClick={() => { setSimboloSel(s.chave); setModo('simbolo'); setElementosAberto(false); }}>
-                              <svg viewBox="-14 -14 28 28" className="size-6" dangerouslySetInnerHTML={{ __html: simboloSvgInterno(s.chave) }} />
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta para inserir um ponto"><Plus /> {L('Inserir vértice')}</Button>
-                      <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12): clique um vértice e o desenho passa direto por ele"><EyeOff /> {L('Ignorar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F12</span></Button>
-                      <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'considerar' ? 'navegar' : 'considerar'); }} title="Considerar vértice: clique um ponto ignorado (cinza) para reincluí-lo (F11)"><Plus /> {L('Considerar')}<span className="ml-auto text-[9px] font-bold text-amber-400">F11</span></Button>
-                      <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice"><Trash2 /> {L('Apagar vértice')}</Button>
-                      <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'multi' ? 'navegar' : 'multi'); }} title="Selecionar vários vértices: clique um a um ou arraste uma caixa; Delete apaga os marcados">
-                        <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
-                          <circle cx="12" cy="5" r="2.4" fill="currentColor" />
-                          <circle cx="5" cy="18" r="2.4" fill="currentColor" />
-                          <circle cx="19" cy="18" r="2.4" fill="currentColor" />
-                        </svg>
-                        {L('Selecionar vários')}
-                      </Button>
-                      {modo === 'multi' && (
-                        <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-600 dark:text-amber-400">
-                          {selMulti.size > 0
-                            ? <button className="w-full text-left font-semibold" onClick={apagarMultiSelecionados}>Apagar {selMulti.size} selecionado(s) — Delete</button>
-                            : 'Clique vértices ou arraste uma caixa para selecioná-los.'}
-                        </div>
-                      )}
-
-                      {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
-                      {objSel?.tipo === 'texto' && (
-                        <>
-                          <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold">A-</span> {L('Diminuir')}</Button>
-                          <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold">A+</span> {L('Aumentar')}</Button>
-                          <Button size="sm" variant="ghost" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil /> {L('Editar texto')}</Button>
-                        </>
-                      )}
-                      {objSel?.tipo === 'polilinha' && (
-                        <>
-                          <Button size="sm" variant="secondary" className="gap-1.5 w-full justify-start" onClick={converterPolilinhaEmPerimetro} title="Usar esta polilinha como o perímetro principal do imóvel"><RotateCcw className="size-4 text-emerald-500" /> {L('Usar como perímetro')}</Button>
-                          <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} className="w-full justify-start gap-2" onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher (ex.: lago)"><Brush /> {L('Preencher')}</Button>
-                        </>
-                      )}
-                      {objetoSelId && <Button size="sm" variant="ghost" onClick={apagarObjetoSel} title="Apagar objeto selecionado"><Trash2 className="text-destructive" /> {L('Apagar objeto')}</Button>}
-                      <div className="my-0.5 h-px w-full bg-border" />
-                      {/* DXF: baixar e enviar */}
-                      <div className={`flex items-center gap-0.5 rounded-md border px-1.5 ${COR_IMPORT}`}>
-                        <span className="text-[10px] font-bold mr-1 shrink-0">ARQUIVO DXF</span>
-                        <Button size="sm" variant="ghost" className="size-7 p-0" title="Baixar o desenho em DXF" onClick={exportarDxf}><Download className="size-4" /></Button>
-                        <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Enviar/importar um DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-4" /></Button>
-                      </div>
-                      {/* KML: baixar (Google Earth/GPS) — mesmo padrão do DXF */}
-                      <div className={`flex items-center gap-0.5 rounded-md border px-1.5 ${COR_IMPORT}`}>
-                        <span className="text-[10px] font-bold mr-1 shrink-0">ARQUIVO KML</span>
-                        <Button size="sm" variant="ghost" className="size-7 p-0" title="Baixar o KML (Google Earth / GPS)" onClick={() => exportarKML(vertices, imovel)}><Download className="size-4" /></Button>
-                      </div>
-                      {/* Planta de situação (recorte de satélite): capturar/atualizar — veio da barra inferior */}
-                      {(() => {
-                        const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
-                        const cor = !situacaoUrl || stale ? 'text-amber-600 border-amber-500/40 hover:bg-amber-500 hover:text-white' : 'text-emerald-600 border-emerald-600/40 hover:bg-emerald-600 hover:text-white';
-                        return (
-                          <Button size="sm" variant="outline" className={`w-full justify-start gap-2 ${cor}`} title={!situacaoUrl ? 'Capturar a planta de situação (recorte de satélite)' : stale ? 'Situação desatualizada — clique para refazer' : 'Situação pronta — clique para refazer'} onClick={gerarSituacaoPlanta}>
-                            <Camera className="size-4" /> {L(!situacaoUrl ? 'Capturar situação' : stale ? 'Atualizar situação' : 'Situação pronta')}
+                    {rotulo ? (
+                      <div className="flex flex-col gap-1">
+                        <div className="grid grid-cols-2 gap-1 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:px-2 [&>button]:gap-1.5 [&_svg]:size-3.5">
+                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)">
+                            <PenTool /> <span className="truncate text-[11px] font-semibold">Linha</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F6</span>
                           </Button>
-                        );
-                      })()}
-                    </div>
+                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
+                            <PenTool /> <span className="truncate text-[11px] font-semibold">Polilinha</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F7</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (F8)">
+                            <PenTool className="opacity-70" /> <span className="truncate text-[11px] font-semibold">Tracejado</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F8</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos para medir (F10)">
+                            <RotateCcw className="rotate-90" /> <span className="truncate text-[11px] font-semibold">Cota</span> <span className="ml-auto text-[8px] font-bold text-amber-400/70">F10</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)">
+                            <FileText /> <span className="truncate text-[11px] font-semibold">Texto</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F9</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Símbolos: inserir poste, árvore...">
+                            <svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} />
+                            <span className="truncate text-[11px] font-semibold">Símbolos</span>
+                          </Button>
+                          {elementosAberto && (
+                            <div className="col-span-2 grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
+                              {SIMBOLOS.map((s) => (
+                                <button key={s.chave} type="button" title={s.rotulo}
+                                  className={`flex items-center justify-center rounded p-1 hover:bg-background ${modo === 'simbolo' && simboloSel === s.chave ? 'bg-background ring-1 ring-primary' : ''}`}
+                                  onClick={() => { setSimboloSel(s.chave); setModo('simbolo'); setElementosAberto(false); }}>
+                                  <svg viewBox="-14 -14 28 28" className="size-6" dangerouslySetInnerHTML={{ __html: simboloSvgInterno(s.chave) }} />
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta">
+                            <Plus /> <span className="truncate text-[11px] font-semibold">Inserir Vtx</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice">
+                            <Trash2 /> <span className="truncate text-[11px] font-semibold">Apagar Vtx</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
+                            <EyeOff /> <span className="truncate text-[11px] font-semibold">Ignorar</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F12</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'considerar' ? 'navegar' : 'considerar'); }} title="Considerar vértice (F11)">
+                            <Plus /> <span className="truncate text-[11px] font-semibold">Considerar</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F11</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => { setModo('medir'); setDesenhoBuffer([]); }} title="Régua: medir distância e azimute no mapa">
+                            <Ruler /> <span className="truncate text-[11px] font-semibold">Medir / Régua</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'multi' ? 'navegar' : 'multi'); }} title="Selecionar vários vértices">
+                            <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden>
+                              <circle cx="12" cy="5" r="2.4" fill="currentColor" />
+                              <circle cx="5" cy="18" r="2.4" fill="currentColor" />
+                              <circle cx="19" cy="18" r="2.4" fill="currentColor" />
+                            </svg>
+                            <span className="truncate text-[11px] font-semibold">Sel. Vários</span>
+                          </Button>
+                          {modo === 'multi' && (
+                            <div className="col-span-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-600 dark:text-amber-400">
+                              {selMulti.size > 0
+                                ? <button className="w-full text-left font-semibold" onClick={apagarMultiSelecionados}>Apagar {selMulti.size} selecionado(s) — Delete</button>
+                                : 'Clique nos vértices ou arraste uma caixa para selecioná-los.'}
+                            </div>
+                          )}
+                          {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="col-span-2 px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
+                          {objSel?.tipo === 'texto' && (
+                            <div className="col-span-2 grid grid-cols-3 gap-1 mt-1">
+                              <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold font-mono">A-</span></Button>
+                              <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold font-mono">A+</span></Button>
+                              <Button size="sm" variant="ghost" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5" /></Button>
+                            </div>
+                          )}
+                          {objSel?.tipo === 'polilinha' && (
+                            <div className="col-span-2 flex flex-col gap-1 mt-1">
+                              <Button size="sm" variant="secondary" className="gap-1.5 w-full justify-start text-[11px]" onClick={converterPolilinhaEmPerimetro} title="Usar como perímetro"><RotateCcw className="size-3.5 text-emerald-500" /> Usar como perímetro</Button>
+                              <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} className="w-full justify-start gap-2 text-[11px]" onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher"><Brush className="size-3.5" /> Preencher</Button>
+                            </div>
+                          )}
+                          {objetoSelId && (
+                            <Button size="sm" variant="ghost" className="col-span-2 w-full justify-start text-red-500 hover:text-red-600 text-[11px] gap-2" onClick={apagarObjetoSel} title="Apagar objeto selecionado">
+                              <Trash2 className="size-3.5 text-destructive" /> Apagar objeto
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* DXF e KML lado a lado */}
+                        <div className="grid grid-cols-2 gap-1 mt-1">
+                          <div className={`flex items-center justify-between rounded-md border px-1.5 py-0.5 ${COR_IMPORT}`}>
+                            <span className="text-[9px] font-bold shrink-0">DXF</span>
+                            <div className="flex gap-0.5">
+                              <Button size="sm" variant="ghost" className="size-7 p-0" title="Exportar DXF" onClick={exportarDxf}><Download className="size-3.5" /></Button>
+                              <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Importar DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-3.5" /></Button>
+                            </div>
+                          </div>
+                          <div className={`flex items-center justify-between rounded-md border px-2 py-0.5 ${COR_IMPORT}`}>
+                            <span className="text-[9px] font-bold shrink-0">KML</span>
+                            <Button size="sm" variant="ghost" className="size-7 p-0" title="Exportar KML" onClick={() => exportarKML(vertices, imovel)}><Download className="size-3.5" /></Button>
+                          </div>
+                        </div>
+
+                        {/* Situação */}
+                        {(() => {
+                          const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
+                          const cor = !situacaoUrl || stale ? 'text-amber-600 border-amber-500/40 hover:bg-amber-500 hover:text-white' : 'text-emerald-600 border-emerald-600/40 hover:bg-emerald-600 hover:text-white';
+                          return (
+                            <Button size="sm" variant="outline" className={`w-full justify-start gap-2 h-9 mt-1 ${cor}`} title={!situacaoUrl ? 'Capturar planta de situação' : stale ? 'Situação desatualizada' : 'Situação pronta'} onClick={gerarSituacaoPlanta}>
+                              <Camera className="size-4" /> <span className="text-[11px] font-semibold">{!situacaoUrl ? 'Capturar situação' : stale ? 'Atualizar situação' : 'Situação pronta'}</span>
+                            </Button>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      /* Coluna única para barra colapsada */
+                      <div className="flex flex-col gap-0.5 [&>button]:size-9 [&>button]:p-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&_svg]:size-4">
+                        <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta (F6)"><PenTool /></Button>
+                        <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha (F7)"><PenTool /></Button>
+                        <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado (F8)"><PenTool className="opacity-70" /></Button>
+                        <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar (F10)"><RotateCcw className="rotate-90" /></Button>
+                        <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto (F9)"><FileText /></Button>
+                        <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
+                        <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice"><Plus /></Button>
+                        <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /></Button>
+                        <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('considerar'); }} title="Considerar (F11)"><Plus /></Button>
+                        <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice"><Trash2 /></Button>
+                        <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => { setModo('medir'); setDesenhoBuffer([]); }} title="Medir / Régula"><Ruler /></Button>
+                        <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('multi'); }} title="Selecionar vários">
+                          <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
+                            <circle cx="12" cy="5" r="2.4" fill="currentColor" />
+                            <circle cx="5" cy="18" r="2.4" fill="currentColor" />
+                            <circle cx="19" cy="18" r="2.4" fill="currentColor" />
+                          </svg>
+                        </Button>
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -2737,8 +2787,9 @@ export default function EditorPage() {
 
 
           {vista === 'mapa' ? (
-              <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
+               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                 confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
+                zona={zona} hemisferio={hemisferio}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}

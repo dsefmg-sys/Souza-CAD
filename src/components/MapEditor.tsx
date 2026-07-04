@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
+import { Ruler } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho, Confrontante } from '@/lib/topo/types';
@@ -8,9 +9,10 @@ import { distanciaCota } from '@/lib/topo/objetos';
 import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { corDivisa, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
-import { numBR } from '@/lib/topo/geometry';
+import { numBR, azimute, distancia, azimuteDMS } from '@/lib/topo/geometry';
+import { geoParaUtm } from '@/lib/topo/coords';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
@@ -68,6 +70,8 @@ interface Props {
   confrontantes?: Confrontante[];
   confrontantePorLado?: Record<number, string>;
   onEditarConfrontante?: (id: string) => void;
+  zona?: number;
+  hemisferio?: 'N' | 'S';
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -244,14 +248,14 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
   useMapEvents({
     click(e) {
       if (modo === 'inserir') onInserir(e.latlng.lat, e.latlng.lng);
-      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'simbolo') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
+      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'simbolo' || modo === 'medir') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
     },
     dblclick(e) {
       // duplo clique abre o editor de texto (não dá zoom — doubleClickZoom desligado)
       onDblClick?.(e.latlng.lat, e.latlng.lng);
     },
     contextmenu(e) {
-      if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto') {
+      if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'medir') {
         e.originalEvent.preventDefault();
         onCancelDesenho?.();
       }
@@ -285,9 +289,22 @@ export default function MapEditor(props: Props) {
     realceId = null,
     confrontantes = [],
     confrontantePorLado = {},
+    zona = 23,
+    hemisferio = 'S',
   } = props;
 
   const [zoom, setZoom] = useState(16);
+  const [cursorLatLng, setCursorLatLng] = useState<L.LatLng | null>(null);
+
+  useMapEvents({
+    mousemove(e) { if (modo === 'medir') setCursorLatLng(e.latlng); },
+    mouseout() { setCursorLatLng(null); }
+  });
+
+  useEffect(() => {
+    if (modo !== 'medir') setCursorLatLng(null);
+  }, [modo]);
+
   // rótulos acompanham o zoom nos DOIS sentidos: encolhem ao afastar (não tampam o desenho) e
   // crescem ao aproximar. Antes ficavam travados em 1x ao afastar, e os blocos ficavam enormes.
   const fzZoom = Math.min(2.2, Math.max(0.6, 1 + (zoom - 16) * 0.2));
@@ -640,6 +657,108 @@ export default function MapEditor(props: Props) {
           }}
         />
       ))}
+
+      {/* Régua / Medições no Mapa */}
+      {modo === 'medir' && (() => {
+        const segmentOverlays = [];
+        let distanciaTotal = 0;
+
+        for (let i = 0; i < desenhoAtual.length - 1; i++) {
+          const ptA = desenhoAtual[i];
+          const ptB = desenhoAtual[i + 1];
+          const mid: [number, number] = [(ptA[0] + ptB[0]) / 2, (ptA[1] + ptB[1]) / 2];
+
+          const utmA = geoParaUtm(ptA[0], ptA[1], zona, hemisferio);
+          const utmB = geoParaUtm(ptB[0], ptB[1], zona, hemisferio);
+          const distSeg = distancia({ e: utmA.leste, n: utmA.norte }, { e: utmB.leste, n: utmB.norte });
+          const azSeg = azimute({ e: utmA.leste, n: utmA.norte }, { e: utmB.leste, n: utmB.norte });
+
+          distanciaTotal += distSeg;
+
+          segmentOverlays.push(
+            <Marker key={`ruler-seg-${i}`} position={mid} interactive={false}
+              icon={L.divIcon({ className: 'bg-transparent border-0', html: '', iconSize: [1, 1] })}>
+              <Tooltip permanent direction="center" className="no-print font-bold text-[10px] bg-background/90 text-foreground border border-blue-500 px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+                <span>{numBR(distSeg, 2)}m | {azimuteDMS(azSeg)}</span>
+              </Tooltip>
+            </Marker>
+          );
+        }
+
+        let cursorOverlay = null;
+        if (desenhoAtual.length > 0 && cursorLatLng) {
+          const lastPt = desenhoAtual[desenhoAtual.length - 1];
+          const ptCursor = [cursorLatLng.lat, cursorLatLng.lng] as [number, number];
+          const midCursor: [number, number] = [(lastPt[0] + ptCursor[0]) / 2, (lastPt[1] + ptCursor[1]) / 2];
+
+          const utmLast = geoParaUtm(lastPt[0], lastPt[1], zona, hemisferio);
+          const utmCursor = geoParaUtm(ptCursor[0], ptCursor[1], zona, hemisferio);
+          const distCursor = distancia({ e: utmLast.leste, n: utmLast.norte }, { e: utmCursor.leste, n: utmCursor.norte });
+          const azCursor = azimute({ e: utmLast.leste, n: utmLast.norte }, { e: utmCursor.leste, n: utmCursor.norte });
+
+          cursorOverlay = (
+            <>
+              <Polyline positions={[lastPt, ptCursor]} pathOptions={{ color: '#f59e0b', weight: 1.5, dashArray: '3 3' }} />
+              <Marker position={midCursor} interactive={false}
+                icon={L.divIcon({ className: 'bg-transparent border-0', html: '', iconSize: [1, 1] })}>
+                <Tooltip permanent direction="center" className="no-print font-medium text-[9px] bg-amber-500/90 text-white border border-amber-600 px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+                  <span>{numBR(distCursor, 2)}m | {azimuteDMS(azCursor)}</span>
+                </Tooltip>
+              </Marker>
+            </>
+          );
+        }
+
+        return (
+          <>
+            {segmentOverlays}
+            {cursorOverlay}
+          </>
+        );
+      })()}
+
+      {/* Painel da Régua de Medição */}
+      {modo === 'medir' && (() => {
+        let totalDist = 0;
+        for (let i = 0; i < desenhoAtual.length - 1; i++) {
+          const ptA = desenhoAtual[i];
+          const ptB = desenhoAtual[i + 1];
+          const utmA = geoParaUtm(ptA[0], ptA[1], zona, hemisferio);
+          const utmB = geoParaUtm(ptB[0], ptB[1], zona, hemisferio);
+          totalDist += distancia({ e: utmA.leste, n: utmA.norte }, { e: utmB.leste, n: utmB.norte });
+        }
+
+        return (
+          <div className="absolute bottom-6 left-2 z-[1000] w-64 rounded-xl border border-blue-500/30 bg-background/95 p-3 text-xs shadow-2xl backdrop-blur">
+            <div className="flex items-center justify-between border-b pb-1.5 mb-2">
+              <span className="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                <Ruler className="size-4" /> Régua de Medição
+              </span>
+              <button type="button" onClick={onCancelDesenho} className="font-bold hover:text-red-500 text-muted-foreground uppercase text-[10px]">
+                Limpar
+              </button>
+            </div>
+            
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-baseline">
+                <span className="text-muted-foreground">Distância Total:</span>
+                <span className="text-base font-bold font-mono">{numBR(totalDist, 2)} m</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pontos marcados:</span>
+                <span className="font-bold font-mono">{desenhoAtual.length}</span>
+              </div>
+              
+              <div className="my-1.5 h-px bg-border/60" />
+              
+              <p className="text-[10px] leading-snug text-muted-foreground">
+                <strong>Como usar:</strong> Clique em pontos do mapa para medir distâncias e azimutes. Use o clique com botão direito ou pressione <strong>Esc</strong> para desfazer o último ponto ou fechar.
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Legenda de cores dos confrontantes (só os já aplicados em algum lado) */}
       {confrontantePorLado && confrontantes && (() => {
