@@ -36,3 +36,11 @@
   - `[x]` Atualizar endpoint backend de IA para processar PDFs/imagens com Gemini 1.5 Flash
 - `[x]` 9. Pan na Planta com Botão do Meio
   - `[x]` Segurar botão do meio do mouse (PointerEvent button 1) arrasta prancha/folha temporariamente mesmo com moldura travada
+- `[x]` 10. Simplificação do Painel Lateral de Dados
+  - `[x]` Remover título "Dados do Projeto" e link do "Banco de Cadastros" para otimizar altura útil
+- `[/]` 11. Refinamento de Elementos de Zoom, Rótulos e Alinhamentos
+  - `[x]` Adicionar indicador visual de escala em tempo real na tela durante o zoom
+  - `[x]` Centralizar e alinhar horizontalmente o Diagrama de Convergência no carimbo
+  - `[x]` Reorganizar barra lateral esquerda em cartões temáticos estruturados
+  - `[x]` Modal dedicado para seleção e salvamento de modelos de títulos da planta
+  - `[/]` Otimizar redimensionamento inteligente dos rótulos de vértices e assinaturas ao alternar zooms

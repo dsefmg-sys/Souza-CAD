@@ -644,8 +644,8 @@ export default function MapEditor(props: Props) {
           eventHandlers={{ click() { if (modo === 'considerar') onConsiderarVertice?.(v.id); } }} />
       ))}
 
-      {/* rótulos dos vértices (caixinha branca; arrastáveis com a ferramenta mover/F5) */}
-      {mostrarRotulos && validos.map((v, i) => (
+      {/* rótulos dos vértices (caixinha branca; arrastáveis com a ferramenta mover/F5; ocultação adaptativa para evitar poluição visual) */}
+      {(mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => (
         <Marker
           key={`nome${v.id}`}
           position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}

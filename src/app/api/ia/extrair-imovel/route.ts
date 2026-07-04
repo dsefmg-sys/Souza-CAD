@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 // Roda NO SERVIDOR: a chave (GOOGLE_GENAI_API_KEY) nunca vai para o navegador.
 export const runtime = 'nodejs';
 
-const MODELO = 'gemini-2.5-flash';
+const MODELO = 'gemini-1.5-flash';
 
 export async function POST(req: Request) {
   const key = process.env.GOOGLE_GENAI_API_KEY;

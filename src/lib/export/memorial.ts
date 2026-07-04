@@ -226,10 +226,18 @@ const OBSERVACOES =
   '2. A planta anexa é parte integrante deste memorial descritivo.';
 
 function p(text: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; size?: number } = {}) {
+  const lines = (text || '').split('\n');
+  const runChildren: TextRun[] = [];
+  lines.forEach((line, index) => {
+    if (index > 0) {
+      runChildren.push(new TextRun({ break: 1 }));
+    }
+    runChildren.push(new TextRun({ text: line, bold: opts.bold, size: opts.size ?? 22 }));
+  });
   return new Paragraph({
     alignment: opts.align ?? AlignmentType.JUSTIFIED,
     spacing: { after: 120 },
-    children: [new TextRun({ text, bold: opts.bold, size: opts.size ?? 22 })],
+    children: runChildren,
   });
 }
 

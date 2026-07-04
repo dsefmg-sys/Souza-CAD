@@ -11,6 +11,9 @@ import { distanciaCota } from '@/lib/topo/objetos';
 import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import type { ObjetoDesenho } from '@/lib/topo/types';
 
+import { Button } from '@/components/ui/button';
+import { Pencil, X, Save, Trash2 } from 'lucide-react';
+
 interface Props {
   vertices: Vertex[];
   res: ResultadoCalculo;
@@ -232,7 +235,7 @@ export default function Planta({
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
-  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number }>(null);
+  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number }>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
   // Arraste suave: em vez de atualizar o estado a cada micro-movimento do mouse (que redesenha o
   // SVG inteiro e trava), juntamos as atualizações e aplicamos no máximo uma por quadro de tela.
@@ -254,15 +257,53 @@ export default function Planta({
   };
   const [guiaAlinhamento, setGuiaAlinhamento] = useState<{ x?: number; y?: number } | null>(null);
 
+  const [escalaMudouToast, setEscalaMudouToast] = useState(false);
+  const [escalaSalvaToast, setEscalaSalvaToast] = useState(0);
+
+  const [modalTituloAberto, setModalTituloAberto] = useState(false);
+  const [tempTitulo, setTempTitulo] = useState('');
+  const [titulosSalvos, setTitulosSalvos] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('metrica:titulos-salvos');
+      if (saved) {
+        try { setTitulosSalvos(JSON.parse(saved)); } catch (e) { /* ignore */ }
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (modalTituloAberto) {
+      const atual = config.textos?.['carimbo.titulo']?.texto ?? config.titulo ?? 'Levantamento Planimétrico Georreferenciado';
+      setTempTitulo(atual.toUpperCase());
+    }
+  }, [modalTituloAberto, config.textos, config.titulo]);
+
+  const salvarTituloCustom = (t: string) => {
+    const novo = t.toUpperCase().trim();
+    if (!novo || titulosSalvos.includes(novo)) return;
+    const lista = [...titulosSalvos, novo];
+    setTitulosSalvos(lista);
+    localStorage.setItem('metrica:titulos-salvos', JSON.stringify(lista));
+  };
+
+  const excluirTituloCustom = (t: string) => {
+    const lista = titulosSalvos.filter((x) => x !== t);
+    setTitulosSalvos(lista);
+    localStorage.setItem('metrica:titulos-salvos', JSON.stringify(lista));
+  };
+
+
   // Estado para arrasto fluído/suave (evita recálculos geográficos pesados em tempo real)
   const [dragTemp, setDragTemp] = useState<{
-    kind: 'rotConf' | 'rotVert' | 'ted' | 'divisaConf';
+    kind: 'rotConf' | 'rotVert' | 'ted' | 'divisaConf' | 'folha' | 'objPonto';
     id: string;
     dx: number;
     dy: number;
-    baseX: number;
-    baseY: number;
-    absX?: number; // centro absoluto do elemento no início do arraste (para snap às referências)
+    baseX?: number;
+    baseY?: number;
+    absX?: number;
     absY?: number;
   } | null>(null);
   // guias de alinhamento coloridas mostradas durante o arraste de um elemento
@@ -318,6 +359,19 @@ export default function Planta({
   const offY = DRAW.y0 + (areaH - desH) / 2 + (config.offsetY ?? 0);
   const sx = (e: number) => offX + (e - minX) * escala;
   const sy = (n: number) => offY + (maxY - n) * escala;
+
+  useEffect(() => {
+    if (escalaSalvaToast === 0) {
+      setEscalaSalvaToast(escalaDenom);
+      return;
+    }
+    if (escalaDenom !== escalaSalvaToast) {
+      setEscalaSalvaToast(escalaDenom);
+      setEscalaMudouToast(true);
+      const timer = setTimeout(() => setEscalaMudouToast(false), 1400);
+      return () => clearTimeout(timer);
+    }
+  }, [escalaDenom, escalaSalvaToast]);
 
   const eMin = minX + (DRAW.x0 - 200 - offX) / escala;
   const eMax = minX + (DRAW.x1 + 200 - offX) / escala;
@@ -457,15 +511,20 @@ export default function Planta({
 
   const getOverride = (id: string) => {
     const base = textosOv[id] || {};
-    if (dragTemp && dragTemp.id === id) {
-      if (id.startsWith('vert.')) {
-        return { ...base, dx: dragTemp.dx, dy: dragTemp.dy };
+    const d = dragRef.current;
+    if (d) {
+      const isDragVert = d.kind === 'rotVert' && id === `vert.${d.id}`;
+      const isDragTed = d.kind === 'ted' && d.id === id;
+      if (isDragVert) {
+        return { ...base, dx: d.dx ?? 0, dy: d.dy ?? 0 };
       }
-      return { ...base, dx: dragTemp.baseX + dragTemp.dx, dy: dragTemp.baseY + dragTemp.dy };
-    }
-    // arrastando um item da seleção múltipla: os OUTROS selecionados acompanham o mesmo delta
-    if (dragTemp && dragTemp.kind === 'ted' && multiSel.has(id) && multiSel.has(dragTemp.id)) {
-      return { ...base, dx: (base.dx ?? 0) + dragTemp.dx, dy: (base.dy ?? 0) + dragTemp.dy };
+      if (isDragTed) {
+        return { ...base, dx: (d.baseX ?? 0) + (d.dx ?? 0), dy: (d.baseY ?? 0) + (d.dy ?? 0) };
+      }
+      // arrastando um item da seleção múltipla: os OUTROS selecionados acompanham o mesmo delta
+      if (d.kind === 'ted' && multiSel.has(id) && multiSel.has(d.id)) {
+        return { ...base, dx: (base.dx ?? 0) + (d.dx ?? 0), dy: (base.dy ?? 0) + (d.dy ?? 0) };
+      }
     }
     return base;
   };
@@ -489,9 +548,9 @@ export default function Planta({
       const u = svgPonto(e); if (!u) return;
       if (id.startsWith('vert.')) {
         const vId = id.slice(5);
-        dragRef.current = { kind: 'rotVert', id: vId };
         const rv = rotuloVert.find((x) => x.v.id === vId);
-        if (rv) setDragTemp({ kind: 'rotVert', id: vId, dx: 0, dy: 0, baseX: rv.x, baseY: rv.y });
+        dragRef.current = { kind: 'rotVert', id: vId, dx: 0, dy: 0, baseX: rv?.x ?? 0, baseY: rv?.y ?? 0 };
+        setDragTemp({ kind: 'rotVert', id: vId, dx: 0, dy: 0 });
       } else {
         // Ctrl/Cmd+clique: adiciona/remove da seleção múltipla (não arrasta ainda)
         if (e.ctrlKey || e.metaKey) {
@@ -501,7 +560,6 @@ export default function Planta({
         // clique simples num item fora da seleção múltipla limpa a seleção
         if (multiSel.size && !multiSel.has(id)) setMultiSel(new Set());
         const ov = textosOv[id];
-        dragRef.current = { kind: 'ted', id, dx: ov?.dx ?? 0, dy: ov?.dy ?? 0 };
         // centro absoluto do elemento (para alinhar às referências do desenho)
         let absX: number | undefined, absY: number | undefined;
         try {
@@ -509,7 +567,8 @@ export default function Planta({
           const bb = el?.getBBox();
           if (bb) { absX = bb.x + bb.width / 2; absY = bb.y + bb.height / 2; }
         } catch { /* getBBox pode falhar em elemento vazio */ }
-        setDragTemp({ kind: 'ted', id, dx: 0, dy: 0, baseX: ov?.dx ?? 0, baseY: ov?.dy ?? 0, absX, absY });
+        dragRef.current = { kind: 'ted', id, dx: 0, dy: 0, baseX: ov?.dx ?? 0, baseY: ov?.dy ?? 0, absX, absY };
+        setDragTemp({ kind: 'ted', id, dx: 0, dy: 0 });
       }
       folhaLast.current = u;
       captura(e);
@@ -539,9 +598,10 @@ export default function Planta({
   function plantaDown(e: ReactPointerEvent) {
     if (!editavel) return;
     if (e.button === 1) {
+      e.preventDefault(); // Impede o auto-scroll nativo do botão do meio do mouse
       const u = svgPonto(e);
       if (u) {
-        dragRef.current = { kind: 'folha', id: 'middle-pan' };
+        dragRef.current = { kind: 'folha', id: 'middle-pan', dx: 0, dy: 0 };
         folhaLast.current = u;
         captura(e);
       }
@@ -558,14 +618,14 @@ export default function Planta({
     for (const o of objetos) {
       for (let i = 0; i < o.pontos.length; i++) {
         if (Math.hypot(sx(o.pontos[i].leste) - u.x, sy(o.pontos[i].norte) - u.y) < 7) {
-          dragRef.current = { kind: 'objPonto', id: o.id, idx: i }; onSelecObjeto?.(o.id); captura(e); return;
+          dragRef.current = { kind: 'objPonto', id: o.id, idx: i, dx: 0, dy: 0 }; onSelecObjeto?.(o.id); captura(e); return;
         }
       }
     }
     // clique/arrasto no vazio: desseleciona e permite reposicionar a FOLHA inteira (se destravada)
     onSelecObjeto?.(null);
     if (!folhaTravada) {
-      dragRef.current = { kind: 'folha', id: '' };
+      dragRef.current = { kind: 'folha', id: '', dx: 0, dy: 0 };
       folhaLast.current = u;
       captura(e);
     }
@@ -579,12 +639,16 @@ export default function Planta({
       folhaLast.current = u;
       return;
     }
-    if (folhaLast.current && dragTemp) {
+    if (folhaLast.current) {
       let dx = u.x - folhaLast.current.x;
       let dy = u.y - folhaLast.current.y;
+      
+      d.dx = dx;
+      d.dy = dy;
+
       const guias: { x?: number; y?: number; cor: string }[] = [];
 
-      if (d.kind === 'ted' && dragTemp.absX != null && dragTemp.absY != null) {
+      if (d.kind === 'ted' && d.absX != null && d.absY != null) {
         const SNAP = 6, MARG = 24;
         const xs = anel.map((p) => p.x), ys = anel.map((p) => p.y);
         const pMinX = Math.min(...xs), pMaxX = Math.max(...xs), pCx = xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -606,11 +670,11 @@ export default function Planta({
           { pos: pMinY, cor: '#eab308' }, { pos: pMaxY, cor: '#eab308' },
           { pos: pCy, cor: '#f97316' },
         ];
-        const curX = dragTemp.absX + dx, curY = dragTemp.absY + dy;
+        const curX = d.absX + dx, curY = d.absY + dy;
         const hitX = refX.find((r) => Math.abs(curX - r.pos) < SNAP);
-        if (hitX) { dx = hitX.pos - dragTemp.absX; guias.push({ x: hitX.pos, cor: hitX.cor }); }
+        if (hitX) { dx = hitX.pos - d.absX; d.dx = dx; guias.push({ x: hitX.pos, cor: hitX.cor }); }
         const hitY = refY.find((r) => Math.abs(curY - r.pos) < SNAP);
-        if (hitY) { dy = hitY.pos - dragTemp.absY; guias.push({ y: hitY.pos, cor: hitY.cor }); }
+        if (hitY) { dy = hitY.pos - d.absY; d.dy = dy; guias.push({ y: hitY.pos, cor: hitY.cor }); }
       }
 
       // coalesce por quadro de tela: no máximo um re-render por frame → arraste suave
@@ -619,7 +683,7 @@ export default function Planta({
         dragRaf.current = requestAnimationFrame(() => {
           dragRaf.current = null;
           const p = dragPending.current; if (!p) return;
-          setDragTemp((prev) => prev ? { ...prev, dx: p.dx, dy: p.dy } : null);
+          setDragTemp({ kind: d.kind, id: d.id, dx: p.dx, dy: p.dy });
           setGuias(p.guias ?? []);
         });
       }
@@ -634,27 +698,27 @@ export default function Planta({
     if (dragRaf.current != null) { cancelAnimationFrame(dragRaf.current); dragRaf.current = null; }
     const pend = dragPending.current; dragPending.current = null;
     setGuias([]);
-    if (dragTemp && dragRef.current) {
+    if (dragRef.current) {
       const d = dragRef.current;
-      let finalX = dragTemp.baseX + (pend ? pend.dx : dragTemp.dx);
-      let finalY = dragTemp.baseY + (pend ? pend.dy : dragTemp.dy);
+      const dxFinal = pend ? pend.dx : (d.dx ?? 0);
+      const dyFinal = pend ? pend.dy : (d.dy ?? 0);
+      let finalX = (d.baseX ?? 0) + dxFinal;
+      let finalY = (d.baseY ?? 0) + dyFinal;
       if (d.kind === 'ted') {
         // Item de DESENHO (texto/cota/linha que o usuário adicionou) solto com o cursor FORA da
         // folha A3 é EXCLUÍDO. Textos do carimbo e rótulos de vértice/confrontante não são objetos,
         // então ficam protegidos.
         const drop = svgPonto(e);
-        const ehObjeto = objetos.some((o) => o.id === dragTemp.id);
+        const ehObjeto = objetos.some((o) => o.id === d.id);
         const foraDaFolha = !!drop && (drop.x < 0 || drop.y < 0 || drop.x > W || drop.y > H);
-        if (ehObjeto && foraDaFolha && onExcluirObjeto) onExcluirObjeto(dragTemp.id);
-        else if (multiSel.has(dragTemp.id) && multiSel.size > 1) {
+        if (ehObjeto && foraDaFolha && onExcluirObjeto) onExcluirObjeto(d.id);
+        else if (multiSel.has(d.id) && multiSel.size > 1) {
           // move TODOS os selecionados pelo mesmo delta (cada um a partir do seu offset salvo)
-          const delDx = (pend ? pend.dx : dragTemp.dx);
-          const delDy = (pend ? pend.dy : dragTemp.dy);
           for (const id of multiSel) {
             const b = textosOv[id] || {};
-            onTextoMover?.(id, (b.dx ?? 0) + delDx, (b.dy ?? 0) + delDy);
+            onTextoMover?.(id, (b.dx ?? 0) + dxFinal, (b.dy ?? 0) + dyFinal);
           }
-        } else onTextoMover?.(dragTemp.id, finalX, finalY);
+        } else onTextoMover?.(d.id, finalX, finalY);
       } else if (d.kind === 'divisaConf' && d.vx != null && d.vy != null) {
         // a ponta não pode sair do quadro do desenho
         finalX = Math.max(DRAW.x0, Math.min(DRAW.x1, finalX));
@@ -663,11 +727,11 @@ export default function Planta({
         const ddx = finalX - d.vx, ddy = finalY - d.vy;
         let az = (Math.atan2(ddx, -ddy) * 180) / Math.PI; if (az < 0) az += 360;
         const len = Math.min(400, Math.max(15, Math.hypot(ddx, ddy)));
-        onAjustarDivisaConf?.(dragTemp.id, +az.toFixed(1), +len.toFixed(0));
+        onAjustarDivisaConf?.(d.id, +az.toFixed(1), +len.toFixed(0));
       } else {
         const g = paraGeo({ x: finalX, y: finalY });
-        if (d.kind === 'rotConf') onMoverRotuloConf?.(dragTemp.id, g.lat, g.lon);
-        else if (d.kind === 'rotVert') onMoverRotuloVertice?.(dragTemp.id, g.lat, g.lon);
+        if (d.kind === 'rotConf') onMoverRotuloConf?.(d.id, g.lat, g.lon);
+        else if (d.kind === 'rotVert') onMoverRotuloVertice?.(d.id, g.lat, g.lon);
       }
     }
     dragRef.current = null;
@@ -703,10 +767,11 @@ export default function Planta({
   const rotY = rotuloGrade(linhasY, sy, DRAW.y0, DRAW.y1);
 
   return (
-    <svg ref={svgRef} id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%" height="100%"
-      style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'crosshair') : 'default', touchAction: editavel ? 'none' : undefined }}
-      onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
-      xmlns="http://www.w3.org/2000/svg">
+    <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+      <svg ref={svgRef} id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%" height="100%"
+        style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'crosshair') : 'default', touchAction: editavel ? 'none' : undefined }}
+        onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
+        xmlns="http://www.w3.org/2000/svg">
       {/* padrões de hachura pro preenchimento do polígono (escolhidos no painel, na cor do perímetro) */}
       {(() => {
         const cor = config.corPoligono || '#334155';
@@ -1119,8 +1184,8 @@ export default function Planta({
           const a = (az * Math.PI) / 180;
           // a ponta NÃO pode sair do quadro do desenho (clamp em DRAW)
           const cl = (val: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, val));
-          const ex = cl(arrastando ? dragTemp.baseX + dragTemp.dx : vx + Math.sin(a) * len, DRAW.x0, DRAW.x1);
-          const ey = cl(arrastando ? dragTemp.baseY + dragTemp.dy : vy - Math.cos(a) * len, DRAW.y0, DRAW.y1);
+          const ex = cl(arrastando ? (dragTemp.baseX ?? 0) + dragTemp.dx : vx + Math.sin(a) * len, DRAW.x0, DRAW.x1);
+          const ey = cl(arrastando ? (dragTemp.baseY ?? 0) + dragTemp.dy : vy - Math.cos(a) * len, DRAW.y0, DRAW.y1);
           return (
             <g key={`dc${v.id}`}>
               <line x1={vx} y1={vy} x2={ex} y2={ey} stroke="#475569" strokeWidth={0.6} strokeDasharray="4 3" />
@@ -1380,8 +1445,13 @@ export default function Planta({
           textos: new Proxy(textosOv, { get: (target, prop) => typeof prop === 'string' ? getOverride(prop) : undefined }),
           onEditar: onTextoEditar,
           onMenu: onTextoMenu,
-          editandoId,
-          onStartEdit: (id) => setEditandoId(id),
+          onStartEdit: (id) => {
+            if (id === 'carimbo.titulo') {
+              setModalTituloAberto(true);
+            } else {
+              setEditandoId(id);
+            }
+          },
           onTerminarEditar: terminarEdicao,
           onDragStart: tedComum.onDragStart,
           selecionadoId,
@@ -1401,7 +1471,143 @@ export default function Planta({
         </g>
       )}
     </svg>
-  );
+    {escalaMudouToast && (
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[3000] pointer-events-none bg-indigo-600/90 text-white font-bold px-4 py-2 rounded-full shadow-lg backdrop-blur text-xs flex items-center gap-1.5 transition-all duration-300 animate-in fade-in slide-in-from-top-2">
+        <span className="opacity-80">Escala:</span> 1 : {escalaDenom}
+      </div>
+    )}
+    {modalTituloAberto && (
+      <div className="absolute inset-0 z-[4000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div 
+          className="flex flex-col w-[620px] max-h-[85vh] bg-background rounded-xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+          style={{ fontFamily: 'sans-serif' }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between bg-slate-800 px-4 py-3 text-white">
+            <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+              <Pencil className="size-4" /> Personalizar Título da Planta
+            </span>
+            <button 
+              type="button" 
+              className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1"
+              onClick={() => setModalTituloAberto(false)}
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <div className="flex flex-col p-4 gap-4 overflow-y-auto min-h-0">
+            {/* Input e Ação de Salvar */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground text-left">Título Atual (Edição Livre):</label>
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  type="text"
+                  className="flex-1 h-10 border border-input rounded-md bg-background px-3 text-xs text-foreground focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none uppercase font-bold"
+                  placeholder="DIGITE O TÍTULO PERSONALIZADO..."
+                  value={tempTitulo}
+                  onChange={(e) => setTempTitulo(e.target.value.toUpperCase())}
+                />
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-10 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 gap-1 shrink-0"
+                  onClick={() => {
+                    if (tempTitulo.trim()) {
+                      salvarTituloCustom(tempTitulo);
+                      alert('Título salvo nos seus modelos de uso rápido!');
+                    }
+                  }}
+                >
+                  <Save className="size-3.5" /> Salvar Modelo
+                </Button>
+              </div>
+            </div>
+
+            {/* Listagem de Modelos de Uso Rápido */}
+            <div className="flex flex-col gap-3 min-h-0 flex-1">
+              {/* Meus Modelos */}
+              {titulosSalvos.length > 0 && (
+                <div className="flex flex-col gap-1.5 text-left">
+                  <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400">Meus Modelos Salvos ({titulosSalvos.length})</span>
+                  <div className="flex flex-col gap-1 max-h-[140px] overflow-y-auto border rounded-md p-1.5 bg-muted/20">
+                    {titulosSalvos.map((t) => (
+                      <div key={t} className="group flex items-center justify-between gap-2 p-1.5 rounded hover:bg-muted text-left transition-all">
+                        <button
+                          type="button"
+                          className="flex-1 text-left text-[11px] font-bold text-foreground"
+                          onClick={() => setTempTitulo(t)}
+                        >
+                          {t}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-red-500 p-0.5"
+                          onClick={() => excluirTituloCustom(t)}
+                          title="Excluir este modelo"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Modelos Padrão */}
+              <div className="flex flex-col gap-1.5 min-h-0 flex-1 text-left">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground">Modelos Padrão (Agrimensura & Cartório)</span>
+                <div className="flex-1 overflow-y-auto border rounded-md divide-y bg-muted/10">
+                  {TITULOS_EDUCATIVOS.map((item) => {
+                    const sel = tempTitulo === item.titulo;
+                    return (
+                      <button
+                        key={item.titulo}
+                        type="button"
+                        className={`w-full text-left p-2.5 flex flex-col gap-1 hover:bg-muted transition-all ${sel ? 'bg-indigo-500/10 border-l-2 border-indigo-500' : ''}`}
+                        onClick={() => setTempTitulo(item.titulo)}
+                      >
+                        <span className={`text-[11px] font-bold uppercase ${sel ? 'text-indigo-600 dark:text-indigo-400' : 'text-foreground'}`}>
+                          {item.titulo}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground leading-relaxed font-medium">
+                          {item.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-2 bg-muted/30 border-t px-4 py-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => setModalTituloAberto(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+              onClick={() => {
+                onTextoEditar?.('carimbo.titulo', tempTitulo);
+                setModalTituloAberto(false);
+              }}
+            >
+              Confirmar Título
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+);
 }
 
 // ---------------- Faixa inferior reformulada com caixas fechadas ----------------
@@ -1542,16 +1748,16 @@ function FaixaInferior(props: {
               {verNortes && bloco('coord.diagrama', (
                 <g onContextMenu={coordEditavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloDiagrama', 2); } : undefined}>
                   {/* área transparente de captura: sem ela, só as linhas finas pegavam o arraste */}
-                  <rect x={x3 + 40} y={y0 + 100} width={72} height={94} fill="transparent" />
-                  <Nortes cx={x3 + 75} cy={y0 + 148} conv={conv} decl={decl} fs={fs} variante={estiloDiagrama} />
+                  <rect x={x3 + 38} y={y0 + 130} width={74} height={60} fill="transparent" />
+                  <Nortes cx={x3 + 75} cy={y0 + 164} conv={conv} decl={decl} fs={fs} variante={estiloDiagrama} />
                 </g>
               ))}
               {/* rótulo do diagrama — bloco SEPARADO, move livre do diagrama */}
               {verNortes && bloco('coord.diagramaTitulo', (
                 <g>
-                  <rect x={x3 + 116} y={y0 + 136} width={80} height={26} fill="transparent" />
-                  <text x={x3 + 122} y={y0 + 145} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Diagrama de</text>
-                  <text x={x3 + 122} y={y0 + 156} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Convergência</text>
+                  <rect x={x3 + 35} y={y0 + 104} width={80} height={26} fill="transparent" />
+                  <text x={x3 + 75} y={y0 + 114} fontSize={fs(7.5)} fontWeight="bold" fill="#475569" textAnchor="middle">Diagrama de</text>
+                  <text x={x3 + 75} y={y0 + 124} fontSize={fs(7.5)} fontWeight="bold" fill="#475569" textAnchor="middle">Convergência</text>
                 </g>
               ))}
 
@@ -1904,73 +2110,11 @@ function CarimboA3(props: {
             >
               <rect x={lx} y={Y_DADOS} width={wBox} height={hCabTitulo} rx={6} ry={6} fill="#475569" />
               <rect x={lx} y={Y_DADOS + hCabTitulo - 6} width={wBox} height={6} fill="#475569" />
-              {editando ? (() => {
-                const inputW = wBox - 16; // 408px
-                const inputH = 260; // Aumentado para acomodar a explicação sem clipping
-                const selecionado = TITULOS_EDUCATIVOS.find(x => x.titulo === tituloTxt)?.titulo ?? 'OUTRO';
-                const descAtual = TITULOS_EDUCATIVOS.find(x => x.titulo === selecionado)?.desc ?? 'Digite o título personalizado no campo abaixo para o seu projeto.';
-                
-                return (
-                  <foreignObject x={cxc - inputW / 2} y={Y_DADOS + 4} width={inputW} height={inputH} style={{ overflow: 'visible' }}>
-                    <div className="flex flex-col gap-2.5 p-3.5 bg-white dark:bg-slate-950 border-2 border-indigo-500 rounded-lg shadow-2xl text-[11px] text-slate-800 dark:text-slate-100" style={{ fontFamily: 'sans-serif' }}>
-                      <div className="flex items-center justify-between font-bold text-indigo-700 dark:text-indigo-400 text-xs border-b pb-1.5">
-                        <span>MODELOS DE TÍTULOS DE LEVANTAMENTO</span>
-                        <button
-                          type="button"
-                          className="h-6 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-[10px] transition-colors"
-                          onClick={() => ed?.onTerminarEditar?.(idT, tituloTxt)}
-                        >
-                          Confirmar
-                        </button>
-                      </div>
-
-                      <select
-                        className="h-8 w-full border border-input rounded-md bg-background px-2 text-[11px] font-semibold text-foreground focus:ring-1 focus:ring-indigo-500 outline-none"
-                        value={selecionado}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val !== 'OUTRO') {
-                            ed?.onEditar?.(idT, val);
-                          } else {
-                            ed?.onEditar?.(idT, 'LEVANTAMENTO ');
-                          }
-                        }}
-                      >
-                        {TITULOS_EDUCATIVOS.map((item) => (
-                          <option key={item.titulo} value={item.titulo}>{item.titulo}</option>
-                        ))}
-                        <option value="OUTRO">(Título Personalizado...)</option>
-                      </select>
-
-                      {selecionado === 'OUTRO' && (
-                        <input
-                          autoFocus
-                          type="text"
-                          className="h-8 w-full border border-input rounded-md bg-background px-2 text-[11px] text-foreground focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none uppercase font-bold"
-                          placeholder="DIGITE O TÍTULO AQUI..."
-                          value={tituloTxt}
-                          onChange={(e) => ed?.onEditar?.(idT, e.target.value.toUpperCase())}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              ed?.onTerminarEditar?.(idT, tituloTxt);
-                            }
-                          }}
-                        />
-                      )}
-
-                      <div className="rounded-md bg-indigo-50 dark:bg-indigo-950/60 p-2.5 border border-indigo-200 dark:border-indigo-900/60 text-[11px] leading-relaxed text-indigo-950 dark:text-indigo-200 font-medium">
-                        <span className="font-bold text-indigo-700 dark:text-indigo-400">💡 Sugestão do Métrica:</span> {descAtual}
-                      </div>
-                    </div>
-                  </foreignObject>
-                );
-              })() : (
-                <g>
-                  {tituloLinhas.map((ln, k) => (
-                    <text key={k} x={cxc} y={Y_DADOS + (duas ? 19 + k * 18 : 17)} fontSize={fs(10.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
-                  ))}
-                </g>
-              )}
+              <g>
+                {tituloLinhas.map((ln, k) => (
+                  <text key={k} x={cxc} y={Y_DADOS + (duas ? 19 + k * 18 : 17)} fontSize={fs(10.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
+                ))}
+              </g>
             </g>
           );
         })()}
@@ -2001,12 +2145,13 @@ function CarimboA3(props: {
 
           if (ed?.editandoId === idProp) {
             const curWidth = Math.max(160, (ovProp.larguraChars ?? 68) * fs(8.5) * 0.45);
+            const currentFontSize = fsDecl(8.5) * (ovProp.escala ?? 1);
             return (
               <foreignObject x={pxProp - curWidth / 2 - 6} y={pyProp - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
                   autoFocus
-                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1 shadow-md rounded text-[9px]"
-                  style={{ resize: 'both', overflow: 'auto' }}
+                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded text-center"
+                  style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, sans-serif' }}
                   value={txtProp}
                   onChange={(e) => ed.onEditar?.(idProp, e.target.value)}
                   onBlur={(e) => {
@@ -2047,12 +2192,13 @@ function CarimboA3(props: {
 
           if (ed?.editandoId === idLaudo) {
             const curWidth = Math.max(160, (ovLaudo.larguraChars ?? 68) * fs(8.5) * 0.45);
+            const currentFontSize = fsDecl(8.5) * (ovLaudo.escala ?? 1);
             return (
               <foreignObject x={pxLaudo - curWidth / 2 - 6} y={pyLaudo - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
                   autoFocus
-                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1 shadow-md rounded text-[9px]"
-                  style={{ resize: 'both', overflow: 'auto' }}
+                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded text-center"
+                  style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, sans-serif' }}
                   value={txtLaudo}
                   onChange={(e) => ed.onEditar?.(idLaudo, e.target.value)}
                   onBlur={(e) => {
@@ -2093,12 +2239,13 @@ function CarimboA3(props: {
 
           if (ed?.editandoId === idConf) {
             const curWidth = Math.max(160, (ovConf.larguraChars ?? 68) * fs(8.5) * 0.45);
+            const currentFontSize = fsConf(8.5) * (ovConf.escala ?? 1);
             return (
               <foreignObject x={pxConf - curWidth / 2 - 6} y={pyConf - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
                   autoFocus
-                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1 shadow-md rounded text-[9px]"
-                  style={{ resize: 'both', overflow: 'auto' }}
+                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded text-center"
+                  style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, sans-serif' }}
                   value={txtConf}
                   onChange={(e) => ed.onEditar?.(idConf, e.target.value)}
                   onBlur={(e) => {

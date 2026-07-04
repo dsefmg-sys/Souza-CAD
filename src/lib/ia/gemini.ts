@@ -7,7 +7,7 @@
 import { getAI, getGenerativeModel, GoogleAIBackend, type GenerativeModel } from 'firebase/ai';
 import { firebaseApp, firebaseConfigurado } from '../firebase/client';
 
-const MODELO = 'gemini-2.5-flash';
+const MODELO = 'gemini-1.5-flash';
 
 export const IA_FIREBASE_DISPONIVEL = firebaseConfigurado;
 

@@ -2491,7 +2491,7 @@ export default function EditorPage() {
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
         <Etapa st={etapas.errata}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button></Etapa>
-        <Button size="sm" variant="outline" className={`shrink-0 font-semibold ${PREM_BTN} ${COR_PECA}`} disabled={processando} title="Pacote de entrega num clique: memorial, planilha SIGEF, requerimento, errata e planta juntos, num .zip" onClick={baixarPacoteEntrega}><Package /> PACOTE</Button>
+
         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
           <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
         </a>
@@ -2554,154 +2554,151 @@ export default function EditorPage() {
           const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t.toUpperCase()}</span> : null);
           return (
             <>
-              <aside style={{ width: toolW }} className="no-print scroll-fino flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r bg-background p-1 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
-                {/* DADOS E AÇÕES DO PROJETO (Mesclados da barra flutuante) */}
+              <aside style={{ width: toolW }} className="no-print scroll-fino flex shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
+                {/* DADOS E AÇÕES DO PROJETO */}
                 {rotulo ? (
-                  <div className="flex flex-col gap-1.5 mb-1 text-xs">
-                    {/* Card de Informações Resumidas do Levantamento */}
-                    <div className="rounded-lg border bg-muted/30 p-2 space-y-1.5 text-[11px] leading-tight">
-                      <div className="grid grid-cols-2 gap-1.5 border-b pb-1.5">
-                        <div>
-                          <div className="text-[8px] font-medium uppercase text-muted-foreground">Área SGL</div>
-                          <div className="font-bold text-sm text-foreground">{res ? `${numBR(res.areaHa, 4)}` : '—'} <span className="text-[9px] font-normal text-muted-foreground">ha</span></div>
+                  <div className="flex flex-col gap-2 text-xs">
+                    {/* CARD 1: GESTÃO DO PROJETO */}
+                    <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
+                      <span className="text-[9px] font-extrabold uppercase text-muted-foreground tracking-wider pb-1 border-b mb-0.5">Gestão do Projeto</span>
+                      
+                      {/* Card de Informações Resumidas do Levantamento */}
+                      <div className="rounded-lg border bg-muted/30 p-2 space-y-1.5 text-[11px] leading-tight">
+                        <div className="grid grid-cols-2 gap-1.5 border-b pb-1.5">
+                          <div>
+                            <div className="text-[8px] font-medium uppercase text-muted-foreground">Área SGL</div>
+                            <div className="font-bold text-sm text-foreground">{res ? `${numBR(res.areaHa, 4)}` : '—'} <span className="text-[9px] font-normal text-muted-foreground">ha</span></div>
+                          </div>
+                          <div>
+                            <div className="text-[8px] font-medium uppercase text-muted-foreground">Perímetro</div>
+                            <div className="font-bold text-sm text-foreground">{res ? `${numBR(res.perimetro)}` : '—'} <span className="text-[9px] font-normal text-muted-foreground">m</span></div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-[8px] font-medium uppercase text-muted-foreground">Perímetro</div>
-                          <div className="font-bold text-sm text-foreground">{res ? `${numBR(res.perimetro)}` : '—'} <span className="text-[9px] font-normal text-muted-foreground">m</span></div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <div>
+                            <div className="text-[8px] font-medium uppercase text-muted-foreground">Vértices</div>
+                            <div className="font-bold text-foreground">{vertices.length}</div>
+                          </div>
+                          <div>
+                            <div className="text-[8px] font-medium uppercase text-muted-foreground">Fuso</div>
+                            <div className="font-bold text-foreground">{zona}{hemisferio}</div>
+                          </div>
+                          <div>
+                            <div className="text-[8px] font-medium uppercase text-muted-foreground">Status</div>
+                            <div className={`font-bold ${projPronto ? 'text-emerald-600' : 'text-amber-500'}`}>{projPronto ? 'Pronto' : 'Pendente'}</div>
+                          </div>
+                        </div>
+                        {vista === 'mapa' && parcelasCert.length > 0 && (
+                          <div className="border-t pt-1.5 mt-1 space-y-0.5">
+                            <label className="flex cursor-pointer items-center justify-between text-[8px] font-medium uppercase text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <input type="checkbox" className="size-3 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
+                                INCRA ({parcelasCert.length})
+                              </span>
+                              <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} disabled={!mostrarCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-14 accent-cyan-600 align-middle disabled:opacity-40" />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Botões Principais de Gestão do Projeto */}
+                      <div className="flex flex-col gap-1.5 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
+                        <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold h-8' : 'h-8'} onClick={salvar} disabled={processando} title="Salvar o projeto (Ctrl+S)">
+                          <Save className="size-4" /> {L('Salvar')}
+                        </Button>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
+                            <Plus className="size-4 shrink-0 text-amber-500" /> {L('Novo')}
+                          </Button>
+                          <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={`justify-start gap-1.5 px-2 ${infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'}`} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
+                            <FileText className="size-4 shrink-0 text-cyan-500" /> {L('Detalhes')}
+                          </Button>
+                          <Button size="sm" variant={painelAberto ? 'default' : 'outline'} className="justify-start gap-1.5 px-2" onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
+                            <Settings className="size-4 shrink-0 text-indigo-500" /> {L('Dados')}
+                          </Button>
+                          <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={() => setPontosAberto(true)} title="Banco de pontos">
+                            <Database className="size-4 shrink-0 text-emerald-500" /> {L('Pontos')}
+                          </Button>
+                          <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
+                            <Target className="size-4 shrink-0 text-rose-500" /> {L('Foco')}
+                          </Button>
+                          <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
+                            <Info className="size-4 shrink-0 text-sky-500" /> {L('Financeiro')}
+                          </Button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-1">
-                        <div>
-                          <div className="text-[8px] font-medium uppercase text-muted-foreground">Vértices</div>
-                          <div className="font-bold text-foreground">{vertices.length}</div>
-                        </div>
-                        <div>
-                          <div className="text-[8px] font-medium uppercase text-muted-foreground">Fuso</div>
-                          <div className="font-bold text-foreground">{zona}{hemisferio}</div>
-                        </div>
-                        <div>
-                          <div className="text-[8px] font-medium uppercase text-muted-foreground">Status</div>
-                          <div className={`font-bold ${projPronto ? 'text-emerald-600' : 'text-amber-500'}`}>{projPronto ? 'Pronto' : 'Pendente'}</div>
-                        </div>
-                      </div>
-                      {vista === 'mapa' && parcelasCert.length > 0 && (
-                        <div className="border-t pt-1.5 mt-1 space-y-0.5">
-                          <label className="flex cursor-pointer items-center justify-between text-[8px] font-medium uppercase text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <input type="checkbox" className="size-3 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
-                              INCRA ({parcelasCert.length})
-                            </span>
-                            <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} disabled={!mostrarCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-14 accent-cyan-600 align-middle disabled:opacity-40" />
-                          </label>
+                      {glebas.length > 1 && (
+                        <div className="flex flex-wrap gap-1 items-center justify-between border-t pt-1.5 mt-0.5">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase">Gleba:</span>
+                          <div className="flex gap-1">
+                            {glebas.map((g, i) => (
+                              <button key={g.id} type="button" onClick={() => { trocarGleba(g.id); setPainelAberto(true); }} title={g.denominacao}
+                                className={`size-6 rounded flex items-center justify-center text-xs font-bold ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'border bg-background hover:bg-muted'}`}>{i + 1}</button>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Botões Principais de Gestão do Projeto */}
-                    <div className="flex flex-col gap-0.5 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                      <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold h-8' : 'h-8'} onClick={salvar} disabled={processando} title="Salvar o projeto (Ctrl+S)">
-                        <Save className="size-4" /> {L('Salvar')}
-                      </Button>
-                      <div className="grid grid-cols-3 gap-1">
-                        <Button size="sm" variant="outline" className="justify-start gap-1 px-1" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
-                          <Plus className="size-3.5 shrink-0" /> {L('Novo')}
-                        </Button>
-                        <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={`justify-start gap-1 px-1 ${infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'}`} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
-                          <FileText className="size-3.5 shrink-0" /> {L('Detalhes')}
-                        </Button>
-                        <Button size="sm" variant={painelAberto ? 'default' : 'outline'} className="justify-start gap-1 px-1" onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
-                          <Settings className="size-3.5 shrink-0" /> {L('Dados')}
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1">
-                        <Button size="sm" variant="outline" className="justify-start gap-1 px-1" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
-                          <Target className="size-3.5 shrink-0" /> {L('Foco')}
-                        </Button>
-                        <Button size="sm" variant="outline" className="justify-start gap-1 px-1" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
-                          <Info className="size-3.5 shrink-0" /> {L('Gestão')}
-                        </Button>
-                        <Button size="sm" variant="outline" className="justify-start gap-1 px-1" onClick={() => setPontosAberto(true)} title="Banco de pontos">
-                          <Database className="size-3.5 shrink-0" /> {L('Pontos')}
-                        </Button>
-                      </div>
-                    </div>
-                    {glebas.length > 1 && (
-                      <div className="flex flex-wrap gap-1 items-center justify-between border-t pt-1.5 mt-0.5">
-                        <span className="text-[9px] font-bold text-muted-foreground uppercase">Gleba:</span>
-                        <div className="flex gap-1">
-                          {glebas.map((g, i) => (
-                            <button key={g.id} type="button" onClick={() => { trocarGleba(g.id); setPainelAberto(true); }} title={g.denominacao}
-                              className={`size-6 rounded flex items-center justify-center text-xs font-bold ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'border bg-background hover:bg-muted'}`}>{i + 1}</button>
-                          ))}
+                    {/* CARD 2: VISUALIZAÇÃO & HISTÓRICO */}
+                    <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
+                      <span className="text-[9px] font-extrabold uppercase text-muted-foreground tracking-wider pb-1 border-b mb-0.5">Visualização & Navegação</span>
+                      {vista === 'mapa' ? (
+                        <>
+                          <div className="flex flex-col gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
+                            <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
+                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')} className="h-8 w-full justify-start gap-2">
+                              <MousePointer2 className="size-4 text-cyan-500" /> <span className="truncate text-xs font-semibold">MOVER</span><span className="ml-auto text-[9px] font-bold text-amber-400">F2</span>
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1">
+                            <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)} className={snapAtivo ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}>
+                              <Magnet className="size-3.5" /> <span className="text-[9px] font-bold">F3</span>
+                            </Button>
+                            <Button size="sm" variant={mostrarRotulos ? 'default' : 'outline'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={mostrarRotulos ? 'bg-sky-600 text-white hover:bg-sky-700' : ''}>
+                              {mostrarRotulos ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />} <span className="text-[9px] font-bold">F4</span>
+                            </Button>
+                            <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white font-bold animate-pulse'} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
+                              {bloqueado ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />} <span className="text-[9px] font-bold">F5</span>
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
+                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-8 w-full justify-start gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}>
+                            <MousePointer2 className="size-4 text-cyan-500" /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span>
+                          </Button>
+                          <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
                         </div>
-                      </div>
-                    )}
-                    <div className="h-px bg-border my-1" />
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-0.5 mb-1 [&>button]:size-9 [&>button]:p-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center">
-                    <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold' : ''} onClick={salvar} disabled={processando} title="Salvar o projeto"><Save className="size-4" /></Button>
-                    <Button size="sm" variant="outline" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto"><Plus className="size-4" /></Button>
-                    <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} onClick={() => setInfoAberto(true)} title="Detalhes do projeto"><FileText className="size-4" /></Button>
-                    <Button size="sm" variant={painelAberto ? 'default' : 'outline'} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto"><Settings className="size-4" /></Button>
-                    <Button size="sm" variant="outline" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Foco"><Target className="size-4" /></Button>
-                    <Button size="sm" variant="outline" onClick={() => setGestaoAberta(true)} title="Gestão financeira"><Info className="size-4" /></Button>
-                    <Button size="sm" variant="outline" onClick={() => setPontosAberto(true)} title="Banco de pontos"><Database className="size-4" /></Button>
-                     <div className="h-px bg-border my-1" />
-                  </div>
-                )}
-
-                {/* SISTEMA (topo): ações úteis com nome + ícones de alternância */}
-                {vista === 'mapa' && (
-                  <>
-                    <div className="flex flex-col gap-0.5 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                      <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                      <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER</span><span className="ml-auto text-[9px] font-bold text-amber-400">F2</span></Button>
+                      )}
                     </div>
-                    <div className="flex flex-wrap gap-1 [&_button]:h-8 [&_button]:justify-center [&_button]:gap-0.5 [&_button]:px-1.5">
-                      <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /><span className="text-[9px] font-bold text-amber-400">F3</span></Button>
-                      <Button size="sm" variant="ghost" title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)}>{mostrarRotulos ? <EyeOff /> : <Eye />}<span className="text-[9px] font-bold text-amber-400">F4</span></Button>
-                      <Button size="sm" variant="ghost" className={bloqueado ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}<span className={`text-[9px] font-bold ${bloqueado ? 'text-amber-400' : 'text-white'}`}>F5</span></Button>
-                    </div>
-                  </>
-                )}
 
-                {/* CONTROLES DA PLANTA (na visão da planta) — deixa a folha limpa */}
-                {vista === 'planta' && (
-                  <div className="flex flex-col gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                    <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-8 w-full justify-start gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
-                    <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                  </div>
-                )}
-
-                {/* FERRAMENTAS DE EDIÇÃO (mapa, ou planta no modo Editar) */}
-                {(vista === 'mapa' || editarPlanta) && (
-                  <>
-                    <div className="my-0.5 h-px w-full bg-border" />
-                    {rotulo ? (
-                      <div className="flex flex-col gap-1">
-                        <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:px-1.5 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0">
-                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)">
-                            <PenTool /> <span className="truncate text-[11px] font-semibold">Linha</span>
+                    {/* CARD 3: FERRAMENTAS DE DESENHO */}
+                    {(vista === 'mapa' || editarPlanta) && (
+                      <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
+                        <span className="text-[9px] font-extrabold uppercase text-muted-foreground tracking-wider pb-1 border-b mb-0.5">Ferramentas de Desenho</span>
+                        <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:px-2 [&>button]:gap-1.5 [&_svg]:size-3.5 [&>button]:min-w-0">
+                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)">
+                            <PenTool className="text-amber-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Linha</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
-                            <PenTool /> <span className="truncate text-[11px] font-semibold">Polilinha</span>
+                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'outline'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
+                            <PenTool className="text-cyan-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Polilinha</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (F8)">
-                            <PenTool className="opacity-70" /> <span className="truncate text-[11px] font-semibold">Tracejado</span>
+                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'outline'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (F8)">
+                            <PenTool className="text-indigo-500 opacity-80 shrink-0" /> <span className="truncate text-[11px] font-semibold">Tracejado</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos para medir (F10)">
-                            <RotateCcw className="rotate-90" /> <span className="truncate text-[11px] font-semibold">Cota</span>
+                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos para medir (F10)">
+                            <RotateCcw className="text-rose-500 rotate-90 shrink-0" /> <span className="truncate text-[11px] font-semibold">Cota</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)">
-                            <FileText /> <span className="truncate text-[11px] font-semibold">Texto</span>
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)">
+                            <FileText className="text-emerald-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Texto</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
-                            <svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} />
+                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'outline'} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
+                            <div className="shrink-0 text-sky-500"><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
                             <span className="truncate text-[11px] font-semibold">Símbolos</span>
                           </Button>
                           {modo === 'simbolo' && (
-                            <div className="col-span-3 grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
+                            <div className="col-span-2 grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
                               {SIMBOLOS.map((s) => (
                                 <button key={s.chave} type="button" title={s.rotulo}
                                   className={`flex flex-col items-center justify-center rounded p-1 hover:bg-background transition-all ${simboloSel === s.chave ? 'bg-background ring-1 ring-primary' : ''}`}
@@ -2712,46 +2709,57 @@ export default function EditorPage() {
                               ))}
                             </div>
                           )}
-                          <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta">
-                            <Plus /> <span className="truncate text-[11px] font-semibold">Inserir Vtx</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CARD 4: VÉRTICES E GEOMETRIA */}
+                    {(vista === 'mapa' || editarPlanta) && (
+                      <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
+                        <span className="text-[9px] font-extrabold uppercase text-muted-foreground tracking-wider pb-1 border-b mb-0.5">Vértices e Geometria</span>
+                        <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:px-2 [&>button]:gap-1.5 [&_svg]:size-3.5 [&>button]:min-w-0">
+                          <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta">
+                            <Plus className="text-emerald-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Inserir Vtx</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice">
-                            <Trash2 /> <span className="truncate text-[11px] font-semibold">Apagar Vtx</span>
+                          <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice">
+                            <Trash2 className="text-rose-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Apagar Vtx</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
-                            <EyeOff /> <span className="truncate text-[11px] font-semibold">Ignorar</span>
+                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
+                            <EyeOff className="text-amber-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Ignorar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'considerar' ? 'navegar' : 'considerar'); }} title="Considerar vértice (F11)">
-                            <Plus /> <span className="truncate text-[11px] font-semibold">Considerar</span>
+                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('considerar'); }} title="Considerar vértice (F11)">
+                            <Plus className="text-cyan-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Considerar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => { setModo('medir'); setDesenhoBuffer([]); }} title="Régua: medir distância e azimute no mapa">
-                            <Ruler /> <span className="truncate text-[11px] font-semibold">Medir</span>
+                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'outline'} onClick={() => { setModo('medir'); setDesenhoBuffer([]); }} title="Régua: medir distância e azimute no mapa">
+                            <Ruler className="text-sky-500 shrink-0" /> <span className="truncate text-[11px] font-semibold">Medir</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'multi' ? 'navegar' : 'multi'); }} title="Selecionar vários vértices">
-                            <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden>
-                              <circle cx="12" cy="5" r="2.4" fill="currentColor" />
-                              <circle cx="5" cy="18" r="2.4" fill="currentColor" />
-                              <circle cx="19" cy="18" r="2.4" fill="currentColor" />
-                            </svg>
+                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo(modo === 'multi' ? 'navegar' : 'multi'); }} title="Selecionar vários vértices">
+                            <div className="shrink-0 text-indigo-500">
+                              <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden>
+                                <circle cx="12" cy="5" r="2.4" fill="currentColor" />
+                                <circle cx="5" cy="18" r="2.4" fill="currentColor" />
+                                <circle cx="19" cy="18" r="2.4" fill="currentColor" />
+                              </svg>
+                            </div>
                             <span className="truncate text-[11px] font-semibold">Sel. Vários</span>
                           </Button>
                           {modo === 'multi' && (
-                            <div className="col-span-3 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-600 dark:text-amber-400">
+                            <div className="col-span-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-600 dark:text-amber-400">
                               {selMulti.size > 0
                                 ? <button className="w-full text-left font-semibold" onClick={apagarMultiSelecionados}>Apagar {selMulti.size} selecionado(s) — Delete</button>
                                 : 'Clique nos vértices ou arraste uma caixa para selecioná-los.'}
                             </div>
                           )}
-                          {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="col-span-3 px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
+                          {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="col-span-2 px-1 text-[10px] text-muted-foreground text-center">Nenhum vértice ignorado.</span>}
                           {objSel?.tipo === 'texto' && (
-                            <div className="col-span-3 grid grid-cols-3 gap-1 mt-1">
-                              <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir text"><span className="font-bold font-mono">A-</span></Button>
-                              <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold font-mono">A+</span></Button>
-                              <Button size="sm" variant="ghost" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5" /></Button>
+                            <div className="col-span-2 grid grid-cols-3 gap-1 mt-1">
+                              <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold font-mono">A-</span></Button>
+                              <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold font-mono">A+</span></Button>
+                              <Button size="sm" variant="outline" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5 text-cyan-500" /></Button>
                             </div>
                           )}
                           {objSel?.tipo === 'polilinha' && (
-                            <div className="col-span-3 flex flex-col gap-1 mt-1">
+                            <div className="col-span-2 flex flex-col gap-1 mt-1">
                               <Button size="sm" variant="secondary" className="gap-1.5 w-full justify-start text-[11px]" onClick={converterPolilinhaEmPerimetro} title="Usar como perímetro"><RotateCcw className="size-3.5 text-emerald-500" /> Usar como perímetro</Button>
                               <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} className="w-full justify-start gap-2 text-[11px]" onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher"><Brush className="size-3.5" /> Preencher</Button>
                             </div>
@@ -2764,7 +2772,7 @@ export default function EditorPage() {
                         </div>
 
                         {/* DXF e KML lado a lado */}
-                        <div className="grid grid-cols-2 gap-1 mt-1">
+                        <div className="grid grid-cols-2 gap-1 mt-1.5">
                           <div className={`flex items-center justify-between rounded-md border px-1.5 py-0.5 ${COR_IMPORT}`}>
                             <span className="text-[9px] font-bold shrink-0">DXF</span>
                             <div className="flex gap-0.5">
@@ -2789,30 +2797,38 @@ export default function EditorPage() {
                           );
                         })()}
                       </div>
-                    ) : (
-                      /* Coluna única para barra colapsada */
-                      <div className="flex flex-col gap-0.5 [&>button]:size-9 [&>button]:p-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&_svg]:size-4">
-                        <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta (F6)"><PenTool /></Button>
-                        <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha (F7)"><PenTool /></Button>
-                        <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado (F8)"><PenTool className="opacity-70" /></Button>
-                        <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar (F10)"><RotateCcw className="rotate-90" /></Button>
-                        <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto (F9)"><FileText /></Button>
-                        <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
-                        <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice"><Plus /></Button>
-                        <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /></Button>
-                        <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('considerar'); }} title="Considerar (F11)"><Plus /></Button>
-                        <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice"><Trash2 /></Button>
-                        <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => { setModo('medir'); setDesenhoBuffer([]); }} title="Medir / Régula"><Ruler /></Button>
-                        <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('multi'); }} title="Selecionar vários">
-                          <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
-                            <circle cx="12" cy="5" r="2.4" fill="currentColor" />
-                            <circle cx="5" cy="18" r="2.4" fill="currentColor" />
-                            <circle cx="19" cy="18" r="2.4" fill="currentColor" />
-                          </svg>
-                        </Button>
-                      </div>
                     )}
-                  </>
+                  </div>
+                ) : (
+                  /* Coluna única para barra colapsada */
+                  <div className="flex flex-col gap-1 mb-1 [&>button]:size-9 [&>button]:p-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&_svg]:size-4">
+                    <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold' : ''} onClick={salvar} disabled={processando} title="Salvar o projeto"><Save className="size-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto"><Plus className="size-4" /></Button>
+                    <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} onClick={() => setInfoAberto(true)} title="Detalhes do projeto"><FileText className="size-4" /></Button>
+                    <Button size="sm" variant={painelAberto ? 'default' : 'outline'} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto"><Settings className="size-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Foco"><Target className="size-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => setGestaoAberta(true)} title="Gestão financeira"><Info className="size-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => setPontosAberto(true)} title="Banco de pontos"><Database className="size-4" /></Button>
+                    <div className="h-px bg-border my-1" />
+                    <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta (F6)"><PenTool /></Button>
+                    <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha (F7)"><PenTool /></Button>
+                    <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado (F8)"><PenTool className="opacity-70" /></Button>
+                    <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar (F10)"><RotateCcw className="rotate-90" /></Button>
+                    <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto (F9)"><FileText /></Button>
+                    <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
+                    <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice"><Plus /></Button>
+                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /></Button>
+                    <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('considerar'); }} title="Considerar (F11)"><Plus /></Button>
+                    <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice"><Trash2 /></Button>
+                    <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => { setModo('medir'); setDesenhoBuffer([]); }} title="Medir / Régula"><Ruler /></Button>
+                    <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('multi'); }} title="Selecionar vários">
+                      <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
+                        <circle cx="12" cy="5" r="2.4" fill="currentColor" />
+                        <circle cx="5" cy="18" r="2.4" fill="currentColor" />
+                        <circle cx="19" cy="18" r="2.4" fill="currentColor" />
+                      </svg>
+                    </Button>
+                  </div>
                 )}
 
                 {/* RODAPÉ FIXO: ajuste de texto + sistema (calculadora, tema, config, sair) */}
