@@ -3,13 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Volume2, VolumeX, SkipForward } from 'lucide-react';
 import { carregarPreferencias } from '@/lib/store/preferencias';
-import { introJaVista, marcarIntroVista } from '@/lib/store/settings';
 
 /**
  * Abertura do app (splash animado). Toca /marca/intro.mp4 por cima de tudo.
  *
  * Regras de exibição:
- *  - Aparece sozinho só na PRIMEIRA vez neste navegador, e só se a preferência estiver ligada.
+ *  - Aparece TODA vez que o app carrega, desde que a preferência esteja ligada.
  *  - Começa MUDO — navegador só deixa um vídeo tocar sozinho sem som; há um botão pra ligar o som.
  *  - "Pular" fecha na hora; quando o vídeo acaba, fecha sozinho.
  *  - As Configurações podem mandar rever a qualquer momento pelo evento 'souzacad:ver-intro'.
@@ -17,12 +16,14 @@ import { introJaVista, marcarIntroVista } from '@/lib/store/settings';
 export default function IntroVideo() {
   const [aberto, setAberto] = useState(false);
   const [comSom, setComSom] = useState(false);
+  const [tocando, setTocando] = useState(false); // só revela o vídeo quando ele já está rodando
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Decide na montagem: primeira vez + preferência ligada. E fica ouvindo o pedido de rever.
+  // Decide na montagem: toca sempre que o app carrega, se a preferência estiver ligada.
+  // E fica ouvindo o pedido de rever (botão nas Configurações).
   useEffect(() => {
-    if (carregarPreferencias().introVideoAtiva && !introJaVista()) setAberto(true);
-    const rever = () => { setComSom(false); setAberto(true); };
+    if (carregarPreferencias().introVideoAtiva) setAberto(true);
+    const rever = () => { setComSom(false); setTocando(false); setAberto(true); };
     window.addEventListener('souzacad:ver-intro', rever);
     return () => window.removeEventListener('souzacad:ver-intro', rever);
   }, []);
@@ -32,9 +33,14 @@ export default function IntroVideo() {
     if (aberto && videoRef.current) videoRef.current.play().catch(() => {});
   }, [aberto]);
 
+  // Avisa o resto do app quando a abertura está na tela (ex.: esconder a chave de modo).
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('souzacad:intro', { detail: aberto }));
+  }, [aberto]);
+
   function fechar() {
-    marcarIntroVista();
     setAberto(false);
+    setTocando(false);
   }
 
   function alternarSom() {
@@ -53,10 +59,12 @@ export default function IntroVideo() {
       <video
         ref={videoRef}
         src="/marca/intro.mp4"
-        className="max-h-full max-w-full"
+        className={`max-h-full max-w-full transition-opacity duration-300 ${tocando ? 'opacity-100' : 'opacity-0'}`}
         autoPlay
         muted
         playsInline
+        preload="auto"
+        onPlaying={() => setTocando(true)}
         onEnded={fechar}
       />
       <button

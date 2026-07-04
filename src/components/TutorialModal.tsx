@@ -147,9 +147,17 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
       <DialogContent className="flex max-h-[85vh] max-w-lg flex-col">
         {tela === 'menu' && (
           <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base"><GraduationCap className="size-5 text-primary" /> Central de ajuda</DialogTitle>
-            </DialogHeader>
+            {/* Banner de boas-vindas com a textura do campo (arte da marca) */}
+            <div className="relative -mx-5 -mt-5 mb-1 h-24 overflow-hidden rounded-t-lg">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/marca/fundo-campo.png" alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0a1f14]/90 via-[#0a1f14]/60 to-transparent" />
+              <div className="relative flex h-full flex-col justify-center px-6 text-white">
+                <div className="flex items-center gap-2 text-base font-bold drop-shadow"><GraduationCap className="size-5" /> Central de ajuda</div>
+                <p className="text-xs text-white/85 drop-shadow">Bem-vindo ao Souza CAD — aprenda no seu ritmo.</p>
+              </div>
+            </div>
+            <DialogHeader className="sr-only"><DialogTitle>Central de ajuda</DialogTitle></DialogHeader>
             {seletorNivel}
             <button type="button" onClick={() => { setPasso(0); setTela('passos'); }}
               className="rounded-lg border p-3 text-left hover:bg-muted/50">

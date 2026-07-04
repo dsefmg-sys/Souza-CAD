@@ -368,7 +368,10 @@ export default function Planta({
   const nMin = maxY - (DRAW.y1 + 200 - offY) / escala;
   const nMax = maxY - (DRAW.y0 - 200 - offY) / escala;
 
-  const intervalo = intervaloGrade(Math.max(maxX - minX, maxY - minY));
+  // Espaçamento da grade pelo TRECHO VISÍVEL (não pelo tamanho do imóvel): assim a densidade fica
+  // constante em qualquer escala. Antes, o espaçamento vinha do imóvel e, quando a área visível era
+  // bem maior que ele, saíam linhas demais (grade embolada).
+  const intervalo = intervaloGrade(Math.max(eMax - eMin, nMax - nMin));
   const linhasX: number[] = [];
   for (let x = Math.ceil(eMin / intervalo) * intervalo; x <= eMax; x += intervalo) linhasX.push(x);
   const linhasY: number[] = [];
@@ -1160,7 +1163,9 @@ export default function Planta({
             onPointerDown={editavel ? (e) => {
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;
-              dragRef.current = { kind: 'rotConf', id: c.id };
+              // guarda a posição de partida do rótulo (baseX/baseY). Sem isso, ao soltar o app
+              // somava o movimento a zero e o bloco caía preso no canto do quadro.
+              dragRef.current = { kind: 'rotConf', id: c.id, dx: 0, dy: 0, baseX: r.x, baseY: r.y };
               setDragTemp({ kind: 'rotConf', id: c.id, dx: 0, dy: 0, baseX: r.x, baseY: r.y });
               folhaLast.current = u;
               captura(e);

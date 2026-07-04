@@ -319,11 +319,11 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     quando a chave do topo já sumiu (some depois de 5 h de uso no Completo). */}
                 <div className="space-y-1.5 rounded border p-2.5">
                   <Label className="text-xs font-semibold">Modo da interface</Label>
-                  <p className="text-[11px] leading-tight text-muted-foreground">Quanta ferramenta aparece na tela. O <strong>Simples</strong> mostra só o essencial, pra qualquer nível se adaptar ao software; o <strong>Completo</strong> mostra tudo. Depois de bastante uso no Completo, a chave do topo some e é aqui que você volta pro Simples.</p>
+                  <p className="text-[11px] leading-tight text-muted-foreground">Quanta ferramenta aparece na tela. O <strong>Fácil</strong> mostra só o essencial, pra qualquer nível se adaptar ao software e ainda assim entregar um trabalho básico completo; o <strong>Completo</strong> mostra tudo. Depois de bastante uso no Completo, a chave flutuante some e é aqui que você volta pro Fácil.</p>
                   <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
                     {(['simples', 'completo'] as const).map((m) => (
                       <button key={m} type="button" onClick={() => mudarPref('modo', m)}
-                        className={`rounded-full px-3 py-1 font-semibold capitalize transition-colors ${prefs.modo === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{m}</button>
+                        className={`rounded-full px-3 py-1 font-semibold transition-colors ${prefs.modo === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{m === 'simples' ? 'Fácil' : 'Completo'}</button>
                     ))}
                   </div>
                 </div>
@@ -345,7 +345,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   ligado={prefs.introVideoAtiva}
                   onToggle={(v) => mudarPref('introVideoAtiva', v)}
                   titulo="Mostrar vídeo de abertura"
-                  descricao="Toca a animação da marca na primeira vez que o app abre neste navegador. Desligado: entra direto no editor, sem abertura." />
+                  descricao="Toca a animação da marca toda vez que o app é carregado. Desligado: entra direto no editor, sem abertura." />
                 <Button variant="outline" size="sm" className="w-full gap-1.5 font-semibold" onClick={reverIntro}>
                   <PlayCircle className="size-4" /> Ver a abertura agora
                 </Button>
@@ -362,15 +362,23 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     ))}
                   </div>
                 </div>
-                <div className="space-y-1.5 rounded border p-2.5">
-                  <Label className="text-xs font-semibold">Casas decimais na tela</Label>
-                  <p className="text-[11px] leading-tight text-muted-foreground">Quantas casas depois da vírgula aparecem em coordenadas, distâncias e área <strong>na tela</strong>. Os documentos e exportações (memorial, planilha SIGEF, KML) mantêm a precisão exigida pela norma, sem mudar.</p>
-                  <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
-                    {[2, 3, 4].map((val) => (
-                      <button key={val} type="button" onClick={() => mudarPref('casasDecimais', val)}
-                        className={`rounded-full px-3 py-1 font-semibold transition-colors ${(prefs.casasDecimais ?? 3) === val ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{val}</button>
-                    ))}
-                  </div>
+                <div className="space-y-2 rounded border p-2.5">
+                  <label className="flex cursor-pointer items-start gap-2.5">
+                    <input type="checkbox" className="mt-0.5 size-4 shrink-0" checked={prefs.casasDecimaisAtivo}
+                      onChange={(e) => mudarPref('casasDecimaisAtivo', e.target.checked)} />
+                    <span className="space-y-0.5">
+                      <span className="block text-xs font-semibold">Personalizar casas decimais na tela</span>
+                      <span className="block text-[11px] leading-tight text-muted-foreground">Desligado (padrão): cada tela usa a precisão que já usa. Ligado: você escolhe quantas casas aparecem em coordenadas e área <strong>na tela</strong>. Os documentos e exportações (memorial, planilha SIGEF, KML) mantêm a precisão da norma, sem mudar.</span>
+                    </span>
+                  </label>
+                  {prefs.casasDecimaisAtivo && (
+                    <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
+                      {[2, 3, 4].map((val) => (
+                        <button key={val} type="button" onClick={() => mudarPref('casasDecimais', val)}
+                          className={`rounded-full px-3 py-1 font-semibold transition-colors ${(prefs.casasDecimais ?? 3) === val ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{val}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

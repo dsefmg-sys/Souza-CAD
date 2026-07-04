@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, FlaskConical, Package, Sparkles, Leaf, Waypoints,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
@@ -32,6 +32,7 @@ import { gerarAnuenciaDocumento } from '@/lib/export/anuencia';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
 import GestaoProjetoModal from '@/components/GestaoProjetoModal';
 import TutorialModal from '@/components/TutorialModal';
+import AssinaturaModal from '@/components/AssinaturaModal';
 import IntroVideo from '@/components/IntroVideo';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
 import CalculadoraModal from '@/components/CalculadoraModal';
@@ -78,7 +79,7 @@ import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
 import { termosAceitosLocal, termosAceitosNuvem, sincronizarPerfil, registrarProjetoSalvo } from '@/lib/store/perfilUso';
-import { carregarPreferencias, salvarPreferencias, salvarModo, registrarTempoCompleto, confirmarApagar, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
+import { carregarPreferencias, salvarPreferencias, salvarModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster } from '@/lib/store/suporte';
 import TermosModal from '@/components/TermosModal';
@@ -147,15 +148,22 @@ const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover
 const PREM_BTN = 'shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 font-semibold border-input';
 
 type EtapaEstado = 'feito' | 'andamento' | 'pendente';
-// Acende o ÍCONE do botão do fluxo: verde = etapa feita, azul = em andamento, neutro = pendente.
-// (Sem mais barrinha embaixo; o próprio ícone sinaliza o progresso.)
+// Sinaliza o progresso da etapa por um SELO no canto do botão (não mais pela cor do ícone, que
+// destoava do texto): check verde = feita; bolinha azul pulsando = em andamento; nada = pendente.
 function Etapa({ st, children }: { st: EtapaEstado; children: ReactNode }) {
-  const cls = st === 'feito'
-    ? '[&_svg]:text-green-600 [&_svg]:dark:text-green-400'
-    : st === 'andamento'
-    ? '[&_svg]:text-blue-600 [&_svg]:dark:text-blue-400'
-    : '';
-  return <div className={`flex shrink-0 ${cls}`}>{children}</div>;
+  return (
+    <div className="relative flex shrink-0">
+      {children}
+      {st === 'feito' && (
+        <span className="pointer-events-none absolute -right-1 -top-1 z-10 flex size-3.5 items-center justify-center rounded-full bg-green-600 text-white ring-2 ring-background" aria-label="etapa concluída">
+          <Check className="size-2.5" strokeWidth={3.5} />
+        </span>
+      )}
+      {st === 'andamento' && (
+        <span className="pointer-events-none absolute -right-1 -top-1 z-10 size-2.5 animate-pulse rounded-full bg-blue-500 ring-2 ring-background" aria-label="etapa em andamento" />
+      )}
+    </div>
+  );
 }
 
 // Botão único de AÇÕES: desfazer à esquerda, refazer à direita, rótulo no meio (economiza espaço).
@@ -305,11 +313,18 @@ export default function EditorPage() {
   const [gestaoAberta, setGestaoAberta] = useState(false);
   const [precoSugAberto, setPrecoSugAberto] = useState(false);
   const [tutorialAberto, setTutorialAberto] = useState(false);
+  const [assinaturaAberta, setAssinaturaAberta] = useState(false);
   // A CHAVE do app: 'simples' (tela enxuta, ideal pra aprender) x 'completo' (tudo à mostra).
   // Novo usuário começa no simples. Fica salvo nas preferências e vale no app inteiro.
   const [modoApp, setModoApp] = useState<'simples' | 'completo'>('simples');
   const [tempoCompletoMs, setTempoCompletoMs] = useState(0);
+  const [introTocando, setIntroTocando] = useState(false); // enquanto a abertura roda, escondemos a chave de modo
   useEffect(() => { try { const p = carregarPreferencias(); setModoApp(p.modo); setTempoCompletoMs(p.tempoCompletoMs || 0); } catch { /* ignore */ } }, []);
+  useEffect(() => {
+    const h = (e: Event) => setIntroTocando(!!(e as CustomEvent<boolean>).detail);
+    window.addEventListener('souzacad:intro', h);
+    return () => window.removeEventListener('souzacad:intro', h);
+  }, []);
   function trocarModoApp(m: 'simples' | 'completo') { setModoApp(m); try { salvarModo(m); } catch { /* ignore */ } }
   const completo = modoApp === 'completo';
   // Enquanto está no Completo, acumula tempo de uso (resolução de 1 min). Passou de 5 h, a chave
@@ -2585,7 +2600,7 @@ export default function EditorPage() {
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       {/* Topo */}
       {/* Cabeçalho = FLUXO DO TRABALHO (esquerda → direita) + conta fixa à direita */}
       <header className="no-print flex items-stretch border-b">
@@ -2658,27 +2673,29 @@ export default function EditorPage() {
         )}
        </div>
        {/* (o botão "Dados do Projeto" foi para a barra flutuante, ao lado do DETALHES) */}
-       {/* A CHAVE do app, fixa no topo à direita: decide se a tela mostra só o essencial (Simples,
-           pra qualquer um se adaptar ao software) ou todas as ferramentas (Completo). Depois de 5 h
-           no Completo ela some daqui (interface mais limpa) e voltar ao Simples fica só nas Configurações. */}
-       {chaveTopoVisivel && (
-       <div className="no-print flex shrink-0 items-center gap-1.5 border-l px-2">
-         <GraduationCap className="size-4 shrink-0 text-primary" aria-hidden />
-         <div className="flex items-center rounded-full border bg-muted/40 p-0.5 text-[11px]" role="group" aria-label="Modo da interface">
-           {(['simples', 'completo'] as const).map((m) => (
-             <button key={m} type="button" onClick={() => trocarModoApp(m)}
-               aria-pressed={modoApp === m}
-               title={m === 'simples'
-                 ? 'Modo Simples: só o caminho essencial do georreferenciamento na tela. Pensado pra qualquer nível se adaptar ao software.'
-                 : 'Modo Completo: todas as ferramentas à mostra. Pra quem já se acostumou com o app.'}
-               className={`rounded-full px-2.5 py-1 font-bold capitalize transition-colors ${modoApp === m ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted'}`}>
-               {m}
-             </button>
-           ))}
-         </div>
-       </div>
-       )}
+       {/* A CHAVE do app saiu do topo (atrapalhava a leitura dos botões) e virou uma barrinha
+           FLUTUANTE na lateral direita — ver logo abaixo do <header>. */}
       </header>
+
+      {/* CHAVE do modo, flutuante no TOPO à direita (logo abaixo do cabeçalho): decide se a tela mostra
+          só o essencial (Fácil, pra qualquer um se adaptar e ainda assim fazer um trabalho básico
+          completo) ou todas as ferramentas (Completo). Some enquanto a abertura toca; e depois de 5 h no
+          Completo some de vez (interface limpa) — voltar ao Fácil fica só nas Configurações. */}
+      {chaveTopoVisivel && !introTocando && (
+        <div className="no-print fixed right-2 top-14 z-[1100] flex items-center gap-1 rounded-full border bg-background/95 p-0.5 pl-2 shadow-lg backdrop-blur" role="group" aria-label="Modo da interface">
+          <GraduationCap className="size-4 shrink-0 text-primary" aria-hidden />
+          {(['simples', 'completo'] as const).map((m) => (
+            <button key={m} type="button" onClick={() => trocarModoApp(m)}
+              aria-pressed={modoApp === m}
+              title={m === 'simples'
+                ? 'Modo Fácil: só o caminho essencial na tela, pra qualquer nível se adaptar ao software — e ainda assim dá pra entregar um trabalho básico completo.'
+                : 'Modo Completo: todas as ferramentas à mostra. Pra quem já se acostumou com o app.'}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors ${modoApp === m ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted'}`}>
+              {m === 'simples' ? 'Fácil' : 'Completo'}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="relative flex min-h-0 flex-1">
         {/* Faixa de status/controles — sobreposta (não empurra o mapa/planta); some sozinha */}
@@ -2765,7 +2782,7 @@ export default function EditorPage() {
                         <div className="grid grid-cols-2 gap-1.5 border-b pb-1.5">
                           <div>
                             <div className="text-[8px] font-medium uppercase text-muted-foreground">Área SGL</div>
-                            <div className="font-bold text-sm text-foreground">{res ? `${numBR(res.areaHa, 4)}` : '—'} <span className="text-[9px] font-normal text-muted-foreground">ha</span></div>
+                            <div className="font-bold text-sm text-foreground">{res ? `${numBR(res.areaHa, casasTela(4))}` : '—'} <span className="text-[9px] font-normal text-muted-foreground">ha</span></div>
                           </div>
                           <div>
                             <div className="text-[8px] font-medium uppercase text-muted-foreground">Perímetro</div>
@@ -3220,6 +3237,7 @@ export default function EditorPage() {
                       ['Ajuda', 'Tutorial: como usar o Métrica, passo a passo', <HelpCircle key="i" className="size-4" />, () => setTutorialAberto(true), 'text-slate-500'],
                       ['RT', 'Dados do responsável técnico: nome, CFT, código do credenciado e contadores', <UserCheck key="i" className="size-4" />, () => { setConfigAba('pessoal'); setConfigAberta(true); }, 'text-slate-500'],
                       ['Config.', 'Configurações gerais', <Settings key="i" className="size-4" />, () => { setConfigAba(undefined); setConfigAberta(true); }, 'text-slate-500'],
+                      ['Planos', souMaster() ? 'Cobrança do app: planos, preços e nível de cada cliente (admin)' : 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400'],
                       ...(souMaster() ? [['Uso', 'Painel do titular: contas e uso do sistema (só você vê)', <BarChart3 key="i" className="size-4" />, () => setMasterAberto(true), 'text-amber-600 dark:text-amber-400']] : []),
                       ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400']] : []),
                       ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => sair(), 'text-red-600 dark:text-red-400']] : []),
@@ -3235,7 +3253,7 @@ export default function EditorPage() {
                     <button type="button" onClick={() => trocarModoApp('completo')}
                       className="mt-1 flex w-full items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-2 text-left text-[10px] leading-tight text-muted-foreground hover:bg-primary/10">
                       <Sparkles className="size-4 shrink-0 text-primary" />
-                      <span>Você está no <b className="text-foreground">modo Simples</b>, com só o essencial. Quando pegar o jeito, toque aqui pra abrir o <b className="text-primary">modo Completo</b> com todas as ferramentas.</span>
+                      <span>Você está no <b className="text-foreground">modo Fácil</b>, com só o essencial — dá pra entregar um trabalho básico completo assim mesmo. Quando pegar o jeito, toque aqui pra abrir o <b className="text-primary">modo Completo</b> com todas as ferramentas.</span>
                     </button>
                   )}
                 </div>
@@ -3428,6 +3446,14 @@ export default function EditorPage() {
           )}
         </main>
 
+        {/* Faixa sensível na borda DIREITA: encostar o mouse abre o painel de dados. Some quando o
+            painel já está aberto (aí quem manda é o mouse-leave do próprio painel). */}
+        {!painelAberto && (
+          <div className="no-print absolute right-0 top-0 bottom-0 z-[1999] w-2.5 cursor-pointer"
+            onMouseEnter={() => setPainelAberto(true)}
+            title="Dados do projeto (encoste para abrir)" aria-hidden />
+        )}
+
         {/* Painel suspenso de dados do projeto — ocupa toda a altura disponível do fim da página ao cabeçalho */}
         <div ref={painelWrap}
           className={`no-print absolute right-0 top-0 bottom-0 z-[2000] flex w-[550px] h-full flex-col border-l bg-background shadow-2xl transition-all duration-300 ${
@@ -3439,12 +3465,7 @@ export default function EditorPage() {
           onMouseLeave={() => { painelMouseDentro.current = false; if (!asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
           onBlurCapture={() => { setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 50); }}>
           <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background">
-            {/* Header do dropdown simplificado */}
-            <div className="flex items-center justify-end bg-[#475569]/80 px-2.5 py-1 text-white shadow-sm shrink-0">
-              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 text-white hover:bg-white/20 hover:text-white" onClick={() => setPainelAberto(false)} title="Fechar painel">
-                <X className="size-3.5" />
-              </Button>
-            </div>
+            {/* (sem barra de fechar: o painel some sozinho quando o mouse sai dele) */}
             {/* glebas */}
             <div className="flex flex-wrap items-center gap-1.5 border-b p-1.5 bg-muted/20">
             {glebas.map((g) => (
@@ -3942,6 +3963,7 @@ export default function EditorPage() {
       )}
       <IntroVideo />
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
+      <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
       <TermosModal open={termosModalAberto} onAceitar={() => { setTermosOk(true); setTermosModalAberto(false); const a = acaoAposTermos.current; acaoAposTermos.current = null; a?.(); }} />
       <PrimeiroAcessoModal open={!setupOk} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); }} />
       <MasterPainelModal open={masterAberto} onOpenChange={setMasterAberto} />

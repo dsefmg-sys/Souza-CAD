@@ -195,17 +195,6 @@ export function marcarTutorialVisto(): void {
   try { localStorage.setItem(KEY_TUTORIAL, '1'); } catch { /* ignore */ }
 }
 
-// ----- Vídeo de abertura (splash animado): já foi visto neste navegador? -----
-const KEY_INTRO = 'metrica.introVista';
-export function introJaVista(): boolean {
-  if (typeof window === 'undefined') return true;
-  try { return localStorage.getItem(KEY_INTRO) === '1'; } catch { return true; }
-}
-export function marcarIntroVista(): void {
-  if (typeof window === 'undefined') return;
-  try { localStorage.setItem(KEY_INTRO, '1'); } catch { /* ignore */ }
-}
-
 import { db as fdb } from '../firebase/client';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 

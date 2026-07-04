@@ -51,6 +51,13 @@
   * {
     border-color: hsl(var(--border));
   }
+  html, body {
+    /* nenhuma página deve gerar rolagem LATERAL: o editor é tela cheia e as demais só rolam
+       na vertical. Sem isto, um elemento que passa alguns pixels da largura cria uma barra
+       horizontal e um "bloco vazio" à direita no app inteiro. */
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));

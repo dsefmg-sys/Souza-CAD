@@ -41,9 +41,14 @@ export interface PreferenciasApp {
    */
   escalaFonte: number;
   /**
-   * Casas decimais na EXIBIÇÃO da tela (coordenadas, distâncias, área). NÃO afeta os
-   * documentos oficiais nem as exportações — memorial, planilha SIGEF, KML e afins
-   * mantêm a precisão exigida pela norma. Padrão: 3.
+   * Liga o controle de casas decimais na tela. DESLIGADO por padrão: sem se preocupar com isso,
+   * cada tela usa a precisão que já usava. Só quando ligado é que `casasDecimais` passa a valer.
+   */
+  casasDecimaisAtivo: boolean;
+  /**
+   * Casas decimais na EXIBIÇÃO da tela (coordenadas, distâncias, área) — só vale quando
+   * `casasDecimaisAtivo` está ligado. NÃO afeta os documentos oficiais nem as exportações —
+   * memorial, planilha SIGEF, KML e afins mantêm a precisão exigida pela norma. Padrão: 3.
    */
   casasDecimais: number;
   /** Pede confirmação antes de apagar (vértice, projeto, divisa). Padrão: true. */
@@ -61,6 +66,7 @@ export const PREFERENCIAS_PADRAO: PreferenciasApp = {
   iconesCabecalhoOcultos: ['dados', 'trt', 'analise'],
   introVideoAtiva: true,
   escalaFonte: 1,
+  casasDecimaisAtivo: false,
   casasDecimais: 3,
   confirmarAntesApagar: true,
 };
@@ -100,14 +106,15 @@ export function aplicarEscalaFonte(escala?: number): void {
 }
 
 /**
- * Formata um número pra EXIBIR na tela, usando as casas decimais do ajuste. Passe `casas`
- * pra forçar um valor específico. NUNCA use isto em exportação/documento oficial — lá a
- * precisão é fixa pela norma.
+ * Quantas casas decimais usar na EXIBIÇÃO da tela. `casasPadrao` é a precisão que aquela tela
+ * SEMPRE usou. Com o ajuste DESLIGADO (padrão), devolve `casasPadrao` — nada muda. Com o ajuste
+ * LIGADO, devolve as casas escolhidas pelo usuário. Combine com o formatador da tela (ex.: numBR).
+ * NUNCA use isto em exportação/documento oficial — lá a precisão é fixa pela norma.
  */
-export function formatarNum(valor: number, casas?: number): string {
-  if (!Number.isFinite(valor)) return '—';
-  const c = casas ?? carregarPreferencias().casasDecimais ?? 3;
-  return valor.toFixed(Math.min(8, Math.max(0, c)));
+export function casasTela(casasPadrao: number): number {
+  const p = carregarPreferencias();
+  const c = p.casasDecimaisAtivo ? (p.casasDecimais ?? casasPadrao) : casasPadrao;
+  return Math.min(8, Math.max(0, c));
 }
 
 /**
