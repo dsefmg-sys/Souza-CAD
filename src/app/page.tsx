@@ -2353,27 +2353,7 @@ export default function EditorPage() {
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
         <Button size="sm" variant="outline" className="shrink-0 gap-1 border-green-600/40 bg-green-500/10 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400" title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf className="size-4" /> CAR</Button>
        </div>
-       {/* Botão de Dados do Projeto que abre o dropdown superior */}
-       <div className="no-print mr-2 flex items-center shrink-0">
-         <Button
-           variant={painelAberto ? 'default' : 'outline'}
-           size="sm"
-           className="flex items-center gap-1.5 font-bold shadow-sm transition-all"
-           title="Dados do projeto (passe o mouse para abrir)"
-           onMouseEnter={() => { painelMouseDentro.current = true; setPainelAberto(true); }}
-           onMouseLeave={() => {
-             painelMouseDentro.current = false;
-             setTimeout(() => {
-               if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) {
-                 setPainelAberto(false);
-               }
-             }, 120); // 120ms grace period to transition to the dropdown body
-           }}
-         >
-           <Settings className="size-4" />
-           DADOS DO PROJETO
-         </Button>
-       </div>
+       {/* (o botão "Dados do Projeto" foi para a barra flutuante, ao lado do DETALHES) */}
       </header>
 
       <div className="relative flex min-h-0 flex-1">
@@ -2652,6 +2632,7 @@ export default function EditorPage() {
             </div>
             <div className="w-px bg-border" />
             <button type="button" className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-xs font-bold ${infoJaVista(projetoId) ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`} title="Detalhes do projeto, arquivos anexados e pendências (o que ainda falta pra exportar)" onClick={() => setInfoAberto(true)}><FileText className="size-4 shrink-0" /> DETALHES</button>
+            <button type="button" className={`act flex-col gap-0.5 ${painelAberto ? 'bg-primary text-primary-foreground' : 'border bg-background hover:bg-muted'}`} title="Dados do projeto: proprietário, cartório, TRT/ART, financeiro e ajustes" onClick={() => setPainelAberto((v) => !v)}><Settings className="size-4" /><span className="text-[8px] font-bold leading-none">DADOS</span></button>
             <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Focalizar/enquadrar o desenho" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())}><Target className="size-4" /><span className="text-[8px] font-bold leading-none">FOCO</span></button>
             <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Informações e gestão financeira do projeto (valor cobrado, gastos, recebimentos, recibo e contrato)" onClick={() => setGestaoAberta(true)}><Info className="size-4" /><span className="text-[8px] font-bold leading-none">GESTÃO</span></button>
             <button type="button" className="act flex-col gap-0.5 border bg-background hover:bg-muted" title="Banco de pontos do credenciado (consultar códigos já usados)" onClick={() => setPontosAberto(true)}><Database className="size-4" /><span className="text-[8px] font-bold leading-none">PONTOS</span></button>
