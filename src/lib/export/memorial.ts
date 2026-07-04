@@ -3,7 +3,7 @@ import {
   Table, TableRow, TableCell, WidthType, BorderStyle,
 } from 'docx';
 import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex, PessoaQualificada } from '../topo/types';
-import { grausParaDMS } from '../topo/coords';
+import { grausParaDMS, convergenciaMeridiana } from '../topo/coords';
 import { azimuteDMS, numBR, numBRmilhar, formatMatricula } from '../topo/geometry';
 import { valoresEfetivos } from '../topo/conferencia';
 import { rotulosProfissional } from '../topo/profissional';
@@ -72,7 +72,8 @@ export function construirNarrativaSegmentos(
   res: ResultadoCalculo,
   confrontantes: Confrontante[],
   confrontantePorLado: Record<number, string>,
-  imovel?: ImovelData
+  imovel?: ImovelData,
+  zonaUtm?: number
 ): SegmentoTexto[] {
   const { vertices, lados } = res;
   if (vertices.length < 3) return [];
@@ -83,6 +84,18 @@ export function construirNarrativaSegmentos(
   const push = (t: string, b = false) => { if (t) segs.push(b ? { t, b: true } : { t }); };
 
   const isUrbano = imovel?.tipoImovel === 'urbano';
+  const usarGeodesico = imovel?.tipoAzimute !== 'plano';
+  const zona = zonaUtm ?? 23;
+
+  const obterAzimuteEfetivo = (l: typeof lados[0]) => {
+    if (!usarGeodesico) return l.azimute;
+    const v = l.de;
+    if (v.lat != null && v.lon != null) {
+      const cm = convergenciaMeridiana(v.lat, v.lon, zona);
+      return (l.azimute + cm + 360) % 360;
+    }
+    return l.azimute;
+  };
 
   if (isUrbano && imovel?.distanciaEsquinaM != null && imovel?.esquinaRua) {
     push('Inicia-se a descrição deste perímetro no vértice ');
@@ -129,9 +142,10 @@ export function construirNarrativaSegmentos(
 
     if (run.ladoIdx.length === 1) {
       const l = lados[run.ladoIdx[0]];
+      const azEfetivo = obterAzimuteEfetivo(l);
       const direcao = isUrbano
-        ? `rumo de ${rumoDMS(l.azimute)} (azimute de ${azimuteDMS(l.azimute)})`
-        : `azimute de ${azimuteDMS(l.azimute)}`;
+        ? `rumo de ${rumoDMS(azEfetivo)} (azimute de ${azimuteDMS(azEfetivo)})`
+        : `azimute de ${azimuteDMS(azEfetivo)}`;
       push(`, com ${direcao} e distância de ${numBR(l.distancia)} m`);
       emitirDestino(run.ladoIdx[0]);
     } else {
@@ -143,9 +157,10 @@ export function construirNarrativaSegmentos(
       run.ladoIdx.forEach((i, k) => {
         if (k > 0) push(k === run.ladoIdx.length - 1 ? (i === totalLados - 1 ? '; e finalmente ' : '; e ') : '; ');
         const l = lados[i];
+        const azEfetivo = obterAzimuteEfetivo(l);
         const direcao = isUrbano
-          ? `${rumoDMS(l.azimute)} (${azimuteDMS(l.azimute)})`
-          : `${azimuteDMS(l.azimute)}`;
+          ? `${rumoDMS(azEfetivo)} (${azimuteDMS(azEfetivo)})`
+          : `${azimuteDMS(azEfetivo)}`;
         push(`${direcao} e ${numBR(l.distancia)} m`);
         emitirDestino(i);
       });
@@ -280,15 +295,16 @@ export interface MemorialInput {
   dataExtenso?: string; // ex.: "Sábado, 20 de Dezembro de 2025"
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
+  zonaUtm?: number;
 }
 
 export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob> {
   const input = sanitizarProfundo(inputBruto);
-  const { res, imovel, tecnico, confrontantes, confrontantePorLado, requerente, transmitente } = input;
+  const { res, imovel, tecnico, confrontantes, confrontantePorLado, requerente, transmitente, zonaUtm } = input;
   // Defesa final: nunca gerar memorial com lacuna de código de vértice.
   const semCodigo = res.vertices.filter((v) => !v.codigoSigef).length;
   if (semCodigo > 0) throw new Error(`${semCodigo} vértice(s) sem código. Renumere os vértices antes de gerar o memorial.`);
-  const narrativaSegs = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado, imovel);
+  const narrativaSegs = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado, imovel, zonaUtm);
 
   const children: (Paragraph | Table)[] = [];
 

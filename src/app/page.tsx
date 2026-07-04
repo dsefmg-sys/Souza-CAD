@@ -47,7 +47,7 @@ import { montarVertices, reordenar, definirInicio, novoVertice, reprojetar, inic
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
 import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, dividirPorAreaAlvo } from '@/lib/topo/glebas';
 import { calcular } from '@/lib/topo/calcular';
-import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
+import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo, convergenciaMeridiana } from '@/lib/topo/coords';
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarShapefileZip } from '@/lib/io/shapefile';
 import { gerarSituacao } from '@/lib/io/situacao';
@@ -1565,7 +1565,7 @@ export default function EditorPage() {
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
-      const blob = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente });
+      const blob = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente, zonaUtm: zona });
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
       saveAs(blob, `Memorial - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`);
       setBaixou((b) => ({ ...b, memorial: true }));
@@ -2924,6 +2924,15 @@ export default function EditorPage() {
                 <p className="mb-1 text-[10px] text-muted-foreground">Arraste um vértice para reordenar o polígono (renumera automático).</p>
                 {vertices.map((v, i) => {
                   const l = lados[i];
+                  const usarGeodesico = imovel.tipoAzimute !== 'plano';
+                  const azEfetivo = l ? (() => {
+                    if (!usarGeodesico) return l.azimute;
+                    if (v.lat != null && v.lon != null) {
+                      const cm = convergenciaMeridiana(v.lat, v.lon, zona);
+                      return (l.azimute + cm + 360) % 360;
+                    }
+                    return l.azimute;
+                  })() : 0;
                   return (
                     <div key={v.id}
                       draggable
@@ -2941,7 +2950,7 @@ export default function EditorPage() {
                         </span>
                       </div>
                       <div className="mt-1 text-muted-foreground">{v.codigoCampo || v.nome}</div>
-                      {l && <div className="text-muted-foreground">→ {azimuteDMS(l.azimute)} · {numBR(l.distancia)} m · {v.tipoLimite || 'LA6'}</div>}
+                      {l && <div className="text-muted-foreground">→ {azimuteDMS(azEfetivo)} · {numBR(l.distancia)} m · {v.tipoLimite || 'LA6'}</div>}
                       {selecionadoId === v.id && (
                         <div className="mt-2 grid grid-cols-2 gap-1 border-t pt-2" onClick={(e) => e.stopPropagation()}>
                           <MiniSelect label="Tipo" value={v.tipo} options={TIPOS_VERTICE as readonly string[]} onChange={(val) => editarVertice(v.id, { tipo: val as Vertex['tipo'], isDivisa: val === 'M' })} />
@@ -3429,6 +3438,29 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         </div>
       </div>
       <p className="text-[10px] text-muted-foreground">O fuso não é detectável só pelo TXT. Informe o município que o sistema acerta o fuso (23/24) e confirma no mapa.</p>
+      
+      <div className="space-y-1 mt-1 border-t pt-2">
+        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Cálculo de Azimute nas Peças</Label>
+        <select
+          className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+          value={imovel.tipoAzimute ?? 'geodesico'}
+          onChange={(e) => set('tipoAzimute', e.target.value)}
+        >
+          <option value="geodesico">Azimutes Geodésicos (Recomendado SIGEF)</option>
+          <option value="plano">Azimutes Planos (Grid de Quadrícula UTM)</option>
+        </select>
+        <p className="text-[10px] text-muted-foreground leading-snug">
+          {(imovel.tipoAzimute ?? 'geodesico') === 'geodesico' ? (
+            <span>
+              <strong>Geodésico (Verdadeiro):</strong> Corrige a distorção da projeção com a Convergência Meridiana (CM). Padrão exigido pelo SIGEF/INCRA.
+            </span>
+          ) : (
+            <span>
+              <strong>Plano (Quadrícula):</strong> Usa os ângulos puramente cartesianos calculados na grade plana UTM. Indicado para loteamentos e projetos simples de prefeitura.
+            </span>
+          )}
+        </p>
+      </div>
     </div>
   );
 }

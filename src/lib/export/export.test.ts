@@ -338,4 +338,25 @@ describe('Análise de Sobreposição', () => {
     expect(diag2[0].temSobreposicao).toBe(true);
     expect(diag2[0].tipo).toBe('PERIGO');
   });
+
+  it('calcula azimutes geodésicos com convergência meridiana quando tipoAzimute = geodesico', () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    // Força coordenadas de Espera Feliz-MG (Zona 23, longitude ~ -41.9)
+    res.vertices[0] = { ...res.vertices[0], lat: -20.650, lon: -41.908, leste: 200000, norte: 8000000 };
+    res.vertices[1] = { ...res.vertices[1], lat: -20.640, lon: -41.908, leste: 200000, norte: 8001000 };
+    res.vertices[2] = { ...res.vertices[2], lat: -20.640, lon: -41.918, leste: 199000, norte: 8001000 };
+    
+    // Azimutes planos puros (de quadrícula)
+    const imovelPlano: ImovelData = { ...imovel, tipoAzimute: 'plano' };
+    const segsPlano = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado, imovelPlano, 23);
+    
+    // Azimutes geodésicos (com convergência meridiana aplicada)
+    const imovelGeo: ImovelData = { ...imovel, tipoAzimute: 'geodesico' };
+    const segsGeo = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado, imovelGeo, 23);
+    
+    // Verifica que as descrições diferem
+    const textoPlano = segsPlano.map(s => s.t).join(' ');
+    const textoGeo = segsGeo.map(s => s.t).join(' ');
+    expect(textoPlano).not.toBe(textoGeo);
+  });
 });
