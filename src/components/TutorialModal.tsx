@@ -7,11 +7,12 @@ import {
 import { Button } from '@/components/ui/button';
 import {
   Upload, Search, UserCheck, BookUser, Users, Brush, FileText, Save,
-  ChevronLeft, ChevronRight, CircleCheck, MessageCircle, GraduationCap, type LucideProps,
+  ChevronLeft, ChevronRight, CircleCheck, MessageCircle, GraduationCap,
+  ToggleRight, PenTool, Ruler, Leaf, Sparkles, type LucideProps,
 } from 'lucide-react';
 import { carregarWhatsappSuporte, linkWhatsapp } from '@/lib/store/suporte';
 import { TEMAS_AJUDA } from '@/lib/ajuda/temas';
-import { carregarPreferencias, salvarPreferencias } from '@/lib/store/preferencias';
+import { carregarPreferencias, salvarModo, salvarNivelExperiencia } from '@/lib/store/preferencias';
 
 interface Props {
   open: boolean;
@@ -20,43 +21,68 @@ interface Props {
 
 interface Passo { icone: ComponentType<LucideProps>; titulo: string; texto: string; }
 
-// Os passos seguem a MESMA ordem, da esquerda pra direita, dos botões do cabeçalho do editor —
-// quem já viu o tutorial reconhece o botão correspondente na tela.
-const PASSOS: Passo[] = [
+// PASSOS BÁSICOS — o caminho essencial de um projeto, na ordem em que a tela conduz. Valem pra
+// todo mundo. O primeiro passo ensina a própria chave Simples/Completo, que muda a cara do app.
+const PASSOS_BASE: Passo[] = [
+  {
+    icone: ToggleRight,
+    titulo: 'A chave Simples e Completo',
+    texto: 'No canto de cima, à direita, tem uma chavinha com duas palavras: Simples e Completo. No Simples a tela mostra só o caminho essencial, ideal pra qualquer pessoa se acostumar com o app sem se perder no meio de tanto botão. No Completo aparecem todas as ferramentas. Comece no Simples; quando quiser mais, é só virar a chave — nada some do seu trabalho, só aparecem mais botões. Depois de usar bastante o Completo, essa chave se recolhe pra deixar a tela limpa, e o Simples volta a ficar disponível nas Configurações.',
+  },
   {
     icone: Upload,
     titulo: 'Comece importando o TXT',
-    texto: 'O botão TXT lê o arquivo do seu equipamento GNSS e já desenha o perímetro do imóvel no mapa. Se o seu equipamento exporta as colunas numa ordem diferente, ajuste isso uma vez em Configurações.',
+    texto: 'O botão TXT, no começo da fila lá em cima, lê o arquivo do seu equipamento GNSS e já desenha o perímetro do imóvel no mapa. Se o seu aparelho exporta as colunas numa ordem diferente, você ajusta isso uma vez só em Configurações, e ele lembra pra sempre.',
   },
   {
     icone: Search,
     titulo: 'Busque os vizinhos certificados',
-    texto: 'O botão SIGEF procura, sozinho, os imóveis já certificados que encostam no seu, no acervo do INCRA, e já sugere os confrontantes. Depois de baixar, esse mesmo botão vira ANÁLISE, para você ver se há sobreposição de divisa.',
-  },
-  {
-    icone: UserCheck,
-    titulo: 'Reaproveite o código do vizinho',
-    texto: 'Quando um vértice de divisa já tem um código oficial usado por outro agrimensor, você não deve gerar um novo. Clique no vértice do vizinho no mapa para adotar o código dele, ou suba um arquivo de vértices pelo botão ao lado do SIGEF.',
+    texto: 'O botão SIGEF procura sozinho, no acervo do INCRA, os imóveis já certificados que encostam no seu, e já sugere os confrontantes. Depois que baixa, esse mesmo botão vira ANÁLISE, pra você ver se tem sobreposição de divisa.',
   },
   {
     icone: BookUser,
     titulo: 'Preencha os dados do imóvel',
-    texto: 'O botão DADOS abre o cadastro do proprietário, dos confrontantes, do imóvel e do cartório. É a base de tudo que vai aparecer no memorial e na planta.',
+    texto: 'O botão DADOS abre o cadastro do proprietário, dos confrontantes, do imóvel e do cartório. É a base de tudo que vai sair no memorial e na planta, então capriche aqui.',
   },
   {
     icone: Users,
     titulo: 'Pinte confrontantes e divisas',
-    texto: 'Os botões CONFRO e DIVISAS ativam um modo de clique no mapa: você marca a quem pertence cada trecho da divisa e que tipo de linha é (cerca, córrego, estrada...).',
+    texto: 'Os botões CONFRO e DIVISAS ligam um modo de clique no mapa: você marca a quem pertence cada trecho da divisa e que tipo de linha é, se é cerca, córrego, estrada. Uma faixa aparece no alto do mapa pra você escolher a cor e o tipo enquanto pinta.',
   },
   {
     icone: FileText,
     titulo: 'Gere as peças finais',
-    texto: 'Com tudo pintado, os botões da direita baixam o memorial descritivo, a planilha SIGEF, o KML, a planta em PDF e o requerimento ao cartório — cada um já pronto no formato oficial.',
+    texto: 'Com tudo pintado, os botões da direita baixam cada peça pronta no formato oficial: MEM é o memorial descritivo, ODS é a planilha do SIGEF, PLANTA é o desenho em PDF, e REQ é o requerimento pro cartório. O botão TRT é onde você cola o número do seu termo de responsabilidade.',
   },
   {
     icone: Save,
     titulo: 'Salve sempre que lembrar',
-    texto: 'O botão de salvar guarda o projeto na nuvem e registra os códigos dos vértices no seu banco de pontos, para nunca repetir um número já usado. O app também guarda um rascunho automático, então fechar sem salvar não perde o trabalho.',
+    texto: 'O botão Salvar, na barra da esquerda, guarda o projeto na nuvem e registra os códigos dos vértices no seu banco de pontos, pra nunca repetir um número já usado. O app também guarda um rascunho sozinho, então fechar sem salvar não perde o trabalho. Pra alternar entre o mapa e a planta, use o botão quadrado no canto do desenho, ou a tecla Esc.',
+  },
+];
+
+// PASSOS AVANÇADOS — só aparecem quando a tela está no modo Completo (é quando essas ferramentas
+// existem na tela). Apresentam o que fica escondido no Simples.
+const PASSOS_AVANCADOS: Passo[] = [
+  {
+    icone: UserCheck,
+    titulo: 'Reaproveite o código do vizinho',
+    texto: 'Quando um vértice de divisa já tem código oficial de outro agrimensor, você não deve criar um novo. No Completo aparecem os botões CASAR (adota automaticamente o código do certificado do INCRA que encosta no seu) e VIZINHOS (sobe um arquivo de vértices que você baixou do Acervo Fundiário). Isso evita a rejeição mais comum: dois códigos pro mesmo ponto.',
+  },
+  {
+    icone: PenTool,
+    titulo: 'Ferramentas de desenho e de vértices',
+    texto: 'No Completo, a barra da esquerda ganha os cartões de desenho e de geometria: linha, polilinha, cota, texto e símbolos como poste e árvore; e a edição de vértices, pra inserir, apagar, ignorar um ponto que não é de divisa, ou medir distância e azimute direto no mapa.',
+  },
+  {
+    icone: Leaf,
+    titulo: 'Peças extras e o CAR',
+    texto: 'Ainda no Completo aparecem a ERRATA perimetral, o link CERT pra certificação eletrônica no SIGEF, e o CAR, o Cadastro Ambiental Rural. São peças que nem todo projeto precisa, por isso ficam guardadas no modo Simples.',
+  },
+  {
+    icone: Ruler,
+    titulo: 'Caixa de ferramentas',
+    texto: 'Lá embaixo na barra ficam os extras soltos, que não dependem do projeto: a calculadora de coordenada, distância e azimute; o editor de DXF pra abrir qualquer desenho; a porcentagem entre dois polígonos; e o Estúdio, um mini editor de imagem. Tudo isso só no Completo.',
   },
 ];
 
@@ -66,36 +92,46 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   const [tela, setTela] = useState<TelaAjuda>('menu');
   const [passo, setPasso] = useState(0);
   const [temaId, setTemaId] = useState<string | null>(null);
+  // Duas coisas DIFERENTES: `modo` (quantas ferramentas na tela) e `nivel` (quanta explicação a
+  // ajuda dá, conforme o tempo de profissão). O seletor visível é o do nível, porque é ele que muda
+  // o texto que a pessoa está lendo aqui. O modo só decide se aparecem os passos avançados.
+  const [modo, setModo] = useState<'simples' | 'completo'>('simples');
   const [nivel, setNivel] = useState<'iniciante' | 'experiente'>('iniciante');
   const [zapSuporte, setZapSuporte] = useState('');
   useEffect(() => {
     if (!open) return;
     setTela('menu'); setPasso(0); setTemaId(null);
-    setNivel(carregarPreferencias().nivelExperiencia);
+    const p = carregarPreferencias();
+    setModo(p.modo); setNivel(p.nivelExperiencia);
     carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
   }, [open]);
   const linkSuporte = linkWhatsapp(zapSuporte);
 
-  // o nível é uma configuração do usuário: muda aqui, vale no app inteiro
-  function trocarNivel(n: 'iniciante' | 'experiente') {
-    setNivel(n);
-    salvarPreferencias({ ...carregarPreferencias(), nivelExperiencia: n });
-  }
+  // O nível da ajuda é uma preferência do usuário: muda aqui, vale no app inteiro.
+  function trocarNivel(n: 'iniciante' | 'experiente') { setNivel(n); salvarNivelExperiencia(n); }
+  // Virar pro Completo (a partir do convite no fim do básico) muda a interface e revela mais passos.
+  function irParaCompleto() { setModo('completo'); salvarModo('completo'); }
 
-  const ultimo = passo === PASSOS.length - 1;
-  const p = PASSOS[passo];
+  // No Simples, só os passos básicos. No Completo, básicos + avançados.
+  const passos = modo === 'completo' ? [...PASSOS_BASE, ...PASSOS_AVANCADOS] : PASSOS_BASE;
+  const ultimo = passo === passos.length - 1;
+  const noFimDoBasico = passo === PASSOS_BASE.length - 1;
+  const p = passos[passo] ?? passos[0];
   const Icone = p.icone;
   const tema = TEMAS_AJUDA.find((t) => t.id === temaId) ?? null;
 
   const seletorNivel = (
-    <div className="flex items-center justify-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
-      {(['iniciante', 'experiente'] as const).map((n) => (
-        <button key={n} type="button" onClick={() => trocarNivel(n)}
-          className={`rounded-full px-3 py-1 font-semibold capitalize transition-colors ${nivel === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
-          title={n === 'iniciante' ? 'Linguagem didática, explica os porquês (ex.: menos de 3 anos de profissão)' : 'Linguagem objetiva e técnica, direto ao ponto'}>
-          {n}
-        </button>
-      ))}
+    <div className="flex flex-col items-center gap-1">
+      <div className="flex items-center justify-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
+        {(['iniciante', 'experiente'] as const).map((n) => (
+          <button key={n} type="button" onClick={() => trocarNivel(n)}
+            className={`rounded-full px-3 py-1 font-semibold capitalize transition-colors ${nivel === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+            title={n === 'iniciante' ? 'Explica os porquês, linguagem didática — pra quem tem pouco tempo de profissão' : 'Direto ao ponto — pra o agrimensor que já tem tempo de profissão e não quer tanta explicação'}>
+            {n}
+          </button>
+        ))}
+      </div>
+      <span className="text-[10px] text-muted-foreground">Nível da ajuda — quanta explicação você quer. É separado da chave Simples/Completo.</span>
     </div>
   );
 
@@ -137,8 +173,15 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
               </DialogTitle>
             </DialogHeader>
             <p className="text-sm leading-relaxed text-muted-foreground">{p.texto}</p>
+            {modo === 'simples' && noFimDoBasico && (
+              <button type="button" onClick={irParaCompleto}
+                className="flex items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-2 text-left text-xs text-muted-foreground hover:bg-primary/10">
+                <Sparkles className="size-4 shrink-0 text-primary" />
+                <span>Quer ver as ferramentas avançadas? Toque aqui pra virar a tela pro <b className="text-primary">modo Completo</b> e ganhar mais passos neste tutorial.</span>
+              </button>
+            )}
             <div className="flex items-center justify-center gap-1.5 py-1">
-              {PASSOS.map((_, i) => (
+              {passos.map((_, i) => (
                 <span key={i} className={`h-1.5 rounded-full transition-all ${i === passo ? 'w-5 bg-primary' : 'w-1.5 bg-muted-foreground/30'}`} />
               ))}
             </div>

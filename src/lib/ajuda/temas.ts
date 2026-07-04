@@ -11,6 +11,14 @@ export interface TemaAjuda {
 
 export const TEMAS_AJUDA: TemaAjuda[] = [
   {
+    id: 'modos',
+    titulo: 'Modo Simples/Completo e nível da ajuda',
+    iniciante:
+      'São DUAS coisas diferentes, não confunda. A primeira é a chave Simples e Completo, no canto de cima à direita: ela decide quanta FERRAMENTA aparece na tela. No Simples fica só o caminho essencial de um georreferenciamento — importar os pontos, buscar vizinhos no SIGEF, preencher dados, pintar confrontantes e divisas, e gerar as peças. É pra qualquer pessoa se acostumar com o app sem se assustar com botão demais. No Completo aparece tudo: desenhar linhas e cotas, editar vértices, errata, CAR e a caixa de ferramentas. Trocar de modo nunca apaga nada, só muda o que fica à mostra. Depois de bastante uso no Completo, essa chave se recolhe do topo pra limpar a tela, e o Simples continua disponível nas Configurações. A segunda coisa é o nível da ajuda, iniciante ou experiente, que fica na Central de ajuda e nas Configurações: ele muda só QUANTA EXPLICAÇÃO os textos dão, conforme o seu tempo de profissão. Um agrimensor veterano pode gostar da tela Simples e mesmo assim preferir a ajuda experiente, mais curta.',
+    experiente:
+      'Dois ajustes independentes. (1) modo (Simples/Completo): densidade da interface, chave fixa no topo à direita; Simples esconde CASAR/VIZINHOS-arquivo, errata, CERT, CAR, banco de pontos, financeiro, cartões de desenho e de vértices, e a caixa de ferramentas; Completo revela tudo. Passadas ~5 h acumuladas no Completo, a chave do topo some (tela limpa) e o retorno ao Simples fica só em Configurações → Comportamento. (2) nivelExperiencia (iniciante/experiente): verbosidade da ajuda/temas, conforme tempo de profissão. Não há vínculo entre os dois — combine à vontade. Padrão: modo Simples + ajuda iniciante.',
+  },
+  {
     id: 'georreferenciamento',
     titulo: 'Georreferenciamento e SIGEF',
     iniciante:

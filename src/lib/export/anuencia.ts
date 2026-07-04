@@ -3,6 +3,7 @@ import type { ImovelData, TecnicoData, Confrontante, Vertex } from '../topo/type
 import { numBR } from '../topo/geometry';
 import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
+import { carregarModelos, preencherModelo } from '../store/modelos';
 
 export interface AnuenciaInput {
   imovel: ImovelData;
@@ -112,14 +113,11 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
 
   addVazio(120);
 
-  addP(
-    'Declaro ainda que o respeito aos limites acima descritos não causa qualquer tipo de sobreposição ou ' +
-    'invasão sobre a minha propriedade, estando a divisa física implantada há longa data e em perfeito comum acordo entre as partes.',
-    false,
-    AlignmentType.JUSTIFIED,
-    180,
-    22
-  );
+  const fecho = preencherModelo(carregarModelos().anuenciaFecho, {
+    denominacao: imovel.denominacao || '', proprietario: imovel.proprietario || '',
+    tecnico: tecnico.nome || '', municipio: imovel.municipio || '', comarca: comarca || imovel.municipio || '',
+  });
+  addP(fecho, false, AlignmentType.JUSTIFIED, 180, 22);
 
   addP(`${local}, ${data}.`, false, AlignmentType.RIGHT, 360, 22);
 

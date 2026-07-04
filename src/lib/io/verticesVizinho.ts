@@ -12,6 +12,9 @@ export interface VerticeVizinhoLido {
   lat: number;
   lon: number;
   elevacao?: number;
+  sigmaX?: number;
+  sigmaY?: number;
+  metodo?: string;
 }
 
 function separadorRegex(sep: ImportVerticesVizinhoConfig['separador']): RegExp {
@@ -50,6 +53,9 @@ export function parseVerticesVizinho(
   const iLeste = indiceDe('leste');
   const iNorte = indiceDe('norte');
   const iElev = indiceDe('elevacao');
+  const iSigX = indiceDe('sigmaX');
+  const iSigY = indiceDe('sigmaY');
+  const iMetodo = indiceDe('metodo');
   const usaGeo = iLat >= 0 && iLon >= 0;
   const usaUtm = iLeste >= 0 && iNorte >= 0;
 
@@ -71,7 +77,16 @@ export function parseVerticesVizinho(
 
     const nome = (iNome >= 0 ? f[iNome] ?? '' : '').trim();
     const elevacao = iElev >= 0 ? numero(f[iElev], cfg.decimal) : NaN;
-    out.push({ nome, lat, lon, ...(isFinite(elevacao) ? { elevacao } : {}) });
+    const sigmaX = iSigX >= 0 ? numero(f[iSigX], cfg.decimal) : NaN;
+    const sigmaY = iSigY >= 0 ? numero(f[iSigY], cfg.decimal) : NaN;
+    const metodo = iMetodo >= 0 ? (f[iMetodo] ?? '').trim() : '';
+    out.push({
+      nome, lat, lon,
+      ...(isFinite(elevacao) ? { elevacao } : {}),
+      ...(isFinite(sigmaX) ? { sigmaX } : {}),
+      ...(isFinite(sigmaY) ? { sigmaY } : {}),
+      ...(metodo ? { metodo } : {}),
+    });
   }
   return out;
 }

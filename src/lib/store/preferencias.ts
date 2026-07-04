@@ -3,8 +3,6 @@
 // ficam só interruptores de comportamento da interface e das validações.
 
 export interface PreferenciasApp {
-  /** Mostra os ícones do cabeçalho (além do texto). Padrão: true. */
-  mostrarIconesCabecalho: boolean;
   /** Exige nome do cônjuge preenchido (proprietário/confrontante) antes de prosseguir. Padrão: false. */
   exigirConjuge: boolean;
   /** Exige o cartório (CNS) preenchido antes de gerar uma peça oficial. Padrão: false. */
@@ -13,30 +11,73 @@ export interface PreferenciasApp {
   mostrarDicasEducativas: boolean;
   /** Quando falso, um problema "grave" da conferência de exportação vira só aviso (pode prosseguir). Padrão: true (trava de verdade). */
   bloquearExportacaoIncompleta: boolean;
-  /** Nível de experiência do agrimensor: muda a linguagem da ajuda/temas (iniciante = didática, experiente = objetiva). Padrão: iniciante. */
+  /**
+   * NÍVEL DE PROFISSÃO — quanta explicação a ajuda dá. Coisa DIFERENTE do `modo`:
+   *  - 'iniciante':  linguagem didática, explica os porquês. Pra quem tem pouco tempo de profissão.
+   *  - 'experiente': objetiva, direto ao ponto. Pra o agrimensor veterano que não quer tanta explicação.
+   * Independente do `modo` (um veterano pode preferir a tela Simples e mesmo assim a ajuda "experiente").
+   * Padrão: iniciante.
+   */
   nivelExperiencia: 'iniciante' | 'experiente';
+  /**
+   * MODO DA INTERFACE — quanta ferramenta aparece na tela. Coisa DIFERENTE do `nivelExperiencia`:
+   *  - 'simples':  só o caminho essencial do georreferenciamento. Pensado pra QUALQUER nível se adaptar ao software.
+   *  - 'completo': todas as ferramentas à mostra. Pra quem já se acostumou com o app.
+   * Padrão: 'simples' (todo usuário começa se adaptando ao software).
+   */
+  modo: 'simples' | 'completo';
+  /**
+   * Tempo acumulado (ms) que o usuário passou no modo Completo. Ao passar de 5 h, a chave no topo
+   * some (interface mais limpa) e voltar ao Simples passa a ser só pelas Configurações.
+   */
+  tempoCompletoMs: number;
   /** Chaves de botões do cabeçalho cujo ÍCONE fica oculto (só o texto). Padrão: dados, trt, análise. */
   iconesCabecalhoOcultos: string[];
+  /** Toca o vídeo de abertura (splash animado) na primeira vez que o app abre neste navegador. Padrão: true. */
+  introVideoAtiva: boolean;
+  /**
+   * Tamanho do texto da interface (zoom). 1 = normal. Vale só na aparência da tela.
+   * Faixa segura pra não quebrar o layout: 0.9 a 1.25. Padrão: 1.
+   */
+  escalaFonte: number;
+  /**
+   * Casas decimais na EXIBIÇÃO da tela (coordenadas, distâncias, área). NÃO afeta os
+   * documentos oficiais nem as exportações — memorial, planilha SIGEF, KML e afins
+   * mantêm a precisão exigida pela norma. Padrão: 3.
+   */
+  casasDecimais: number;
+  /** Pede confirmação antes de apagar (vértice, projeto, divisa). Padrão: true. */
+  confirmarAntesApagar: boolean;
 }
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {
-  mostrarIconesCabecalho: true,
   exigirConjuge: false,
   exigirCns: false,
   mostrarDicasEducativas: true,
   bloquearExportacaoIncompleta: true,
   nivelExperiencia: 'iniciante',
+  modo: 'simples',
+  tempoCompletoMs: 0,
   iconesCabecalhoOcultos: ['dados', 'trt', 'analise'],
+  introVideoAtiva: true,
+  escalaFonte: 1,
+  casasDecimais: 3,
+  confirmarAntesApagar: true,
 };
 
 const KEY = 'metrica.preferencias';
+
+/** Depois deste tempo no Completo, a chave do topo some (fica só nas Configurações). */
+export const LIMITE_MODO_FIXO_MS = 5 * 60 * 60 * 1000; // 5 horas
 
 export function carregarPreferencias(): PreferenciasApp {
   if (typeof window === 'undefined') return PREFERENCIAS_PADRAO;
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return PREFERENCIAS_PADRAO;
-    return { ...PREFERENCIAS_PADRAO, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Partial<PreferenciasApp>;
+    // modo e nivelExperiencia são INDEPENDENTES; cada um cai no padrão se não existir.
+    return { ...PREFERENCIAS_PADRAO, ...parsed };
   } catch {
     return PREFERENCIAS_PADRAO;
   }
@@ -45,4 +86,64 @@ export function carregarPreferencias(): PreferenciasApp {
 export function salvarPreferencias(p: PreferenciasApp): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(KEY, JSON.stringify(p));
+}
+
+/**
+ * Aplica o zoom da fonte da interface no documento inteiro. Mexe no tamanho base do texto
+ * (a raiz), então tudo que usa medida relativa acompanha. Presa entre 0,9 e 1,25 pra não
+ * quebrar o layout. Chame no carregamento e sempre que o ajuste mudar.
+ */
+export function aplicarEscalaFonte(escala?: number): void {
+  if (typeof document === 'undefined') return;
+  const e = Math.min(1.25, Math.max(0.9, escala ?? carregarPreferencias().escalaFonte ?? 1));
+  document.documentElement.style.fontSize = `${(16 * e).toFixed(2)}px`;
+}
+
+/**
+ * Formata um número pra EXIBIR na tela, usando as casas decimais do ajuste. Passe `casas`
+ * pra forçar um valor específico. NUNCA use isto em exportação/documento oficial — lá a
+ * precisão é fixa pela norma.
+ */
+export function formatarNum(valor: number, casas?: number): string {
+  if (!Number.isFinite(valor)) return '—';
+  const c = casas ?? carregarPreferencias().casasDecimais ?? 3;
+  return valor.toFixed(Math.min(8, Math.max(0, c)));
+}
+
+/**
+ * Confirmação antes de apagar, respeitando o ajuste. Se o ajuste estiver desligado, apaga
+ * direto (devolve true). Devolve true quando pode prosseguir.
+ */
+export function confirmarApagar(mensagem: string): boolean {
+  if (typeof window === 'undefined') return true;
+  if (!carregarPreferencias().confirmarAntesApagar) return true;
+  return window.confirm(mensagem);
+}
+
+/** Modo atual da interface (a chave Simples/Completo). */
+export function carregarModo(): 'simples' | 'completo' {
+  return carregarPreferencias().modo;
+}
+
+/** Vira a chave Simples/Completo (não toca no nível da ajuda — são coisas diferentes). */
+export function salvarModo(modo: 'simples' | 'completo'): void {
+  salvarPreferencias({ ...carregarPreferencias(), modo });
+}
+
+/** Nível de profissão (linguagem da ajuda). Independente do modo. */
+export function salvarNivelExperiencia(nivelExperiencia: 'iniciante' | 'experiente'): void {
+  salvarPreferencias({ ...carregarPreferencias(), nivelExperiencia });
+}
+
+/** Soma tempo passado no modo Completo. Devolve o total acumulado. */
+export function registrarTempoCompleto(ms: number): number {
+  const p = carregarPreferencias();
+  const total = Math.max(0, (p.tempoCompletoMs || 0) + Math.max(0, ms));
+  salvarPreferencias({ ...p, tempoCompletoMs: total });
+  return total;
+}
+
+/** true quando o usuário já usou o Completo o bastante pra "fixar" (chave do topo some). */
+export function modoCompletoFixado(): boolean {
+  return (carregarPreferencias().tempoCompletoMs || 0) >= LIMITE_MODO_FIXO_MS;
 }

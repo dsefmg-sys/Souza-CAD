@@ -12,7 +12,12 @@ function separadorRegex(sep: ImportTxtConfig['separador']): RegExp {
 function numero(s: string | undefined, decimal: '.' | ','): number {
   if (s == null) return NaN;
   let t = s.trim();
-  if (decimal === ',') t = t.replace(/\./g, '').replace(',', '.');
+  if (decimal === ',') {
+    // Só trata pontos como milhar QUANDO existe mesmo uma vírgula decimal na célula. Sem isso,
+    // uma coordenada como "300000.25" (ponto decimal) viraria "30000025" e o vértice iria parar a
+    // quilômetros do lugar. Notação científica ("1.5e6") também fica preservada.
+    if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  }
   return parseFloat(t);
 }
 
@@ -32,9 +37,11 @@ export function parseTxt(conteudo: string, config?: ImportTxtConfig | null): Raw
   const linhas = conteudo.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (linhas.length === 0) return [];
 
-  // Detecta se a primeira linha é cabeçalho (não tem números nas colunas N/E).
+  // Detecta cabeçalho: uma linha de DADO tem número tanto no Norte (col 2) quanto no Leste (col 3).
+  // Se qualquer um dos dois não for número, é cabeçalho. (Antes olhava só a col 2, e podia engolir
+  // um vértice ou injetar o cabeçalho como ponto.)
   const primeira = linhas[0].split(';');
-  const temCabecalho = !isFinite(parseFloat(primeira[2]));
+  const temCabecalho = !(isFinite(parseFloat(primeira[2])) && isFinite(parseFloat(primeira[3])));
   const corpo = temCabecalho ? linhas.slice(1) : linhas;
 
   const pontos: RawPoint[] = [];
@@ -47,6 +54,13 @@ export function parseTxt(conteudo: string, config?: ImportTxtConfig | null): Raw
     const leste = parseFloat(f[3]);
     const elevacao = parseFloat(f[4]);
     if (!isFinite(norte) || !isFinite(leste)) continue;
+
+    // Colunas de erro do formato observado: ErroY;ErroX;ErroVert (cols 5,6,7). O erro que vem
+    // PRIMEIRO é o do Norte (Y) e o segundo o do Leste (X). Sem ler isso, a planilha SIGEF saía
+    // com precisão fixa (0,00) em vez da medida em campo.
+    const sigmaY = parseFloat(f[5]); // erro do Norte (Y)
+    const sigmaX = parseFloat(f[6]); // erro do Leste (X)
+    const sigmaZ = parseFloat(f[7]); // erro vertical
 
     const statusMatch = linha.match(/STATUS:([A-Z]+)/i);
     const status = statusMatch ? statusMatch[1].toUpperCase() : '';
@@ -62,6 +76,9 @@ export function parseTxt(conteudo: string, config?: ImportTxtConfig | null): Raw
       status,
       isBase,
       isSingle,
+      ...(isFinite(sigmaX) ? { sigmaX } : {}),
+      ...(isFinite(sigmaY) ? { sigmaY } : {}),
+      ...(isFinite(sigmaZ) ? { sigmaZ } : {}),
     });
   }
   return pontos;

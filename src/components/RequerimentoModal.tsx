@@ -29,6 +29,10 @@ const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string; explicacao: stri
     valor: 'desmembramento', rotulo: 'Desmembramento',
     explicacao: 'Uma parte do imóvel está sendo separada para virar uma matrícula nova (o dono continua o mesmo dos dois pedaços). Costuma vir acompanhado da ferramenta de dividir gleba por área.',
   },
+  {
+    valor: 'usucapiao', rotulo: 'Usucapião',
+    explicacao: 'O requerente (usucapiente) busca o reconhecimento da usucapião do imóvel. O documento usa os termos "usucapiente" e "titular registral / confrontante" e pede a instrução do reconhecimento da usucapião.',
+  },
 ];
 
 export const PESSOA_VAZIA: PessoaQualificada = {
@@ -114,6 +118,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     doacao: { req: 'Requerente (donatário)', trans: 'Doador (proprietário registral)' },
     unificacao: { req: 'Requerente (proprietário)', trans: 'Coproprietário / cônjuge (se houver)' },
     desmembramento: { req: 'Requerente (proprietário)', trans: 'Coproprietário / cônjuge (se houver)' },
+    usucapiao: { req: 'Requerente (usucapiente)', trans: 'Titular registral / confrontante (se houver)' },
   }[tipoAto];
 
   useEffect(() => {

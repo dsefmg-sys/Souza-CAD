@@ -11,12 +11,24 @@ interface Props {
   onOpenChange: (o: boolean) => void;
 }
 
-const CAMPOS: { chave: keyof ModelosDocs; titulo: string }[] = [
-  { chave: 'declProprietario', titulo: 'Declaração do(s) proprietário(s) — memorial e planta' },
-  { chave: 'declConfrontantes', titulo: 'Declaração dos confrontantes — memorial e planta' },
-  { chave: 'laudoTecnico', titulo: 'Laudo técnico — planta' },
-  { chave: 'contratoObjeto', titulo: 'Objeto do contrato de prestação de serviços' },
-  { chave: 'reciboReferente', titulo: 'Texto "referente a…" do recibo' },
+const CAMPOS: { chave: keyof ModelosDocs; titulo: string; grupo: string }[] = [
+  { grupo: 'Memorial e planta', chave: 'declProprietario', titulo: 'Declaração do(s) proprietário(s)' },
+  { grupo: 'Memorial e planta', chave: 'declConfrontantes', titulo: 'Declaração dos confrontantes' },
+  { grupo: 'Memorial e planta', chave: 'laudoTecnico', titulo: 'Laudo técnico (planta)' },
+  { grupo: 'Memorial e planta', chave: 'memorialInfoTecnicas', titulo: 'Informações técnicas (memorial rural)' },
+  { grupo: 'Memorial e planta', chave: 'memorialObservacoes', titulo: 'Observações (memorial rural)' },
+  { grupo: 'Memorial e planta', chave: 'memorialInfoTecnicasUrbano', titulo: 'Informações técnicas (memorial urbano)' },
+  { grupo: 'Memorial e planta', chave: 'memorialObservacoesUrbano', titulo: 'Observações (memorial urbano)' },
+  { grupo: 'Requerimento', chave: 'requerimentoConfrontantes', titulo: 'Declarações sobre confrontantes (uma linha em branco separa parágrafos)' },
+  { grupo: 'Requerimento', chave: 'requerimentoResponsabilidade', titulo: 'Responsabilidade técnica' },
+  { grupo: 'Errata', chave: 'errataRatificacao', titulo: 'Considerações finais e ratificação' },
+  { grupo: 'Anuência', chave: 'anuenciaFecho', titulo: 'Parágrafo de fecho da carta de anuência' },
+  { grupo: 'Contrato, recibo e proposta', chave: 'contratoObjeto', titulo: 'Objeto do contrato' },
+  { grupo: 'Contrato, recibo e proposta', chave: 'contratoObrigacoes', titulo: 'Obrigações das partes (contrato)' },
+  { grupo: 'Contrato, recibo e proposta', chave: 'reciboReferente', titulo: 'Texto "referente a…" do recibo' },
+  { grupo: 'Contrato, recibo e proposta', chave: 'propostaTexto', titulo: 'Corpo da proposta/orçamento' },
+  { grupo: 'Declarações avulsas', chave: 'declPosse', titulo: 'Declaração de posse' },
+  { grupo: 'Declarações avulsas', chave: 'declInexistenciaSobreposicao', titulo: 'Declaração de inexistência de sobreposição' },
 ];
 
 // Editor dos modelos de texto das peças. Cada empresa personaliza; as variáveis {chave} são trocadas
@@ -47,8 +59,11 @@ export default function ModelosDocsModal({ open, onOpenChange }: Props) {
         </div>
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-          {CAMPOS.map(({ chave, titulo }) => (
+          {CAMPOS.map(({ chave, titulo, grupo }, i) => (
             <div key={chave} className="space-y-1">
+              {(i === 0 || CAMPOS[i - 1].grupo !== grupo) && (
+                <div className="pt-1 text-[11px] font-bold uppercase tracking-wide text-primary">{grupo}</div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold">{titulo}</span>
                 <button type="button" className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground" onClick={() => set(chave, MODELOS_PADRAO[chave])}><RotateCcw className="size-3" /> restaurar padrão</button>

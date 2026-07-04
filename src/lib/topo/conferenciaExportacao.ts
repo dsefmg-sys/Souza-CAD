@@ -17,20 +17,30 @@ export interface ConferenciaExportacao {
   graves: string[];
 }
 
+/** Regras extras de conferência que o usuário liga/desliga nos Ajustes (aba Comportamento). */
+export interface OpcoesConferencia {
+  /** Exige nome do cônjuge do proprietário e de cada confrontante proprietário/posseiro. */
+  exigirConjuge?: boolean;
+  /** Exige o CNS do cartório do imóvel preenchido. */
+  exigirCns?: boolean;
+}
+
 /** Acumulador interno: junta problemas e marca quais são graves. */
 interface Acc {
   problemas: string[];
   graves: string[];
+  opcoes: OpcoesConferencia;
   avisa: (msg: string) => void;
   trava: (msg: string) => void;
 }
 
-function novoAcc(): Acc {
+function novoAcc(opcoes: OpcoesConferencia = {}): Acc {
   const problemas: string[] = [];
   const graves: string[] = [];
   return {
     problemas,
     graves,
+    opcoes,
     avisa: (msg) => problemas.push(msg),
     trava: (msg) => { problemas.push(msg); graves.push(msg); },
   };
@@ -50,6 +60,14 @@ function conferirCadastro(imovel: ImovelData, tecnico: TecnicoData | null, acc: 
 
   if (imovel.conjugeProprietario?.trim() && !imovel.cpfConjugeProprietario?.trim()) {
     acc.avisa('O cônjuge do proprietário está preenchido, mas falta o CPF dele(a).');
+  }
+
+  // Regras opcionais, ligadas nos Ajustes (aba Comportamento).
+  if (acc.opcoes.exigirConjuge && imovel.proprietario?.trim() && !imovel.conjugeProprietario?.trim()) {
+    acc.avisa('Falta o nome do cônjuge do proprietário (exigência ligada nos Ajustes).');
+  }
+  if (acc.opcoes.exigirCns && !imovel.cns?.trim()) {
+    acc.avisa('Falta o CNS do cartório do imóvel (exigência ligada nos Ajustes).');
   }
 }
 
@@ -87,6 +105,10 @@ function conferirGeometria(
     if ((c.condicao ?? 'proprietario') === 'espolio' && !c.inventarianteNome?.trim()) {
       trava(`O espólio de "${c.nome}" está sem o nome do inventariante — a assinatura sairia em branco no memorial.`);
     }
+    // Regra opcional (Ajustes): cônjuge do confrontante proprietário/posseiro.
+    if (acc.opcoes.exigirConjuge && (c.condicao ?? 'proprietario') !== 'espolio' && !c.conjugeNome?.trim()) {
+      avisa(`Falta o nome do cônjuge de "${c.nome}" (exigência ligada nos Ajustes).`);
+    }
   }
 
   // todo trecho do perímetro precisa de um confrontante atribuído: sem isso, o memorial narra
@@ -112,9 +134,10 @@ export function conferirProntoParaExportar(
   vertices: Vertex[],
   confrontantes: Confrontante[],
   tecnico: TecnicoData | null,
-  confrontantePorLado?: Record<number, string>
+  confrontantePorLado?: Record<number, string>,
+  opcoes?: OpcoesConferencia
 ): ConferenciaExportacao {
-  const acc = novoAcc();
+  const acc = novoAcc(opcoes);
   conferirGeometria(vertices, confrontantes, confrontantePorLado, acc);
   conferirCadastro(imovel, tecnico, acc);
   return { ok: acc.problemas.length === 0, problemas: acc.problemas, graves: acc.graves };
@@ -130,9 +153,10 @@ export function conferirProntoParaExportar(
 export function conferirProjetoGlebas(
   imovel: ImovelData,
   glebas: Gleba[],
-  tecnico: TecnicoData | null
+  tecnico: TecnicoData | null,
+  opcoes?: OpcoesConferencia
 ): ConferenciaExportacao {
-  const acc = novoAcc();
+  const acc = novoAcc(opcoes);
   const multi = glebas.length > 1;
 
   if (glebas.length === 0) {

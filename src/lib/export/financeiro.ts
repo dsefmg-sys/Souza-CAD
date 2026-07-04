@@ -139,7 +139,7 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
     ['CLÁUSULA 1ª – DO OBJETO', preencherModelo(carregarModelos().contratoObjeto, varsFinanceiro(a))],
     ['CLÁUSULA 2ª – DO VALOR E PAGAMENTO', `Pelos serviços, o CONTRATANTE pagará ao CONTRATADO o valor de ${moedaBR(a.valor)} (${extensoReais(a.valor)}), ${a.formaPagamento || 'na forma combinada entre as partes'}.`],
     ['CLÁUSULA 3ª – DO PRAZO', `O CONTRATADO executará os serviços no prazo de ${a.prazoDias ?? '____'} dias, ressalvadas as etapas que dependam de terceiros (cartório, INCRA, confrontantes) e de condições de campo.`],
-    ['CLÁUSULA 4ª – DAS OBRIGAÇÕES', `O CONTRATANTE fornecerá documentos e informações necessárias e indicará as divisas em campo; o CONTRATADO executará os serviços com zelo técnico e responsabilidade profissional.`],
+    ['CLÁUSULA 4ª – DAS OBRIGAÇÕES', preencherModelo(carregarModelos().contratoObrigacoes, varsFinanceiro(a))],
     ['CLÁUSULA 5ª – DO FORO', `Fica eleito o foro da comarca de ${a.tecnico.cidadeAssinatura || a.imovel.municipio || '—'} para dirimir eventuais dúvidas oriundas deste contrato.`],
   ];
 
@@ -167,4 +167,54 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
   doc.text(a.escritorio.nome || '', larg - margem - 35, y + 10, { align: 'center' });
 
   doc.save(`Contrato - ${a.imovel.denominacao || 'cliente'}.pdf`);
+}
+
+/** Proposta comercial / orçamento do serviço, pronta para enviar ao cliente. */
+export function gerarPropostaPdf(a: BaseArgs & { valor: number; prazoDias?: number; formaPagamento?: string }): void {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const larg = doc.internal.pageSize.getWidth();
+  const alt = doc.internal.pageSize.getHeight();
+  const margem = 18;
+  let y = cabecalhoEscritorio(doc, a.escritorio, margem, larg);
+  y = avisoFicticio(doc, a.imovel, larg, y);
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+  doc.text('PROPOSTA DE PRESTAÇÃO DE SERVIÇOS', larg / 2, y, { align: 'center', maxWidth: larg - margem * 2 });
+  y += 10;
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
+  doc.text(`A/C: ${a.imovel.proprietario || '—'}`, margem, y); y += 6;
+
+  const corpo = preencherModelo(carregarModelos().propostaTexto, varsFinanceiro(a));
+  const linhas = doc.splitTextToSize(corpo, larg - margem * 2);
+  doc.text(linhas, margem, y, { lineHeightFactor: 1.45 });
+  y += linhas.length * 5.3 + 6;
+
+  const itens: [string, string][] = [
+    ['Valor do serviço', `${moedaBR(a.valor)} (${extensoReais(a.valor)})`],
+    ['Forma de pagamento', a.formaPagamento || 'a combinar entre as partes'],
+    ['Prazo estimado', `${a.prazoDias ?? '____'} dias, ressalvadas as etapas que dependem de terceiros (cartório, INCRA, confrontantes) e das condições de campo`],
+    ['Validade da proposta', '30 dias a contar desta data'],
+  ];
+  doc.setFontSize(10.5);
+  itens.forEach(([rot, val]) => {
+    if (y > alt - 50) { doc.addPage(); y = margem; }
+    doc.setFont('helvetica', 'bold'); doc.text(`${rot}:`, margem, y);
+    doc.setFont('helvetica', 'normal');
+    const wrap = doc.splitTextToSize(val, larg - margem * 2 - 45);
+    doc.text(wrap, margem + 45, y);
+    y += Math.max(wrap.length * 5.3, 6) + 2;
+  });
+
+  y += 6;
+  if (y > alt - 40) { doc.addPage(); y = margem; }
+  doc.text(`${a.tecnico.cidadeAssinatura || a.imovel.municipio || '—'}, ${a.dataExtenso}.`, margem, y);
+  y += 22;
+  doc.setLineWidth(0.3); doc.line(larg / 2 - 45, y, larg / 2 + 45, y);
+  doc.setFontSize(10);
+  doc.text(a.escritorio.nome || a.tecnico.nome || '', larg / 2, y + 5, { align: 'center' });
+  const sub = [a.tecnico.nome, a.tecnico.cft && `${rotulosProfissional(a.tecnico).registro} ${a.tecnico.cft}`].filter(Boolean).join('  ·  ');
+  if (sub) doc.text(sub, larg / 2, y + 10, { align: 'center' });
+
+  doc.save(`Proposta - ${a.imovel.denominacao || 'cliente'}.pdf`);
 }

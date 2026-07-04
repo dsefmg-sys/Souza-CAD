@@ -13,7 +13,8 @@ import { carregarModelos, preencherModelo } from '../store/modelos';
 function coordTexto(v: Vertex): string {
   const lon = grausParaDMS(v.lon, { estilo: 'memorial', casas: 3 });
   const lat = grausParaDMS(v.lat, { estilo: 'memorial', casas: 3 });
-  return `Longitude: ${lon}, Latitude: ${lat} e Altitude: ${numBRmilhar(v.elevacao)} m`;
+  const elev = Number.isFinite(v.elevacao) ? v.elevacao : 0;
+  return `Longitude: ${lon}, Latitude: ${lat} e Altitude: ${numBRmilhar(elev)} m`;
 }
 
 /** Nome do imóvel/pessoa do confrontante já considerando espólio. */
@@ -206,25 +207,6 @@ function seguePor(representacao: string): string {
   }
 }
 
-const INFO_TECNICAS =
-  'As coordenadas dos vértices descritos neste memorial foram determinadas por meio de ' +
-  'levantamento topográfico georreferenciado ao Sistema Geodésico Brasileiro, adotando-se o ' +
-  'datum SIRGAS2000, mediante utilização de tecnologia GNSS de dupla frequência, com ' +
-  'equipamentos compatíveis com a precisão exigida pelas normas técnicas vigentes. O ' +
-  'levantamento foi executado a partir de base geodésica determinada por métodos de ' +
-  'posicionamento por satélite, sendo os demais vértices obtidos por técnicas de ' +
-  'posicionamento relativo, assegurando coerência geométrica, confiabilidade dos dados e ' +
-  'compatibilidade com os padrões adotados pelo Incra para fins de certificação, quando ' +
-  'aplicável. As distâncias, perímetro e área do imóvel foram calculados a partir das ' +
-  'coordenadas dos vértices levantados, em sistema de referência adequado ao levantamento realizado.';
-
-const OBSERVACOES =
-  'OBSERVAÇÕES: 1. O presente memorial descritivo reflete fielmente a situação física e ' +
-  'geométrica do imóvel na data do levantamento, destinando-se à individualização de área ' +
-  'para fins de regularização registral, sem prejuízo de eventual complementação ou ' +
-  'adequação técnica caso venha a ser exigida certificação junto aos órgãos competentes. ' +
-  '2. A planta anexa é parte integrante deste memorial descritivo.';
-
 function p(text: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; size?: number } = {}) {
   const lines = (text || '').split('\n');
   const runChildren: TextRun[] = [];
@@ -354,7 +336,7 @@ function tabelaRoteiroGeometrico(
           celulaTabela(numBR(distEfetiva), 12),
           celulaTabela(numBR(l.de.leste, 3), 14),
           celulaTabela(numBR(l.de.norte, 3), 14),
-          celulaTabela(numBR(l.de.elevacao, 2), 9),
+          celulaTabela(numBR(Number.isFinite(l.de.elevacao) ? l.de.elevacao : 0, 2), 9),
           celulaTabela(`${confNome} (${limite})`, 23, { align: AlignmentType.LEFT }),
         ]
       })
@@ -447,8 +429,11 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   const modelos = carregarModelos();
   const varsModelo: Record<string, string> = {
     proprietario: imovel.proprietario || '', cpf: imovel.cpfProprietario || '', denominacao: imovel.denominacao || '',
-    matricula: imovel.matricula || '', municipio: imovel.municipio || '', area: `${numBR(efMod.areaHa, 4)} ha`,
-    perimetro: `${numBR(efMod.perimetro)} m`, tecnico: tecnico.nome || '', cft: tecnico.cft || '', cidade: tecnico.cidadeAssinatura || '',
+    matricula: imovel.matricula || '', cns: imovel.cns || '', municipio: imovel.municipio || '', comarca: imovel.municipio || '',
+    area: `${numBR(efMod.areaHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : '',
+    perimetro: `${numBR(efMod.perimetro)} m`, codigoIncra: imovel.codigoImovelIncra || '',
+    tecnico: tecnico.nome || '', cft: tecnico.cft || '', numeroTrt: imovel.numeroTrt || tecnico.art || '',
+    cidade: tecnico.cidadeAssinatura || '', data: input.dataExtenso || '',
   };
   const mod = (chave: keyof typeof modelos) => sanitizarTexto(preencherModelo(modelos[chave], varsModelo));
 
@@ -468,8 +453,10 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   }));
 
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 240, after: 120 }, children: [new TextRun({ text: 'INFORMAÇÕES TÉCNICAS', bold: true, size: 24 })] }));
-  children.push(p(INFO_TECNICAS));
-  children.push(p(OBSERVACOES));
+  // Imóvel urbano usa o texto próprio (sem menção a INCRA/área rural); rural usa o padrão.
+  const ehUrbano = imovel.tipoImovel === 'urbano';
+  children.push(p(mod(ehUrbano ? 'memorialInfoTecnicasUrbano' : 'memorialInfoTecnicas')));
+  children.push(p(mod(ehUrbano ? 'memorialObservacoesUrbano' : 'memorialObservacoes')));
 
   // Data e assinatura do técnico
   const data = input.dataExtenso ? `, ${input.dataExtenso}` : '';

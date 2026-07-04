@@ -8,7 +8,22 @@ export interface ModelosDocs {
   declConfrontantes: string;  // declaração dos confrontantes — memorial e planta
   laudoTecnico: string;       // laudo técnico — planta
   contratoObjeto: string;     // cláusula de OBJETO do contrato
+  contratoObrigacoes: string; // cláusula de OBRIGAÇÕES do contrato
   reciboReferente: string;    // "referente a..." do recibo
+  // Blocos que antes eram fixos no código e agora são editáveis:
+  memorialInfoTecnicas: string;   // parágrafo "INFORMAÇÕES TÉCNICAS" do memorial
+  memorialObservacoes: string;    // parágrafo "OBSERVAÇÕES" do memorial
+  requerimentoConfrontantes: string; // declarações sobre confrontantes no requerimento (1+ parágrafos)
+  requerimentoResponsabilidade: string; // cláusula de responsabilidade técnica do requerimento
+  errataRatificacao: string;      // parágrafo de ratificação (considerações finais) da errata
+  anuenciaFecho: string;          // parágrafo de fecho da carta de anuência
+  // Variantes urbanas do memorial (usadas quando o imóvel é urbano):
+  memorialInfoTecnicasUrbano: string;
+  memorialObservacoesUrbano: string;
+  // Peças novas, editáveis:
+  propostaTexto: string;                // corpo da proposta/orçamento comercial
+  declPosse: string;                    // declaração de posse (do possuidor)
+  declInexistenciaSobreposicao: string; // declaração de inexistência de sobreposição (do técnico)
 }
 
 export const MODELOS_PADRAO: ModelosDocs = {
@@ -20,8 +35,74 @@ export const MODELOS_PADRAO: ModelosDocs = {
     'Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.',
   contratoObjeto:
     'Prestação de serviços de georreferenciamento e certificação do imóvel {denominacao}, matrícula {matricula}, situado em {municipio}, com área de {area} e perímetro de {perimetro}.',
+  contratoObrigacoes:
+    'O CONTRATANTE fornecerá documentos e informações necessárias e indicará as divisas em campo; o CONTRATADO executará os serviços com zelo técnico e responsabilidade profissional.',
   reciboReferente:
     'serviços de georreferenciamento e certificação do imóvel {denominacao}, matrícula {matricula}, situado em {municipio}, com área de {area}',
+  memorialInfoTecnicas:
+    'As coordenadas dos vértices descritos neste memorial foram determinadas por meio de ' +
+    'levantamento topográfico georreferenciado ao Sistema Geodésico Brasileiro, adotando-se o ' +
+    'datum SIRGAS2000, mediante utilização de tecnologia GNSS de dupla frequência, com ' +
+    'equipamentos compatíveis com a precisão exigida pelas normas técnicas vigentes. O ' +
+    'levantamento foi executado a partir de base geodésica determinada por métodos de ' +
+    'posicionamento por satélite, sendo os demais vértices obtidos por técnicas de ' +
+    'posicionamento relativo, assegurando coerência geométrica, confiabilidade dos dados e ' +
+    'compatibilidade com os padrões adotados pelo Incra para fins de certificação, quando ' +
+    'aplicável. As distâncias, perímetro e área do imóvel foram calculados a partir das ' +
+    'coordenadas dos vértices levantados, em sistema de referência adequado ao levantamento realizado.',
+  memorialObservacoes:
+    'OBSERVAÇÕES: 1. O presente memorial descritivo reflete fielmente a situação física e ' +
+    'geométrica do imóvel na data do levantamento, destinando-se à individualização de área ' +
+    'para fins de regularização registral, sem prejuízo de eventual complementação ou ' +
+    'adequação técnica caso venha a ser exigida certificação junto aos órgãos competentes. ' +
+    '2. A planta anexa é parte integrante deste memorial descritivo.',
+  requerimentoConfrontantes:
+    'Declaram os requerentes que: não houve qualquer invasão ou sobreposição de áreas de imóveis ' +
+    'confrontantes; os limites do imóvel foram devidamente respeitados; todos os confrontantes ' +
+    'anuíram expressamente com os limites definidos, conforme assinaturas apostas na planta e no ' +
+    'memorial descritivo, com firmas devidamente reconhecidas.\n\n' +
+    'Declaram ainda que: não existem confrontantes incapazes; não há outros confrontantes além dos ' +
+    'constantes nos documentos apresentados.',
+  requerimentoResponsabilidade:
+    'O requerente e o profissional responsável pelo levantamento declaram, sob as penas da lei, que ' +
+    'todas as informações prestadas são verdadeiras e que foram respeitados os direitos dos ' +
+    'confrontantes, estando cientes de que respondem civil e criminalmente pela veracidade das ' +
+    'informações, nos termos do §14 do art. 213 da Lei nº 6.015/73. “Verificado, a qualquer tempo, ' +
+    'não serem verdadeiros os fatos constantes do memorial descritivo, responderão os requerentes e ' +
+    'o profissional que o elaborou pelos prejuízos causados.”',
+  errataRatificacao:
+    'Esta errata visa sanar apenas os erros materiais de digitação referentes às matrículas dos ' +
+    'confrontantes e à inclusão de registro profissional, mantendo-se inalterados os limites físicos, ' +
+    'as coordenadas georreferenciadas (SIRGAS2000), os azimutes e a área total de {area} do imóvel. ' +
+    'Esta peça passa a ser parte integrante da documentação técnica para todos os fins de direito.',
+  anuenciaFecho:
+    'Declaro ainda que o respeito aos limites acima descritos não causa qualquer tipo de sobreposição ou ' +
+    'invasão sobre a minha propriedade, estando a divisa física implantada há longa data e em perfeito comum acordo entre as partes.',
+  memorialInfoTecnicasUrbano:
+    'As coordenadas dos vértices descritos neste memorial foram determinadas por meio de levantamento ' +
+    'topográfico georreferenciado ao Sistema Geodésico Brasileiro, adotando-se o datum SIRGAS2000, com ' +
+    'emprego de tecnologia GNSS e/ou estação total, em conformidade com as normas técnicas e cadastrais ' +
+    'aplicáveis a imóveis urbanos. As distâncias, o perímetro e a área do lote foram calculados a partir ' +
+    'das coordenadas dos vértices levantados, em sistema de referência adequado ao levantamento realizado.',
+  memorialObservacoesUrbano:
+    'OBSERVAÇÕES: 1. O presente memorial descritivo reflete fielmente a situação física e geométrica do ' +
+    'lote urbano na data do levantamento, destinando-se à sua individualização para fins de regularização ' +
+    'registral e cadastral junto ao Município e ao Cartório de Registro de Imóveis. 2. A planta anexa é ' +
+    'parte integrante deste memorial descritivo.',
+  propostaTexto:
+    'Apresentamos nossa proposta de prestação de serviços para o imóvel {denominacao}, matrícula {matricula}, ' +
+    'situado em {municipio}, com área de {area}. O serviço compreende o levantamento topográfico georreferenciado, ' +
+    'a elaboração das peças técnicas (memorial descritivo e planta) e o acompanhamento do processo até a ' +
+    'certificação, conforme as condições de valor e prazo abaixo.',
+  declPosse:
+    'DECLARO, para os devidos fins de direito e sob as penas da lei, que exerço a posse mansa, pacífica e ' +
+    'ininterrupta do imóvel {denominacao}, situado em {municipio}, comportando-me como legítimo possuidor(a), ' +
+    'sem oposição de terceiros, respondendo civil e criminalmente pela veracidade desta declaração.',
+  declInexistenciaSobreposicao:
+    'DECLARO, sob as penas da lei, na qualidade de responsável técnico pelo levantamento do imóvel {denominacao}, ' +
+    'situado em {municipio}, que os limites levantados e georreferenciados (SIRGAS2000) não incidem em sobreposição ' +
+    'ou invasão sobre imóveis confrontantes, tampouco sobre áreas públicas, respeitando-se integralmente as divisas ' +
+    'de terceiros, conforme apurado no levantamento de campo.',
 };
 
 // Variáveis oferecidas ao usuário (para o painel de ajuda do editor).
@@ -30,12 +111,18 @@ export const VARIAVEIS_MODELO: { chave: string; descricao: string }[] = [
   { chave: '{cpf}', descricao: 'CPF/CNPJ do proprietário' },
   { chave: '{denominacao}', descricao: 'Nome do imóvel' },
   { chave: '{matricula}', descricao: 'Matrícula' },
+  { chave: '{cns}', descricao: 'CNS do cartório' },
   { chave: '{municipio}', descricao: 'Município' },
+  { chave: '{comarca}', descricao: 'Comarca' },
   { chave: '{area}', descricao: 'Área (ha)' },
+  { chave: '{areaAnterior}', descricao: 'Área anterior (matrícula)' },
   { chave: '{perimetro}', descricao: 'Perímetro (m)' },
+  { chave: '{codigoIncra}', descricao: 'Código do imóvel no INCRA' },
   { chave: '{tecnico}', descricao: 'Nome do responsável técnico' },
   { chave: '{cft}', descricao: 'Registro CFT/CREA do técnico' },
+  { chave: '{numeroTrt}', descricao: 'Número do TRT/ART do projeto' },
   { chave: '{cidade}', descricao: 'Cidade da assinatura' },
+  { chave: '{data}', descricao: 'Data por extenso' },
 ];
 
 const KEY = 'metrica.modelosDocs';
@@ -57,4 +144,12 @@ export function salvarModelos(m: ModelosDocs): void {
 /** Troca as variáveis {chave} do modelo pelos valores reais. Chaves desconhecidas viram ''. */
 export function preencherModelo(texto: string, vars: Record<string, string | undefined>): string {
   return (texto || '').replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? '').toString());
+}
+
+/** Quebra um modelo em parágrafos (linhas em branco separam), já com as variáveis trocadas. */
+export function preencherModeloParagrafos(texto: string, vars: Record<string, string | undefined>): string[] {
+  return preencherModelo(texto, vars)
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
 }

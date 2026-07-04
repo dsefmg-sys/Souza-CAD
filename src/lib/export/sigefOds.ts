@@ -46,13 +46,15 @@ function linhaVertice(
   const nLat = grausParaDMS(v.lat, { estilo: 'sigef', eixo: 'lat', casas: 3 });
   const cns = (conf?.cns || cnsImovel || '').trim();
   const mat = conf?.matricula ? `Matrícula: ${formatMatricula(conf.matricula)} ` : '';
+  // altitude pode vir vazia/NaN de importação só-geográfica — sem isso o .toFixed derrubaria o ODS inteiro
+  const elev = Number.isFinite(v.elevacao) ? v.elevacao : 0;
   const cels =
     celStr('ce40', v.codigoSigef) +
     celStr('ce40', eLong) +
     celStr('ce40', sigmaBR(v.sigmaX, '0,00')) +
     celStr('ce40', nLat) +
     celStr('ce40', sigmaBR(v.sigmaY, '0,00')) +
-    celFloat('ce40', Number(v.elevacao.toFixed(2)), numBR(v.elevacao)) +
+    celFloat('ce40', Number(elev.toFixed(2)), numBR(elev)) +
     celStr('ce40', sigmaBR(v.sigmaZ, '0,01')) +
     celStr('ce40', v.metodo || tec.metodoPosicionamento || 'PG6') +
     // ce40 é o estilo de célula de dado presente no template (o antigo ce93 não existe no modelo
@@ -223,7 +225,7 @@ export function linhasConferencia(
       sigmaX: sigmaBR(v.sigmaX, '0,00'),
       latitude: grausParaDMS(v.lat, { estilo: 'sigef', eixo: 'lat', casas: 3 }),
       sigmaY: sigmaBR(v.sigmaY, '0,00'),
-      altitude: numBR(v.elevacao),
+      altitude: numBR(Number.isFinite(v.elevacao) ? v.elevacao : 0),
       sigmaZ: sigmaBR(v.sigmaZ, '0,01'),
       metodo: v.metodo || tec.metodoPosicionamento || 'PG6',
       tipoLimite: v.tipoLimite || tec.tipoLimite || 'LA6',

@@ -149,11 +149,21 @@ export function salvarTecnico(t: TecnicoData): void {
 
 // ----- Numeração automática dos recibos (sequencial, por navegador) -----
 const KEY_RECIBO_SEQ = 'metrica.reciboSeq';
+/** Próximo número de recibo que será usado (sem avançar o contador). Serve pra mostrar nos Ajustes. */
+export function proximoNumeroReciboSeq(): number {
+  if (typeof window === 'undefined') return 1;
+  try { return Math.max(1, Math.floor(Number(localStorage.getItem(KEY_RECIBO_SEQ) || '1')) || 1); } catch { return 1; }
+}
+/** Define de quanto parte o próximo recibo (ex.: continuar de uma numeração antiga). */
+export function definirNumeroReciboSeq(seq: number): void {
+  if (typeof window === 'undefined') return;
+  const n = Math.max(1, Math.floor(seq) || 1);
+  try { localStorage.setItem(KEY_RECIBO_SEQ, String(n)); } catch { /* ignore */ }
+}
 /** Devolve o próximo número de recibo no formato "0001/AAAA" e já avança o contador. */
 export function consumirNumeroRecibo(ano: number): string {
   if (typeof window === 'undefined') return `0001/${ano}`;
-  let seq = 1;
-  try { seq = Math.max(1, Math.floor(Number(localStorage.getItem(KEY_RECIBO_SEQ) || '1')) || 1); } catch { /* ignore */ }
+  const seq = proximoNumeroReciboSeq();
   try { localStorage.setItem(KEY_RECIBO_SEQ, String(seq + 1)); } catch { /* ignore */ }
   return `${String(seq).padStart(4, '0')}/${ano}`;
 }
@@ -183,6 +193,17 @@ export function tutorialJaVisto(): boolean {
 export function marcarTutorialVisto(): void {
   if (typeof window === 'undefined') return;
   try { localStorage.setItem(KEY_TUTORIAL, '1'); } catch { /* ignore */ }
+}
+
+// ----- Vídeo de abertura (splash animado): já foi visto neste navegador? -----
+const KEY_INTRO = 'metrica.introVista';
+export function introJaVista(): boolean {
+  if (typeof window === 'undefined') return true;
+  try { return localStorage.getItem(KEY_INTRO) === '1'; } catch { return true; }
+}
+export function marcarIntroVista(): void {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(KEY_INTRO, '1'); } catch { /* ignore */ }
 }
 
 import { db as fdb } from '../firebase/client';

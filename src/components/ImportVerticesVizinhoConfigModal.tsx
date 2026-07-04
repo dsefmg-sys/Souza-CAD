@@ -21,6 +21,9 @@ const CAMPOS: { v: CampoVerticeVizinho; label: string }[] = [
   { v: 'leste', label: 'Leste E (UTM, metros)' },
   { v: 'norte', label: 'Norte N (UTM, metros)' },
   { v: 'elevacao', label: 'Altitude' },
+  { v: 'sigmaX', label: 'Sigma X (precisão E, metros)' },
+  { v: 'sigmaY', label: 'Sigma Y (precisão N, metros)' },
+  { v: 'metodo', label: 'Método de posicionamento (PG6, PA2...)' },
 ];
 
 function sepRegex(sep: ImportVerticesVizinhoConfig['separador']): RegExp {

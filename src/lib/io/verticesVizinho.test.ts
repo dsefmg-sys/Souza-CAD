@@ -33,6 +33,31 @@ describe('parseVerticesVizinho', () => {
     expect(out[0].lon).toBeLessThan(0);
   });
 
+  it('lê sigma X/Y e método quando as colunas estão mapeadas', () => {
+    const cfg: ImportVerticesVizinhoConfig = {
+      separador: ';', decimal: '.', temCabecalho: true,
+      colunas: ['nome', 'latitude', 'longitude', 'sigmaX', 'sigmaY', 'metodo'],
+    };
+    const conteudo = [
+      'Vertice;Lat;Lon;SigX;SigY;Metodo',
+      'CODI-M-0012;-20.456123;-41.815234;0.012;0.015;PG6',
+    ].join('\n');
+    const out = parseVerticesVizinho(conteudo, cfg, 23, 'S');
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ nome: 'CODI-M-0012', sigmaX: 0.012, sigmaY: 0.015, metodo: 'PG6' });
+  });
+
+  it('não inclui sigma quando as colunas não estão mapeadas', () => {
+    const cfg: ImportVerticesVizinhoConfig = {
+      separador: ';', decimal: '.', temCabecalho: true,
+      colunas: ['nome', 'latitude', 'longitude'],
+    };
+    const conteudo = 'Vertice;Lat;Lon\nCODI-M-0012;-20.4;-41.8';
+    const out = parseVerticesVizinho(conteudo, cfg, 23, 'S');
+    expect(out[0].sigmaX).toBeUndefined();
+    expect(out[0].metodo).toBeUndefined();
+  });
+
   it('ignora linhas sem coordenada válida e respeita colunas marcadas como ignorar', () => {
     const cfg: ImportVerticesVizinhoConfig = {
       separador: ';', decimal: '.', temCabecalho: true,

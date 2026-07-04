@@ -54,4 +54,33 @@ describe('parseTxt com configuração de colunas', () => {
     expect(pts).toHaveLength(1);
     expect(pts[0].nome).toBe('M1');
   });
+
+  it('formato padrão lê os erros (ErroY→sigmaY do Norte, ErroX→sigmaX do Leste)', () => {
+    // Nome;Código;Norte;Leste;Elev;ErroY;ErroX;ErroVert
+    const txt = 'Nome;Cod;N;E;H;eY;eX;eZ\nP1;DIVISA;7700000.5;300000.25;850.1;0.015;0.012;0.030';
+    const [p] = parseTxt(txt);
+    expect(p.sigmaY).toBeCloseTo(0.015); // erro do Norte
+    expect(p.sigmaX).toBeCloseTo(0.012); // erro do Leste
+    expect(p.sigmaZ).toBeCloseTo(0.030);
+  });
+
+  it('não confunde dado com cabeçalho quando a 1a linha já é ponto', () => {
+    // sem cabeçalho: a primeira linha tem Norte e Leste numéricos → não pode ser descartada
+    const txt = 'P1;DIVISA;7700000.5;300000.25;850.1\nP2;DIVISA;7700010.5;300010.25;851.0';
+    const pts = parseTxt(txt);
+    expect(pts).toHaveLength(2);
+    expect(pts[0].nome).toBe('P1');
+  });
+
+  it('decimal por vírgula NÃO multiplica coordenada que veio com ponto decimal', () => {
+    // usuário marcou decimal ',' mas a célula usa '.' e não tem vírgula → não tratar ponto como milhar
+    const cfg: ImportTxtConfig = {
+      separador: ';', decimal: ',', temCabecalho: false,
+      colunas: ['nome', 'norte', 'leste'],
+    };
+    const txt = 'M1;7700000.5;300000.25';
+    const [p] = parseTxt(txt, cfg);
+    expect(p.norte).toBeCloseTo(7700000.5);
+    expect(p.leste).toBeCloseTo(300000.25); // NÃO virou 30000025
+  });
 });

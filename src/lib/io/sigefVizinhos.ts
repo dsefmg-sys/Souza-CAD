@@ -138,6 +138,31 @@ function distanciaAneis(a: PontoLatLon[], b: PontoLatLon[], lat0: number): numbe
   return min;
 }
 
+/** Centro (em metros) de um anel. */
+function centroideM(anel: PontoLatLon[], lat0: number): { x: number; y: number } {
+  let sx = 0, sy = 0;
+  for (const p of anel) { const m = paraMetros(p, lat0); sx += m.x; sy += m.y; }
+  return { x: sx / anel.length, y: sy / anel.length };
+}
+/** Área (m², valor absoluto) de um anel por Gauss no plano equirretangular. */
+function areaM(anel: PontoLatLon[], lat0: number): number {
+  const P = anel.map((p) => paraMetros(p, lat0));
+  let a2 = 0;
+  for (let i = 0; i < P.length; i++) { const c = P[i], d = P[(i + 1) % P.length]; a2 += c.x * d.y - d.x * c.y; }
+  return Math.abs(a2) / 2;
+}
+/**
+ * É a MESMA parcela (a própria, quando o imóvel já é certificado e vem no retorno do INCRA)?
+ * Não dá pra usar distância de borda: um vizinho que ENCOSTA na divisa também tem distância ~0.
+ * O que distingue é a identidade — centro praticamente no mesmo lugar E área quase igual.
+ */
+function mesmaParcela(a: PontoLatLon[], b: PontoLatLon[], lat0: number): boolean {
+  const ca = centroideM(a, lat0), cb = centroideM(b, lat0);
+  if (Math.hypot(ca.x - cb.x, ca.y - cb.y) > 2) return false; // centros afastados = parcelas diferentes
+  const aa = areaM(a, lat0), ab = areaM(b, lat0);
+  return aa > 0 && Math.abs(aa - ab) / aa < 0.05; // áreas batem (até 5%) = é a própria
+}
+
 /**
  * Parcelas que fazem FRONTEIRA com o nosso imóvel: a distância entre as bordas é menor que `tolM`
  * (coincidência de divisa, considerando precisão de GNSS). Ignora a própria parcela, se vier junto.
@@ -147,8 +172,9 @@ export function parcelasVizinhas(meuAnel: PontoLatLon[], parcelas: ParcelaSigef[
   const lat0 = meuAnel.reduce((s, p) => s + p.lat, 0) / meuAnel.length;
   return parcelas.filter((par) => {
     if (par.anel.length < 3) return false;
+    if (mesmaParcela(meuAnel, par.anel, lat0)) return false; // é a própria parcela, não confrontante
     const d = distanciaAneis(meuAnel, par.anel, lat0);
-    return d <= tolM && d > 0.0001 ? true : d <= tolM; // adjacente (encosta) mas não idêntica
+    return d <= tolM; // encosta (até tolM) = vizinho de divisa
   });
 }
 

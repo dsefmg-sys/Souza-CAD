@@ -4,8 +4,9 @@ import { numBR, numBRmilhar } from '../topo/geometry';
 import { valorPorExtenso } from '../topo/extenso';
 import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
+import { carregarModelos, preencherModelo, preencherModeloParagrafos } from '../store/modelos';
 
-export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento';
+export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao';
 
 export interface RequerimentoInput {
   imovel: ImovelData;
@@ -46,6 +47,12 @@ const ROTULOS_ATO: Record<TipoAtoRequerimento, { requerente: string; transmitent
     assinaReq: '(Requerente / Proprietário)',
     assinaTrans: '(Coproprietário / Cônjuge)',
   },
+  usucapiao: {
+    requerente: 'REQUERENTE (USUCAPIENTE)',
+    transmitente: 'TITULAR REGISTRAL / CONFRONTANTE (SE HOUVER)',
+    assinaReq: '(Requerente / Usucapiente)',
+    assinaTrans: '(Titular registral / Confrontante)',
+  },
 };
 
 function fraseContextoAto(tipo: TipoAtoRequerimento): string {
@@ -56,6 +63,8 @@ function fraseContextoAto(tipo: TipoAtoRequerimento): string {
       return 'considerando que o requerente promove a unificação deste imóvel com outro(s) de sua propriedade';
     case 'desmembramento':
       return 'considerando que o requerente promove o desmembramento de parte deste imóvel';
+    case 'usucapiao':
+      return 'considerando que o requerente busca o reconhecimento da usucapião sobre o imóvel';
     case 'venda':
     default:
       return 'considerando que o mesmo encontra-se em processo de transmissão ao requerente';
@@ -107,23 +116,6 @@ function txtRequerimento(tipo: TipoAtoRequerimento): string {
   );
 }
 
-const TXT_CONFRONTANTES = [
-  'Declaram os requerentes que: não houve qualquer invasão ou sobreposição de áreas de imóveis ' +
-  'confrontantes; os limites do imóvel foram devidamente respeitados; todos os confrontantes ' +
-  'anuíram expressamente com os limites definidos, conforme assinaturas apostas na planta e no ' +
-  'memorial descritivo, com firmas devidamente reconhecidas.',
-  'Declaram ainda que: não existem confrontantes incapazes; não há outros confrontantes além dos ' +
-  'constantes nos documentos apresentados.',
-];
-
-const TXT_RESPONSABILIDADE =
-  'O requerente e o profissional responsável pelo levantamento declaram, sob as penas da lei, que ' +
-  'todas as informações prestadas são verdadeiras e que foram respeitados os direitos dos ' +
-  'confrontantes, estando cientes de que respondem civil e criminalmente pela veracidade das ' +
-  'informações, nos termos do §14 do art. 213 da Lei nº 6.015/73. “Verificado, a qualquer tempo, ' +
-  'não serem verdadeiros os fatos constantes do memorial descritivo, responderão os requerentes e ' +
-  'o profissional que o elaborou pelos prejuízos causados.”';
-
 export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Promise<Blob> {
   const input = sanitizarProfundo(inputBruto);
   const { imovel, tecnico, requerente, transmitente, areaRealHa } = input;
@@ -131,6 +123,16 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   const rot = ROTULOS_ATO[tipo];
   const comarca = input.comarca || imovel.municipio || '—';
   const c: Paragraph[] = [];
+
+  // Modelos de texto editáveis (declarações e responsabilidade). {variáveis} trocadas pelos dados reais.
+  const modelos = carregarModelos();
+  const varsModelo: Record<string, string> = {
+    proprietario: imovel.proprietario || '', cpf: imovel.cpfProprietario || '', denominacao: imovel.denominacao || '',
+    matricula: imovel.matricula || '', cns: imovel.cns || '', municipio: imovel.municipio || '', comarca,
+    area: `${numBR(areaRealHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : '',
+    codigoIncra: imovel.codigoImovelIncra || '', tecnico: tecnico.nome || '', cft: tecnico.cft || '',
+    numeroTrt: imovel.numeroTrt || tecnico.art || '', cidade: tecnico.cidadeAssinatura || '', data: input.dataExtenso || '',
+  };
 
   if (imovel.ficticio) {
     c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: '*** DADOS FICTÍCIOS — DOCUMENTO DE DEMONSTRAÇÃO, SEM VALIDADE LEGAL ***', bold: true, size: 20, color: 'B91C1C' })] }));
@@ -171,10 +173,10 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   c.push(par(`apurou-se que a área real do imóvel corresponde a ${numBR(areaRealHa, 4)} hectares, divergindo da área constante na matrícula, razão pela qual se requer a devida retificação.`));
 
   c.push(titulo('DOS CONFRONTANTES'));
-  TXT_CONFRONTANTES.forEach((t) => c.push(par(t)));
+  preencherModeloParagrafos(modelos.requerimentoConfrontantes, varsModelo).forEach((t) => c.push(par(t)));
 
   c.push(titulo('DA RESPONSABILIDADE TÉCNICA'));
-  c.push(par(TXT_RESPONSABILIDADE));
+  c.push(par(preencherModelo(modelos.requerimentoResponsabilidade, varsModelo)));
 
   c.push(titulo('DO VALOR DO IMÓVEL'));
   if (imovel.valorImovel != null && imovel.valorImovel > 0) {
@@ -185,7 +187,9 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
 
   const finalidadePedido = tipo === 'venda' || tipo === 'doacao'
     ? 'para viabilizar o registro da futura transmissão da propriedade'
-    : 'para regularizar a base tabular do imóvel perante este Cartório';
+    : tipo === 'usucapiao'
+      ? 'para instruir o pedido de reconhecimento da usucapião do imóvel'
+      : 'para regularizar a base tabular do imóvel perante este Cartório';
   c.push(titulo('DO PEDIDO'));
   c.push(par(`Diante do exposto, requerem: a averbação do georreferenciamento do imóvel; a retificação da área e da descrição constante da matrícula, adequando-a à realidade física; a consequente regularização da base tabular do imóvel ${finalidadePedido}.`));
   c.push(par('Nestes termos, pede deferimento.'));

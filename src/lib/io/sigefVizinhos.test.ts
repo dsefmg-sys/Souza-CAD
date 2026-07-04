@@ -24,6 +24,14 @@ describe('sigefVizinhos', () => {
     expect(achados.map((p) => p.detentor)).not.toContain('Longe B');
   });
 
+  it('NÃO trata a própria parcela (idêntica/sobreposta) como vizinha', () => {
+    const eumesmo: ParcelaSigef = { detentor: 'Eu mesmo', anel: quadrado(base.lat, base.lon) }; // mesmo anel do "meu"
+    const vizinho: ParcelaSigef = { detentor: 'Vizinho A', anel: quadrado(base.lat, base.lon + d) };
+    const achados = parcelasVizinhas(meu, [eumesmo, vizinho], 15);
+    expect(achados.map((p) => p.detentor)).not.toContain('Eu mesmo');
+    expect(achados.map((p) => p.detentor)).toContain('Vizinho A');
+  });
+
   it('parseia GeoJSON de parcelas com nomes de propriedade variados (shapefile truncado)', () => {
     const gj = JSON.stringify({
       type: 'FeatureCollection',

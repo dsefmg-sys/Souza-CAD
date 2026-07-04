@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
-import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante, PlantaConfig, PessoaQualificada, PontoLL } from '@/lib/topo/types';
+import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante, PlantaConfig, PessoaQualificada, PontoLL, VerticeVizinho } from '@/lib/topo/types';
 import { numBR, formatMatricula, azimuteDMS, azimute, distancia } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { rotulosProfissional } from '@/lib/topo/profissional';
@@ -28,6 +28,7 @@ interface Props {
   dataExtenso?: string;
   situacaoUrl?: string;
   outrasGlebas?: { nome: string; pts: { leste: number; norte: number }[] }[];
+  verticesVizinho?: VerticeVizinho[]; // vértices de imóveis vizinhos certificados (desenho de apoio)
   resumoGlebas?: { nome: string; areaHa: number; perimetro: number }[]; // quadro de áreas
   objetos?: ObjetoDesenho[];
   config?: PlantaConfig;
@@ -225,7 +226,7 @@ function intervaloGrade(extent: number): number {
 
 export default function Planta({
   vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado,
-  zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], resumoGlebas = [], objetos = [], config = {},
+  zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], verticesVizinho = [], resumoGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   onCliquePlanta, onSelecObjeto, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
@@ -325,6 +326,7 @@ export default function Planta({
   const verConv = config.mostrarConvencoes !== false;
   const verEscalaG = config.mostrarEscalaGrafica !== false;
   const verDivisaConf = config.mostrarDivisaConf !== false;
+  const verVizinhoVtx = config.mostrarVerticesVizinho !== false;
   const verSituacao = config.mostrarSituacao !== false;
   const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1.5;
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
@@ -830,6 +832,22 @@ export default function Planta({
           <g key={`og${i}`}>
             <polygon points={pp} fill={ogFill} fillOpacity={0.06} stroke={ogCor} strokeWidth={config.larguraOutrasGlebas ?? 1.2} strokeDasharray="6 4" />
             <text x={ccx} y={ccy} fontSize={fs(10)} fontWeight="bold" textAnchor="middle" fill={ogCor}>{g.nome}</text>
+          </g>
+        );
+      })}
+
+      {/* ---------- VÉRTICES DE IMÓVEIS VIZINHOS JÁ CERTIFICADOS ---------- */}
+      {/* pontos oficiais do vizinho, com o código dele: mostram que a divisa foi amarrada na
+          coordenada certificada (sem vão nem sobreposição). Só desenha os que caem dentro da folha. */}
+      {verVizinhoVtx && verticesVizinho.map((p, i) => {
+        const x = sx(p.leste), y = sy(p.norte);
+        if (x < DRAW.x0 || x > DRAW.x1 || y < DRAW.y0 || y > DRAW.y1) return null;
+        const r = 2.4 * escVert;
+        return (
+          <g key={`vv${i}`}>
+            <path d={`M ${x} ${y - r} L ${x + r} ${y} L ${x} ${y + r} L ${x - r} ${y} Z`}
+              fill="#ffffff" stroke="#a21caf" strokeWidth={0.8 * escVert} />
+            {p.nome && <text x={x + r + 1.5} y={y + fs(6) * 0.35} fontSize={fs(6)} fill="#a21caf">{p.nome}</text>}
           </g>
         );
       })}

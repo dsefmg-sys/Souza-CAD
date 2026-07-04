@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { Ruler } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import type { Vertex, ObjetoDesenho, Confrontante } from '@/lib/topo/types';
+import type { Vertex, ObjetoDesenho, Confrontante, VerticeVizinho } from '@/lib/topo/types';
 import { distanciaCota } from '@/lib/topo/objetos';
 import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { corDivisa, REPRES_LABEL } from '@/lib/topo/sigefVocab';
@@ -28,6 +28,7 @@ interface Props {
   opacidadeCert?: number;
   parcelaCertSel?: number | null;
   onSelParcelaCert?: (i: number | null) => void;
+  verticesVizinho?: VerticeVizinho[]; // vértices de imóveis vizinhos certificados (desenho + adotar)
   selMulti?: Set<string>;
   onToggleMulti?: (id: string) => void;
   onBoxSelect?: (ids: string[]) => void;
@@ -284,7 +285,7 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 
 export default function MapEditor(props: Props) {
   const {
-    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
@@ -393,6 +394,25 @@ export default function MapEditor(props: Props) {
           </CircleMarker>
         );
       }))}
+
+      {/* vértices de imóveis VIZINHOS já certificados: coordenada oficial + sigma + código. Clicáveis
+          para adotar a coordenada num vértice nosso; também são alvo de encaixe ao desenhar. */}
+      {verticesVizinho.map((p, i) => {
+        const verRotulo = mostrarRotulos || zoom >= 17;
+        const detalhe = [
+          p.metodo ? `Método ${p.metodo}` : '',
+          (p.sigmaX != null || p.sigmaY != null) ? `σ ${numBR(p.sigmaX ?? p.sigmaY ?? 0, 3)} m` : '',
+        ].filter(Boolean).join(' · ');
+        return (
+          <CircleMarker key={`vv${i}`} center={[p.lat, p.lon]} radius={4}
+            pathOptions={{ color: '#a21caf', fillColor: '#f0abfc', fillOpacity: 1, weight: 1.6 }}
+            eventHandlers={{ click: () => onAdotarVertice?.(p.lat, p.lon) }}>
+            {verRotulo
+              ? <Tooltip permanent direction="top" offset={[0, -4]} className="rotulo-cert">{p.nome || `V${i + 1}`}</Tooltip>
+              : <Tooltip direction="top" offset={[0, -4]}>{`Vizinho certificado ${p.nome}${detalhe ? ` — ${detalhe}` : ''} — clique para adotar`}</Tooltip>}
+          </CircleMarker>
+        );
+      })}
 
       {/* demais glebas */}
       {outrasGlebas.filter((g) => g.length >= 3).map((g, i) => (

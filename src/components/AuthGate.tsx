@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth, entrarGoogle, entrarEmail, cadastrarEmail, traduzErroAuth } from '@/lib/firebase/auth';
+import { LogoHorizontal, FundoRedeMarca, Splash } from '@/components/Logo';
 
 /**
  * Exige login na entrada quando o Firebase está configurado. Sem nuvem (sem variáveis), libera
@@ -22,7 +23,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   // Login OBRIGATÓRIO quando há nuvem configurada. Sem Firebase (ambiente sem variáveis), segue local.
   if (!disponivel || user) return <>{children}</>;
   if (carregando) {
-    return <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">Carregando…</div>;
+    return <Splash legenda="Carregando…" />;
   }
 
   async function fazer(fn: () => Promise<void>) {
@@ -31,10 +32,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-muted/30 p-4">
-      <div className="w-full max-w-sm space-y-4 rounded-lg border bg-background p-6 shadow-lg">
-        <div className="space-y-1 text-center">
-          <div className="text-lg font-semibold">Souza CAD</div>
+    <div className="relative flex h-screen items-center justify-center p-4">
+      <FundoRedeMarca />
+      <div className="relative z-10 w-full max-w-sm space-y-4 rounded-lg border border-white/10 bg-background/95 p-6 shadow-2xl backdrop-blur-sm">
+        <div className="space-y-2 text-center">
+          <LogoHorizontal className="mx-auto h-12" />
           <p className="text-xs text-muted-foreground">Entre para acessar seus projetos e cadastros na nuvem.</p>
         </div>
         <Button className="w-full" disabled={ocupado} onClick={() => fazer(entrarGoogle)}><LogIn /> Entrar com Google</Button>

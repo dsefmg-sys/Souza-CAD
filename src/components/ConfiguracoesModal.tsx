@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle } from 'lucide-react';
 import ModelosDocsModal from './ModelosDocsModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -23,7 +23,7 @@ import {
   definirNumeroReciboSeq,
 } from '@/lib/store/settings';
 import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte } from '@/lib/store/suporte';
-import { carregarPreferencias, salvarPreferencias, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
+import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes, salvarPadroes, PADROES_PADRAO, type PadroesProjeto } from '@/lib/store/padroes';
 import { carregarPrecos, salvarPrecos, type PrecoServico } from '@/lib/store/precos';
 import { exportarConfiguracoesJson, importarConfiguracoesJson } from '@/lib/store/backup';
@@ -122,6 +122,11 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   };
   const removerPreco = (id: string) => {
     salvarListaPrecos(precos.filter((p) => p.id !== id));
+  };
+
+  const reverIntro = () => {
+    window.dispatchEvent(new Event('souzacad:ver-intro'));
+    onOpenChange(false);
   };
 
   const mudarReciboSeq = (v: number) => {
@@ -293,6 +298,13 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   onToggle={(v) => mudarPref('exigirCns', v)}
                   titulo="Exigir CNS do cartório"
                   descricao="Avisa antes de exportar se o código CNS do cartório do imóvel estiver vazio." />
+
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Segurança</div>
+                <Interruptor
+                  ligado={prefs.confirmarAntesApagar}
+                  onToggle={(v) => mudarPref('confirmarAntesApagar', v)}
+                  titulo="Confirmar antes de apagar"
+                  descricao="Ligado (recomendado): pede confirmação antes de excluir vértice, projeto ou divisa, pra você não apagar sem querer. Desligado: apaga na hora, mais rápido pra quem tem certeza." />
               </div>
 
               <div className="space-y-3 border-t md:border-t-0 md:border-l md:pl-4 pt-3 md:pt-0">
@@ -324,6 +336,39 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     {(['iniciante', 'experiente'] as const).map((n) => (
                       <button key={n} type="button" onClick={() => mudarPref('nivelExperiencia', n)}
                         className={`rounded-full px-3 py-1 font-semibold capitalize transition-colors ${prefs.nivelExperiencia === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Abertura do app</div>
+                <Interruptor
+                  ligado={prefs.introVideoAtiva}
+                  onToggle={(v) => mudarPref('introVideoAtiva', v)}
+                  titulo="Mostrar vídeo de abertura"
+                  descricao="Toca a animação da marca na primeira vez que o app abre neste navegador. Desligado: entra direto no editor, sem abertura." />
+                <Button variant="outline" size="sm" className="w-full gap-1.5 font-semibold" onClick={reverIntro}>
+                  <PlayCircle className="size-4" /> Ver a abertura agora
+                </Button>
+
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Aparência da tela</div>
+                <div className="space-y-1.5 rounded border p-2.5">
+                  <Label className="text-xs font-semibold">Tamanho do texto</Label>
+                  <p className="text-[11px] leading-tight text-muted-foreground">Deixa a interface com letra maior ou menor. Bom pra ler no sol ou em tela pequena.</p>
+                  <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
+                    {([['Menor', 0.9], ['Normal', 1], ['Maior', 1.1], ['Grande', 1.25]] as [string, number][]).map(([rotulo, val]) => (
+                      <button key={val} type="button"
+                        onClick={() => { mudarPref('escalaFonte', val); aplicarEscalaFonte(val); window.dispatchEvent(new CustomEvent('souzacad:escala-fonte', { detail: val })); }}
+                        className={`rounded-full px-3 py-1 font-semibold transition-colors ${Math.abs((prefs.escalaFonte ?? 1) - val) < 0.001 ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{rotulo}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5 rounded border p-2.5">
+                  <Label className="text-xs font-semibold">Casas decimais na tela</Label>
+                  <p className="text-[11px] leading-tight text-muted-foreground">Quantas casas depois da vírgula aparecem em coordenadas, distâncias e área <strong>na tela</strong>. Os documentos e exportações (memorial, planilha SIGEF, KML) mantêm a precisão exigida pela norma, sem mudar.</p>
+                  <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
+                    {[2, 3, 4].map((val) => (
+                      <button key={val} type="button" onClick={() => mudarPref('casasDecimais', val)}
+                        className={`rounded-full px-3 py-1 font-semibold transition-colors ${(prefs.casasDecimais ?? 3) === val ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{val}</button>
                     ))}
                   </div>
                 </div>

@@ -34,7 +34,9 @@ export interface ImportTxtConfig {
 }
 
 /** Campo que uma coluna do arquivo de vértices do VIZINHO representa. */
-export type CampoVerticeVizinho = 'ignorar' | 'nome' | 'latitude' | 'longitude' | 'leste' | 'norte' | 'elevacao';
+export type CampoVerticeVizinho =
+  | 'ignorar' | 'nome' | 'latitude' | 'longitude' | 'leste' | 'norte' | 'elevacao'
+  | 'sigmaX' | 'sigmaY' | 'metodo';
 
 /**
  * Configuração de como ler o arquivo de vértices de um imóvel VIZINHO já certificado (baixado
@@ -314,6 +316,7 @@ export interface PlantaConfig {
   mostrarConvencoes?: boolean; // padrão true
   mostrarEscalaGrafica?: boolean; // padrão true
   mostrarDivisaConf?: boolean;    // padrão true: tique de troca de confrontante nos marcos M
+  mostrarVerticesVizinho?: boolean; // padrão true: pontos dos imóveis vizinhos certificados importados
   estiloVertice?: 'sigef' | 'convencional'; // rótulo do vértice: código SIGEF (padrão) ou P1, P2, P3…
   mostrarSituacao?: boolean;   // padrão true (quando há imagem de situação)
   fonteRotulos?: number;       // tamanho da fonte dos rótulos (vértices/confrontantes), padrão 8.5
@@ -394,6 +397,26 @@ export interface Gleba {
   objetos?: ObjetoDesenho[];   // desenho livre (linhas, textos, cotas)
 }
 
+/**
+ * Vértice de um imóvel VIZINHO já certificado, importado do Distribuidor de Coordenadas do Acervo
+ * Fundiário. Guardamos com a coordenada oficial, o sigma (precisão) e o nome/código do vértice, para
+ * reaproveitar na hora de montar a planta: amarra a nossa divisa exatamente no ponto certificado do
+ * vizinho, sem sobrar vão nem sobrepor. Fica gravado no projeto mesmo quando o vizinho está perto mas
+ * não encosta (por isso é um dado próprio, não some depois de encaixar).
+ */
+export interface VerticeVizinho {
+  nome: string;        // nome/código oficial do vértice do vizinho (ex.: CODI-M-0123)
+  lat: number;         // graus decimais
+  lon: number;         // graus decimais
+  leste: number;       // UTM E (m), no fuso do trabalho
+  norte: number;       // UTM N (m), no fuso do trabalho
+  elevacao?: number;   // altitude (m), quando o arquivo traz
+  sigmaX?: number;     // precisão horizontal X (m), quando o arquivo traz
+  sigmaY?: number;     // precisão horizontal Y (m), quando o arquivo traz
+  metodo?: string;     // método de posicionamento (PG6, PA2...), quando o arquivo traz
+  origem?: string;     // rótulo do imóvel/arquivo de origem, para agrupar/identificar
+}
+
 /** Projeto completo, salvo no navegador. Um imóvel pode ter várias glebas. */
 export interface Projeto {
   id: string;
@@ -412,6 +435,9 @@ export interface Projeto {
   // Parcelas certificadas do SIGEF/INCRA baixadas como referência (vizinhos): ficam gravadas no
   // projeto para não precisar buscar de novo a cada vez que ele é reaberto.
   parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
+  // Vértices de imóveis vizinhos já certificados, importados do Distribuidor de Coordenadas: ficam
+  // gravados para reaproveitar coordenada/sigma/nome na planta (evita vão e sobreposição na divisa).
+  verticesVizinho?: VerticeVizinho[];
   // Campos legados (projetos salvos antes do multi-gleba) — migrados ao abrir.
   vertices?: Vertex[];
   confrontantes?: Confrontante[];

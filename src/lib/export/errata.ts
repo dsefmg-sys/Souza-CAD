@@ -1,7 +1,9 @@
 import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
 import type { ImovelData, TecnicoData } from '../topo/types';
 import { numBR } from '../topo/geometry';
+import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
+import { carregarModelos, preencherModelo } from '../store/modelos';
 
 /** Uma correção da errata: onde, o que constava (onde se lê) e o que passa a constar (leia-se). */
 export interface CorrecaoErrata {
@@ -36,7 +38,12 @@ function secao(n: number, titulo: string) {
 export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
   const input = sanitizarProfundo(inputBruto);
   const { imovel, tecnico, correcoes, areaHa } = input;
-  const comarca = (input.comarca || imovel.municipio || '—').replace(/\s*-\s*MG$/i, '').trim();
+  // UF vem do município do imóvel (ex.: "Espera Feliz-MG" → "MG"); não fica mais chumbado em MG.
+  const uf = ((imovel.municipio || '').match(/-\s*([A-Za-z]{2})\s*$/)?.[1] || '').toUpperCase();
+  const comarca = (input.comarca || imovel.municipio || '—').replace(/\s*-\s*[A-Za-z]{2}\s*$/i, '').trim();
+  const rot = rotulosProfissional(tecnico);
+  const formacao = tecnico.formacao || 'Responsável Técnico';
+  const modelos = carregarModelos();
   const nomeUpper = (tecnico.nome || '').toUpperCase();
   const denom = imovel.denominacao || '—';
   const area = `${numBR(areaHa, 4)} ha`;
@@ -48,7 +55,7 @@ export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
     c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: '*** DADOS FICTÍCIOS — DOCUMENTO DE DEMONSTRAÇÃO, SEM VALIDADE LEGAL ***', bold: true, size: 20, color: 'B91C1C' })] }));
   }
   c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, children: [new TextRun({ text: 'ERRATA FORMAL DE MEMORIAL DESCRITIVO E PROJETO TÉCNICO', bold: true, size: 24 })] }));
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [new TextRun({ text: `AO OFICIAL DE REGISTRO DE IMÓVEIS DA COMARCA DE ${comarca.toUpperCase()} – MG`, bold: true, size: 22 })] }));
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [new TextRun({ text: `AO OFICIAL DE REGISTRO DE IMÓVEIS DA COMARCA DE ${comarca.toUpperCase()}${uf ? ` – ${uf}` : ''}`, bold: true, size: 22 })] }));
 
   // Referência
   c.push(par([
@@ -62,7 +69,7 @@ export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
   // Parágrafo de abertura
   c.push(par([
     t('Eu, '), t(nomeUpper, { bold: true }),
-    t(`, Técnico em Agrimensura, inscrito no CFT sob o nº ${tecnico.cft || '—'}, responsável técnico pelos serviços de agrimensura do imóvel rural denominado ${denom}, com área de ${area}${local ? `, localizado no ${local}` : ''}, venho por meio desta apresentar ERRATA FORMAL para retificação de informações constantes na planta e no memorial descritivo anteriormente apresentados.`),
+    t(`, ${formacao}, inscrito no ${rot.registro} sob o nº ${tecnico.cft || '—'}, responsável técnico pelos serviços de agrimensura do imóvel rural denominado ${denom}, com área de ${area}${local ? `, localizado no ${local}` : ''}, venho por meio desta apresentar ERRATA FORMAL para retificação de informações constantes na planta e no memorial descritivo anteriormente apresentados.`),
   ]));
 
   // Seção 1: correções
@@ -87,16 +94,17 @@ export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
     c.push(par([t('Fica devidamente registrado e acrescido ao processo o número de registro profissional correspondente: '), t(input.acrescimoRT.trim(), { bold: true })]));
   }
 
-  // Ratificação
+  // Ratificação (texto editável nos modelos; {area} trocada pelo valor real)
   c.push(secao(n++, 'Considerações Finais e Ratificação'));
-  c.push(par([t(`Esta errata visa sanar apenas os erros materiais de digitação referentes às matrículas dos confrontantes e à inclusão de registro profissional, mantendo-se inalterados os limites físicos, as coordenadas georreferenciadas (SIRGAS2000), os azimutes e a área total de ${area} do imóvel. Esta peça passa a ser parte integrante da documentação técnica para todos os fins de direito.`)]));
+  c.push(par([t(preencherModelo(modelos.errataRatificacao, { area }))]));
 
   // Data e assinatura
-  const data = input.dataExtenso ? `${comarca} - MG, ${input.dataExtenso}.` : `${comarca} - MG, ____ de __________ de ______.`;
+  const localAssina = `${comarca}${uf ? ` - ${uf}` : ''}`;
+  const data = input.dataExtenso ? `${localAssina}, ${input.dataExtenso}.` : `${localAssina}, ____ de __________ de ______.`;
   c.push(new Paragraph({ spacing: { before: 240, after: 320 }, keepNext: true, keepLines: true, children: [t(data)] }));
   c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, keepLines: true, children: [new TextRun({ text: nomeUpper, bold: true, size: 22 })] }));
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, keepLines: true, children: [t('Técnico em Agrimensura')] }));
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepLines: true, children: [t(`CFT ${tecnico.cft || '—'}`)] }));
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, keepLines: true, children: [t(formacao)] }));
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepLines: true, children: [t(`${rot.registro} ${tecnico.cft || '—'}`)] }));
 
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial' } } } },
