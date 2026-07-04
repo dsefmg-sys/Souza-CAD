@@ -4,18 +4,19 @@
  * A biblioteca `docx` v9 gera documentos com compatibilityMode=15 (Word 2013) e namespaces
  * pós-2007 (w14, w15, w16*, wp14, mc). O Word 2007 não reconhece essas extensões e acusa
  * "problema no conteúdo" ao abrir o arquivo. Este módulo abre o ZIP, ajusta os XMLs e
- * reconstrói o pacote para que o mesmo .docx abra sem erro em qualquer versão ≥ Word 2007.
+ * reconstrói o pacote para que o mesmo .docx abra sem erro in qualquer versão ≥ Word 2007.
  */
 import JSZip from 'jszip';
 
 /**
- * Namespaces que o Word 2007 (ECMA-376 1ª edição) não conhece.
- * Se declarados, o Word 2007 tenta validá-los e falha.
+ * Namespaces pós-2007 que o Word 2007 (ECMA-376 1ª edição) não conhece.
+ * Usamos para fazer a limpeza de atributos e tags filhas pós-2007.
  */
 const NS_POS_2007 = [
   'w14', 'w15', 'w16', 'w16cex', 'w16cid', 'w16sdtdh', 'w16se',
   'wp14', 'wpc', 'wpi', 'wpg', 'wps',
   'cx', 'cx1', 'cx2', 'cx3', 'cx4', 'cx5', 'cx6', 'cx7', 'cx8',
+  'aink', 'am3d', 've',
 ];
 
 /** Remove declarações xmlns:xxx="..." dos namespaces pós-2007. */
@@ -42,15 +43,6 @@ function ajustarCompatibilityMode(xml: string): string {
   );
 }
 
-/** Partes do ZIP que o Word 2007 não precisa e que a lib gera vazias. */
-const PARTES_REMOVIVEIS = [
-  'word/comments.xml',
-  'word/_rels/comments.xml.rels',
-  'word/_rels/endnotes.xml.rels',
-  'word/_rels/footnotes.xml.rels',
-  'word/_rels/fontTable.xml.rels',
-];
-
 /** Remove atributos e elementos com namespaces pós-2007 para evitar XML inválido. */
 function removerAtributosETagsPos2007(xml: string): string {
   for (const ns of NS_POS_2007) {
@@ -62,6 +54,15 @@ function removerAtributosETagsPos2007(xml: string): string {
   }
   return xml;
 }
+
+/** Partes do ZIP que o Word 2007 não precisa e que a lib gera vazias. */
+const PARTES_REMOVIVEIS = [
+  'word/comments.xml',
+  'word/_rels/comments.xml.rels',
+  'word/_rels/endnotes.xml.rels',
+  'word/_rels/footnotes.xml.rels',
+  'word/_rels/fontTable.xml.rels',
+];
 
 /**
  * Recebe um Blob de .docx gerado pela lib `docx` e devolve um Blob compatível com Word 2007.
@@ -99,11 +100,22 @@ export async function compatibilizarWord2007(blob: Blob): Promise<Blob> {
     if (!nome.endsWith('.xml') && !nome.endsWith('.rels')) continue;
     // Não tocar nos .rels que não são XML de Word
     if (nome === '[Content_Types].xml' || nome.endsWith('.rels')) {
-      // Já processamos acima; pular
       continue;
     }
 
     let xml = await zip.files[nome].async('string');
+
+    // Substituição direta das tags raiz para forçar apenas namespaces clássicos e seguros
+    if (nome === 'word/document.xml') {
+      xml = xml.replace(/<w:document[^>]*>/, '<w:document xmlns:ve="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml">');
+    } else if (nome === 'word/styles.xml') {
+      xml = xml.replace(/<w:styles[^>]*>/, '<w:styles xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">');
+    } else if (nome === 'word/numbering.xml') {
+      xml = xml.replace(/<w:numbering[^>]*>/, '<w:numbering xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">');
+    } else if (nome === 'word/settings.xml') {
+      xml = xml.replace(/<w:settings[^>]*>/, '<w:settings xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml">');
+    }
+
     xml = removerDeclaracoesNs(xml);
     xml = removerMcIgnorable(xml);
     xml = removerAtributosETagsPos2007(xml);
@@ -116,13 +128,6 @@ export async function compatibilizarWord2007(blob: Blob): Promise<Blob> {
     zip.file(nome, xml);
   }
 
-  // 5) Reconstrói o ZIP
-  const novoBuf = await zip.generateAsync({
-    type: 'blob',
-    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    compression: 'DEFLATE',
-    compressionOptions: { level: 6 },
-  });
-
-  return novoBuf;
+  // 5) Gerar o novo ZIP
+  return await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
 }
