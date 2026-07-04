@@ -73,9 +73,11 @@ export async function gerarShapefileZip(
   shx.setInt32(104, recordContentBytes / 2, false);   // content length
 
   // ---- .dbf ---- (um campo texto NOME)
-  const nome = (opts.nome || 'parcela').slice(0, 50);
+  const nome = (opts.nome || 'parcela');
   const nomeBytes = new Uint8Array(50);
-  for (let i = 0; i < nome.length && i < 50; i++) nomeBytes[i] = nome.charCodeAt(i) & 0xff;
+  // Codifica em UTF-8 (declarado no .cpg abaixo) e limita a 50 bytes. O jeito antigo (charCodeAt & 0xff)
+  // truncava cada caractere pra 1 byte, então "São João" saía como lixo no QGIS/ArcGIS.
+  nomeBytes.set(new TextEncoder().encode(nome).subarray(0, 50));
   const headerSize = 32 + 32 + 1;
   const recordSize = 1 + 50;
   const dbf = new DataView(new ArrayBuffer(headerSize + recordSize + 1));
@@ -103,6 +105,7 @@ export async function gerarShapefileZip(
   zip.file(`${base}.shp`, shp.buffer);
   zip.file(`${base}.shx`, shx.buffer);
   zip.file(`${base}.dbf`, dbf.buffer);
+  zip.file(`${base}.cpg`, 'UTF-8'); // declara a codificação do .dbf (senão acento vira lixo)
   zip.file(`${base}.prj`, prj);
   return zip.generateAsync({ type: 'blob' });
 }

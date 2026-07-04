@@ -1,6 +1,6 @@
 import type { ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad } from '../topo/types';
 import { db, novoId } from './db';
-import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
 
 type Store = 'proprietarios' | 'confrontantes' | 'imoveis' | 'cartorios';
@@ -71,7 +71,11 @@ export async function sincronizarCadastrosLocalParaNuvem(): Promise<void> {
       
       const colRef = collection(fdb()!, 'users', uid, store);
       for (const item of localItems) {
-        await setDoc(doc(colRef, item.id), item as Record<string, unknown>);
+        const ref = doc(colRef, item.id);
+        // se o cadastro JÁ existe na nuvem, a versão da nuvem manda — não sobrescreve (poderia apagar
+        // uma edição mais nova feita em outro aparelho). Só empurra os cadastros que só existiam local.
+        const existente = await getDoc(ref);
+        if (!existente.exists()) await setDoc(ref, item as Record<string, unknown>);
         await d.delete(store, item.id);
       }
     }

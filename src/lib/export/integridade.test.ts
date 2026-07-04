@@ -92,6 +92,23 @@ describe('validarIntegridadeZip', () => {
     expect(rel.ok).toBe(false);
     expect(rel.problemas.some((p) => /w:p.*desbalanceadas/.test(p))).toBe(true);
   });
+
+  it('acusa referência a caractere de controle (corrompe o Word) mesmo com as tags balanceadas', async () => {
+    const zip = new JSZip();
+    zip.file('word/document.xml', '<w:p><w:r>ru&#x1;im</w:r></w:p>'); // &#x1; = controle proibido
+    const buf = await zip.generateAsync({ type: 'nodebuffer' });
+    const rel = await validarIntegridadeZip(buf, { partesObrigatorias: [], partesXml: ['word/document.xml'] });
+    expect(rel.ok).toBe(false);
+    expect(rel.problemas.some((p) => /controle/.test(p))).toBe(true);
+  });
+
+  it('aceita referências legítimas (&#233; = é, &#10; = quebra de linha)', async () => {
+    const zip = new JSZip();
+    zip.file('word/document.xml', '<w:p><w:r>Andr&#233;&#10;ok</w:r></w:p>');
+    const buf = await zip.generateAsync({ type: 'nodebuffer' });
+    const rel = await validarIntegridadeZip(buf, { partesObrigatorias: [], partesXml: ['word/document.xml'] });
+    expect(rel.ok).toBe(true);
+  });
 });
 
 describe('compatibilidade Word 2007', () => {

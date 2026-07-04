@@ -10,11 +10,11 @@ const QUAD: { leste: number; norte: number }[] = [
 ];
 
 describe('gerarShapefileZip', () => {
-  it('gera um zip com os 4 arquivos e um .shp valido', async () => {
+  it('gera um zip com os 5 arquivos (inclui .cpg) e um .shp valido', async () => {
     const blob = await gerarShapefileZip(QUAD, { zona: 23, hemisferio: 'S', nome: 'Teste' });
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     const nomes = Object.keys(zip.files).sort();
-    expect(nomes).toEqual(['Teste.dbf', 'Teste.prj', 'Teste.shp', 'Teste.shx']);
+    expect(nomes).toEqual(['Teste.cpg', 'Teste.dbf', 'Teste.prj', 'Teste.shp', 'Teste.shx']);
 
     const shpBuf = await zip.file('Teste.shp')!.async('arraybuffer');
     const dv = new DataView(shpBuf);

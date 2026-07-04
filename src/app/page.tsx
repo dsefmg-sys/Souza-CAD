@@ -693,8 +693,8 @@ export default function EditorPage() {
 
   // assinatura do conteúdo do projeto, para acender o disquete laranja quando há mudança não salva
   const projSig = useMemo(
-    () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas.map((g) => g.id), vv: verticesVizinho }),
-    [vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas, verticesVizinho],
+    () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas.map((g) => g.id), vv: verticesVizinho, ig: verticesIgnorados, np: nomeProjeto, rq: requerente, tr: transmitente }),
+    [vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas, verticesVizinho, verticesIgnorados, nomeProjeto, requerente, transmitente],
   );
   useEffect(() => {
     // o salvar muda os vértices (códigos); adota essa mudança imediata como "salva"
@@ -1002,6 +1002,10 @@ export default function EditorPage() {
       ...g,
       vertices: reprojetar(g.vertices, z, hemisferio)
     })));
+    // também reprojeta o que ficava esquecido no fuso antigo (senão "considerar" um vértice ignorado
+    // ou usar uma referência trazia coordenada deslocada de centenas de metros)
+    setVerticesIgnorados((vs) => reprojetar(vs, z, hemisferio));
+    setReferencias((refs) => refs.map((anel) => anel.map((p) => ({ ...p, ...geoParaUtm(p.lat, p.lon, z, hemisferio) }))));
   }
 
   function trocarHemisferio(h: 'N' | 'S') {
@@ -1011,6 +1015,8 @@ export default function EditorPage() {
       ...g,
       vertices: reprojetar(g.vertices, zona, h)
     })));
+    setVerticesIgnorados((vs) => reprojetar(vs, zona, h));
+    setReferencias((refs) => refs.map((anel) => anel.map((p) => ({ ...p, ...geoParaUtm(p.lat, p.lon, zona, h) }))));
   }
 
   // Ao informar o município, tenta acertar o fuso pela âncora (resolve a divisa 23/24).
@@ -2613,6 +2619,25 @@ export default function EditorPage() {
 
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
 
+  // Chave Fácil/Completo — pílula compacta reutilizada: no MAPA fica flutuante no canto; na PLANTA
+  // entra na barra flutuante, à direita do "Situação Pronta". Some enquanto a abertura toca e depois
+  // de 5 h de Completo (aí volta só pelas Configurações).
+  const chaveModo = (chaveTopoVisivel && !introTocando) ? (
+    <div className="flex items-center gap-0.5 rounded-full border bg-background/95 p-0.5 pl-1.5" role="group" aria-label="Modo da interface">
+      <GraduationCap className="size-3.5 shrink-0 text-primary" aria-hidden />
+      {(['simples', 'completo'] as const).map((m) => (
+        <button key={m} type="button" onClick={() => trocarModoApp(m)}
+          aria-pressed={modoApp === m}
+          title={m === 'simples'
+            ? 'Modo Fácil: só o caminho essencial na tela, pra qualquer nível se adaptar ao software — e ainda assim dá pra entregar um trabalho básico completo.'
+            : 'Modo Completo: todas as ferramentas à mostra. Pra quem já se acostumou com o app.'}
+          className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition-colors ${modoApp === m ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted'}`}>
+          {m === 'simples' ? 'Fácil' : 'Completo'}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       {/* Topo */}
@@ -2691,24 +2716,10 @@ export default function EditorPage() {
            FLUTUANTE na lateral direita — ver logo abaixo do <header>. */}
       </header>
 
-      {/* CHAVE do modo, flutuante no TOPO à direita (logo abaixo do cabeçalho): decide se a tela mostra
-          só o essencial (Fácil, pra qualquer um se adaptar e ainda assim fazer um trabalho básico
-          completo) ou todas as ferramentas (Completo). Some enquanto a abertura toca; e depois de 5 h no
-          Completo some de vez (interface limpa) — voltar ao Fácil fica só nas Configurações. */}
-      {chaveTopoVisivel && !introTocando && (
-        <div className="no-print fixed right-2 top-14 z-[1100] flex items-center gap-1 rounded-full border bg-background/95 p-0.5 pl-2 shadow-lg backdrop-blur" role="group" aria-label="Modo da interface">
-          <GraduationCap className="size-4 shrink-0 text-primary" aria-hidden />
-          {(['simples', 'completo'] as const).map((m) => (
-            <button key={m} type="button" onClick={() => trocarModoApp(m)}
-              aria-pressed={modoApp === m}
-              title={m === 'simples'
-                ? 'Modo Fácil: só o caminho essencial na tela, pra qualquer nível se adaptar ao software — e ainda assim dá pra entregar um trabalho básico completo.'
-                : 'Modo Completo: todas as ferramentas à mostra. Pra quem já se acostumou com o app.'}
-              className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors ${modoApp === m ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted'}`}>
-              {m === 'simples' ? 'Fácil' : 'Completo'}
-            </button>
-          ))}
-        </div>
+      {/* No modo MAPA a chave fica flutuante no canto superior direito. No modo PLANTA ela vive dentro
+          da barra flutuante, à direita do "Situação Pronta" (ver mais abaixo). */}
+      {vista === 'mapa' && chaveModo && (
+        <div className="no-print fixed right-2 top-14 z-[1100] shadow-lg">{chaveModo}</div>
       )}
 
       <div className="relative flex min-h-0 flex-1">
@@ -3265,9 +3276,10 @@ export default function EditorPage() {
                   {/* Convite pro modo Completo: no Simples a pessoa vê que existe mais e vira a chave quando quiser. */}
                   {!completo && (
                     <button type="button" onClick={() => trocarModoApp('completo')}
-                      className="mt-1 flex !h-auto w-full items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 !p-2 text-left !text-[10px] leading-tight text-muted-foreground hover:bg-primary/10">
-                      <Sparkles className="size-4 shrink-0 text-primary" />
-                      <span>Você está no <b className="text-foreground">modo Fácil</b>, com só o essencial — dá pra entregar um trabalho básico completo assim mesmo. Quando pegar o jeito, toque aqui pra abrir o <b className="text-primary">modo Completo</b> com todas as ferramentas.</span>
+                      title="No modo Fácil aparece só o caminho essencial, e ainda assim dá pra entregar um trabalho básico completo. Toque para abrir o modo Completo, com todas as ferramentas."
+                      className="mt-1 flex !h-auto w-full items-start gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 !p-2 text-left !text-[10px] leading-snug text-muted-foreground hover:bg-primary/10">
+                      <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+                      <span className="min-w-0 break-words">Modo <b className="text-foreground">Fácil</b>: só o essencial. Toque para abrir o <b className="text-primary">Completo</b>.</span>
                     </button>
                   )}
                 </div>
@@ -3292,31 +3304,29 @@ export default function EditorPage() {
           </button>
 
           {vista === 'planta' && (
-            <div className="absolute left-20 top-3 z-[1160] flex items-center gap-1.5 rounded-xl border border-border bg-background/95 p-1.5 shadow-xl backdrop-blur no-print">
+            <div className="absolute left-20 top-3 z-[1160] flex items-center gap-1 rounded-xl border border-border bg-background/95 p-1 shadow-xl backdrop-blur no-print">
               <Button
                 size="sm"
                 variant={folhaTravada ? 'outline' : 'default'}
-                className={folhaTravada ? 'h-8' : 'h-8 bg-amber-500 hover:bg-amber-600 text-white'}
+                className={folhaTravada ? 'size-7 p-0' : 'size-7 p-0 bg-amber-500 hover:bg-amber-600 text-white'}
                 onClick={() => {
                   const nova = !folhaTravada;
                   setFolhaTravada(nova);
                   if (!nova) setModo('navegar');
                 }}
-                title={folhaTravada ? "Desbloquear Moldura: permite arrastar a prancha A3 para enquadrar o desenho" : "Bloquear Moldura: trava o layout da folha para evitar arraste acidental"}
+                title={folhaTravada ? "Moldura travada — clique para soltar e arrastar a prancha A3 para enquadrar o desenho" : "Moldura solta — clique para travar o layout da folha e evitar arraste acidental"}
               >
-                {folhaTravada ? <Lock className="size-4 mr-1.5" /> : <LockOpen className="size-4 mr-1.5" />}
-                <span className="text-xs font-semibold">{folhaTravada ? 'Moldura Travada' : 'Moldura Solta'}</span>
+                {folhaTravada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
               </Button>
 
               <Button
                 size="sm"
                 variant={plantaDark ? 'default' : 'outline'}
-                className="h-8"
+                className="size-7 p-0"
                 onClick={() => setPlantaDark((v) => !v)}
-                title="Alternar Tema: ativa/desativa o modo escuro para visualização noturna confortável"
+                title={plantaDark ? 'Modo escuro ligado — clique para voltar ao claro' : 'Modo claro — clique para o modo escuro (visualização noturna)'}
               >
-                {plantaDark ? <Sun className="size-4 mr-1.5 text-amber-400" /> : <Moon className="size-4 mr-1.5" />}
-                <span className="text-xs font-semibold">{plantaDark ? 'Modo Escuro' : 'Modo Claro'}</span>
+                {plantaDark ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
               </Button>
 
               <div className="h-5 w-px bg-border mx-0.5" />
@@ -3325,15 +3335,18 @@ export default function EditorPage() {
                 const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
                 const cor = !situacaoUrl || stale ? 'bg-amber-500 hover:bg-amber-600 text-white border-transparent' : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent';
                 return (
-                  <Button size="sm" className={`h-8 ${cor}`} title={!situacaoUrl ? 'Capturar planta de situação' : stale ? 'Situação desatualizada' : 'Situação pronta'} onClick={gerarSituacaoPlanta}>
-                    <Camera className="size-4 mr-1.5" /> <span className="text-xs font-semibold">{!situacaoUrl ? 'Capturar Situação' : stale ? 'Atualizar Situação' : 'Situação Pronta'}</span>
+                  <Button size="sm" className={`h-7 px-2 ${cor}`} title={!situacaoUrl ? 'Capturar planta de situação' : stale ? 'Situação desatualizada' : 'Situação pronta'} onClick={gerarSituacaoPlanta}>
+                    <Camera className="size-4 mr-1" /> <span className="text-[11px] font-semibold">{!situacaoUrl ? 'Capturar Situação' : stale ? 'Atualizar Situação' : 'Situação Pronta'}</span>
                   </Button>
                 );
               })()}
 
+              {/* Chave Fácil/Completo — à direita do "Situação Pronta", como pedido */}
+              {chaveModo}
+
               <div className="h-5 w-px bg-border mx-0.5" />
 
-              <div className="flex items-center rounded-md border border-input bg-background overflow-hidden h-8">
+              <div className="flex items-center rounded-md border border-input bg-background overflow-hidden h-7">
                 <button
                   type="button"
                   className="h-full px-3 hover:bg-accent text-foreground font-bold border-r border-input transition-colors text-sm flex items-center justify-center"
