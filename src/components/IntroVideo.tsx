@@ -56,10 +56,13 @@ export default function IntroVideo() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black">
+      {/* Cobertura preta que some quando o vídeo realmente começa a rodar.
+          Impede que o navegador mostre o primeiro frame estático como flash. */}
+      {!tocando && <div className="absolute inset-0 z-10 bg-black" />}
       <video
         ref={videoRef}
         src="/marca/intro.mp4"
-        className={`max-h-full max-w-full transition-opacity duration-300 ${tocando ? 'opacity-100' : 'opacity-0'}`}
+        className="max-h-full max-w-full"
         autoPlay
         muted
         playsInline
