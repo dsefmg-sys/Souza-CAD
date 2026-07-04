@@ -249,9 +249,9 @@ function celulaCab(rotulo: string, valor: string): TableCell {
 
 const border = () => ({ style: BorderStyle.SINGLE, size: 4, color: '000000' });
 
-function celulaTabela(texto: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; size?: number; width?: number } = {}): TableCell {
+function celulaTabela(texto: string, width: number, opts: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; size?: number } = {}): TableCell {
   return new TableCell({
-    width: opts.width ? { size: opts.width, type: WidthType.PERCENTAGE } : undefined,
+    width: { size: width, type: WidthType.PERCENTAGE },
     margins: { top: 60, bottom: 60, left: 60, right: 60 },
     children: [new Paragraph({
       alignment: opts.align ?? AlignmentType.CENTER,
@@ -263,7 +263,6 @@ function celulaTabela(texto: string, opts: { bold?: boolean; align?: (typeof Ali
 function celulaHeader(texto: string, width: number): TableCell {
   return new TableCell({
     width: { size: width, type: WidthType.PERCENTAGE },
-    shading: { fill: "E2E8F0" },
     margins: { top: 80, bottom: 80, left: 60, right: 60 },
     children: [new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -320,14 +319,14 @@ function tabelaRoteiroGeometrico(
     rows.push(
       new TableRow({
         children: [
-          celulaTabela(l.de.codigoSigef || l.de.nome, { bold: true }),
-          celulaTabela(l.para.codigoSigef || l.para.nome, { bold: true }),
-          celulaTabela(azimuteDMS(azEfetivo)),
-          celulaTabela(numBR(l.distancia)),
-          celulaTabela(numBR(l.de.leste, 3)),
-          celulaTabela(numBR(l.de.norte, 3)),
-          celulaTabela(numBR(l.de.elevacao, 2)),
-          celulaTabela(`${confNome} (${limite})`, { align: AlignmentType.LEFT }),
+          celulaTabela(l.de.codigoSigef || l.de.nome, 8, { bold: true }),
+          celulaTabela(l.para.codigoSigef || l.para.nome, 8, { bold: true }),
+          celulaTabela(azimuteDMS(azEfetivo), 12),
+          celulaTabela(numBR(l.distancia), 12),
+          celulaTabela(numBR(l.de.leste, 3), 14),
+          celulaTabela(numBR(l.de.norte, 3), 14),
+          celulaTabela(numBR(l.de.elevacao, 2), 9),
+          celulaTabela(`${confNome} (${limite})`, 23, { align: AlignmentType.LEFT }),
         ]
       })
     );
