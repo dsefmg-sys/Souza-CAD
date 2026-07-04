@@ -38,6 +38,7 @@ import GestaoProjetoModal from '@/components/GestaoProjetoModal';
 import TutorialModal from '@/components/TutorialModal';
 import AssinaturaModal from '@/components/AssinaturaModal';
 import IntroVideo from '@/components/IntroVideo';
+import IntroAudio from '@/components/IntroAudio';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
 import CalculadoraModal from '@/components/CalculadoraModal';
 import VerticeVirtualModal, { type DadosVerticeVirtual } from '@/components/VerticeVirtualModal';
@@ -4207,23 +4208,81 @@ export default function EditorPage() {
 
             {menuContexto.tipo === 'objeto' && (
               <div className="flex flex-col gap-0.5">
-                {menuContexto.objetoTipo === 'texto' && (
-                  <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={async () => { const o = objetos.find((x) => x.id === menuContexto.id); const t = await perguntar({ titulo: 'Editar texto', valorInicial: o?.texto ?? '' }); if (t != null) editarObjetoSel({ texto: t }); setMenuContexto(null); }}>
-                    <Pencil className="size-3.5" /> Editar texto…
-                  </button>
-                )}
-                {menuContexto.objetoTipo === 'texto' && (
-                  <>
-                    <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ tamanho: (o?.tamanho ?? 12) + 2 }); }}><span className="w-3.5 text-center font-bold">A+</span> Aumentar</button>
-                    <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ tamanho: Math.max(6, (o?.tamanho ?? 12) - 2) }); }}><span className="w-3.5 text-center font-bold">A-</span> Diminuir</button>
-                  </>
-                )}
-                {menuContexto.objetoTipo === 'simbolo' && (
-                  <>
-                    <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ tamanho: Math.min(150, (o?.tamanho ?? 30) + 5) }); }}><span className="w-3.5 text-center font-bold">S+</span> Aumentar Símbolo</button>
-                    <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ tamanho: Math.max(10, (o?.tamanho ?? 30) - 5) }); }}><span className="w-3.5 text-center font-bold">S-</span> Diminuir Símbolo</button>
-                  </>
-                )}
+                {/* ----- TEXTO ----- */}
+                {menuContexto.objetoTipo === 'texto' && (() => {
+                  const o = objetos.find((x) => x.id === menuContexto.id);
+                  return (
+                    <>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: o?.texto ?? '' }); if (t != null) editarObjetoSel({ texto: t }); setMenuContexto(null); }}>
+                        <Pencil className="size-3.5" /> Editar texto…
+                      </button>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: (o?.tamanho ?? 12) + 2 }); }}><span className="w-3.5 text-center font-bold">A+</span> Aumentar</button>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.max(6, (o?.tamanho ?? 12) - 2) }); }}><span className="w-3.5 text-center font-bold">A-</span> Diminuir</button>
+                      <div className="px-2 pt-1">
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Cor do texto</div>
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {PALETA_DESENHO.map((p) => (
+                            <button key={p.hex} type="button" title={p.nome}
+                              className={`size-4 rounded-full border border-black/10 transition-transform hover:scale-115 ${o?.cor === p.hex ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                              style={{ backgroundColor: p.hex }}
+                              onClick={() => editarObjetoSel({ cor: p.hex })} />
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {/* ----- SÍMBOLO ----- */}
+                {menuContexto.objetoTipo === 'simbolo' && (() => {
+                  const o = objetos.find((x) => x.id === menuContexto.id);
+                  return (
+                    <>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.min(150, (o?.tamanho ?? 30) + 5) }); }}><span className="w-3.5 text-center font-bold">S+</span> Aumentar Símbolo</button>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.max(10, (o?.tamanho ?? 30) - 5) }); }}><span className="w-3.5 text-center font-bold">S-</span> Diminuir Símbolo</button>
+                      <div className="px-2 pt-1">
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Cor</div>
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {PALETA_DESENHO.map((p) => (
+                            <button key={p.hex} type="button" title={p.nome}
+                              className={`size-4 rounded-full border border-black/10 transition-transform hover:scale-115 ${o?.cor === p.hex ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                              style={{ backgroundColor: p.hex }}
+                              onClick={() => editarObjetoSel({ cor: p.hex })} />
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {/* ----- COTA ----- */}
+                {menuContexto.objetoTipo === 'cota' && (() => {
+                  const o = objetos.find((x) => x.id === menuContexto.id);
+                  return (
+                    <div className="space-y-2 p-1 text-[11px]">
+                      <div>
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Cor da cota</div>
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {PALETA_DESENHO.map((p) => (
+                            <button key={p.hex} type="button" title={p.nome}
+                              className={`size-4 rounded-full border border-black/10 transition-transform hover:scale-115 ${(o?.cor ?? '#b91c1c') === p.hex ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                              style={{ backgroundColor: p.hex }}
+                              onClick={() => editarObjetoSel({ cor: p.hex })} />
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Espessura: {(o?.espessura ?? 1.2).toFixed(1)}</div>
+                        <div className="flex gap-1.5">
+                          <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.max(0.5, (o?.espessura ?? 1.2) - 0.5) })}>−</button>
+                          <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.min(8, (o?.espessura ?? 1.2) + 0.5) })}>+</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ----- POLILINHA ----- */}
                 {menuContexto.objetoTipo === 'polilinha' && (() => {
                   const o = objetos.find((x) => x.id === menuContexto.id);
                   if (!o) return null;
@@ -4260,7 +4319,7 @@ export default function EditorPage() {
                       <div>
                         <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Espessura: {(o.espessura ?? 1.5).toFixed(1)}</div>
                         <div className="flex gap-1.5">
-                          <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.max(0.5, (o.espessura ?? 1.5) - 0.5) })}>-</button>
+                          <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.max(0.5, (o.espessura ?? 1.5) - 0.5) })}>−</button>
                           <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.min(10, (o.espessura ?? 1.5) + 0.5) })}>+</button>
                         </div>
                       </div>
@@ -4489,6 +4548,7 @@ export default function EditorPage() {
       </Dialog>
 
       <IntroVideo />
+      <IntroAudio />
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
       <TermosModal open={termosModalAberto} onAceitar={() => { setTermosOk(true); setTermosModalAberto(false); const a = acaoAposTermos.current; acaoAposTermos.current = null; a?.(); }} />

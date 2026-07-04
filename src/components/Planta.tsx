@@ -430,6 +430,8 @@ export default function Planta({
   }
   const clampX = (x: number) => Math.max(DRAW.x0 + 75, Math.min(DRAW.x1 - 75, x));
   const clampY = (y: number) => Math.max(DRAW.y0 + 22, Math.min(DRAW.y1 - 24, y));
+  // ptsScr precisa ser declarado ANTES de rotulosConf, pois é usado dentro do .map
+  const ptsScr = vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
   const rotulosConf = [...trechos.entries()].map(([cid, idxs]) => {
     const c = mapaC.get(cid);
     if (c?.posRotulo) {
@@ -476,7 +478,7 @@ export default function Planta({
   // posição do rótulo de cada vértice: FORA do polígono (não cobre a linha), a uma folga do
   // vértice (não cobre o ponto) e, adiante, empurrado pra não colar em outro rótulo/vértice.
   const fzRot = Math.max(6, fonteRot - 0.5);
-  const ptsScr = vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
+  // ptsScr já foi declarado antes (necessário para rotulosConf, acima).
   const nV = ptsScr.length;
   const offBase = Math.max(24, fzRot * 2.5); // folga do vértice, proporcional à fonte (aumentada de 14 para 24)
   const raioDens = offBase * 3.5;            // raio (tela) para medir aglomeração de vértices

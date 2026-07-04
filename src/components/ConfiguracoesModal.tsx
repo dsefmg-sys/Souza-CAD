@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music } from 'lucide-react';
 import ModelosDocsModal from './ModelosDocsModal';
 import PontosBancoModal from './PontosBancoModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
@@ -60,7 +60,9 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const [reciboSeq, setReciboSeq] = useState(1);
   const sigefRef = useRef<HTMLInputElement>(null);
   const importConfigRef = useRef<HTMLInputElement>(null);
+  const audioIntroRef = useRef<HTMLInputElement>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [audioIntroNome, setAudioIntroNome] = useState<string>('introducao.mp3 (padrão)');
 
   useEffect(() => {
     if (open) {
@@ -359,6 +361,65 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 <Button variant="outline" size="sm" className="w-full gap-1.5 font-semibold" onClick={reverIntro}>
                   <PlayCircle className="size-4" /> Ver a abertura agora
                 </Button>
+
+                {/* Áudio de introdução — só para admins (master) */}
+                {souMaster() && (
+                  <>
+                    <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Áudio de Introdução (Admin)</div>
+                    <div className="rounded border p-2.5 space-y-2">
+                      <p className="text-[11px] leading-tight text-muted-foreground">
+                        O player de introdução fica no canto superior direito da tela. O arquivo padrão é <code className="bg-muted rounded px-1">introducao.mp3</code>. Você pode substituir por outro áudio (MP3, OGG ou WAV, máx 20 MB) — fica salvo localmente neste navegador.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Music className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="text-[11px] text-muted-foreground truncate flex-1">{audioIntroNome}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => audioIntroRef.current?.click()}
+                        >
+                          <UploadCloud className="size-4" /> Substituir áudio
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-destructive hover:text-destructive"
+                          onClick={async () => {
+                            const { removerAudioIntroIdb } = await import('@/components/IntroAudio');
+                            await removerAudioIntroIdb();
+                            setAudioIntroNome('introducao.mp3 (padrão)');
+                            flash('Áudio restaurado para o padrão');
+                          }}
+                        >
+                          <Trash2 className="size-4" /> Restaurar padrão
+                        </Button>
+                      </div>
+                      <input
+                        ref={audioIntroRef}
+                        type="file"
+                        accept="audio/mp3,audio/mpeg,audio/ogg,audio/wav"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 20 * 1024 * 1024) { flash('Arquivo muito grande (máx 20 MB)'); return; }
+                          const reader = new FileReader();
+                          reader.onloadend = async () => {
+                            const { salvarAudioIntroIdb } = await import('@/components/IntroAudio');
+                            await salvarAudioIntroIdb(reader.result as string);
+                            setAudioIntroNome(file.name);
+                            flash('Áudio de introdução atualizado!');
+                          };
+                          reader.readAsDataURL(file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Aparência da tela</div>
                 <div className="space-y-1.5 rounded border p-2.5">
