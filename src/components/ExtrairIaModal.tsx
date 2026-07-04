@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Wand2, UploadCloud, FileText, Image, Trash2 } from 'lucide-react';
@@ -14,6 +14,8 @@ interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onAplicar: (parcial: Partial<ImovelData>) => void;
+  /** Documento já anexado que a IA deve ler (parte da extração a partir de um arquivo guardado). */
+  arquivoInicial?: { data: string; mimeType: string; nome: string } | null;
 }
 
 const CAMPOS: { chave: string; rotulo: string }[] = [
@@ -29,7 +31,7 @@ const CAMPOS: { chave: string; rotulo: string }[] = [
   { chave: 'areaAnteriorHa', rotulo: 'Área anterior (ha)' },
 ];
 
-export default function ExtrairIaModal({ open, onOpenChange, onAplicar }: Props) {
+export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoInicial }: Props) {
   const [texto, setTexto] = useState('');
   const [arquivo, setArquivo] = useState<{ data: string; mimeType: string; nome: string } | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -37,6 +39,11 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar }: Props)
   const [campos, setCampos] = useState<Record<string, string> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  // Ao abrir vindo de um documento anexado, já carrega o arquivo e limpa o resultado anterior.
+  useEffect(() => {
+    if (open && arquivoInicial) { setArquivo(arquivoInicial); setCampos(null); setErro(''); setTexto(''); }
+  }, [open, arquivoInicial]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

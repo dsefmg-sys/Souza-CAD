@@ -11,6 +11,10 @@ export interface ArquivoProjeto {
   blob: Blob;
   criadoEm: number;
   rotulo?: string;      // ex.: "Espelho — Proprietário", "Espelho — Confrontante João"
+  // A QUEM o documento pertence (organização por dono). Ausente = documento antigo/genérico do projeto.
+  dono?: 'imovel' | 'confrontante';
+  confrontanteId?: string; // quando dono === 'confrontante'
+  tipoDoc?: string;        // ex.: 'CNH', 'Certidão de matrícula', 'Escritura', 'Foto'
 }
 
 export interface MetricaDB extends DBSchema {

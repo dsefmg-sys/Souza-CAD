@@ -18,6 +18,8 @@ import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
 import { Input } from '@/components/ui/input';
 import ModalSpreadsheet from '@/components/ModalSpreadsheet';
 import { Logo } from '@/components/Logo';
+import DocumentosProjeto from '@/components/DocumentosProjeto';
+import type { ArquivoProjeto } from '@/lib/store/arquivosProjeto';
 import ModalImport from '@/components/ModalImport';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -311,6 +313,17 @@ export default function EditorPage() {
   const [errataAberto, setErrataAberto] = useState(false);
   const [consultarAberto, setConsultarAberto] = useState(false);
   const [iaAberta, setIaAberta] = useState(false);
+  // arquivo já anexado que a IA vai ler (quando a extração parte de um documento guardado)
+  const [iaArquivoInicial, setIaArquivoInicial] = useState<{ data: string; mimeType: string; nome: string } | null>(null);
+  // Abre a extração por IA já carregando um documento anexado do imóvel.
+  function extrairDocumento(a: ArquivoProjeto) {
+    const r = new FileReader();
+    r.onloadend = () => {
+      setIaArquivoInicial({ data: String(r.result), mimeType: a.tipo, nome: a.nome });
+      setIaAberta(true);
+    };
+    r.readAsDataURL(a.blob);
+  }
   const [carAberto, setCarAberto] = useState(false);
   const [configAberta, setConfigAberta] = useState(false);
   const [configAba, setConfigAba] = useState<'pessoal' | 'escritorio' | 'numeracao' | 'modelos' | undefined>(undefined);
@@ -3088,16 +3101,7 @@ export default function EditorPage() {
                           </div>
                         </div>
 
-                        {/* Situação */}
-                        {(() => {
-                          const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
-                          const cor = !situacaoUrl || stale ? 'text-amber-600 border-amber-500/40 hover:bg-amber-500 hover:text-white' : 'text-emerald-600 border-emerald-600/40 hover:bg-emerald-600 hover:text-white';
-                          return (
-                            <Button size="sm" variant="outline" className={`w-full justify-start gap-2 h-9 mt-1 ${cor}`} title={!situacaoUrl ? 'Capturar planta de situação' : stale ? 'Situação desatualizada' : 'Situação pronta'} onClick={gerarSituacaoPlanta}>
-                              <Camera className="size-4" /> <span className="text-[11px] font-semibold">{!situacaoUrl ? 'Capturar situação' : stale ? 'Atualizar situação' : 'Situação pronta'}</span>
-                            </Button>
-                          );
-                        })()}
+                        {/* A situação foi movida SÓ para a barra flutuante da planta (evita duplicar aqui). */}
                       </div>
                     )}
                   </div>
@@ -3330,11 +3334,19 @@ export default function EditorPage() {
 
               {(() => {
                 const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
-                const cor = !situacaoUrl || stale ? 'bg-amber-500 hover:bg-amber-600 text-white border-transparent' : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent';
+                const pronto = !!situacaoUrl && !stale;
+                // Pílula compacta e discreta (mesma linguagem do alternador de modo): tom suave em vez de
+                // botão sólido saturado, texto pequeno. Verde = pronta; âmbar = capturar/atualizar.
+                const cor = pronto
+                  ? 'border-emerald-600/40 bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400'
+                  : 'border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400';
                 return (
-                  <Button size="sm" className={`h-7 px-2 ${cor}`} title={!situacaoUrl ? 'Capturar planta de situação' : stale ? 'Situação desatualizada' : 'Situação pronta'} onClick={gerarSituacaoPlanta}>
-                    <Camera className="size-4 mr-1" /> <span className="text-[11px] font-semibold">{!situacaoUrl ? 'Capturar Situação' : stale ? 'Atualizar Situação' : 'Situação Pronta'}</span>
-                  </Button>
+                  <button type="button" onClick={gerarSituacaoPlanta}
+                    title={!situacaoUrl ? 'Capturar a planta de situação (satélite)' : stale ? 'A situação está desatualizada — clique para atualizar' : 'Situação pronta'}
+                    className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold transition-colors ${cor}`}>
+                    {pronto ? <Check className="size-3.5" /> : <Camera className="size-3.5" />}
+                    {!situacaoUrl ? 'Capturar situação' : stale ? 'Atualizar situação' : 'Situação pronta'}
+                  </button>
                 );
               })()}
 
@@ -3506,19 +3518,30 @@ export default function EditorPage() {
           </div>
           {/* resumo movido para o painel flutuante (canto sup. esquerdo do mapa/planta) */}
 
-          {/* abas */}
-          <div className="flex border-b text-xs">
-            {(['imovel', 'vertices', 'confrontantes', 'planta', 'conferencia', 'projetos'] as Aba[]).map((a) => (
-              <button key={a} onClick={() => setAba(a)}
-                className={`flex-1 px-1 py-2 ${aba === a ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted-foreground'}`}>
-                {a === 'imovel' ? 'Imóvel' : a === 'vertices' ? 'Vértices' : a === 'confrontantes' ? 'Confront.' : a === 'planta' ? 'Planta' : a === 'conferencia' ? 'Conferir' : 'Projetos'}
+          {/* abas — ícone em cima, título em MAIÚSCULAS embaixo; a ativa ganha cor e traço inferior */}
+          <div className="flex border-b bg-muted/20">
+            {([
+              ['imovel', 'IMÓVEL', <BookUser key="i" className="size-4" />],
+              ['vertices', 'VÉRTICES', <Waypoints key="i" className="size-4" />],
+              ['confrontantes', 'CONFRONT.', <Users key="i" className="size-4" />],
+              ['planta', 'PLANTA', <MapIcon key="i" className="size-4" />],
+              ['conferencia', 'CONFERIR', <CheckCircle2 key="i" className="size-4" />],
+              ['projetos', 'PROJETOS', <Database key="i" className="size-4" />],
+            ] as [Aba, string, React.ReactNode][]).map(([a, rot, icone]) => (
+              <button key={a} onClick={() => setAba(a)} title={rot}
+                className={`flex flex-1 flex-col items-center gap-0.5 border-b-2 px-1 py-1.5 text-[9px] font-bold uppercase tracking-wide transition-colors ${aba === a ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}>
+                {icone}
+                <span className="leading-none">{rot}</span>
               </button>
             ))}
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto p-2.5 scroll-fino">
             <datalist id="lista-cns">{sugCns.map((c) => <option key={c} value={c} />)}</datalist>
-            {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} onIa={() => setIaAberta(true)} />}
+            {aba === 'imovel' && <>
+              <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} onIa={() => { setIaArquivoInicial(null); setIaAberta(true); }} />
+              <div className="mt-2"><DocumentosProjeto projetoId={projetoId} dono="imovel" titulo="Documentos do imóvel e do proprietário" onExtrair={extrairDocumento} /></div>
+            </>}
             {aba === 'vertices' && (
               <div className="space-y-1">
                 {/* Painel de Desmembramento */}
@@ -3763,7 +3786,7 @@ export default function EditorPage() {
       <ErrorBoundary onReset={() => setDxfEditorAberto(false)}><DxfEditorModal open={dxfEditorAberto} onOpenChange={setDxfEditorAberto} /></ErrorBoundary>
       <PorcentagemModal open={porcentagemAberta} onOpenChange={setPorcentagemAberta} glebas={glebas.map((g) => ({ id: g.id, nome: g.denominacao, vertices: g.id === glebaAtivaId ? vertices : g.vertices }))} />
       <ErrorBoundary onReset={() => setEstudioAberto(false)}><EstudioModal open={estudioAberto} onOpenChange={setEstudioAberto} /></ErrorBoundary>
-      <ExtrairIaModal open={iaAberta} onOpenChange={setIaAberta} onAplicar={(parcial) => { setImovel((im) => ({ ...im, ...parcial })); aviso('Dados da IA aplicados ao imóvel — confira antes de gerar as peças.'); }} />
+      <ExtrairIaModal open={iaAberta} onOpenChange={(o) => { setIaAberta(o); if (!o) setIaArquivoInicial(null); }} arquivoInicial={iaArquivoInicial} onAplicar={(parcial) => { setImovel((im) => ({ ...im, ...parcial })); aviso('Dados da IA aplicados ao imóvel — confira antes de gerar as peças.'); }} />
       <PrecoSugeridoModal open={precoSugAberto} onOpenChange={setPrecoSugAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
       <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
         areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
@@ -4283,20 +4306,29 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         </div>
       </div>
       <Campo label="Local (memorial)" value={imovel.local} onChange={onLocal} placeholder="Córrego ..., Cidade-UF" />
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-0.5">
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
           <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fuso UTM</Label>
-          <Input type="number" value={zona} onChange={(e) => onZona(Number(e.target.value))} className="h-8 text-sm" />
+          <div className="flex rounded-md border border-input p-0.5">
+            {(['S', 'N'] as const).map((h) => (
+              <button key={h} type="button" onClick={() => onHemisferio(h)}
+                className={`rounded px-2.5 py-0.5 text-[11px] font-semibold uppercase transition-colors ${hemisferio === h ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+                {h === 'S' ? 'Sul' : 'Norte'}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="space-y-0.5">
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Hemisfério</Label>
-          <select className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm" value={hemisferio} onChange={(e) => onHemisferio(e.target.value as 'N' | 'S')}>
-            <option value="S">Sul</option>
-            <option value="N">Norte</option>
-          </select>
+        {/* Todos os fusos do Brasil continental e ilhas (18 a 25): um toque escolhe qualquer um. */}
+        <div className="grid grid-cols-8 gap-1">
+          {[18, 19, 20, 21, 22, 23, 24, 25].map((z) => (
+            <button key={z} type="button" onClick={() => onZona(z)} title={`Fuso ${z}${hemisferio}`}
+              className={`rounded border py-1 text-xs font-bold transition-colors ${zona === z ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-input bg-secondary text-secondary-foreground hover:bg-accent'}`}>
+              {z}
+            </button>
+          ))}
         </div>
       </div>
-      <p className="text-[10px] text-muted-foreground">O fuso não é detectável só pelo TXT. Informe o município que o sistema acerta o fuso (23/24) e confirma no mapa.</p>
+      <p className="text-[10px] text-muted-foreground">O sistema já detecta o fuso ao importar o TXT. Se precisar corrigir, toque no fuso certo acima — todos os do Brasil estão disponíveis.</p>
       
       <div className="space-y-1 mt-1 border-t pt-2">
         <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Cálculo de Azimute nas Peças</Label>
@@ -4423,11 +4455,12 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
   );
 }
 
-function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico }: {
+function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico, projetoId, onExtrairConfrontante }: {
   confrontantes: Confrontante[]; onChange: (c: Confrontante[]) => void;
   mapa: Record<number, string>; lados: Lado[];
   sugConf: ConfrontanteCad[]; onSalvarCadastro: (c: Confrontante) => void;
   imovel: ImovelData; tecnico: TecnicoData | null;
+  projetoId: string | null; onExtrairConfrontante: (a: ArquivoProjeto, confrontanteId: string) => void;
 }) {
   const set = (id: string, k: keyof Confrontante, v: string) =>
     onChange(confrontantes.map((c) => (c.id === id ? ({ ...c, [k]: v } as Confrontante) : c)));
@@ -4531,6 +4564,7 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
                   <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Aumentar" onClick={() => setTam(c.id, 1)}>A+</Button>
                 </div>
               </div>
+              <DocumentosProjeto projetoId={projetoId} dono="confrontante" confrontanteId={c.id} titulo="Documentos deste confrontante" onExtrair={(a) => onExtrairConfrontante(a, c.id)} />
             </CardContent>
           </Card>
         );
