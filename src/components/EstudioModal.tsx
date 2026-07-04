@@ -69,6 +69,28 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
   function addTexto() { const id = nid(); setEls((es) => [...es, { id, t: 'text', x: fmt.w / 2 - 200, y: fmt.h / 2 - 30, w: 400, h: 60, texto: 'Texto', size: 60, cor: '#111111', bold: true }]); setSel(id); }
   function addForma(t: 'rect' | 'ellipse') { const id = nid(); const s = Math.min(fmt.w, fmt.h) * 0.3; setEls((es) => [...es, { id, t, x: (fmt.w - s) / 2, y: (fmt.h - s) / 2, w: s, h: s, fill: t === 'rect' ? '#2563eb' : '#16a34a', radius: 0 } as El]); setSel(id); }
 
+  // modelos prontos: montam um layout inicial (capa de entrega, carimbo). Substituem o conteúdo atual.
+  function aplicarModelo(nome: string) {
+    if (els.length > 0 && !window.confirm('Aplicar o modelo vai substituir o conteúdo atual. Continuar?')) return;
+    const W = fmt.w, H = fmt.h;
+    if (nome === 'capa') {
+      setBg('#0f172a');
+      setEls([
+        { id: nid(), t: 'rect', x: 0, y: Math.round(H * 0.6), w: W, h: 10, fill: '#22c55e', radius: 0 },
+        { id: nid(), t: 'text', x: Math.round(W * 0.08), y: Math.round(H * 0.4), w: Math.round(W * 0.84), h: Math.round(W * 0.09), texto: 'RELATÓRIO DE ENTREGA', size: Math.round(W * 0.06), cor: '#ffffff', bold: true },
+        { id: nid(), t: 'text', x: Math.round(W * 0.08), y: Math.round(H * 0.4 + W * 0.08), w: Math.round(W * 0.84), h: Math.round(W * 0.05), texto: 'Georreferenciamento de imóvel rural', size: Math.round(W * 0.03), cor: '#cbd5e1', bold: false },
+      ]);
+    } else if (nome === 'carimbo') {
+      setBg('#ffffff');
+      setEls([
+        { id: nid(), t: 'rect', x: 20, y: 20, w: W - 40, h: H - 40, fill: '#f1f5f9', radius: 8 },
+        { id: nid(), t: 'text', x: 44, y: 44, w: W - 88, h: 64, texto: 'RESPONSÁVEL TÉCNICO', size: Math.round(W * 0.045), cor: '#0f172a', bold: true },
+        { id: nid(), t: 'text', x: 44, y: 44 + Math.round(W * 0.06), w: W - 88, h: 48, texto: 'Nome · CFT/CREA · Credenciamento INCRA', size: Math.round(W * 0.028), cor: '#334155', bold: false },
+      ]);
+    }
+    setSel(null);
+  }
+
   function down(e: React.PointerEvent, id: number, modo: 'mover' | 'resize') {
     e.stopPropagation();
     setSel(id);
@@ -251,6 +273,11 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
           <Button size="sm" variant="outline" onClick={() => addForma('ellipse')}><Circle className="size-4" /> Elipse</Button>
           <Button size="sm" variant={painelElem ? 'default' : 'outline'} onClick={() => setPainelElem((v) => !v)}><Shapes className="size-4" /> Elementos</Button>
           <Button size="sm" variant={painelFotos ? 'default' : 'outline'} onClick={() => { setPainelFotos((v) => !v); if (!painelFotos && fotos.length === 0) novasFotos(); }}><Images className="size-4" /> Fotos</Button>
+          <select className="h-8 rounded border bg-background px-2 text-sm" value="" onChange={(e) => { if (e.target.value) aplicarModelo(e.target.value); e.currentTarget.value = ''; }} title="Modelos prontos (capa, carimbo)">
+            <option value="">Modelos…</option>
+            <option value="capa">Capa de entrega</option>
+            <option value="carimbo">Carimbo simples</option>
+          </select>
           <div className="mx-1 h-6 w-px bg-border" />
           <Button size="sm" variant="outline" disabled={sel == null} onClick={() => centrar('h')} title="Centralizar na horizontal"><AlignCenterVertical className="size-4" /></Button>
           <Button size="sm" variant="outline" disabled={sel == null} onClick={() => centrar('v')} title="Centralizar na vertical"><AlignCenterHorizontal className="size-4" /></Button>
