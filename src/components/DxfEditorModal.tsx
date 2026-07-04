@@ -125,7 +125,24 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
     setEnts(lista);
     setSel(null);
     setDesenho([]); setCursor(null); setSnapAtual(null);
-    setCamadas(camadasPadrao()); setCamadaAtual('0'); // novo documento: as camadas do arquivo original não são preservadas (todas entram na '0')
+    const coresCamadas = ['#2563eb', '#dc2626', '#16a34a', '#ea580c', '#0891b2', '#db2777', '#9333ea', '#4b5563', '#eab308'];
+    const layersFound = new Set<string>();
+    lista.forEach(e => {
+      if (e.layer) {
+        layersFound.add(e.layer);
+      }
+    });
+    const novasCamadas = [{ nome: '0', cor: '#0f172a', visivel: true, travada: false }];
+    let colorIdx = 0;
+    layersFound.forEach(name => {
+      if (name !== '0' && name.trim() !== '') {
+        const cor = coresCamadas[colorIdx % coresCamadas.length];
+        novasCamadas.push({ nome: name, cor, visivel: true, travada: false });
+        colorIdx++;
+      }
+    });
+    setCamadas(novasCamadas);
+    setCamadaAtual('0'); // novo documento: camadas do arquivo preservadas e ativada a padrão '0'
     enquadrar(lista);
     histRef.current = []; redoRef.current = []; setHistN(0); // novo documento: histórico zera
   }

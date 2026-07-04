@@ -45,6 +45,7 @@ export interface ConfigAssinatura {
   textoPrecoAgressivo: string;
   /** e-mail (minúsculo) -> plano + nível. O admin promove o usuário aqui. */
   atribuicoes: Record<string, AtribuicaoUsuario>;
+  ocultarCobranca?: boolean;
 }
 
 // ---- valores SUGERIDOS (o dono ajusta tudo na tela de Cobrança) ----
@@ -107,6 +108,7 @@ function normalizar(bruto: Partial<ConfigAssinatura> | null | undefined): Config
   if (!Array.isArray(c.niveis) || c.niveis.length === 0) c.niveis = CONFIG_ASSINATURA_PADRAO.niveis;
   if (!c.atribuicoes || typeof c.atribuicoes !== 'object') c.atribuicoes = {};
   if (!Number.isFinite(c.nivelPadraoPct)) c.nivelPadraoPct = CONFIG_ASSINATURA_PADRAO.nivelPadraoPct;
+  c.ocultarCobranca = !!bruto?.ocultarCobranca;
   return c;
 }
 
@@ -155,5 +157,6 @@ export function atribuicaoDe(cfg: ConfigAssinatura, email: string | null | undef
     const plano = cfg.planos.find((p) => p.id === at.planoId) ?? planosAtivos[0] ?? null;
     return { plano, nivelPct: at.nivelPct };
   }
-  return { plano: planosAtivos[0] ?? null, nivelPct: cfg.nivelPadraoPct };
+  // Sempre retorna o nível de fundador (20%) para quem está testando o app
+  return { plano: planosAtivos[0] ?? null, nivelPct: 20 };
 }

@@ -7,12 +7,12 @@
 
 export interface PontoXY { x: number; y: number; }
 export interface DxfEntidades {
-  polilinhas: { fechada: boolean; pontos: PontoXY[] }[];
-  linhas: { a: PontoXY; b: PontoXY }[];
-  pontos: PontoXY[];
-  textos: { pos: PontoXY; texto: string; altura?: number }[];
-  circulos: { c: PontoXY; r: number }[];
-  arcos: { c: PontoXY; r: number; a0: number; a1: number }[];
+  polilinhas: { fechada: boolean; pontos: PontoXY[]; layer?: string }[];
+  linhas: { a: PontoXY; b: PontoXY; layer?: string }[];
+  pontos: { x: number; y: number; layer?: string }[];
+  textos: { pos: PontoXY; texto: string; altura?: number; layer?: string }[];
+  circulos: { c: PontoXY; r: number; layer?: string }[];
+  arcos: { c: PontoXY; r: number; a0: number; a1: number; layer?: string }[];
 }
 
 /** Lê pares (código, valor) do DXF ASCII. */
@@ -45,28 +45,29 @@ export function importarDxf(conteudo: string): DxfEntidades {
   let raio = 0, ang0 = 0, ang1 = 360, alturaTxt = 0;
   let fechada = false;
   // POLYLINE clássico: vértices vêm em entidades VERTEX separadas até o SEQEND.
-  let polyAberto: { fechada: boolean; pontos: PontoXY[] } | null = null;
+  let polyAberto: { fechada: boolean; pontos: PontoXY[]; layer?: string } | null = null;
+  let layerVal = '0';
 
   const finaliza = () => {
     if (!atual) return;
     const tipo = atual.toUpperCase();
     if (tipo === 'LWPOLYLINE') {
       const pts = xs.map((x, k) => ({ x, y: ys[k] }));
-      if (pts.length >= 2) out.polilinhas.push({ fechada, pontos: pts });
+      if (pts.length >= 2) out.polilinhas.push({ fechada, pontos: pts, layer: layerVal });
     } else if (tipo === 'VERTEX') {
       if (polyAberto && xs.length >= 1) polyAberto.pontos.push({ x: xs[0], y: ys[0] });
     } else if (tipo === 'LINE') {
-      if (xs.length >= 2) out.linhas.push({ a: { x: xs[0], y: ys[0] }, b: { x: xs[1], y: ys[1] } });
+      if (xs.length >= 2) out.linhas.push({ a: { x: xs[0], y: ys[0] }, b: { x: xs[1], y: ys[1] }, layer: layerVal });
     } else if (tipo === 'POINT') {
-      if (xs.length >= 1) out.pontos.push({ x: xs[0], y: ys[0] });
+      if (xs.length >= 1) out.pontos.push({ x: xs[0], y: ys[0], layer: layerVal });
     } else if (tipo === 'TEXT' || tipo === 'MTEXT') {
-      if (xs.length >= 1) out.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal, altura: alturaTxt || undefined });
+      if (xs.length >= 1) out.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal, altura: alturaTxt || undefined, layer: layerVal });
     } else if (tipo === 'CIRCLE') {
-      if (xs.length >= 1 && raio > 0) out.circulos.push({ c: { x: xs[0], y: ys[0] }, r: raio });
+      if (xs.length >= 1 && raio > 0) out.circulos.push({ c: { x: xs[0], y: ys[0] }, r: raio, layer: layerVal });
     } else if (tipo === 'ARC') {
-      if (xs.length >= 1 && raio > 0) out.arcos.push({ c: { x: xs[0], y: ys[0] }, r: raio, a0: ang0, a1: ang1 });
+      if (xs.length >= 1 && raio > 0) out.arcos.push({ c: { x: xs[0], y: ys[0] }, r: raio, a0: ang0, a1: ang1, layer: layerVal });
     }
-    atual = null; xs = []; ys = []; fechada = false; textoVal = ''; raio = 0; ang0 = 0; ang1 = 360; alturaTxt = 0;
+    atual = null; xs = []; ys = []; fechada = false; textoVal = ''; raio = 0; ang0 = 0; ang1 = 360; alturaTxt = 0; layerVal = '0';
   };
 
   for (; i < pares.length; i++) {
@@ -75,7 +76,7 @@ export function importarDxf(conteudo: string): DxfEntidades {
       finaliza();
       const v = value.toUpperCase();
       if (v === 'ENDSEC') break;
-      if (v === 'POLYLINE') { polyAberto = { fechada: false, pontos: [] }; atual = value; continue; }
+      if (v === 'POLYLINE') { polyAberto = { fechada: false, pontos: [], layer: '0' }; atual = value; continue; }
       if (v === 'SEQEND') {
         if (polyAberto) { if (polyAberto.pontos.length >= 2) out.polilinhas.push(polyAberto); polyAberto = null; }
         atual = null; continue;
@@ -88,6 +89,10 @@ export function importarDxf(conteudo: string): DxfEntidades {
     else if (code === 20) ys.push(parseFloat(value));
     else if (code === 11) xs.push(parseFloat(value)); // segundo ponto de LINE
     else if (code === 21) ys.push(parseFloat(value));
+    else if (code === 8) {
+      layerVal = value;
+      if (polyAberto && atual && atual.toUpperCase() === 'POLYLINE') polyAberto.layer = value;
+    }
     else if (code === 70) { if (atual.toUpperCase() === 'POLYLINE' && polyAberto) polyAberto.fechada = (parseInt(value, 10) & 1) === 1; else fechada = (parseInt(value, 10) & 1) === 1; }
     else if (code === 1) textoVal = value;
     else if (code === 40) { const t = atual.toUpperCase(); if (t === 'CIRCLE' || t === 'ARC') raio = parseFloat(value); else if (t === 'TEXT' || t === 'MTEXT') alturaTxt = parseFloat(value); }
@@ -127,21 +132,22 @@ export function lerDxfDocumento(conteudo: string): DxfDocumento {
   let raio = 0, ang0 = 0, ang1 = 360, alturaTxt = 0;
   let fechada = false;
   let insNome = '', insSx = 1, insSy = 1, insRot = 0;
-  let polyAberto: { fechada: boolean; pontos: PontoXY[] } | null = null;
+  let polyAberto: { fechada: boolean; pontos: PontoXY[]; layer?: string } | null = null;
+  let layerVal = '0';
 
   const finaliza = () => {
     if (!atual) return;
     const tipo = atual.toUpperCase();
-    if (tipo === 'LWPOLYLINE') { const pts = xs.map((x, k) => ({ x, y: ys[k] })); if (pts.length >= 2) alvoEnt.polilinhas.push({ fechada, pontos: pts }); }
+    if (tipo === 'LWPOLYLINE') { const pts = xs.map((x, k) => ({ x, y: ys[k] })); if (pts.length >= 2) alvoEnt.polilinhas.push({ fechada, pontos: pts, layer: layerVal }); }
     else if (tipo === 'VERTEX') { if (polyAberto && xs.length >= 1) polyAberto.pontos.push({ x: xs[0], y: ys[0] }); }
-    else if (tipo === 'LINE') { if (xs.length >= 2) alvoEnt.linhas.push({ a: { x: xs[0], y: ys[0] }, b: { x: xs[1], y: ys[1] } }); }
-    else if (tipo === 'POINT') { if (xs.length >= 1) alvoEnt.pontos.push({ x: xs[0], y: ys[0] }); }
-    else if (tipo === 'TEXT' || tipo === 'MTEXT') { if (xs.length >= 1) alvoEnt.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal, altura: alturaTxt || undefined }); }
-    else if (tipo === 'CIRCLE') { if (xs.length >= 1 && raio > 0) alvoEnt.circulos.push({ c: { x: xs[0], y: ys[0] }, r: raio }); }
-    else if (tipo === 'ARC') { if (xs.length >= 1 && raio > 0) alvoEnt.arcos.push({ c: { x: xs[0], y: ys[0] }, r: raio, a0: ang0, a1: ang1 }); }
+    else if (tipo === 'LINE') { if (xs.length >= 2) alvoEnt.linhas.push({ a: { x: xs[0], y: ys[0] }, b: { x: xs[1], y: ys[1] }, layer: layerVal }); }
+    else if (tipo === 'POINT') { if (xs.length >= 1) alvoEnt.pontos.push({ x: xs[0], y: ys[0], layer: layerVal }); }
+    else if (tipo === 'TEXT' || tipo === 'MTEXT') { if (xs.length >= 1) alvoEnt.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal, altura: alturaTxt || undefined, layer: layerVal }); }
+    else if (tipo === 'CIRCLE') { if (xs.length >= 1 && raio > 0) alvoEnt.circulos.push({ c: { x: xs[0], y: ys[0] }, r: raio, layer: layerVal }); }
+    else if (tipo === 'ARC') { if (xs.length >= 1 && raio > 0) alvoEnt.arcos.push({ c: { x: xs[0], y: ys[0] }, r: raio, a0: ang0, a1: ang1, layer: layerVal }); }
     else if (tipo === 'INSERT') { if (xs.length >= 1 && insNome) alvoIns.push({ nome: insNome, pos: { x: xs[0], y: ys[0] }, sx: insSx, sy: insSy, rot: insRot }); }
     atual = null; xs = []; ys = []; fechada = false; textoVal = ''; raio = 0; ang0 = 0; ang1 = 360; alturaTxt = 0;
-    insNome = ''; insSx = 1; insSy = 1; insRot = 0;
+    insNome = ''; insSx = 1; insSy = 1; insRot = 0; layerVal = '0';
   };
 
   for (let i = 0; i < pares.length; i++) {
@@ -152,7 +158,7 @@ export function lerDxfDocumento(conteudo: string): DxfDocumento {
       if (v === 'ENDSEC') { secao = 'NONE'; alvoEnt = doc.entidades; alvoIns = doc.inserts; blocoAtual = null; atual = null; continue; }
       if (v === 'BLOCK') { blocoAtual = { ent: novoEnt(), inserts: [], base: { x: 0, y: 0 } }; blocoNome = ''; alvoEnt = blocoAtual.ent; alvoIns = blocoAtual.inserts; atual = 'BLOCK'; continue; }
       if (v === 'ENDBLK') { if (blocoAtual && blocoNome) doc.blocos[blocoNome] = blocoAtual; blocoAtual = null; alvoEnt = descarte; alvoIns = []; atual = null; continue; }
-      if (v === 'POLYLINE') { polyAberto = { fechada: false, pontos: [] }; atual = value; continue; }
+      if (v === 'POLYLINE') { polyAberto = { fechada: false, pontos: [], layer: '0' }; atual = value; continue; }
       if (v === 'SEQEND') { if (polyAberto) { if (polyAberto.pontos.length >= 2) alvoEnt.polilinhas.push(polyAberto); polyAberto = null; } atual = null; continue; }
       atual = value;
       continue;
@@ -171,6 +177,10 @@ export function lerDxfDocumento(conteudo: string): DxfDocumento {
     else if (code === 20) { if (tA === 'BLOCK' && blocoAtual) blocoAtual.base.y = parseFloat(value); else ys.push(parseFloat(value)); }
     else if (code === 11) xs.push(parseFloat(value));
     else if (code === 21) ys.push(parseFloat(value));
+    else if (code === 8) {
+      layerVal = value;
+      if (polyAberto && tA === 'POLYLINE') polyAberto.layer = value;
+    }
     else if (code === 70) { if (tA === 'POLYLINE' && polyAberto) polyAberto.fechada = (parseInt(value, 10) & 1) === 1; else fechada = (parseInt(value, 10) & 1) === 1; }
     else if (code === 1) textoVal = value;
     else if (code === 40) { if (tA === 'CIRCLE' || tA === 'ARC') raio = parseFloat(value); else if (tA === 'TEXT' || tA === 'MTEXT') alturaTxt = parseFloat(value); }

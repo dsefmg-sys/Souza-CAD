@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Crown, RefreshCw } from 'lucide-react';
 import { listarPerfisUso, type PerfilUso } from '@/lib/store/perfilUso';
+import { carregarConfigAssinatura, salvarConfigAssinatura, CONFIG_ASSINATURA_PADRAO, type ConfigAssinatura } from '@/lib/store/assinatura';
 
 interface Props {
   open: boolean;
@@ -22,11 +23,22 @@ const DIAS_ATIVO = 30 * 24 * 60 * 60 * 1000;
 
 export default function MasterPainelModal({ open, onOpenChange }: Props) {
   const [perfis, setPerfis] = useState<PerfilUso[]>([]);
+  const [cfg, setCfg] = useState<ConfigAssinatura>(CONFIG_ASSINATURA_PADRAO);
   const [carregando, setCarregando] = useState(false);
 
   async function recarregar() {
     setCarregando(true);
-    try { setPerfis(await listarPerfisUso()); } finally { setCarregando(false); }
+    try {
+      setPerfis(await listarPerfisUso());
+      const c = await carregarConfigAssinatura();
+      setCfg(c);
+    } finally { setCarregando(false); }
+  }
+
+  async function alterarOcultarCobranca(val: boolean) {
+    const novaCfg = { ...cfg, ocultarCobranca: val };
+    setCfg(novaCfg);
+    try { await salvarConfigAssinatura(novaCfg); } catch { /* ignore */ }
   }
   useEffect(() => { if (open) recarregar(); }, [open]);
 
@@ -40,9 +52,20 @@ export default function MasterPainelModal({ open, onOpenChange }: Props) {
           <DialogTitle className="flex items-center gap-2"><Crown className="size-5 text-amber-500" /> Painel do titular — uso do sistema</DialogTitle>
         </DialogHeader>
 
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
           <span className="rounded bg-muted px-2 py-0.5"><strong>{perfis.length}</strong> contas</span>
           <span className="rounded bg-emerald-600/10 px-2 py-0.5 text-emerald-700 dark:text-emerald-400"><strong>{ativos.length}</strong> ativas (30 dias)</span>
+
+          <label className="flex items-center gap-1.5 rounded border border-amber-600/35 bg-amber-600/10 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300 cursor-pointer hover:bg-amber-600/20 transition-colors ml-2">
+            <input
+              type="checkbox"
+              className="rounded text-amber-600 focus:ring-amber-500 size-3.5"
+              checked={!!cfg.ocultarCobranca}
+              onChange={(e) => alterarOcultarCobranca(e.target.checked)}
+            />
+            Ocultar planos e cobranças de usuários (testar sem custo)
+          </label>
+
           <Button size="sm" variant="outline" className="ml-auto h-8 gap-1" onClick={recarregar} disabled={carregando}><RefreshCw className="size-3.5" /> Atualizar</Button>
         </div>
 

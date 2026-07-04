@@ -5,13 +5,13 @@ import { Ruler } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho, Confrontante, VerticeVizinho } from '@/lib/topo/types';
-import { distanciaCota } from '@/lib/topo/objetos';
+import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
 import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { corDivisa, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { numBR, azimute, distancia, azimuteDMS } from '@/lib/topo/geometry';
 import { casasTela } from '@/lib/store/preferencias';
-import { geoParaUtm } from '@/lib/topo/coords';
+import { geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 
 export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir';
 
@@ -305,6 +305,7 @@ export default function MapEditor(props: Props) {
 
   const [zoom, setZoom] = useState(16);
   const [cursorLatLng, setCursorLatLng] = useState<L.LatLng | null>(null);
+  const isDesenho = ['linha', 'polilinha', 'tracejado', 'cota', 'texto', 'simbolo', 'medir'].includes(modo);
 
 
 
@@ -388,7 +389,7 @@ export default function MapEditor(props: Props) {
         return (
           <CircleMarker key={`pcv${i}-${j}`} center={pt} radius={sel ? 5 : 4}
             pathOptions={{ color: sel ? '#b45309' : '#0e7490', fillColor: sel ? '#fde047' : '#ffffff', fillOpacity: 1, weight: 1.6 }}
-            eventHandlers={{ click: () => onAdotarVertice?.(pt[0], pt[1]) }}>
+            eventHandlers={{ click: () => { if (isDesenho) onCliqueDesenho?.(pt[0], pt[1]); else onAdotarVertice?.(pt[0], pt[1]); } }}>
             {verRotulo
               ? <Tooltip permanent direction="top" offset={[0, -4]} className="rotulo-cert">{`${j + 1}`}</Tooltip>
               : <Tooltip direction="top" offset={[0, -4]}>Vértice certificado — clique para adotar</Tooltip>}
@@ -407,7 +408,7 @@ export default function MapEditor(props: Props) {
         return (
           <CircleMarker key={`vv${i}`} center={[p.lat, p.lon]} radius={4}
             pathOptions={{ color: '#a21caf', fillColor: '#f0abfc', fillOpacity: 1, weight: 1.6 }}
-            eventHandlers={{ click: () => onAdotarVertice?.(p.lat, p.lon) }}>
+            eventHandlers={{ click: () => { if (isDesenho) onCliqueDesenho?.(p.lat, p.lon); else onAdotarVertice?.(p.lat, p.lon); } }}>
             {verRotulo
               ? <Tooltip permanent direction="top" offset={[0, -4]} className="rotulo-cert">{p.nome || `V${i + 1}`}</Tooltip>
               : <Tooltip direction="top" offset={[0, -4]}>{`Vizinho certificado ${p.nome}${detalhe ? ` — ${detalhe}` : ''} — clique para adotar`}</Tooltip>}
@@ -514,12 +515,24 @@ export default function MapEditor(props: Props) {
         const pos = o.pontos.map((p) => [p.lat, p.lon] as [number, number]);
         const sel = o.id === objetoSelId;
         if (o.tipo === 'polilinha') {
-          const comum = { color: o.cor ?? '#2563eb', weight: (o.espessura ?? 1.5) + (sel ? 1 : 0), ...(o.tracejado ? { dashArray: '8 6' } : {}) };
+          const estilo = o.estiloLinha ?? (o.tracejado ? 'tracejado' : 'solido');
+          const dashArray = estilo === 'tracejado' ? '8 6' : estilo === 'pontilhado' ? '2 4' : undefined;
+          const comum = {
+            color: o.cor ?? '#2563eb',
+            weight: (o.espessura ?? 1.5) + (sel ? 1 : 0),
+            dashArray
+          };
           const fechado = o.preenchido && pos.length >= 3;
+          let fillColor = o.corPreenchimento ?? o.cor ?? '#2563eb';
+          let fillOpacity = 0.4;
+          if (fechado && o.achura && o.achura !== 'nenhuma') {
+            fillColor = `url(#pat-${o.id})`;
+            fillOpacity = 0.95;
+          }
           return (
             <Fragment key={o.id}>
               {fechado
-                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor: o.cor ?? '#2563eb', fillOpacity: 0.4 }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
+                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor, fillOpacity }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
                 : <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />}
               {sel && pos.map((p, idx) => (
                 <CircleMarker key={`c${idx}`} center={p} radius={5} pathOptions={{ color: '#ef4444', fillColor: '#fff', fillOpacity: 1 }} />
@@ -527,7 +540,6 @@ export default function MapEditor(props: Props) {
               {sel && pos.map((p, idx) => (
                 <Marker key={`h${idx}`} position={p} draggable opacity={0}
                   eventHandlers={{
-                    drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); },
                     dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); }
                   }} />
               ))}
@@ -535,15 +547,34 @@ export default function MapEditor(props: Props) {
           );
         }
         if (o.tipo === 'cota') {
-          const mid: [number, number] = [(o.pontos[0].lat + o.pontos[1].lat) / 2, (o.pontos[0].lon + o.pontos[1].lon) / 2];
+          const p0 = o.pontos[0];
+          const p1 = o.pontos[1];
+          const utmA = {
+            leste: p0.leste ?? geoParaUtm(p0.lat, p0.lon, zona, hemisferio).leste,
+            norte: p0.norte ?? geoParaUtm(p0.lat, p0.lon, zona, hemisferio).norte,
+          };
+          const utmB = {
+            leste: p1.leste ?? geoParaUtm(p1.lat, p1.lon, zona, hemisferio).leste,
+            norte: p1.norte ?? geoParaUtm(p1.lat, p1.lon, zona, hemisferio).norte,
+          };
+          const { alOffset, blOffset } = obterPontosCotaOffset(utmA, utmB);
+          const g0 = utmParaGeo(alOffset.leste, alOffset.norte, zona, hemisferio);
+          const g1 = utmParaGeo(blOffset.leste, blOffset.norte, zona, hemisferio);
+
+          const posOffset: [number, number][] = [[g0.lat, g0.lon], [g1.lat, g1.lon]];
+          const mid: [number, number] = [(g0.lat + g1.lat) / 2, (g0.lon + g1.lon) / 2];
+
           return (
             <Fragment key={o.id}>
-              <Polyline positions={pos} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 1 + (sel ? 1 : 0) }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
+              {/* Linhas de extensão perpendiculares tracejadas */}
+              <Polyline positions={[[p0.lat, p0.lon], [g0.lat, g0.lon]]} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 0.8, dashArray: '2 3' }} />
+              <Polyline positions={[[p1.lat, p1.lon], [g1.lat, g1.lon]]} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 0.8, dashArray: '2 3' }} />
+              {/* Linha de cota paralela */}
+              <Polyline positions={posOffset} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 1.2 + (sel ? 0.8 : 0) }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
               <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:#b91c1c;background:#fff;padding:0 2px;border:1px solid #b91c1c;border-radius:2px;width:max-content;display:inline-block">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })} />
               {sel && pos.map((p, idx) => (
                 <Marker key={`hc${idx}`} position={p} draggable opacity={0}
                   eventHandlers={{
-                    drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); },
                     dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); }
                   }} />
               ))}
@@ -551,14 +582,14 @@ export default function MapEditor(props: Props) {
           );
         }
         if (o.tipo === 'simbolo') {
-          const html = `<svg viewBox="-14 -14 28 28" width="30" height="30" style="overflow:visible;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))">${simboloSvgInterno(o.simbolo ?? '')}</svg>`;
+          const tam = o.tamanho ?? 30;
+          const html = `<svg viewBox="-14 -14 28 28" width="${tam}" height="${tam}" style="overflow:visible;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))">${simboloSvgInterno(o.simbolo ?? '')}</svg>`;
           return (
             <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable
-              icon={L.divIcon({ className: 'simbolo-obj', html, iconSize: [30, 30], iconAnchor: [15, 15] })}
+              icon={L.divIcon({ className: 'simbolo-obj', html, iconSize: [tam, tam], iconAnchor: [tam / 2, tam / 2] })}
               eventHandlers={{
                 click: () => onSelecObjeto?.(o.id),
                 contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY),
-                drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); },
                 dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
               }} />
           );
@@ -569,7 +600,6 @@ export default function MapEditor(props: Props) {
             eventHandlers={{
               click: () => onSelecObjeto?.(o.id),
               contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY),
-              drag: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); },
               dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
             }} />
         );
@@ -616,7 +646,8 @@ export default function MapEditor(props: Props) {
           icon={iconeVertice(v, v.id === selecionadoId || v.id === realceId)}
           eventHandlers={{
             click() {
-              if (modo === 'apagar') onApagar(v.id);
+              if (isDesenho) onCliqueDesenho?.(v.lat, v.lon);
+              else if (modo === 'apagar') onApagar(v.id);
               else if (modo === 'divisa') onPintarDivisa?.(v.id);
               else if (modo === 'confrontante') onPintarConfrontante?.(v.id);
               else if (modo === 'ignorar') onIgnorarVertice?.(v.id);

@@ -224,6 +224,9 @@ export interface ObjetoDesenho {
   espessura?: number;
   preenchido?: boolean;       // polilinha fechada com cor sólida (ex.: lago)
   tracejado?: boolean;        // polilinha com traço tracejado (ex.: estrada)
+  estiloLinha?: string;       // estilo da linha (solido, tracejado, pontilhado)
+  corPreenchimento?: string;  // cor de preenchimento do polígono
+  achura?: string;            // tipo de achura (nenhuma, linhas, cruzado, pontos)
   simbolo?: string;           // elemento cartográfico (arvore, arbusto, casa, poste, pedra)
   carTema?: 'app' | 'reservaLegal' | 'vegetacao' | 'usoConsolidado'; // camada ambiental (CAR) do polígono
 }
@@ -430,6 +433,8 @@ export interface Projeto {
   // Requerimento cartorial (opcional)
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
+  tipoAto?: 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao';
+  partesAdicionais?: PessoaQualificada[];
   // Configuração editável da planta (opcional)
   plantaConfig?: PlantaConfig;
   // Parcelas certificadas do SIGEF/INCRA baixadas como referência (vizinhos): ficam gravadas no

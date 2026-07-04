@@ -68,7 +68,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-6">
+      <DialogContent className="w-[95vw] max-w-[1200px] max-h-[95vh] flex flex-col p-6">
         <DialogHeader className="border-b pb-3">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold"><Wallet className="size-5" /> Gestão do Projeto</DialogTitle>
         </DialogHeader>
@@ -78,127 +78,137 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
           <button onClick={() => setAba('empresa')} className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-semibold ${aba === 'empresa' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50'}`}><Building2 className="size-3.5" /> Visão geral (empresa)</button>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-1 py-3 text-sm space-y-5">
-          {aba === 'projeto' && (<>
-          {/* ---- Informações do projeto ---- */}
-          <section>
-            <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Informações do projeto</h3>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1 rounded-md border bg-muted/30 p-3 md:grid-cols-3">
-              <Info rotulo="Projeto" valor={nomeProjeto || imovel.denominacao || '—'} />
-              <Info rotulo="Proprietário" valor={imovel.proprietario || '—'} />
-              <Info rotulo="CPF/CNPJ" valor={imovel.cpfProprietario || '—'} />
-              <Info rotulo="Matrícula" valor={imovel.matricula || '—'} />
-              <Info rotulo="Município" valor={imovel.municipio || '—'} />
-              <Info rotulo="Área" valor={`${areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha`} />
-              <Info rotulo="Perímetro" valor={`${perimetro.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m`} />
-              <Info rotulo={rotulosProfissional(tecnico).termo} valor={imovel.numeroTrt || tecnico.art || '—'} />
-            </div>
-          </section>
+        <div className="flex-1 overflow-y-auto pr-1 py-3 text-sm">
+          {aba === 'projeto' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              {/* Coluna da Esquerda: Informações e Documentos */}
+              <div className="space-y-5">
+                {/* ---- Informações do projeto ---- */}
+                <section>
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Informações do projeto</h3>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 rounded-md border bg-muted/30 p-3 md:grid-cols-3">
+                    <Info rotulo="Projeto" valor={nomeProjeto || imovel.denominacao || '—'} />
+                    <Info rotulo="Proprietário" valor={imovel.proprietario || '—'} />
+                    <Info rotulo="CPF/CNPJ" valor={imovel.cpfProprietario || '—'} />
+                    <Info rotulo="Matrícula" valor={imovel.matricula || '—'} />
+                    <Info rotulo="Município" valor={imovel.municipio || '—'} />
+                    <Info rotulo="Área" valor={`${areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha`} />
+                    <Info rotulo="Perímetro" valor={`${perimetro.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m`} />
+                    <Info rotulo={rotulosProfissional(tecnico).termo} valor={imovel.numeroTrt || tecnico.art || '—'} />
+                  </div>
+                </section>
 
-          {/* ---- Resumo financeiro ---- */}
-          <section>
-            <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Financeiro</h3>
-            <div className="mb-3 flex flex-wrap items-end gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Valor cobrado do cliente (R$)</Label>
-                <Input type="number" className="w-44" value={financeiro.valorCobrado ?? ''} placeholder="0,00"
-                  onChange={(e) => patch({ valorCobrado: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                {/* ---- Documentos ---- */}
+                <section>
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Documentos para o cliente</h3>
+                  <div className="flex flex-wrap items-end gap-3 rounded-md border p-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Valor do recibo (R$)</Label>
+                      <Input type="number" className="w-40" placeholder={String(valorCobrado || '0,00')} value={reciboValor} onChange={(e) => setReciboValor(e.target.value)} />
+                    </div>
+                    <Button variant="outline" onClick={() => gerarReciboPdf({ ...baseArgs, valor: Number(reciboValor.replace(',', '.')) || valorCobrado || recebido, numero: consumirNumeroRecibo(new Date().getFullYear()) })}>
+                      <Receipt className="size-4" /> Emitir recibo (PDF)
+                    </Button>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Forma de pagamento (contrato)</Label>
+                      <Input className="w-56" placeholder="ex.: 50% na entrada, 50% na entrega" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} />
+                    </div>
+                    <Button variant="outline" onClick={() => gerarContratoPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined })}>
+                      <FileText className="size-4" /> Emitir contrato (PDF)
+                    </Button>
+                    <Button variant="outline" onClick={() => gerarPropostaPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined })}>
+                      <FileText className="size-4" /> Emitir proposta (PDF)
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted-foreground">O contrato e a proposta usam o valor cobrado acima. Todos saem prontos para revisar, imprimir e assinar.</p>
+
+                  <h3 className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted-foreground">Declarações avulsas</h3>
+                  <div className="flex flex-wrap items-center gap-3 rounded-md border p-3">
+                    <Button variant="outline" onClick={async () => saveAs(await gerarDeclaracaoPosseDocx({ imovel, tecnico, dataExtenso }), `Declaracao de posse - ${imovel.denominacao || 'imovel'}.docx`)}>
+                      <FileText className="size-4" /> Declaração de posse
+                    </Button>
+                    <Button variant="outline" onClick={async () => saveAs(await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico, dataExtenso }), `Declaracao de inexistencia de sobreposicao - ${imovel.denominacao || 'imovel'}.docx`)}>
+                      <FileText className="size-4" /> Inexistência de sobreposição
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground">A de posse é assinada pelo possuidor; a de sobreposição, pelo responsável técnico. Os textos são editáveis nos modelos.</p>
+                  </div>
+                </section>
               </div>
-              {precos.some((p) => p.valor > 0) && (
-                <div className="space-y-1">
-                  <Label className="text-xs">Puxar da tabela de preços</Label>
-                  <select className="h-9 w-56 rounded-md border bg-background px-2 text-xs" value=""
-                    onChange={(e) => { const p = precos.find((x) => x.id === e.target.value); if (p) patch({ valorCobrado: p.valor }); }}>
-                    <option value="">Escolher serviço…</option>
-                    {precos.filter((p) => p.valor > 0).map((p) => (
-                      <option key={p.id} value={p.id}>{p.servico} — {moedaBR(p.valor)}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <Cartao titulo="Recebido" valor={recebido} cor="text-emerald-600" />
-              <Cartao titulo="Gastos" valor={gasto} cor="text-red-600" />
-              <Cartao titulo="Saldo em caixa" valor={saldoCaixa} cor={saldoCaixa >= 0 ? 'text-emerald-700' : 'text-red-700'} />
-              <Cartao titulo="A receber" valor={aReceber} cor={aReceber > 0 ? 'text-amber-600' : 'text-muted-foreground'} />
-              <Cartao titulo="Lucro do serviço" valor={lucro} cor={lucro >= 0 ? 'text-emerald-700' : 'text-red-700'} sub={valorCobrado > 0 ? `margem ${margem.toFixed(0)}%` : 'informe o valor cobrado'} />
-            </div>
 
-            {/* lançamentos */}
-            <div className="overflow-hidden rounded-md border">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/50 text-left text-muted-foreground">
-                  <tr><th className="p-2">Data</th><th className="p-2">Tipo</th><th className="p-2">Descrição</th><th className="p-2 text-right">Valor</th><th className="p-2"></th></tr>
-                </thead>
-                <tbody>
-                  {lancamentos.length === 0 && (
-                    <tr><td colSpan={5} className="p-3 text-center text-muted-foreground">Nenhum lançamento ainda.</td></tr>
-                  )}
-                  {lancamentos.slice().sort((a, b) => a.data.localeCompare(b.data)).map((l) => (
-                    <tr key={l.id} className="border-t">
-                      <td className="p-2">{l.data.split('-').reverse().join('/')}</td>
-                      <td className="p-2">{l.tipo === 'recebimento' ? <span className="text-emerald-600">Recebimento</span> : <span className="text-red-600">Gasto</span>}</td>
-                      <td className="p-2">{l.descricao}</td>
-                      <td className="p-2 text-right font-medium">{moedaBR(l.valor)}</td>
-                      <td className="p-2 text-right"><button onClick={() => remover(l.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="size-3.5" /></button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {/* nova linha */}
-              <div className="flex flex-wrap items-end gap-2 border-t bg-muted/20 p-2">
-                <select className="h-9 rounded border bg-background px-2 text-xs" value={novo.tipo} onChange={(e) => setNovo((n) => ({ ...n, tipo: e.target.value as 'gasto' | 'recebimento' }))}>
-                  <option value="recebimento">Recebimento</option>
-                  <option value="gasto">Gasto</option>
-                </select>
-                <Input className="h-9 flex-1 min-w-[140px] text-xs" placeholder="Descrição (ex.: entrada, diária de campo, cartório)" value={novo.descricao} onChange={(e) => setNovo((n) => ({ ...n, descricao: e.target.value }))} />
-                <Input className="h-9 w-28 text-xs" type="number" placeholder="Valor R$" value={novo.valor} onChange={(e) => setNovo((n) => ({ ...n, valor: e.target.value }))} />
-                <Input className="h-9 w-36 text-xs" type="date" value={novo.data} onChange={(e) => setNovo((n) => ({ ...n, data: e.target.value }))} />
-                <Button size="sm" className="h-9" onClick={adicionar}><Plus className="size-4" /> Lançar</Button>
+              {/* Coluna da Direita: Financeiro */}
+              <div className="space-y-5">
+                {/* ---- Resumo financeiro ---- */}
+                <section>
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Financeiro</h3>
+                  <div className="mb-3 flex flex-wrap items-end gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Valor cobrado do cliente (R$)</Label>
+                      <Input type="number" className="w-44" value={financeiro.valorCobrado ?? ''} placeholder="0,00"
+                        onChange={(e) => patch({ valorCobrado: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                    </div>
+                    {precos.some((p) => p.valor > 0) && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">Puxar da tabela de preços</Label>
+                        <select className="h-9 w-56 rounded-md border bg-background px-2 text-xs" value=""
+                          onChange={(e) => { const p = precos.find((x) => x.id === e.target.value); if (p) patch({ valorCobrado: p.valor }); }}>
+                          <option value="">Escolher serviço…</option>
+                          {precos.filter((p) => p.valor > 0).map((p) => (
+                            <option key={p.id} value={p.id}>{p.servico} — {moedaBR(p.valor)}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2 w-full">
+                      <Cartao titulo="Recebido" valor={recebido} cor="text-emerald-600" />
+                      <Cartao titulo="Gastos" valor={gasto} cor="text-red-600" />
+                      <Cartao titulo="Saldo em caixa" valor={saldoCaixa} cor={saldoCaixa >= 0 ? 'text-emerald-700' : 'text-red-700'} />
+                      <Cartao titulo="A receber" valor={aReceber} cor={aReceber > 0 ? 'text-amber-600' : 'text-muted-foreground'} />
+                      <Cartao titulo="Lucro do serviço" valor={lucro} cor={lucro >= 0 ? 'text-emerald-700' : 'text-red-700'} sub={valorCobrado > 0 ? `margem ${margem.toFixed(0)}%` : 'informe o valor cobrado'} />
+                    </div>
+                  </div>
+
+                  {/* lançamentos */}
+                  <div className="overflow-hidden rounded-md border">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/50 text-left text-muted-foreground">
+                        <tr><th className="p-2">Data</th><th className="p-2">Tipo</th><th className="p-2">Descrição</th><th className="p-2 text-right">Valor</th><th className="p-2"></th></tr>
+                      </thead>
+                      <tbody>
+                        {lancamentos.length === 0 && (
+                          <tr><td colSpan={5} className="p-3 text-center text-muted-foreground">Nenhum lançamento ainda.</td></tr>
+                        )}
+                        {lancamentos.slice().sort((a, b) => a.data.localeCompare(b.data)).map((l) => (
+                          <tr key={l.id} className="border-t">
+                            <td className="p-2">{l.data.split('-').reverse().join('/')}</td>
+                            <td className="p-2">{l.tipo === 'recebimento' ? <span className="text-emerald-600">Recebimento</span> : <span className="text-red-600">Gasto</span>}</td>
+                            <td className="p-2">{l.descricao}</td>
+                            <td className="p-2 text-right font-medium">{moedaBR(l.valor)}</td>
+                            <td className="p-2 text-right"><button onClick={() => remover(l.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="size-3.5" /></button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {/* nova linha */}
+                    <div className="flex flex-wrap items-end gap-2 border-t bg-muted/20 p-2">
+                      <select className="h-9 rounded border bg-background px-2 text-xs" value={novo.tipo} onChange={(e) => setNovo((n) => ({ ...n, tipo: e.target.value as 'gasto' | 'recebimento' }))}>
+                        <option value="recebimento">Recebimento</option>
+                        <option value="gasto">Gasto</option>
+                      </select>
+                      <Input className="h-9 flex-1 min-w-[140px] text-xs" placeholder="Descrição (ex.: entrada, diária de campo, cartório)" value={novo.descricao} onChange={(e) => setNovo((n) => ({ ...n, descricao: e.target.value }))} />
+                      <Input className="h-9 w-28 text-xs" type="number" placeholder="Valor R$" value={novo.valor} onChange={(e) => setNovo((n) => ({ ...n, valor: e.target.value }))} />
+                      <Input className="h-9 w-36 text-xs" type="date" value={novo.data} onChange={(e) => setNovo((n) => ({ ...n, data: e.target.value }))} />
+                      <Button size="sm" className="h-9" onClick={adicionar}><Plus className="size-4" /> Lançar</Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-1">
+                    <Label className="text-xs">Observações</Label>
+                    <textarea className="w-full rounded border bg-background p-2 text-xs" rows={2} value={financeiro.observacoes ?? ''} onChange={(e) => patch({ observacoes: e.target.value })} />
+                  </div>
+                </section>
               </div>
             </div>
-
-            <div className="mt-3 space-y-1">
-              <Label className="text-xs">Observações</Label>
-              <textarea className="w-full rounded border bg-background p-2 text-xs" rows={2} value={financeiro.observacoes ?? ''} onChange={(e) => patch({ observacoes: e.target.value })} />
-            </div>
-          </section>
-
-          {/* ---- Documentos ---- */}
-          <section>
-            <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Documentos para o cliente</h3>
-            <div className="flex flex-wrap items-end gap-3 rounded-md border p-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Valor do recibo (R$)</Label>
-                <Input type="number" className="w-40" placeholder={String(valorCobrado || '0,00')} value={reciboValor} onChange={(e) => setReciboValor(e.target.value)} />
-              </div>
-              <Button variant="outline" onClick={() => gerarReciboPdf({ ...baseArgs, valor: Number(reciboValor.replace(',', '.')) || valorCobrado || recebido, numero: consumirNumeroRecibo(new Date().getFullYear()) })}>
-                <Receipt className="size-4" /> Emitir recibo (PDF)
-              </Button>
-              <div className="space-y-1">
-                <Label className="text-xs">Forma de pagamento (contrato)</Label>
-                <Input className="w-56" placeholder="ex.: 50% na entrada, 50% na entrega" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} />
-              </div>
-              <Button variant="outline" onClick={() => gerarContratoPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined })}>
-                <FileText className="size-4" /> Emitir contrato (PDF)
-              </Button>
-              <Button variant="outline" onClick={() => gerarPropostaPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined })}>
-                <FileText className="size-4" /> Emitir proposta (PDF)
-              </Button>
-            </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">O contrato e a proposta usam o valor cobrado acima. Todos saem prontos para revisar, imprimir e assinar.</p>
-
-            <h3 className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted-foreground">Declarações avulsas</h3>
-            <div className="flex flex-wrap items-center gap-3 rounded-md border p-3">
-              <Button variant="outline" onClick={async () => saveAs(await gerarDeclaracaoPosseDocx({ imovel, tecnico, dataExtenso }), `Declaracao de posse - ${imovel.denominacao || 'imovel'}.docx`)}>
-                <FileText className="size-4" /> Declaração de posse
-              </Button>
-              <Button variant="outline" onClick={async () => saveAs(await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico, dataExtenso }), `Declaracao de inexistencia de sobreposicao - ${imovel.denominacao || 'imovel'}.docx`)}>
-                <FileText className="size-4" /> Inexistência de sobreposição
-              </Button>
-              <p className="text-[11px] text-muted-foreground">A de posse é assinada pelo possuidor; a de sobreposição, pelo responsável técnico. Os textos são editáveis nos modelos.</p>
-            </div>
-          </section>
-          </>)}
+          )}
           {aba === 'empresa' && <EmpresaResumo projetos={projetos} />}
         </div>
       </DialogContent>

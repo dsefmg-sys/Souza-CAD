@@ -56,3 +56,29 @@ export function comprimentoPolilinha(o: ObjetoDesenho): number {
   }
   return t;
 }
+
+/** Calcula o offset paralelo de uma linha de cota à direita do segmento percorrido de A para B. */
+export function obterPontosCotaOffset(
+  a: { leste: number; norte: number },
+  b: { leste: number; norte: number }
+) {
+  const dx = b.leste - a.leste;
+  const dy = b.norte - a.norte;
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return { alOffset: a, blOffset: b, d: 0 };
+
+  // Vetor normal unitário apontando para a direita da direção do segmento AB:
+  const ux = dx / len;
+  const uy = dy / len;
+  const nx = uy;
+  const ny = -ux;
+
+  // Distância de offset proporcional ao comprimento do segmento, com limites para áreas urbanas e rurais:
+  const d = Math.max(3, Math.min(15, len * 0.08));
+
+  const alOffset = { leste: a.leste + nx * d, norte: a.norte + ny * d };
+  const blOffset = { leste: b.leste + nx * d, norte: b.norte + ny * d };
+
+  return { alOffset, blOffset, d };
+}
+

@@ -12,11 +12,19 @@ export interface TemaAjuda {
 export const TEMAS_AJUDA: TemaAjuda[] = [
   {
     id: 'modos',
-    titulo: 'Modo Simples/Completo e nível da ajuda',
+    titulo: 'Modo Simples/Completo e Layout Horizontal',
     iniciante:
-      'São DUAS coisas diferentes, não confunda. A primeira é a chave Simples e Completo, no canto de cima à direita: ela decide quanta FERRAMENTA aparece na tela. No Simples fica só o caminho essencial de um georreferenciamento — importar os pontos, buscar vizinhos no SIGEF, preencher dados, pintar confrontantes e divisas, e gerar as peças. É pra qualquer pessoa se acostumar com o app sem se assustar com botão demais. No Completo aparece tudo: desenhar linhas e cotas, editar vértices, errata, CAR e a caixa de ferramentas. Trocar de modo nunca apaga nada, só muda o que fica à mostra. Depois de bastante uso no Completo, essa chave se recolhe do topo pra limpar a tela, e o Simples continua disponível nas Configurações. A segunda coisa é o nível da ajuda, iniciante ou experiente, que fica na Central de ajuda e nas Configurações: ele muda só QUANTA EXPLICAÇÃO os textos dão, conforme o seu tempo de profissão. Um agrimensor veterano pode gostar da tela Simples e mesmo assim preferir a ajuda experiente, mais curta.',
+      'São duas coisas diferentes. A primeira é a chave Simples/Completo no topo à direita: ela define quantas ferramentas aparecem na tela. No Simples fica só o fluxo básico (importar pontos, buscar vizinhos, pintar confrontantes/divisas e gerar peças). No Completo aparece tudo (desenhar linhas, cotas, achuras, símbolos, errata e CAR). O aplicativo é totalmente otimizado para o espaço horizontal em telas Full HD: as colunas de dados ficam lado a lado e os painéis são largos, eliminando rolagens verticais demoradas. A segunda é o nível de ajuda (iniciante/experiente), que muda apenas o tamanho e detalhamento das explicações dos textos de ajuda.',
     experiente:
-      'Dois ajustes independentes. (1) modo (Simples/Completo): densidade da interface, chave fixa no topo à direita; Simples esconde CASAR/VIZINHOS-arquivo, errata, CERT, CAR, banco de pontos, financeiro, cartões de desenho e de vértices, e a caixa de ferramentas; Completo revela tudo. Passadas ~5 h acumuladas no Completo, a chave do topo some (tela limpa) e o retorno ao Simples fica só em Configurações → Comportamento. (2) nivelExperiencia (iniciante/experiente): verbosidade da ajuda/temas, conforme tempo de profissão. Não há vínculo entre os dois — combine à vontade. Padrão: modo Simples + ajuda iniciante.',
+      'A interface adota duas regras: (1) Otimização Horizontal: modais expandidos (até 1400px de largura) e grids multi-colunas no desktop para uso de 100% da largura útil sem rolagem. (2) Modo Simples/Completo: Simples oculta ferramentas de desenho, errata, CAR, caixa de ferramentas e banco de pontos. Completo revela tudo. Nível da ajuda (iniciante/experiente) é independente do modo e altera a verbosidade das dicas da interface.',
+  },
+  {
+    id: 'desenho-achuras',
+    titulo: 'Desenho Avançado, Símbolos e Achuras',
+    iniciante:
+      'No modo Completo, você pode enriquecer a planta e o mapa com desenho livre: linhas, polilinhas, cotas de medição e textos. Além disso, as polilinhas fechadas podem ser preenchidas com cores personalizadas e estilos de hachuras (achuras) como linhas paralelas a 45°, grade/X ou pontos. Os símbolos cartográficos (como árvores, postes e casas) podem ser inseridos e redimensionados diretamente pelos botões S+ e S- no painel de edição do objeto.',
+    experiente:
+      'Suporte a objetos gráficos (ObjetoDesenho) no modo Completo: polilinhas aceitam cor, espessura (0.5 a 10px) e estiloLinha (solido/tracejado/pontilhado). Suporte a polígonos preenchidos com corPreenchimento e padrões de achura (achura: nenhuma/linhas/cruzado/pontos) via patterns SVG injetados. Símbolos escaláveis de 10px a 150px.',
   },
   {
     id: 'georreferenciamento',
@@ -36,11 +44,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
   },
   {
     id: 'vizinhos',
-    titulo: 'Vizinhos certificados e vértices compartilhados',
+    titulo: 'Vizinhos certificados e compartilhamento',
     iniciante:
       'Quando o vizinho já certificou o imóvel dele, os vértices da divisa comum JÁ TÊM código oficial — e a regra é reaproveitar esses códigos, nunca criar números novos pro mesmo lugar. No app, o botão SIGEF busca sozinho os imóveis certificados que encostam no seu e desenha o contorno deles no mapa. Clique no vértice do vizinho pra adotar o código dele no seu desenho. Isso evita a rejeição mais comum na certificação: dois códigos diferentes pro mesmo ponto físico.',
     experiente:
-      'O botão SIGEF consulta o acervo do INCRA (WFS) e persiste as parcelas no projeto; depois vira ANÁLISE, com verificação de sobreposição de polígonos. Adoção de vértice: clique no vértice da parcela certificada pra herdar o código; ou importe o arquivo de vértices baixado do Distribuidor de Coordenadas do Acervo Fundiário (login gov.br), com mapeamento de colunas em Configurações. Vértice adotado não consome numeração do seu banco de pontos.',
+      'O botão SIGEF consulta o acervo do INCRA (WFS) e persiste as parcelas no projeto; depois vira ANÁLISE, com verificação de sobreposição de polígonos. Adoção de vértice: clique no vértice da parcela certificada pra herdá-lo; ou importe o arquivo de vértices baixado do Distribuidor de Coordenadas do Acervo Fundiário (login gov.br), com mapeamento de colunas em Configurações. Vértice adotado não consome numeração do seu banco de pontos.',
   },
   {
     id: 'confrontantes',
@@ -76,11 +84,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
   },
   {
     id: 'requerimento',
-    titulo: 'Requerimento e tipos de ato',
+    titulo: 'Requerimento, Atos e Comarca',
     iniciante:
-      'O requerimento é a carta formal pedindo ao cartório pra averbar o georreferenciamento e retificar a área. O texto muda conforme a intenção do cliente: venda, doação, unificação de matrículas ou desmembramento — cada ato tem partes com papéis diferentes (quem transmite, quem recebe, quem assina). No app, escolha o tipo de ato e ele monta o texto jurídico certo, com a qualificação completa das partes. Na dúvida sobre qual ato usar, o glossário dentro do requerimento explica cada um em linguagem simples.',
+      'O requerimento é a carta formal enviada ao cartório de registro de imóveis. O app monta a qualificação completa e o texto jurídico de acordo com o tipo de ato pretendido: venda, doação, usucapião, desmembramento ou unificação. Se houver mais de um adquirente, cônjuges ou herdeiros, você pode adicioná-los como partes adicionais do requerimento. A comarca destinatária é preenchida automaticamente com base no padrão da empresa configurado nos Ajustes do app.',
     experiente:
-      'Tipos de ato com rótulos e frases de contexto próprios (venda/doação/unificação/desmembramento), partes adicionais pra atos com múltiplos requerentes, matrículas de origem na unificação. Fundamentação: art. 176 §§3º-4º e art. 213, II, da Lei 6.015/73 c/c Decreto 4.449/02. A conferência avisa cônjuge sem CPF e confrontante sem trecho atribuído antes de gerar. Docx com as mesmas garantias do memorial (Arial, assinaturas sem quebra de página).',
+      'Qualificação e textos específicos para Venda, Doação, Usucapião, Desmembramento e Unificação de Matrículas (com suporte a múltiplas matrículas de origem). Aceita n partes adicionais via props qualificadas. Integração automática com o campo `comarcaPadrao` do cadastro de padrões e preferências do escritório.',
   },
   {
     id: 'trt',

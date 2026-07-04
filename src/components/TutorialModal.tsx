@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import {
   Upload, Search, UserCheck, BookUser, Users, Brush, FileText, Save,
   ChevronLeft, ChevronRight, CircleCheck, MessageCircle, GraduationCap,
-  ToggleRight, PenTool, Ruler, Leaf, Sparkles, type LucideProps,
+  ToggleRight, PenTool, Ruler, Leaf, Sparkles, Play, Pause, Square, type LucideProps,
 } from 'lucide-react';
 import { carregarWhatsappSuporte, linkWhatsapp } from '@/lib/store/suporte';
 import { TEMAS_AJUDA } from '@/lib/ajuda/temas';
@@ -21,68 +21,66 @@ interface Props {
 
 interface Passo { icone: ComponentType<LucideProps>; titulo: string; texto: string; }
 
-// PASSOS BÁSICOS — o caminho essencial de um projeto, na ordem em que a tela conduz. Valem pra
-// todo mundo. O primeiro passo ensina a própria chave Simples/Completo, que muda a cara do app.
+// PASSOS BÁSICOS — o caminho essencial de um projeto, na ordem em que a tela conduz.
 const PASSOS_BASE: Passo[] = [
   {
     icone: ToggleRight,
     titulo: 'A chave Simples e Completo',
-    texto: 'No canto de cima, à direita, tem uma chavinha com duas palavras: Simples e Completo. No Simples a tela mostra só o caminho essencial, ideal pra qualquer pessoa se acostumar com o app sem se perder no meio de tanto botão. No Completo aparecem todas as ferramentas. Comece no Simples; quando quiser mais, é só virar a chave — nada some do seu trabalho, só aparecem mais botões. Depois de usar bastante o Completo, essa chave se recolhe pra deixar a tela limpa, e o Simples volta a ficar disponível nas Configurações.',
-  },
-  {
-    icone: Upload,
-    titulo: 'Comece importando o TXT',
-    texto: 'O botão TXT, no começo da fila lá em cima, lê o arquivo do seu equipamento GNSS e já desenha o perímetro do imóvel no mapa. Se o seu aparelho exporta as colunas numa ordem diferente, você ajusta isso uma vez só em Configurações, e ele lembra pra sempre.',
-  },
-  {
-    icone: Search,
-    titulo: 'Busque os vizinhos certificados',
-    texto: 'O botão SIGEF procura sozinho, no acervo do INCRA, os imóveis já certificados que encostam no seu, e já sugere os confrontantes. Depois que baixa, esse mesmo botão vira ANÁLISE, pra você ver se tem sobreposição de divisa.',
-  },
-  {
-    icone: BookUser,
-    titulo: 'Preencha os dados do imóvel',
-    texto: 'O botão DADOS abre o cadastro do proprietário, dos confrontantes, do imóvel e do cartório. É a base de tudo que vai sair no memorial e na planta, então capriche aqui.',
+    texto: 'No canto de cima, à direita, você escolhe se prefere usar o modo Simples ou Completo. No Simples, a tela exibe apenas o caminho essencial de um georreferenciamento para que você se acostume com o app sem se perder em botões extras. No Completo, todas as ferramentas avançadas e opcionais aparecem. Mude de modo a qualquer momento sem perder seu progresso. Após cerca de 5 horas acumuladas no Completo, a chave se recolhe automaticamente e pode ser reativada nas Configurações.',
   },
   {
     icone: Users,
-    titulo: 'Pinte confrontantes e divisas',
-    texto: 'Os botões CONFRO e DIVISAS ligam um modo de clique no mapa: você marca a quem pertence cada trecho da divisa e que tipo de linha é, se é cerca, córrego, estrada. Uma faixa aparece no alto do mapa pra você escolher a cor e o tipo enquanto pinta.',
+    titulo: 'Otimização Horizontal Full HD',
+    texto: 'Todo o Souza CAD foi projetado para tirar o máximo proveito de telas Full HD na horizontal. As colunas de dados, formulários de proprietários e painéis de desenho ficam lado a lado e são largas. Isso elimina rolagens verticais longas e desnecessárias, permitindo que você visualize e edite tudo de forma muito mais dinâmica e rápida.',
+  },
+  {
+    icone: Upload,
+    titulo: 'Importação Inteligente do TXT',
+    texto: 'Utilize o botão TXT no topo para importar as coordenadas obtidas pelo seu receptor GNSS. O Souza CAD lê e desenha automaticamente a poligonal do imóvel. Se o seu equipamento exportar as colunas (Leste, Norte, Altitude, Código, etc.) em uma ordem diferente, você pode redefinir o mapeamento de colunas em Configurações, e o app lembrará para sempre.',
+  },
+  {
+    icone: Search,
+    titulo: 'SIGEF & Confrontantes Certificados',
+    texto: 'O botão SIGEF procura automaticamente no acervo do INCRA os imóveis já certificados que fazem divisa com o seu projeto, desenhando-os como referência. Depois de baixados, esse mesmo botão se transforma no botão de ANÁLISE, permitindo verificar sobreposição de divisas ou erros geométricos.',
+  },
+  {
+    icone: BookUser,
+    titulo: 'Dados Completos e Atos do Requerimento',
+    texto: 'O botão DADOS gerencia as informações do proprietário, imóvel, confrontantes e cartório. É o coração do memorial e do requerimento. Ao redigir o Requerimento de Retificação de Área, escolha o tipo de ato (venda, doação, usucapião, desmembramento ou unificação) e o app ajustará a fundamentação legal e as partes (adquirinte, transmitente ou partes adicionais). A comarca destinatária é preenchida automaticamente com base no padrão da empresa configurado em Ajustes.',
+  },
+  {
+    icone: Brush,
+    titulo: 'Pintura de Confrontações e Linhas',
+    texto: 'Com o perímetro pronto, utilize os pincéis CONFRO e DIVISAS para pintar cada lado do imóvel. Você define quem confronta com cada trecho e qual é o tipo de linha (cerca, córrego, muro, etc.). A legenda é gerada automaticamente no canto do mapa e as cores ajudam na identificação rápida.',
   },
   {
     icone: FileText,
-    titulo: 'Gere as peças finais',
-    texto: 'Com tudo pintado, os botões da direita baixam cada peça pronta no formato oficial: MEM é o memorial descritivo, ODS é a planilha do SIGEF, PLANTA é o desenho em PDF, e REQ é o requerimento pro cartório. O botão TRT é onde você cola o número do seu termo de responsabilidade.',
-  },
-  {
-    icone: Save,
-    titulo: 'Salve sempre que lembrar',
-    texto: 'O botão Salvar, na barra da esquerda, guarda o projeto na nuvem e registra os códigos dos vértices no seu banco de pontos, pra nunca repetir um número já usado. O app também guarda um rascunho sozinho, então fechar sem salvar não perde o trabalho. Pra alternar entre o mapa e a planta, use o botão quadrado no canto do desenho, ou a tecla Esc.',
+    titulo: 'Geração de Peças e Download Único',
+    texto: 'Baixe todas as peças finais prontas no padrão do SIGEF e de cartórios: MEM (memorial descritivo em Word editável), ODS (planilha oficial do SIGEF), PLANTA (projeto A3 em PDF) e REQ (requerimento de retificação ao cartório). O botão TRT permite inserir a responsabilidade técnica que constará nos cabeçalhos.',
   },
 ];
 
-// PASSOS AVANÇADOS — só aparecem quando a tela está no modo Completo (é quando essas ferramentas
-// existem na tela). Apresentam o que fica escondido no Simples.
+// PASSOS AVANÇADOS — só aparecem quando a tela está no modo Completo.
 const PASSOS_AVANCADOS: Passo[] = [
   {
     icone: UserCheck,
-    titulo: 'Reaproveite o código do vizinho',
-    texto: 'Quando um vértice de divisa já tem código oficial de outro agrimensor, você não deve criar um novo. No Completo aparecem os botões CASAR (adota automaticamente o código do certificado do INCRA que encosta no seu) e VIZINHOS (sobe um arquivo de vértices que você baixou do Acervo Fundiário). Isso evita a rejeição mais comum: dois códigos pro mesmo ponto.',
+    titulo: 'Casar Vértices dos Vizinhos',
+    texto: 'Para evitar a rejeição mais comum (múltiplos códigos para o mesmo ponto), você deve reaproveitar os códigos de vértices vizinhos certificados. No modo Completo, o botão CASAR adota automaticamente os códigos dos vértices SIGEF que encostam no seu imóvel, e o botão VIZINHOS permite ler arquivos de vértices exportados do Acervo Fundiário do INCRA.',
   },
   {
-    icone: PenTool,
-    titulo: 'Ferramentas de desenho e de vértices',
-    texto: 'No Completo, a barra da esquerda ganha os cartões de desenho e de geometria: linha, polilinha, cota, texto e símbolos como poste e árvore; e a edição de vértices, pra inserir, apagar, ignorar um ponto que não é de divisa, ou medir distância e azimute direto no mapa.',
-  },
-  {
-    icone: Leaf,
-    titulo: 'Peças extras e o CAR',
-    texto: 'Ainda no Completo aparecem a ERRATA perimetral, o link CERT pra certificação eletrônica no SIGEF, e o CAR, o Cadastro Ambiental Rural. São peças que nem todo projeto precisa, por isso ficam guardadas no modo Simples.',
+    icone: Sparkles,
+    titulo: 'Desenho Avançado, Achuras e Símbolos',
+    texto: 'No modo Completo, você pode desenhar polilinhas livres, cotas de distância, textos e símbolos (como postes, árvores, pedras ou poços). Os polígonos fechados de desenho aceitam cores de preenchimento e padrões de achura (linhas 45°, grade/X ou círculos de pontos), perfeitos para desenhar áreas ambientais do CAR (como APP, reserva legal ou vegetação). Os símbolos inseridos podem ter seu tamanho ajustado através dos botões S+ e S-.',
   },
   {
     icone: Ruler,
-    titulo: 'Caixa de ferramentas',
-    texto: 'Lá embaixo na barra ficam os extras soltos, que não dependem do projeto: a calculadora de coordenada, distância e azimute; o editor de DXF pra abrir qualquer desenho; a porcentagem entre dois polígonos; e o Estúdio, um mini editor de imagem. Tudo isso só no Completo.',
+    titulo: 'Vértices Virtuais e Geometria',
+    texto: 'Precisa criar um ponto de divisa invisível ou inacessível no campo? O modo Completo oferece a ferramenta Vértice Virtual (V) para calcular pontos por afastamento de alinhamentos ou interseções geométricas direto na interface, mantendo a precisão geodésica.',
+  },
+  {
+    icone: Save,
+    titulo: 'Contrato e Gestão Financeira',
+    texto: 'Gerencie o valor contratado, custos de campo e recebimentos de cada projeto diretamente pela barra inferior. Você pode gerar contratos de prestação de serviços com cláusulas de obrigações e recibos com preenchimento de valor por extenso automático.',
   },
 ];
 
@@ -92,12 +90,82 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   const [tela, setTela] = useState<TelaAjuda>('menu');
   const [passo, setPasso] = useState(0);
   const [temaId, setTemaId] = useState<string | null>(null);
+
   // Duas coisas DIFERENTES: `modo` (quantas ferramentas na tela) e `nivel` (quanta explicação a
   // ajuda dá, conforme o tempo de profissão). O seletor visível é o do nível, porque é ele que muda
   // o texto que a pessoa está lendo aqui. O modo só decide se aparecem os passos avançados.
   const [modo, setModo] = useState<'simples' | 'completo'>('simples');
   const [nivel, setNivel] = useState<'iniciante' | 'experiente'>('iniciante');
   const [zapSuporte, setZapSuporte] = useState('');
+
+  // Estados para reprodução de áudio por Text-to-Speech
+  const [falando, setFalando] = useState(false);
+  const [pausado, setPausado] = useState(false);
+
+  function pararAudio() {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setFalando(false);
+    setPausado(false);
+  }
+
+  function falarTexto(texto: string) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+
+    // Limpa alguns caracteres comuns de markdown para uma fala fluida
+    const cleanText = texto.replace(/[*_#`[\]()]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'pt-BR';
+
+    // Tenta encontrar uma voz em Português
+    const voices = window.speechSynthesis.getVoices();
+    const ptVoice = voices.find((v) => v.lang.startsWith('pt'));
+    if (ptVoice) utterance.voice = ptVoice;
+
+    utterance.onend = () => {
+      setFalando(false);
+      setPausado(false);
+    };
+    utterance.onerror = () => {
+      setFalando(false);
+      setPausado(false);
+    };
+
+    setFalando(true);
+    setPausado(false);
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function alternarAudio(texto: string) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (falando) {
+      if (pausado) {
+        window.speechSynthesis.resume();
+        setPausado(false);
+      } else {
+        window.speechSynthesis.pause();
+        setPausado(true);
+      }
+    } else {
+      falarTexto(texto);
+    }
+  }
+
+  // Interrompe qualquer áudio sempre que fechar o modal ou mudar de passo/tela/nível
+  useEffect(() => {
+    pararAudio();
+  }, [open, tela, passo, temaId, nivel]);
+
+  // Cancela na desmontagem do componente
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
   useEffect(() => {
     if (!open) return;
     setTela('menu'); setPasso(0); setTemaId(null);
@@ -132,6 +200,40 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
         ))}
       </div>
       <span className="text-[10px] text-muted-foreground">Nível da ajuda — quanta explicação você quer. É separado da chave Simples/Completo.</span>
+    </div>
+  );
+
+  const audioControls = (texto: string) => (
+    <div className="flex items-center gap-2 mb-1 bg-muted/40 p-1.5 rounded-lg border border-border/50 animate-in fade-in duration-200">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() => alternarAudio(texto)}
+        className="h-8 gap-1.5 px-3 font-semibold text-xs transition-colors hover:bg-muted"
+      >
+        {falando && !pausado ? (
+          <>
+            <Pause className="size-3.5 text-amber-500 fill-amber-500" /> Pausar áudio
+          </>
+        ) : (
+          <>
+            <Play className="size-3.5 text-emerald-500 fill-emerald-500" /> {pausado ? 'Retomar áudio' : 'Ouvir instruções'}
+          </>
+        )}
+      </Button>
+      {(falando || pausado) && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={pararAudio}
+          className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+          title="Parar áudio"
+        >
+          <Square className="size-3.5 fill-destructive" />
+        </Button>
+      )}
     </div>
   );
 
@@ -180,6 +282,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
                 <Icone className="size-5 text-primary" /> {p.titulo}
               </DialogTitle>
             </DialogHeader>
+            {audioControls(p.texto)}
             <p className="text-sm leading-relaxed text-muted-foreground">{p.texto}</p>
             {modo === 'simples' && noFimDoBasico && (
               <button type="button" onClick={irParaCompleto}
@@ -251,6 +354,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
               <DialogTitle className="flex items-center gap-2 text-base"><BookUser className="size-5 text-primary" /> {tema.titulo}</DialogTitle>
             </DialogHeader>
             {seletorNivel}
+            {audioControls(nivel === 'iniciante' ? tema.iniciante : tema.experiente)}
             <p className="min-h-0 flex-1 overflow-y-auto pr-1 text-sm leading-relaxed text-muted-foreground">
               {nivel === 'iniciante' ? tema.iniciante : tema.experiente}
             </p>

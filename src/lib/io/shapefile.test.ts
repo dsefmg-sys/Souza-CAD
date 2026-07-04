@@ -35,6 +35,24 @@ describe('gerarShapefileZip', () => {
     expect(dbf.getUint8(dbfBuf.byteLength - 1)).toBe(0x1a);
   });
 
+  it('gera um shapefile em formato geografico com o .prj SIRGAS 2000 correspondente', async () => {
+    const blob = await gerarShapefileZip(QUAD, { zona: 23, hemisferio: 'S', nome: 'TesteGeo', formato: 'geo' });
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const prj = await zip.file('TesteGeo.prj')!.async('string');
+    expect(prj).toContain('GEOGCS["SIRGAS 2000"');
+    expect(prj).not.toContain('PROJCS');
+
+    const shpBuf = await zip.file('TesteGeo.shp')!.async('arraybuffer');
+    const dv = new DataView(shpBuf);
+    const minX = dv.getFloat64(112, true);
+    const minY = dv.getFloat64(120, true);
+    // Para zona 23 Sul, coordenadas do QUAD devem dar longitude aproximada de -45 e latitude aproximada de -21
+    expect(minX).toBeLessThan(-40);
+    expect(minX).toBeGreaterThan(-50);
+    expect(minY).toBeLessThan(-20);
+    expect(minY).toBeGreaterThan(-25);
+  });
+
   it('os pontos escritos no .shp batem com a geometria (leitura de volta)', async () => {
     const blob = await gerarShapefileZip(QUAD, { zona: 23, hemisferio: 'S', nome: 'q' });
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());

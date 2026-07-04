@@ -12,6 +12,7 @@ import { gerarRequerimentoDocx, type TipoAtoRequerimento } from '@/lib/export/re
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { numBR } from '@/lib/topo/geometry';
 import { carregarPreferencias } from '@/lib/store/preferencias';
+import { carregarPadroes } from '@/lib/store/padroes';
 
 const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string; explicacao: string }[] = [
   {
@@ -51,7 +52,9 @@ interface Props {
   areaRealHa: number;
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
-  onChangePessoas: (req: PessoaQualificada, trans: PessoaQualificada) => void;
+  tipoAto: TipoAtoRequerimento;
+  partesAdicionais: PessoaQualificada[];
+  onChangePessoas: (req: PessoaQualificada, trans: PessoaQualificada, tipoAto: TipoAtoRequerimento, partesAdicionais: PessoaQualificada[]) => void;
   sugProp: ProprietarioCad[];
   onBaixar?: () => void;
 }
@@ -99,20 +102,20 @@ function transVazio(imovel: ImovelData): PessoaQualificada {
   return { ...PESSOA_VAZIA, nome: imovel.proprietario, cpf: imovel.cpfProprietario, cidadeUf: imovel.municipio || '' };
 }
 
-export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, onChangePessoas, sugProp, onBaixar }: Props) {
+export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, tipoAto, partesAdicionais, onChangePessoas, sugProp, onBaixar }: Props) {
   const [req, setReq] = useState<PessoaQualificada>(requerente ?? PESSOA_VAZIA);
   const [trans, setTrans] = useState<PessoaQualificada>(transmitente ?? transVazio(imovel));
-  const [tipoAto, setTipoAto] = useState<TipoAtoRequerimento>('venda');
-  const [partesAdicionais, setPartesAdicionais] = useState<PessoaQualificada[]>([]);
+  const [localTipoAto, setLocalTipoAto] = useState<TipoAtoRequerimento>(tipoAto);
+  const [localPartesAdicionais, setLocalPartesAdicionais] = useState<PessoaQualificada[]>(partesAdicionais);
   const [msg, setMsg] = useState('');
   const [mostrarDicas, setMostrarDicas] = useState(true);
-  const permiteVariasPartes = tipoAto === 'doacao' || tipoAto === 'unificacao';
+  const permiteVariasPartes = localTipoAto === 'doacao' || localTipoAto === 'unificacao';
 
   useEffect(() => { setMostrarDicas(carregarPreferencias().mostrarDicasEducativas); }, []);
 
-  function addParte() { setPartesAdicionais((ps) => [...ps, { ...PESSOA_VAZIA }]); }
-  function setParte(i: number, p: PessoaQualificada) { setPartesAdicionais((ps) => ps.map((x, k) => (k === i ? p : x))); }
-  function rmParte(i: number) { setPartesAdicionais((ps) => ps.filter((_, k) => k !== i)); }
+  function addParte() { setLocalPartesAdicionais((ps) => [...ps, { ...PESSOA_VAZIA }]); }
+  function setParte(i: number, p: PessoaQualificada) { setLocalPartesAdicionais((ps) => ps.map((x, k) => (k === i ? p : x))); }
+  function rmParte(i: number) { setLocalPartesAdicionais((ps) => ps.filter((_, k) => k !== i)); }
 
   const rotulos = {
     venda: { req: 'Requerente (adquirente / comprador)', trans: 'Proprietário registral (transmitente / vendedor)' },
@@ -120,13 +123,14 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     unificacao: { req: 'Requerente (proprietário)', trans: 'Coproprietário / cônjuge (se houver)' },
     desmembramento: { req: 'Requerente (proprietário)', trans: 'Coproprietário / cônjuge (se houver)' },
     usucapiao: { req: 'Requerente (usucapiente)', trans: 'Titular registral / confrontante (se houver)' },
-  }[tipoAto];
+  }[localTipoAto];
 
   useEffect(() => {
     if (open) {
       setReq(requerente ?? PESSOA_VAZIA);
       setTrans(transmitente ?? transVazio(imovel));
-      setPartesAdicionais([]);
+      setLocalTipoAto(tipoAto || 'venda');
+      setLocalPartesAdicionais(partesAdicionais ?? []);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -135,8 +139,10 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     if (!tecnico) { setMsg('Configure o técnico primeiro.'); return; }
     if (!req.nome?.trim() || !trans.nome?.trim()) { setMsg('Preencha o nome do requerente e do transmitente.'); return; }
     if (!req.cpf?.trim() || !trans.cpf?.trim()) { setMsg('Preencha o CPF/CNPJ do requerente e do transmitente.'); return; }
-    onChangePessoas(req, trans);
-    const blobBruto = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje(), tipoAto, partesAdicionais });
+    onChangePessoas(req, trans, localTipoAto, localPartesAdicionais);
+    const padroes = carregarPadroes();
+    const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
+    const blobBruto = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje(), tipoAto: localTipoAto, partesAdicionais: localPartesAdicionais, comarca });
     const blob = await compatibilizarWord2007(blobBruto);
     saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);
     onBaixar?.();
@@ -145,71 +151,84 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-6">
+      <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] flex flex-col p-6">
         <DialogHeader className="shrink-0">
           <DialogTitle>Requerimento ao cartório (retificação de área)</DialogTitle>
         </DialogHeader>
         <datalist id="lista-pessoas">{sugProp.map((p) => <option key={p.id} value={p.nome} />)}</datalist>
 
-        {/* Área Central Rolável */}
+        {/* Área Central */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-1 my-2">
-          {/* Tipo de Ato */}
-          <div className="space-y-1">
-            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">Tipo de ato</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {OPCOES_ATO.map((o) => (
-                <Button key={o.valor} type="button" size="sm" variant={tipoAto === o.valor ? 'default' : 'outline'} onClick={() => setTipoAto(o.valor)} className="h-8 text-xs">
-                  {o.rotulo}
-                </Button>
-              ))}
-            </div>
-            {mostrarDicas && (
-              <p className="rounded border border-dashed bg-muted/30 p-2 text-xs text-muted-foreground">
-                {OPCOES_ATO.find((o) => o.valor === tipoAto)?.explicacao}
-              </p>
-            )}
-            {tipoAto !== 'venda' && (
-              <p className="text-[11px] text-amber-500 font-semibold">
-                Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.
-              </p>
-            )}
-          </div>
-
-          {/* Dados do Imóvel */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 rounded-lg border bg-muted/10 p-3 text-xs">
-            <div className="col-span-2">
-              <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">Imóvel</span>
-              <span className="font-semibold text-foreground">{imovel.denominacao || '—'} · Matrícula {imovel.matricula || '—'}</span>
-            </div>
-            <div className="col-span-2">
-              <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">Área real (levantada)</span>
-              <span className="font-semibold text-foreground">{numBR(areaRealHa, 4)} ha</span>
-            </div>
-            <div className="space-y-1 col-span-2">
-              <Label className="text-[10px] text-muted-foreground font-semibold">Área anterior na matrícula (ha)</Label>
-              <Input type="number" step="0.0001" value={imovel.areaAnterior ?? ''} onChange={(e) => onChangeImovel({ ...imovel, areaAnterior: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
-            </div>
-            <div className="space-y-1 col-span-2">
-              <Label className="text-[10px] text-muted-foreground font-semibold">Valor do imóvel (R$)</Label>
-              <Input type="number" step="0.01" value={imovel.valorImovel ?? ''} onChange={(e) => onChangeImovel({ ...imovel, valorImovel: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
-            </div>
-            {tipoAto === 'unificacao' && (
-              <div className="col-span-4 space-y-1">
-                <Label className="text-[10px] text-muted-foreground font-semibold">Matrículas de origem (separadas por vírgula)</Label>
-                <Input
-                  placeholder="ex.: 1234, 5678, 9012"
-                  value={(imovel.matriculasOrigem ?? []).join(', ')}
-                  onChange={(e) => onChangeImovel({ ...imovel, matriculasOrigem: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                  className="h-8 text-xs"
-                />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+            {/* Coluna 1: Tipo de Ato e Dados do Imóvel */}
+            <div className="space-y-4">
+              {/* Tipo de Ato */}
+              <div className="space-y-1.5 border rounded-lg bg-muted/10 p-3">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Tipo de ato</Label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {OPCOES_ATO.map((o) => (
+                    <Button key={o.valor} type="button" size="sm" variant={localTipoAto === o.valor ? 'default' : 'outline'} onClick={() => setLocalTipoAto(o.valor)} className={`h-8 text-xs ${localTipoAto === o.valor ? '' : 'bg-background hover:bg-muted'} ${o.valor === 'usucapiao' ? 'col-span-2' : ''}`}>
+                      {o.rotulo}
+                    </Button>
+                  ))}
+                </div>
+                {mostrarDicas && (
+                  <p className="rounded border border-dashed bg-muted/30 p-2 text-[10px] text-muted-foreground leading-snug">
+                    {OPCOES_ATO.find((o) => o.valor === localTipoAto)?.explicacao}
+                  </p>
+                )}
+                {localTipoAto !== 'venda' && (
+                  <p className="text-[10px] text-amber-500 font-semibold leading-snug">
+                    Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.
+                  </p>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Requerente e Transmitente */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Bloco titulo={rotulos.req} pessoa={req} onChange={setReq} sugProp={sugProp} />
-            <Bloco titulo={rotulos.trans} pessoa={trans} onChange={setTrans} sugProp={sugProp} />
+              {/* Dados do Imóvel */}
+              <div className="grid grid-cols-2 gap-2.5 rounded-lg border bg-muted/10 p-3 text-xs">
+                <div className="col-span-2 border-b pb-1.5 mb-0.5">
+                  <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">Imóvel</span>
+                  <span className="font-semibold text-foreground text-[11px]">{imovel.denominacao || '—'} · Matrícula {imovel.matricula || '—'}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-muted-foreground uppercase text-[9px] tracking-wider block">Área real</span>
+                  <span className="font-semibold text-foreground text-[11px]">{numBR(areaRealHa, 4)} ha</span>
+                </div>
+                <div>
+                  <span className="font-bold text-muted-foreground uppercase text-[9px] tracking-wider block">Valor do imóvel</span>
+                  <span className="font-semibold text-foreground text-[11px]">{imovel.valorImovel ? `R$ ${numBR(imovel.valorImovel, 2)}` : '—'}</span>
+                </div>
+                <div className="space-y-0.5 col-span-2">
+                  <Label className="text-[9px] text-muted-foreground font-semibold">Área anterior na matrícula (ha)</Label>
+                  <Input type="number" step="0.0001" value={imovel.areaAnterior ?? ''} onChange={(e) => onChangeImovel({ ...imovel, areaAnterior: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
+                </div>
+                <div className="space-y-0.5 col-span-2">
+                  <Label className="text-[9px] text-muted-foreground font-semibold">Valor para custas (R$)</Label>
+                  <Input type="number" step="0.01" value={imovel.valorImovel ?? ''} onChange={(e) => onChangeImovel({ ...imovel, valorImovel: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
+                </div>
+                {localTipoAto === 'unificacao' && (
+                  <div className="col-span-2 space-y-0.5">
+                    <Label className="text-[9px] text-muted-foreground font-semibold">Matrículas de origem (separadas por vírgula)</Label>
+                    <Input
+                      placeholder="ex.: 1234, 5678, 9012"
+                      value={(imovel.matriculasOrigem ?? []).join(', ')}
+                      onChange={(e) => onChangeImovel({ ...imovel, matriculasOrigem: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                      className="h-7 text-[11px]"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Coluna 2: Requerente */}
+            <div className="lg:col-span-1">
+              <Bloco titulo={rotulos.req} pessoa={req} onChange={setReq} sugProp={sugProp} />
+            </div>
+
+            {/* Coluna 3: Transmitente */}
+            <div className="lg:col-span-1">
+              <Bloco titulo={rotulos.trans} pessoa={trans} onChange={setTrans} sugProp={sugProp} />
+            </div>
           </div>
 
           {/* Partes Adicionais */}
@@ -219,7 +238,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Partes adicionais (mais de um donatário/coproprietário)</span>
                 <Button type="button" size="sm" variant="outline" onClick={addParte} className="h-7 text-xs"><UserPlus className="size-3 mr-1" /> Adicionar parte</Button>
               </div>
-              {partesAdicionais.map((p, i) => (
+              {localPartesAdicionais.map((p, i) => (
                 <div key={i} className="space-y-1 rounded-lg border p-3 bg-background/50">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-muted-foreground">Parte adicional {i + 1}</span>

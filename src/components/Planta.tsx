@@ -7,7 +7,7 @@ import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { rotulosProfissional } from '@/lib/topo/profissional';
 import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
-import { distanciaCota } from '@/lib/topo/objetos';
+import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
 import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import type { ObjetoDesenho } from '@/lib/topo/types';
 
@@ -1126,7 +1126,9 @@ export default function Planta({
       {objetos.map((o) => {
         const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
         if (o.tipo === 'simbolo' && sp[0]) {
-          return <g key={o.id} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(1.5)`} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
+          const tam = o.tamanho ?? 30;
+          const esc = (tam / 20).toFixed(2);
+          return <g key={o.id} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(${esc})`} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
         }
         if (o.tipo === 'texto' && sp[0]) {
           const anchor = o.alinhamento === 'center' ? 'middle' : o.alinhamento === 'right' ? 'end' : 'start';
@@ -1135,19 +1137,55 @@ export default function Planta({
           );
         }
         if (o.tipo === 'cota' && sp.length >= 2) {
-          const mx = (sp[0].x + sp[1].x) / 2, my = (sp[0].y + sp[1].y) / 2;
+          const p0 = o.pontos[0];
+          const p1 = o.pontos[1];
+          const utmA = {
+            leste: p0.leste ?? geoParaUtm(p0.lat, p0.lon, zona, hemisferio).leste,
+            norte: p0.norte ?? geoParaUtm(p0.lat, p0.lon, zona, hemisferio).norte,
+          };
+          const utmB = {
+            leste: p1.leste ?? geoParaUtm(p1.lat, p1.lon, zona, hemisferio).leste,
+            norte: p1.norte ?? geoParaUtm(p1.lat, p1.lon, zona, hemisferio).norte,
+          };
+          const { alOffset, blOffset } = obterPontosCotaOffset(utmA, utmB);
+          const svgAOffset = { x: sx(alOffset.leste), y: sy(alOffset.norte) };
+          const svgBOffset = { x: sx(blOffset.leste), y: sy(blOffset.norte) };
+          const mx = (svgAOffset.x + svgBOffset.x) / 2;
+          const my = (svgAOffset.y + svgBOffset.y) / 2;
+
           return (
             <g key={o.id}>
-              <line x1={sp[0].x} y1={sp[0].y} x2={sp[1].x} y2={sp[1].y} stroke={o.cor ?? '#b91c1c'} strokeWidth={0.8} />
+              {/* Linhas de extensão perpendiculares tracejadas */}
+              <line x1={sp[0].x} y1={sp[0].y} x2={svgAOffset.x} y2={svgAOffset.y} stroke={o.cor ?? '#b91c1c'} strokeWidth={0.5} strokeDasharray="2 1" />
+              <line x1={sp[1].x} y1={sp[1].y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={o.cor ?? '#b91c1c'} strokeWidth={0.5} strokeDasharray="2 1" />
+              {/* Linha de cota paralela */}
+              <line x1={svgAOffset.x} y1={svgAOffset.y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={o.cor ?? '#b91c1c'} strokeWidth={0.8} />
               <text x={mx} y={my - 3} fontSize={8} textAnchor="middle" fill={o.cor ?? '#b91c1c'}>{numBR(distanciaCota(o))} m</text>
             </g>
           );
         }
         if (o.tipo === 'polilinha' && sp.length >= 2) {
           const pp = sp.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-          return o.preenchido && sp.length >= 3
-            ? <polygon key={o.id} points={pp} fill={o.cor ?? '#2563eb'} fillOpacity={0.4} stroke={o.cor ?? '#2563eb'} strokeWidth={o.espessura ?? 1.2} />
-            : <polyline key={o.id} points={pp} fill="none" stroke={o.cor ?? '#2563eb'} strokeWidth={o.espessura ?? 1.2} strokeDasharray={o.tracejado ? '6 4' : undefined} />;
+          const estilo = o.estiloLinha ?? (o.tracejado ? 'tracejado' : 'solido');
+          const dashArray = estilo === 'tracejado' ? '6 4' : estilo === 'pontilhado' ? '2 3' : undefined;
+          const borderCor = o.cor ?? '#2563eb';
+          const esp = o.espessura ?? 1.2;
+
+          if (o.preenchido && sp.length >= 3) {
+            let fillVal = o.corPreenchimento ?? borderCor;
+            let fillOp = 0.4;
+            if (o.achura && o.achura !== 'nenhuma') {
+              fillVal = `url(#pat-${o.id})`;
+              fillOp = 0.95;
+            }
+            return (
+              <polygon key={o.id} points={pp} fill={fillVal} fillOpacity={fillOp} stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
+            );
+          } else {
+            return (
+              <polyline key={o.id} points={pp} fill="none" stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
+            );
+          }
         }
         return null;
       })}

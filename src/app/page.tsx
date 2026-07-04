@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -87,6 +87,7 @@ import { termosAceitosLocal, termosAceitosNuvem, sincronizarPerfil, registrarPro
 import { carregarPreferencias, salvarPreferencias, salvarModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster } from '@/lib/store/suporte';
+import { carregarConfigAssinatura } from '@/lib/store/assinatura';
 import TermosModal from '@/components/TermosModal';
 import MasterPainelModal from '@/components/MasterPainelModal';
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
@@ -98,7 +99,7 @@ import { exportarKML } from '@/lib/export/kml';
 import RelatorioSobreposicaoModal from '@/components/RelatorioSobreposicaoModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import JSZip from 'jszip';
-import { gerarRequerimentoDocx } from '@/lib/export/requerimento';
+import { gerarRequerimentoDocx, type TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 
 const MapEditor = dynamic(() => import('@/components/MapEditor'), {
@@ -182,6 +183,31 @@ function BotaoAcoes({ onUndo, onRedo }: { onUndo: () => void; onRedo: () => void
     </div>
   );
 }
+
+function IconeCota({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <line x1="3" y1="6" x2="3" y2="18" />
+      <line x1="21" y1="6" x2="21" y2="18" />
+      <line x1="3" y1="12" x2="8" y2="12" />
+      <line x1="16" y1="12" x2="21" y2="12" />
+      <path d="M10.5 9.5v5M12.5 9.5h2v2h-2v2h2" />
+    </svg>
+  );
+}
+
+const PALETA_DESENHO = [
+  { nome: 'Azul', hex: '#2563eb' },
+  { nome: 'Vermelho', hex: '#dc2626' },
+  { nome: 'Verde', hex: '#16a34a' },
+  { nome: 'Laranja', hex: '#ea580c' },
+  { nome: 'Amarelo', hex: '#eab308' },
+  { nome: 'Ciano', hex: '#0891b2' },
+  { nome: 'Rosa', hex: '#db2777' },
+  { nome: 'Roxo', hex: '#9333ea' },
+  { nome: 'Preto', hex: '#000000' },
+  { nome: 'Cinza', hex: '#4b5563' },
+];
 
 export default function EditorPage() {
   const { user, carregando: authCarregando, disponivel: nuvemDisponivel } = useAuth();
@@ -424,6 +450,12 @@ export default function EditorPage() {
   const rascunhoRestaurado = useRef(false); // garante restaurar o rascunho só uma vez
   const [requerente, setRequerente] = useState<PessoaQualificada | undefined>(undefined);
   const [transmitente, setTransmitente] = useState<PessoaQualificada | undefined>(undefined);
+  const [tipoAto, setTipoAto] = useState<TipoAtoRequerimento>('venda');
+  const [partesAdicionais, setPartesAdicionais] = useState<PessoaQualificada[]>([]);
+  const [ocultarCobranca, setOcultarCobranca] = useState(false);
+  useEffect(() => {
+    carregarConfigAssinatura().then((c) => setOcultarCobranca(!!c.ocultarCobranca)).catch(() => {});
+  }, [user]);
   const [plantaConfig, setPlantaConfig] = useState<PlantaConfig>({});
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [sugProp, setSugProp] = useState<ProprietarioCad[]>([]);
@@ -779,8 +811,8 @@ export default function EditorPage() {
 
   // assinatura do conteúdo do projeto, para acender o disquete laranja quando há mudança não salva
   const projSig = useMemo(
-    () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas.map((g) => g.id), vv: verticesVizinho, ig: verticesIgnorados, np: nomeProjeto, rq: requerente, tr: transmitente }),
-    [vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas, verticesVizinho, verticesIgnorados, nomeProjeto, requerente, transmitente],
+    () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas.map((g) => g.id), vv: verticesVizinho, ig: verticesIgnorados, np: nomeProjeto, rq: requerente, tr: transmitente, ta: tipoAto, pa: partesAdicionais }),
+    [vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas, verticesVizinho, verticesIgnorados, nomeProjeto, requerente, transmitente, tipoAto, partesAdicionais],
   );
   useEffect(() => {
     // o salvar muda os vértices (códigos); adota essa mudança imediata como "salva"
@@ -1971,7 +2003,9 @@ export default function EditorPage() {
       });
       // se requerente/transmitente ainda não foram preenchidos, cai no proprietário do imóvel
       const propComoParte: PessoaQualificada = { ...PESSOA_VAZIA, nome: imovel.proprietario || '—', cpf: imovel.cpfProprietario || '', cidadeUf: imovel.municipio || '' };
-      const requerimentoBruto = await gerarRequerimentoDocx({ imovel, tecnico, requerente: requerente ?? propComoParte, transmitente: transmitente ?? propComoParte, areaRealHa: ef.areaHa, dataExtenso: dataPorExtenso() });
+      const padroes = carregarPadroes();
+      const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
+      const requerimentoBruto = await gerarRequerimentoDocx({ imovel, tecnico, requerente: requerente ?? propComoParte, transmitente: transmitente ?? propComoParte, areaRealHa: ef.areaHa, dataExtenso: dataPorExtenso(), tipoAto, partesAdicionais, comarca });
       const requerimento = await compatibilizarWord2007(requerimentoBruto);
       const planta = await gerarPlantaPdfBlob();
       const zip = new JSZip();
@@ -2010,9 +2044,16 @@ export default function EditorPage() {
       const lido = file.name.toLowerCase().endsWith('.zip') ? await importarShapefileZip(buf) : lerShp(buf);
       if (!lido.aneis.length) { aviso('Nenhuma geometria encontrada no shapefile.'); return; }
       const z = lido.zona ?? zona, h = lido.hemisferio ?? hemisferio;
+      const isGeografico = lido.aneis.some((anel) => anel.some((p) => Math.abs(p.leste) <= 180 && Math.abs(p.norte) <= 90));
       const refs = lido.aneis.map((anel) => anel.map((p) => {
-        const g = utmParaGeo(p.leste, p.norte, z, h);
-        return { lat: g.lat, lon: g.lon, leste: p.leste, norte: p.norte };
+        if (isGeografico) {
+          const lat = p.norte, lon = p.leste;
+          const u = geoParaUtm(lat, lon, z, h);
+          return { lat, lon, leste: u.leste, norte: u.norte };
+        } else {
+          const g = utmParaGeo(p.leste, p.norte, z, h);
+          return { lat: g.lat, lon: g.lon, leste: p.leste, norte: p.norte };
+        }
       }));
       setReferencias(refs);
       aviso(`${refs.length} geometria(s) do shapefile importada(s) como referência (fuso ${z}${h}). Ligue o snap para encostar nos pontos.`);
@@ -2179,7 +2220,7 @@ export default function EditorPage() {
       let i = 0;
       for (const c of camadas) {
         const nomeArq = `${c.nome}_${++i}`;
-        const blob = await gerarShapefileZip(c.pontos, { zona, hemisferio, nome: nomeArq });
+        const blob = await gerarShapefileZip(c.pontos, { zona, hemisferio, nome: nomeArq, formato: 'geo' });
         const interno = await JSZip.loadAsync(await blob.arrayBuffer());
         for (const fn of Object.keys(interno.files)) {
           const ext = fn.split('.').pop();
@@ -2353,7 +2394,7 @@ export default function EditorPage() {
       } catch { registrou = false; }
       const p: Projeto = {
         id, nome: nomeProjeto || imovel.denominacao || 'Sem nome', criadoEm: Date.now(), atualizadoEm: Date.now(),
-        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, plantaConfig, parcelasCert, verticesVizinho,
+        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, plantaConfig, parcelasCert, verticesVizinho,
       };
       try {
         const destino = await salvarProjeto(p);
@@ -2427,7 +2468,7 @@ export default function EditorPage() {
     return vertices.length > 0 || glebas.some((g) => g.vertices.length > 0) || !!imovel.denominacao || !!imovel.proprietario || !!imovel.matricula;
   }
   function montarRascunho() {
-    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, plantaConfig, glebaAtivaId, parcelasCert, verticesVizinho };
+    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, plantaConfig, glebaAtivaId, parcelasCert, verticesVizinho };
   }
   // Recria as referências tracejadas (desenho) a partir das parcelas certificadas gravadas —
   // usado ao reabrir/restaurar um projeto, para não precisar buscar de novo no INCRA.
@@ -2445,6 +2486,8 @@ export default function EditorPage() {
     if (d.hemisferio) setHemisferio(d.hemisferio);
     setRequerente(d.requerente);
     setTransmitente(d.transmitente);
+    setTipoAto(d.tipoAto || 'venda');
+    setPartesAdicionais(d.partesAdicionais || []);
     setPlantaConfig(d.plantaConfig ?? {});
     setGlebas(d.glebas);
     carregarGleba(d.glebas.find((g) => g.id === d.glebaAtivaId) ?? d.glebas[0]);
@@ -2507,6 +2550,10 @@ export default function EditorPage() {
     setObjetos([]);
     setPlantaConfig({});
     setObjetoSelId(null);
+    setRequerente(undefined);
+    setTransmitente(undefined);
+    setTipoAto('venda');
+    setPartesAdicionais([]);
     setSigefStatus('idle'); setBaixou({}); setSalvoOk(false);
     localStorage.removeItem(rascunhoKey());
     aviso('Novo projeto iniciado. Importe pontos para começar.');
@@ -2525,6 +2572,7 @@ export default function EditorPage() {
     setImovel(f.imovel);
     setZona(f.zona); setHemisferio(f.hemisferio);
     setRequerente(undefined); setTransmitente(undefined);
+    setTipoAto('venda'); setPartesAdicionais([]);
     setParcelasCert([]); setReferencias([]); setVerticesVizinho([]); setSituacaoUrl(undefined);
     setPlantaConfig({});
     setSigefStatus('idle'); setBaixou({}); setSalvoOk(false);
@@ -2586,6 +2634,8 @@ export default function EditorPage() {
     setNomeProjetoManual(true);
     setZona(p.zonaUtm); setHemisferio(p.hemisferio);
     setRequerente(p.requerente); setTransmitente(p.transmitente);
+    setTipoAto((p as any).tipoAto || 'venda');
+    setPartesAdicionais((p as any).partesAdicionais || []);
     setPlantaConfig(p.plantaConfig ?? {});
     setGlebas(p.glebas);
     carregarGleba(p.glebas[0]);
@@ -3080,11 +3130,11 @@ export default function EditorPage() {
                           <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'outline'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (F8)">
                             <PenTool className="text-indigo-500 opacity-80 shrink-0" /> <span className="truncate">Tracejado</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos para medir (F10)">
-                            <RotateCcw className="text-rose-500 rotate-90 shrink-0" /> <span className="truncate">Cota</span>
-                          </Button>
                           <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)">
                             <FileText className="text-emerald-500 shrink-0" /> <span className="truncate">Texto</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos para medir (F10)">
+                            <IconeCota className="text-rose-500 shrink-0" /> <span className="truncate">Cota</span>
                           </Button>
                           <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'outline'} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
                             <div className="shrink-0 text-sky-500"><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
@@ -3147,6 +3197,12 @@ export default function EditorPage() {
                               <Button size="sm" variant="outline" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: objSel.texto ?? '' }); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5 text-cyan-500" /></Button>
                             </div>
                           )}
+                          {objSel?.tipo === 'simbolo' && (
+                            <div className="col-span-2 grid grid-cols-2 gap-1 mt-1">
+                              <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: Math.max(10, (objSel.tamanho ?? 30) - 5) })} title="Diminuir símbolo"><span className="font-bold font-mono">S-</span></Button>
+                              <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: Math.min(150, (objSel.tamanho ?? 30) + 5) })} title="Aumentar símbolo"><span className="font-bold font-mono">S+</span></Button>
+                            </div>
+                          )}
                           {objSel?.tipo === 'polilinha' && (
                             <div className="col-span-2 flex flex-col gap-1 mt-1">
                               <Button size="sm" variant="secondary" className="gap-1.5 w-full justify-start text-[11px]" onClick={converterPolilinhaEmPerimetro} title="Usar como perímetro"><RotateCcw className="size-3.5 text-emerald-500" /> Usar como perímetro</Button>
@@ -3194,8 +3250,8 @@ export default function EditorPage() {
                     <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta (F6)"><PenTool /></Button>
                     <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha (F7)"><PenTool /></Button>
                     <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado (F8)"><PenTool className="opacity-70" /></Button>
-                    <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar (F10)"><RotateCcw className="rotate-90" /></Button>
                     <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto (F9)"><FileText /></Button>
+                    <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar (F10)"><IconeCota /></Button>
                     <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
                     <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice"><Plus /></Button>
                     <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /></Button>
@@ -3342,8 +3398,8 @@ export default function EditorPage() {
                       ['Ajuda', 'Tutorial: como usar o Métrica, passo a passo', <HelpCircle key="i" className="size-4" />, () => setTutorialAberto(true), 'text-slate-500'],
                       ['RT', 'Dados do responsável técnico: nome, CFT, código do credenciado e contadores', <UserCheck key="i" className="size-4" />, () => { setConfigAba('pessoal'); setConfigAberta(true); }, 'text-slate-500'],
                       ['Config.', 'Configurações gerais', <Settings key="i" className="size-4" />, () => { setConfigAba(undefined); setConfigAberta(true); }, 'text-slate-500'],
-                      ['Planos', souMaster() ? 'Cobrança do app: planos, preços e nível de cada cliente (admin)' : 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400'],
-                      ...(souMaster() ? [['Uso', 'Painel do titular: contas e uso do sistema (só você vê)', <BarChart3 key="i" className="size-4" />, () => setMasterAberto(true), 'text-amber-600 dark:text-amber-400']] : []),
+                      ...(!ocultarCobranca || souMaster() ? [['Planos', souMaster() ? 'Cobrança do app: planos, preços e nível de cada cliente (admin)' : 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400']] : []),
+                      ...(souMaster() ? [['Painel ADM', 'Painel administrativo: contas, uso e configuração de cobrança', <Crown key="i" className="size-4" />, () => setMasterAberto(true), 'text-amber-600 dark:text-amber-400']] : []),
                       ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400']] : []),
                       ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => { limparConfigLocalNaSaida(); sair(); }, 'text-red-600 dark:text-red-400']] : []),
                     ] as [string, string, React.ReactNode, () => void, string][]).map(([rotuloBtn, dica, icone, acao, cor]) => (
@@ -3925,7 +3981,13 @@ export default function EditorPage() {
         imovel={imovel} onChangeImovel={setImovel}
         tecnico={tecnico} areaRealHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
         requerente={requerente} transmitente={transmitente}
-        onChangePessoas={(r, t) => { setRequerente(r); setTransmitente(t); }}
+        tipoAto={tipoAto} partesAdicionais={partesAdicionais}
+        onChangePessoas={(r, t, ta, pa) => {
+          setRequerente(r);
+          setTransmitente(t);
+          setTipoAto(ta);
+          setPartesAdicionais(pa);
+        }}
         sugProp={sugProp}
         onBaixar={() => setBaixou((b) => ({ ...b, req: true }))}
       />
@@ -4156,20 +4218,108 @@ export default function EditorPage() {
                     <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ tamanho: Math.max(6, (o?.tamanho ?? 12) - 2) }); }}><span className="w-3.5 text-center font-bold">A-</span> Diminuir</button>
                   </>
                 )}
-                {menuContexto.objetoTipo === 'polilinha' && (
-                  <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ preenchido: !o?.preenchido }); setMenuContexto(null); }}><Brush className="size-3.5" /> Preencher (liga/desliga)</button>
+                {menuContexto.objetoTipo === 'simbolo' && (
+                  <>
+                    <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ tamanho: Math.min(150, (o?.tamanho ?? 30) + 5) }); }}><span className="w-3.5 text-center font-bold">S+</span> Aumentar Símbolo</button>
+                    <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const o = objetos.find((x) => x.id === menuContexto.id); editarObjetoSel({ tamanho: Math.max(10, (o?.tamanho ?? 30) - 5) }); }}><span className="w-3.5 text-center font-bold">S-</span> Diminuir Símbolo</button>
+                  </>
                 )}
-                {menuContexto.objetoTipo === 'polilinha' && (
-                  <div className="border-t pt-0.5">
-                    <div className="px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">Camada CAR</div>
-                    {CAR_TEMAS.map((t) => (
-                      <button key={t.chave} className="flex w-full items-center gap-2 px-2 py-1 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ carTema: t.chave, preenchido: true, cor: t.cor }); setMenuContexto(null); aviso(`Polígono marcado como ${t.rotulo} (entra no CAR).`); }}>
-                        <span className="size-3 rounded-sm" style={{ background: t.cor }} /> {t.rotulo}
+                {menuContexto.objetoTipo === 'polilinha' && (() => {
+                  const o = objetos.find((x) => x.id === menuContexto.id);
+                  if (!o) return null;
+                  return (
+                    <div className="space-y-2 p-1 text-[11px] max-h-[350px] overflow-y-auto">
+                      {/* Cor da linha */}
+                      <div>
+                        <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Cor da Linha</div>
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {PALETA_DESENHO.map((p) => (
+                            <button key={p.hex} type="button" title={p.nome}
+                              className={`size-4 rounded-full border border-black/10 transition-transform hover:scale-115 ${o.cor === p.hex ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                              style={{ backgroundColor: p.hex }}
+                              onClick={() => editarObjetoSel({ cor: p.hex })} />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Estilo da linha */}
+                      <div>
+                        <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Tipo de Linha</div>
+                        <div className="flex gap-1.5">
+                          {['solido', 'tracejado', 'pontilhado'].map((est) => (
+                            <button key={est} type="button"
+                              className={`px-1.5 py-0.5 rounded border text-[9px] font-bold capitalize ${o.estiloLinha === est || (!o.estiloLinha && est === 'solido') ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
+                              onClick={() => editarObjetoSel({ estiloLinha: est })}>
+                              {est === 'solido' ? 'Sólida' : est === 'tracejado' ? 'Tracejada' : 'Pontilhada'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Espessura da linha */}
+                      <div>
+                        <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Espessura: {(o.espessura ?? 1.5).toFixed(1)}</div>
+                        <div className="flex gap-1.5">
+                          <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.max(0.5, (o.espessura ?? 1.5) - 0.5) })}>-</button>
+                          <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.min(10, (o.espessura ?? 1.5) + 0.5) })}>+</button>
+                        </div>
+                      </div>
+
+                      <div className="border-t my-1" />
+
+                      {/* Preenchimento e Achuras */}
+                      <button className="flex items-center gap-1.5 w-full py-1 text-left font-bold" onClick={() => editarObjetoSel({ preenchido: !o.preenchido })}>
+                        <Brush className="size-3.5 text-primary" /> {o.preenchido ? 'Preenchido (Ligado)' : 'Sem Preenchimento'}
                       </button>
-                    ))}
-                    <button className="flex w-full items-center gap-2 px-2 py-1 text-left rounded hover:bg-accent text-muted-foreground" onClick={() => { editarObjetoSel({ carTema: undefined }); setMenuContexto(null); }}><X className="size-3.5" /> Não é camada CAR</button>
-                  </div>
-                )}
+
+                      {o.preenchido && (
+                        <div className="space-y-2 pl-1.5 border-l border-primary/20 animate-in fade-in duration-200">
+                          {/* Cor do preenchimento */}
+                          <div>
+                            <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Cor de Preenchimento</div>
+                            <div className="grid grid-cols-5 gap-1.5">
+                              {PALETA_DESENHO.map((p) => (
+                                <button key={p.hex} type="button" title={p.nome}
+                                  className={`size-4 rounded-full border border-black/10 transition-transform hover:scale-115 ${o.corPreenchimento === p.hex ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                                  style={{ backgroundColor: p.hex }}
+                                  onClick={() => editarObjetoSel({ corPreenchimento: p.hex })} />
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Tipo de achura */}
+                          <div>
+                            <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Estilo de Achura</div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {[
+                                { chave: 'nenhuma', rotulo: 'Sólido' },
+                                { chave: 'linhas', rotulo: 'Linhas 45°' },
+                                { chave: 'cruzado', rotulo: 'Grade/X' },
+                                { chave: 'pontos', rotulo: 'Pontos' },
+                              ].map((ach) => (
+                                <button key={ach.chave} type="button"
+                                  className={`px-1 py-0.5 rounded border text-[9px] font-bold ${o.achura === ach.chave || (!o.achura && ach.chave === 'nenhuma') ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
+                                  onClick={() => editarObjetoSel({ achura: ach.chave })} >
+                                  {ach.rotulo}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="border-t pt-1">
+                        <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Camada CAR</div>
+                        {CAR_TEMAS.map((t) => (
+                          <button key={t.chave} className="flex w-full items-center gap-2 px-2 py-1 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ carTema: t.chave, preenchido: true, cor: t.cor }); setMenuContexto(null); aviso(`Polígono marcado como ${t.rotulo} (entra no CAR).`); }}>
+                            <span className="size-3 rounded-sm" style={{ background: t.cor }} /> {t.rotulo}
+                          </button>
+                        ))}
+                        <button className="flex w-full items-center gap-2 px-2 py-1 text-left rounded hover:bg-accent text-muted-foreground" onClick={() => { editarObjetoSel({ carTema: undefined }); setMenuContexto(null); }}><X className="size-3.5" /> Não é camada CAR</button>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <button className="flex items-center gap-2 w-full border-t px-2 py-1.5 text-left rounded hover:bg-accent text-destructive" onClick={() => { apagarObjetoSel(); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Apagar</button>
               </div>
             )}
@@ -4177,6 +4327,41 @@ export default function EditorPage() {
           </div>
         </>
       )}
+      {/* Container invisível de padrões SVG para preenchimento de achuras */}
+      <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">
+        <defs>
+          {objetos.map((o) => {
+            if (o.tipo === 'polilinha' && o.preenchido && o.achura && o.achura !== 'nenhuma') {
+              const patId = `pat-${o.id}`;
+              const color = o.corPreenchimento || o.cor || '#2563eb';
+              if (o.achura === 'linhas') {
+                return (
+                  <pattern key={patId} id={patId} width="12" height="12" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                    <line x1="0" y1="0" x2="0" y2="12" stroke={color} strokeWidth="1.5" />
+                  </pattern>
+                );
+              }
+              if (o.achura === 'cruzado') {
+                return (
+                  <pattern key={patId} id={patId} width="12" height="12" patternUnits="userSpaceOnUse">
+                    <line x1="0" y1="12" x2="12" y2="12" stroke={color} strokeWidth="1.2" />
+                    <line x1="0" y1="0" x2="0" y2="12" stroke={color} strokeWidth="1.2" />
+                  </pattern>
+                );
+              }
+              if (o.achura === 'pontos') {
+                return (
+                  <pattern key={patId} id={patId} width="10" height="10" patternUnits="userSpaceOnUse">
+                    <circle cx="5" cy="5" r="2" fill={color} />
+                  </pattern>
+                );
+              }
+            }
+            return null;
+          })}
+        </defs>
+      </svg>
+
       <ModalSpreadsheet
         isOpen={planilhaAberta}
         onClose={() => setPlanilhaAberta(false)}
@@ -4308,7 +4493,13 @@ export default function EditorPage() {
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
       <TermosModal open={termosModalAberto} onAceitar={() => { setTermosOk(true); setTermosModalAberto(false); const a = acaoAposTermos.current; acaoAposTermos.current = null; a?.(); }} />
       <PrimeiroAcessoModal open={!setupOk} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); }} />
-      <MasterPainelModal open={masterAberto} onOpenChange={setMasterAberto} />
+      <MasterPainelModal
+        open={masterAberto}
+        onOpenChange={(o) => {
+          setMasterAberto(o);
+          if (!o) carregarConfigAssinatura().then((c) => setOcultarCobranca(!!c.ocultarCobranca)).catch(() => {});
+        }}
+      />
       <ProjetoInfoModal
         open={infoAberto}
         onOpenChange={setInfoAberto}

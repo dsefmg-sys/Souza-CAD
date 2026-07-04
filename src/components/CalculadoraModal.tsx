@@ -83,13 +83,46 @@ export default function CalculadoraModal({ open, onOpenChange, zona, hemisferio 
       const linha = raw.trim();
       if (!linha) continue;
       const toks = linha.split(sep).filter(Boolean);
-      const nums: number[] = [], resto: string[] = [];
-      for (const t of toks) {
+      const todosNums: { val: number; raw: string; idx: number }[] = [];
+      toks.forEach((t, idx) => {
         const v = parseNum(t);
-        if (nums.length < 2 && Number.isFinite(v) && /\d/.test(t)) nums.push(v);
-        else resto.push(t);
+        if (Number.isFinite(v) && /\d/.test(t)) {
+          todosNums.push({ val: v, raw: t, idx });
+        }
+      });
+
+      let numsValidos = [...todosNums];
+      if (numsValidos.length > 2) {
+        if (loteDir === 'u2g') {
+          numsValidos = numsValidos.filter((n) => Math.abs(n.val) > 10000);
+        } else {
+          numsValidos = numsValidos.filter((n) => Math.abs(n.val) <= 180);
+        }
       }
-      const rotulo = resto.join(' ');
+
+      const nums: number[] = [];
+      const restoIdxs = new Set<number>();
+      if (numsValidos.length >= 2) {
+        const finalCoords = numsValidos.slice(-2);
+        nums.push(finalCoords[0].val, finalCoords[1].val);
+        const coordIdxs = new Set(finalCoords.map(n => n.idx));
+        toks.forEach((_, idx) => {
+          if (!coordIdxs.has(idx)) restoIdxs.add(idx);
+        });
+      } else {
+        if (todosNums.length >= 2) {
+          const finalCoords = todosNums.slice(-2);
+          nums.push(finalCoords[0].val, finalCoords[1].val);
+          const coordIdxs = new Set(finalCoords.map(n => n.idx));
+          toks.forEach((_, idx) => {
+            if (!coordIdxs.has(idx)) restoIdxs.add(idx);
+          });
+        } else {
+          toks.forEach((_, idx) => restoIdxs.add(idx));
+        }
+      }
+
+      const rotulo = toks.filter((_, idx) => restoIdxs.has(idx)).join(' ');
       if (!zOk || nums.length < 2) { out.push({ rotulo, x: '—', y: '—', ok: false }); continue; }
       try {
         if (loteDir === 'u2g') {

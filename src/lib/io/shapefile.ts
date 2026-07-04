@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { utmParaGeo } from '../topo/coords';
 
 // Gera um Shapefile (ESRI) de UM polígono, em coordenadas UTM (SIRGAS2000), empacotado num .zip
 // com os quatro arquivos: .shp (geometria), .shx (índice), .dbf (atributos) e .prj (projeção).
@@ -111,10 +112,16 @@ function wktSirgasUtm(zona: number, hemisferio: 'N' | 'S'): string {
 
 export async function gerarShapefileZip(
   pontosEntrada: PontoUTM[],
-  opts: { zona: number; hemisferio: 'N' | 'S'; nome: string },
+  opts: { zona: number; hemisferio: 'N' | 'S'; nome: string; formato?: 'utm' | 'geo' },
 ): Promise<Blob> {
   // anel do polígono: outer ring precisa ser HORÁRIO no shapefile (área assinada negativa)
   let pts = pontosEntrada.slice();
+  if (opts.formato === 'geo') {
+    pts = pts.map((p) => {
+      const geo = utmParaGeo(p.leste, p.norte, opts.zona, opts.hemisferio);
+      return { leste: geo.lon, norte: geo.lat }; // X é Longitude, Y é Latitude
+    });
+  }
   if (areaAssinada(pts) > 0) pts = pts.reverse();
   // fecha o anel (primeiro == último)
   const primeiro = pts[0], ultimo = pts[pts.length - 1];
@@ -185,7 +192,9 @@ export async function gerarShapefileZip(
   for (let i = 0; i < 50; i++) dbf.setUint8(66 + i, nomeBytes[i] || 0x20);
   dbf.setUint8(headerSize + recordSize, 0x1a); // marcador de fim do arquivo (EOF), exigido pelo formato dBASE
 
-  const prj = wktSirgasUtm(opts.zona, opts.hemisferio);
+  const prj = opts.formato === 'geo'
+    ? 'GEOGCS["SIRGAS 2000",DATUM["Sistema_de_Referencia_Geocentrico_para_las_AmericaS_2000",SPHEROID["GRS 1980",6378137,298.257222101]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]]'
+    : wktSirgasUtm(opts.zona, opts.hemisferio);
 
   const base = (opts.nome || 'parcela').replace(/[^\w.-]+/g, '_');
   const zip = new JSZip();

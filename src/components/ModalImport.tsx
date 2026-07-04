@@ -7,27 +7,44 @@ import { Input } from './ui/input';
 import { Check, Info } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
+import { MUNICIPIOS } from '@/lib/topo/municipios';
+import { zonaPorLongitude } from '@/lib/topo/coords';
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (data: { numGlebas: number; municipio: string; fuso: number }) => void;
 }
 
-const MUNICIPIOS_PADRAO = [
-  { nome: 'Espera Feliz-MG', fuso: 23 },
-  { nome: 'Caiana-MG', fuso: 23 },
-  { nome: 'Caparaó-MG', fuso: 23 },
-  { nome: 'Alto Caparaó-MG', fuso: 23 },
-  { nome: 'Dores do Rio Preto-ES', fuso: 23 },
-  { nome: 'Guaçuí-ES', fuso: 24 },
-  { nome: 'Ibitirama-ES', fuso: 24 },
-  { nome: 'Carangola-MG', fuso: 23 },
-  { nome: 'Divino-MG', fuso: 23 },
-  { nome: 'Tombos-MG', fuso: 23 },
-  { nome: 'Manhumirim-MG', fuso: 23 },
-  { nome: 'Manhuaçu-MG', fuso: 23 },
-  { nome: 'Fervedouro-MG', fuso: 23 },
-];
+function formatarNome(s: string): string {
+  return s.split(' ')
+    .map(word => {
+      if (word.length <= 2 && /^(de|do|da|dos|das|e)$/i.test(word)) return word.toLowerCase();
+      if (word.includes('-')) {
+        const parts = word.split('-');
+        return parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase() + '-' + parts[1].toUpperCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+const MUNICIPIOS_PADRAO = Object.entries(MUNICIPIOS).map(([key, value]) => {
+  return {
+    nome: formatarNome(key),
+    fuso: zonaPorLongitude(value.lon)
+  };
+}).sort((a, b) => {
+  const prioridade = ['espera feliz-mg', 'caiana-mg', 'caparaó-mg', 'alto caparaó-mg'];
+  const nameA = a.nome.toLowerCase();
+  const nameB = b.nome.toLowerCase();
+  const idxA = prioridade.indexOf(nameA);
+  const idxB = prioridade.indexOf(nameB);
+  if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+  if (idxA !== -1) return -1;
+  if (idxB !== -1) return 1;
+  return a.nome.localeCompare(b.nome);
+});
 
 export default function ModalImport({ isOpen, onClose, onConfirm }: Props) {
   const [municipio, setMunicipio] = useState('Espera Feliz-MG');
