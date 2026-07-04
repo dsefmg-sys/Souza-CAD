@@ -247,6 +247,106 @@ function celulaCab(rotulo: string, valor: string): TableCell {
   });
 }
 
+const border = () => ({ style: BorderStyle.SINGLE, size: 4, color: '000000' });
+
+function celulaTabela(texto: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType]; size?: number; width?: number } = {}): TableCell {
+  return new TableCell({
+    width: opts.width ? { size: opts.width, type: WidthType.PERCENTAGE } : undefined,
+    margins: { top: 60, bottom: 60, left: 60, right: 60 },
+    children: [new Paragraph({
+      alignment: opts.align ?? AlignmentType.CENTER,
+      children: [new TextRun({ text: texto || '—', bold: opts.bold, size: opts.size ?? 18 })]
+    })]
+  });
+}
+
+function celulaHeader(texto: string, width: number): TableCell {
+  return new TableCell({
+    width: { size: width, type: WidthType.PERCENTAGE },
+    shading: { fill: "E2E8F0" },
+    margins: { top: 80, bottom: 80, left: 60, right: 60 },
+    children: [new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: texto || '—', bold: true, size: 18 })]
+    })]
+  });
+}
+
+function tabelaRoteiroGeometrico(
+  res: ResultadoCalculo,
+  imovel: ImovelData,
+  confrontantes: Confrontante[],
+  confrontantePorLado: Record<number, string>,
+  zonaUtm?: number
+): Table {
+  const { lados } = res;
+  const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
+  
+  const usarGeodesico = imovel.tipoAzimute !== 'plano';
+  const zona = zonaUtm ?? 23;
+
+  const obterAzimuteEfetivo = (l: typeof lados[0]) => {
+    if (!usarGeodesico) return l.azimute;
+    const v = l.de;
+    if (v.lat != null && v.lon != null) {
+      const cm = convergenciaMeridiana(v.lat, v.lon, zona);
+      return (l.azimute + cm + 360) % 360;
+    }
+    return l.azimute;
+  };
+
+  const rows = [
+    new TableRow({
+      children: [
+        celulaHeader('De', 8),
+        celulaHeader('Para', 8),
+        celulaHeader('Azimute', 12),
+        celulaHeader('Dist. (m)', 12),
+        celulaHeader('Leste (m)', 14),
+        celulaHeader('Norte (m)', 14),
+        celulaHeader('Alt. (m)', 9),
+        celulaHeader('Confrontante / Limite', 23),
+      ]
+    })
+  ];
+
+  lados.forEach((l, idx) => {
+    const azEfetivo = obterAzimuteEfetivo(l);
+    const cid = confrontantePorLado[idx] ?? l.confrontanteId ?? null;
+    const c = cid ? mapaC.get(cid) : undefined;
+    const confNome = c ? nomeConfrontante(c) : 'Não informado';
+    const limite = l.de.tipoLimite || 'LA6';
+
+    rows.push(
+      new TableRow({
+        children: [
+          celulaTabela(l.de.codigoSigef || l.de.nome, { bold: true }),
+          celulaTabela(l.para.codigoSigef || l.para.nome, { bold: true }),
+          celulaTabela(azimuteDMS(azEfetivo)),
+          celulaTabela(numBR(l.distancia)),
+          celulaTabela(numBR(l.de.leste, 3)),
+          celulaTabela(numBR(l.de.norte, 3)),
+          celulaTabela(numBR(l.de.elevacao, 2)),
+          celulaTabela(`${confNome} (${limite})`, { align: AlignmentType.LEFT }),
+        ]
+      })
+    );
+  });
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: border(),
+      bottom: border(),
+      left: border(),
+      right: border(),
+      insideHorizontal: border(),
+      insideVertical: border(),
+    },
+    rows,
+  });
+}
+
 /** Tabela de identificação no topo do memorial (com bordas), como no modelo do dono. */
 function tabelaCabecalho(imovel: ImovelData, areaHa: number, perimetro: number): Table {
   const isUrbano = imovel.tipoImovel === 'urbano';
@@ -256,8 +356,6 @@ function tabelaCabecalho(imovel: ImovelData, areaHa: number, perimetro: number):
   const idMunicipal = isUrbano && imovel.inscricaoMunicipal
     ? ` / Insc.: ${imovel.inscricaoMunicipal}`
     : '';
-
-  const border = () => ({ style: BorderStyle.SINGLE, size: 4, color: '000000' });
 
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -280,10 +378,11 @@ function tabelaCabecalho(imovel: ImovelData, areaHa: number, perimetro: number):
 /** Assinatura de uma pessoa e, se houver, do seu cônjuge logo abaixo. */
 function assinaturaComConjuge(linhas: string[], conjugeNome?: string, conjugeCpf?: string): Paragraph[] {
   const out = assinatura(linhas);
+  const resOut: Paragraph[] = [...out];
   if (conjugeNome && conjugeNome.trim()) {
-    out.push(...assinatura([`Cônjuge: ${conjugeNome}`, `CPF: ${conjugeCpf || '—'}`]));
+    assinatura([`Cônjuge: ${conjugeNome}`, `CPF: ${conjugeCpf || '—'}`]).forEach(p => resOut.push(p));
   }
-  return out;
+  return resOut;
 }
 
 export interface MemorialInput {
@@ -400,6 +499,16 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     if (!c.nome) return;
     blocoAssinaturaConfrontante(c).forEach((x) => children.push(x));
   });
+
+  // Tabela de Roteiro Geométrico (Anexo em página separada)
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 240, after: 180 },
+    pageBreakBefore: true,
+    keepNext: true,
+    children: [new TextRun({ text: 'TABELA DE ROTEIRO GEOMÉTRICO (ANEXO)', bold: true, size: 24 })]
+  }));
+  children.push(tabelaRoteiroGeometrico(res, imovel, confrontantes, confrontantePorLado, zonaUtm));
 
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial' } } } },

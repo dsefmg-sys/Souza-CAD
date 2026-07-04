@@ -545,6 +545,14 @@ export default function EditorPage() {
       else if (k === 'F10') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
       else if (k === 'F11') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
       else if (k === 'F12') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
+      else if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'z') {
+        e.preventDefault();
+        desfazer();
+      }
+      else if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'y') {
+        e.preventDefault();
+        refazer();
+      }
       else if ((k === 'Delete' || k === 'Backspace') && modo === 'multi') {
         e.preventDefault();
         apagarMultiSelecionados();
@@ -563,7 +571,7 @@ export default function EditorPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo, desenhoBuffer, selMulti, vertices, confrontantePorLado]);
+  }, [modo, desenhoBuffer, selMulti, vertices, confrontantePorLado, desfazer, refazer]);
 
   // ao sair do modo "triângulo", esvazia a seleção múltipla
   useEffect(() => { if (modo !== 'multi') setSelMulti((s) => (s.size ? new Set() : s)); }, [modo]);
