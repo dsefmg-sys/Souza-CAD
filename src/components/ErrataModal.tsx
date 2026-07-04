@@ -17,6 +17,7 @@ interface Props {
   tecnico: TecnicoData | null;
   confrontantes: Confrontante[];
   areaHa: number;
+  onBaixar?: () => void;
 }
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -24,7 +25,7 @@ function dataExtensoHoje(d = new Date()): string {
   return `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
-export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confrontantes, areaHa }: Props) {
+export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confrontantes, areaHa, onBaixar }: Props) {
   const [correcoes, setCorrecoes] = useState<CorrecaoErrata[]>([{ onde: '', constava: '', passa: '' }]);
   const [acrescimoRT, setAcrescimoRT] = useState('');
   const [msg, setMsg] = useState('');
@@ -54,6 +55,7 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
     const blob = await gerarErrataDocx({ imovel, tecnico, correcoes: validas, areaHa, acrescimoRT, dataExtenso: dataExtensoHoje() });
     saveAs(blob, `Errata - ${imovel.denominacao || 'imovel'}.docx`);
     setMsg('Errata gerada.');
+    onBaixar?.();
   }
 
   return (

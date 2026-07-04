@@ -4,7 +4,7 @@ import {
 } from 'docx';
 import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex, PessoaQualificada } from '../topo/types';
 import { grausParaDMS, convergenciaMeridiana } from '../topo/coords';
-import { azimuteDMS, numBR, numBRmilhar, formatMatricula } from '../topo/geometry';
+import { azimute, distancia, azimuteDMS, numBR, numBRmilhar, formatMatricula } from '../topo/geometry';
 import { valoresEfetivos } from '../topo/conferencia';
 import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo, sanitizarTexto } from './sanitizar';
@@ -57,7 +57,7 @@ export function rumoDMS(azimuteGraus: number): string {
     quad = 'NW';
     val = 360 - ang;
   }
-  return `${grausParaDMS(val)} ${quad}`;
+  return `${grausParaDMS(val, { casas: 0 })} ${quad}`;
 }
 
 /** Um pedaço do texto da narrativa; b = negrito (vértices, tipo de divisa e confrontantes). */
@@ -88,13 +88,23 @@ export function construirNarrativaSegmentos(
   const zona = zonaUtm ?? 23;
 
   const obterAzimuteEfetivo = (l: typeof lados[0]) => {
-    if (!usarGeodesico) return l.azimute;
+    if (!usarGeodesico) {
+      return azimute({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
+    }
     const v = l.de;
     if (v.lat != null && v.lon != null) {
       const cm = convergenciaMeridiana(v.lat, v.lon, zona);
-      return (l.azimute + cm + 360) % 360;
+      const azPlano = azimute({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
+      return (azPlano + cm + 360) % 360;
     }
     return l.azimute;
+  };
+
+  const obterDistanciaEfetiva = (l: typeof lados[0]) => {
+    if (!usarGeodesico) {
+      return distancia({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
+    }
+    return l.distancia;
   };
 
   if (isUrbano && imovel?.distanciaEsquinaM != null && imovel?.esquinaRua) {
@@ -146,7 +156,7 @@ export function construirNarrativaSegmentos(
       const direcao = isUrbano
         ? `rumo de ${rumoDMS(azEfetivo)} (azimute de ${azimuteDMS(azEfetivo)})`
         : `azimute de ${azimuteDMS(azEfetivo)}`;
-      push(`, com ${direcao} e distância de ${numBR(l.distancia)} m`);
+      push(`, com ${direcao} e distância de ${numBR(obterDistanciaEfetiva(l))} m`);
       emitirDestino(run.ladoIdx[0]);
     } else {
       if (isUrbano) {
@@ -161,7 +171,7 @@ export function construirNarrativaSegmentos(
         const direcao = isUrbano
           ? `${rumoDMS(azEfetivo)} (${azimuteDMS(azEfetivo)})`
           : `${azimuteDMS(azEfetivo)}`;
-        push(`${direcao} e ${numBR(l.distancia)} m`);
+        push(`${direcao} e ${numBR(obterDistanciaEfetiva(l))} m`);
         emitirDestino(i);
       });
     }
@@ -285,13 +295,23 @@ function tabelaRoteiroGeometrico(
   const zona = zonaUtm ?? 23;
 
   const obterAzimuteEfetivo = (l: typeof lados[0]) => {
-    if (!usarGeodesico) return l.azimute;
+    if (!usarGeodesico) {
+      return azimute({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
+    }
     const v = l.de;
     if (v.lat != null && v.lon != null) {
       const cm = convergenciaMeridiana(v.lat, v.lon, zona);
-      return (l.azimute + cm + 360) % 360;
+      const azPlano = azimute({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
+      return (azPlano + cm + 360) % 360;
     }
     return l.azimute;
+  };
+
+  const obterDistanciaEfetiva = (l: typeof lados[0]) => {
+    if (!usarGeodesico) {
+      return distancia({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
+    }
+    return l.distancia;
   };
 
   const rows = [
@@ -311,6 +331,7 @@ function tabelaRoteiroGeometrico(
 
   lados.forEach((l, idx) => {
     const azEfetivo = obterAzimuteEfetivo(l);
+    const distEfetiva = obterDistanciaEfetiva(l);
     const cid = confrontantePorLado[idx] ?? l.confrontanteId ?? null;
     const c = cid ? mapaC.get(cid) : undefined;
     const confNome = c ? nomeConfrontante(c) : 'Não informado';
@@ -322,7 +343,7 @@ function tabelaRoteiroGeometrico(
           celulaTabela(l.de.codigoSigef || l.de.nome, 8, { bold: true }),
           celulaTabela(l.para.codigoSigef || l.para.nome, 8, { bold: true }),
           celulaTabela(azimuteDMS(azEfetivo), 12),
-          celulaTabela(numBR(l.distancia), 12),
+          celulaTabela(numBR(distEfetiva), 12),
           celulaTabela(numBR(l.de.leste, 3), 14),
           celulaTabela(numBR(l.de.norte, 3), 14),
           celulaTabela(numBR(l.de.elevacao, 2), 9),

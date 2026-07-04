@@ -103,3 +103,26 @@ describe('geradores recusam vértice sem código', () => {
     expect(probs.some((p) => p.nivel === 'erro' && /sem código/.test(p.msg))).toBe(true);
   });
 });
+
+describe('validação de precisão de sigmas', () => {
+  it('detecta sigma horizontal alto para limite artificial', () => {
+    const vs = montar().map((v, i) => (i === 0 ? { ...v, sigmaX: 0.15, sigmaY: 0.05, tipoLimite: 'LA1' } : v));
+    const res = calcular(vs);
+    const probs = conferir(vs, res, imovelBase);
+    expect(probs.some((p) => p.campo === 'precisão' && /limite Artificial/.test(p.msg))).toBe(true);
+  });
+
+  it('não alerta se sigma horizontal estiver no limite para limite natural', () => {
+    const vs = montar().map((v, i) => (i === 0 ? { ...v, sigmaX: 1.5, sigmaY: 1.2, tipoLimite: 'LN1' } : v));
+    const res = calcular(vs);
+    const probs = conferir(vs, res, imovelBase);
+    expect(probs.some((p) => p.campo === 'precisão')).toBe(false);
+  });
+
+  it('detecta sigma vertical alto para limite artificial', () => {
+    const vs = montar().map((v, i) => (i === 0 ? { ...v, sigmaZ: 0.45, tipoLimite: 'LA2' } : v));
+    const res = calcular(vs);
+    const probs = conferir(vs, res, imovelBase);
+    expect(probs.some((p) => p.campo === 'precisão Z' && /precisão vertical/.test(p.msg))).toBe(true);
+  });
+});

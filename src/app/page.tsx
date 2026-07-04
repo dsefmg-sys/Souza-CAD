@@ -26,6 +26,8 @@ import CarModal from '@/components/CarModal';
 import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
 import ConsultarModal from '@/components/ConsultarModal';
+import { Packer } from 'docx';
+import { gerarAnuenciaDocumento } from '@/lib/export/anuencia';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
 import GestaoProjetoModal from '@/components/GestaoProjetoModal';
 import TutorialModal from '@/components/TutorialModal';
@@ -38,14 +40,14 @@ import EstudioModal from '@/components/EstudioModal';
 import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota, novoSimbolo, areaPoligonoObjeto, CAR_TEMAS } from '@/lib/topo/objetos';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
 import { montarVertices, reordenar, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
-import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, dividirPorAreaAlvo } from '@/lib/topo/glebas';
+import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, dividirPorAreaAlvo, mapearAtributosGlebaDividida } from '@/lib/topo/glebas';
 import { calcular } from '@/lib/topo/calcular';
 import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo, convergenciaMeridiana } from '@/lib/topo/coords';
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
@@ -124,6 +126,7 @@ const COR_VIZINHO = 'bg-teal-500/10 text-teal-700 dark:text-teal-300 hover:bg-te
 const COR_DADOS = 'bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20 border-violet-500/30'; // cadastro e IA
 const COR_MARCAR = 'bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 border-amber-500/30';    // marcar no mapa
 const COR_PECA = 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border-emerald-500/30'; // peças de saída
+const PREM_BTN = 'shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 font-semibold border-input';
 
 type EtapaEstado = 'feito' | 'andamento' | 'pendente';
 // Acende o ÍCONE do botão do fluxo: verde = etapa feita, azul = em andamento, neutro = pendente.
@@ -215,7 +218,7 @@ export default function EditorPage() {
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
-  const [toolW, setToolW] = useState(300); // largura confortável pra não espremer os rótulos dos botões
+  const [toolW, setToolW] = useState(340); // largura confortável pra não espremer os rótulos dos botões
   const toolDrag = useRef(false);
   const [centralizarSig, setCentralizarSig] = useState(0); // incrementa para enquadrar o desenho
   // largura do painel da direita (redimensionável, salva por usuário)
@@ -261,10 +264,10 @@ export default function EditorPage() {
   const [estudioAberto, setEstudioAberto] = useState(false);
   const [confEditId, setConfEditId] = useState<string | null>(null);
 
-  const [plantaDark, setPlantaDark] = useState(false); // modo escuro só da folha A3 (conforto noturno)
+  const [plantaDark, setPlantaDark] = useState(true); // modo escuro só da folha A3 (conforto noturno)
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
-  const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean }>({});
+  const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean; errata?: boolean }>({});
   const [salvoOk, setSalvoOk] = useState(false);
   const [salvoNuvem, setSalvoNuvem] = useState(false); // verde só quando gravou no banco (nuvem); amarelo se só local
   const [salvarLaranja, setSalvarLaranja] = useState(false); // disquete laranja: há mudança não salva há >1s
@@ -301,6 +304,7 @@ export default function EditorPage() {
   const geojsonRef = useRef<HTMLInputElement>(null);
   const vizinhosRef = useRef<HTMLInputElement>(null);
   const verticesVizinhoRef = useRef<HTMLInputElement>(null);
+  const jsonBackupRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTecnico(carregarTecnico());
@@ -1417,6 +1421,13 @@ export default function EditorPage() {
     setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, ...patch } : v)));
   }
 
+  function editarVariosVertices(patch: Partial<Vertex>) {
+    snap();
+    const ids = selMulti.size > 0 ? Array.from(selMulti) : vertices.map(v => v.id);
+    setVertices((vs) => vs.map((v) => (ids.includes(v.id) ? { ...v, ...patch } : v)));
+    aviso(`Atributos aplicados a ${ids.length} vértice(s).`);
+  }
+
   // Pintar divisa: aplica o tipo de divisa aos segmentos do perímetro.
   // Suporta processo de 2 cliques: seleciona o primeiro vértice e depois o final para pintar todos os segmentos no caminho.
   function pintarDivisa(id: string) {
@@ -1893,6 +1904,39 @@ export default function EditorPage() {
     }
   }
 
+  function obterEscalaEfetiva(): number {
+    if (plantaConfig.escalaManual && plantaConfig.escalaManual > 0) {
+      return plantaConfig.escalaManual;
+    }
+    if (vertices.length < 3) return 1000;
+
+    const outras = glebas.filter((g) => g.id !== glebaAtivaId);
+    const outrasPts = outras.flatMap((g) => g.vertices ?? []);
+    const xs = [...vertices.map((v) => v.leste), ...outrasPts.map((p) => p.leste)];
+    const ys = [...vertices.map((v) => v.norte), ...outrasPts.map((p) => p.norte)];
+    let minX = Math.min(...xs), maxX = Math.max(...xs);
+    let minY = Math.min(...ys), maxY = Math.max(...ys);
+
+    const padX = (maxX - minX) * 0.15 || 10;
+    const padY = (maxY - minY) * 0.15 || 10;
+    minX -= padX; maxX += padX; minY -= padY; maxY += padY;
+
+    const areaW = 1091 - 95; // 996
+    const areaH = 887 - 26; // 861
+    const escalaFit = Math.min(areaW / (maxX - minX), areaH / (maxY - minY));
+    const denomNatural = 1 / (escalaFit * 0.0002645);
+
+    const TABELA = [250, 500, 750, 1000, 1500, 2000, 2500, 4000, 5000, 7500, 10000, 15000, 20000, 25000, 50000, 100000];
+    return TABELA.find((d) => d >= denomNatural) ?? Math.ceil(denomNatural / 10000) * 10000;
+  }
+
+  function alterarEscala(delta: number) {
+    const atual = obterEscalaEfetiva();
+    const arredondado = Math.round(atual / 250) * 250;
+    const nova = Math.max(250, arredondado + delta);
+    setPlantaConfig((c) => ({ ...c, escalaManual: nova }));
+  }
+
   async function exportarDxf() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     const vs = await comCodigos();
@@ -2245,6 +2289,83 @@ export default function EditorPage() {
     atualizarLista();
   }
 
+  function exportarProjetoAtualJson() {
+    try {
+      const proj: Projeto = {
+        id: projetoId ?? novoId(),
+        nome: nomeProjeto || imovel.denominacao || 'Projeto Sem Nome',
+        criadoEm: Date.now(),
+        atualizadoEm: Date.now(),
+        imovel,
+        glebas: sincronizarGlebas(),
+        zonaUtm: zona,
+        hemisferio,
+        requerente,
+        transmitente,
+        plantaConfig
+      };
+      const data = JSON.stringify(proj, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      saveAs(blob, `Projeto - ${proj.nome}.json`);
+      aviso('Backup do projeto exportado como arquivo JSON.');
+    } catch {
+      aviso('Erro ao exportar backup do projeto.');
+    }
+  }
+
+  function importarProjetoJson(file: File) {
+    setProcessando(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result as string;
+        const rawProj = JSON.parse(text) as Projeto;
+        if (!rawProj || (!Array.isArray(rawProj.glebas) && !Array.isArray(rawProj.vertices))) {
+          throw new Error('Arquivo de projeto inválido ou corrompido.');
+        }
+        
+        const proj = migrarProjeto(rawProj);
+        
+        setProjetoId(proj.id);
+        setNomeProjeto(proj.nome);
+        setNomeProjetoManual(true);
+        if (proj.imovel) setImovel(proj.imovel);
+        if (typeof proj.zonaUtm === 'number') setZona(proj.zonaUtm);
+        if (proj.hemisferio) setHemisferio(proj.hemisferio);
+        setRequerente(proj.requerente);
+        setTransmitente(proj.transmitente);
+        setPlantaConfig(proj.plantaConfig ?? {});
+        setGlebas(proj.glebas);
+        carregarGleba(proj.glebas[0]);
+        setSituacaoUrl(proj.plantaConfig?.situacaoDataUrl);
+        if (proj.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(JSON.stringify(proj.glebas[0].vertices));
+        const pc = proj.parcelasCert ?? [];
+        setParcelasCert(pc);
+        setReferencias(referenciasDeParcelasCert(pc, proj.zonaUtm, proj.hemisferio));
+        acabouDeSalvar.current = true;
+        setSalvarLaranja(false);
+        setSalvoOk(true);
+        
+        const salvarBanco = window.confirm(`Deseja salvar o projeto importado "${proj.nome}" no seu banco de dados para acessá-lo facilmente no futuro?`);
+        if (salvarBanco) {
+          await salvarProjeto(proj);
+          atualizarLista();
+        }
+        
+        aviso(`Projeto "${proj.nome}" importado com sucesso!`);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Erro ao importar projeto.');
+      } finally {
+        setProcessando(false);
+      }
+    };
+    reader.onerror = () => {
+      aviso('Erro ao ler o arquivo de projeto.');
+      setProcessando(false);
+    };
+    reader.readAsText(file);
+  }
+
   useEffect(() => { if (aba === 'projetos') atualizarLista(); }, [aba]);
 
   const lados = res?.lados ?? [];
@@ -2271,6 +2392,7 @@ export default function EditorPage() {
       ods: baixou.ods ? 'feito' : 'pendente',
       planta: baixou.planta ? 'feito' : 'pendente',
       req: baixou.req ? 'feito' : 'pendente',
+      errata: baixou.errata ? 'feito' : 'pendente',
       salvo: salvoOk ? 'feito' : 'pendente',
     };
   }, [vertices, imovel, confrontantePorLado, sigefStatus, baixou, salvoOk]);
@@ -2320,7 +2442,7 @@ export default function EditorPage() {
       {/* Topo */}
       {/* Cabeçalho = FLUXO DO TRABALHO (esquerda → direita) + conta fixa à direita */}
       <header className="no-print flex items-stretch border-b">
-       <div className="flex flex-1 items-start gap-1.5 overflow-x-auto px-3 py-2">
+        <div className="flex flex-1 items-start gap-1 overflow-x-auto px-2 py-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
         <input ref={fileRef} type="file" accept=".txt,.csv" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
@@ -2331,43 +2453,50 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
         <input ref={verticesVizinhoRef} type="file" accept=".txt,.csv,text/plain" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVerticesVizinho(f); e.currentTarget.value = ''; }} />
+        <input ref={jsonBackupRef} type="file" accept=".json" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarProjetoJson(f); e.currentTarget.value = ''; }} />
 
         {/* 1) Importar e checar vizinhos */}
-        <Etapa st={etapas.txt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
+        {/* 1) Importar e checar vizinhos */}
+        <Etapa st={etapas.txt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
         <Etapa st={etapas.sigef}>{parcelasCert.length > 0 ? (
-          <Button size="sm" variant="outline" className={`shrink-0 ${COR_VIZINHO}`} title="Vizinhos certificados já baixados — ver relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}>{iconeCab('analise', <ShieldCheck className="size-4" />)} ANÁLISE</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} title="Vizinhos certificados já baixados — ver relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}>{iconeCab('analise', <ShieldCheck className="size-4" />)} ANÁLISE</Button>
         ) : (
-          <Button size="sm" variant="outline" className={`shrink-0 ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Search /> SIGEF</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Search /> SIGEF</Button>
         )}</Etapa>
         {parcelasCert.length > 0 && (
-          <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Casar automaticamente seus vértices com os certificados do INCRA: nos pontos de divisa comum (até 0,5 m), adota a coordenada oficial exata" onClick={casarVerticesCertificados}><Magnet className="size-4" /> CASAR</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Casar automaticamente seus vértices com os certificados do INCRA: nos pontos de divisa comum (até 0,5 m), adota a coordenada oficial exata" onClick={casarVerticesCertificados}><Magnet className="size-4" /> CASAR</Button>
         )}
-        <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Importar um ARQUIVO de coordenadas de um imóvel vizinho já certificado (que você baixou do Acervo Fundiário do INCRA) e adotar os vértices dele. As colunas do arquivo se ajustam em Configurações. Se você já usou SIGEF + CASAR, normalmente NÃO precisa deste." onClick={() => verticesVizinhoRef.current?.click()}><UserCheck className="size-4" /> VÉRTICES VIZINHO</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Importar um ARQUIVO de coordenadas de um imóvel vizinho já certificado (que você baixou do Acervo Fundiário do INCRA) e adotar os vértices dele. As colunas do arquivo se ajustam em Configurações. Se você já usou SIGEF + CASAR, normalmente NÃO precisa deste." onClick={() => verticesVizinhoRef.current?.click()}><UserCheck className="size-4" /> VIZINHOS</Button>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 2) Dados do projeto atual */}
-        <Etapa st={etapas.dados}><Link className="shrink-0" href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'}><Button size="sm" variant="outline" className={COR_DADOS} title="Cadastrar/gerenciar dados: proprietário, confrontantes, imóvel, cartório">{iconeCab('dados', <BookUser />)} DADOS</Button></Link></Etapa>
-        <Button size="sm" variant="outline" className={`shrink-0 px-2 ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /></Button>
-        <Button size="sm" variant="outline" className={`shrink-0 px-2 ${COR_DADOS}`} title="Extrair dados do imóvel com IA a partir de um texto colado (matrícula, escritura…)" onClick={() => setIaAberta(true)}><Sparkles className="size-4" /></Button>
+        <Etapa st={etapas.dados}>
+          <Button size="sm" variant={painelAberto && aba === 'imovel' ? 'default' : 'outline'} className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
+            <BookUser className="size-4" /> DADOS
+          </Button>
+        </Etapa>
+        <Button size="sm" variant="outline" className={`shrink-0 px-2 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /></Button>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
-        <Etapa st={etapas.confro}><Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'confrontante' ? '' : COR_MARCAR}`} title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> CONFRO</Button></Etapa>
-        <Etapa st={etapas.divisas}><Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'divisa' ? '' : COR_MARCAR}`} title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> DIVISAS</Button></Etapa>
+        <Etapa st={etapas.confro}><Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'confrontante' ? '' : `${PREM_BTN} ${COR_MARCAR}`}`} title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> CONFRO</Button></Etapa>
+        <Etapa st={etapas.divisas}><Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'divisa' ? '' : `${PREM_BTN} ${COR_MARCAR}`}`} title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> DIVISAS</Button></Etapa>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 5) Peças */}
-        <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}>{iconeCab('trt', <FileText />)} TRT</Button></Etapa>
-        <Etapa st={etapas.memorial}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEM</Button></Etapa>
-        <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
-        <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
-        <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
-        <Button size="sm" variant="outline" className={`shrink-0 font-semibold ${COR_PECA}`} disabled={processando} title="Pacote de entrega num clique: memorial, planilha SIGEF, requerimento e planta juntos, num .zip" onClick={baixarPacoteEntrega}><Package /> PACOTE</Button>
+        <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}>{iconeCab('trt', <FileText />)} TRT</Button></Etapa>
+        <Etapa st={etapas.memorial}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={exportarMemorial}><Download /> MEM</Button></Etapa>
+        <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
+        <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
+        <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
+        <Etapa st={etapas.errata}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button></Etapa>
+        <Button size="sm" variant="outline" className={`shrink-0 font-semibold ${PREM_BTN} ${COR_PECA}`} disabled={processando} title="Pacote de entrega num clique: memorial, planilha SIGEF, requerimento, errata e planta juntos, num .zip" onClick={baixarPacoteEntrega}><Package /> PACOTE</Button>
         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
-          <Button size="sm" variant="outline" className={`shrink-0 ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
         </a>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
-        <Button size="sm" variant="outline" className="shrink-0 gap-1 border-green-600/40 bg-green-500/10 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400" title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf className="size-4" /> CAR</Button>
+        <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} border-green-600/40 bg-green-500/10 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf className="size-4" /> CAR</Button>
        </div>
        {/* (o botão "Dados do Projeto" foi para a barra flutuante, ao lado do DETALHES) */}
       </header>
@@ -2425,7 +2554,7 @@ export default function EditorPage() {
           const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t.toUpperCase()}</span> : null);
           return (
             <>
-              <aside style={{ width: toolW }} className="no-print scroll-fino flex shrink-0 flex-col gap-1 overflow-y-auto border-r bg-background p-1.5">
+              <aside style={{ width: toolW }} className="no-print scroll-fino flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r bg-background p-1 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
                 {/* DADOS E AÇÕES DO PROJETO (Mesclados da barra flutuante) */}
                 {rotulo ? (
                   <div className="flex flex-col gap-1.5 mb-1 text-xs">
@@ -2470,43 +2599,31 @@ export default function EditorPage() {
 
                     {/* Botões Principais de Gestão do Projeto */}
                     <div className="flex flex-col gap-0.5 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                      <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold h-9' : 'h-9'} onClick={salvar} disabled={processando} title="Salvar o projeto (Ctrl+S)">
+                      <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold h-8' : 'h-8'} onClick={salvar} disabled={processando} title="Salvar o projeto (Ctrl+S)">
                         <Save className="size-4" /> {L('Salvar')}
                       </Button>
-                      <div className="grid grid-cols-2 gap-1">
-                        <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
-                          <Plus className="size-3.5" /> {L('Novo')}
+                      <div className="grid grid-cols-3 gap-1">
+                        <Button size="sm" variant="outline" className="justify-start gap-1 px-1" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
+                          <Plus className="size-3.5 shrink-0" /> {L('Novo')}
                         </Button>
-                        <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={`justify-start gap-1.5 px-2 ${infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'}`} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
-                          <FileText className="size-3.5" /> {L('Detalhes')}
+                        <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={`justify-start gap-1 px-1 ${infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'}`} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
+                          <FileText className="size-3.5 shrink-0" /> {L('Detalhes')}
                         </Button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1">
-                        <Button size="sm" variant={painelAberto ? 'default' : 'outline'} className="justify-start gap-1.5 px-2" onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
-                          <Settings className="size-3.5" /> {L('Dados')}
-                        </Button>
-                        <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
-                          <Target className="size-3.5" /> {L('Foco')}
+                        <Button size="sm" variant={painelAberto ? 'default' : 'outline'} className="justify-start gap-1 px-1" onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
+                          <Settings className="size-3.5 shrink-0" /> {L('Dados')}
                         </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-1">
-                        <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
-                          <Info className="size-3.5" /> {L('Gestão')}
+                      <div className="grid grid-cols-3 gap-1">
+                        <Button size="sm" variant="outline" className="justify-start gap-1 px-1" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
+                          <Target className="size-3.5 shrink-0" /> {L('Foco')}
                         </Button>
-                        <Button size="sm" variant="outline" className="justify-start gap-1.5 px-2" onClick={() => setPontosAberto(true)} title="Banco de pontos">
-                          <Database className="size-3.5" /> {L('Pontos')}
+                        <Button size="sm" variant="outline" className="justify-start gap-1 px-1" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
+                          <Info className="size-3.5 shrink-0" /> {L('Gestão')}
+                        </Button>
+                        <Button size="sm" variant="outline" className="justify-start gap-1 px-1" onClick={() => setPontosAberto(true)} title="Banco de pontos">
+                          <Database className="size-3.5 shrink-0" /> {L('Pontos')}
                         </Button>
                       </div>
-                      {vista === 'planta' && (
-                        <div className="grid grid-cols-2 gap-1 mt-0.5">
-                          <Button size="sm" variant={folhaTravada ? 'outline' : 'default'} className={`justify-start gap-1.5 px-2 ${folhaTravada ? '' : 'bg-amber-500 hover:bg-amber-600 text-white'}`} onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} title="Fixar/liberar prancha">
-                            {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />} {L('Folha')}
-                          </Button>
-                          <Button size="sm" variant={plantaDark ? 'default' : 'outline'} className="justify-start gap-1.5 px-2" onClick={() => setPlantaDark((v) => !v)} title="Tema claro/escuro">
-                            {plantaDark ? <Sun className="size-3.5 text-amber-300" /> : <Moon className="size-3.5" />} {L('Tema')}
-                          </Button>
-                        </div>
-                      )}
                     </div>
                     {glebas.length > 1 && (
                       <div className="flex flex-wrap gap-1 items-center justify-between border-t pt-1.5 mt-0.5">
@@ -2530,25 +2647,18 @@ export default function EditorPage() {
                     <Button size="sm" variant="outline" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Foco"><Target className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={() => setGestaoAberta(true)} title="Gestão financeira"><Info className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={() => setPontosAberto(true)} title="Banco de pontos"><Database className="size-4" /></Button>
-                    {vista === 'planta' && (
-                      <>
-                        <Button size="sm" variant={folhaTravada ? 'outline' : 'default'} className={folhaTravada ? '' : 'bg-amber-500 text-white'} onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} title="Mover folha">{folhaTravada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}</Button>
-                        <Button size="sm" variant={plantaDark ? 'default' : 'outline'} onClick={() => setPlantaDark((v) => !v)} title="Alternar tema">{plantaDark ? <Sun className="size-4 text-amber-300" /> : <Moon className="size-4" />}</Button>
-                      </>
-                    )}
-                    <div className="h-px bg-border my-1" />
+                     <div className="h-px bg-border my-1" />
                   </div>
                 )}
 
                 {/* SISTEMA (topo): ações úteis com nome + ícones de alternância */}
                 {vista === 'mapa' && (
                   <>
-                    <div className="flex flex-col gap-0.5 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
+                    <div className="flex flex-col gap-0.5 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
                       <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                      <Button size="sm" variant="ghost" title="Abrir a prévia da planta (F1)" onClick={() => setVista('planta')}><Eye /> <span className="truncate text-xs font-semibold">PLANTA</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
                       <Button size="sm" variant={modo === 'navegar' ? 'default' : 'ghost'} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER</span><span className="ml-auto text-[9px] font-bold text-amber-400">F2</span></Button>
                     </div>
-                    <div className="flex flex-wrap gap-1 [&_button]:h-9 [&_button]:justify-center [&_button]:gap-0.5 [&_button]:px-1.5">
+                    <div className="flex flex-wrap gap-1 [&_button]:h-8 [&_button]:justify-center [&_button]:gap-0.5 [&_button]:px-1.5">
                       <Button size="sm" variant={snapAtivo ? 'default' : 'ghost'} title="Imã: encaixar em vértices (F3)" onClick={() => setSnapAtivo((s) => !s)}><Magnet /><span className="text-[9px] font-bold text-amber-400">F3</span></Button>
                       <Button size="sm" variant="ghost" title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes (F4)`} onClick={() => setMostrarRotulos((m) => !m)}>{mostrarRotulos ? <EyeOff /> : <Eye />}<span className="text-[9px] font-bold text-amber-400">F4</span></Button>
                       <Button size="sm" variant="ghost" className={bloqueado ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>{bloqueado ? <Lock /> : <LockOpen />}<span className={`text-[9px] font-bold ${bloqueado ? 'text-amber-400' : 'text-white'}`}>F5</span></Button>
@@ -2558,8 +2668,8 @@ export default function EditorPage() {
 
                 {/* CONTROLES DA PLANTA (na visão da planta) — deixa a folha limpa */}
                 {vista === 'planta' && (
-                  <div className="flex flex-col gap-1 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
-                    <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-9 w-full justify-start gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
+                  <div className="flex flex-col gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:gap-2">
+                    <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-8 w-full justify-start gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}><MousePointer2 /> <span className="truncate text-xs font-semibold">MOVER / EDITAR</span><span className="ml-auto text-[9px] font-bold text-amber-400">F1</span></Button>
                     <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
                   </div>
                 )}
@@ -2570,33 +2680,34 @@ export default function EditorPage() {
                     <div className="my-0.5 h-px w-full bg-border" />
                     {rotulo ? (
                       <div className="flex flex-col gap-1">
-                        <div className="grid grid-cols-2 gap-1 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start [&>button]:px-2 [&>button]:gap-1.5 [&_svg]:size-3.5">
+                        <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start [&>button]:px-1.5 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0">
                           <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)">
-                            <PenTool /> <span className="truncate text-[11px] font-semibold">Linha</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F6</span>
+                            <PenTool /> <span className="truncate text-[11px] font-semibold">Linha</span>
                           </Button>
                           <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
-                            <PenTool /> <span className="truncate text-[11px] font-semibold">Polilinha</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F7</span>
+                            <PenTool /> <span className="truncate text-[11px] font-semibold">Polilinha</span>
                           </Button>
                           <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (F8)">
-                            <PenTool className="opacity-70" /> <span className="truncate text-[11px] font-semibold">Tracejado</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F8</span>
+                            <PenTool className="opacity-70" /> <span className="truncate text-[11px] font-semibold">Tracejado</span>
                           </Button>
                           <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos para medir (F10)">
-                            <RotateCcw className="rotate-90" /> <span className="truncate text-[11px] font-semibold">Cota</span> <span className="ml-auto text-[8px] font-bold text-amber-400/70">F10</span>
+                            <RotateCcw className="rotate-90" /> <span className="truncate text-[11px] font-semibold">Cota</span>
                           </Button>
                           <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)">
-                            <FileText /> <span className="truncate text-[11px] font-semibold">Texto</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F9</span>
+                            <FileText /> <span className="truncate text-[11px] font-semibold">Texto</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Símbolos: inserir poste, árvore...">
+                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
                             <svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} />
                             <span className="truncate text-[11px] font-semibold">Símbolos</span>
                           </Button>
-                          {elementosAberto && (
-                            <div className="col-span-2 grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
+                          {modo === 'simbolo' && (
+                            <div className="col-span-3 grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
                               {SIMBOLOS.map((s) => (
                                 <button key={s.chave} type="button" title={s.rotulo}
-                                  className={`flex items-center justify-center rounded p-1 hover:bg-background ${modo === 'simbolo' && simboloSel === s.chave ? 'bg-background ring-1 ring-primary' : ''}`}
-                                  onClick={() => { setSimboloSel(s.chave); setModo('simbolo'); setElementosAberto(false); }}>
-                                  <svg viewBox="-14 -14 28 28" className="size-6" dangerouslySetInnerHTML={{ __html: simboloSvgInterno(s.chave) }} />
+                                  className={`flex flex-col items-center justify-center rounded p-1 hover:bg-background transition-all ${simboloSel === s.chave ? 'bg-background ring-1 ring-primary' : ''}`}
+                                  onClick={() => setSimboloSel(s.chave)}>
+                                  <svg viewBox="-14 -14 28 28" className="size-5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno(s.chave) }} />
+                                  <span className="text-[8px] font-semibold leading-none mt-0.5">{s.rotulo}</span>
                                 </button>
                               ))}
                             </div>
@@ -2608,13 +2719,13 @@ export default function EditorPage() {
                             <Trash2 /> <span className="truncate text-[11px] font-semibold">Apagar Vtx</span>
                           </Button>
                           <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
-                            <EyeOff /> <span className="truncate text-[11px] font-semibold">Ignorar</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F12</span>
+                            <EyeOff /> <span className="truncate text-[11px] font-semibold">Ignorar</span>
                           </Button>
                           <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'considerar' ? 'navegar' : 'considerar'); }} title="Considerar vértice (F11)">
-                            <Plus /> <span className="truncate text-[11px] font-semibold">Considerar</span> <span className="ml-auto text-[8px] font-bold text-amber-500/70">F11</span>
+                            <Plus /> <span className="truncate text-[11px] font-semibold">Considerar</span>
                           </Button>
                           <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => { setModo('medir'); setDesenhoBuffer([]); }} title="Régua: medir distância e azimute no mapa">
-                            <Ruler /> <span className="truncate text-[11px] font-semibold">Medir / Régua</span>
+                            <Ruler /> <span className="truncate text-[11px] font-semibold">Medir</span>
                           </Button>
                           <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo(modo === 'multi' ? 'navegar' : 'multi'); }} title="Selecionar vários vértices">
                             <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden>
@@ -2625,28 +2736,28 @@ export default function EditorPage() {
                             <span className="truncate text-[11px] font-semibold">Sel. Vários</span>
                           </Button>
                           {modo === 'multi' && (
-                            <div className="col-span-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-600 dark:text-amber-400">
+                            <div className="col-span-3 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-600 dark:text-amber-400">
                               {selMulti.size > 0
                                 ? <button className="w-full text-left font-semibold" onClick={apagarMultiSelecionados}>Apagar {selMulti.size} selecionado(s) — Delete</button>
                                 : 'Clique nos vértices ou arraste uma caixa para selecioná-los.'}
                             </div>
                           )}
-                          {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="col-span-2 px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
+                          {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="col-span-3 px-1 text-[10px] text-muted-foreground">Nenhum vértice ignorado.</span>}
                           {objSel?.tipo === 'texto' && (
-                            <div className="col-span-2 grid grid-cols-3 gap-1 mt-1">
-                              <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold font-mono">A-</span></Button>
+                            <div className="col-span-3 grid grid-cols-3 gap-1 mt-1">
+                              <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir text"><span className="font-bold font-mono">A-</span></Button>
                               <Button size="sm" variant="ghost" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold font-mono">A+</span></Button>
                               <Button size="sm" variant="ghost" onClick={() => { const t = window.prompt('Texto:', objSel.texto ?? ''); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5" /></Button>
                             </div>
                           )}
                           {objSel?.tipo === 'polilinha' && (
-                            <div className="col-span-2 flex flex-col gap-1 mt-1">
+                            <div className="col-span-3 flex flex-col gap-1 mt-1">
                               <Button size="sm" variant="secondary" className="gap-1.5 w-full justify-start text-[11px]" onClick={converterPolilinhaEmPerimetro} title="Usar como perímetro"><RotateCcw className="size-3.5 text-emerald-500" /> Usar como perímetro</Button>
                               <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} className="w-full justify-start gap-2 text-[11px]" onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher"><Brush className="size-3.5" /> Preencher</Button>
                             </div>
                           )}
                           {objetoSelId && (
-                            <Button size="sm" variant="ghost" className="col-span-2 w-full justify-start text-red-500 hover:text-red-600 text-[11px] gap-2" onClick={apagarObjetoSel} title="Apagar objeto selecionado">
+                            <Button size="sm" variant="ghost" className="col-span-3 w-full justify-start text-red-500 hover:text-red-600 text-[11px] gap-2" onClick={apagarObjetoSel} title="Apagar objeto selecionado">
                               <Trash2 className="size-3.5 text-destructive" /> Apagar objeto
                             </Button>
                           )}
@@ -2706,42 +2817,115 @@ export default function EditorPage() {
 
                 {/* RODAPÉ FIXO: ajuste de texto + sistema (calculadora, tema, config, sair) */}
                 <div className="mt-auto flex flex-col gap-1 border-t pt-1.5">
-                  {/* Errata: botão próprio de largura cheia (mesmo padrão do "capturar situação"), logo abaixo dele */}
-                  <Button size="sm" variant="outline" className="w-full justify-start gap-2 text-amber-500 border-amber-500/40 hover:bg-amber-500 hover:text-black dark:text-amber-400 dark:hover:bg-amber-400 dark:hover:text-black" title="Errata: gerar correção formal ao cartório (uso raro)" onClick={() => setErrataAberto(true)}><FileWarning className="size-4" /> {L('Errata')}</Button>
                   {/* Tamanho dos textos: no mapa mexe nos nomes dos vértices; na planta, 4 escopos separados */}
                   {vista === 'mapa' ? (
-                    <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1" title="Tamanho dos nomes dos vértices no mapa">
-                      <span className="mr-auto pl-1 text-[10px] font-medium text-muted-foreground">Nomes</span>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-[10px] font-bold">A-</span></Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-[10px] font-bold">A+</span></Button>
+                    <div className="flex flex-col gap-0.5 mt-1 pt-1 border-t" title="Tamanho dos nomes dos vértices no mapa">
+                      <span className="text-[10px] font-bold uppercase text-foreground px-1 mb-1 block">Ajuste de Tamanhos</span>
+                      <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1 py-0.5">
+                        <span className="mr-auto pl-1 text-[10px] font-bold text-foreground">Vértices</span>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-[10px]">A-</span></Button>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-[10px]">A+</span></Button>
+                      </div>
+                      <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1 py-0.5 mt-1" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
+                        <span className="mr-auto pl-1 text-[10px] font-bold text-foreground">Interface</span>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}><span className="text-[10px] font-bold">A-</span></Button>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}><span className="text-[10px] font-bold">A+</span></Button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-0.5" title="Tamanho dos textos da planta, por escopo">
-                      {([
-                        { rot: 'Tudo', campo: 'escalaTextos', base: 1.5 },
-                        { rot: 'Rótulos', campo: 'fonteRotulos', base: 10, passo: 0.5, min: 5, max: 20 },
-                        { rot: 'Símbolos', campo: 'escalaVertices', base: 1 },
-                        { rot: 'Declarações', campo: 'escalaDeclaracoes', base: 1 },
-                        { rot: 'Confront.', campo: 'escalaConfront', base: 1 },
-                      ] as { rot: string; campo: 'escalaTextos' | 'fonteRotulos' | 'escalaVertices' | 'escalaDeclaracoes' | 'escalaConfront'; base: number; passo?: number; min?: number; max?: number }[]).map((r) => {
-                        const passo = r.passo ?? 0.05, min = r.min ?? 0.4, max = r.max ?? 3;
+                    <div className="grid grid-cols-3 gap-1.5 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
+                      <span className="text-[10px] font-bold uppercase text-foreground col-span-3 px-1 mb-0.5">Ajuste de Tamanhos</span>
+                      
+                      {/* Row 1, Col 1: Interface (bold) */}
+                      <div className="flex flex-col items-center rounded bg-muted/40 p-1">
+                        <span className="text-[10px] font-bold text-foreground truncate">Interface</span>
+                        <div className="flex gap-0.5 mt-1">
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}><span className="text-[9px]">A-</span></Button>
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}><span className="text-[9px]">A+</span></Button>
+                        </div>
+                      </div>
+
+                      {/* Row 1, Col 2: Tudo (bold) */}
+                      {(() => {
+                        const r = { rot: 'Tudo', campo: 'escalaTextos' as const, base: 1.5 };
+                        const passo = 0.05, min = 0.4, max = 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div key={r.campo} className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1">
-                            <span className="mr-auto pl-1 text-[10px] font-medium text-muted-foreground">{r.rot}</span>
-                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => aj(-passo)}><span className="text-[10px] font-bold">A-</span></Button>
-                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => aj(passo)}><span className="text-[10px] font-bold">A+</span></Button>
+                          <div className="flex flex-col items-center rounded bg-muted/40 p-1">
+                            <span className="text-[10px] font-bold text-foreground truncate">Tudo</span>
+                            <div className="flex gap-0.5 mt-1">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(-passo)}><span className="text-[9px]">A-</span></Button>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(passo)}><span className="text-[9px]">A+</span></Button>
+                            </div>
                           </div>
                         );
-                      })}
+                      })()}
+
+                      {/* Row 1, Col 3: Rótulos */}
+                      {(() => {
+                        const r = { rot: 'Rótulos', campo: 'fonteRotulos' as const, base: 10 };
+                        const passo = 0.5, min = 5, max = 20;
+                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
+                        return (
+                          <div className="flex flex-col items-center rounded bg-muted/40 p-1">
+                            <span className="text-[10px] font-medium text-foreground truncate">Rótulos</span>
+                            <div className="flex gap-0.5 mt-1">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(-passo)}><span className="text-[9px]">A-</span></Button>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(passo)}><span className="text-[9px]">A+</span></Button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Row 2, Col 1: Símbolos */}
+                      {(() => {
+                        const r = { rot: 'Símbolos', campo: 'escalaVertices' as const, base: 1 };
+                        const passo = 0.05, min = 0.4, max = 3;
+                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
+                        return (
+                          <div className="flex flex-col items-center rounded bg-muted/40 p-1">
+                            <span className="text-[10px] font-medium text-foreground truncate">Símbolos</span>
+                            <div className="flex gap-0.5 mt-1">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(-passo)}><span className="text-[9px]">A-</span></Button>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(passo)}><span className="text-[9px]">A+</span></Button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Row 2, Col 2: Declarações */}
+                      {(() => {
+                        const r = { rot: 'Declarações', campo: 'escalaDeclaracoes' as const, base: 1 };
+                        const passo = 0.05, min = 0.4, max = 3;
+                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
+                        return (
+                          <div className="flex flex-col items-center rounded bg-muted/40 p-1">
+                            <span className="text-[10px] font-medium text-foreground truncate">Declarações</span>
+                            <div className="flex gap-0.5 mt-1">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(-passo)}><span className="text-[9px]">A-</span></Button>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(passo)}><span className="text-[9px]">A+</span></Button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Row 2, Col 3: Confrontantes */}
+                      {(() => {
+                        const r = { rot: 'Confront.', campo: 'escalaConfront' as const, base: 1 };
+                        const passo = 0.05, min = 0.4, max = 3;
+                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
+                        return (
+                          <div className="flex flex-col items-center rounded bg-muted/40 p-1">
+                            <span className="text-[10px] font-medium text-foreground truncate">Confront.</span>
+                            <div className="flex gap-0.5 mt-1">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(-passo)}><span className="text-[9px]">A-</span></Button>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => aj(passo)}><span className="text-[9px]">A+</span></Button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
-                  {/* INTERFACE (acessibilidade): aumenta/diminui as letras do app inteiro — vale nos dois modos */}
-                  <div className="flex items-center justify-end gap-0.5 rounded bg-muted/40 px-1" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
-                    <span className="mr-auto pl-1 text-[10px] font-medium text-muted-foreground">Interface</span>
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}><span className="text-[10px] font-bold">A-</span></Button>
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}><span className="text-[10px] font-bold">A+</span></Button>
-                  </div>
                   {/* ferramentas e sistema: duas linhas de botões rotulados (não mais ícones espremidos) */}
                   <div className="grid grid-cols-4 gap-1">
                     {([
@@ -2784,6 +2968,65 @@ export default function EditorPage() {
             <span className="text-[10px] font-bold leading-none">{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
             <span className="text-[8px] font-bold leading-none text-amber-500">Esc</span>
           </button>
+
+          {vista === 'planta' && (
+            <div className="absolute left-20 top-3 z-[1160] flex items-center gap-1.5 rounded-xl border border-border bg-background/95 p-1.5 shadow-xl backdrop-blur no-print">
+              <Button
+                size="sm"
+                variant={folhaTravada ? 'outline' : 'default'}
+                className={folhaTravada ? 'h-8' : 'h-8 bg-amber-500 hover:bg-amber-600 text-white'}
+                onClick={() => {
+                  const nova = !folhaTravada;
+                  setFolhaTravada(nova);
+                  if (!nova) setModo('navegar');
+                }}
+                title={folhaTravada ? "Desbloquear Moldura: permite arrastar a prancha A3 para enquadrar o desenho" : "Bloquear Moldura: trava o layout da folha para evitar arraste acidental"}
+              >
+                {folhaTravada ? <Lock className="size-4 mr-1.5" /> : <LockOpen className="size-4 mr-1.5" />}
+                <span className="text-xs font-semibold">{folhaTravada ? 'Moldura Travada' : 'Moldura Solta'}</span>
+              </Button>
+
+              <Button
+                size="sm"
+                variant={plantaDark ? 'default' : 'outline'}
+                className="h-8"
+                onClick={() => setPlantaDark((v) => !v)}
+                title="Alternar Tema: ativa/desativa o modo escuro para visualização noturna confortável"
+              >
+                {plantaDark ? <Sun className="size-4 mr-1.5 text-amber-400" /> : <Moon className="size-4 mr-1.5" />}
+                <span className="text-xs font-semibold">{plantaDark ? 'Modo Escuro' : 'Modo Claro'}</span>
+              </Button>
+
+              <div className="h-5 w-px bg-border mx-1" />
+
+              <div className="flex items-center rounded-md border border-input bg-background overflow-hidden h-8">
+                <button
+                  type="button"
+                  className="h-full px-3 hover:bg-accent text-foreground font-bold border-r border-input transition-colors text-sm flex items-center justify-center"
+                  title="Zoom Out / Reduzir escala (aumenta o denominador em 250)"
+                  onClick={() => alterarEscala(250)}
+                >
+                  -
+                </button>
+                <button
+                  type="button"
+                  className={`h-full px-3.5 hover:bg-accent font-bold transition-colors text-[10px] tracking-wider flex items-center justify-center ${!plantaConfig.escalaManual ? 'text-primary' : 'text-foreground/80'}`}
+                  title="Escala da Planta (clique para alternar para Automática)"
+                  onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}
+                >
+                  ESCALA{!plantaConfig.escalaManual ? ' (AUTO)' : ''}
+                </button>
+                <button
+                  type="button"
+                  className="h-full px-3 hover:bg-accent text-foreground font-bold border-l border-input transition-colors text-sm flex items-center justify-center"
+                  title="Zoom In / Aumentar escala (reduz o denominador em 250)"
+                  onClick={() => alterarEscala(-250)}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
 
 
           {vista === 'mapa' ? (
@@ -2877,29 +3120,34 @@ export default function EditorPage() {
           )}
         </main>
 
-        {/* Painel suspenso de dados do projeto — abre de cima pra baixo a partir do cabeçalho */}
+        {/* Painel suspenso de dados do projeto — ocupa toda a altura disponível do fim da página ao cabeçalho */}
         <div ref={painelWrap}
-          className={`no-print absolute right-4 top-2 z-[2000] flex w-[550px] max-h-[85vh] flex-col rounded-b-xl border bg-background shadow-2xl transition-all duration-300 ${
+          className={`no-print absolute right-0 top-0 bottom-0 z-[2000] flex w-[550px] h-full flex-col border-l bg-background shadow-2xl transition-all duration-300 ${
             painelAberto
-              ? 'translate-y-0 opacity-100 scale-100 visible'
-              : '-translate-y-4 opacity-0 scale-95 invisible pointer-events-none'
+              ? 'translate-x-0 opacity-100 visible'
+              : 'translate-x-full opacity-0 invisible pointer-events-none'
           }`}
           onMouseEnter={() => { painelMouseDentro.current = true; }}
           onMouseLeave={() => { painelMouseDentro.current = false; if (!asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
           onBlurCapture={() => { setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 50); }}>
-          <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background rounded-b-xl">
+          <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background">
             {/* Header do dropdown */}
             <div className="flex items-center justify-between bg-[#475569] px-3 py-2 text-white shadow-sm">
               <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 text-white">
                 <Settings className="size-3.5" />
                 Dados do Projeto
               </span>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white hover:bg-white/20 hover:text-white" onClick={() => setPainelAberto(false)} title="Fechar painel">
-                <X className="size-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Link href={projetoId ? `/cadastros?projetoId=${projetoId}` : '/cadastros'} target="_blank" rel="noopener noreferrer" className="text-[10px] text-cyan-200 hover:text-cyan-100 hover:underline flex items-center gap-1">
+                  <Database className="size-3" /> Banco de Cadastros
+                </Link>
+                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-white hover:bg-white/20 hover:text-white" onClick={() => setPainelAberto(false)} title="Fechar painel">
+                  <X className="size-4" />
+                </Button>
+              </div>
             </div>
             {/* glebas */}
-            <div className="flex items-center gap-1 overflow-x-auto border-b p-1">
+            <div className="flex flex-wrap items-center gap-1.5 border-b p-1.5 bg-muted/20">
             {glebas.map((g) => (
               <button key={g.id} disabled={processando} onClick={() => trocarGleba(g.id)}
                 className={`shrink-0 rounded px-2 py-1 text-xs disabled:opacity-50 ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
@@ -2924,7 +3172,7 @@ export default function EditorPage() {
 
           <div className="min-h-0 flex-1 overflow-auto p-2.5 scroll-fino">
             <datalist id="lista-cns">{sugCns.map((c) => <option key={c} value={c} />)}</datalist>
-            {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} />}
+            {aba === 'imovel' && <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} onIa={() => setIaAberta(true)} />}
             {aba === 'vertices' && (
               <div className="space-y-1">
                 {/* Painel de Desmembramento */}
@@ -3049,10 +3297,27 @@ export default function EditorPage() {
                       {l && <div className="text-muted-foreground">→ {azimuteDMS(azEfetivo)} · {numBR(l.distancia)} m · {v.tipoLimite || 'LA6'}</div>}
                       {selecionadoId === v.id && (
                         <div className="mt-2 grid grid-cols-2 gap-1 border-t pt-2" onClick={(e) => e.stopPropagation()}>
-                          <MiniSelect label="Tipo" value={v.tipo} options={TIPOS_VERTICE as readonly string[]} onChange={(val) => editarVertice(v.id, { tipo: val as Vertex['tipo'], isDivisa: val === 'M' })} />
-                          <MiniSelect label="Método" value={v.metodo || 'PG6'} options={METODOS_POSICIONAMENTO as readonly string[]} onChange={(val) => editarVertice(v.id, { metodo: val })} />
-                          <MiniSelect label="Limite (saída)" value={v.tipoLimite || 'LA6'} options={TIPOS_LIMITE as readonly string[]} onChange={(val) => editarVertice(v.id, { tipoLimite: val })} />
-                          <MiniSelect label="Repres." value={v.representacao || 'linha-ideal'} options={REPRESENTACOES as readonly string[]} onChange={(val) => editarVertice(v.id, { representacao: val })} />
+                          <div className="flex flex-col gap-0.5">
+                            <MiniSelect label="Tipo" value={v.tipo} options={TIPOS_VERTICE as readonly string[]} onChange={(val) => editarVertice(v.id, { tipo: val as Vertex['tipo'], isDivisa: val === 'M' })} />
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <MiniSelect label="Método" value={v.metodo || 'PG6'} options={METODOS_POSICIONAMENTO as readonly string[]} onChange={(val) => editarVertice(v.id, { metodo: val })} />
+                            <button type="button" className="text-[8px] text-primary hover:underline text-left mt-0.5" onClick={() => editarVariosVertices({ metodo: v.metodo || 'PG6' })}>
+                              {selMulti.size > 0 ? `Aplicar à sel. (${selMulti.size})` : 'Aplicar a todos'}
+                            </button>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <MiniSelect label="Limite (saída)" value={v.tipoLimite || 'LA6'} options={TIPOS_LIMITE as readonly string[]} onChange={(val) => editarVertice(v.id, { tipoLimite: val })} />
+                            <button type="button" className="text-[8px] text-primary hover:underline text-left mt-0.5" onClick={() => editarVariosVertices({ tipoLimite: v.tipoLimite || 'LA6' })}>
+                              {selMulti.size > 0 ? `Aplicar à sel. (${selMulti.size})` : 'Aplicar a todos'}
+                            </button>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <MiniSelect label="Repres." value={v.representacao || 'linha-ideal'} options={REPRESENTACOES as readonly string[]} onChange={(val) => editarVertice(v.id, { representacao: val })} />
+                            <button type="button" className="text-[8px] text-primary hover:underline text-left mt-0.5" onClick={() => editarVariosVertices({ representacao: v.representacao || 'linha-ideal' })}>
+                              {selMulti.size > 0 ? `Aplicar à sel. (${selMulti.size})` : 'Aplicar a todos'}
+                            </button>
+                          </div>
                           <div className="col-span-2 space-y-1">
                             <Label>Altitude (m)</Label>
                             <Input type="number" step="0.01" value={String(v.elevacao)} onChange={(e) => editarVertice(v.id, { elevacao: Number(e.target.value) })} />
@@ -3081,7 +3346,7 @@ export default function EditorPage() {
               </div>
             )}
             {aba === 'confrontantes' && (
-              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} />
+              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} />
             )}
             {aba === 'planta' && (
               <PainelPlanta config={plantaConfig} onChange={setPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} numGlebas={glebas.length}
@@ -3093,6 +3358,17 @@ export default function EditorPage() {
             {aba === 'projetos' && (
               <div className="space-y-2">
                 <Button size="sm" className="w-full" disabled={processando} onClick={salvar}><Save /> Salvar projeto atual</Button>
+                
+                {/* Botões de backup local JSON */}
+                <div className="grid grid-cols-2 gap-1 bg-muted/20 p-1 rounded border">
+                  <Button size="sm" variant="outline" className="h-8 text-[11px] gap-1 px-1" disabled={processando} onClick={exportarProjetoAtualJson} title="Exportar o projeto aberto em um arquivo JSON local para backup">
+                    <Download className="size-3.5" /> Exportar JSON
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-8 text-[11px] gap-1 px-1" disabled={processando} onClick={() => jsonBackupRef.current?.click()} title="Importar um projeto salvo em arquivo JSON local">
+                    <Upload className="size-3.5" /> Importar JSON
+                  </Button>
+                </div>
+
                 <div className="flex items-center gap-2 rounded border bg-muted/40 p-2 text-[11px] text-muted-foreground">
                   <Database className="size-3.5" /> {totalPontos} ponto(s) no banco do credenciado (nunca reusados).
                 </div>
@@ -3155,7 +3431,7 @@ export default function EditorPage() {
       />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
-      <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
+      <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
       <ConsultarModal open={consultarAberto} onOpenChange={setConsultarAberto}
         onInserirProprietario={inserirPropConsulta} onInserirConfrontante={inserirConfConsulta}
         onInserirImovel={inserirImovelConsulta} onInserirCartorio={inserirCartorioConsulta} />
@@ -3401,11 +3677,12 @@ function Campo({ label, value, onChange, placeholder, list }: { label: string; v
   );
 }
 
-function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios }: {
+function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios, onIa }: {
   imovel: ImovelData; onChange: (i: ImovelData) => void; onMunicipio: (s: string) => void; onLocal: (s: string) => void;
   nome: string; onNome: (s: string) => void;
   zona: number; hemisferio: 'N' | 'S'; onZona: (z: number) => void; onHemisferio: (h: 'N' | 'S') => void;
   sugProp: ProprietarioCad[]; onSalvarProp: () => void; sugCartorios: CartorioCad[];
+  onIa?: () => void;
 }) {
   const set = (k: keyof ImovelData, v: string) => onChange({ ...imovel, [k]: v });
   function setProprietario(v: string) {
@@ -3431,6 +3708,29 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
           Urbano
         </button>
       </div>
+
+      {onIa && (
+        <button
+          type="button"
+          onClick={onIa}
+          className="w-full flex items-center justify-between p-3.5 rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/5 to-transparent hover:from-violet-500/15 hover:via-fuchsia-500/10 transition-all group shadow-sm text-left mt-1"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-violet-600 rounded-lg text-white group-hover:scale-105 transition-transform shadow">
+              <Sparkles className="size-4" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1">
+                Leitura Automática com IA
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                Envie PDF da Matrícula, Escritura ou Imagens e a IA preenche o cadastro.
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="size-4 text-violet-500 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+      )}
 
       <Campo label="Nome do projeto" value={nome} onChange={onNome} />
       <Campo label="Denominação do imóvel" value={imovel.denominacao} onChange={(v) => set('denominacao', v)} placeholder={imovel.tipoImovel === 'urbano' ? "Lote / Residencial..." : "Fazenda..."} />
@@ -3573,6 +3873,24 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
   const num = (v: number | undefined) => (v == null ? '' : String(v));
   return (
     <div className="space-y-3">
+      <Card className="border-blue-500/20 bg-blue-500/5">
+        <CardHeader className="pb-1.5 pt-2">
+          <CardTitle className="text-[11px] text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5">
+            <Info className="size-4 text-blue-500" />
+            Limites Legais de Precisão (INCRA)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-2 text-[10px] text-muted-foreground space-y-1">
+          <p>Para aprovação no SIGEF, os vértices devem atender aos limites de desvio padrão (sigma):</p>
+          <ul className="list-disc pl-4 space-y-0.5">
+            <li><b>Limites Artificiais (LA):</b> 0.10 m (muros, cercas, marcos)</li>
+            <li><b>Limites Naturais (LN):</b> 3.00 m (rios, córregos, serras)</li>
+            <li><b>Limites Inacessíveis (LV):</b> 7.50 m (grotas, encostas)</li>
+            <li><b>Vertical (Sigma Z):</b> máximo de 0.30 m recomendado para LA</li>
+          </ul>
+        </CardContent>
+      </Card>
+
       {conflitos.length > 0 && (
         <Card className="border-pink-500/20 bg-pink-500/5">
           <CardHeader className="pb-2">
@@ -3642,10 +3960,11 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
   );
 }
 
-function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro }: {
+function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico }: {
   confrontantes: Confrontante[]; onChange: (c: Confrontante[]) => void;
-  mapa: Record<number, string>; lados: { de: Vertex; para: Vertex }[];
+  mapa: Record<number, string>; lados: Lado[];
   sugConf: ConfrontanteCad[]; onSalvarCadastro: (c: Confrontante) => void;
+  imovel: ImovelData; tecnico: TecnicoData | null;
 }) {
   const set = (id: string, k: keyof Confrontante, v: string) =>
     onChange(confrontantes.map((c) => (c.id === id ? ({ ...c, [k]: v } as Confrontante) : c)));
@@ -3660,6 +3979,30 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
       : c)));
   };
   const ladosDe = (id: string) => Object.entries(mapa).filter(([, cid]) => cid === id).map(([i]) => Number(i));
+
+  const exportarAnuenciaConfrontante = async (c: Confrontante) => {
+    if (!tecnico) {
+      alert('Configure o responsável técnico primeiro nas configurações.');
+      return;
+    }
+    try {
+      const idxs = ladosDe(c.id);
+      const compartilhados = idxs.map((i) => lados[i]).filter(Boolean);
+      
+      const doc = gerarAnuenciaDocumento({
+        imovel,
+        tecnico,
+        confrontante: c,
+        verticesCompartilhados: compartilhados
+      });
+      
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, `Carta de Anuencia - ${c.nome || 'Confrontante'}.docx`);
+    } catch (err) {
+      alert('Erro ao gerar a Carta de Anuência.');
+    }
+  };
+
   return (
     <div className="space-y-3">
       {confrontantes.length === 0 && <p className="text-xs text-muted-foreground">Use “pintar confrontante” no mapa, ou importe os vizinhos certificados, para criar os confrontantes.</p>}
@@ -3676,7 +4019,10 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
                   <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id) }} title="Cor deste confrontante no mapa" />
                   {idxs.length} lado(s){lados.length ? `: ${idxs.map((i) => lados[i]?.de.codigoSigef).filter(Boolean).join(', ')}` : ''}
                 </span>
-                <button className="text-[10px] text-primary hover:underline" onClick={() => onSalvarCadastro(c)}>salvar no cadastro</button>
+                <div className="flex gap-2">
+                  <button className="text-[10px] text-primary hover:underline" onClick={() => exportarAnuenciaConfrontante(c)}>gerar carta (.docx)</button>
+                  <button className="text-[10px] text-primary hover:underline" onClick={() => onSalvarCadastro(c)}>salvar no cadastro</button>
+                </div>
               </div>
               <div className="space-y-1">
                 <Label>Nome</Label>
@@ -3809,6 +4155,10 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
             incluir coluna de confrontante
           </label>
         )}
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={config.mostrarCoordenadas === true} onChange={(e) => set({ mostrarCoordenadas: e.target.checked })} />
+          Quadro de coordenadas dos vértices (UTM E/N, Altitude, Limite/Método)
+        </label>
       </div>
       <div className="space-y-1 rounded border p-2">
         <div className="text-[10px] uppercase text-muted-foreground">Nome dos vértices</div>

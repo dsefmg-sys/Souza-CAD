@@ -1,0 +1,38 @@
+# Tarefas do Projeto - Melhorias no Métrica
+
+- `[x]` 1. Ajuste e Formatação das Declarações no Carimbo
+  - `[x]` Ajustar TextoQuebrado para respeitar quebras de linha manuais (`\n`)
+  - `[x]` Padronizar tamanho de fonte das três declarações para `8.5` (scaled) e `lineHeight` para `1.35`
+  - `[x]` Validar prevenção de sobreposições em caixas com maxHeight
+- `[x]` 2. Correção e Auditoria do Memorial Descritivo
+  - `[x]` Adicionar segundos no formatador `azimuteDMS` em `geometry.ts`
+  - `[x]` Arredondar segundos no formatador `rumoDMS` em `memorial.ts`
+  - `[x]` Implementar azimutes e distâncias efetivas e consistentes no memorial e na tabela da planta
+- `[x]` 3. Melhorias na Interface e Layout de Botões
+  - `[x]` Mover controles da planta (tema, travamento de folha, escala) para área flutuante ao lado do alternador
+  - `[x]` Organizar grade de ferramentas da barra lateral para 3 colunas, ajustando col-span
+  - `[x]` Destacar menu de tamanhos em negrito e adicionar título
+- `[x]` 4. Edição Interativa do Título da Planta
+  - `[x]` Mover duplo clique para abranger todo o cabeçalho do bloco de dados
+  - `[x]` Expandir `TITULOS_EDUCATIVOS` para as 12 opções com explicações detalhadas
+- `[x]` 5. Modernização da Ferramenta de Símbolos
+  - `[x]` Atualizar SVGs dos símbolos no arquivo `simbolos.ts`
+  - `[x]` Manter sub-paleta de símbolos aberta e interativa enquanto `modo === 'simbolo'`
+- `[x]` 6. Nova Escala em Botões e Atalho Control + Scroll
+  - `[x]` Substituir select de escala por grupo `- ESCALA +`
+  - `[x]` Clicar em middle "ESCALA" restaura escala automática
+  - `[x]` Clicar em `-` diminui escala (aumenta denom em 250) e `+` aumenta escala (diminui denom em 250)
+  - `[x]` Segurar `Ctrl` e scroll do mouse sobre a planta altera escala de 250 em 250 de forma suave
+- `[x]` 7. Ajustes Finais de Interface e Modo Escuro
+  - `[x]` Planta com modo escuro habilitado por padrão
+  - `[x]` Remover botão PLANTA redundante da barra lateral esquerda
+  - `[x]` Ajuste de tamanhos na planta em grid 3x2, com `Interface` e `Tudo` em negrito na primeira linha
+  - `[x]` Ajustar nomes das glebas em flex wrap sem barra de rolagem vertical
+  - `[x]` Expandir gaveta de dados do projeto para ocupar toda a altura (VSCode style)
+- `[x]` 8. Integração da IA Multimodal em Dados do Imóvel
+  - `[x]` Remover botão IA isolado no cabeçalho
+  - `[x]` Integrar banner premium de IA dentro do painel Dados do Imóvel (DADOS)
+  - `[x]` Redesenhar modal IA para suportar upload / drag & drop de arquivos PDF ou imagens
+  - `[x]` Atualizar endpoint backend de IA para processar PDFs/imagens com Gemini 1.5 Flash
+- `[x]` 9. Pan na Planta com Botão do Meio
+  - `[x]` Segurar botão do meio do mouse (PointerEvent button 1) arrasta prancha/folha temporariamente mesmo com moldura travada

@@ -68,7 +68,7 @@ describe('azimutes e distâncias (conferem com o memorial)', () => {
     // o azimute (ou seu reverso) bate com 154°38'
     const az = lado.azimute;
     const rev = (az + 180) % 360;
-    const ok = azimuteDMS(az) === "154°38'" || azimuteDMS(rev) === "154°38'";
+    const ok = azimuteDMS(az) === '154°37\'52"' || azimuteDMS(rev) === '154°37\'52"';
     expect(ok).toBe(true);
     expect(numBR(lado.distancia)).toMatch(/^58,5/);
   });

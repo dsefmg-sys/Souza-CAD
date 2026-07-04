@@ -100,6 +100,52 @@ export function conferir(vertices: Vertex[], res: ResultadoCalculo | null, imove
     out.push({ nivel, campo: 'perímetro', msg: `Diferença para o SIGEF: ${dif.toFixed(2)} m (nosso ${res.perimetro.toFixed(2)} × SIGEF ${imovel.perimetroSigef.toFixed(2)}).` });
   }
 
+  // Validação de Precisão Posicional (Sigmas) segundo a 3ª Edição da NTGIR/INCRA
+  for (let i = 0; i < vertices.length; i++) {
+    const v = vertices[i];
+    const nomeV = v.codigoSigef || v.nome || `Vértice ${i + 1}`;
+    
+    // Precisão horizontal
+    const sigX = v.sigmaX ?? 0;
+    const sigY = v.sigmaY ?? 0;
+    const sigH = Math.max(sigX, sigY);
+    
+    if (sigX > 0 || sigY > 0) {
+      const limite = v.tipoLimite || 'LA';
+      let maxPermitido = 0.10;
+      let tipoDesc = 'Artificial';
+      
+      if (limite.startsWith('LN')) {
+        maxPermitido = 3.00;
+        tipoDesc = 'Natural';
+      } else if (limite.startsWith('LV')) {
+        maxPermitido = 7.50;
+        tipoDesc = 'Inacessível';
+      }
+      
+      if (sigH > maxPermitido) {
+        out.push({
+          nivel: 'aviso',
+          campo: 'precisão',
+          msg: `Vértice ${nomeV}: precisão horizontal de ${sigH.toFixed(2)}m excede o limite legal de ${maxPermitido.toFixed(2)}m (limite ${tipoDesc}).`
+        });
+      }
+    }
+    
+    // Precisão vertical (Z)
+    const sigZ = v.sigmaZ ?? 0;
+    if (sigZ > 0.30) {
+      const limite = v.tipoLimite || 'LA';
+      if (limite.startsWith('LA') || !v.tipoLimite) {
+        out.push({
+          nivel: 'aviso',
+          campo: 'precisão Z',
+          msg: `Vértice ${nomeV}: precisão vertical de ${sigZ.toFixed(2)}m excede a recomendação de 0.30m para limites artificiais.`
+        });
+      }
+    }
+  }
+
   if (out.length === 0) out.push({ nivel: 'ok', campo: 'geral', msg: 'Nenhum problema encontrado.' });
   return out;
 }

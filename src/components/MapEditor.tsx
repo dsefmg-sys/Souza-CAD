@@ -238,12 +238,14 @@ function CaixaSelecao({ ativo, vertices, onBoxSelect }: { ativo: boolean; vertic
   return <Rectangle bounds={L.latLngBounds(inicio, atual)} pathOptions={{ color: '#f59e0b', weight: 1.5, dashArray: '4 3', fillColor: '#f59e0b', fillOpacity: 0.12 }} />;
 }
 
-function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblClick }: {
+function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblClick, onMouseMove, onMouseOut }: {
   modo: ModoEdicao;
   onInserir: (lat: number, lon: number) => void;
   onCliqueDesenho?: (lat: number, lon: number) => void;
   onCancelDesenho?: () => void;
   onDblClick?: (lat: number, lon: number) => void;
+  onMouseMove?: (latlng: L.LatLng) => void;
+  onMouseOut?: () => void;
 }) {
   useMapEvents({
     click(e) {
@@ -259,6 +261,12 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
         e.originalEvent.preventDefault();
         onCancelDesenho?.();
       }
+    },
+    mousemove(e) {
+      if (modo === 'medir') onMouseMove?.(e.latlng);
+    },
+    mouseout() {
+      if (modo === 'medir') onMouseOut?.();
     }
   });
   return null;
@@ -296,10 +304,7 @@ export default function MapEditor(props: Props) {
   const [zoom, setZoom] = useState(16);
   const [cursorLatLng, setCursorLatLng] = useState<L.LatLng | null>(null);
 
-  useMapEvents({
-    mousemove(e) { if (modo === 'medir') setCursorLatLng(e.latlng); },
-    mouseout() { setCursorLatLng(null); }
-  });
+
 
   useEffect(() => {
     if (modo !== 'medir') setCursorLatLng(null);
@@ -355,7 +360,7 @@ export default function MapEditor(props: Props) {
       <Centralizar sig={centralizarSig} vertices={vertices} />
       <VerZoom onZoom={setZoom} />
       <CaixaSelecao ativo={modo === 'multi'} vertices={validos} onBoxSelect={onBoxSelect} />
-      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} />
+      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} />
       <FocoMap latLng={focoLatLng} />
 
       {/* referências certificadas (snap) */}

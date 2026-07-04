@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante, PlantaConfig, PessoaQualificada, PontoLL } from '@/lib/topo/types';
-import { numBR, formatMatricula, azimuteDMS } from '@/lib/topo/geometry';
+import { numBR, formatMatricula, azimuteDMS, azimute, distancia } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { rotulosProfissional } from '@/lib/topo/profissional';
 import { simboloSvgInterno } from '@/lib/topo/simbolos';
@@ -342,6 +342,26 @@ export default function Planta({
     cx = sx(u.leste); cy = sy(u.norte);
   }
 
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 250 : -250;
+        const arredondado = Math.round(escalaDenom / 250) * 250;
+        const nova = Math.max(250, arredondado + delta);
+        onConfigPatch?.({ escalaManual: nova });
+      }
+    };
+
+    svgEl.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      svgEl.removeEventListener('wheel', handleWheel);
+    };
+  }, [escalaDenom, onConfigPatch]);
+
   // ---- confrontantes por trecho: posição do rótulo (fora do polígono) ----
   const trechos = new Map<string, number[]>();
   for (let i = 0; i < vertices.length; i++) {
@@ -518,7 +538,16 @@ export default function Planta({
   }
   function plantaDown(e: ReactPointerEvent) {
     if (!editavel) return;
-    if (e.button !== 0) return; // botão do meio/direito não arrasta itens (meio = pan, tratado fora)
+    if (e.button === 1) {
+      const u = svgPonto(e);
+      if (u) {
+        dragRef.current = { kind: 'folha', id: 'middle-pan' };
+        folhaLast.current = u;
+        captura(e);
+      }
+      return;
+    }
+    if (e.button !== 0) return; // botão do meio/direito não arrasta itens
     const u = svgPonto(e); if (!u) return;
     // modos de desenho: o clique cria/continua o objeto (só dentro da área de desenho, nunca no carimbo)
     if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
@@ -859,6 +888,27 @@ export default function Planta({
         const by = DRAW.y1 - 24 - (res.lados.length + 2.5) * lh + (ovR.dy ?? 0);
         const cV = bx + 8, cAz = bx + 70, cDist = bx + (comConf ? 150 : 192), cConf = bx + wr - 8;
         const hr = (res.lados.length + 2.4) * lh;
+        
+        const usarGeodesico = imovel.tipoAzimute !== 'plano';
+        const obterAzimuteEfetivo = (l: typeof res.lados[0]) => {
+          if (!usarGeodesico) {
+            return azimute({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
+          }
+          const v = l.de;
+          if (v.lat != null && v.lon != null) {
+            const cm = convergenciaMeridiana(v.lat, v.lon, zona);
+            const azPlano = azimute({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
+            return (azPlano + cm + 360) % 360;
+          }
+          return l.azimute;
+        };
+        const obterDistanciaEfetiva = (l: typeof res.lados[0]) => {
+          if (!usarGeodesico) {
+            return distancia({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte });
+          }
+          return l.distancia;
+        };
+
         return (
           <g style={editavel ? { cursor: 'move' } : undefined}
              onPointerDown={editavel ? (e) => { e.stopPropagation(); tedComum.onDragStart(idR, e); } : undefined}>
@@ -871,12 +921,90 @@ export default function Planta({
             {comConf && <text x={cConf} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">CONFRONTANTE</text>}
             {res.lados.map((l, i) => {
               const y = by + lh * (3 + i);
+              const azEfetivo = obterAzimuteEfetivo(l);
+              const distEfetiva = obterDistanciaEfetiva(l);
               return (
                 <g key={i}>
                   <text x={cV} y={y} fontSize={fz} fill="#0f172a">{l.de.codigoSigef || l.de.nome}</text>
-                  <text x={cAz} y={y} fontSize={fz} fill="#0f172a">{azimuteDMS(l.azimute)}</text>
-                  <text x={cDist} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{numBR(l.distancia)}</text>
+                  <text x={cAz} y={y} fontSize={fz} fill="#0f172a">{azimuteDMS(azEfetivo)}</text>
+                  <text x={cDist} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{numBR(distEfetiva)}</text>
                   {comConf && <text x={cConf} y={y} fontSize={fz} fill="#0f172a" textAnchor="end">{nomeConf(l.confrontanteId).slice(0, 20)}</text>}
+                </g>
+              );
+            })}
+          </g>
+        );
+      })()}
+
+      {/* ---------- QUADRO DE COORDENADAS (SIRGAS 2000; arrastável) ---------- */}
+      {config.mostrarCoordenadas && vertices.length > 0 && (() => {
+        const idC = 'planta.coordenadas';
+        const ovC = getOverride(idC);
+        const fz = Math.max(6.5, fonteRot - 1);
+        const lh = fz + 4;
+        
+        // Divide os vértices em colunas de no máximo 18 linhas
+        const colH = 18;
+        const numCols = Math.ceil(vertices.length / colH);
+        const colW = 280;
+        const gap = 12;
+        const wBox = numCols * colW + (numCols - 1) * gap + 16;
+        const hr = (Math.min(vertices.length, colH) + 2.4) * lh;
+        
+        const bx = DRAW.x0 + 24 + (ovC.dx ?? 0);
+        const by = DRAW.y0 + 24 + (ovC.dy ?? 0);
+        
+        return (
+          <g style={editavel ? { cursor: 'move' } : undefined}
+             onPointerDown={editavel ? (e) => { e.stopPropagation(); tedComum.onDragStart(idC, e); } : undefined}>
+            <rect x={bx} y={by} width={wBox} height={hr} rx={4} fill="#ffffff" fillOpacity={0.95} stroke="#475569" strokeWidth={0.8} />
+            <rect x={bx} y={by} width={wBox} height={lh + 2} rx={4} fill="#475569" />
+            <text x={bx + wBox / 2} y={by + lh - 2} fontSize={fz} fontWeight="bold" fill="#fff" textAnchor="middle">QUADRO DE COORDENADAS (SIRGAS 2000)</text>
+            
+            {Array.from({ length: numCols }).map((_, colIdx) => {
+              const startIdx = colIdx * colH;
+              const subVertices = vertices.slice(startIdx, startIdx + colH);
+              const colOffset = colIdx * (colW + gap);
+              
+              const cV = bx + colOffset + 8;
+              const cE = bx + colOffset + 75;
+              const cN = bx + colOffset + 140;
+              const cH = bx + colOffset + 200;
+              const cM = bx + colOffset + 235;
+              
+              const headerY = by + lh * 2;
+              
+              return (
+                <g key={colIdx}>
+                  {/* Cabeçalho da coluna */}
+                  <text x={cV} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">VÉRTICE</text>
+                  <text x={cE} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">ESTE (E)</text>
+                  <text x={cN} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">NORTE (N)</text>
+                  <text x={cH} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">ALT (h)</text>
+                  <text x={cM} y={headerY} fontSize={fz - 1} fontWeight="bold" fill="#475569">LIM/MÉT</text>
+                  
+                  {subVertices.map((v, i) => {
+                    const rowY = by + lh * (3 + i);
+                    const vName = v.codigoSigef || v.nome;
+                    const eStr = numBR(v.leste, 3);
+                    const nStr = numBR(v.norte, 3);
+                    const hStr = numBR(v.elevacao, 2);
+                    const lmStr = `${v.tipoLimite || 'LA6'}/${v.metodo || 'PG6'}`;
+                    
+                    return (
+                      <g key={v.id}>
+                        <text x={cV} y={rowY} fontSize={fz} fill="#0f172a">{vName}</text>
+                        <text x={cE} y={rowY} fontSize={fz} fill="#0f172a">{eStr}</text>
+                        <text x={cN} y={rowY} fontSize={fz} fill="#0f172a">{nStr}</text>
+                        <text x={cH} y={rowY} fontSize={fz} fill="#0f172a">{hStr}</text>
+                        <text x={cM} y={rowY} fontSize={fz} fill="#0f172a">{lmStr}</text>
+                      </g>
+                    );
+                  })}
+                  
+                  {colIdx < numCols - 1 && (
+                    <line x1={bx + colOffset + colW + gap/2} y1={by + lh} x2={bx + colOffset + colW + gap/2} y2={by + hr - 6} stroke="#cbd5e1" strokeWidth={0.6} />
+                  )}
                 </g>
               );
             })}
@@ -1530,6 +1658,57 @@ function Nortes({ cx, cy, conv, decl, fs, variante = 0 }: { cx: number; cy: numb
   );
 }
 
+const TITULOS_EDUCATIVOS: { titulo: string; desc: string }[] = [
+  {
+    titulo: 'LEVANTAMENTO PLANIMÉTRICO GEORREFERENCIADO',
+    desc: 'Medição de limites e divisas no plano horizontal com coordenadas amarradas ao sistema oficial (SIRGAS 2000). Usado para regularização de imóveis, venda ou inventário onde não há necessidade de curvas de nível.'
+  },
+  {
+    titulo: 'LEVANTAMENTO TOPOGRÁFICO PLANIALTIMÉTRICO',
+    desc: 'Medição que além dos limites horizontais (planimetria), registra o relevo e desníveis do terreno (altimetria, curvas de nível). Essencial para projetos de corte/aterro, drenagem, estradas e construções.'
+  },
+  {
+    titulo: 'GEORREFERENCIAMENTO DE IMÓVEL RURAL',
+    desc: 'Mapeamento obrigatório de imóveis rurais conforme as normas técnicas do INCRA. Exige precisão milimétrica e vinculação ao SIGEF para certificação oficial de limites na matrícula.'
+  },
+  {
+    titulo: 'GEORREFERENCIAMENTO PARA RETIFICAÇÃO DE ÁREA',
+    desc: 'Utilizado quando a área descrita no registro (matrícula) do cartório não confere com a realidade medida em campo. Serve para corrigir legalmente o registro junto ao Oficial de Registro de Imóveis.'
+  },
+  {
+    titulo: 'GEORREFERENCIAMENTO PARA DESMEMBRAMENTO',
+    desc: 'Mapeamento para divisão de um imóvel rural ou urbano em duas ou mais novas glebas independentes. Cada nova área terá sua própria matrícula certificada.'
+  },
+  {
+    titulo: 'GEORREFERENCIAMENTO PARA REMEMBRAMENTO (UNIFICAÇÃO)',
+    desc: 'Mapeamento para fusão de dois ou mais imóveis vizinhos (lotes ou glebas) do mesmo proprietário em uma única matrícula unificada.'
+  },
+  {
+    titulo: 'PLANTA DE SITUAÇÃO E LOCALIZAÇÃO',
+    desc: 'Representação visual do imóvel contextualizado na região, indicando vias de acesso, referências urbanas, marcos próximos e estradas vicinais. Facilita encontrar o imóvel em campo.'
+  },
+  {
+    titulo: 'LEVANTAMENTO PLANIMÉTRICO PARA USUCAPIÃO',
+    desc: 'Planta técnica detalhada e memorial descritivo confeccionados especificamente para instruir processos de usucapião (judicial ou extrajudicial) demonstrando a posse mansa e pacífica da área.'
+  },
+  {
+    titulo: 'LEVANTAMENTO TOPOGRÁFICO PARA REGULARIZAÇÃO FUNDIÁRIA',
+    desc: 'Planta cadastral para embasar processos de REURB (Regularização Fundiária Urbana/Rural), permitindo que ocupantes informais obtenham a titulação definitiva da terra.'
+  },
+  {
+    titulo: 'PLANTA DE DESMEMBRAMENTO DE LOTE URBANO',
+    desc: 'Divisão de lotes urbanos respeitando as diretrizes municipais (como área mínima e frente do lote) e sem abertura de novas ruas.'
+  },
+  {
+    titulo: 'PLANTA DE LOTEAMENTO',
+    desc: 'Projeto urbano completo de divisão de gleba em lotes com abertura de novas ruas, vias públicas, praças e áreas verdes (respeitando a Lei 6.766/79).'
+  },
+  {
+    titulo: 'LEVANTAMENTO CADASTRAL URBANO',
+    desc: 'Planta com registro físico detalhado de um terreno na cidade: muros, edificações internas, calçada, redes de utilidade, etc. Usado para atualizar cadastros da prefeitura ou projetos de reforma.'
+  }
+];
+
 // ---------------- CarimboA3 reformulado com bordas e harmonia visual ----------------
 function CarimboA3(props: {
   imovel: ImovelData; ef: ReturnType<typeof valoresEfetivos>; tecnico: TecnicoData; escritorio: EscritorioData;
@@ -1555,6 +1734,7 @@ function CarimboA3(props: {
   const fs = (n: number) => +(n * escala).toFixed(2);
   const fsDecl = (n: number) => +(n * escala * escalaDecl).toFixed(2); // declarações (proprietário/laudo)
   const fsConf = (n: number) => +(n * escala * escalaConf).toFixed(2); // texto/assinatura dos confrontantes
+  
   // texto editável do carimbo (atalho para o helper Ted, já ligado ao modo edição)
   const T = (id: string, base: string, o: { x: number; y: number; size: number; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; fill?: string; slice?: number }) => (
     <Ted id={id} base={base} x={o.x} y={o.y} size={o.size} bold={o.bold} anchor={o.anchor} fill={o.fill} slice={o.slice}
@@ -1569,6 +1749,10 @@ function CarimboA3(props: {
   const wBox = rx - lx; // 424
   const cxc = lx + wBox / 2; // 1339
   const temLogo = !!escritorio.logoDataUrl;
+
+  const capChars = (fontSizeEfectiva: number, defaultChars: number) => {
+    return Math.min(defaultChars, Math.max(15, Math.floor((wBox - 24) / (fontSizeEfectiva * 0.45))));
+  };
 
   // Cabeçalho escuro (tarja #475569 + título branco) idêntico aos quadros de baixo da planta
   // (Situação/Convenções/Informações de Coordenadas). Se receber um id, o título fica editável.
@@ -1714,14 +1898,74 @@ function CarimboA3(props: {
           const editando = ed?.editandoId === idT;
           const duas = tituloLinhas.length > 1;
           return (
-            <g>
+            <g
+              style={ed?.ativo ? { cursor: 'text' } : undefined}
+              onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT); } : undefined}
+            >
               <rect x={lx} y={Y_DADOS} width={wBox} height={hCabTitulo} rx={6} ry={6} fill="#475569" />
               <rect x={lx} y={Y_DADOS + hCabTitulo - 6} width={wBox} height={6} fill="#475569" />
-              {editando ? (
-                T(idT, tituloTxt, { x: cxc, y: Y_DADOS + 16, size: fs(10.5), bold: true, anchor: 'middle', fill: '#fff' })
-              ) : (
-                <g style={ed?.ativo ? { cursor: 'text' } : undefined}
-                   onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT); } : undefined}>
+              {editando ? (() => {
+                const inputW = wBox - 16; // 408px
+                const inputH = 260; // Aumentado para acomodar a explicação sem clipping
+                const selecionado = TITULOS_EDUCATIVOS.find(x => x.titulo === tituloTxt)?.titulo ?? 'OUTRO';
+                const descAtual = TITULOS_EDUCATIVOS.find(x => x.titulo === selecionado)?.desc ?? 'Digite o título personalizado no campo abaixo para o seu projeto.';
+                
+                return (
+                  <foreignObject x={cxc - inputW / 2} y={Y_DADOS + 4} width={inputW} height={inputH} style={{ overflow: 'visible' }}>
+                    <div className="flex flex-col gap-2.5 p-3.5 bg-white dark:bg-slate-950 border-2 border-indigo-500 rounded-lg shadow-2xl text-[11px] text-slate-800 dark:text-slate-100" style={{ fontFamily: 'sans-serif' }}>
+                      <div className="flex items-center justify-between font-bold text-indigo-700 dark:text-indigo-400 text-xs border-b pb-1.5">
+                        <span>MODELOS DE TÍTULOS DE LEVANTAMENTO</span>
+                        <button
+                          type="button"
+                          className="h-6 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-[10px] transition-colors"
+                          onClick={() => ed?.onTerminarEditar?.(idT, tituloTxt)}
+                        >
+                          Confirmar
+                        </button>
+                      </div>
+
+                      <select
+                        className="h-8 w-full border border-input rounded-md bg-background px-2 text-[11px] font-semibold text-foreground focus:ring-1 focus:ring-indigo-500 outline-none"
+                        value={selecionado}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val !== 'OUTRO') {
+                            ed?.onEditar?.(idT, val);
+                          } else {
+                            ed?.onEditar?.(idT, 'LEVANTAMENTO ');
+                          }
+                        }}
+                      >
+                        {TITULOS_EDUCATIVOS.map((item) => (
+                          <option key={item.titulo} value={item.titulo}>{item.titulo}</option>
+                        ))}
+                        <option value="OUTRO">(Título Personalizado...)</option>
+                      </select>
+
+                      {selecionado === 'OUTRO' && (
+                        <input
+                          autoFocus
+                          type="text"
+                          className="h-8 w-full border border-input rounded-md bg-background px-2 text-[11px] text-foreground focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none uppercase font-bold"
+                          placeholder="DIGITE O TÍTULO AQUI..."
+                          value={tituloTxt}
+                          onChange={(e) => ed?.onEditar?.(idT, e.target.value.toUpperCase())}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              ed?.onTerminarEditar?.(idT, tituloTxt);
+                            }
+                          }}
+                        />
+                      )}
+
+                      <div className="rounded-md bg-indigo-50 dark:bg-indigo-950/60 p-2.5 border border-indigo-200 dark:border-indigo-900/60 text-[11px] leading-relaxed text-indigo-950 dark:text-indigo-200 font-medium">
+                        <span className="font-bold text-indigo-700 dark:text-indigo-400">💡 Sugestão do Métrica:</span> {descAtual}
+                      </div>
+                    </div>
+                  </foreignObject>
+                );
+              })() : (
+                <g>
                   {tituloLinhas.map((ln, k) => (
                     <text key={k} x={cxc} y={Y_DADOS + (duas ? 19 + k * 18 : 17)} fontSize={fs(10.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
                   ))}
@@ -1756,7 +2000,7 @@ function CarimboA3(props: {
           const pyProp = (Y_PROP + 32) + (ovProp.dy ?? 0);
 
           if (ed?.editandoId === idProp) {
-            const curWidth = Math.max(160, (ovProp.larguraChars ?? 66) * fs(9) * 0.45);
+            const curWidth = Math.max(160, (ovProp.larguraChars ?? 68) * fs(8.5) * 0.45);
             return (
               <foreignObject x={pxProp - curWidth / 2 - 6} y={pyProp - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
@@ -1767,7 +2011,7 @@ function CarimboA3(props: {
                   onChange={(e) => ed.onEditar?.(idProp, e.target.value)}
                   onBlur={(e) => {
                     const w = e.currentTarget.clientWidth;
-                    const ch = Math.round(w / (fs(9) * 0.45));
+                    const ch = Math.round(w / (fs(8.5) * 0.45));
                     ed.onTerminarEditar?.(idProp, txtProp, ch);
                   }}
                 />
@@ -1781,7 +2025,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
-              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(9) * (ovProp.escala ?? 1)} larguraChars={ovProp.larguraChars ?? 66} textAnchor="middle" texto={txtProp} maxHeight={100} />
+              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(8.5) * (ovProp.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovProp.escala ?? 1), ovProp.larguraChars ?? 68)} textAnchor="middle" texto={txtProp} lineHeight={1.35} maxHeight={100} />
             </g>
           );
         })()}
@@ -1802,7 +2046,7 @@ function CarimboA3(props: {
           const pyLaudo = (Y_LAUDO + 32) + (ovLaudo.dy ?? 0);
 
           if (ed?.editandoId === idLaudo) {
-            const curWidth = Math.max(160, (ovLaudo.larguraChars ?? 66) * fs(9) * 0.45);
+            const curWidth = Math.max(160, (ovLaudo.larguraChars ?? 68) * fs(8.5) * 0.45);
             return (
               <foreignObject x={pxLaudo - curWidth / 2 - 6} y={pyLaudo - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
@@ -1813,7 +2057,7 @@ function CarimboA3(props: {
                   onChange={(e) => ed.onEditar?.(idLaudo, e.target.value)}
                   onBlur={(e) => {
                     const w = e.currentTarget.clientWidth;
-                    const ch = Math.round(w / (fs(9) * 0.45));
+                    const ch = Math.round(w / (fs(8.5) * 0.45));
                     ed.onTerminarEditar?.(idLaudo, txtLaudo, ch);
                   }}
                 />
@@ -1827,7 +2071,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
-              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(9) * (ovLaudo.escala ?? 1)} larguraChars={ovLaudo.larguraChars ?? 66} textAnchor="middle" texto={txtLaudo} maxHeight={100} />
+              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(8.5) * (ovLaudo.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovLaudo.escala ?? 1), ovLaudo.larguraChars ?? 68)} textAnchor="middle" texto={txtLaudo} lineHeight={1.35} maxHeight={100} />
             </g>
           );
         })()}
@@ -1848,7 +2092,7 @@ function CarimboA3(props: {
           const pyConf = (Y_CONF + 32) + (ovConf.dy ?? 0);
 
           if (ed?.editandoId === idConf) {
-            const curWidth = Math.max(160, (ovConf.larguraChars ?? 74) * fs(8) * 0.45);
+            const curWidth = Math.max(160, (ovConf.larguraChars ?? 68) * fs(8.5) * 0.45);
             return (
               <foreignObject x={pxConf - curWidth / 2 - 6} y={pyConf - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
@@ -1859,7 +2103,7 @@ function CarimboA3(props: {
                   onChange={(e) => ed.onEditar?.(idConf, e.target.value)}
                   onBlur={(e) => {
                     const w = e.currentTarget.clientWidth;
-                    const ch = Math.round(w / (fs(8) * 0.45));
+                    const ch = Math.round(w / (fs(8.5) * 0.45));
                     ed.onTerminarEditar?.(idConf, txtConf, ch);
                   }}
                 />
@@ -1873,7 +2117,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idConf, e); } : undefined}>
-              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fsConf(8) * (ovConf.escala ?? 1)} larguraChars={ovConf.larguraChars ?? 82} textAnchor="middle" texto={txtConf} maxHeight={70} />
+              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fsConf(8.5) * (ovConf.escala ?? 1)} larguraChars={capChars(fsConf(8.5) * (ovConf.escala ?? 1), ovConf.larguraChars ?? 68)} textAnchor="middle" texto={txtConf} lineHeight={1.35} maxHeight={70} />
             </g>
           );
         })()}
@@ -1971,16 +2215,33 @@ function SimboloDivisa({ tipo, x, y }: { tipo: string; x: number; y: number }) {
   return <line x1={x} y1={y} x2={x + w} y2={y} stroke="#334155" strokeWidth={1.2} />; // linha ideal
 }
 
-// SVG não quebra texto sozinho; quebramos em linhas por contagem de caracteres (texto nativo)
-function TextoQuebrado({ x, y, fontSize, larguraChars, texto, textAnchor = 'start', lineHeight = 1.45, maxHeight }: { x: number; y: number; fontSize: number; larguraChars: number; texto: string; textAnchor?: 'start' | 'middle' | 'end'; lineHeight?: number; maxHeight?: number }) {
-  const palavras = texto.split(' ');
+// SVG não quebra texto sozinho; quebramos em linhas por contagem de caracteres (texto nativo, respeitando \n)
+function TextoQuebrado({ x, y, fontSize, larguraChars, texto, textAnchor = 'start', lineHeight = 1.35, maxHeight }: { x: number; y: number; fontSize: number; larguraChars: number; texto: string; textAnchor?: 'start' | 'middle' | 'end'; lineHeight?: number; maxHeight?: number }) {
+  const partes = texto.split('\n');
   const linhas: string[] = [];
-  let atual = '';
-  for (const p of palavras) {
-    if ((atual + ' ' + p).trim().length > larguraChars) { linhas.push(atual.trim()); atual = p; }
-    else atual = (atual + ' ' + p).trim();
+  for (const parte of partes) {
+    const palavras = parte.split(' ');
+    let atual = '';
+    for (const p of palavras) {
+      if (!p) continue;
+      if ((atual + (atual ? ' ' : '') + p).length > larguraChars) {
+        if (atual) {
+          linhas.push(atual);
+          atual = p;
+        } else {
+          linhas.push(p);
+          atual = '';
+        }
+      } else {
+        atual = atual + (atual ? ' ' : '') + p;
+      }
+    }
+    if (atual) {
+      linhas.push(atual);
+    } else if (parte === '') {
+      linhas.push(''); // linha em branco manual
+    }
   }
-  if (atual) linhas.push(atual.trim());
   // encolhe a fonte só o necessário para o texto caber na altura do bloco (evita vazar o quadro)
   let fs = fontSize;
   if (maxHeight && linhas.length > 0) {

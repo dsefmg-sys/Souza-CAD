@@ -179,6 +179,72 @@ export function dividirPorAreaAlvo(poly: PontoEN[], areaAlvoM2: number, azimuteG
   return { anelA, anelB, areaA: areaShoelace(anelA), areaB: areaShoelace(anelB) };
 }
 
+/**
+ * Mapeia os confrontantes e estilos de divisas da gleba original para as novas glebas
+ * resultantes de uma divisão por área. Identifica quais segmentos novos coincidem
+ * (estão contidos) em segmentos da gleba original para preservar seus dados.
+ */
+export function mapearAtributosGlebaDividida(
+  verticesOrig: Vertex[],
+  confrontantePorLadoOrig: Record<number, string>,
+  novosVertices: Vertex[]
+): {
+  confrontantePorLado: Record<number, string>;
+  vertices: Vertex[];
+} {
+  const dist = (p1: { leste: number; norte: number }, p2: { leste: number; norte: number }) =>
+    Math.hypot(p1.leste - p2.leste, p1.norte - p2.norte);
+
+  const noSegmento = (a: Vertex, b: Vertex, p: Vertex) => {
+    const dab = dist(a, b);
+    const dap = dist(a, p);
+    const dpb = dist(p, b);
+    // tolerância de 5 centímetros para colinearidade e pertencimento
+    return Math.abs(dap + dpb - dab) < 0.05;
+  };
+
+  const novos = novosVertices.map(v => ({ ...v }));
+  const novoConfPorLado: Record<number, string> = {};
+
+  const nOrig = verticesOrig.length;
+  const nNovos = novos.length;
+
+  for (let i = 0; i < nNovos; i++) {
+    const de = novos[i];
+    const para = novos[(i + 1) % nNovos];
+
+    // Verifica se o segmento de -> para está contido em algum segmento original vA -> vB
+    let achou = false;
+    for (let j = 0; j < nOrig; j++) {
+      const vA = verticesOrig[j];
+      const vB = verticesOrig[(j + 1) % nOrig];
+
+      if (noSegmento(vA, vB, de) && noSegmento(vA, vB, para)) {
+        // Preserva o limite, método e representação do vértice inicial
+        de.tipoLimite = vA.tipoLimite;
+        de.metodo = vA.metodo;
+        de.representacao = vA.representacao;
+
+        // Preserva o confrontante desse lado se houver
+        const confId = confrontantePorLadoOrig[j];
+        if (confId !== undefined) {
+          novoConfPorLado[i] = confId;
+        }
+        achou = true;
+        break;
+      }
+    }
+
+    // Se for a linha divisória (nova divisa interna), mantém representação padrão
+    if (!achou) {
+      de.representacao = 'linha-ideal';
+    }
+  }
+
+  return { confrontantePorLado: novoConfPorLado, vertices: novos };
+}
+
+
 export function unirGlebas(
   verticesA: Vertex[],
   verticesB: Vertex[],

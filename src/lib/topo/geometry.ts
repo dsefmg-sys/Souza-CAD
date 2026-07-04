@@ -17,11 +17,16 @@ export function distancia(a: PlanoXY, b: PlanoXY): number {
  * Trata o carry quando o arredondamento do minuto chega a 60.
  */
 export function azimuteDMS(deg: number): string {
-  let d = Math.floor(deg);
-  let m = Math.round((deg - d) * 60);
+  let a = deg % 360;
+  if (a < 0) a += 360;
+  let d = Math.floor(a);
+  let rest = (a - d) * 60;
+  let m = Math.floor(rest);
+  let s = Math.round((rest - m) * 60);
+  if (s >= 60) { s -= 60; m += 1; }
   if (m >= 60) { m -= 60; d += 1; }
   if (d >= 360) d -= 360;
-  return `${d}°${String(m).padStart(2, '0')}'`;
+  return `${d}°${String(m).padStart(2, '0')}'${String(s).padStart(2, '0')}"`;
 }
 
 /** Formata número com vírgula decimal (padrão BR). */
