@@ -3221,8 +3221,8 @@ export default function EditorPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-x-1.5 gap-y-1 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
-                      <span className="text-[10px] font-bold uppercase text-foreground col-span-2 px-1 mb-0.5">Ajuste de Tamanhos</span>
+                    <div className="grid grid-cols-3 gap-x-1 gap-y-1 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
+                      <span className="text-[10px] font-bold uppercase text-foreground col-span-3 px-1 mb-0.5">Ajuste de Tamanhos</span>
                       
                       {/* Interface */}
                       <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
