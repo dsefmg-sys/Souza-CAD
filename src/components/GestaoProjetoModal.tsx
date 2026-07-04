@@ -8,9 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ImovelData, EscritorioData, TecnicoData, FinanceiroProjeto, LancamentoFinanceiro, Projeto } from '@/lib/topo/types';
 import { rotulosProfissional } from '@/lib/topo/profissional';
-import { moedaBR, gerarReciboPdf, gerarContratoPdf } from '@/lib/export/financeiro';
+import { saveAs } from 'file-saver';
+import { moedaBR, gerarReciboPdf, gerarContratoPdf, gerarPropostaPdf } from '@/lib/export/financeiro';
+import { gerarDeclaracaoPosseDocx, gerarDeclaracaoSobreposicaoDocx } from '@/lib/export/declaracoes';
 import { listarProjetos } from '@/lib/store/projects';
 import { consumirNumeroRecibo } from '@/lib/store/settings';
+import { carregarPrecos, type PrecoServico } from '@/lib/store/precos';
 
 interface Props {
   open: boolean;
@@ -36,13 +39,16 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
   const gasto = lancamentos.filter((l) => l.tipo === 'gasto').reduce((s, l) => s + (l.valor || 0), 0);
   const saldoCaixa = recebido - gasto;
   const aReceber = valorCobrado - recebido;
+  const lucro = valorCobrado - gasto;                             // lucro do serviço quando quitado
+  const margem = valorCobrado > 0 ? (lucro / valorCobrado) * 100 : 0;
 
   const [novo, setNovo] = useState<{ tipo: 'gasto' | 'recebimento'; descricao: string; valor: string; data: string }>({ tipo: 'recebimento', descricao: '', valor: '', data: hoje() });
   const [reciboValor, setReciboValor] = useState('');
   const [formaPagamento, setFormaPagamento] = useState('');
   const [aba, setAba] = useState<'projeto' | 'empresa'>('projeto');
   const [projetos, setProjetos] = useState<Projeto[] | null>(null);
-  useEffect(() => { if (!open) { setProjetos(null); setAba('projeto'); } }, [open]);
+  const [precos, setPrecos] = useState<PrecoServico[]>([]);
+  useEffect(() => { if (!open) { setProjetos(null); setAba('projeto'); } else { setPrecos(carregarPrecos()); } }, [open]);
   useEffect(() => { if (open && aba === 'empresa' && projetos === null) listarProjetos().then(setProjetos).catch(() => setProjetos([])); }, [open, aba, projetos]);
 
   const patch = (p: Partial<FinanceiroProjeto>) => onChange({ ...financeiro, ...p });
@@ -98,10 +104,23 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                 <Input type="number" className="w-44" value={financeiro.valorCobrado ?? ''} placeholder="0,00"
                   onChange={(e) => patch({ valorCobrado: e.target.value === '' ? undefined : Number(e.target.value) })} />
               </div>
+              {precos.some((p) => p.valor > 0) && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Puxar da tabela de preços</Label>
+                  <select className="h-9 w-56 rounded-md border bg-background px-2 text-xs" value=""
+                    onChange={(e) => { const p = precos.find((x) => x.id === e.target.value); if (p) patch({ valorCobrado: p.valor }); }}>
+                    <option value="">Escolher serviço…</option>
+                    {precos.filter((p) => p.valor > 0).map((p) => (
+                      <option key={p.id} value={p.id}>{p.servico} — {moedaBR(p.valor)}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <Cartao titulo="Recebido" valor={recebido} cor="text-emerald-600" />
               <Cartao titulo="Gastos" valor={gasto} cor="text-red-600" />
               <Cartao titulo="Saldo em caixa" valor={saldoCaixa} cor={saldoCaixa >= 0 ? 'text-emerald-700' : 'text-red-700'} />
               <Cartao titulo="A receber" valor={aReceber} cor={aReceber > 0 ? 'text-amber-600' : 'text-muted-foreground'} />
+              <Cartao titulo="Lucro do serviço" valor={lucro} cor={lucro >= 0 ? 'text-emerald-700' : 'text-red-700'} sub={valorCobrado > 0 ? `margem ${margem.toFixed(0)}%` : 'informe o valor cobrado'} />
             </div>
 
             {/* lançamentos */}
@@ -162,8 +181,22 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
               <Button variant="outline" onClick={() => gerarContratoPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined })}>
                 <FileText className="size-4" /> Emitir contrato (PDF)
               </Button>
+              <Button variant="outline" onClick={() => gerarPropostaPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined })}>
+                <FileText className="size-4" /> Emitir proposta (PDF)
+              </Button>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">O contrato usa o valor cobrado acima. Ambos saem prontos para revisar, imprimir e assinar.</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">O contrato e a proposta usam o valor cobrado acima. Todos saem prontos para revisar, imprimir e assinar.</p>
+
+            <h3 className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted-foreground">Declarações avulsas</h3>
+            <div className="flex flex-wrap items-center gap-3 rounded-md border p-3">
+              <Button variant="outline" onClick={async () => saveAs(await gerarDeclaracaoPosseDocx({ imovel, tecnico, dataExtenso }), `Declaracao de posse - ${imovel.denominacao || 'imovel'}.docx`)}>
+                <FileText className="size-4" /> Declaração de posse
+              </Button>
+              <Button variant="outline" onClick={async () => saveAs(await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico, dataExtenso }), `Declaracao de inexistencia de sobreposicao - ${imovel.denominacao || 'imovel'}.docx`)}>
+                <FileText className="size-4" /> Inexistência de sobreposição
+              </Button>
+              <p className="text-[11px] text-muted-foreground">A de posse é assinada pelo possuidor; a de sobreposição, pelo responsável técnico. Os textos são editáveis nos modelos.</p>
+            </div>
           </section>
           </>)}
           {aba === 'empresa' && <EmpresaResumo projetos={projetos} />}
@@ -224,11 +257,12 @@ function Info({ rotulo, valor }: { rotulo: string; valor: string }) {
   );
 }
 
-function Cartao({ titulo, valor, cor }: { titulo: string; valor: number; cor: string }) {
+function Cartao({ titulo, valor, cor, sub }: { titulo: string; valor: number; cor: string; sub?: string }) {
   return (
     <div className="rounded-md border bg-background px-3 py-2">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{titulo}</div>
       <div className={`text-sm font-bold ${cor}`}>{moedaBR(valor)}</div>
+      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
     </div>
   );
 }
