@@ -104,19 +104,10 @@ export default function IntroVideo() {
             onEnded={fechar}
           />
 
-          {/* Apaga a marca d'água de IA: uma mancha verde macia centrada por PORCENTAGEM em cima
-              dela (canto inferior direito do vídeo), sólida no meio e esmaecendo pros lados, sem
-              borda dura nem ícone. Posição em % acompanha qualquer tamanho de tela. */}
-          {tocando && (
-            <div
-              className="pointer-events-none absolute inset-0 z-[6]"
-              style={{ background: 'radial-gradient(150px 95px at 88% 82%, rgb(6,78,59) 0%, rgb(6,78,59) 55%, rgba(6,78,59,0) 85%)' }}
-            />
-          )}
-
-          {/* Faixa em dois tons de verde na base — cobre a marca d'água de IA do vídeo
-              e serve de palco pro logo se formar */}
-          <div className="absolute bottom-0 left-0 right-0 z-[5] h-14 overflow-hidden sm:h-16">
+          {/* Tarja de marca na base (largura inteira): rodapé profissional com o logo. A altura em
+              porcentagem é dimensionada pra cobrir a marca d'água de IA, que fica logo acima da
+              base do vídeo; o min-h garante espaço pro logo em telas pequenas. */}
+          <div className="absolute bottom-0 left-0 right-0 z-[5] h-[22%] min-h-[64px] overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-700" />
             <div className="absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-emerald-400/25" style={{ animation: 'introBarraVarre 3.8s linear infinite' }} />
             <div className="absolute inset-x-0 top-0 h-[3px] bg-emerald-400" />
