@@ -9,6 +9,7 @@ import { valoresEfetivos } from '../topo/conferencia';
 import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo, sanitizarTexto } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
+import { compatibilizarWord2007 } from './compatWord2007';
 
 function coordTexto(v: Vertex): string {
   const lon = grausParaDMS(v.lon, { estilo: 'memorial', casas: 3 });
@@ -532,7 +533,8 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
       children,
     }],
   });
-  return Packer.toBlob(doc);
+  const blob = await Packer.toBlob(doc);
+  return compatibilizarWord2007(blob);
 }
 
 /** Linhas de assinatura de um confrontante conforme a condição (proprietário/posseiro/espólio). */

@@ -93,3 +93,38 @@ describe('validarIntegridadeZip', () => {
     expect(rel.problemas.some((p) => /w:p.*desbalanceadas/.test(p))).toBe(true);
   });
 });
+
+describe('compatibilidade Word 2007', () => {
+  it('memorial gerado tem compatibilityMode=12 (Word 2007)', async () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    const blob = await gerarMemorialDocx({ res, imovel, tecnico, confrontantes, confrontantePorLado });
+    const buf = Buffer.from(await blob.arrayBuffer());
+    const zip = await JSZip.loadAsync(buf);
+    const settings = await zip.file('word/settings.xml')!.async('string');
+    expect(settings).toContain('w:val="12"');
+    expect(settings).toContain('compatibilityMode');
+  });
+
+  it('memorial gerado não contém namespaces pós-Word 2007 (w14, w15, w16*)', async () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    const blob = await gerarMemorialDocx({ res, imovel, tecnico, confrontantes, confrontantePorLado });
+    const buf = Buffer.from(await blob.arrayBuffer());
+    const zip = await JSZip.loadAsync(buf);
+    const nomes = Object.keys(zip.files).filter((n) => n.endsWith('.xml'));
+    for (const nome of nomes) {
+      const xml = await zip.files[nome].async('string');
+      expect(xml).not.toMatch(/xmlns:w14="/);
+      expect(xml).not.toMatch(/xmlns:w15="/);
+      expect(xml).not.toMatch(/xmlns:w16/);
+      expect(xml).not.toMatch(/mc:Ignorable/);
+    }
+  });
+
+  it('memorial gerado não inclui comments.xml desnecessário', async () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    const blob = await gerarMemorialDocx({ res, imovel, tecnico, confrontantes, confrontantePorLado });
+    const buf = Buffer.from(await blob.arrayBuffer());
+    const zip = await JSZip.loadAsync(buf);
+    expect(zip.file('word/comments.xml')).toBeNull();
+  });
+});
