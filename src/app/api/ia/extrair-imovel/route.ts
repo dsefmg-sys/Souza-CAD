@@ -1,14 +1,27 @@
 import { NextResponse } from 'next/server';
+import { checarLimiteIA } from '@/lib/ia/rateLimit';
 
 // Extrai dados do IMÓVEL/PROPRIETÁRIO de um texto ou documento (PDF/imagem) usando o Gemini.
 // Roda NO SERVIDOR: a chave (GOOGLE_GENAI_API_KEY) nunca vai para o navegador.
 export const runtime = 'nodejs';
 
-const MODELO = 'gemini-1.5-flash';
+const MODELO = 'gemini-2.5-flash';
+// teto do arquivo no SERVIDOR (o navegador já limita a 15MB; base64 infla ~37%, então ~22M chars ≈ 16MB)
+const MAX_BASE64 = 22_000_000;
 
 export async function POST(req: Request) {
   const key = process.env.GOOGLE_GENAI_API_KEY;
   if (!key) return NextResponse.json({ erro: 'IA não configurada no servidor (falta GOOGLE_GENAI_API_KEY).' }, { status: 503 });
+
+  // ANTI-ABUSO: limita por cliente (IP) por minuto e por dia, pra um loop/rajada não torrar a cota.
+  const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'local').split(',')[0].trim();
+  const lim = checarLimiteIA(ip);
+  if (!lim.ok) {
+    return NextResponse.json(
+      { erro: `Uso da IA temporariamente limitado (${lim.motivo}). Tente novamente em instantes.` },
+      { status: 429, headers: { 'Retry-After': String(lim.retryAposS ?? 60) } },
+    );
+  }
 
   let texto = '';
   let arquivo: { data: string; mimeType: string } | null = null;
@@ -20,6 +33,17 @@ export async function POST(req: Request) {
 
   if ((!texto || texto.trim().length < 10) && !arquivo) {
     return NextResponse.json({ erro: 'Envie um texto ou envie um arquivo PDF/Imagem para a IA extrair.' }, { status: 400 });
+  }
+
+  // conferência de tamanho e tipo NO SERVIDOR (não confiar só no navegador)
+  if (arquivo) {
+    if (typeof arquivo.data !== 'string' || arquivo.data.length > MAX_BASE64) {
+      return NextResponse.json({ erro: 'Arquivo grande demais. Envie um PDF/imagem de até ~15MB.' }, { status: 413 });
+    }
+    const tipoOk = /^(application\/pdf|image\/(png|jpe?g|webp))$/i.test(arquivo.mimeType || '');
+    if (!tipoOk) {
+      return NextResponse.json({ erro: 'Tipo de arquivo não aceito. Use PDF, PNG, JPG ou WEBP.' }, { status: 415 });
+    }
   }
 
   const instrucao =
