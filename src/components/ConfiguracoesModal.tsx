@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign } from 'lucide-react';
 import ModelosDocsModal from './ModelosDocsModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -19,14 +19,19 @@ import {
   salvarModeloSigef,
   temModeloSigefProprio,
   limparModeloSigef,
+  proximoNumeroReciboSeq,
+  definirNumeroReciboSeq,
 } from '@/lib/store/settings';
 import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte } from '@/lib/store/suporte';
 import { carregarPreferencias, salvarPreferencias, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
+import { carregarPadroes, salvarPadroes, PADROES_PADRAO, type PadroesProjeto } from '@/lib/store/padroes';
+import { carregarPrecos, salvarPrecos, type PrecoServico } from '@/lib/store/precos';
+import { exportarConfiguracoesJson, importarConfiguracoesJson } from '@/lib/store/backup';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import ImportVerticesVizinhoConfigModal from '@/components/ImportVerticesVizinhoConfigModal';
 
 // Pessoal = só do usuário (assinatura técnica). Global = da empresa (todos usam o mesmo).
-type AbaConfig = 'pessoal' | 'escritorio' | 'numeracao' | 'modelos';
+type AbaConfig = 'pessoal' | 'comportamento' | 'escritorio' | 'numeracao' | 'modelos' | 'padroes';
 
 interface Props {
   open: boolean;
@@ -47,7 +52,11 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const [zapSuporte, setZapSuporte] = useState('');
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO);
   const [modelosAberto, setModelosAberto] = useState(false);
+  const [padroes, setPadroes] = useState<PadroesProjeto>(PADROES_PADRAO);
+  const [precos, setPrecos] = useState<PrecoServico[]>([]);
+  const [reciboSeq, setReciboSeq] = useState(1);
   const sigefRef = useRef<HTMLInputElement>(null);
+  const importConfigRef = useRef<HTMLInputElement>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -56,6 +65,9 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
       setEsc(carregarEscritorio());
       setModeloProprio(temModeloSigefProprio());
       setPrefs(carregarPreferencias());
+      setPadroes(carregarPadroes());
+      setPrecos(carregarPrecos());
+      setReciboSeq(proximoNumeroReciboSeq());
       if (souMaster()) carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
     }
   }, [open]);
@@ -81,6 +93,57 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     onConfigChange?.();
     flash('Salvo automaticamente');
   };
+
+  const mudarPref = <K extends keyof PreferenciasApp>(k: K, val: PreferenciasApp[K]) => {
+    const np = { ...prefs, [k]: val };
+    setPrefs(np);
+    salvarPreferencias(np);
+    onConfigChange?.();
+    flash('Salvo automaticamente');
+  };
+
+  const mudarPadrao = <K extends keyof PadroesProjeto>(k: K, val: PadroesProjeto[K]) => {
+    const np = { ...padroes, [k]: val };
+    setPadroes(np);
+    salvarPadroes(np);
+    flash('Salvo automaticamente');
+  };
+
+  const salvarListaPrecos = (lista: PrecoServico[]) => {
+    setPrecos(lista);
+    salvarPrecos(lista);
+    flash('Salvo automaticamente');
+  };
+  const mudarPreco = (id: string, campo: 'servico' | 'valor', valor: string) => {
+    salvarListaPrecos(precos.map((p) => p.id === id ? { ...p, [campo]: campo === 'valor' ? (Number(valor.replace(',', '.')) || 0) : valor } : p));
+  };
+  const adicionarPreco = () => {
+    salvarListaPrecos([...precos, { id: `p_${Date.now().toString(36)}`, servico: '', valor: 0 }]);
+  };
+  const removerPreco = (id: string) => {
+    salvarListaPrecos(precos.filter((p) => p.id !== id));
+  };
+
+  const mudarReciboSeq = (v: number) => {
+    const n = Math.max(1, Math.floor(v) || 1);
+    setReciboSeq(n);
+    definirNumeroReciboSeq(n);
+    flash('Salvo automaticamente');
+  };
+
+  async function importarConfig(file: File) {
+    if (!window.confirm('Restaurar as configurações deste arquivo?\n\nOs seus ajustes atuais (assinatura, escritório, modelos de texto, títulos, preços e padrões) serão substituídos pelos do arquivo. Os projetos não são afetados.')) return;
+    try {
+      const n = await importarConfiguracoesJson(file);
+      // recarrega o que está na tela
+      setT(carregarTecnico()); setEsc(carregarEscritorio()); setPrefs(carregarPreferencias());
+      setPadroes(carregarPadroes()); setPrecos(carregarPrecos()); setReciboSeq(proximoNumeroReciboSeq());
+      onConfigChange?.();
+      flash(`${n} configuração(ões) restauradas.`);
+    } catch {
+      flash('Arquivo inválido — não foi possível restaurar.');
+    }
+  }
 
   async function atualizarModeloSigef(file: File) {
     if (
@@ -133,14 +196,25 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 mt-3 border-b-0">
-            <span className="text-xs font-bold uppercase tracking-wide text-emerald-600">Pessoais</span>
-            <Tb a="pessoal" rotulo="Responsável Técnico" />
-            <span className="mx-1 h-4 w-px bg-border" />
-            <span className="text-xs font-bold uppercase tracking-wide text-emerald-600">Globais (empresa)</span>
-            <Tb a="escritorio" rotulo="Escritório & Carimbo" />
-            <Tb a="numeracao" rotulo="Numeração e Fuso" />
-            <Tb a="modelos" rotulo="Importação e Modelos" />
+          {/* dois grupos com TÍTULO acima dos botões (não na mesma linha) — deixa claro o que é
+              pessoal (do técnico) e o que é global (da empresa) */}
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-8">
+            <div>
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Pessoais</div>
+              <div className="flex flex-wrap gap-2">
+                <Tb a="pessoal" rotulo="Responsável Técnico" />
+                <Tb a="comportamento" rotulo="Comportamento" />
+              </div>
+            </div>
+            <div>
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Globais (empresa)</div>
+              <div className="flex flex-wrap gap-2">
+                <Tb a="escritorio" rotulo="Escritório & Carimbo" />
+                <Tb a="numeracao" rotulo="Numeração e Fuso" />
+                <Tb a="modelos" rotulo="Importação e Modelos" />
+                <Tb a="padroes" rotulo="Padrões & Backup" />
+              </div>
+            </div>
           </div>
         </DialogHeader>
 
@@ -195,6 +269,63 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                       Mostrar ícone em &quot;{rotulo}&quot;
                     </label>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {aba === 'comportamento' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Conferência antes de exportar</div>
+                <Interruptor
+                  ligado={prefs.bloquearExportacaoIncompleta}
+                  onToggle={(v) => mudarPref('bloquearExportacaoIncompleta', v)}
+                  titulo="Travar exportação com problema grave"
+                  descricao="Ligado (recomendado): geometria incompleta ou código de vértice repetido impede a exportação, porque o SIGEF rejeitaria. Desligado: vira só aviso e você decide prosseguir." />
+                <Interruptor
+                  ligado={prefs.exigirConjuge}
+                  onToggle={(v) => mudarPref('exigirConjuge', v)}
+                  titulo="Exigir cônjuge preenchido"
+                  descricao="Avisa antes de exportar se faltar o nome do cônjuge do proprietário ou de algum confrontante. Útil para escritórios que sempre colhem a assinatura do casal." />
+                <Interruptor
+                  ligado={prefs.exigirCns}
+                  onToggle={(v) => mudarPref('exigirCns', v)}
+                  titulo="Exigir CNS do cartório"
+                  descricao="Avisa antes de exportar se o código CNS do cartório do imóvel estiver vazio." />
+              </div>
+
+              <div className="space-y-3 border-t md:border-t-0 md:border-l md:pl-4 pt-3 md:pt-0">
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Ajuda e linguagem</div>
+                <Interruptor
+                  ligado={prefs.mostrarDicasEducativas}
+                  onToggle={(v) => mudarPref('mostrarDicasEducativas', v)}
+                  titulo="Mostrar dicas educativas"
+                  descricao="Liga as explicações do glossário (por exemplo, os tipos de ato no requerimento). Desligue para uma tela mais enxuta." />
+
+                {/* Modo da interface: quantas ferramentas aparecem. É AQUI que dá pra voltar pro Simples
+                    quando a chave do topo já sumiu (some depois de 5 h de uso no Completo). */}
+                <div className="space-y-1.5 rounded border p-2.5">
+                  <Label className="text-xs font-semibold">Modo da interface</Label>
+                  <p className="text-[11px] leading-tight text-muted-foreground">Quanta ferramenta aparece na tela. O <strong>Simples</strong> mostra só o essencial, pra qualquer nível se adaptar ao software; o <strong>Completo</strong> mostra tudo. Depois de bastante uso no Completo, a chave do topo some e é aqui que você volta pro Simples.</p>
+                  <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
+                    {(['simples', 'completo'] as const).map((m) => (
+                      <button key={m} type="button" onClick={() => mudarPref('modo', m)}
+                        className={`rounded-full px-3 py-1 font-semibold capitalize transition-colors ${prefs.modo === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{m}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Nível da ajuda: quanta explicação. Coisa diferente do modo — é sobre tempo de profissão. */}
+                <div className="space-y-1.5 rounded border p-2.5">
+                  <Label className="text-xs font-semibold">Nível da ajuda</Label>
+                  <p className="text-[11px] leading-tight text-muted-foreground">Quanta explicação a ajuda dá. <strong>Iniciante</strong> explica os porquês; <strong>Experiente</strong> vai direto ao ponto, pra o agrimensor que já tem tempo de profissão. É separado do modo da interface.</p>
+                  <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
+                    {(['iniciante', 'experiente'] as const).map((n) => (
+                      <button key={n} type="button" onClick={() => mudarPref('nivelExperiencia', n)}
+                        className={`rounded-full px-3 py-1 font-semibold capitalize transition-colors ${prefs.nivelExperiencia === n ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{n}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -255,6 +386,12 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 </div>
                 <div className="p-2.5 rounded bg-muted/40 text-[11px] leading-tight text-muted-foreground border">
                   <strong>Dica de agrimensor:</strong> A numeração dos contadores é a semente inicial. À medida que novos pontos são gerados, o banco de dados interno avança automaticamente para evitar duplicidades de vértices.
+                </div>
+
+                <div className="space-y-1 rounded border p-2.5">
+                  <Label className="text-xs font-semibold">Próximo número de recibo</Label>
+                  <p className="text-[11px] leading-tight text-muted-foreground">O recibo é numerado sozinho, no formato 0001/ano. Ajuste aqui pra continuar de uma numeração antiga.</p>
+                  <Input type="number" min={1} className="w-32" value={reciboSeq} onChange={(e) => mudarReciboSeq(Number(e.target.value))} />
                 </div>
 
                 {/* Editar banco de vértices: excluir individual na tela do Banco de pontos; aqui, zerar tudo */}
@@ -430,6 +567,77 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               </div>
             </div>
           )}
+
+          {aba === 'padroes' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-4">
+                <div className="space-y-3 rounded border p-3">
+                  <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Padrões de novos projetos</div>
+                  <p className="text-[11px] leading-tight text-muted-foreground">Todo projeto novo já nasce com estes valores, pra você não repetir a cada trabalho.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Azimute</Label>
+                      <select className="w-full rounded-md border bg-background px-2 py-2 text-sm" value={padroes.tipoAzimute} onChange={(e) => mudarPadrao('tipoAzimute', e.target.value as 'geodesico' | 'plano')}>
+                        <option value="geodesico">Geodésico</option>
+                        <option value="plano">Plano</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Tipo de imóvel</Label>
+                      <select className="w-full rounded-md border bg-background px-2 py-2 text-sm" value={padroes.tipoImovel} onChange={(e) => mudarPadrao('tipoImovel', e.target.value as 'rural' | 'urbano')}>
+                        <option value="rural">Rural</option>
+                        <option value="urbano">Urbano</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Natureza do serviço</Label>
+                      <Input value={padroes.naturezaServico} onChange={(e) => mudarPadrao('naturezaServico', e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Comarca padrão</Label>
+                      <Input placeholder="vazio = usa o município" value={padroes.comarcaPadrao} onChange={(e) => mudarPadrao('comarcaPadrao', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded border p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><DollarSign className="size-3.5" /> Tabela de preços</div>
+                    <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={adicionarPreco}><Plus className="size-3.5" /> Adicionar</Button>
+                  </div>
+                  <p className="text-[11px] leading-tight text-muted-foreground">Puxe estes valores com um clique na gestão financeira do projeto.</p>
+                  <div className="space-y-1.5">
+                    {precos.length === 0 && <div className="text-[11px] text-muted-foreground">Nenhum preço cadastrado.</div>}
+                    {precos.map((p) => (
+                      <div key={p.id} className="flex items-center gap-1.5">
+                        <Input className="h-8 flex-1 text-xs" placeholder="Serviço" value={p.servico} onChange={(e) => mudarPreco(p.id, 'servico', e.target.value)} />
+                        <Input className="h-8 w-24 text-xs" type="number" step="0.01" placeholder="R$" value={p.valor || ''} onChange={(e) => mudarPreco(p.id, 'valor', e.target.value)} />
+                        <Button size="sm" variant="ghost" className="size-8 shrink-0 p-0 text-destructive" onClick={() => removerPreco(p.id)}><Trash2 className="size-3.5" /></Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 border-t md:border-t-0 md:border-l md:pl-4 pt-3 md:pt-0">
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Backup das configurações</div>
+                <p className="text-[11px] leading-tight text-muted-foreground">
+                  Leve seus ajustes de uma máquina pra outra: baixa um arquivo com assinatura, escritório, modelos de texto, títulos, preços e padrões. Não inclui os projetos (para os projetos, use o backup completo na tela de Projetos).
+                </p>
+                <input ref={importConfigRef} type="file" accept=".json,application/json" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) importarConfig(f); e.currentTarget.value = ''; }} />
+                <Button variant="outline" className="w-full font-semibold gap-1.5" onClick={() => exportarConfiguracoesJson()}>
+                  <Download className="size-4" /> Baixar configurações (.json)
+                </Button>
+                <Button variant="outline" className="w-full font-semibold gap-1.5" onClick={() => importConfigRef.current?.click()}>
+                  <Upload className="size-4" /> Restaurar configurações de um arquivo
+                </Button>
+                <div className="rounded border border-dashed p-2.5 text-[11px] leading-tight text-muted-foreground">
+                  Restaurar substitui os ajustes atuais pelos do arquivo. Os projetos e o banco de vértices não são tocados.
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="border-t pt-3 flex justify-between items-center text-xs text-muted-foreground">
@@ -443,5 +651,18 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
       <ImportTxtConfigModal open={importTxtAberto} onOpenChange={setImportTxtAberto} />
       <ImportVerticesVizinhoConfigModal open={importVizinhoAberto} onOpenChange={setImportVizinhoAberto} />
     </Dialog>
+  );
+}
+
+/** Interruptor de liga/desliga com título e explicação, no padrão das preferências. */
+function Interruptor({ ligado, onToggle, titulo, descricao }: { ligado: boolean; onToggle: (v: boolean) => void; titulo: string; descricao: string }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-2.5 rounded border p-2.5 hover:bg-muted/30">
+      <input type="checkbox" className="mt-0.5 size-4 shrink-0" checked={ligado} onChange={(e) => onToggle(e.target.checked)} />
+      <span className="space-y-0.5">
+        <span className="block text-xs font-semibold">{titulo}</span>
+        <span className="block text-[11px] leading-tight text-muted-foreground">{descricao}</span>
+      </span>
+    </label>
   );
 }
