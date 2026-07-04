@@ -27,7 +27,9 @@ function nomeComum(labelA: string, labelB: string): string {
       if (x.toUpperCase() === y.toUpperCase()) return x;
     }
   }
-  return a[0] || b[0] || '';
+  // Sem nome em comum, o confrontante do trecho é AMBÍGUO. Deixar em branco força a revisão
+  // manual — melhor que chutar a[0] e cravar um nome possivelmente errado num documento legal.
+  return '';
 }
 
 /**

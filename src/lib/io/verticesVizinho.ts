@@ -27,7 +27,9 @@ function separadorRegex(sep: ImportVerticesVizinhoConfig['separador']): RegExp {
 function numero(s: string | undefined, decimal: '.' | ','): number {
   if (s == null) return NaN;
   let t = s.trim();
-  if (decimal === ',') t = t.replace(/\./g, '').replace(',', '.');
+  // Só trata o ponto como separador de milhar quando há VÍRGULA decimal de fato. Sem isso, uma
+  // coordenada UTM com ponto decimal (ex.: "300000.25") teria o ponto removido e viraria 30 milhões.
+  if (decimal === ',' && t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
   return parseFloat(t);
 }
 

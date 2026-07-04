@@ -778,7 +778,9 @@ export default function EditorPage() {
         apagarMultiSelecionados();
       }
       else if (k === 'Escape') {
-        if (modo === 'multi' && selMulti.size > 0) { e.preventDefault(); setSelMulti(new Set()); }
+        // menu de contexto aberto: Esc só fecha o menu (não troca de tela)
+        if (menuContexto) { e.preventDefault(); setMenuContexto(null); }
+        else if (modo === 'multi' && selMulti.size > 0) { e.preventDefault(); setSelMulti(new Set()); }
         else if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'medir') {
           e.preventDefault();
           cancelarDesenho();
@@ -791,7 +793,7 @@ export default function EditorPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo, desenhoBuffer, selMulti, vertices, confrontantePorLado, desfazer, refazer]);
+  }, [modo, desenhoBuffer, selMulti, vertices, confrontantePorLado, desfazer, refazer, menuContexto]);
 
   // ao sair do modo "triângulo", esvazia a seleção múltipla
   useEffect(() => { if (modo !== 'multi') setSelMulti((s) => (s.size ? new Set() : s)); }, [modo]);
@@ -4544,7 +4546,7 @@ export default function EditorPage() {
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
       <TermosModal open={termosModalAberto} onAceitar={() => { setTermosOk(true); setTermosModalAberto(false); const a = acaoAposTermos.current; acaoAposTermos.current = null; a?.(); }} />
-      <PrimeiroAcessoModal open={!setupOk} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
+      <PrimeiroAcessoModal open={!setupOk} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); empurrarConfigParaNuvem().catch(() => {}); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
       <MasterPainelModal
         open={masterAberto}
         onOpenChange={(o) => {

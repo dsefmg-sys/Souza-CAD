@@ -36,8 +36,9 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
 
   const escala = escalaParaCaber(fmt, box);
 
-  // chave Pexels do dono como padrão; pode ser trocada no campo (fica salva no navegador)
-  useEffect(() => { if (!open) { setEls([]); setSel(null); } else { setPexelsKey(localStorage.getItem('metrica.pexelsApiKey') || 'uEXpsEUk50vq3Ppp8uyM9gD2ukz8dYV0kuw28LpIDSAjWWieJgkFurF8'); } }, [open]);
+  // chave Pexels: vem da variável de ambiente (NEXT_PUBLIC_PEXELS_API_KEY) e pode ser trocada no
+  // campo (fica salva no navegador). Não fica mais escrita no código-fonte.
+  useEffect(() => { if (!open) { setEls([]); setSel(null); } else { setPexelsKey(localStorage.getItem('metrica.pexelsApiKey') || process.env.NEXT_PUBLIC_PEXELS_API_KEY || ''); } }, [open]);
   function salvarPexelsKey(v: string) { setPexelsKey(v); localStorage.setItem('metrica.pexelsApiKey', v.trim()); }
   useEffect(() => {
     if (!open) return;

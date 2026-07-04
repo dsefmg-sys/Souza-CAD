@@ -1,4 +1,5 @@
 import type { Projeto } from '../topo/types';
+import { migrarProjeto } from '../topo/glebas';
 import { db, novoId } from './db';
 import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, type CollectionReference } from 'firebase/firestore';
 import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
@@ -42,11 +43,14 @@ interface EnvelopeNuvem { id: string; nome: string; criadoEm: number; atualizado
 function paraNuvem(p: Projeto): EnvelopeNuvem {
   return { id: p.id, nome: p.nome, criadoEm: p.criadoEm, atualizadoEm: p.atualizadoEm, dados: JSON.stringify(p) };
 }
-function daNuvem(raw: Record<string, unknown>): Projeto {
+// Devolve o Projeto já MIGRADO (projetos antigos sem glebas ganham a gleba 1). Retorna null quando o
+// documento está corrompido (não dá pra desserializar) — o chamador pula em vez de exibir lixo.
+function daNuvem(raw: Record<string, unknown>): Projeto | null {
   if (typeof raw.dados === 'string') {
-    try { return JSON.parse(raw.dados) as Projeto; } catch { /* cai pro formato legado */ }
+    try { return migrarProjeto(JSON.parse(raw.dados) as Projeto); }
+    catch { return null; } // envelope com JSON quebrado: pula este registro
   }
-  return raw as unknown as Projeto; // documento antigo, salvo antes do envelope
+  return migrarProjeto(raw as unknown as Projeto); // documento antigo, salvo antes do envelope
 }
 
 /** Onde o projeto foi de fato gravado: na nuvem (Firestore) ou só localmente (IndexedDB). */
@@ -85,7 +89,7 @@ export async function listarProjetos(): Promise<Projeto[]> {
   if (uid) {
     try {
       const snap = await getDocs(colProjetos(uid));
-      return snap.docs.map((d) => daNuvem(d.data())).filter((p) => !p.excluidoEm).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+      return snap.docs.map((d) => daNuvem(d.data())).filter((p): p is Projeto => !!p && !p.excluidoEm).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
     } catch { /* nuvem indisponível/negada → cai para o local */ }
   }
   const d = await db();
@@ -99,7 +103,7 @@ export async function listarLixeira(): Promise<Projeto[]> {
   if (uid) {
     try {
       const snap = await getDocs(colProjetos(uid));
-      return snap.docs.map((d) => daNuvem(d.data())).filter((p) => p.excluidoEm).sort((a, b) => (b.excluidoEm ?? 0) - (a.excluidoEm ?? 0));
+      return snap.docs.map((d) => daNuvem(d.data())).filter((p): p is Projeto => !!p && !!p.excluidoEm).sort((a, b) => (b.excluidoEm ?? 0) - (a.excluidoEm ?? 0));
     } catch { /* cai pro local */ }
   }
   const d = await db();
@@ -148,7 +152,7 @@ export async function carregarProjeto(id: string): Promise<Projeto | undefined> 
   const uid = uidNuvem();
   if (uid) {
     const s = await getDoc(doc(colProjetos(uid), id));
-    return s.exists() ? daNuvem(s.data()) : undefined;
+    return s.exists() ? (daNuvem(s.data()) ?? undefined) : undefined;
   }
   const d = await db();
   const reg = await d.get('projetos', id);

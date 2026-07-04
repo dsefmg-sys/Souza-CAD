@@ -4,12 +4,13 @@ import { rotulosProfissional } from '../topo/profissional';
 import { carregarModelos, preencherModelo } from '../store/modelos';
 
 /** Variáveis dos modelos (recibo/contrato) a partir dos dados do serviço. */
-function varsFinanceiro(a: { imovel: ImovelData; tecnico: TecnicoData; areaHa: number }): Record<string, string> {
+function varsFinanceiro(a: { imovel: ImovelData; tecnico: TecnicoData; areaHa: number; perimetro?: number }): Record<string, string> {
   return {
     proprietario: a.imovel.proprietario || '', cpf: a.imovel.cpfProprietario || '', denominacao: a.imovel.denominacao || '',
     matricula: a.imovel.matricula || '', municipio: a.imovel.municipio || '',
     area: `${a.areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha`,
-    perimetro: '', tecnico: a.tecnico.nome || '', cft: a.tecnico.cft || '', cidade: a.tecnico.cidadeAssinatura || '',
+    perimetro: a.perimetro != null ? `${a.perimetro.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m` : '',
+    tecnico: a.tecnico.nome || '', cft: a.tecnico.cft || '', cidade: a.tecnico.cidadeAssinatura || '',
   };
 }
 
@@ -59,6 +60,7 @@ interface BaseArgs {
   tecnico: TecnicoData;
   dataExtenso: string;     // ex.: "30 de junho de 2026"
   areaHa: number;
+  perimetro?: number;      // usado no {perimetro} do contrato/proposta
 }
 
 function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, larg: number): number {

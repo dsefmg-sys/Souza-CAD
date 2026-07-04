@@ -9,10 +9,18 @@ import type { TecnicoData, EscritorioData } from '../topo/types';
 // vira só um cache rápido, sincronizado no login, no salvar e limpo na saída.
 
 const KEY_SETUP = 'metrica.setupFeito';
+const KEY_DONO = 'metrica.configUid'; // de qual usuário é o cadastro que está no cache local
 
 function uidAtual(): string | null {
   if (!firebaseConfigurado) return null;
   return auth()?.currentUser?.uid ?? null;
+}
+
+function donoLocal(): string | null {
+  try { return localStorage.getItem(KEY_DONO); } catch { return null; }
+}
+function marcarDono(uid: string): void {
+  try { localStorage.setItem(KEY_DONO, uid); } catch { /* ignore */ }
 }
 
 /**
@@ -26,9 +34,18 @@ export async function puxarConfigDaNuvem(): Promise<boolean> {
   try {
     const snap = await getDoc(doc(fdb()!, 'users', uid));
     const d = snap.exists() ? (snap.data() as { tecnico?: TecnicoData; escritorio?: EscritorioData; configurado?: boolean }) : null;
-    // sobrescreve o cache local com o da conta (ou com o padrão em branco quando a conta é nova)
-    salvarTecnico(d?.tecnico ?? TECNICO_PADRAO);
-    salvarEscritorio(d?.escritorio ?? ESCRITORIO_PADRAO);
+    if (d?.tecnico || d?.escritorio) {
+      // a conta tem cadastro na nuvem: a nuvem é a verdade, sobrescreve o cache
+      salvarTecnico(d.tecnico ?? TECNICO_PADRAO);
+      salvarEscritorio(d.escritorio ?? ESCRITORIO_PADRAO);
+      marcarDono(uid);
+    } else if (donoLocal() !== uid) {
+      // conta nova E o cache local é de OUTRO usuário (ou de ninguém): zera pra não herdar cadastro
+      // alheio. Se o cache já for deste usuário (dados recém-preenchidos ainda não subidos), MANTÉM.
+      salvarTecnico(TECNICO_PADRAO);
+      salvarEscritorio(ESCRITORIO_PADRAO);
+      marcarDono(uid);
+    }
     return !!d?.configurado;
   } catch {
     return false;
@@ -39,6 +56,7 @@ export async function puxarConfigDaNuvem(): Promise<boolean> {
 export async function empurrarConfigParaNuvem(): Promise<void> {
   const uid = uidAtual();
   if (!uid) return;
+  marcarDono(uid); // o cache local passa a ser (e a pertencer a) este usuário
   try {
     await setDoc(
       doc(fdb()!, 'users', uid),
@@ -54,5 +72,5 @@ export async function empurrarConfigParaNuvem(): Promise<void> {
 export function limparConfigLocalNaSaida(): void {
   salvarTecnico(TECNICO_PADRAO);
   salvarEscritorio(ESCRITORIO_PADRAO);
-  try { localStorage.removeItem(KEY_SETUP); } catch { /* ignore */ }
+  try { localStorage.removeItem(KEY_SETUP); localStorage.removeItem(KEY_DONO); } catch { /* ignore */ }
 }

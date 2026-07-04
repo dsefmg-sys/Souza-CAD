@@ -52,6 +52,7 @@ export function importarDxf(conteudo: string): DxfEntidades {
     if (!atual) return;
     const tipo = atual.toUpperCase();
     if (tipo === 'LWPOLYLINE') {
+      while (ys.length < xs.length) ys.push(0); // completa o Y do último ponto, se faltou
       const pts = xs.map((x, k) => ({ x, y: ys[k] }));
       if (pts.length >= 2) out.polilinhas.push({ fechada, pontos: pts, layer: layerVal });
     } else if (tipo === 'VERTEX') {
@@ -85,9 +86,11 @@ export function importarDxf(conteudo: string): DxfEntidades {
       continue;
     }
     if (!atual) continue;
-    if (code === 10) xs.push(parseFloat(value));
+    // X (10/11) e Y (20/21) vêm em pares. Se um novo X chega com o Y anterior faltando, completa o
+    // Y pendente antes de empilhar — assim um Y ausente vira um ponto zerado, sem desalinhar o resto.
+    if (code === 10) { if (xs.length > ys.length) ys.push(0); xs.push(parseFloat(value)); }
     else if (code === 20) ys.push(parseFloat(value));
-    else if (code === 11) xs.push(parseFloat(value)); // segundo ponto de LINE
+    else if (code === 11) { if (xs.length > ys.length) ys.push(0); xs.push(parseFloat(value)); } // segundo ponto de LINE
     else if (code === 21) ys.push(parseFloat(value));
     else if (code === 8) {
       layerVal = value;

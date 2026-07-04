@@ -238,6 +238,7 @@ export default function Planta({
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
+  const escalaDenomRef = useRef(0); // escala atual lida pelo handler da roda (evita depender do valor no efeito)
   const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number }>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
   // Arraste suave: em vez de atualizar o estado a cada micro-movimento do mouse (que redesenha o
@@ -319,6 +320,31 @@ export default function Planta({
     return () => window.removeEventListener('keydown', onKey);
   }, [editavel]);
 
+  // Zoom pela roda do mouse (Ctrl+roda, ou roda com a folha destravada). Fica ANTES do retorno
+  // condicional abaixo para não violar as regras dos hooks; lê a escala atual da ref e o svg da ref
+  // (quando a planta não está desenhada, svgRef.current é null e o efeito não faz nada).
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (!folhaTravada || e.ctrlKey) {
+        e.preventDefault();
+        e.stopPropagation(); // evita conflito com o zoom do contêiner pai
+        const delta = e.deltaY > 0 ? 250 : -250;
+        const arredondado = Math.round(escalaDenomRef.current / 250) * 250;
+        const nova = Math.max(250, arredondado + delta);
+        onConfigPatch?.({ escalaManual: nova });
+      }
+    };
+    const handleMousedown = (e: MouseEvent) => { if (e.button === 1) e.preventDefault(); };
+    svgEl.addEventListener('wheel', handleWheel, { passive: false });
+    svgEl.addEventListener('mousedown', handleMousedown, { passive: false });
+    return () => {
+      svgEl.removeEventListener('wheel', handleWheel);
+      svgEl.removeEventListener('mousedown', handleMousedown);
+    };
+  }, [onConfigPatch, folhaTravada, vertices.length]);
+
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
   }
@@ -356,6 +382,7 @@ export default function Planta({
   const escalaDenom = (config.escalaManual && config.escalaManual > 0)
     ? config.escalaManual
     : (TABELA.find((d) => d >= denomNatural) ?? Math.ceil(denomNatural / 10000) * 10000);
+  escalaDenomRef.current = escalaDenom; // mantém a ref usada pelo handler da roda em dia
   const escala = 1 / (escalaDenom * 0.0002645);
   const desW = (maxX - minX) * escala, desH = (maxY - minY) * escala;
   // deslocamento manual da folha (o polígono é georreferenciado e não se move; a prancha sim)
@@ -391,36 +418,6 @@ export default function Planta({
     const u = geoParaUtm(config.centroInfoPos.lat, config.centroInfoPos.lon, zona, hemisferio);
     cx = sx(u.leste); cy = sy(u.norte);
   }
-
-  useEffect(() => {
-    const svgEl = svgRef.current;
-    if (!svgEl) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (!folhaTravada || e.ctrlKey) {
-        e.preventDefault();
-        e.stopPropagation(); // Impede o borbulhamento para evitar conflito com o zoom do contêiner pai
-        const delta = e.deltaY > 0 ? 250 : -250;
-        const arredondado = Math.round(escalaDenom / 250) * 250;
-        const nova = Math.max(250, arredondado + delta);
-        onConfigPatch?.({ escalaManual: nova });
-      }
-    };
-
-    const handleMousedown = (e: MouseEvent) => {
-      if (e.button === 1) {
-        // Cancela o auto-scroll de botão do meio nativo
-        e.preventDefault();
-      }
-    };
-
-    svgEl.addEventListener('wheel', handleWheel, { passive: false });
-    svgEl.addEventListener('mousedown', handleMousedown, { passive: false });
-    return () => {
-      svgEl.removeEventListener('wheel', handleWheel);
-      svgEl.removeEventListener('mousedown', handleMousedown);
-    };
-  }, [escalaDenom, onConfigPatch, folhaTravada]);
 
   // ---- confrontantes por trecho: posição do rótulo (fora do polígono) ----
   const trechos = new Map<string, number[]>();

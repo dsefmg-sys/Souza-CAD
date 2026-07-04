@@ -64,7 +64,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
     patch({ lancamentos: lancamentos.filter((l) => l.id !== id) });
   }
 
-  const baseArgs = { imovel, escritorio, tecnico, dataExtenso, areaHa };
+  const baseArgs = { imovel, escritorio, tecnico, dataExtenso, areaHa, perimetro };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

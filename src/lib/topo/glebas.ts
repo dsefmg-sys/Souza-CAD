@@ -89,23 +89,16 @@ export function dividirGleba(
   const part2 = vertices.slice(0, i + 1);
   const verticesB = [...part1, ...part2].map(v => ({ ...v, id: `vb_${v.id}_${timestamp}` }));
   const confrontantePorLadoB: Record<number, string> = {};
-  
+
+  // Gleba B percorre os vértices originais na ordem j, j+1, …, n-1, 0, 1, …, i. O lado k liga
+  // verticesB[k] ao seguinte, então o índice do lado ORIGINAL sai direto de k (sem quebrar o id,
+  // que era o bug: o id do vértice contém underscores e o split perdia o índice).
   const totalB = verticesB.length;
+  const lenPart1 = part1.length; // = vertices.length - j
   for (let k = 0; k < totalB - 1; k++) {
-    const v1 = verticesB[k];
-    const v2 = verticesB[k + 1];
-    
-    const origId1 = v1.id.split('_')[1];
-    const origId2 = v2.id.split('_')[1];
-    const origIdx = vertices.findIndex(v => v.id === origId1);
-    
-    if (origIdx !== -1) {
-      const nextIdx = (origIdx + 1) % vertices.length;
-      if (vertices[nextIdx].id === origId2) {
-        if (confrontantePorLado[origIdx] !== undefined) {
-          confrontantePorLadoB[k] = confrontantePorLado[origIdx];
-        }
-      }
+    const origIdx = k < lenPart1 ? j + k : k - lenPart1;
+    if (confrontantePorLado[origIdx] !== undefined) {
+      confrontantePorLadoB[k] = confrontantePorLado[origIdx];
     }
   }
   // A última divisa (i -> j) é a nova linha de divisão
