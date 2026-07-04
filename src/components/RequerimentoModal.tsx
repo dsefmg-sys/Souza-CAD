@@ -143,7 +143,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Requerimento ao cartório (retificação de área)</DialogTitle>
         </DialogHeader>
@@ -193,8 +193,11 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           )}
         </div>
 
-        <Bloco titulo={rotulos.req} pessoa={req} onChange={setReq} sugProp={sugProp} />
-        <Bloco titulo={rotulos.trans} pessoa={trans} onChange={setTrans} sugProp={sugProp} />
+        {/* Requerente e transmitente lado a lado — aproveita a largura e reduz a rolagem */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Bloco titulo={rotulos.req} pessoa={req} onChange={setReq} sugProp={sugProp} />
+          <Bloco titulo={rotulos.trans} pessoa={trans} onChange={setTrans} sugProp={sugProp} />
+        </div>
 
         {permiteVariasPartes && (
           <div className="space-y-3 rounded border border-dashed p-3">

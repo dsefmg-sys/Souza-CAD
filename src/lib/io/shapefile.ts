@@ -6,6 +6,93 @@ import JSZip from 'jszip';
 
 export interface PontoUTM { leste: number; norte: number; }
 
+export interface ShapefileLido {
+  tipo: 'poligono' | 'polilinha' | 'ponto' | 'multiponto' | 'desconhecido';
+  /** Anéis/linhas (cada parte é uma lista de pontos). Pontos soltos entram como anéis de 1 ponto. */
+  aneis: PontoUTM[][];
+  /** Fuso detectado a partir do .prj, quando presente. */
+  zona?: number;
+  hemisferio?: 'N' | 'S';
+}
+
+/** Lê o fuso UTM (zona + hemisfério) de um .prj SIRGAS/WGS UTM, quando dá pra reconhecer. */
+export function zonaDoPrj(prj: string): { zona: number; hemisferio: 'N' | 'S' } | null {
+  const mc = prj.match(/central_meridian"?\s*,\s*(-?\d+(?:\.\d+)?)/i);
+  if (!mc) return null;
+  const meridiano = Number(mc[1]);
+  const zona = Math.round((meridiano + 183) / 6);
+  if (zona < 1 || zona > 60) return null;
+  const fn = prj.match(/false_northing"?\s*,\s*(-?\d+(?:\.\d+)?)/i);
+  const hemisferio: 'N' | 'S' = fn && Number(fn[1]) > 0 ? 'S' : 'N';
+  return { zona, hemisferio };
+}
+
+/**
+ * Lê a geometria de um .shp (ESRI). Suporta Ponto (1), PolyLine (3), Polígono (5) e MultiPoint (8),
+ * além das variantes Z/M (que têm o mesmo X/Y no começo — o Z/M do fim é ignorado). Devolve os
+ * pontos NO SISTEMA DO ARQUIVO (normalmente UTM Leste/Norte); o fuso vem do .prj à parte.
+ */
+export function lerShp(buf: ArrayBuffer): ShapefileLido {
+  const dv = new DataView(buf);
+  if (buf.byteLength < 100 || dv.getInt32(0, false) !== 9994) {
+    return { tipo: 'desconhecido', aneis: [] };
+  }
+  const tipoArquivo = dv.getInt32(32, true);
+  const aneis: PontoUTM[][] = [];
+  const lerXY = (o: number): PontoUTM => ({ leste: dv.getFloat64(o, true), norte: dv.getFloat64(o + 8, true) });
+
+  let o = 100; // início dos registros
+  while (o + 8 <= buf.byteLength) {
+    const contentWords = dv.getInt32(o + 4, false); // big-endian, em palavras de 16 bits
+    const conteudo = o + 8;
+    if (contentWords <= 0 || conteudo + contentWords * 2 > buf.byteLength) break;
+    const tipoReg = dv.getInt32(conteudo, true);
+    const base = tipoReg % 10; // 1,11,21 = ponto; 3,13,23 = linha; 5,15,25 = polígono; 8,18,28 = multiponto
+    if (base === 1) {
+      aneis.push([lerXY(conteudo + 4)]);
+    } else if (base === 3 || base === 5) {
+      const numParts = dv.getInt32(conteudo + 4 + 32, true);
+      const numPoints = dv.getInt32(conteudo + 4 + 36, true);
+      const partsOff = conteudo + 4 + 40;
+      const pontosOff = partsOff + numParts * 4;
+      const inicios: number[] = [];
+      for (let p = 0; p < numParts; p++) inicios.push(dv.getInt32(partsOff + p * 4, true));
+      for (let p = 0; p < numParts; p++) {
+        const ini = inicios[p], fim = p + 1 < numParts ? inicios[p + 1] : numPoints;
+        const parte: PontoUTM[] = [];
+        for (let k = ini; k < fim; k++) parte.push(lerXY(pontosOff + k * 16));
+        if (parte.length) aneis.push(parte);
+      }
+    } else if (base === 8) {
+      const numPoints = dv.getInt32(conteudo + 4 + 32, true);
+      const pontosOff = conteudo + 4 + 36;
+      for (let k = 0; k < numPoints; k++) aneis.push([lerXY(pontosOff + k * 16)]);
+    }
+    o = conteudo + contentWords * 2;
+  }
+
+  const tipo = tipoArquivo % 10 === 5 ? 'poligono'
+    : tipoArquivo % 10 === 3 ? 'polilinha'
+    : tipoArquivo % 10 === 1 ? 'ponto'
+    : tipoArquivo % 10 === 8 ? 'multiponto' : 'desconhecido';
+  return { tipo, aneis };
+}
+
+/** Lê um shapefile empacotado num .zip (procura o .shp e o .prj). */
+export async function importarShapefileZip(zipBuf: ArrayBuffer): Promise<ShapefileLido> {
+  const zip = await JSZip.loadAsync(zipBuf);
+  const nomeShp = Object.keys(zip.files).find((n) => n.toLowerCase().endsWith('.shp'));
+  if (!nomeShp) throw new Error('Nenhum arquivo .shp encontrado no zip.');
+  const shpBuf = await zip.file(nomeShp)!.async('arraybuffer');
+  const lido = lerShp(shpBuf);
+  const nomePrj = Object.keys(zip.files).find((n) => n.toLowerCase().endsWith('.prj'));
+  if (nomePrj) {
+    const fuso = zonaDoPrj(await zip.file(nomePrj)!.async('string'));
+    if (fuso) { lido.zona = fuso.zona; lido.hemisferio = fuso.hemisferio; }
+  }
+  return lido;
+}
+
 /** Área com sinal (regra do agrimensor) — positivo = anti-horário. */
 function areaAssinada(p: PontoUTM[]): number {
   let a = 0;

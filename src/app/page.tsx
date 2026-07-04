@@ -57,7 +57,7 @@ import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, divid
 import { calcular } from '@/lib/topo/calcular';
 import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo, convergenciaMeridiana } from '@/lib/topo/coords';
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
-import { gerarShapefileZip } from '@/lib/io/shapefile';
+import { gerarShapefileZip, importarShapefileZip, lerShp } from '@/lib/io/shapefile';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
 import { parseParcelasSigef, parseGmlParcelas, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas } from '@/lib/io/sigefVizinhos';
@@ -394,6 +394,7 @@ export default function EditorPage() {
   const themeCabecalho = CORES_CABECALHO.find((c) => c.id === corCabecalho) ?? CORES_CABECALHO[0];
   const dxfRef = useRef<HTMLInputElement>(null);
   const geojsonRef = useRef<HTMLInputElement>(null);
+  const shapefileRef = useRef<HTMLInputElement>(null);
   const vizinhosRef = useRef<HTMLInputElement>(null);
   const verticesVizinhoRef = useRef<HTMLInputElement>(null);
   const jsonBackupRef = useRef<HTMLInputElement>(null);
@@ -1878,6 +1879,24 @@ export default function EditorPage() {
     } catch { aviso('GeoJSON inválido.'); }
   }
 
+  // Importa um SHAPEFILE (.zip com shp/shx/dbf/prj, ou um .shp solto). As geometrias entram como
+  // referência tracejada ao lado do desenho (alvo de snap), igual ao GeoJSON. O fuso vem do .prj
+  // quando existe; senão usa o fuso atual do projeto.
+  async function importarShapefileRef(file: File) {
+    try {
+      const buf = await file.arrayBuffer();
+      const lido = file.name.toLowerCase().endsWith('.zip') ? await importarShapefileZip(buf) : lerShp(buf);
+      if (!lido.aneis.length) { aviso('Nenhuma geometria encontrada no shapefile.'); return; }
+      const z = lido.zona ?? zona, h = lido.hemisferio ?? hemisferio;
+      const refs = lido.aneis.map((anel) => anel.map((p) => {
+        const g = utmParaGeo(p.leste, p.norte, z, h);
+        return { lat: g.lat, lon: g.lon, leste: p.leste, norte: p.norte };
+      }));
+      setReferencias(refs);
+      aviso(`${refs.length} geometria(s) do shapefile importada(s) como referência (fuso ${z}${h}). Ligue o snap para encostar nos pontos.`);
+    } catch (e) { aviso('Não consegui ler o shapefile: ' + ((e as Error).message || 'arquivo inválido')); }
+  }
+
   // Importa parcelas certificadas (GeoJSON do INCRA/SIGEF): desenha ao lado, e as que ENCOSTAM na
   // nossa divisa viram confrontantes automaticamente (dados + vértices encaixados).
   // Importa o arquivo de vértices de um imóvel VIZINHO já certificado (baixado manualmente pelo
@@ -2654,6 +2673,8 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarDxfArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={geojsonRef} type="file" accept=".geojson,.json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarReferenciaGeoJson(f); e.currentTarget.value = ''; }} />
+        <input ref={shapefileRef} type="file" accept=".zip,.shp" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarShapefileRef(f); e.currentTarget.value = ''; }} />
         <input ref={vizinhosRef} type="file" accept=".geojson,.json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
         <input ref={verticesVizinhoRef} type="file" accept=".txt,.csv,text/plain" className="hidden"
@@ -2775,13 +2796,13 @@ export default function EditorPage() {
           const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t.toUpperCase()}</span> : null);
           return (
             <>
-              <aside style={{ width: toolW }} className="no-print scroll-fino flex shrink-0 flex-col gap-2 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
+              <aside style={{ width: toolW }} className="no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
                 {/* DADOS E AÇÕES DO PROJETO */}
                 {rotulo ? (
                   <div className="flex flex-col gap-2 text-xs">
                     {/* CARD 1: GESTÃO DO PROJETO */}
-                    <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
-                      <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-1 border-b mb-0.5 cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
+                    <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
+                      <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
                         <span>Gestão do Projeto</span>
                         <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                       </span>
@@ -2888,8 +2909,8 @@ export default function EditorPage() {
                     </div>
 
                     {/* CARD 2: VISUALIZAÇÃO & HISTÓRICO */}
-                    <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
-                      <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-1 border-b mb-0.5 cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
+                    <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
+                      <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
                         <span>Visualização & Navegação</span>
                         <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                       </span>
@@ -2941,8 +2962,8 @@ export default function EditorPage() {
 
                     {/* CARD 3: FERRAMENTAS DE DESENHO */}
                     {completo && (vista === 'mapa' || editarPlanta) && (
-                      <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
-                        <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-1 border-b mb-0.5 cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
+                      <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
+                        <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
                           <span>Ferramentas de Desenho</span>
                           <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                         </span>
@@ -3000,8 +3021,8 @@ export default function EditorPage() {
 
                     {/* CARD 4: VÉRTICES E GEOMETRIA */}
                     {completo && (vista === 'mapa' || editarPlanta) && (
-                      <div className="flex flex-col gap-2 border rounded-lg p-2 bg-muted/10 shadow-sm">
-                        <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-1 border-b mb-0.5 cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
+                      <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
+                        <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
                           <span>Vértices e Geometria</span>
                           <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                         </span>
@@ -3769,7 +3790,7 @@ export default function EditorPage() {
       <PrecoSugeridoModal open={precoSugAberto} onOpenChange={setPrecoSugAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
       <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
         areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
-        onExportarShapefiles={exportarCarShapefiles} processando={processando} />
+        onExportarShapefiles={exportarCarShapefiles} onImportarShapefile={() => shapefileRef.current?.click()} processando={processando} />
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}
