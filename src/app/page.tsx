@@ -4209,20 +4209,20 @@ export default function EditorPage() {
               <Save className={`size-5 ${salvarLaranja ? 'text-amber-500' : salvoOk ? 'text-green-600' : ''}`} />
               <span className="text-[10px] font-bold leading-none">SALVAR</span>
             </button>
+            <button type="button"
+              onClick={vista === 'mapa' ? centralizar : () => atualizarPlantaConfig({ offsetX: 0, offsetY: 0, escalaManual: undefined })}
+              title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Centralizar/Enquadrar a folha de desenho (foco automático)'}
+              className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
+              <Target className="size-5" />
+              <span className="text-[10px] font-bold leading-none">FOCO</span>
+            </button>
             {vista === 'mapa' && (
-              <>
-                <button type="button" onClick={centralizar} title="Enquadrar o desenho na tela (foco)"
-                  className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
-                  <Target className="size-5" />
-                  <span className="text-[10px] font-bold leading-none">FOCO</span>
-                </button>
-                <button type="button" onClick={() => setSnapAtivo((v) => !v)}
-                  title={snapAtivo ? 'Imã ligado: o clique encaixa em pontos próximos. Clique para desligar.' : 'Imã desligado. Clique para ligar o encaixe em pontos próximos.'}
-                  className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${snapAtivo ? 'border-primary bg-primary/10 hover:bg-primary/20' : 'border-border bg-background/95 hover:bg-muted'}`}>
-                  <Magnet className={`size-5 ${snapAtivo ? 'text-primary' : ''}`} />
-                  <span className="text-[10px] font-bold leading-none">IMÃ</span>
-                </button>
-              </>
+              <button type="button" onClick={() => setSnapAtivo((v) => !v)}
+                title={snapAtivo ? 'Imã ligado: o clique encaixa em pontos próximos. Clique para desligar.' : 'Imã desligado. Clique para ligar o encaixe em pontos próximos.'}
+                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${snapAtivo ? 'border-primary bg-primary/10 hover:bg-primary/20' : 'border-border bg-background/95 hover:bg-muted'}`}>
+                <Magnet className={`size-5 ${snapAtivo ? 'text-primary' : ''}`} />
+                <span className="text-[10px] font-bold leading-none">IMÃ</span>
+              </button>
             )}
 
             {/* IA Extrair, Ajustes e Sair da conta no final da coluna de atalhos */}
