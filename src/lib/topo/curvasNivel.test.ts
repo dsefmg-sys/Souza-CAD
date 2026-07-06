@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { triangularDelaunay, gerarCurvasDeNivel, pontoNoPoligono, type Ponto3D } from './curvasNivel';
+import { triangularDelaunay, gerarCurvasDeNivel, pontoNoPoligono, suavizarChaikin, intervaloSugerido, type Ponto3D } from './curvasNivel';
 
 describe('triangularDelaunay', () => {
   it('triangula um quadrado em 2 triângulos', () => {
@@ -54,6 +54,46 @@ describe('gerarCurvasDeNivel', () => {
   it('ignora pontos sem altitude válida e não quebra', () => {
     const pts: Ponto3D[] = [{ x: 0, y: 0, z: NaN }, { x: 1, y: 1, z: 1 }];
     expect(gerarCurvasDeNivel(pts, { intervalo: 1 })).toEqual([]);
+  });
+});
+
+describe('suavizarChaikin', () => {
+  it('mantém uma linha reta reta (não inventa curva onde não há)', () => {
+    const reta = [{ x: 5, y: 0 }, { x: 5, y: 4 }, { x: 5, y: 8 }];
+    const s = suavizarChaikin(reta, 2);
+    for (const p of s) expect(p.x).toBeCloseTo(5, 6);
+    expect(s.length).toBeGreaterThan(reta.length); // ficou mais denso (curva de verdade)
+  });
+
+  it('não estoura pra fora do envelope dos pontos (fica colada aos dados)', () => {
+    const zig = [{ x: 0, y: 0 }, { x: 4, y: 2 }, { x: 0, y: 4 }, { x: 4, y: 6 }];
+    const s = suavizarChaikin(zig, 3);
+    for (const p of s) { expect(p.x).toBeGreaterThanOrEqual(0); expect(p.x).toBeLessThanOrEqual(4); }
+    // extremidades preservadas em linha aberta
+    expect(s[0]).toEqual(zig[0]);
+    expect(s[s.length - 1]).toEqual(zig[zig.length - 1]);
+  });
+
+  it('preserva o fechamento de um laço', () => {
+    const loop = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }, { x: 0, y: 0 }];
+    const s = suavizarChaikin(loop, 2);
+    expect(s[0].x).toBeCloseTo(s[s.length - 1].x, 6);
+    expect(s[0].y).toBeCloseTo(s[s.length - 1].y, 6);
+  });
+});
+
+describe('intervaloSugerido', () => {
+  it('desnível grande → intervalo maior (evita emaranhado)', () => {
+    const pts: Ponto3D[] = [{ x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 120 }];
+    expect(intervaloSugerido(pts)).toBe(10); // 120/12=10
+  });
+  it('desnível pequeno → intervalo fino', () => {
+    const pts: Ponto3D[] = [{ x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 5 }];
+    expect(intervaloSugerido(pts)).toBe(0.5); // 5/12≈0.42 → 0.5
+  });
+  it('sem desnível ou poucos pontos → 1', () => {
+    expect(intervaloSugerido([{ x: 0, y: 0, z: 5 }])).toBe(1);
+    expect(intervaloSugerido([{ x: 0, y: 0, z: 5 }, { x: 1, y: 1, z: 5 }])).toBe(1);
   });
 });
 

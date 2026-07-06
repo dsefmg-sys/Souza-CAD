@@ -141,11 +141,58 @@ function encadear(segs: [Ponto2D, Ponto2D][]): Ponto2D[][] {
   return linhas;
 }
 
+/**
+ * Suaviza uma polilinha pelo método de Chaikin (corta cantos). O TIN gera isolinhas em ZIGUE-ZAGUE
+ * (segmentos retos de triângulo em triângulo); Chaikin arredonda esses cantos e entrega uma CURVA de
+ * verdade, mantendo-se colada aos dados (não estoura pra fora, ao contrário de splines interpoladoras).
+ * Linha reta continua reta. Extremidades de linha aberta são preservadas; laço fechado é tratado em ciclo.
+ */
+export function suavizarChaikin(linha: Ponto2D[], passos = 2): Ponto2D[] {
+  if (linha.length < 3 || passos < 1) return linha;
+  const fim = linha[linha.length - 1];
+  const fechada = Math.abs(linha[0].x - fim.x) < 1e-6 && Math.abs(linha[0].y - fim.y) < 1e-6;
+  let pts = fechada ? linha.slice(0, -1) : linha;
+  for (let it = 0; it < passos; it++) {
+    const out: Ponto2D[] = [];
+    if (!fechada) out.push(pts[0]);
+    const n = pts.length;
+    const lim = fechada ? n : n - 1;
+    for (let i = 0; i < lim; i++) {
+      const a = pts[i], b = pts[(i + 1) % n];
+      out.push({ x: 0.75 * a.x + 0.25 * b.x, y: 0.75 * a.y + 0.25 * b.y });
+      out.push({ x: 0.25 * a.x + 0.75 * b.x, y: 0.25 * a.y + 0.75 * b.y });
+    }
+    if (!fechada) out.push(pts[n - 1]);
+    pts = out;
+  }
+  if (fechada) pts.push({ x: pts[0].x, y: pts[0].y });
+  return pts;
+}
+
+/**
+ * Intervalo de curva SUGERIDO (em metros) a partir do desnível dos pontos. O padrão fixo de 1 m vira
+ * um emaranhado de linhas num imóvel grande; aqui escolhemos o menor intervalo "redondo" que resulta
+ * em cerca de uma dúzia de curvas no desnível total — legível em terreno plano OU acidentado.
+ */
+export function intervaloSugerido(pontos: Ponto3D[]): number {
+  const zs = pontos.map((p) => p.z).filter((z) => Number.isFinite(z));
+  if (zs.length < 2) return 1;
+  const desnivel = Math.max(...zs) - Math.min(...zs);
+  if (!(desnivel > 0)) return 1;
+  const alvo = desnivel / 12; // mira ~12 curvas
+  const redondos = [0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100];
+  return redondos.find((n) => n >= alvo) ?? Math.ceil(alvo);
+}
+
 export interface OpcoesCurvas {
   /** Intervalo entre curvas, em metros (ex.: 1, 5). */
   intervalo: number;
   /** Polígono do imóvel (Leste/Norte) para recortar; opcional. */
   poligono?: Ponto2D[];
+  /** Suaviza as curvas (Chaikin) para saírem como curvas de verdade, não zigue-zague. Padrão: true. */
+  suavizar?: boolean;
+  /** Passos de suavização (mais = mais lisa, mais pontos). Padrão: 2. */
+  passosSuavizacao?: number;
 }
 
 /**
@@ -193,10 +240,14 @@ export function gerarCurvasDeNivel(pontos: Ponto3D[], opcoes: OpcoesCurvas): Cur
     }
   }
 
+  const suavizar = opcoes.suavizar !== false; // padrão: suaviza
+  const passos = opcoes.passosSuavizacao ?? 2;
   const curvas: CurvaNivel[] = [];
   for (const [nivel, segs] of segsPorNivel) {
     for (const linha of encadear(segs)) {
-      if (linha.length >= 2) curvas.push({ nivel, linha });
+      if (linha.length >= 2) {
+        curvas.push({ nivel, linha: suavizar ? suavizarChaikin(linha, passos) : linha });
+      }
     }
   }
   curvas.sort((a, b) => a.nivel - b.nivel);
