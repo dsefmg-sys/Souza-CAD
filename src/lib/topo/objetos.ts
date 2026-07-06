@@ -13,11 +13,12 @@ export function novaPolilinha(pontos: PontoLL[], opts: { cor?: string; espessura
 /** Cor sépia/marrom clássica de carta topográfica para as curvas de nível. */
 export const COR_CURVA_NIVEL = '#8a5a2b';
 
-/** Cria uma polilinha marcada como CURVA DE NÍVEL na altitude `nivel`. Mestra (a cada 5ª) mais grossa. */
-export function novaCurvaNivel(pontos: PontoLL[], nivel: number, mestra: boolean): ObjetoDesenho {
+/** Cria uma polilinha marcada como CURVA DE NÍVEL na altitude `nivel`. Mestra (a cada Nª) mais grossa.
+ * Cor e espessura vêm da engrenagem de ajustes; sem opções, cai no padrão de carta topográfica. */
+export function novaCurvaNivel(pontos: PontoLL[], nivel: number, mestra: boolean, opts: { cor?: string; espessura?: number } = {}): ObjetoDesenho {
   return {
     id: novoObjetoId(), tipo: 'polilinha', pontos, curvaNivel: nivel,
-    cor: COR_CURVA_NIVEL, espessura: mestra ? 1.2 : 0.5,
+    cor: opts.cor ?? COR_CURVA_NIVEL, espessura: opts.espessura ?? (mestra ? 1.2 : 0.5),
   };
 }
 

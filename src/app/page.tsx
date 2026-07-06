@@ -54,8 +54,8 @@ import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte } from '@/lib/topo/types';
-import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, CAR_TEMAS } from '@/lib/topo/objetos';
-import { gerarCurvasDeNivel, type Ponto3D } from '@/lib/topo/curvasNivel';
+import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, CAR_TEMAS, COR_CURVA_NIVEL } from '@/lib/topo/objetos';
+import { gerarCurvasDeNivel, intervaloSugerido, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
@@ -2780,17 +2780,31 @@ export default function EditorPage() {
     } finally { setProcessando(false); }
   }
 
+  // AJUSTES DA CURVA DE NÍVEL (a "engrenagem" antes de gerar). Ficam guardados enquanto o app está aberto.
   const [intervaloCurva, setIntervaloCurva] = useState(1);
+  const [curvaCor, setCurvaCor] = useState(COR_CURVA_NIVEL);
+  const [curvaMestraCada, setCurvaMestraCada] = useState(5); // linha mais forte a cada N curvas
+  const [curvaEspessura, setCurvaEspessura] = useState<'fina' | 'media' | 'grossa'>('media');
+  const [curvaConfigAberta, setCurvaConfigAberta] = useState(false);
+  // Espessura (mm de tela) da curva normal e da mestra, por nível de nitidez escolhido.
+  const ESP_CURVA = { fina: { normal: 0.5, mestra: 1.1 }, media: { normal: 0.7, mestra: 1.5 }, grossa: { normal: 1.0, mestra: 2.1 } } as const;
 
-  // Gera as CURVAS DE NÍVEL: triangula os pontos medidos (perímetro + pontos ignorados/internos que
-  // têm altitude), extrai as isolinhas no intervalo escolhido e recorta ao polígono do imóvel. As
-  // curvas entram como objetos (desenham no mapa e na planta, e exportam).
-  async function gerarCurvasNivel() {
-    // pontos com altitude: perímetro + os ignorados (costumam ser os pontos internos do levantamento)
-    const brutos = [...vertices, ...verticesIgnorados];
-    const pts3d: Ponto3D[] = brutos
+  // Junta os pontos com altitude (perímetro + ignorados/internos) no plano UTM — base pra sugerir e gerar.
+  function pontos3dCurvas(): Ponto3D[] {
+    return [...vertices, ...verticesIgnorados]
       .filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte) && Number.isFinite(v.elevacao))
       .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }));
+  }
+  // Preenche o intervalo com a sugestão pelo desnível (evita o emaranhado do padrão fixo).
+  function sugerirIntervaloCurva() {
+    const pts = pontos3dCurvas();
+    if (pts.length >= 2) setIntervaloCurva(intervaloSugerido(pts));
+  }
+
+  // Gera as CURVAS DE NÍVEL: triangula os pontos medidos, extrai as isolinhas no intervalo escolhido,
+  // recorta ao polígono do imóvel e aplica os ajustes da engrenagem (cor, espessura, mestra a cada N).
+  async function gerarCurvasNivel() {
+    const pts3d = pontos3dCurvas();
     if (pts3d.length < 4) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Preciso de pelo menos 4 pontos com altitude. Importe também os pontos internos do levantamento (não só o perímetro).' }); return; }
     const zs = pts3d.map((p) => p.z);
     if (Math.max(...zs) - Math.min(...zs) < 0.01) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Os pontos não têm variação de altitude — não há relevo para desenhar curvas.' }); return; }
@@ -2800,11 +2814,13 @@ export default function EditorPage() {
     const curvas = gerarCurvasDeNivel(pts3d, { intervalo: intervaloCurva, poligono });
     if (!curvas.length) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Não consegui traçar curvas com esses pontos e intervalo. Tente um intervalo menor ou traga mais pontos internos.' }); return; }
 
-    const passoMestra = intervaloCurva * 5;
+    const cadaN = Math.max(1, Math.round(curvaMestraCada));
+    const passoMestra = intervaloCurva * cadaN;
+    const esp = ESP_CURVA[curvaEspessura];
     const objs = curvas.map((c) => {
       const mestra = Math.abs(c.nivel / passoMestra - Math.round(c.nivel / passoMestra)) < 1e-6;
       const pontos = c.linha.map((p) => { const g = utmParaGeo(p.x, p.y, zona, hemisferio); return { lat: g.lat, lon: g.lon, leste: p.x, norte: p.y }; });
-      return novaCurvaNivel(pontos, c.nivel, mestra);
+      return novaCurvaNivel(pontos, c.nivel, mestra, { cor: curvaCor, espessura: mestra ? esp.mestra : esp.normal });
     });
     // remove curvas antigas e coloca as novas (mantém o resto do desenho)
     setObjetos((os) => [...os.filter((o) => o.curvaNivel == null), ...objs]);
@@ -3940,15 +3956,45 @@ export default function EditorPage() {
                         <div className="mt-1.5 rounded-md border p-1.5 space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="text-[9px] font-bold uppercase text-muted-foreground">Curvas de nível</span>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[9px] text-muted-foreground">interv.</span>
-                              <input type="number" min={0.1} step={0.5} value={intervaloCurva} onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))} className="h-6 w-12 rounded-sm border bg-background px-1 text-[11px]" title="Intervalo entre curvas (m)" />
-                              <span className="text-[9px] text-muted-foreground">m</span>
-                            </div>
+                            <button type="button" onClick={() => setCurvaConfigAberta((v) => !v)} title="Ajustes: cor, intervalo, linha mestra a cada N curvas e espessura"
+                              className={`flex items-center gap-0.5 rounded-sm px-1.5 h-6 text-[9px] font-bold transition-colors ${curvaConfigAberta ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+                              <Settings className="size-3" /> Ajustes
+                            </button>
                           </div>
+                          {/* Intervalo + sugestão pelo desnível (some o emaranhado do 1 m fixo) */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] text-muted-foreground">Intervalo</span>
+                            <input type="number" min={0.1} step={0.5} value={intervaloCurva} onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))} className="h-6 w-12 rounded-sm border bg-background px-1 text-[11px]" title="Intervalo entre curvas (m)" />
+                            <span className="text-[9px] text-muted-foreground">m</span>
+                            <button type="button" onClick={sugerirIntervaloCurva} title="Sugerir o intervalo pelo desnível do terreno (mira ~12 curvas)" className="ml-auto h-6 rounded-sm border px-1.5 text-[9px] font-bold text-primary hover:bg-primary/10">sugerir</button>
+                          </div>
+                          {/* Engrenagem: ajustes profissionais */}
+                          {curvaConfigAberta && (
+                            <div className="space-y-1.5 rounded-sm bg-muted/30 p-1.5 animate-in fade-in duration-150">
+                              <label className="flex items-center justify-between text-[9px] font-semibold text-muted-foreground">
+                                Cor das curvas
+                                <input type="color" value={curvaCor} onChange={(e) => setCurvaCor(e.target.value)} className="h-5 w-9 cursor-pointer rounded-sm border bg-background p-0" title="Cor das curvas de nível" />
+                              </label>
+                              <label className="flex items-center justify-between gap-1 text-[9px] font-semibold text-muted-foreground">
+                                Linha forte a cada
+                                <span className="flex items-center gap-1">
+                                  <input type="number" min={1} step={1} value={curvaMestraCada} onChange={(e) => setCurvaMestraCada(Math.max(1, Math.round(Number(e.target.value) || 5)))} className="h-6 w-10 rounded-sm border bg-background px-1 text-center text-[11px]" title="Curva mestra (mais grossa e destacada) a cada N curvas" />
+                                  <span className="text-muted-foreground">curvas</span>
+                                </span>
+                              </label>
+                              <div className="flex items-center justify-between text-[9px] font-semibold text-muted-foreground">
+                                Espessura
+                                <div className="flex gap-0.5">
+                                  {(['fina', 'media', 'grossa'] as const).map((e) => (
+                                    <button key={e} type="button" onClick={() => setCurvaEspessura(e)} title="Espessura/nitidez do traço" className={`h-6 rounded-sm border px-1.5 text-[9px] font-bold transition-colors ${curvaEspessura === e ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>{e === 'fina' ? 'Fina' : e === 'media' ? 'Média' : 'Grossa'}</button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 gap-1">
                             <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={gerarCurvasNivel} title="Traça as curvas de nível a partir dos pontos com altitude (perímetro + internos), recortadas ao imóvel">
-                              <Waypoints className="size-3.5" style={{ color: '#8a5a2b' }} /> Gerar
+                              <Waypoints className="size-3.5" style={{ color: curvaCor }} /> Gerar
                             </Button>
                             <Button size="sm" variant="ghost" className="h-7 gap-1 text-[11px]" disabled={!temCurvas} onClick={limparCurvasNivel} title="Remove as curvas geradas">
                               <Trash2 className="size-3.5" /> Limpar
