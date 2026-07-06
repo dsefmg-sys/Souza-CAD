@@ -836,33 +836,35 @@ export default function EditorPage() {
   // ---------- desfazer / refazer (histórico de vértices + confrontantes + DESENHOS) ----------
   // Os desenhos (cota/linha/texto/símbolo) entram no histórico — antes ficavam de fora e o
   // Ctrl+Z "não funcionava" com a ferramenta Cotar (feedback de usuário, 05/07/2026).
-  const histRef = useRef<{ v: Vertex[]; cpl: Record<number, string>; obj: ObjetoDesenho[] }[]>([]);
-  const redoRef = useRef<{ v: Vertex[]; cpl: Record<number, string>; obj: ObjetoDesenho[] }[]>([]);
+  const histRef = useRef<{ v: Vertex[]; cpl: Record<number, string>; obj: ObjetoDesenho[]; ig: Vertex[] }[]>([]);
+  const redoRef = useRef<{ v: Vertex[]; cpl: Record<number, string>; obj: ObjetoDesenho[]; ig: Vertex[] }[]>([]);
   function snap() {
     // guarda-duplicata por referência: o StrictMode (dev) roda atualizadores de estado 2x, e um
     // snap chamado lá dentro empilharia a mesma foto duas vezes (desfazer pediria 2 cliques)
     const ult = histRef.current[histRef.current.length - 1];
-    if (ult && ult.v === vertices && ult.cpl === confrontantePorLado && ult.obj === objetos) return;
-    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos });
+    if (ult && ult.v === vertices && ult.cpl === confrontantePorLado && ult.obj === objetos && ult.ig === verticesIgnorados) return;
+    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados });
     if (histRef.current.length > 60) histRef.current.shift();
     redoRef.current = []; // uma ação nova invalida o que havia para refazer
   }
   function desfazer() {
     const s = histRef.current.pop();
     if (!s) { aviso('Nada para desfazer.'); return; }
-    redoRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos });
+    redoRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados });
     setVertices(s.v);
     setConfrontantePorLado(s.cpl);
     setObjetos(s.obj);
+    setVerticesIgnorados(s.ig);
     aviso('Última ação desfeita.');
   }
   function refazer() {
     const s = redoRef.current.pop();
     if (!s) { aviso('Nada para refazer.'); return; }
-    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos });
+    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados });
     setVertices(s.v);
     setConfrontantePorLado(s.cpl);
     setObjetos(s.obj);
+    setVerticesIgnorados(s.ig);
     aviso('Ação refeita.');
   }
 
@@ -984,7 +986,8 @@ export default function EditorPage() {
     setObjetos(g.objetos ?? []);
     setDesenhoBuffer([]);
     setObjetoSelId(null);
-    setVerticesIgnorados([]);
+    // NÃO zera os vértices ignorados: eles são do PROJETO (pontos soltos), não da gleba —
+    // zerar aqui fazia os pontos sumirem ao trocar de gleba ou criar uma nova (bug 05/07/2026)
     setGlebaAtivaId(g.id);
     setSelecionadoId(null);
     if (g.vertices.length >= 2) setCentralizarSig((n) => n + 1); // enquadra a gleba carregada
@@ -1111,7 +1114,7 @@ export default function EditorPage() {
     setGlebas(gs);
     carregarGleba(gs[0]);
     // carregarGleba zera os ignorados; reaplica os que o usuário tirou do polígono
-    if (ignorados.length) setVerticesIgnorados(ignorados);
+    setVerticesIgnorados(ignorados); // sempre substitui: importar TXT começa projeto novo (sem sobras do anterior)
 
     if (!nomeProjeto || !nomeProjetoManual) {
       const auto = gerarTituloAutomatico(novoImovel);
@@ -1262,6 +1265,7 @@ export default function EditorPage() {
   function ignorarVertice(id: string) {
     const v = vertices.find((x) => x.id === id);
     if (!v) return;
+    snap();
     ignorouRef.current = true; // marca que houve mudança no polígono (pergunta ao sair do modo)
     setVertices((vs) => reordenar(vs.filter((x) => x.id !== id)));
     setVerticesIgnorados((xs) => (xs.some((x) => x.id === id) ? xs : [...xs, v]));
@@ -1273,6 +1277,7 @@ export default function EditorPage() {
   function considerarVertice(id: string) {
     const v = verticesIgnorados.find((x) => x.id === id);
     if (!v || vertices.length < 2) return;
+    snap();
     let melhor = vertices.length - 1, melhorD = Infinity;
     for (let i = 0; i < vertices.length; i++) {
       const a = vertices[i], b = vertices[(i + 1) % vertices.length];
@@ -1353,7 +1358,6 @@ export default function EditorPage() {
       setGlebaAtivaId(gA.id);
       setVertices(vertsA);
       setConfrontantePorLado({});
-      setVerticesIgnorados([]);
       setVSplitInicioId(null); setVSplitFimId(null); setAreaAlvoHa('');
       aviso(`Gleba dividida: ${numBR(areaA / 10000, 4)} ha e ${numBR(areaB / 10000, 4)} ha. Repinte as divisas da nova linha.`);
     } catch (e) { await avisar({ titulo: 'Erro', mensagem: (e as Error).message }); }
@@ -1599,7 +1603,17 @@ export default function EditorPage() {
             // NORTE e percorre em sentido HORÁRIO — desenho manual ganhava nomes na ordem do clique
             const novos = iniciarDoNorteHorario(brutos).map((v, i) => ({ ...v, ordem: i + 1, nome: `P${i + 1}`, codigoSigef: `P${i + 1}`, codigoCampo: `P${i + 1}` }));
             snap();
-            if (vertices.length < 3) { setVertices(novos); aviso('Polígono definido como perímetro da gleba.'); }
+            if (vertices.length < 3) {
+              // Pontos soltos que já estavam no mapa NÃO podem sumir (feedback 05/07/2026): o que
+              // não virou canto do anel (o desenho gruda nos existentes pelo imã) vira vértice
+              // IGNORADO — continua visível e recuperável pela ferramenta "considerar".
+              const sobras = vertices.filter((v) => !novos.some((n) => Math.hypot(n.leste - v.leste, n.norte - v.norte) < 1));
+              if (sobras.length > 0) setVerticesIgnorados((ig) => [...ig, ...sobras]);
+              setVertices(novos);
+              aviso(sobras.length > 0
+                ? `Polígono definido como perímetro da gleba. ${sobras.length} ponto(s) que não viraram canto foram mantidos como ignorados (ferramenta "considerar" traz de volta).`
+                : 'Polígono definido como perímetro da gleba.');
+            }
             else { const gs = sincronizarGlebas(); const nova = { ...novaGlebaVazia(gs.length + 1), vertices: novos }; setGlebas([...gs, nova]); carregarGleba(nova); aviso('Nova gleba criada a partir do polígono.'); }
           } else {
             snap();
@@ -2443,7 +2457,7 @@ export default function EditorPage() {
       }
       const p: Projeto = {
         id, nome: nomeProjeto || imovel.denominacao || 'Sem nome', criadoEm: Date.now(), atualizadoEm: Date.now(),
-        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, plantaConfig, parcelasCert, verticesVizinho,
+        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, plantaConfig, parcelasCert, verticesVizinho, verticesIgnorados,
       };
       try {
         const destino = await salvarProjeto(p);
@@ -2517,7 +2531,7 @@ export default function EditorPage() {
     return vertices.length > 0 || glebas.some((g) => g.vertices.length > 0) || !!imovel.denominacao || !!imovel.proprietario || !!imovel.matricula;
   }
   function montarRascunho() {
-    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, plantaConfig, glebaAtivaId, parcelasCert, verticesVizinho };
+    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, plantaConfig, glebaAtivaId, parcelasCert, verticesVizinho, verticesIgnorados };
   }
   // Recria as referências tracejadas (desenho) a partir das parcelas certificadas gravadas —
   // usado ao reabrir/restaurar um projeto, para não precisar buscar de novo no INCRA.
@@ -2549,6 +2563,7 @@ export default function EditorPage() {
     setParcelasCert(pc);
     setReferencias(referenciasDeParcelasCert(pc, d.zona, d.hemisferio));
     setVerticesVizinho(d.verticesVizinho ?? []);
+    setVerticesIgnorados(d.verticesIgnorados ?? []);
     return true;
   }
 
@@ -2599,6 +2614,7 @@ export default function EditorPage() {
     setObjetos([]);
     setPlantaConfig({});
     setObjetoSelId(null);
+    setVerticesIgnorados([]);
     histRef.current = []; redoRef.current = []; // projeto novo começa sem histórico do anterior
     setRequerente(undefined);
     setTransmitente(undefined);
@@ -2625,6 +2641,7 @@ export default function EditorPage() {
     setTipoAto('venda'); setPartesAdicionais([]);
     setParcelasCert([]); setReferencias([]); setVerticesVizinho([]); setSituacaoUrl(undefined);
     setPlantaConfig({});
+    setVerticesIgnorados([]);
     setSigefStatus('idle'); setBaixou({}); setSalvoOk(false);
     setGlebas([gleba]);
     carregarGleba(gleba);
@@ -2698,6 +2715,7 @@ export default function EditorPage() {
     setParcelasCert(pc);
     setReferencias(referenciasDeParcelasCert(pc, p.zonaUtm, p.hemisferio));
     setVerticesVizinho(p.verticesVizinho ?? []);
+    setVerticesIgnorados(p.verticesIgnorados ?? []);
     acabouDeSalvar.current = true; setSalvarLaranja(false); setSalvoOk(true); // recém-carregado = "salvo"
     aviso(`Projeto carregado (${p.glebas.length} gleba(s)).`);
   }
@@ -2726,7 +2744,8 @@ export default function EditorPage() {
         hemisferio,
         requerente,
         transmitente,
-        plantaConfig
+        plantaConfig,
+        verticesIgnorados
       };
       const data = JSON.stringify(proj, null, 2);
       const blob = new Blob([data], { type: 'application/json' });

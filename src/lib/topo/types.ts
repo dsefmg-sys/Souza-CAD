@@ -457,6 +457,9 @@ export interface Projeto {
   // Vértices de imóveis vizinhos já certificados, importados do Distribuidor de Coordenadas: ficam
   // gravados para reaproveitar coordenada/sigma/nome na planta (evita vão e sobreposição na divisa).
   verticesVizinho?: VerticeVizinho[];
+  // Vértices IGNORADOS (pontos soltos fora do anel, ferramenta ignorar/considerar). São do
+  // PROJETO, não de uma gleba — sem este campo eles sumiam ao salvar/recarregar (bug 05/07/2026).
+  verticesIgnorados?: Vertex[];
   // Campos legados (projetos salvos antes do multi-gleba) — migrados ao abrir.
   vertices?: Vertex[];
   confrontantes?: Confrontante[];
