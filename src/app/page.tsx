@@ -53,7 +53,8 @@ import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata } from '@/lib/topo/types';
-import { novaPolilinha, novoTexto, novaCota, novoSimbolo, areaPoligonoObjeto, CAR_TEMAS } from '@/lib/topo/objetos';
+import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, CAR_TEMAS } from '@/lib/topo/objetos';
+import { gerarCurvasDeNivel, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
@@ -2733,6 +2734,44 @@ export default function EditorPage() {
     } finally { setProcessando(false); }
   }
 
+  const [intervaloCurva, setIntervaloCurva] = useState(1);
+
+  // Gera as CURVAS DE NÍVEL: triangula os pontos medidos (perímetro + pontos ignorados/internos que
+  // têm altitude), extrai as isolinhas no intervalo escolhido e recorta ao polígono do imóvel. As
+  // curvas entram como objetos (desenham no mapa e na planta, e exportam).
+  async function gerarCurvasNivel() {
+    // pontos com altitude: perímetro + os ignorados (costumam ser os pontos internos do levantamento)
+    const brutos = [...vertices, ...verticesIgnorados];
+    const pts3d: Ponto3D[] = brutos
+      .filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte) && Number.isFinite(v.elevacao))
+      .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }));
+    if (pts3d.length < 4) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Preciso de pelo menos 4 pontos com altitude. Importe também os pontos internos do levantamento (não só o perímetro).' }); return; }
+    const zs = pts3d.map((p) => p.z);
+    if (Math.max(...zs) - Math.min(...zs) < 0.01) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Os pontos não têm variação de altitude — não há relevo para desenhar curvas.' }); return; }
+    if (!(intervaloCurva > 0)) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Escolha um intervalo maior que zero (ex.: 1 m ou 5 m).' }); return; }
+
+    const poligono = vertices.length >= 3 ? vertices.map((v) => ({ x: v.leste, y: v.norte })) : undefined;
+    const curvas = gerarCurvasDeNivel(pts3d, { intervalo: intervaloCurva, poligono });
+    if (!curvas.length) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Não consegui traçar curvas com esses pontos e intervalo. Tente um intervalo menor ou traga mais pontos internos.' }); return; }
+
+    const passoMestra = intervaloCurva * 5;
+    const objs = curvas.map((c) => {
+      const mestra = Math.abs(c.nivel / passoMestra - Math.round(c.nivel / passoMestra)) < 1e-6;
+      const pontos = c.linha.map((p) => { const g = utmParaGeo(p.x, p.y, zona, hemisferio); return { lat: g.lat, lon: g.lon, leste: p.x, norte: p.y }; });
+      return novaCurvaNivel(pontos, c.nivel, mestra);
+    });
+    // remove curvas antigas e coloca as novas (mantém o resto do desenho)
+    setObjetos((os) => [...os.filter((o) => o.curvaNivel == null), ...objs]);
+    const niveis = [...new Set(curvas.map((c) => c.nivel))];
+    await avisar({ titulo: 'Curvas de nível', mensagem: `${objs.length} curva(s) traçada(s) em ${niveis.length} nível(is), de ${Math.min(...niveis)} a ${Math.max(...niveis)} m, intervalo de ${intervaloCurva} m.` });
+  }
+
+  function limparCurvasNivel() {
+    setObjetos((os) => os.filter((o) => o.curvaNivel == null));
+  }
+
+  const temCurvas = objetos.some((o) => o.curvaNivel != null);
+
   // Exporta os shapefiles do CAR: o perímetro do imóvel + cada camada ambiental (APP, reserva legal,
   // vegetação, uso consolidado) desenhada, num zip. É a base da entrega pro SICAR (o formato de
   // campos exato do SICAR se ajusta quando o dono trouxer um CAR de referência).
@@ -3836,6 +3875,26 @@ export default function EditorPage() {
                               <Trash2 className="size-3.5 text-destructive" /> Apagar objeto
                             </Button>
                           )}
+                        </div>
+
+                        {/* Curvas de nível (planialtimétrico): triangula os pontos com altitude e traça as isolinhas */}
+                        <div className="mt-1.5 rounded-md border p-1.5 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold uppercase text-muted-foreground">Curvas de nível</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] text-muted-foreground">interv.</span>
+                              <input type="number" min={0.1} step={0.5} value={intervaloCurva} onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))} className="h-6 w-12 rounded border bg-background px-1 text-[11px]" title="Intervalo entre curvas (m)" />
+                              <span className="text-[9px] text-muted-foreground">m</span>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1">
+                            <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={gerarCurvasNivel} title="Traça as curvas de nível a partir dos pontos com altitude (perímetro + internos), recortadas ao imóvel">
+                              <Waypoints className="size-3.5" style={{ color: '#8a5a2b' }} /> Gerar
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 gap-1 text-[11px]" disabled={!temCurvas} onClick={limparCurvasNivel} title="Remove as curvas geradas">
+                              <Trash2 className="size-3.5" /> Limpar
+                            </Button>
+                          </div>
                         </div>
 
                         {/* DXF e KML lado a lado */}

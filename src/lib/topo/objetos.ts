@@ -10,6 +10,17 @@ export function novaPolilinha(pontos: PontoLL[], opts: { cor?: string; espessura
   return { id: novoObjetoId(), tipo: 'polilinha', pontos, cor: opts.cor ?? '#2563eb', espessura: opts.espessura ?? 1.5, preenchido: opts.preenchido, tracejado: opts.tracejado };
 }
 
+/** Cor sépia/marrom clássica de carta topográfica para as curvas de nível. */
+export const COR_CURVA_NIVEL = '#8a5a2b';
+
+/** Cria uma polilinha marcada como CURVA DE NÍVEL na altitude `nivel`. Mestra (a cada 5ª) mais grossa. */
+export function novaCurvaNivel(pontos: PontoLL[], nivel: number, mestra: boolean): ObjetoDesenho {
+  return {
+    id: novoObjetoId(), tipo: 'polilinha', pontos, curvaNivel: nivel,
+    cor: COR_CURVA_NIVEL, espessura: mestra ? 1.2 : 0.5,
+  };
+}
+
 export function novoTexto(pt: PontoLL, texto: string, opts: { tamanho?: number; alinhamento?: 'left' | 'center' | 'right'; cor?: string } = {}): ObjetoDesenho {
   return { id: novoObjetoId(), tipo: 'texto', pontos: [pt], texto, tamanho: opts.tamanho ?? 12, alinhamento: opts.alinhamento ?? 'left', cor: opts.cor ?? '#000000' };
 }

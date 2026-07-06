@@ -229,6 +229,7 @@ export interface ObjetoDesenho {
   achura?: string;            // tipo de achura (nenhuma, linhas, cruzado, pontos)
   simbolo?: string;           // elemento cartográfico (arvore, arbusto, casa, poste, pedra)
   carTema?: 'app' | 'reservaLegal' | 'vegetacao' | 'usoConsolidado'; // camada ambiental (CAR) do polígono
+  curvaNivel?: number;        // quando é uma CURVA DE NÍVEL gerada: a altitude (m) desta curva
 }
 
 /** Um lado da poligonal (vértice i → vértice i+1). */
