@@ -2454,7 +2454,7 @@ function CarimboA3(props: {
           const duas = tituloLinhas.length > 1;
           return (
             <g
-              style={ed?.ativo ? { cursor: 'text' } : undefined}
+              style={ed?.ativo ? { cursor: 'pointer' } : undefined}
               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT); } : undefined}
             >
               <rect x={lx} y={Y_DADOS} width={wBox} height={hCabTitulo} rx={6} ry={6} fill="#475569" />
@@ -2464,6 +2464,13 @@ function CarimboA3(props: {
                   <text key={k} x={cxc} y={Y_DADOS + (duas ? 19 + k * 18 : 17)} fontSize={fs(10.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
                 ))}
               </g>
+              {/* Dropdown Arrow Indicator (only visible on screen, hidden in print) */}
+              {ed?.ativo && (
+                <g className="no-print" style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); ed.onStartEdit?.(idT); }}>
+                  <circle cx={lx + wBox - 16} cy={Y_DADOS + hCabTitulo / 2} r={9} fill="rgba(255, 255, 255, 0.2)" />
+                  <path d={`M ${lx + wBox - 20} ${Y_DADOS + hCabTitulo / 2 - 2} L ${lx + wBox - 12} ${Y_DADOS + hCabTitulo / 2 - 2} L ${lx + wBox - 16} ${Y_DADOS + hCabTitulo / 2 + 3} Z`} fill="#fff" />
+                </g>
+              )}
             </g>
           );
         })()}
