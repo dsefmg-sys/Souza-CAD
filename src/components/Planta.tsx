@@ -661,6 +661,7 @@ export default function Planta({
     }
     // navegar: arrastar item mais próximo (prioridade: ponto de objeto)
     for (const o of objetos) {
+      if (o.curvaNivel != null) continue; // curva de nível não é editável (não seleciona/arrasta pontos)
       for (let i = 0; i < o.pontos.length; i++) {
         if (Math.hypot(sx(o.pontos[i].leste) - u.x, sy(o.pontos[i].norte) - u.y) < 7) {
           dragRef.current = { kind: 'objPonto', id: o.id, idx: i, dx: 0, dy: 0 }; onSelecObjeto?.(o.id); captura(e); return;
@@ -1215,7 +1216,7 @@ export default function Planta({
         const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
         // Clique direito num objeto abre o mesmo menu de edição do mapa (aumentar, diminuir,
         // cor, espessura, apagar…). Só quando a planta é editável. O texto já tem o seu via <Ted>.
-        const ctx = (editavel && onContextMenuObjeto) ? {
+        const ctx = (editavel && onContextMenuObjeto && o.curvaNivel == null) ? {
           style: { cursor: 'context-menu' as const },
           onContextMenu: (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); onSelecObjeto?.(o.id); onContextMenuObjeto(o.id, o.tipo, e.clientX, e.clientY); },
         } : {};

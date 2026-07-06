@@ -1395,7 +1395,10 @@ export default function MapEditor(props: Props) {
           }
           return (
             <Fragment key={o.id}>
-              {fechado
+              {o.curvaNivel != null
+                // Curva de nível: só DESENHO, não é editável (nada de selecionar/arrastar pontos).
+                ? <Polyline positions={pos} pathOptions={comum} interactive={false} />
+                : fechado
                 ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor, fillOpacity }} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
                 : (
                   <>
