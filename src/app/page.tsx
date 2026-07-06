@@ -3685,7 +3685,12 @@ export default function EditorPage() {
                 verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
                 onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
                 onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
-                onContextMenuMapa={(lat, lon, x, y) => setMenuContexto({ tipo: 'mapa', lat, lon, x, y })} />
+                onContextMenuMapa={(lat, lon, x, y) => {
+                  // Com ferramenta ativa, botão direito LARGA a ferramenta (praxe de CAD) em vez
+                  // de abrir o menu; desenho pela metade é descartado. No navegar, menu normal.
+                  if (modo !== 'navegar') { setModo('navegar'); setDesenhoBuffer([]); return; }
+                  setMenuContexto({ tipo: 'mapa', lat, lon, x, y });
+                }} />
           ) : null}
 
           {/* MULTI-SELEÇÃO: ação flutuante para apagar os vértices marcados */}
