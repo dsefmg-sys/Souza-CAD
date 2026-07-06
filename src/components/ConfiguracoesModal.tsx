@@ -328,11 +328,6 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
 
                 <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Cursor CAD (Desenho)</div>
                 <div className="rounded border p-2.5 space-y-2.5 bg-muted/20">
-                  <Interruptor
-                    ligado={!!prefs.cursorMostrarSeta}
-                    onToggle={(v) => mudarPref('cursorMostrarSeta', v)}
-                    titulo="Mostrar seta do mouse junto ao +"
-                    descricao="Mostra o ponteiro padrão (seta) do mouse junto com as linhas de mira do CAD." />
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold">Espessura das linhas do cursor</Label>
                     <div className="flex w-fit items-center gap-1 rounded-full border bg-[#05140b] p-0.5 text-xs">

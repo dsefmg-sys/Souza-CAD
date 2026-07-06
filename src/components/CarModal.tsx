@@ -55,111 +55,124 @@ export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onE
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Leaf className="size-5 text-green-600" /> CAR — Cadastro Ambiental Rural</DialogTitle>
+      <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-6 bg-background border border-border shadow-2xl rounded-xl">
+        <DialogHeader className="shrink-0 pb-2 border-b border-border/60">
+          <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
+            <Leaf className="size-5.5 text-emerald-500" /> CAR — Cadastro Ambiental Rural
+          </DialogTitle>
         </DialogHeader>
 
-        <p className="text-xs text-muted-foreground">
-          Cálculos do Código Florestal a partir da área do imóvel. A exportação para o SICAR entra na próxima etapa.
+        <p className="text-xs md:text-sm text-muted-foreground shrink-0 leading-relaxed pt-1">
+          Cálculos e parametrização do Código Florestal com base na área SGL do imóvel. Exporte perímetros como Shapefile ou importe arquivos espaciais para balizar a sua retificação.
         </p>
 
-        {/* Layout horizontal: campos à esquerda, resultados e referências à direita (aproveita a largura). */}
-        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto md:grid-cols-2">
+        {/* Layout horizontal: campos à esquerda, resultados e referências à direita. */}
+        <div className="grid min-h-0 flex-grow gap-5 overflow-y-auto md:grid-cols-2 mt-2">
           {/* COLUNA ESQUERDA — campos */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             {temCamadas && (
-              <p className="rounded border border-green-600/30 bg-green-500/10 px-2 py-1 text-[11px] leading-tight text-green-700 dark:text-green-400">
-                As áreas abaixo já vieram dos polígonos que você marcou como camada CAR no mapa (medidas automaticamente). Você pode ajustar.
+              <p className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2.5 text-xs leading-relaxed text-emerald-600 dark:text-emerald-400 font-semibold animate-pulse">
+                As áreas abaixo já foram calculadas e extraídas automaticamente a partir dos polígonos desenhados como camadas do CAR no mapa.
               </p>
             )}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Área do imóvel (ha)</label>
-                <div className="rounded border bg-muted/40 px-3 py-2 text-sm font-bold">{num(areaHa, 4)} ha</div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 text-left">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#87a992]">Área do imóvel (ha)</label>
+                <div className="rounded-lg border border-border/80 bg-[#05140b] dark:bg-[#05140b]/80 px-3 py-2.5 text-sm font-black text-foreground">{num(areaHa, 4)} ha</div>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Bioma / localização</label>
-                <select className="w-full rounded border bg-background px-2 py-2 text-sm" value={bioma} onChange={(e) => setBioma(e.target.value as Bioma)}>
+              <div className="space-y-1.5 text-left">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#87a992]">Bioma / localização</label>
+                <select className="w-full h-11 rounded-lg border bg-[#05140b] dark:bg-[#05140b] border-border/80 px-3 text-sm text-foreground focus:border-emerald-500 focus:outline-none" value={bioma} onChange={(e) => setBioma(e.target.value as Bioma)}>
                   {BIOMAS.map((b) => <option key={b.v} value={b.v}>{b.rot}</option>)}
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Módulo fiscal (ha) — INCRA</label>
-                <input className="w-full rounded border bg-background px-3 py-2 text-sm" placeholder="ex.: 20" value={moduloFiscal} onChange={(e) => setModuloFiscal(e.target.value)} />
+              <div className="space-y-1.5 text-left">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#87a992]">Módulo fiscal (ha) — INCRA</label>
+                <input className="w-full h-11 rounded-lg border bg-[#05140b] dark:bg-[#05140b] border-border/80 px-3 text-sm text-foreground focus:border-emerald-500 focus:outline-none font-mono" placeholder="ex.: 20" value={moduloFiscal} onChange={(e) => setModuloFiscal(e.target.value)} />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Reserva legal averbada (ha) — opc.</label>
-                <input className="w-full rounded border bg-background px-3 py-2 text-sm" placeholder="ex.: 4" value={reservaHa} onChange={(e) => setReservaHa(e.target.value)} />
+              <div className="space-y-1.5 text-left">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#87a992]">Reserva legal averbada (ha)</label>
+                <input className="w-full h-11 rounded-lg border bg-[#05140b] dark:bg-[#05140b] border-border/80 px-3 text-sm text-foreground focus:border-emerald-500 focus:outline-none font-mono" placeholder="ex.: 4" value={reservaHa} onChange={(e) => setReservaHa(e.target.value)} />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">APP total (ha) — opc.</label>
-                <input className="w-full rounded border bg-background px-3 py-2 text-sm" placeholder="ex.: 1,5" value={appHa} onChange={(e) => setAppHa(e.target.value)} />
+              <div className="space-y-1.5 text-left">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#87a992]">APP total (ha)</label>
+                <input className="w-full h-11 rounded-lg border bg-[#05140b] dark:bg-[#05140b] border-border/80 px-3 text-sm text-foreground focus:border-emerald-500 focus:outline-none font-mono" placeholder="ex.: 1,5" value={appHa} onChange={(e) => setAppHa(e.target.value)} />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Vegetação nativa (ha) — opc.</label>
-                <input className="w-full rounded border bg-background px-3 py-2 text-sm" placeholder="ex.: 6" value={vegHa} onChange={(e) => setVegHa(e.target.value)} />
+              <div className="space-y-1.5 text-left">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#87a992]">Vegetação nativa (ha)</label>
+                <input className="w-full h-11 rounded-lg border bg-[#05140b] dark:bg-[#05140b] border-border/80 px-3 text-sm text-foreground focus:border-emerald-500 focus:outline-none font-mono" placeholder="ex.: 6" value={vegHa} onChange={(e) => setVegHa(e.target.value)} />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Uso consolidado (ha) — opc.</label>
-                <input className="w-full rounded border bg-background px-3 py-2 text-sm" placeholder="ex.: 40" value={usoHa} onChange={(e) => setUsoHa(e.target.value)} />
+              <div className="space-y-1.5 text-left col-span-2">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#87a992]">Uso consolidado (ha)</label>
+                <input className="w-full h-11 rounded-lg border bg-[#05140b] dark:bg-[#05140b] border-border/80 px-3 text-sm text-foreground focus:border-emerald-500 focus:outline-none font-mono" placeholder="ex.: 40" value={usoHa} onChange={(e) => setUsoHa(e.target.value)} />
               </div>
             </div>
 
             {(appHa.trim() || vegHa.trim() || usoHa.trim()) && (
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="rounded border p-2"><div className="text-[10px] uppercase text-muted-foreground">APP</div><div className="font-bold">{num(r.appTotalHa)} ha</div></div>
-                <div className="rounded border p-2"><div className="text-[10px] uppercase text-muted-foreground">Veg. nativa</div><div className="font-bold">{num(r.vegetacaoNativaHa)} ha</div></div>
-                <div className="rounded border p-2"><div className="text-[10px] uppercase text-muted-foreground">Uso consolidado</div><div className="font-bold">{num(r.usoConsolidadoHa)} ha</div></div>
+              <div className="grid grid-cols-3 gap-3 text-center text-xs pt-1">
+                <div className="rounded-lg border border-border p-2.5 bg-muted/20">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">APP</div>
+                  <div className="font-black text-sm text-foreground">{num(r.appTotalHa)} ha</div>
+                </div>
+                <div className="rounded-lg border border-border p-2.5 bg-muted/20">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Veg. Nativa</div>
+                  <div className="font-black text-sm text-foreground">{num(r.vegetacaoNativaHa)} ha</div>
+                </div>
+                <div className="rounded-lg border border-border p-2.5 bg-muted/20">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Uso Consolidado</div>
+                  <div className="font-black text-sm text-foreground">{num(r.usoConsolidadoHa)} ha</div>
+                </div>
               </div>
             )}
           </div>
 
           {/* COLUNA DIREITA — resultados e referência */}
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-lg border p-3 text-center">
-                <div className="text-[10px] uppercase text-muted-foreground">Reserva legal exigida</div>
-                <div className="text-lg font-bold text-green-700 dark:text-green-400">{num(r.reservaLegal.exigidaHa)} ha</div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl border border-border/85 p-3.5 text-center bg-[#07170d]/20">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] mb-1">Reserva Legal Exigida</div>
+                <div className="text-base md:text-lg font-black text-emerald-500 dark:text-emerald-400">{num(r.reservaLegal.exigidaHa)} ha</div>
               </div>
-              <div className="rounded-lg border p-3 text-center">
-                <div className="text-[10px] uppercase text-muted-foreground">Módulos fiscais</div>
-                <div className="text-lg font-bold">{Number.isFinite(mf) && mf > 0 ? num(r.numModulos) : '—'}</div>
+              <div className="rounded-xl border border-border/85 p-3.5 text-center bg-[#07170d]/20">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] mb-1">Módulos Fiscais</div>
+                <div className="text-base md:text-lg font-black text-foreground">{Number.isFinite(mf) && mf > 0 ? num(r.numModulos) : '—'}</div>
               </div>
-              <div className="rounded-lg border p-3 text-center">
-                <div className="text-[10px] uppercase text-muted-foreground">Classe do imóvel</div>
-                <div className="text-lg font-bold capitalize">{Number.isFinite(mf) && mf > 0 ? r.classe : '—'}</div>
+              <div className="rounded-xl border border-border/85 p-3.5 text-center bg-[#07170d]/20">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] mb-1">Classe do Imóvel</div>
+                <div className="text-base md:text-lg font-black text-foreground capitalize">{Number.isFinite(mf) && mf > 0 ? r.classe : '—'}</div>
               </div>
             </div>
 
             {reservaHa.trim() && (
-              <div className={`rounded-lg border p-3 text-sm ${r.reservaLegal.atende ? 'border-green-600/40 bg-green-500/10 text-green-700 dark:text-green-400' : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400'}`}>
+              <div className={`rounded-xl border p-4 text-sm font-semibold text-center ${r.reservaLegal.atende ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-400 animate-pulse'}`}>
                 {r.reservaLegal.atende
-                  ? 'A reserva legal informada ATENDE o mínimo exigido.'
-                  : `Falta ${num(r.reservaLegal.faltaHa)} ha de reserva legal para atingir o mínimo.`}
+                  ? '✓ A reserva legal informada atende aos mínimos legais exigidos.'
+                  : `⚠️ Falta ${num(r.reservaLegal.faltaHa)} ha de reserva legal para atingir o limite mínimo.`}
               </div>
             )}
 
-            <div className="rounded-lg border p-3">
-              <div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Faixas de APP (Código Florestal)</div>
-              <ul className="space-y-0.5 text-xs">
-                <li>Rio &lt; 10 m de largura: <strong>{appMargemRio(5)} m</strong> · 10 a 50 m: <strong>{appMargemRio(50)} m</strong> · 50 a 200 m: <strong>{appMargemRio(200)} m</strong> · 200 a 600 m: <strong>{appMargemRio(600)} m</strong> · acima de 600 m: <strong>{appMargemRio(700)} m</strong></li>
-                <li>Nascente / olho d&apos;água: raio de <strong>{APP_NASCENTE_M} m</strong></li>
-                <li>Lago rural até 20 ha: <strong>{appLago(10)} m</strong> · acima de 20 ha: <strong>{appLago(30)} m</strong></li>
+            <div className="rounded-xl border border-border/80 p-4 bg-[#07170d]/30 text-left">
+              <div className="mb-2 text-xs font-black uppercase tracking-wider text-foreground">Faixas de APP (Código Florestal)</div>
+              <ul className="space-y-1.5 text-xs text-muted-foreground leading-relaxed">
+                <li>• Rio &lt; 10 m de largura: <strong className="text-foreground">{appMargemRio(5)} m</strong> · 10 a 50 m: <strong className="text-foreground">{appMargemRio(50)} m</strong> · 50 a 200 m: <strong className="text-foreground">{appMargemRio(200)} m</strong></li>
+                <li>• Nascente / olho d&apos;água: raio de <strong className="text-foreground">{APP_NASCENTE_M} m</strong></li>
+                <li>• Lago rural até 20 ha: <strong className="text-foreground">{appLago(10)} m</strong> · acima de 20 ha: <strong className="text-foreground">{appLago(30)} m</strong></li>
               </ul>
             </div>
           </div>
         </div>
 
         {(onExportarShapefiles || onImportarShapefile) && (
-          <div className="flex items-center justify-between gap-2 border-t pt-2">
-            <span className="text-[11px] text-muted-foreground">Exporta o perímetro e as camadas do CAR como shapefiles (base para o SICAR), ou importa um shapefile (.zip ou .shp) como referência no desenho.</span>
-            <div className="flex shrink-0 gap-1.5">
+          <div className="flex items-center justify-between gap-4 border-t border-border/60 pt-4 mt-auto shrink-0">
+            <span className="text-[11px] text-muted-foreground max-w-xl text-left leading-normal">
+              Gere os shapefiles (ZIP contendo .shp) de limites e camadas ambientais configuradas como base para o SICAR, ou carregue arquivos de referência para confrontantes e glebas.
+            </span>
+            <div className="flex shrink-0 gap-2">
               {onImportarShapefile && (
-                <Button size="sm" variant="outline" disabled={processando} className="gap-1" onClick={onImportarShapefile}><Upload className="size-4" /> Importar</Button>
+                <Button size="sm" variant="outline" disabled={processando} className="gap-1.5 h-10 px-4 font-bold text-xs" onClick={onImportarShapefile}><Upload className="size-4" /> Importar SHP</Button>
               )}
               {onExportarShapefiles && (
-                <Button size="sm" disabled={processando} className="gap-1" onClick={onExportarShapefiles}><Download className="size-4" /> Shapefiles (SICAR)</Button>
+                <Button size="sm" disabled={processando} className="gap-1.5 h-10 px-4 font-bold text-xs bg-amber-500 hover:bg-amber-600 text-[#05140b] border-none" onClick={onExportarShapefiles}><Download className="size-4" /> Exportar Shapefiles</Button>
               )}
             </div>
           </div>

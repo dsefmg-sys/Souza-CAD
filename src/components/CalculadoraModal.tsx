@@ -18,9 +18,9 @@ type Aba = 'converter' | 'distancia' | 'lote';
 
 function Campo({ label, value, onChange, ph }: { label: string; value: string; onChange: (v: string) => void; ph?: string }) {
   return (
-    <label className="flex flex-col gap-1 text-xs">
-      <span className="font-semibold text-muted-foreground">{label}</span>
-      <input className="rounded border bg-background px-2 py-1.5 text-sm font-mono" value={value} placeholder={ph} onChange={(e) => onChange(e.target.value)} />
+    <label className="flex flex-col gap-1 text-xs text-left">
+      <span className="font-bold uppercase tracking-wider text-muted-foreground text-[10px]">{label}</span>
+      <input className="h-11 rounded-lg border bg-[#05140b] dark:bg-[#05140b] border-border/85 px-3 text-sm font-mono text-foreground focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none placeholder:text-muted-foreground/50" value={value} placeholder={ph} onChange={(e) => onChange(e.target.value)} />
     </label>
   );
 }
@@ -100,43 +100,30 @@ export default function CalculadoraModal({ open, onOpenChange, zona, hemisferio 
         }
       }
 
-      const nums: number[] = [];
-      const restoIdxs = new Set<number>();
       if (numsValidos.length >= 2) {
-        const finalCoords = numsValidos.slice(-2);
-        nums.push(finalCoords[0].val, finalCoords[1].val);
-        const coordIdxs = new Set(finalCoords.map(n => n.idx));
-        toks.forEach((_, idx) => {
-          if (!coordIdxs.has(idx)) restoIdxs.add(idx);
-        });
-      } else {
-        if (todosNums.length >= 2) {
-          const finalCoords = todosNums.slice(-2);
-          nums.push(finalCoords[0].val, finalCoords[1].val);
-          const coordIdxs = new Set(finalCoords.map(n => n.idx));
-          toks.forEach((_, idx) => {
-            if (!coordIdxs.has(idx)) restoIdxs.add(idx);
-          });
-        } else {
-          toks.forEach((_, idx) => restoIdxs.add(idx));
+        const xVal = numsValidos[0].val;
+        const yVal = numsValidos[1].val;
+        let rot = '';
+        if (toks.length > numsValidos.length) {
+          const idxs = new Set(numsValidos.map((n) => n.idx));
+          const textTokens = toks.filter((_, i) => !idxs.has(i));
+          rot = textTokens.join(' ');
         }
-      }
-
-      const rotulo = toks.filter((_, idx) => restoIdxs.has(idx)).join(' ');
-      if (!zOk || nums.length < 2) { out.push({ rotulo, x: '—', y: '—', ok: false }); continue; }
-      try {
         if (loteDir === 'u2g') {
-          const g = utmParaGeo(nums[0], nums[1], z, hemi);
-          out.push({ rotulo, x: g.lat.toFixed(8), y: g.lon.toFixed(8), ok: true });
+          const g = utmParaGeo(xVal, yVal, z, hemi);
+          out.push({ rotulo: rot, x: g.lat.toFixed(8), y: g.lon.toFixed(8), ok: true });
+          nOk++;
         } else {
-          const u = geoParaUtm(nums[0], nums[1], z, hemi);
-          out.push({ rotulo, x: u.leste.toFixed(3), y: u.norte.toFixed(3), ok: true });
+          const u = geoParaUtm(xVal, yVal, z, hemi);
+          out.push({ rotulo: rot, x: u.leste.toFixed(3), y: u.norte.toFixed(3), ok: true });
+          nOk++;
         }
-        nOk++;
-      } catch { out.push({ rotulo, x: '—', y: '—', ok: false }); }
+      } else {
+        out.push({ rotulo: 'inválido', x: '—', y: '—', ok: false });
+      }
     }
     return { linhas: out, nOk };
-  }, [loteIn, loteDir, virgula, zOk, z, hemi]);
+  }, [loteIn, loteDir, virgula, z, hemi]);
 
   function copiarLote() {
     const txt = lote.linhas.filter((l) => l.ok).map((l) => [l.rotulo, l.x, l.y].filter(Boolean).join('\t')).join('\n');
@@ -146,103 +133,108 @@ export default function CalculadoraModal({ open, onOpenChange, zona, hemisferio 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl bg-background border border-border shadow-2xl p-6 rounded-xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Ruler className="size-5 text-primary" /> Calculadora topográfica</DialogTitle>
+          <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
+            <Ruler className="size-5.5 text-emerald-500" /> Calculadora Topográfica
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex items-center gap-2 text-sm">
-          <span className="font-semibold">Fuso:</span>
-          <input className="w-16 rounded border bg-background px-2 py-1 text-sm font-mono" value={zonaSel} onChange={(e) => setZonaSel(e.target.value)} />
-          <div className="flex gap-1">
+        <div className="flex items-center gap-3 text-sm bg-muted/30 p-3 rounded-lg border border-border/60">
+          <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Configuração UTM:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium">Fuso:</span>
+            <input className="w-14 h-8 rounded-md border bg-[#05140b] dark:bg-[#05140b] border-border/80 px-2 text-sm text-center font-bold font-mono" value={zonaSel} onChange={(e) => setZonaSel(e.target.value)} />
+          </div>
+          <div className="flex gap-0.5 border rounded-lg p-0.5 bg-[#05140b] border-border/60 ml-auto">
             {(['S', 'N'] as const).map((h) => (
-              <Button key={h} size="sm" variant={hemi === h ? 'default' : 'outline'} className="h-8 px-3" onClick={() => setHemi(h)}>{h}</Button>
+              <button key={h} type="button" className={`h-7 px-3.5 rounded-md text-xs font-bold transition-all ${hemi === h ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setHemi(h)}>{h}</button>
             ))}
           </div>
         </div>
 
-        <div className="flex gap-1 border-b">
-          <button className={`px-3 py-1.5 text-sm font-semibold ${aba === 'converter' ? 'border-b-2 border-primary text-foreground' : 'text-muted-foreground'}`} onClick={() => setAba('converter')}>Converter coordenada</button>
-          <button className={`px-3 py-1.5 text-sm font-semibold ${aba === 'distancia' ? 'border-b-2 border-primary text-foreground' : 'text-muted-foreground'}`} onClick={() => setAba('distancia')}>Distância e azimute</button>
-          <button className={`px-3 py-1.5 text-sm font-semibold ${aba === 'lote' ? 'border-b-2 border-primary text-foreground' : 'text-muted-foreground'}`} onClick={() => setAba('lote')}>Em lote</button>
+        <div className="flex gap-1 border-b border-border/80">
+          <button className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${aba === 'converter' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} onClick={() => setAba('converter')}>Coordenadas</button>
+          <button className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${aba === 'distancia' ? 'border-b-2 border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} onClick={() => setAba('distancia')}>Distância & Azimute</button>
+          <button className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${aba === 'lote' ? 'border-b-2 border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} onClick={() => setAba('lote')}>Lote (Massa)</button>
         </div>
 
         {aba === 'converter' ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <Campo label="Este (E)" value={leste} onChange={setLeste} ph="ex.: 290000.000" />
-              <Campo label="Norte (N)" value={norte} onChange={setNorte} ph="ex.: 7720000.000" />
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <Campo label="Este (E) - Metros" value={leste} onChange={setLeste} ph="ex.: 290000.000" />
+              <Campo label="Norte (N) - Metros" value={norte} onChange={setNorte} ph="ex.: 7720000.000" />
             </div>
-            <div className="flex justify-center gap-2">
-              <Button size="sm" variant="outline" className="gap-1" onClick={utmParaGeoCalc}>UTM → Geo <ArrowLeftRight className="size-3.5" /></Button>
-              <Button size="sm" variant="outline" className="gap-1" onClick={geoParaUtmCalc}><ArrowLeftRight className="size-3.5" /> Geo → UTM</Button>
+            <div className="flex justify-center gap-3">
+              <Button size="sm" className="h-10 px-4 font-bold gap-1.5 transition-all text-xs" onClick={utmParaGeoCalc}>UTM → Geo <ArrowLeftRight className="size-3.5" /></Button>
+              <Button size="sm" className="h-10 px-4 font-bold gap-1.5 transition-all text-xs" onClick={geoParaUtmCalc}><ArrowLeftRight className="size-3.5" /> Geo → UTM</Button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Campo label="Latitude (graus)" value={lat} onChange={setLat} ph="-20.59180" />
-              <Campo label="Longitude (graus)" value={lon} onChange={setLon} ph="-42.00344" />
+            <div className="grid grid-cols-2 gap-3">
+              <Campo label="Latitude (Graus Decimais)" value={lat} onChange={setLat} ph="-20.59180" />
+              <Campo label="Longitude (Graus Decimais)" value={lon} onChange={setLon} ph="-42.00344" />
             </div>
             {(dmsLat || dmsLon) && (
-              <div className="rounded border bg-muted/30 p-2 text-center text-sm font-mono">
-                {dmsLat && <div>Lat: {dmsLat}</div>}
-                {dmsLon && <div>Lon: {dmsLon}</div>}
+              <div className="rounded-lg border border-border/80 bg-[#07170d]/30 p-3 text-center text-sm font-mono leading-relaxed text-foreground">
+                {dmsLat && <div className="flex justify-between border-b border-border/20 pb-1.5 mb-1.5"><span>Lat (DMS):</span><span className="font-bold">{dmsLat}</span></div>}
+                {dmsLon && <div className="flex justify-between"><span>Lon (DMS):</span><span className="font-bold">{dmsLon}</span></div>}
               </div>
             )}
           </div>
         ) : aba === 'distancia' ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <Campo label="Ponto A — Este" value={ea} onChange={setEa} />
-              <Campo label="Ponto A — Norte" value={na} onChange={setNa} />
-              <Campo label="Ponto B — Este" value={eb} onChange={setEb} />
-              <Campo label="Ponto B — Norte" value={nb} onChange={setNb} />
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <Campo label="Ponto A — Este" value={ea} onChange={setEa} ph="Ex.: 290000" />
+              <Campo label="Ponto A — Norte" value={na} onChange={setNa} ph="Ex.: 7720000" />
+              <Campo label="Ponto B — Este" value={eb} onChange={setEb} ph="Ex.: 290100" />
+              <Campo label="Ponto B — Norte" value={nb} onChange={setNb} ph="Ex.: 7720100" />
             </div>
             {dist != null && az != null ? (
-              <div className="rounded border bg-muted/30 p-3 text-center">
-                <div className="text-lg font-bold">{numBR(dist, 3)} m</div>
-                <div className="text-sm font-mono text-muted-foreground">Azimute: {numBR(az, 4)}° ({azimuteDMS(az)})</div>
+              <div className="rounded-xl border border-border bg-[#07170d]/40 p-4 text-center space-y-1">
+                <div className="text-xl md:text-2xl font-black text-emerald-500 dark:text-emerald-400">{numBR(dist, 3)} m</div>
+                <div className="text-sm font-mono text-foreground font-semibold">Azimute: {numBR(az, 4)}° ({azimuteDMS(az)})</div>
               </div>
             ) : (
-              <p className="text-center text-xs text-muted-foreground">Preencha os quatro valores para calcular.</p>
+              <p className="text-center text-xs text-muted-foreground p-3 border border-dashed rounded-lg">Preencha os quatro valores UTM para obter a distância e azimute de quadrícula.</p>
             )}
-            <p className="text-[10px] text-muted-foreground">Distância e azimute no plano UTM (quadrícula). Para a distância geodésica SGL use a tabela de lados do projeto.</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">Nota: Distância e azimute calculados no plano UTM (quadrícula). Para obter a distância real geodésica oficial SGL, consulte a tabela de lados do projeto.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <div className="flex gap-1">
-                <Button size="sm" variant={loteDir === 'u2g' ? 'default' : 'outline'} className="h-8 gap-1 px-3" onClick={() => setLoteDir('u2g')}>UTM → Geo</Button>
-                <Button size="sm" variant={loteDir === 'g2u' ? 'default' : 'outline'} className="h-8 gap-1 px-3" onClick={() => setLoteDir('g2u')}>Geo → UTM</Button>
+          <div className="space-y-4 pt-2">
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <div className="flex gap-0.5 border rounded-lg p-0.5 bg-[#05140b] border-border/60">
+                <button type="button" className={`h-7 px-3.5 rounded-md text-xs font-bold transition-all ${loteDir === 'u2g' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setLoteDir('u2g')}>UTM → Geo</button>
+                <button type="button" className={`h-7 px-3.5 rounded-md text-xs font-bold transition-all ${loteDir === 'g2u' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setLoteDir('g2u')}>Geo → UTM</button>
               </div>
-              <span className="ml-auto text-muted-foreground">Decimal:</span>
-              <div className="flex gap-1">
-                <Button size="sm" variant={virgula ? 'default' : 'outline'} className="h-8 px-3" onClick={() => setVirgula(true)}>vírgula</Button>
-                <Button size="sm" variant={!virgula ? 'default' : 'outline'} className="h-8 px-3" onClick={() => setVirgula(false)}>ponto</Button>
+              <span className="ml-auto text-muted-foreground font-medium">Decimal:</span>
+              <div className="flex gap-0.5 border rounded-lg p-0.5 bg-[#05140b] border-border/60">
+                <button type="button" className={`h-7 px-3.5 rounded-md text-xs font-bold transition-all ${virgula ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setVirgula(true)}>Vírgula</button>
+                <button type="button" className={`h-7 px-3.5 rounded-md text-xs font-bold transition-all ${!virgula ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setVirgula(false)}>Ponto</button>
               </div>
             </div>
             <textarea
-              className="h-32 w-full resize-y rounded border bg-background px-2 py-1.5 text-xs font-mono"
+              className="h-32 w-full resize-y rounded-lg border bg-[#05140b] border-border/80 px-3 py-2 text-xs font-mono text-foreground focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none placeholder:text-muted-foreground/45"
               value={loteIn}
               onChange={(e) => setLoteIn(e.target.value)}
               placeholder={loteDir === 'u2g' ? 'Uma linha por ponto. Ex.:\nP1 290000,000 7720000,000\nP2 290100,500 7720050,250' : 'Uma linha por ponto. Ex.:\nP1 -20,591800 -42,003440\nP2 -20,591500 -42,003100'}
             />
-            <p className="text-[10px] text-muted-foreground">Cole uma linha por ponto. Aceito {loteDir === 'u2g' ? 'Este e Norte' : 'Latitude e Longitude'}, com um rótulo opcional no começo ou no fim. Separe os valores por espaço, tabulação ou ponto-e-vírgula.</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">Aceita uma linha por ponto contendo {loteDir === 'u2g' ? 'Este e Norte' : 'Latitude e Longitude'}, com rótulo opcional. Separe por espaço, tabulação ou ponto-e-vírgula.</p>
             {lote.linhas.length > 0 && (
-              <div className="space-y-2">
+              <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">{lote.nOk} de {lote.linhas.length} convertido{lote.nOk === 1 ? '' : 's'}</span>
-                  <Button size="sm" variant="outline" className="h-7 gap-1" disabled={lote.nOk === 0} onClick={copiarLote}>{copiado ? <Check className="size-3.5" /> : <Copy className="size-3.5" />} {copiado ? 'Copiado' : 'Copiar'}</Button>
+                  <span className="font-semibold text-[#87a992]">{lote.nOk} de {lote.linhas.length} convertido{lote.nOk === 1 ? '' : 's'}</span>
+                  <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs font-bold" disabled={lote.nOk === 0} onClick={copiarLote}>{copiado ? <Check className="size-3.5" /> : <Copy className="size-3.5" />} {copiado ? 'Copiado' : 'Copiar Resultados'}</Button>
                 </div>
-                <div className="max-h-48 overflow-auto rounded border">
+                <div className="max-h-48 overflow-auto rounded-lg border border-border bg-[#05140b]/50">
                   <table className="w-full text-xs font-mono">
-                    <thead className="sticky top-0 bg-muted/60 text-[10px] uppercase text-muted-foreground">
-                      <tr><th className="px-2 py-1 text-left">Ponto</th><th className="px-2 py-1 text-right">{loteDir === 'u2g' ? 'Latitude' : 'Este'}</th><th className="px-2 py-1 text-right">{loteDir === 'u2g' ? 'Longitude' : 'Norte'}</th></tr>
+                    <thead className="sticky top-0 bg-[#07170d] text-[10px] uppercase text-muted-foreground border-b border-border/85">
+                      <tr><th className="px-3 py-1.5 text-left font-bold">Ponto</th><th className="px-3 py-1.5 text-right font-bold">{loteDir === 'u2g' ? 'Latitude' : 'Este'}</th><th className="px-3 py-1.5 text-right font-bold">{loteDir === 'u2g' ? 'Longitude' : 'Norte'}</th></tr>
                     </thead>
                     <tbody>
                       {lote.linhas.map((l, i) => (
-                        <tr key={i} className={`border-t ${l.ok ? '' : 'bg-destructive/10 text-destructive'}`}>
-                          <td className="px-2 py-1">{l.rotulo || (i + 1)}</td>
-                          <td className="px-2 py-1 text-right">{l.x}</td>
-                          <td className="px-2 py-1 text-right">{l.y}</td>
+                        <tr key={i} className={`border-t border-border/10 ${l.ok ? 'hover:bg-muted/15' : 'bg-destructive/10 text-destructive'}`}>
+                          <td className="px-3 py-1.5 font-bold">{l.rotulo || (i + 1)}</td>
+                          <td className="px-3 py-1.5 text-right">{l.x}</td>
+                          <td className="px-3 py-1.5 text-right">{l.y}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -42,41 +42,70 @@ export default function PorcentagemModal({ open, onOpenChange, glebas }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl bg-background border border-border shadow-2xl p-6 rounded-xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Percent className="size-5 text-primary" /> Porcentagem entre dois polígonos</DialogTitle>
+          <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
+            <Percent className="size-5.5 text-emerald-500" /> Porcentagem entre dois polígonos
+          </DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground">Escolha duas parcelas/glebas. O sistema usa a área SGL de cada uma e calcula as porcentagens.</p>
+        <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
+          Escolha duas parcelas/glebas para análise comparativa. O sistema calcula a área SGL de cada uma e estabelece as proporções.
+        </p>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-0.5 text-xs">
-            <span className="font-semibold text-muted-foreground">Polígono A</span>
-            <select className="h-8 rounded border bg-background px-2 text-sm" value={aId} onChange={(e) => setAId(e.target.value)}>
+        <div className="grid grid-cols-2 gap-4 mt-2">
+          <label className="flex flex-col gap-1.5 text-xs">
+            <span className="font-bold uppercase tracking-wider text-muted-foreground">Polígono A</span>
+            <select className="h-10 rounded-lg border bg-[#05140b] dark:bg-[#05140b] border-border/80 px-3 text-sm text-foreground focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" value={aId} onChange={(e) => setAId(e.target.value)}>
               {glebas.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
             </select>
           </label>
-          <label className="flex flex-col gap-0.5 text-xs">
-            <span className="font-semibold text-muted-foreground">Polígono B</span>
-            <select className="h-8 rounded border bg-background px-2 text-sm" value={bId} onChange={(e) => setBId(e.target.value)}>
+          <label className="flex flex-col gap-1.5 text-xs">
+            <span className="font-bold uppercase tracking-wider text-muted-foreground">Polígono B</span>
+            <select className="h-10 rounded-lg border bg-[#05140b] dark:bg-[#05140b] border-border/80 px-3 text-sm text-foreground focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" value={bId} onChange={(e) => setBId(e.target.value)}>
               {glebas.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
             </select>
           </label>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 rounded-lg border bg-muted/20 p-3 text-center">
-          <div><div className="text-[10px] uppercase text-muted-foreground">Área A</div><div className="text-sm font-bold">{numBR(areaA, 4)} ha</div></div>
-          <div><div className="text-[10px] uppercase text-muted-foreground">Área B</div><div className="text-sm font-bold">{numBR(areaB, 4)} ha</div></div>
-          <div><div className="text-[10px] uppercase text-muted-foreground">Total (A+B)</div><div className="text-sm font-bold">{numBR(total, 4)} ha</div></div>
+        <div className="grid grid-cols-3 gap-3 rounded-xl border border-border/80 bg-muted/40 p-4 text-center mt-2">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Área A</div>
+            <div className="text-sm md:text-base font-black text-foreground">{numBR(areaA, 4)} ha</div>
+          </div>
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Área B</div>
+            <div className="text-sm md:text-base font-black text-foreground">{numBR(areaB, 4)} ha</div>
+          </div>
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Total (A+B)</div>
+            <div className="text-sm md:text-base font-black text-emerald-500 dark:text-emerald-400">{numBR(total, 4)} ha</div>
+          </div>
         </div>
 
-        <div className="space-y-1.5 rounded-lg border p-3 text-sm">
-          <div className="flex items-center justify-between"><span>A em relação a B</span><span className="font-bold">{pct(areaB > 0 ? (areaA / areaB) * 100 : NaN)}</span></div>
-          <div className="flex items-center justify-between"><span>B em relação a A</span><span className="font-bold">{pct(areaA > 0 ? (areaB / areaA) * 100 : NaN)}</span></div>
-          <div className="my-1 h-px bg-border" />
-          <div className="flex items-center justify-between"><span>A no total (A+B)</span><span className="font-bold text-primary">{pct(total > 0 ? (areaA / total) * 100 : NaN)}</span></div>
-          <div className="flex items-center justify-between"><span>B no total (A+B)</span><span className="font-bold text-primary">{pct(total > 0 ? (areaB / total) * 100 : NaN)}</span></div>
+        <div className="space-y-2 rounded-xl border border-border/80 p-4 text-sm bg-[#07170d]/20">
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-muted-foreground">A em relação a B:</span>
+            <span className="font-black text-foreground text-base">{pct(areaB > 0 ? (areaA / areaB) * 100 : NaN)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-muted-foreground">B em relação a A:</span>
+            <span className="font-black text-foreground text-base">{pct(areaA > 0 ? (areaB / areaA) * 100 : NaN)}</span>
+          </div>
+          <div className="h-px bg-border/60 my-2" />
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-muted-foreground">A no total (A+B):</span>
+            <span className="font-black text-emerald-500 dark:text-emerald-400 text-base">{pct(total > 0 ? (areaA / total) * 100 : NaN)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-muted-foreground">B no total (A+B):</span>
+            <span className="font-black text-emerald-500 dark:text-emerald-400 text-base">{pct(total > 0 ? (areaB / total) * 100 : NaN)}</span>
+          </div>
         </div>
-        {aId === bId && <p className="text-[11px] text-amber-600">Você escolheu o mesmo polígono nos dois lados — escolha dois diferentes para comparar.</p>}
+        {aId === bId && (
+          <p className="text-xs text-amber-500 dark:text-amber-400 font-bold bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 text-center animate-pulse">
+            Aviso: Você escolheu o mesmo polígono nos dois lados. Selecione polígonos diferentes para comparar.
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );

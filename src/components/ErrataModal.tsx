@@ -98,30 +98,30 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col p-5">
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="text-sm font-bold uppercase tracking-wider">Errata para o cartório</DialogTitle>
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-6 bg-background border border-border shadow-2xl rounded-xl">
+        <DialogHeader className="shrink-0 pb-2 border-b border-border/60">
+          <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
+            <FileWarning className="size-5.5 text-amber-500 animate-pulse" /> Errata para o Cartório
+          </DialogTitle>
         </DialogHeader>
         
-        <p className="text-[11px] text-muted-foreground shrink-0 leading-normal">
-          Liste o que precisa ser corrigido. Para cada item, diga onde está o erro, o que constava e o
-          que passa a constar. A errata sai pronta, já explicando ao cartório e com a linha de assinatura
-          do responsável técnico.
+        <p className="text-xs md:text-sm text-muted-foreground shrink-0 leading-relaxed pt-2">
+          Defina as correções necessárias para o processo de retificação de área. A errata será gerada em formato Word (.docx), pronta para protocolo, contendo a justificativa e o campo de assinatura do responsável técnico.
         </p>
 
         {/* Área Central Rolável */}
-        <div className="flex-1 overflow-y-auto space-y-3 pr-1 my-1">
-          {/* Duas colunas para atalhos e acréscimo RT para economizar espaço vertical */}
-          <div className="grid grid-cols-2 gap-3 shrink-0">
+        <div className="flex-grow overflow-y-auto space-y-4 pr-1 my-2">
+          {/* Duas colunas para atalhos e acréscimo RT */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0 mt-1">
             {/* Atalhos de Sugestões */}
-            <div className="space-y-1 rounded-lg border p-2 bg-muted/5 flex flex-col justify-between">
+            <div className="space-y-2 rounded-xl border border-border/80 p-3.5 bg-muted/20 flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Atalhos de preenchimento:</span>
-                <div className="flex flex-wrap gap-1">
+                <span className="text-[11px] font-bold text-[#87a992] uppercase tracking-wider block mb-2">Atalhos de preenchimento rápido:</span>
+                <div className="flex flex-wrap gap-1.5">
                   {sugestoes.map((s, i) => (
-                    <Button key={i} size="sm" type="button" variant="outline" className="h-6 text-[10px] px-1.5 py-0"
+                    <Button key={i} size="sm" type="button" variant="outline" className="h-8 text-xs px-2.5 font-bold transition-all"
                       onClick={() => addCor({ onde: s.onde, constava: s.constava, natureza: s.natureza })} title={`Adicionar correção de ${s.onde}`}>
-                      <Plus className="size-2.5 mr-0.5" /> {s.rotulo}
+                      <Plus className="size-3.5 mr-0.5" /> {s.rotulo}
                     </Button>
                   ))}
                 </div>
@@ -129,30 +129,30 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
             </div>
 
             {/* Acréscimo RT */}
-            <div className="space-y-1 rounded-lg border p-2 bg-muted/5 flex flex-col justify-center">
-              <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block leading-none mb-1">Acréscimo de Responsabilidade Técnica (opcional)</Label>
+            <div className="space-y-2 rounded-xl border border-border/80 p-3.5 bg-muted/20 flex flex-col justify-center">
+              <Label className="text-[11px] font-bold text-[#87a992] uppercase tracking-wider block leading-none mb-1">Responsabilidade Técnica Adicional (Opcional)</Label>
               <Input value={acrescimoRT} onChange={(e) => setAcrescimoRT(e.target.value)}
-                placeholder="ex.: Número CFT/TRT 2605638774" className="h-7 text-xs" />
+                placeholder="Ex.: Número do CFT/TRT ou CREA/ART" className="h-10 text-sm bg-[#05140b] dark:bg-[#05140b] border-border/80" />
             </div>
           </div>
 
           {/* Lista de Correções */}
-          <div className="space-y-2 rounded-lg border bg-muted/10 p-2.5">
-            <div className="flex items-center justify-between border-b pb-1 mb-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Itens de Correção</span>
-              <Button size="sm" type="button" variant="outline" className="h-6 text-[10px] px-2 py-0" onClick={() => addCor()}><Plus className="size-2.5 mr-0.5" /> Adicionar correção</Button>
+          <div className="space-y-3 rounded-xl border border-border/80 bg-muted/10 p-4">
+            <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-2">
+              <span className="text-xs font-black uppercase tracking-wider text-foreground">Itens de Correção</span>
+              <Button size="sm" type="button" className="h-9 text-xs px-3 font-bold gap-1 transition-all" onClick={() => addCor()}><Plus className="size-4" /> Adicionar Correção</Button>
             </div>
             
-            <div className="space-y-2 divide-y divide-border/60">
+            <div className="space-y-3 divide-y divide-border/40">
               {correcoes.map((c, i) => (
-                 <div key={i} className="flex items-end gap-2 pt-2 first:pt-0">
-                  <div className="flex-grow grid grid-cols-4 gap-2">
-                    <div className="space-y-0.5">
-                      <Label className="text-[9px] text-muted-foreground font-semibold leading-none">Natureza</Label>
+                 <div key={i} className="flex items-end gap-3 pt-3 first:pt-0">
+                  <div className="flex-grow grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="space-y-1.5 text-left">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] leading-none">Natureza</Label>
                       <select
                         value={c.natureza || 'outros'}
                         onChange={(e) => setCor(i, { natureza: e.target.value as any })}
-                        className="flex h-7 w-full rounded-md border border-input bg-background px-1 py-0 text-xs shadow-sm focus:border-primary focus:outline-none"
+                        className="flex h-10 w-full rounded-lg border border-border/80 bg-[#05140b] dark:bg-[#05140b] px-3 py-0 text-sm text-foreground focus:border-emerald-500 focus:outline-none"
                       >
                         <option value="imovel">Dados Imóvel</option>
                         <option value="pessoais">Dados Pessoais</option>
@@ -161,20 +161,20 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
                         <option value="outros">Outras</option>
                       </select>
                     </div>
-                    <div className="space-y-0.5">
-                      <Label className="text-[9px] text-muted-foreground font-semibold leading-none">Onde está o erro</Label>
-                      <Input value={c.onde} onChange={(e) => setCor(i, { onde: e.target.value })} placeholder="ex.: Confrontante João" className="h-7 text-xs" />
+                    <div className="space-y-1.5 text-left">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] leading-none">Onde está o erro</Label>
+                      <Input value={c.onde} onChange={(e) => setCor(i, { onde: e.target.value })} placeholder="ex.: Confrontante João" className="h-10 text-sm bg-[#05140b] dark:bg-[#05140b] border-border/80" />
                     </div>
-                    <div className="space-y-0.5">
-                      <Label className="text-[9px] text-muted-foreground font-semibold leading-none">Onde se lê (errado)</Label>
-                      <Input value={c.constava} onChange={(e) => setCor(i, { constava: e.target.value })} placeholder="ex.: Matrícula 3383" className="h-7 text-xs" />
+                    <div className="space-y-1.5 text-left">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] leading-none">Onde se lê (errado)</Label>
+                      <Input value={c.constava} onChange={(e) => setCor(i, { constava: e.target.value })} placeholder="ex.: Matrícula 3383" className="h-10 text-sm bg-[#05140b] dark:bg-[#05140b] border-border/80" />
                     </div>
-                    <div className="space-y-0.5">
-                      <Label className="text-[9px] text-muted-foreground font-semibold leading-none">Leia-se (correto)</Label>
-                      <Input value={c.passa} onChange={(e) => setCor(i, { passa: e.target.value })} placeholder="ex.: Matrícula 5378" className="h-7 text-xs" />
+                    <div className="space-y-1.5 text-left">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] leading-none">Leia-se (correto)</Label>
+                      <Input value={c.passa} onChange={(e) => setCor(i, { passa: e.target.value })} placeholder="ex.: Matrícula 5378" className="h-10 text-sm bg-[#05140b] dark:bg-[#05140b] border-border/80" />
                     </div>
                   </div>
-                  <Button size="sm" type="button" variant="ghost" className="h-7 w-7 p-0 shrink-0 hover:bg-destructive/10" onClick={() => rmCor(i)} title="Remover"><Trash2 className="size-3 text-destructive" /></Button>
+                  <Button size="sm" type="button" variant="ghost" className="h-10 w-10 p-0 shrink-0 hover:bg-destructive/10 rounded-lg transition-colors" onClick={() => rmCor(i)} title="Remover"><Trash2 className="size-4.5 text-destructive" /></Button>
                 </div>
               ))}
             </div>
@@ -182,9 +182,19 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
         </div>
 
         {/* Rodapé Fixo */}
-        <div className="flex items-center justify-between border-t pt-2 mt-auto shrink-0">
-          <Button onClick={gerar} size="sm"><FileWarning className="size-4 mr-1.5" /> Gerar errata (.docx)</Button>
-          {msg && <span className="text-xs text-primary font-semibold">{msg}</span>}
+        <div className="flex items-center justify-between border-t border-border/60 pt-4 mt-auto shrink-0">
+          <Button onClick={gerar} size="sm" className="h-11 px-5 text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-[#05140b] border-none transition-colors">
+            <FileWarning className="size-4.5 mr-1.5" /> Gerar Documento Errata (.docx)
+          </Button>
+          {msg && (
+            <span className={`text-xs md:text-sm font-bold bg-[#07170d] border border-border/80 px-3.5 py-1.5 rounded-lg ${
+              msg.includes('Erro') || msg.includes('primeiro') || msg.includes('Preencha') 
+                ? 'text-red-400 border-red-500/20' 
+                : 'text-emerald-400 border-emerald-500/20'
+            }`}>
+              {msg}
+            </span>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -356,9 +356,8 @@ function CursorMapa({ ativo }: { ativo: boolean }) {
 
     const prefs = carregarPreferencias();
     const esp = prefs.cursorEspessura ?? 1;
-    const mostrarSeta = !!prefs.cursorMostrarSeta;
 
-    el.style.cursor = mostrarSeta ? 'default' : 'none';
+    el.style.cursor = 'none';
 
     const crosshair = document.createElement('div');
     crosshair.className = 'cad-crosshair-overlay';

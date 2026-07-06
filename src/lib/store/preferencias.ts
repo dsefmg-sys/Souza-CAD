@@ -57,8 +57,6 @@ export interface PreferenciasApp {
   confirmarAntesApagar: boolean;
   /** Espessura da linha do cursor CAD. Padrão: 1. */
   cursorEspessura?: number;
-  /** Mostrar a seta/ponteiro padrão do mouse junto com o cursor CAD. Padrão: false. */
-  cursorMostrarSeta?: boolean;
 }
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {
@@ -76,7 +74,6 @@ export const PREFERENCIAS_PADRAO: PreferenciasApp = {
   casasDecimais: 3,
   confirmarAntesApagar: true,
   cursorEspessura: 1,
-  cursorMostrarSeta: false,
 };
 
 const KEY = 'metrica.preferencias';
