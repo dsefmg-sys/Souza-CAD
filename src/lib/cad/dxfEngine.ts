@@ -127,17 +127,24 @@ export function copiarEnt(e: Ent, dx: number, dy: number): Ent {
   return { ...moverEnt(e, dx, dy), id: novoId() };
 }
 
+/** DXF é um formato de LINHAS (pares código/valor): um valor com quebra de linha embaralha o
+ *  arquivo inteiro. Todo texto vindo do usuário (conteúdo de TEXT, nome de layer) passa por aqui. */
+function valorDxfSeguro(s: string): string {
+  return (s || '').replace(/[\r\n]+/g, ' ').trim();
+}
+
 /** Gera o corpo ENTITIES de um DXF (R12 ASCII) a partir da lista de entidades editadas. */
 export function gerarDxf(ents: Ent[]): string {
   const corpo: string[] = [];
-  const E = (tipo: string, layer: string, linhas: (string | number)[]) => corpo.push('0', tipo, '8', layer, ...linhas.map(String));
+  const E = (tipo: string, layer: string, linhas: (string | number)[]) =>
+    corpo.push('0', tipo, '8', valorDxfSeguro(layer) || '0', ...linhas.map(String));
   for (const e of ents) {
     const lay = camadaDe(e);
     if (e.t === 'line') E('LINE', lay, ['10', e.a.x.toFixed(3), '20', e.a.y.toFixed(3), '11', e.b.x.toFixed(3), '21', e.b.y.toFixed(3)]);
     else if (e.t === 'poly') { const p: (string | number)[] = ['90', e.pts.length, '70', e.fechada ? 1 : 0]; e.pts.forEach((q) => p.push('10', q.x.toFixed(3), '20', q.y.toFixed(3))); E('LWPOLYLINE', lay, p); }
     else if (e.t === 'circle') E('CIRCLE', lay, ['10', e.c.x.toFixed(3), '20', e.c.y.toFixed(3), '40', e.r.toFixed(3)]);
     else if (e.t === 'arc') E('ARC', lay, ['10', e.c.x.toFixed(3), '20', e.c.y.toFixed(3), '40', e.r.toFixed(3), '50', e.a0.toFixed(3), '51', e.a1.toFixed(3)]);
-    else if (e.t === 'text') E('TEXT', lay, ['10', e.pos.x.toFixed(3), '20', e.pos.y.toFixed(3), '40', (e.altura || 2).toFixed(3), '1', e.texto]);
+    else if (e.t === 'text') E('TEXT', lay, ['10', e.pos.x.toFixed(3), '20', e.pos.y.toFixed(3), '40', (e.altura || 2).toFixed(3), '1', valorDxfSeguro(e.texto)]);
     else if (e.t === 'point') E('POINT', lay, ['10', e.p.x.toFixed(3), '20', e.p.y.toFixed(3)]);
   }
   return ['0', 'SECTION', '2', 'ENTITIES', ...corpo, '0', 'ENDSEC', '0', 'EOF'].join('\n');

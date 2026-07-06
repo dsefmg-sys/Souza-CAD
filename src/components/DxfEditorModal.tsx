@@ -437,10 +437,15 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
                 if (e.t === 'poly') { const pp = e.pts.map((p) => { const t = T(p); return `${t.x.toFixed(1)},${t.y.toFixed(1)}`; }).join(' '); return e.fechada ? <polygon key={e.id} points={pp} fill="none" stroke={cor} strokeWidth={sw} /> : <polyline key={e.id} points={pp} fill="none" stroke={cor} strokeWidth={sw} />; }
                 if (e.t === 'circle') { const c = T(e.c); return <circle key={e.id} cx={c.x} cy={c.y} r={e.r * view.s} fill="none" stroke={cor} strokeWidth={sw} />; }
                 if (e.t === 'arc') {
+                  const rr = e.r * view.s;
+                  const varredura = ((e.a1 - e.a0) % 360 + 360) % 360;
+                  // início igual ao fim = volta completa (mesma convenção do PDF) — o path SVG com
+                  // pontas coincidentes não desenharia nada
+                  if (varredura === 0) { const c = T(e.c); return <circle key={e.id} cx={c.x} cy={c.y} r={rr} fill="none" stroke={cor} strokeWidth={sw} />; }
                   const a0 = (e.a0 * Math.PI) / 180, a1 = (e.a1 * Math.PI) / 180;
                   const p0 = T({ x: e.c.x + e.r * Math.cos(a0), y: e.c.y + e.r * Math.sin(a0) });
                   const p1 = T({ x: e.c.x + e.r * Math.cos(a1), y: e.c.y + e.r * Math.sin(a1) });
-                  const rr = e.r * view.s; const grande = ((e.a1 - e.a0 + 360) % 360) > 180 ? 1 : 0;
+                  const grande = varredura > 180 ? 1 : 0;
                   return <path key={e.id} d={`M ${p0.x} ${p0.y} A ${rr} ${rr} 0 ${grande} 0 ${p1.x} ${p1.y}`} fill="none" stroke={cor} strokeWidth={sw} />;
                 }
                 if (e.t === 'text') { const p = T(e.pos); const fz = Math.max(7, (e.altura || 2) * view.s); return <text key={e.id} x={p.x} y={p.y} fontSize={fz} fill={cor}>{e.texto}</text>; }

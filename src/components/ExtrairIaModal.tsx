@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Sparkles, Wand2, UploadCloud, FileText, Image, Trash2 } from 'lucide-react';
 import type { ImovelData } from '@/lib/topo/types';
+import { auth } from '@/lib/firebase/client';
 
 // O usuário pode colar texto ou arrastar arquivos (PDF, imagens da matrícula/escritura)
 // A IA (Gemini 1.5 Flash no servidor) extrai os campos de imóvel/proprietário.
@@ -97,9 +98,12 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
   async function extrair() {
     setErro(''); setCarregando(true); setCampos(null);
     try {
+      // manda o comprovante de login junto — o servidor só gasta a cota da IA com usuário logado
+      const usuario = auth()?.currentUser;
+      const token = usuario ? await usuario.getIdToken() : '';
       const r = await fetch('/api/ia/extrair-imovel', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ texto, arquivo }),
       });
       const j = await r.json();

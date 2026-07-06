@@ -258,6 +258,11 @@ function ent(tipo: string, layer: string, linhas: string[]): string {
   return ['0', tipo, '8', layer, ...linhas].join('\n');
 }
 
+// DXF é um formato de linhas: um valor de texto com quebra de linha corrompe o arquivo.
+function textoDxfSeguro(s: string): string {
+  return (s || '').replace(/[\r\n]+/g, ' ').trim();
+}
+
 /**
  * Gera um DXF (R12 ASCII) georreferenciado: poligonal fechada + pontos + rótulos, em UTM,
  * com o SRC anotado. Layers: PERIMETRO, VERTICES, ROTULOS, SRC.
@@ -280,12 +285,12 @@ export function exportarDxf(vertices: VerticeDxf[], opts: { zona: number; hemisf
     corpo.push(ent('POINT', 'VERTICES', ['10', v.leste.toFixed(3), '20', v.norte.toFixed(3), '30', '0']));
     corpo.push(ent('TEXT', 'ROTULOS', [
       '10', (v.leste + alturaTexto * 0.4).toFixed(3), '20', (v.norte + alturaTexto * 0.4).toFixed(3),
-      '40', alturaTexto.toFixed(3), '1', v.codigoSigef || v.tipo,
+      '40', alturaTexto.toFixed(3), '1', textoDxfSeguro(v.codigoSigef) || v.tipo,
     ]));
   }
 
   // anotação do SRC (etiqueta de georreferência que QCAD perderia)
-  const srcTxt = `SIRGAS2000 / UTM ${opts.zona}${opts.hemisferio} - ${opts.titulo ?? ''}`.trim();
+  const srcTxt = textoDxfSeguro(`SIRGAS2000 / UTM ${opts.zona}${opts.hemisferio} - ${opts.titulo ?? ''}`);
   corpo.push(ent('TEXT', 'SRC', ['10', minX.toFixed(3), '20', (minY - alturaTexto * 2).toFixed(3), '40', alturaTexto.toFixed(3), '1', srcTxt]));
 
   return [

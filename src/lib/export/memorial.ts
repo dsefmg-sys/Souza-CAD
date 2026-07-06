@@ -15,28 +15,10 @@ function coordTexto(v: Vertex): string {
   return `Longitude: ${lon}, Latitude: ${lat} e Altitude: ${numBRmilhar(elev)} m`;
 }
 
-/** Nome do imóvel/pessoa do confrontante já considerando espólio. */
-function nomeConfrontante(c: Confrontante): string {
-  if ((c.condicao ?? 'proprietario') === 'espolio') {
-    return /esp[óo]lio/i.test(c.nome) ? c.nome : `Espólio de ${c.nome}`;
-  }
-  return c.nome;
-}
-
-/** Descrição do confrontante como aparece no texto do memorial. */
-export function descreverConfrontante(c: Confrontante | undefined): string {
-  if (!c) return 'confrontante não informado';
-  if (c.descricaoExtra && c.descricaoExtra.trim()) return c.descricaoExtra.trim();
-  const cond = c.condicao ?? 'proprietario';
-  const partes: string[] = [];
-  if (c.cpf) partes.push(`CPF nº ${c.cpf}`);
-  // posseiro não tem matrícula; espólio e proprietário têm
-  if (cond !== 'posseiro' && c.matricula) partes.push(`Matrícula nº ${formatMatricula(c.matricula)}`);
-  const sufixo = partes.length ? ` (${partes.join(', ')})` : '';
-  const base = `${nomeConfrontante(c)}${sufixo}`;
-  if (cond === 'posseiro') return `${base}, na condição de possuidor(a)`;
-  return base;
-}
+// Descrição do confrontante: vive em confrontanteTexto.ts, compartilhada com a planilha SIGEF
+// pra memorial e planilha nunca mais divergirem. Re-exportada aqui pra manter os imports antigos.
+import { descreverConfrontante, nomeConfrontante } from './confrontanteTexto';
+export { descreverConfrontante, nomeConfrontante };
 
 export function rumoDMS(azimuteGraus: number): string {
   let ang = azimuteGraus % 360;
@@ -308,6 +290,15 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
 
   // Modelos de texto personalizáveis (declarações). {variáveis} trocadas pelos dados reais.
   const efMod = valoresEfetivos(res, imovel);
+  // MODO PLANO: a narrativa usa distâncias planas (UTM), então o perímetro declarado precisa ser
+  // a soma DESSAS distâncias — antes saía o perímetro SGL e o documento se contradizia (a soma
+  // dos lados do texto não fechava com o perímetro do cabeçalho). A área segue sendo a SGL
+  // (oficial do SIGEF) e o cabeçalho já a rotula como "Área SGL". Valor oficial reconciliado
+  // do SIGEF, quando escolhido, continua prevalecendo.
+  if (imovel.tipoAzimute === 'plano' && efMod.fontePerimetro === 'calculado') {
+    efMod.perimetro = res.lados.reduce(
+      (s, l) => s + distancia({ e: l.de.leste, n: l.de.norte }, { e: l.para.leste, n: l.para.norte }), 0);
+  }
   const modelos = carregarModelos();
   const varsModelo: Record<string, string> = {
     proprietario: imovel.proprietario || '', cpf: imovel.cpfProprietario || '', denominacao: imovel.denominacao || '',
@@ -325,9 +316,9 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     new TextRun({ text: ehServidao ? 'MEMORIAL DESCRITIVO DE SERVIDÃO' : 'MEMORIAL DESCRITIVO', bold: true, size: 28 }),
   ] }));
 
-  // Identificação em texto simples (usa os valores oficiais do SIGEF quando o usuário escolheu reconciliar)
-  const ef = valoresEfetivos(res, imovel);
-  linhasCabecalho(imovel, ef.areaHa, ef.perimetro).forEach((c) => children.push(c));
+  // Identificação em texto simples (valores oficiais do SIGEF quando reconciliado; no modo
+  // plano o perímetro já foi trocado acima pela soma das distâncias planas da narrativa)
+  linhasCabecalho(imovel, efMod.areaHa, efMod.perimetro).forEach((c) => children.push(c));
 
   // Variante INTERMAT (Mato Grosso): referência ao órgão estadual + parágrafo de finalidade próprio,
   // logo abaixo do cabeçalho. O restante do memorial (perímetro, tabelas, assinaturas) é o mesmo do

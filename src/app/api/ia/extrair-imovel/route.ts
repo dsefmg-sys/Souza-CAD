@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checarLimiteIA } from '@/lib/ia/rateLimit';
+import { firebaseApiKeyServidor, tokenDoHeader, verificarTokenFirebase } from '@/lib/ia/verificarLogin';
 
 // Extrai dados do IMÓVEL/PROPRIETÁRIO de um texto ou documento (PDF/imagem) usando o Gemini.
 // Roda NO SERVIDOR: a chave (GOOGLE_GENAI_API_KEY) nunca vai para o navegador.
@@ -13,9 +14,20 @@ export async function POST(req: Request) {
   const key = process.env.GOOGLE_GENAI_API_KEY;
   if (!key) return NextResponse.json({ erro: 'IA não configurada no servidor (falta GOOGLE_GENAI_API_KEY).' }, { status: 503 });
 
-  // ANTI-ABUSO: limita por cliente (IP) por minuto e por dia, pra um loop/rajada não torrar a cota.
+  // LOGIN OBRIGATÓRIO: quando o Firebase está configurado, só usuário logado gasta a cota da IA.
+  // O navegador manda o ID token no Authorization; conferimos com o Google antes de qualquer coisa.
+  // Sem Firebase (modo local/dev), segue liberado só com o limite por IP.
+  let uid: string | null = null;
+  if (firebaseApiKeyServidor()) {
+    const v = await verificarTokenFirebase(tokenDoHeader(req));
+    if (!v) return NextResponse.json({ erro: 'Entre na sua conta para usar a IA.' }, { status: 401 });
+    uid = v.uid;
+  }
+
+  // ANTI-ABUSO: limita por usuário (ou IP, no modo local) por minuto e por dia, pra um
+  // loop/rajada não torrar a cota.
   const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'local').split(',')[0].trim();
-  const lim = checarLimiteIA(ip);
+  const lim = checarLimiteIA(uid ? `uid:${uid}` : ip);
   if (!lim.ok) {
     return NextResponse.json(
       { erro: `Uso da IA temporariamente limitado (${lim.motivo}). Tente novamente em instantes.` },

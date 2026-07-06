@@ -57,14 +57,11 @@ export function salvarImportVerticesVizinho(c: ImportVerticesVizinhoConfig): voi
 }
 
 // ----- Modelo de planilha SIGEF (.ods) personalizado pelo usuário -----
+// Guardado no IndexedDB (store 'arquivosApp'): é um arquivo binário e o localStorage tem cota
+// pequena (~5MB), que estourava com o .ods em base64. Quem tinha o modelo no formato antigo
+// (localStorage) é migrado sozinho na primeira leitura.
 const KEY_MODELO_SIGEF = 'metrica.modeloSigef';
 
-function abParaBase64(ab: ArrayBuffer): string {
-  const b = new Uint8Array(ab);
-  let s = '';
-  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
-  return btoa(s);
-}
 function base64ParaAb(b64: string): ArrayBuffer {
   const s = atob(b64);
   const u = new Uint8Array(s.length);
@@ -72,22 +69,46 @@ function base64ParaAb(b64: string): ArrayBuffer {
   return u.buffer;
 }
 
+/** Migra o modelo do formato antigo (base64 no localStorage) pro IndexedDB, se existir. */
+async function migrarModeloSigefAntigo(): Promise<ArrayBuffer | null> {
+  try {
+    const raw = localStorage.getItem(KEY_MODELO_SIGEF);
+    if (!raw) return null;
+    const ab = base64ParaAb(raw);
+    const { db } = await import('./db');
+    await (await db()).put('arquivosApp', { chave: KEY_MODELO_SIGEF, dados: ab });
+    localStorage.removeItem(KEY_MODELO_SIGEF); // libera a cota — o modelo agora mora no IndexedDB
+    return ab;
+  } catch { return null; }
+}
+
 /** Substitui o modelo de planilha SIGEF do sistema por um .ods enviado pelo usuário. */
-export function salvarModeloSigef(ab: ArrayBuffer): void {
+export async function salvarModeloSigef(ab: ArrayBuffer): Promise<void> {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(KEY_MODELO_SIGEF, abParaBase64(ab));
+  const { db } = await import('./db');
+  await (await db()).put('arquivosApp', { chave: KEY_MODELO_SIGEF, dados: ab });
+  try { localStorage.removeItem(KEY_MODELO_SIGEF); } catch { /* sem formato antigo */ }
 }
 /** Modelo SIGEF personalizado, se houver (senão null → usa o modelo embutido). */
-export function carregarModeloSigef(): ArrayBuffer | null {
+export async function carregarModeloSigef(): Promise<ArrayBuffer | null> {
   if (typeof window === 'undefined') return null;
-  try { const raw = localStorage.getItem(KEY_MODELO_SIGEF); return raw ? base64ParaAb(raw) : null; } catch { return null; }
+  try {
+    const { db } = await import('./db');
+    const reg = await (await db()).get('arquivosApp', KEY_MODELO_SIGEF);
+    if (reg?.dados) return reg.dados;
+    return await migrarModeloSigefAntigo();
+  } catch { return null; }
 }
-export function temModeloSigefProprio(): boolean {
-  return typeof window !== 'undefined' && !!localStorage.getItem(KEY_MODELO_SIGEF);
+export async function temModeloSigefProprio(): Promise<boolean> {
+  return (await carregarModeloSigef()) !== null;
 }
-export function limparModeloSigef(): void {
+export async function limparModeloSigef(): Promise<void> {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(KEY_MODELO_SIGEF);
+  try {
+    const { db } = await import('./db');
+    await (await db()).delete('arquivosApp', KEY_MODELO_SIGEF);
+  } catch { /* IndexedDB indisponível */ }
+  try { localStorage.removeItem(KEY_MODELO_SIGEF); } catch { /* idem */ }
 }
 
 // Padrão do responsável técnico. IMPORTANTE (produto multi-empresa): NÃO traz dados pessoais de

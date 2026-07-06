@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Image as ImageIcon, Type, Square, Circle, Trash2, Download, ArrowUp, ArrowDown, AlignCenterHorizontal, AlignCenterVertical, Palette, Search, Shapes, Images, RefreshCw } from 'lucide-react';
 import { type El, FORMATOS_PADRAO as FORMATOS, FONTES_ESTUDIO, novoId as nid, reordenarCamada, centralizarEm, escalaParaCaber } from '@/lib/canvas/canvasEngine';
 import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
+import { auth } from '@/lib/firebase/client';
 
 // ESTÚDIO isolado (mini-Canva): tela com formato escolhido, elementos de imagem/texto/forma,
 // mover/redimensionar/alinhar/camadas e exportar PNG. Não toca no projeto de agrimensura.
@@ -36,9 +37,10 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
 
   const escala = escalaParaCaber(fmt, box);
 
-  // chave Pexels: vem da variável de ambiente (NEXT_PUBLIC_PEXELS_API_KEY) e pode ser trocada no
-  // campo (fica salva no navegador). Não fica mais escrita no código-fonte.
-  useEffect(() => { if (!open) { setEls([]); setSel(null); } else { setPexelsKey(localStorage.getItem('metrica.pexelsApiKey') || process.env.NEXT_PUBLIC_PEXELS_API_KEY || ''); } }, [open]);
+  // chave Pexels: opcional — quem tem a própria chave (fica salva só neste navegador) busca
+  // direto no Pexels; sem chave, a busca passa pela ponte do servidor (/api/fotos-pexels), que
+  // usa a chave PEXELS_API_KEY guardada lá (nunca vem pro navegador).
+  useEffect(() => { if (!open) { setEls([]); setSel(null); } else { setPexelsKey(localStorage.getItem('metrica.pexelsApiKey') || ''); } }, [open]);
   function salvarPexelsKey(v: string) { setPexelsKey(v); localStorage.setItem('metrica.pexelsApiKey', v.trim()); }
   useEffect(() => {
     if (!open) return;
@@ -172,15 +174,24 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
     } catch { return []; }
   }
 
-  // banco de fotos Pexels (fotos e vídeos reais) — precisa de chave grátis gerada em pexels.com/api
+  // banco de fotos Pexels: com chave própria busca direto; sem chave, usa a ponte do servidor
   async function buscarPexels(q: string): Promise<{ titulo: string; url: string }[]> {
-    if (!pexelsKey.trim()) return [];
     try {
-      const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=24`, { headers: { Authorization: pexelsKey.trim() } });
+      if (pexelsKey.trim()) {
+        const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=24`, { headers: { Authorization: pexelsKey.trim() } });
+        const j = await r.json();
+        return (Array.isArray(j.photos) ? j.photos : [])
+          .map((p: { alt?: string; src?: { medium?: string } }) => ({ titulo: p.alt || '', url: p.src?.medium || '' }))
+          .filter((p: { url: string }) => p.url);
+      }
+      const usuario = auth()?.currentUser;
+      const token = usuario ? await usuario.getIdToken() : '';
+      const r = await fetch(`/api/fotos-pexels?q=${encodeURIComponent(q)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (!r.ok) return [];
       const j = await r.json();
-      return (Array.isArray(j.photos) ? j.photos : [])
-        .map((p: { alt?: string; src?: { medium?: string } }) => ({ titulo: p.alt || '', url: p.src?.medium || '' }))
-        .filter((p: { url: string }) => p.url);
+      return Array.isArray(j.fotos) ? j.fotos : [];
     } catch { return []; }
   }
 
@@ -323,9 +334,9 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
             </div>
             <div className="flex items-center gap-1.5 text-xs">
               <span className="font-semibold">Chave Pexels (opcional):</span>
-              <input className="h-7 w-72 rounded border bg-background px-2 text-xs font-mono" placeholder="Cole aqui a chave grátis de pexels.com/api para incluir fotos reais na busca"
+              <input className="h-7 w-72 rounded border bg-background px-2 text-xs font-mono" placeholder="Só se quiser usar a SUA chave de pexels.com/api"
                 value={pexelsKey} onChange={(e) => salvarPexelsKey(e.target.value)} />
-              <span className="text-muted-foreground">Gere grátis em pexels.com/api. Fica salva só neste navegador.</span>
+              <span className="text-muted-foreground">Sem chave, a busca de fotos já funciona pelo servidor (logado). Fica salva só neste navegador.</span>
             </div>
             {resultadosArte.length > 0 && (
               <div className="grid grid-flow-col grid-rows-2 gap-1.5 overflow-x-auto rounded border bg-muted/20 p-1.5">

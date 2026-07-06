@@ -76,6 +76,7 @@ import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS, azimute } from '@/lib/topo/geometry';
+import { cpfOuCnpjValido } from '@/lib/topo/validation';
 import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef, carregarImportVerticesVizinho, tutorialJaVisto, marcarTutorialVisto } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
 import { puxarConfigDaNuvem, empurrarConfigParaNuvem, limparConfigLocalNaSaida } from '@/lib/store/configNuvem';
@@ -1848,7 +1849,7 @@ export default function EditorPage() {
     const tec = tecnico;
     try {
       // usa o modelo SIGEF do usuário, se ele substituiu; senão, o modelo embutido do sistema
-      const modeloProprio = carregarModeloSigef();
+      const modeloProprio = await carregarModeloSigef();
       const tpl: ArrayBuffer = modeloProprio !== null ? modeloProprio : await fetch('/templates/sigef.ods').then((rr) => rr.arrayBuffer());
       if (glebas.length > 1) {
         // Multi-gleba: registra os pontos de todas (códigos únicos entre parcelas) e gera uma
@@ -1857,10 +1858,20 @@ export default function EditorPage() {
         const id = projetoId ?? novoId();
         const gs = sincronizarGlebas();
         const registradas: Gleba[] = [];
-        for (const g of gs) {
-          if (g.vertices.length < 3) { registradas.push(g); continue; }
-          const r = await registrarPontos(g.vertices, tec.credenciamentoIncra, id, zona, hemisferio, tec);
-          registradas.push({ ...g, vertices: r.vertices });
+        try {
+          for (const g of gs) {
+            if (g.vertices.length < 3) { registradas.push(g); continue; }
+            const r = await registrarPontos(g.vertices, tec.credenciamentoIncra, id, zona, hemisferio, tec);
+            registradas.push({ ...g, vertices: r.vertices });
+          }
+        } catch (e) {
+          // Falhou no MEIO: preserva as glebas que JÁ registraram antes de abortar — a numeração
+          // delas foi consumida no banco; descartar faria a próxima tentativa duplicar códigos.
+          const parcial = [...registradas, ...gs.slice(registradas.length)];
+          setGlebas(parcial);
+          const ativaParcial = parcial.find((g) => g.id === glebaAtivaId);
+          if (ativaParcial) setVertices(ativaParcial.vertices);
+          throw e;
         }
         setGlebas(registradas);
         const ativa = registradas.find((g) => g.id === glebaAtivaId);
@@ -1986,7 +1997,7 @@ export default function EditorPage() {
       const nome = imovel.denominacao || nomeProjeto || 'imovel';
       const memorialBruto = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente });
       const memorial = await compatibilizarWord2007(memorialBruto);
-      const modeloProprio = carregarModeloSigef();
+      const modeloProprio = await carregarModeloSigef();
       const tpl: ArrayBuffer = modeloProprio !== null ? modeloProprio : await fetch('/templates/sigef.ods').then((rr) => rr.arrayBuffer());
       const ativa = glebas.find((g) => g.id === glebaAtivaId);
       const ods = await gerarSigefOds({
@@ -2376,25 +2387,28 @@ export default function EditorPage() {
       // registrado=true, então o próximo salvar tenta de novo sem duplicar.
       let gs = sincronizarGlebas();
       let registrou = true;
+      const novas: Gleba[] = [];
       try {
-        const novas: Gleba[] = [];
         for (const g of gs) {
           const r = await registrarPontos(g.vertices, tec.credenciamentoIncra, id, zona, hemisferio, tec);
           novas.push({ ...g, vertices: r.vertices });
         }
-        gs = novas;
-        setGlebas(gs);
-        const ativa = gs.find((g) => g.id === glebaAtivaId);
-        if (ativa) {
-          // FUSÃO por id: aplica código/registro aos vértices ATUAIS (preserva edições feitas
-          // durante o await; não sobrescreve o estado de trabalho inteiro).
-          const regById = new Map(ativa.vertices.map((v) => [v.id, v]));
-          setVertices((cur) => cur.map((v) => {
-            const r = regById.get(v.id);
-            return r ? { ...v, codigoSigef: r.codigoSigef, registrado: r.registrado } : v;
-          }));
-        }
       } catch { registrou = false; }
+      // Mesmo se falhou NO MEIO da lista, preserva as glebas que JÁ registraram: a numeração
+      // delas foi consumida no banco, então os códigos precisam ficar gravados no projeto —
+      // descartar tudo faria o próximo salvar registrar de novo e DUPLICAR a numeração.
+      gs = [...novas, ...gs.slice(novas.length)];
+      setGlebas(gs);
+      const ativa = gs.find((g) => g.id === glebaAtivaId);
+      if (ativa) {
+        // FUSÃO por id: aplica código/registro aos vértices ATUAIS (preserva edições feitas
+        // durante o await; não sobrescreve o estado de trabalho inteiro).
+        const regById = new Map(ativa.vertices.map((v) => [v.id, v]));
+        setVertices((cur) => cur.map((v) => {
+          const r = regById.get(v.id);
+          return r ? { ...v, codigoSigef: r.codigoSigef, registrado: r.registrado } : v;
+        }));
+      }
       const p: Projeto = {
         id, nome: nomeProjeto || imovel.denominacao || 'Sem nome', criadoEm: Date.now(), atualizadoEm: Date.now(),
         imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, plantaConfig, parcelasCert, verticesVizinho,
@@ -4604,11 +4618,18 @@ function SecaoTitulo({ children }: { children: ReactNode }) {
   return <div className="mt-1 border-b pb-1 text-[10px] font-bold uppercase tracking-wider text-primary/80">{children}</div>;
 }
 
-function Campo({ label, value, onChange, placeholder, list }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; list?: string }) {
+// Aviso (sem travar — padrão do app pra CPF suspeito) quando o documento digitado não fecha os
+// dígitos verificadores. Mesmo texto do ConfrontanteEditModal.
+function avisoDoc(v?: string): string | undefined {
+  return v?.trim() && !cpfOuCnpjValido(v) ? 'CPF/CNPJ inválido (dígitos verificadores incorretos).' : undefined;
+}
+
+function Campo({ label, value, onChange, placeholder, list, aviso }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; list?: string; aviso?: string }) {
   return (
     <div className="space-y-0.5">
       <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Label>
-      <Input list={list} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="h-8 text-sm" />
+      <Input list={list} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className={`h-8 text-sm${aviso ? ' border-amber-500' : ''}`} />
+      {aviso && <p className="text-[10px] leading-tight text-amber-600">{aviso}</p>}
     </div>
   );
 }
@@ -4739,7 +4760,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
           {sugProp.map((p) => <option key={p.id} value={p.nome} />)}
         </datalist>
       </div>
-      <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} />
+      <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} aviso={avisoDoc(imovel.cpfProprietario)} />
       
       {/* Comprador (para compra e venda / transferências) */}
       <div className="flex items-center justify-between">
@@ -4766,12 +4787,12 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Campo label="Nome do comprador" value={imovel.comprador ?? ''} onChange={(v) => set('comprador', v)} placeholder="Se houver..." />
-        <Campo label="CPF/CNPJ do comprador" value={imovel.cpfComprador ?? ''} onChange={(v) => set('cpfComprador', v)} />
+        <Campo label="CPF/CNPJ do comprador" value={imovel.cpfComprador ?? ''} onChange={(v) => set('cpfComprador', v)} aviso={avisoDoc(imovel.cpfComprador)} />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
-        <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} />
+        <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} aviso={avisoDoc(imovel.cpfConjugeProprietario)} />
       </div>
       <SecaoTitulo>Localização e fuso</SecaoTitulo>
       <div className="space-y-1">

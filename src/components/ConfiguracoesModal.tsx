@@ -68,7 +68,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     if (open) {
       setT(carregarTecnico());
       setEsc(carregarEscritorio());
-      setModeloProprio(temModeloSigefProprio());
+      temModeloSigefProprio().then(setModeloProprio).catch(() => {});
       setPrefs(carregarPreferencias());
       setPadroes(carregarPadroes());
       setPrecos(carregarPrecos());
@@ -164,7 +164,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
       }))
     )
       return;
-    salvarModeloSigef(await file.arrayBuffer());
+    await salvarModeloSigef(await file.arrayBuffer());
     setModeloProprio(true);
     onConfigChange?.();
     flash('Modelo SIGEF atualizado.');
@@ -173,7 +173,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function restaurarModeloSigef() {
     if (!(await confirmar({ titulo: 'Restaurar planilha SIGEF', mensagem: 'Voltar a usar o modelo de planilha SIGEF embutido do sistema?', okLabel: 'Restaurar' }))) return;
-    limparModeloSigef();
+    await limparModeloSigef();
     setModeloProprio(false);
     onConfigChange?.();
     flash('Modelo SIGEF restaurado.');

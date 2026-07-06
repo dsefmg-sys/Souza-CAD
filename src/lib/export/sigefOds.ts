@@ -3,6 +3,7 @@ import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex } 
 import { grausParaDMS } from '../topo/coords';
 import { numBR, formatMatricula } from '../topo/geometry';
 import { escaparXml } from './sanitizar';
+import { descreverConfrontante } from './confrontanteTexto';
 
 // Preenche o template oficial do SIGEF (ODS) sem recriar abas/validações:
 //  - regenera as linhas de vértice da aba "perimetro_1";
@@ -24,11 +25,10 @@ function celFloat(style: string, valor: number, texto: string): string {
   return `<table:table-cell table:style-name="${style}" office:value-type="float" office:value="${valor}" calcext:value-type="float"><text:p>${esc(texto)}</text:p></table:table-cell>`;
 }
 
+// MESMA descrição do memorial (confrontanteTexto.ts): espólio, matrícula e condição de
+// posseiro saem iguais nos dois documentos. Sem confrontante, a célula fica vazia.
 function descritivoConfrontante(c: Confrontante | undefined): string {
-  if (!c) return '';
-  if (c.descricaoExtra && c.descricaoExtra.trim()) return c.descricaoExtra.trim();
-  const cpf = c.cpf ? ` CPF: ${c.cpf}` : '';
-  return `${c.nome}${cpf}`;
+  return c ? descreverConfrontante(c) : '';
 }
 
 // Sigma lido do TXT (precisão do vértice); se não veio, usa o padrão do template.
