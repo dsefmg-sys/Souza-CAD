@@ -44,6 +44,7 @@ interface Props {
   onCliquePlanta?: (lat: number, lon: number) => void;
   onSelecObjeto?: (id: string | null) => void;
   onContextMenuObjeto?: (id: string, tipo: string, x: number, y: number) => void; // clique direito num objeto desenhado: abre o menu de edição
+  onDblClickVertice?: (v: Vertex, x: number, y: number) => void; // duplo clique num vértice: abre o painel de ajuste rápido
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
@@ -232,7 +233,7 @@ export default function Planta({
   zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], verticesVizinho = [], resumoGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
-  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
+  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
@@ -1392,7 +1393,8 @@ export default function Planta({
           <g key={v.id}>
             {vsel && <circle cx={vx} cy={vy} r={9} fill="none" stroke="#3b82f6" strokeWidth={0.9} strokeDasharray="3 2" />}
             <g style={editavel ? { cursor: 'pointer' } : undefined}
-               onClick={editavel ? (e) => { e.stopPropagation(); setSelecionadoId(selecionadoId === `vsel.${v.id}` ? null : `vsel.${v.id}`); } : undefined}>
+               onClick={editavel ? (e) => { e.stopPropagation(); setSelecionadoId(selecionadoId === `vsel.${v.id}` ? null : `vsel.${v.id}`); } : undefined}
+               onDoubleClick={editavel && onDblClickVertice ? (e) => { e.stopPropagation(); onDblClickVertice(v, e.clientX, e.clientY); } : undefined}>
               {editavel && <circle cx={vx} cy={vy} r={8} fill="transparent" />}
               <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} />
             </g>

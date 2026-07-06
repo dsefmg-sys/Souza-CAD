@@ -71,6 +71,7 @@ interface Props {
   realceId?: string | null;
   onContextMenuVertice?: (v: Vertex, x: number, y: number) => void;
   onContextMenuDivisa?: (v: Vertex, idx: number, x: number, y: number) => void;
+  onDblClickVertice?: (v: Vertex, x: number, y: number) => void;
   onContextMenuMapa?: (lat: number, lon: number, x: number, y: number) => void;
   confrontantes?: Confrontante[];
   confrontantePorLado?: Record<number, string>;
@@ -989,7 +990,7 @@ export default function MapEditor(props: Props) {
     onCancelDesenho,
     tamNomes = 11,
     verticesIgnorados = [],
-    onIgnorarVertice, onConsiderarVertice,
+    onIgnorarVertice, onConsiderarVertice, onDblClickVertice,
     realceId = null,
     confrontantes = [],
     confrontantePorLado = {},
@@ -1533,6 +1534,7 @@ export default function MapEditor(props: Props) {
               else onSelecionar(v.id);
             },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
+            dblclick(e) { L.DomEvent.stopPropagation(e); onDblClickVertice?.(v, e.originalEvent.clientX, e.originalEvent.clientY); },
           }}
         />
       ))}

@@ -259,6 +259,13 @@ export default function EditorPage() {
     lon?: number;
     objetoTipo?: string;
   } | null>(null);
+  // Painel de AJUSTE RÁPIDO do elemento (duplo clique): mostra o que é útil daquele elemento e deixa
+  // ajustar na hora — ponto: altitude/coordenadas; segmento: comprimento/azimute; objeto: cor/medidas.
+  const [painelElem, setPainelElem] = useState<{
+    tipo: 'vertice' | 'divisa' | 'objeto';
+    x: number; y: number;
+    vertice?: Vertex; verticeIdx?: number; id?: string; objetoTipo?: string;
+  } | null>(null);
   const aviseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
@@ -4733,6 +4740,7 @@ export default function EditorPage() {
                 conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}
                 verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
                 onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
+                onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })}
                 onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
                 onContextMenuMapa={(lat, lon, x, y) => {
                   // Com ferramenta ativa, botão direito LARGA a ferramenta (praxe de CAD) em vez
@@ -4823,7 +4831,7 @@ export default function EditorPage() {
                       outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))}
                       resumoGlebas={resumoGlebas} verticesVizinho={verticesVizinho}
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
-                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
+                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })}
                       onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}
                       onExcluirObjeto={(id) => { snap(); setObjetos((os) => os.filter((o) => o.id !== id)); }}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
@@ -5243,6 +5251,43 @@ export default function EditorPage() {
           <span className="animate-pulse rounded-full border border-green-400/40 bg-green-500/10 px-4 py-1 text-sm font-bold text-green-400 shadow-lg backdrop-blur">DADOS FICTÍCIOS — projeto de demonstração</span>
         </div>
       )}
+
+      {/* PAINEL DE AJUSTE RÁPIDO (duplo clique num elemento) */}
+      {painelElem && painelElem.tipo === 'vertice' && painelElem.vertice && (() => {
+        const vAtual = vertices.find((x) => x.id === painelElem.vertice!.id) ?? painelElem.vertice!;
+        return (
+          <>
+            <div className="fixed inset-0 z-[1190]" onClick={() => setPainelElem(null)} onContextMenu={(e) => { e.preventDefault(); setPainelElem(null); }} />
+            <div className="fixed z-[1200] w-56 rounded-md border bg-background p-2 text-sm shadow-xl"
+              style={{ left: Math.min(painelElem.x, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 240), top: Math.min(painelElem.y, (typeof window !== 'undefined' ? window.innerHeight : 9999) - 200) }}>
+              <div className="mb-1.5 flex items-center justify-between border-b pb-1">
+                <span className="text-[11px] font-bold">Ponto {vAtual.nome || vAtual.codigoSigef}</span>
+                <button className="flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" onClick={() => setPainelElem(null)}><X className="size-3.5" /></button>
+              </div>
+              <label className="mb-1.5 flex items-center justify-between gap-2 text-[11px]">
+                <span className="font-semibold text-muted-foreground">Altitude (m)</span>
+                <input key={vAtual.id} type="number" step={0.1} defaultValue={vAtual.elevacao ?? 0} autoFocus
+                  className="h-7 w-24 rounded-sm border bg-background px-1.5 text-right text-[12px] font-bold"
+                  onBlur={(e) => { snap(); editarVertice(vAtual.id, { elevacao: Number(e.target.value) || 0 }); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+              </label>
+              <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px]">
+                <span className="font-semibold text-muted-foreground">Tipo</span>
+                <div className="flex gap-0.5">
+                  {(['M', 'P', 'V'] as const).map((t) => (
+                    <button key={t} className={`h-6 w-7 rounded-sm border text-xs font-bold transition-colors ${vAtual.tipo === t ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                      onClick={() => { snap(); editarVertice(vAtual.id, { tipo: t, isDivisa: t === 'M' }); }}>{t}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-sm bg-muted/40 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                <div>E {vAtual.leste.toFixed(3)}</div>
+                <div>N {vAtual.norte.toFixed(3)}</div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {menuContexto && (
         <>
