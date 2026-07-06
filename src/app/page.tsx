@@ -77,6 +77,8 @@ import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS, azimute } from '@/lib/topo/geometry';
 import { cpfOuCnpjValido } from '@/lib/topo/validation';
+import { aplicarOrto, parseAzimute, type ModoOrto } from '@/lib/topo/orto';
+import { porAfastamento } from '@/lib/topo/verticeVirtual';
 import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef, carregarImportVerticesVizinho, tutorialJaVisto, marcarTutorialVisto } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
 import { puxarConfigDaNuvem, empurrarConfigParaNuvem, limparConfigLocalNaSaida } from '@/lib/store/configNuvem';
@@ -260,6 +262,10 @@ export default function EditorPage() {
     setModo((atual) => (atual === m ? 'navegar' : m));
     if (limparBuffer) setDesenhoBuffer([]);
   }
+  // ----- Desenho de precisão estilo CAD (modo Completo) -----
+  const [orto, setOrto] = useState<ModoOrto>('off');           // trava de ângulo do desenho
+  const [azDigitado, setAzDigitado] = useState('');            // rumo digitado (painel de precisão)
+  const [distDigitada, setDistDigitada] = useState('');        // distância digitada (m)
   const ignorouRef = useRef(false);       // ignorou vértice desde que entrou no modo ignorar
   const modoAntesRef = useRef<ModoEdicao>('navegar');
   const [selMulti, setSelMulti] = useState<Set<string>>(new Set()); // vértices marcados no modo "triângulo"
@@ -1567,10 +1573,22 @@ export default function EditorPage() {
     let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
     const s = snapUtm(leste, norte, alvosSnap(), { tolVerticeM: snapAtivo ? 12 : 10 });
     if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
+    else if (orto !== 'off' && desenhoBuffer.length > 0) {
+      // ORTO/POLAR: sem imã no caminho, o trecho gruda no ângulo travado (90° ou 15°) a partir
+      // do último ponto do desenho. O imã tem prioridade (encaixe em vértice vale mais que ângulo).
+      const base = desenhoBuffer[desenhoBuffer.length - 1];
+      const a = aplicarOrto({ leste: base.leste, norte: base.norte }, { leste, norte }, orto === '90' ? 90 : 15);
+      leste = a.leste; norte = a.norte;
+      const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon;
+    }
     return { lat, lon, leste, norte };
   }
   async function onCliqueDesenho(lat: number, lon: number) {
-    const p = pontoDesenho(lat, lon);
+    await processarPontoDesenho(pontoDesenho(lat, lon));
+  }
+  // Recebe um ponto JÁ resolvido (clique com imã/orto aplicados, ou ponto DIGITADO por rumo e
+  // distância) e alimenta a ferramenta ativa — caminho único pros dois jeitos de desenhar.
+  async function processarPontoDesenho(p: PontoLL) {
     if (modo === 'simbolo') {
       snap();
       setObjetos((os) => [...os, novoSimbolo(p, simboloSel)]);
@@ -1635,6 +1653,21 @@ export default function EditorPage() {
       setDesenhoBuffer((buf) => [...buf, p]);
     }
   }
+  // Adiciona o PRÓXIMO ponto do desenho por rumo e distância digitados (painel de precisão do
+  // modo Completo) — jeito clássico de transcrever memorial antigo pro mapa sem caçar com o mouse.
+  async function adicionarPontoDigitado() {
+    const az = parseAzimute(azDigitado);
+    const d = parseFloat((distDigitada || '').replace(',', '.'));
+    if (az == null) { aviso('Azimute inválido. Use graus decimais (ex.: 45,5) ou grau minuto segundo (ex.: 45 30 00).'); return; }
+    if (!Number.isFinite(d) || d <= 0) { aviso('Distância inválida — informe metros (ex.: 25,40).'); return; }
+    const base = desenhoBuffer[desenhoBuffer.length - 1];
+    if (!base) { aviso('Clique o PRIMEIRO ponto no mapa; os próximos podem ser digitados por rumo e distância.'); return; }
+    const en = porAfastamento({ leste: base.leste, norte: base.norte }, az, d);
+    const g = utmParaGeo(en.leste, en.norte, zona, hemisferio);
+    await processarPontoDesenho({ lat: g.lat, lon: g.lon, leste: en.leste, norte: en.norte });
+    setDistDigitada(''); // azimute costuma ser reaproveitado; distância muda a cada lance
+  }
+
   function finalizarLinha() {
     if (desenhoBuffer.length >= 2) { snap(); setObjetos((os) => [...os, novaPolilinha(desenhoBuffer, modo === 'tracejado' ? { tracejado: true, cor: '#334155' } : {})]); }
     setDesenhoBuffer([]);
@@ -3671,7 +3704,7 @@ export default function EditorPage() {
           {vista === 'mapa' ? (
                <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                 confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
-                zona={zona} hemisferio={hemisferio}
+                zona={zona} hemisferio={hemisferio} orto={orto}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho} verticesVizinho={verticesVizinho}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
@@ -3699,6 +3732,32 @@ export default function EditorPage() {
               <button className="flex items-center gap-2 rounded-full border border-red-500/40 bg-background/95 px-4 py-1.5 text-sm font-semibold text-red-600 shadow-lg backdrop-blur hover:bg-red-500 hover:text-white" onClick={apagarMultiSelecionados}>
                 <Trash2 className="size-4" /> Apagar {selMulti.size} vértice(s) selecionado(s)
               </button>
+            </div>
+          )}
+
+          {/* PAINEL DE PRECISÃO (modo Completo + ferramenta de desenho ativa): trava de ângulo
+              ORTO/POLAR e próximo ponto por RUMO E DISTÂNCIA digitados — praxe de CAD pra
+              transcrever memorial/escritura sem caçar o ponto com o mouse. */}
+          {vista === 'mapa' && completo && ['linha', 'polilinha', 'tracejado', 'cota', 'medir'].includes(modo) && (
+            <div className="absolute bottom-16 left-1/2 z-[1000] -translate-x-1/2 rounded-lg border bg-background/95 px-2.5 py-1.5 shadow-xl backdrop-blur">
+              <div className="flex items-center gap-1.5 text-xs">
+                <button
+                  className={`rounded border px-2 py-1 font-bold ${orto === 'off' ? 'text-muted-foreground' : 'border-primary bg-primary/10 text-primary'}`}
+                  onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}
+                  title="Trava de ângulo do desenho: ORTO 90° prende em ângulos retos; POLAR 15° prende de 15 em 15 graus. O imã tem prioridade sobre a trava.">
+                  {orto === 'off' ? 'ORTO off' : orto === '90' ? 'ORTO 90°' : 'POLAR 15°'}
+                </button>
+                <span className="text-muted-foreground">Azimute</span>
+                <input className="h-7 w-24 rounded border bg-background px-1.5 font-mono" placeholder="45 30 00" value={azDigitado}
+                  onChange={(e) => setAzDigitado(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') adicionarPontoDigitado(); }} />
+                <span className="text-muted-foreground">Dist. (m)</span>
+                <input className="h-7 w-20 rounded border bg-background px-1.5 font-mono" placeholder="25,40" value={distDigitada}
+                  onChange={(e) => setDistDigitada(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') adicionarPontoDigitado(); }} />
+                <Button size="sm" className="h-7" disabled={desenhoBuffer.length === 0} onClick={adicionarPontoDigitado}
+                  title={desenhoBuffer.length === 0 ? 'Clique o primeiro ponto no mapa; os próximos podem ser digitados' : 'Adicionar o próximo ponto por rumo e distância (Enter)'}>
+                  + Ponto
+                </Button>
+              </div>
             </div>
           )}
 

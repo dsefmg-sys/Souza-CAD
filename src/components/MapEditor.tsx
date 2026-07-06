@@ -12,6 +12,7 @@ import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { numBR, azimute, distancia, azimuteDMS } from '@/lib/topo/geometry';
 import { casasTela } from '@/lib/store/preferencias';
 import { geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
+import { aplicarOrto, type ModoOrto } from '@/lib/topo/orto';
 
 export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir';
 
@@ -74,6 +75,8 @@ interface Props {
   onEditarConfrontante?: (id: string) => void;
   zona?: number;
   hemisferio?: 'N' | 'S';
+  /** Trava de ângulo do desenho (CAD): a prévia dinâmica acompanha a mesma trava do clique. */
+  orto?: ModoOrto;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -284,6 +287,32 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
   return null;
 }
 
+// MEDIDA DINÂMICA (CAD): enquanto se desenha, o trecho até o cursor aparece como linha elástica
+// com a distância e o azimute ao vivo, respeitando a trava ORTO/POLAR. Componente separado de
+// propósito: o mousemove só re-renderiza este pedacinho, não o mapa inteiro (que é pesado).
+function MedidaDinamica({ base, orto, zona, hemisferio }: { base: [number, number]; orto: ModoOrto; zona: number; hemisferio: 'N' | 'S' }) {
+  const [pos, setPos] = useState<L.LatLng | null>(null);
+  useMapEvents({ mousemove: (e) => setPos(e.latlng), mouseout: () => setPos(null) });
+  if (!pos) return null;
+  const a = geoParaUtm(base[0], base[1], zona, hemisferio);
+  let b = geoParaUtm(pos.lat, pos.lng, zona, hemisferio);
+  if (orto !== 'off') b = { ...b, ...aplicarOrto({ leste: a.leste, norte: a.norte }, { leste: b.leste, norte: b.norte }, orto === '90' ? 90 : 15) };
+  const d = distancia({ e: a.leste, n: a.norte }, { e: b.leste, n: b.norte });
+  if (!Number.isFinite(d) || d < 0.01) return null;
+  const az = azimute({ e: a.leste, n: a.norte }, { e: b.leste, n: b.norte });
+  const g = utmParaGeo(b.leste, b.norte, zona, hemisferio);
+  return (
+    <>
+      <Polyline positions={[base, [g.lat, g.lon]]} pathOptions={{ color: '#2563eb', weight: 1, dashArray: '2 4', opacity: 0.9 }} interactive={false} />
+      <Marker position={[g.lat, g.lon]} interactive={false} icon={L.divIcon({
+        className: 'medida-dinamica',
+        html: `<div style="font-size:10px;font-weight:600;color:#1e3a8a;background:#fff;border:1px solid #1e3a8a;border-radius:3px;padding:0 3px;white-space:nowrap;width:max-content;display:inline-block;box-shadow:0 1px 2px rgba(0,0,0,.3)">${numBR(d)} m &nbsp;az ${azimuteDMS(az)}</div>`,
+        iconSize: [1, 1], iconAnchor: [-12, 26],
+      })} />
+    </>
+  );
+}
+
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
@@ -301,6 +330,7 @@ export default function MapEditor(props: Props) {
     confrontantePorLado = {},
     zona = 23,
     hemisferio = 'S',
+    orto = 'off',
   } = props;
 
   const [zoom, setZoom] = useState(16);
@@ -620,6 +650,10 @@ export default function MapEditor(props: Props) {
       {/* desenho em andamento */}
       {desenhoAtual.length >= 2 && <Polyline positions={desenhoAtual} pathOptions={{ color: '#2563eb', weight: 1.5, dashArray: '4 3' }} />}
       {desenhoAtual.map((p, i) => <CircleMarker key={`da${i}`} center={p} radius={3} pathOptions={{ color: '#2563eb', fillColor: '#fff', fillOpacity: 1 }} />)}
+      {/* linha elástica com distância/azimute ao vivo, do último ponto até o cursor */}
+      {['linha', 'polilinha', 'tracejado', 'cota', 'medir'].includes(modo) && desenhoAtual.length >= 1 && (
+        <MedidaDinamica base={desenhoAtual[desenhoAtual.length - 1]} orto={orto} zona={zona} hemisferio={hemisferio} />
+      )}
 
       {/* dados-chave no centro da gleba (arrastável no modo navegar) */}
       {centroGleba && centroGleba.linhas.length > 0 && (() => {
