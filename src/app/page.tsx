@@ -11,7 +11,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
   Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical,
-  Scissors, Expand, GitCommit, Copy,
+  Scissors, Expand, GitCommit, Copy, Square, Spline,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -881,7 +881,7 @@ export default function EditorPage() {
         if (refUltimaFerramenta.current !== 'navegar') {
           e.preventDefault();
           setModo(refUltimaFerramenta.current);
-          if (['linha', 'polilinha', 'tracejado', 'cota'].includes(refUltimaFerramenta.current)) {
+          if (['linha', 'polilinha', 'tracejado', 'cota', 'retangulo', 'arco'].includes(refUltimaFerramenta.current)) {
             setDesenhoBuffer([]);
           }
         }
@@ -890,7 +890,7 @@ export default function EditorPage() {
         // menu de contexto aberto: Esc só fecha o menu (não troca de tela)
         if (menuContexto) { e.preventDefault(); setMenuContexto(null); }
         else if (modo === 'multi' && selMulti.size > 0) { e.preventDefault(); setSelMulti(new Set()); }
-        else if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'medir') {
+        else if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'medir' || modo === 'retangulo' || modo === 'arco') {
           e.preventDefault();
           cancelarDesenho();
           setModo('navegar');
@@ -1874,7 +1874,65 @@ export default function EditorPage() {
     } else if (modo === 'tracejado' || modo === 'medir') {
       // tracejado/medir = adiciona pontos ao buffer de desenho
       setDesenhoBuffer((buf) => [...buf, p]);
+    } else if (modo === 'retangulo') {
+      // retângulo = 2 cliques nos cantos OPOSTOS; fecha sozinho no 2º clique (reto no plano UTM)
+      setDesenhoBuffer((buf) => {
+        const nb = [...buf, p];
+        if (nb.length >= 2) {
+          const a = nb[0], c = nb[1];
+          const cantosUtm = [
+            { leste: a.leste, norte: a.norte },
+            { leste: c.leste, norte: a.norte },
+            { leste: c.leste, norte: c.norte },
+            { leste: a.leste, norte: c.norte },
+          ];
+          const cantos: PontoLL[] = cantosUtm.map((q) => { const g = utmParaGeo(q.leste, q.norte, zona, hemisferio); return { lat: g.lat, lon: g.lon, leste: q.leste, norte: q.norte }; });
+          cantos.push({ ...cantos[0] }); // fecha o retângulo
+          snap();
+          setObjetos((os) => [...os, novaPolilinha(cantos)]);
+          return [];
+        }
+        return nb;
+      });
+    } else if (modo === 'arco') {
+      // arco = 3 cliques: início, um ponto POR ONDE o arco passa, e fim; fecha sozinho no 3º clique
+      setDesenhoBuffer((buf) => {
+        const nb = [...buf, p];
+        if (nb.length >= 3) {
+          snap();
+          setObjetos((os) => [...os, novaPolilinha(arcoTresPontos(nb[0], nb[1], nb[2]))]);
+          return [];
+        }
+        return nb;
+      });
     }
+  }
+  // Arco que passa por 3 pontos (início, meio, fim): acha o círculo pelos 3 e varre no sentido que
+  // contém o ponto do meio, devolvendo uma polilinha densa (curva de verdade). Colinear → traço reto.
+  function arcoTresPontos(a: PontoLL, b: PontoLL, c: PontoLL): PontoLL[] {
+    const ax = a.leste, ay = a.norte, bx = b.leste, by = b.norte, cx = c.leste, cy = c.norte;
+    const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+    if (Math.abs(d) < 1e-6) return [a, b, c];
+    const a2 = ax * ax + ay * ay, b2 = bx * bx + by * by, c2 = cx * cx + cy * cy;
+    const ux = (a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d;
+    const uy = (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d;
+    const r = Math.hypot(ax - ux, ay - uy);
+    const angA = Math.atan2(ay - uy, ax - ux);
+    const angB = Math.atan2(by - uy, bx - ux);
+    const angC = Math.atan2(cy - uy, cx - ux);
+    const TAU = Math.PI * 2;
+    const norm = (x: number) => ((x % TAU) + TAU) % TAU;
+    let sweep = norm(angC - angA);      // varredura CCW de A a C
+    if (norm(angB - angA) > sweep) sweep -= TAU; // B fora do arco CCW → vai no sentido horário
+    const segs = Math.min(96, Math.max(8, Math.round(Math.abs(sweep) / (Math.PI / 48))));
+    const out: PontoLL[] = [];
+    for (let i = 0; i <= segs; i++) {
+      const ang = angA + (sweep * i) / segs;
+      const leste = ux + r * Math.cos(ang), norte = uy + r * Math.sin(ang);
+      const g = utmParaGeo(leste, norte, zona, hemisferio);
+      out.push({ lat: g.lat, lon: g.lon, leste, norte });
+    }
+    return out;
   }
   // Adiciona o PRÓXIMO ponto do desenho por rumo e distância digitados (painel de precisão do
   // modo Completo) — jeito clássico de transcrever memorial antigo pro mapa sem caçar com o mouse.
@@ -3804,6 +3862,12 @@ export default function EditorPage() {
                             <div className="shrink-0 text-sky-500"><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
                             <span className="truncate">Símbolos</span>
                           </Button>
+                          <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'outline'} onClick={() => alternarModo('retangulo', true)} title="Retângulo: clique dois cantos opostos">
+                            <Square className="text-orange-500 shrink-0" /> <span className="truncate">Retângulo</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'arco' ? 'default' : 'outline'} onClick={() => alternarModo('arco', true)} title="Arco: clique início, um ponto por onde passa e o fim">
+                            <Spline className="text-teal-500 shrink-0" /> <span className="truncate">Arco</span>
+                          </Button>
                           {/* Geometria avançada de CAD — só no Completo (o Médio fica com o desenho do dia a dia) */}
                           {completo && (<>
                           <Button size="sm" variant={modo === 'paralela' ? 'default' : 'outline'} onClick={() => alternarModo('paralela', true)} title="Paralela: criar linha paralela a uma divisa">
@@ -4142,6 +4206,8 @@ export default function EditorPage() {
                     <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => alternarModo('tracejado', true)} title="Tracejado (F8)"><PenTool className="opacity-70" /><Atalho k="F8" /></Button>
                     <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => alternarModo('texto')} title="Texto (F9)"><FileText /><Atalho k="F9" /></Button>
                     <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => alternarModo('cota', true)} title="Cotar (F10)"><IconeCota /><Atalho k="F10" /></Button>
+                    <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'ghost'} onClick={() => alternarModo('retangulo', true)} title="Retângulo (2 cantos)"><Square /></Button>
+                    <Button size="sm" variant={modo === 'arco' ? 'default' : 'ghost'} onClick={() => alternarModo('arco', true)} title="Arco (3 pontos)"><Spline /></Button>
                     {completo && (
                     <Button size="sm" variant={modo === 'paralela' ? 'default' : 'ghost'} onClick={() => alternarModo('paralela', true)} title="Paralela"><Waypoints /></Button>
                     )}

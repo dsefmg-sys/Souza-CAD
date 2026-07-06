@@ -654,7 +654,7 @@ export default function Planta({
     if (e.button !== 0) return; // botão do meio/direito não arrasta itens
     const u = svgPonto(e); if (!u) return;
     // modos de desenho: o clique cria/continua o objeto (só dentro da área de desenho, nunca no carimbo)
-    if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto') {
+    if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto' || modo === 'retangulo' || modo === 'arco') {
       if (u.x < DRAW.x0 || u.x > DRAW.x1 || u.y < DRAW.y0 || u.y > DRAW.y1) return;
       const g = paraGeo(u); onCliquePlanta?.(g.lat, g.lon); return;
     }

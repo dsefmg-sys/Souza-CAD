@@ -16,7 +16,7 @@ import { aplicarOrto, type ModoOrto } from '@/lib/topo/orto';
 import { snapUtm, type SegmentoSnap, type AlvoSnap, type SnapResult } from '@/lib/topo/snap';
 import { intersecaoRetasUtm } from '@/lib/topo/editing';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir' | 'paralela' | 'dividir' | 'trim' | 'extend' | 'copiar_base' | 'copiar_destino';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir' | 'paralela' | 'dividir' | 'trim' | 'extend' | 'retangulo' | 'arco' | 'copiar_base' | 'copiar_destino';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
@@ -317,7 +317,7 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
         norte = u.norte;
       }
       if (modo === 'inserir') onInserir(lat, lon);
-      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'simbolo' || modo === 'medir') && onCliqueDesenho) onCliqueDesenho(lat, lon);
+      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'simbolo' || modo === 'medir' || modo === 'retangulo' || modo === 'arco') && onCliqueDesenho) onCliqueDesenho(lat, lon);
       else if (modo === 'copiar_base') onConfirmarCopiaBase?.({ lat, lon, leste, norte });
       else if (modo === 'copiar_destino') onConfirmarCopiaDestino?.({ lat, lon, leste, norte });
     },
@@ -326,7 +326,7 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
       onDblClick?.(e.latlng.lat, e.latlng.lng);
     },
     contextmenu(e) {
-      if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'medir') {
+      if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'medir' || modo === 'retangulo' || modo === 'arco') {
         e.originalEvent.preventDefault();
         onCancelDesenho?.();
       }
@@ -1017,7 +1017,7 @@ export default function MapEditor(props: Props) {
   const [zoom, setZoom] = useState(16);
   const [cursorLatLng, setCursorLatLng] = useState<L.LatLng | null>(null);
   const [hoverSnap, setHoverSnap] = useState<SnapResult | null>(null);
-  const isDesenho = ['linha', 'polilinha', 'tracejado', 'cota', 'texto', 'simbolo', 'medir'].includes(modo);
+  const isDesenho = ['linha', 'polilinha', 'tracejado', 'cota', 'texto', 'simbolo', 'medir', 'retangulo', 'arco'].includes(modo);
 
 
 
