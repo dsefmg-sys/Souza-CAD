@@ -106,8 +106,20 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ texto, arquivo }),
       });
-      const j = await r.json();
-      if (!r.ok) { setErro(j.erro || 'A IA não conseguiu processar.'); return; }
+      
+      const rawText = await r.text();
+      let j: any;
+      try {
+        j = JSON.parse(rawText);
+      } catch {
+        setErro(rawText.slice(0, 200) || `Erro de comunicação com o servidor (${r.status}).`);
+        return;
+      }
+
+      if (!r.ok) { 
+        setErro(j.erro || 'A IA não conseguiu processar.'); 
+        return; 
+      }
       
       const d = (j.dados ?? {}) as Record<string, string>;
       const base: Record<string, string> = {};
