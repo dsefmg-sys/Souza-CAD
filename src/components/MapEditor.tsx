@@ -345,17 +345,19 @@ export default function MapEditor(props: Props) {
     });
   }, [validos]);
 
+  // maxZoom 24: além do nível nativo das imagens (20) o satélite é só ampliado — fica borrado,
+  // mas permite posicionar vértice com muito mais precisão (pedido do dono, 05/07/2026)
   return (
-    <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={22} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
+    <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={24} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Híbrido (Google)">
-          <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={22} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
+          <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={24} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
         </LayersControl.BaseLayer>
         <LayersControl.BaseLayer name="Satélite (Esri)">
-          <TileLayer attribution="Tiles &copy; Esri" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={22} maxNativeZoom={18} />
+          <TileLayer attribution="Tiles &copy; Esri" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" maxZoom={24} maxNativeZoom={18} />
         </LayersControl.BaseLayer>
         <LayersControl.BaseLayer name="Ruas (OpenStreetMap)">
-          <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} />
+          <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={24} maxNativeZoom={19} />
         </LayersControl.BaseLayer>
       </LayersControl>
 

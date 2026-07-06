@@ -254,6 +254,12 @@ export default function EditorPage() {
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [realceId, setRealceId] = useState<string | null>(null); // vértice destacado ao passar o mouse na lista
   const [modo, setModo] = useState<ModoEdicao>('navegar');
+  // Clicar de novo na ferramenta que JÁ está ativa a desmarca (volta pro navegar) — antes não
+  // havia como "largar" a ferramenta pelo próprio botão (pedido do dono, 05/07/2026).
+  function alternarModo(m: ModoEdicao, limparBuffer = false) {
+    setModo((atual) => (atual === m ? 'navegar' : m));
+    if (limparBuffer) setDesenhoBuffer([]);
+  }
   const ignorouRef = useRef(false);       // ignorou vértice desde que entrou no modo ignorar
   const modoAntesRef = useRef<ModoEdicao>('navegar');
   const [selMulti, setSelMulti] = useState<Set<string>>(new Set()); // vértices marcados no modo "triângulo"
@@ -3173,19 +3179,19 @@ export default function EditorPage() {
                           </div>
                         )}
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
-                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta: clique 2 pontos (F6)">
+                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} onClick={() => alternarModo('linha', true)} title="Linha reta: clique 2 pontos (F6)">
                             <PenTool className="text-amber-500 shrink-0" /> <span className="truncate">Linha</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'outline'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
+                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'outline'} onClick={() => alternarModo('polilinha', true)} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
                             <PenTool className="text-cyan-500 shrink-0" /> <span className="truncate">Polilinha</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'outline'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado: linha tracejada aberta (F8)">
+                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'outline'} onClick={() => alternarModo('tracejado', true)} title="Tracejado: linha tracejada aberta (F8)">
                             <PenTool className="text-indigo-500 opacity-80 shrink-0" /> <span className="truncate">Tracejado</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} onClick={() => setModo('texto')} title="Texto: clique para inserir (F9)">
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} onClick={() => alternarModo('texto')} title="Texto: clique para inserir (F9)">
                             <FileText className="text-emerald-500 shrink-0" /> <span className="truncate">Texto</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar: clique dois pontos para medir (F10)">
+                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} onClick={() => alternarModo('cota', true)} title="Cotar: clique dois pontos para medir (F10)">
                             <IconeCota className="text-rose-500 shrink-0" /> <span className="truncate">Cota</span>
                           </Button>
                           <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'outline'} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
@@ -3209,19 +3215,19 @@ export default function EditorPage() {
                         {/* Vértices e geometria — mesmo cartão, separados por um traço fino (economiza espaço) */}
                         <div className="my-0.5 h-px bg-border/50" />
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
-                          <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice: clique numa aresta">
+                          <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); alternarModo('inserir'); }} title="Inserir vértice: clique numa aresta">
                             <Plus className="text-emerald-500 shrink-0" /> <span className="truncate">Inserir</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice">
+                          <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); alternarModo('apagar'); }} title="Apagar vértice">
                             <Trash2 className="text-rose-500 shrink-0" /> <span className="truncate">Apagar</span>
                           </Button>
                           <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
                             <EyeOff className="text-amber-500 shrink-0" /> <span className="truncate">Ignorar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo('considerar'); }} title="Considerar vértice (F11)">
+                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); alternarModo('considerar'); }} title="Considerar vértice (F11)">
                             <Plus className="text-cyan-500 shrink-0" /> <span className="truncate">Considerar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'outline'} onClick={() => { setModo('medir'); setDesenhoBuffer([]); }} title="Régua: medir distância e azimute no mapa">
+                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'outline'} onClick={() => alternarModo('medir', true)} title="Régua: medir distância e azimute no mapa">
                             <Ruler className="text-sky-500 shrink-0" /> <span className="truncate">Medir</span>
                           </Button>
                           <Button size="sm" variant={modo === 'multi' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo(modo === 'multi' ? 'navegar' : 'multi'); }} title="Selecionar vários vértices">
@@ -3299,18 +3305,18 @@ export default function EditorPage() {
                     <Button size="sm" variant="outline" onClick={() => setGestaoAberta(true)} title="Gestão financeira"><Info className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={() => setPontosAberto(true)} title="Banco de pontos"><Database className="size-4" /></Button>
                     <div className="h-px bg-border my-1" />
-                    <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => { setModo('linha'); setDesenhoBuffer([]); }} title="Linha reta (F6)"><PenTool /></Button>
-                    <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => { setModo('polilinha'); setDesenhoBuffer([]); }} title="Polilinha (F7)"><PenTool /></Button>
-                    <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => { setModo('tracejado'); setDesenhoBuffer([]); }} title="Tracejado (F8)"><PenTool className="opacity-70" /></Button>
-                    <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => setModo('texto')} title="Texto (F9)"><FileText /></Button>
-                    <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => { setModo('cota'); setDesenhoBuffer([]); }} title="Cotar (F10)"><IconeCota /></Button>
+                    <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => alternarModo('linha', true)} title="Linha reta (F6)"><PenTool /></Button>
+                    <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => alternarModo('polilinha', true)} title="Polilinha (F7)"><PenTool /></Button>
+                    <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => alternarModo('tracejado', true)} title="Tracejado (F8)"><PenTool className="opacity-70" /></Button>
+                    <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => alternarModo('texto')} title="Texto (F9)"><FileText /></Button>
+                    <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => alternarModo('cota', true)} title="Cotar (F10)"><IconeCota /></Button>
                     <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
-                    <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('inserir'); }} title="Inserir vértice"><Plus /></Button>
-                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /></Button>
-                    <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('considerar'); }} title="Considerar (F11)"><Plus /></Button>
-                    <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('apagar'); }} title="Apagar vértice"><Trash2 /></Button>
-                    <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => { setModo('medir'); setDesenhoBuffer([]); }} title="Medir / Régula"><Ruler /></Button>
-                    <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); setModo('multi'); }} title="Selecionar vários">
+                    <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('inserir'); }} title="Inserir vértice"><Plus /></Button>
+                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /></Button>
+                    <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('considerar'); }} title="Considerar (F11)"><Plus /></Button>
+                    <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('apagar'); }} title="Apagar vértice"><Trash2 /></Button>
+                    <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => alternarModo('medir', true)} title="Medir / Régula"><Ruler /></Button>
+                    <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('multi'); }} title="Selecionar vários">
                       <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
                         <circle cx="12" cy="5" r="2.4" fill="currentColor" />
                         <circle cx="5" cy="18" r="2.4" fill="currentColor" />
