@@ -418,8 +418,8 @@ function CursorMapa({ ativo }: { ativo: boolean }) {
       const y = e.clientY - rect.top;
 
       crosshair.style.display = 'block';
-      hLine.style.top = `${y}px`;
-      vLine.style.left = `${x}px`;
+      hLine.style.top = `${y - esp / 2}px`;
+      vLine.style.left = `${x - esp / 2}px`;
       box.style.left = `${x}px`;
       box.style.top = `${y}px`;
     };

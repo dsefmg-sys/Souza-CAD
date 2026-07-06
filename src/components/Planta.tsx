@@ -309,8 +309,8 @@ export default function Planta({
       const y = e.clientY - rect.top;
 
       crosshair.style.display = 'block';
-      hLine.style.top = `${y}px`;
-      vLine.style.left = `${x}px`;
+      hLine.style.top = `${y - esp / 2}px`;
+      vLine.style.left = `${x - esp / 2}px`;
       box.style.left = `${x}px`;
       box.style.top = `${y}px`;
     };
@@ -2418,8 +2418,8 @@ function CarimboA3(props: {
   const H_ESC         = 185;
   // caixas iguais e barras na MESMA altura relativa: o Laudo tem 3 linhas abaixo da barra e o
   // Proprietário 2, mas o espaço de FIRMA (acima da barra) fica igual nos dois.
-  const Y_ASSINA_PROP = Y_PROP  + 150;
-  const Y_ASSINA_RT   = Y_LAUDO + 150;
+  const Y_ASSINA_PROP = Y_PROP  + 180;
+  const Y_ASSINA_RT   = Y_LAUDO + 180;
 
   // Assinatura num intervalo livre (xa..xb): linha + nome + detalhes (o rótulo "Assinatura do..."
   // foi removido — era redundante com o cabeçalho da seção e só ocupava espaço). Bloco móvel e coeso.

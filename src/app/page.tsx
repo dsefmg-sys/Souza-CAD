@@ -8,7 +8,7 @@ import { jsPDF } from 'jspdf';
 import {
   Upload, FileText, Map as MapIcon, Printer, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
-  CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
+  CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
   Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical,
   Scissors, Expand, GitCommit, Copy,
@@ -445,6 +445,7 @@ export default function EditorPage() {
   const [errataAberto, setErrataAberto] = useState(false);
   const [prevMemorialAberto, setPrevMemorialAberto] = useState(false);
   const [prevMemorialModo, setPrevMemorialModo] = useState<'normal' | 'servidao'>('normal');
+  const [camadasPopoverAberta, setCamadasPopoverAberta] = useState(false);
   const [consultarAberto, setConsultarAberto] = useState(false);
   const [iaAberta, setIaAberta] = useState(false);
   // arquivo já anexado que a IA vai ler (quando a extração parte de um documento guardado)
