@@ -54,7 +54,11 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
     ? 'possuidor(a) e detentor(a) dos direitos possessórios'
     : confrontante.condicao === 'espolio'
       ? 'espólio proprietário'
-      : 'proprietário(a)';
+      : confrontante.condicao === 'condomino'
+        ? 'condômino(a) / coproprietário(a)'
+        : confrontante.condicao === 'usufrutuario'
+          ? 'usufrutuário(a)'
+          : 'proprietário(a)';
 
   let qualConfrontante = `Eu, ${confrontante.nome}, `;
   if (confrontante.cpf) qualConfrontante += `inscrito(a) no CPF sob o nº ${confrontante.cpf}, `;
@@ -161,6 +165,11 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
   // Cônjuge se houver
   if (confrontante.conjugeNome) {
     addAssinatura(confrontante.conjugeNome, 'Cônjuge do Confrontante');
+  }
+
+  // Usufruto: o nu-proprietário assina junto (se informado).
+  if (confrontante.condicao === 'usufrutuario' && confrontante.nuProprietarioNome?.trim()) {
+    addAssinatura(confrontante.nuProprietarioNome, 'Nu-proprietário(a) do imóvel confrontante');
   }
 
   // Proprietário do Imóvel

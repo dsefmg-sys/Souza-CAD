@@ -421,7 +421,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   return compatibilizarWord2007(blob);
 }
 
-/** Linhas de assinatura de um confrontante conforme a condição (proprietário/posseiro/espólio). */
+/** Linhas de assinatura de um confrontante conforme a condição. */
 function blocoAssinaturaConfrontante(c: Confrontante): Paragraph[] {
   const cond = c.condicao ?? 'proprietario';
   if (cond === 'espolio') {
@@ -441,9 +441,24 @@ function blocoAssinaturaConfrontante(c: Confrontante): Paragraph[] {
       'Na condição de possuidor(a)',
     ], c.conjugeNome, c.conjugeCpf);
   }
-  return assinaturaComConjuge([
+  // Linha de qualificação extra por condição (condômino / usufrutuário).
+  const linhaCondicao = cond === 'condomino' ? 'Na condição de condômino(a)'
+    : cond === 'usufrutuario' ? 'Na condição de usufrutuário(a)'
+    : null;
+  const linhas = [
     `Nome: ${c.nome}`,
     `CPF: ${c.cpf}`,
     `Imóvel de Matrícula: ${formatMatricula(c.matricula)}`,
-  ], c.conjugeNome, c.conjugeCpf);
+  ];
+  if (linhaCondicao) linhas.push(linhaCondicao);
+  const out = assinaturaComConjuge(linhas, c.conjugeNome, c.conjugeCpf);
+  // Usufruto: o nu-proprietário assina JUNTO (assinatura própria), se informado.
+  if (cond === 'usufrutuario' && c.nuProprietarioNome?.trim()) {
+    assinaturaComConjuge([
+      `Nome: ${c.nuProprietarioNome}`,
+      `CPF: ${c.nuProprietarioCpf || '—'}`,
+      'Na condição de nu-proprietário(a)',
+    ]).forEach((p) => out.push(p));
+  }
+  return out;
 }
