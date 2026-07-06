@@ -7,8 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { ImovelData, TecnicoData, Confrontante } from '@/lib/topo/types';
-import { gerarErrataDocx, type CorrecaoErrata } from '@/lib/export/errata';
+import type { ImovelData, TecnicoData, Confrontante, CorrecaoErrata } from '@/lib/topo/types';
+import { gerarErrataDocx } from '@/lib/export/errata';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { carregarPadroes } from '@/lib/store/padroes';
 
@@ -19,6 +19,8 @@ interface Props {
   tecnico: TecnicoData | null;
   confrontantes: Confrontante[];
   areaHa: number;
+  correcoes: CorrecaoErrata[];
+  onChangeCorrecoes: React.Dispatch<React.SetStateAction<CorrecaoErrata[]>>;
   onBaixar?: () => void;
 }
 
@@ -27,27 +29,36 @@ function dataExtensoHoje(d = new Date()): string {
   return `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
-export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confrontantes, areaHa, onBaixar }: Props) {
-  const [correcoes, setCorrecoes] = useState<CorrecaoErrata[]>([{ onde: '', constava: '', passa: '' }]);
+export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confrontantes, areaHa, correcoes, onChangeCorrecoes, onBaixar }: Props) {
   const [acrescimoRT, setAcrescimoRT] = useState('');
   const [msg, setMsg] = useState('');
 
-  useEffect(() => { if (open) { setCorrecoes([{ onde: '', constava: '', passa: '' }]); setAcrescimoRT(''); setMsg(''); } }, [open]);
+  useEffect(() => {
+    if (open) {
+      if (!correcoes || correcoes.length === 0) {
+        onChangeCorrecoes([{ onde: '', constava: '', passa: '', natureza: 'imovel' }]);
+      }
+      setAcrescimoRT('');
+      setMsg('');
+    }
+  }, [open]);
+
+  const setCorrecoes = onChangeCorrecoes;
 
   // Atalhos de "onde" mais comuns, no formato dos modelos ("Confrontante X" + "Matrícula nº ...").
-  const sugestoes: { rotulo: string; onde: string; constava: string }[] = [
-    { rotulo: 'Matrícula', onde: 'Matrícula do imóvel', constava: imovel.matricula ? `Matrícula nº ${imovel.matricula}` : '' },
-    { rotulo: 'Denominação', onde: 'Denominação do imóvel', constava: imovel.denominacao || '' },
-    { rotulo: 'Proprietário', onde: 'Nome do proprietário', constava: imovel.proprietario || '' },
+  const sugestoes: { rotulo: string; onde: string; constava: string; natureza: any }[] = [
+    { rotulo: 'Matrícula', onde: 'Matrícula do imóvel', constava: imovel.matricula ? `Matrícula nº ${imovel.matricula}` : '', natureza: 'imovel' },
+    { rotulo: 'Denominação', onde: 'Denominação do imóvel', constava: imovel.denominacao || '', natureza: 'imovel' },
+    { rotulo: 'Proprietário', onde: 'Nome do proprietário', constava: imovel.proprietario || '', natureza: 'pessoais' },
     ...confrontantes.filter((c) => c.nome).map((c) => ({
-      rotulo: `Confront. ${c.nome}`, onde: `Confrontante ${c.nome}`, constava: c.matricula ? `Matrícula nº ${c.matricula}` : '',
+      rotulo: `Confront. ${c.nome}`, onde: `Confrontante ${c.nome}`, constava: c.matricula ? `Matrícula nº ${c.matricula}` : '', natureza: 'confrontantes',
     })),
   ];
 
   function setCor(i: number, patch: Partial<CorrecaoErrata>) {
     setCorrecoes((cs) => cs.map((c, k) => (k === i ? { ...c, ...patch } : c)));
   }
-  function addCor(base?: Partial<CorrecaoErrata>) { setCorrecoes((cs) => [...cs, { onde: '', constava: '', passa: '', ...base }]); }
+  function addCor(base?: Partial<CorrecaoErrata>) { setCorrecoes((cs) => [...cs, { onde: '', constava: '', passa: '', natureza: 'imovel', ...base }]); }
   function rmCor(i: number) { setCorrecoes((cs) => cs.filter((_, k) => k !== i)); }
 
   async function gerar() {
@@ -56,11 +67,33 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
     if (!validas.length) { setMsg('Preencha ao menos uma correção (onde e o valor correto).'); return; }
     const padroes = carregarPadroes();
     const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
-    const blobBruto = await gerarErrataDocx({ imovel, tecnico, correcoes: validas, areaHa, acrescimoRT, dataExtenso: dataExtensoHoje(), comarca });
-    const blob = await compatibilizarWord2007(blobBruto);
-    saveAs(blob, `Errata - ${imovel.denominacao || 'imovel'}.docx`);
-    setMsg('Errata gerada.');
-    onBaixar?.();
+    try {
+      const response = await fetch('/api/export/errata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imovel,
+          tecnico,
+          correcoes: validas,
+          areaHa,
+          acrescimoRT,
+          dataExtenso: dataExtensoHoje(),
+          comarca
+        })
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.erro || 'Falha ao gerar errata no servidor.');
+      }
+      const blobBruto = await response.blob();
+      const blob = await compatibilizarWord2007(blobBruto);
+      saveAs(blob, `Errata - ${imovel.denominacao || 'imovel'}.docx`);
+      setMsg('Errata gerada.');
+      onBaixar?.();
+    } catch (e: any) {
+      console.error(e);
+      setMsg(e.message || 'Erro ao gerar errata.');
+    }
   }
 
   return (
@@ -87,7 +120,7 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
                 <div className="flex flex-wrap gap-1">
                   {sugestoes.map((s, i) => (
                     <Button key={i} size="sm" type="button" variant="outline" className="h-6 text-[10px] px-1.5 py-0"
-                      onClick={() => addCor({ onde: s.onde, constava: s.constava })} title={`Adicionar correção de ${s.onde}`}>
+                      onClick={() => addCor({ onde: s.onde, constava: s.constava, natureza: s.natureza })} title={`Adicionar correção de ${s.onde}`}>
                       <Plus className="size-2.5 mr-0.5" /> {s.rotulo}
                     </Button>
                   ))}
@@ -112,8 +145,22 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
             
             <div className="space-y-2 divide-y divide-border/60">
               {correcoes.map((c, i) => (
-                <div key={i} className="flex items-end gap-2 pt-2 first:pt-0">
-                  <div className="flex-grow grid grid-cols-3 gap-2">
+                 <div key={i} className="flex items-end gap-2 pt-2 first:pt-0">
+                  <div className="flex-grow grid grid-cols-4 gap-2">
+                    <div className="space-y-0.5">
+                      <Label className="text-[9px] text-muted-foreground font-semibold leading-none">Natureza</Label>
+                      <select
+                        value={c.natureza || 'outros'}
+                        onChange={(e) => setCor(i, { natureza: e.target.value as any })}
+                        className="flex h-7 w-full rounded-md border border-input bg-background px-1 py-0 text-xs shadow-sm focus:border-primary focus:outline-none"
+                      >
+                        <option value="imovel">Dados Imóvel</option>
+                        <option value="pessoais">Dados Pessoais</option>
+                        <option value="confrontantes">Confrontante / Registro</option>
+                        <option value="geometria">Geometria (Coord/Az/Dist)</option>
+                        <option value="outros">Outras</option>
+                      </select>
+                    </div>
                     <div className="space-y-0.5">
                       <Label className="text-[9px] text-muted-foreground font-semibold leading-none">Onde está o erro</Label>
                       <Input value={c.onde} onChange={(e) => setCor(i, { onde: e.target.value })} placeholder="ex.: Confrontante João" className="h-7 text-xs" />

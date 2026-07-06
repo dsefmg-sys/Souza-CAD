@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { Ruler } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import type { Vertex, ObjetoDesenho, Confrontante, VerticeVizinho } from '@/lib/topo/types';
+import type { Vertex, ObjetoDesenho, Confrontante, VerticeVizinho, PontoLL } from '@/lib/topo/types';
 import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
 import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { corDivisa, REPRES_LABEL } from '@/lib/topo/sigefVocab';
@@ -13,8 +13,10 @@ import { numBR, azimute, distancia, azimuteDMS } from '@/lib/topo/geometry';
 import { casasTela } from '@/lib/store/preferencias';
 import { geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { aplicarOrto, type ModoOrto } from '@/lib/topo/orto';
+import { snapUtm, type SegmentoSnap, type AlvoSnap, type SnapResult } from '@/lib/topo/snap';
+import { intersecaoRetasUtm } from '@/lib/topo/editing';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir' | 'paralela' | 'dividir' | 'trim' | 'extend' | 'copiar_base' | 'copiar_destino';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
@@ -77,6 +79,22 @@ interface Props {
   hemisferio?: 'N' | 'S';
   /** Trava de ângulo do desenho (CAD): a prévia dinâmica acompanha a mesma trava do clique. */
   orto?: ModoOrto;
+  snapAtivo?: boolean;
+  segmentoSelecionado?: SegmentoSnap | null;
+  onSegmentoSelecionado?: (seg: SegmentoSnap | null) => void;
+  offsetDistancia?: number;
+  onConfirmarParalela?: (pontos: [PontoLL, PontoLL]) => void;
+  copiarPontoBase?: PontoLL | null;
+  onConfirmarCopiaBase?: (pt: PontoLL) => void;
+  onConfirmarCopiaDestino?: (pt: PontoLL) => void;
+  onDividirSegmento?: (idA: string, idB: string) => void;
+  linhaLimite?: SegmentoSnap | null;
+  onLinhaLimite?: (seg: SegmentoSnap | null) => void;
+  onConfirmarTrim?: (objetoId: string, novosPontos: PontoLL[]) => void;
+  onConfirmarExtend?: (objetoId: string, novosPontos: PontoLL[]) => void;
+  camadasVisiveis?: Record<string, boolean>;
+  camadasBloqueadas?: Record<string, boolean>;
+  estilosCamadas?: Record<string, { cor: string; espessura: number }>;
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -130,11 +148,12 @@ const L_DIVISA_ICON = L.divIcon({
   iconSize: [10, 10], iconAnchor: [5, 5],
 });
 
-function iconeTexto(o: ObjetoDesenho, sel: boolean) {
+function iconeTexto(o: ObjetoDesenho, sel: boolean, corDefault?: string) {
   const al = o.alinhamento === 'center' ? 'center' : o.alinhamento === 'right' ? 'right' : 'left';
+  const corText = o.cor ?? corDefault ?? '#000';
   return L.divIcon({
     className: 'objeto-texto',
-    html: `<div style="font-size:${o.tamanho ?? 12}px;color:${o.cor ?? '#000'};background:#fff;border:1px solid #ccc;border-radius:3px;padding:2px 5px;white-space:nowrap;text-align:${al};box-shadow:0 1px 3px rgba(0,0,0,0.3);width:max-content;display:inline-block;${sel ? 'outline:1px dashed #ef4444;' : ''}">${(o.texto ?? '').replace(/</g, '&lt;')}</div>`,
+    html: `<div style="font-size:${o.tamanho ?? 12}px;color:${corText};background:#fff;border:1px solid #ccc;border-radius:3px;padding:2px 5px;white-space:nowrap;text-align:${al};box-shadow:0 1px 3px rgba(0,0,0,0.3);width:max-content;display:inline-block;${sel ? 'outline:1px dashed #ef4444;' : ''}">${(o.texto ?? '').replace(/</g, '&lt;')}</div>`,
     iconSize: [1, 1], iconAnchor: [0, 8],
   });
 }
@@ -240,10 +259,24 @@ function CaixaSelecao({ ativo, vertices, onBoxSelect }: { ativo: boolean; vertic
     },
   });
   if (!ativo || !inicio || !atual) return null;
-  return <Rectangle bounds={L.latLngBounds(inicio, atual)} pathOptions={{ color: '#f59e0b', weight: 1.5, dashArray: '4 3', fillColor: '#f59e0b', fillOpacity: 0.12 }} />;
+  const isWindow = atual.lng >= inicio.lng;
+  const color = isWindow ? '#2563eb' : '#22c55e';
+  const dashArray = isWindow ? undefined : '5 4';
+  return (
+    <Rectangle
+      bounds={L.latLngBounds(inicio, atual)}
+      pathOptions={{
+        color,
+        weight: 1.5,
+        dashArray,
+        fillColor: color,
+        fillOpacity: 0.15
+      }}
+    />
+  );
 }
 
-function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblClick, onMouseMove, onMouseOut }: {
+function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblClick, onMouseMove, onMouseOut, hoverSnap, zona = 23, hemisferio = 'S', onConfirmarCopiaBase, onConfirmarCopiaDestino }: {
   modo: ModoEdicao;
   onInserir: (lat: number, lon: number) => void;
   onCliqueDesenho?: (lat: number, lon: number) => void;
@@ -251,11 +284,32 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
   onDblClick?: (lat: number, lon: number) => void;
   onMouseMove?: (latlng: L.LatLng) => void;
   onMouseOut?: () => void;
+  hoverSnap?: SnapResult | null;
+  zona?: number;
+  hemisferio?: 'N' | 'S';
+  onConfirmarCopiaBase?: (pt: PontoLL) => void;
+  onConfirmarCopiaDestino?: (pt: PontoLL) => void;
 }) {
   useMapEvents({
     click(e) {
-      if (modo === 'inserir') onInserir(e.latlng.lat, e.latlng.lng);
-      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'simbolo' || modo === 'medir') && onCliqueDesenho) onCliqueDesenho(e.latlng.lat, e.latlng.lng);
+      let lat = e.latlng.lat;
+      let lon = e.latlng.lng;
+      let leste = 0, norte = 0;
+      if (hoverSnap && hoverSnap.tipo) {
+        leste = hoverSnap.leste;
+        norte = hoverSnap.norte;
+        const g = utmParaGeo(leste, norte, zona, hemisferio);
+        lat = g.lat;
+        lon = g.lon;
+      } else {
+        const u = geoParaUtm(lat, lon, zona, hemisferio);
+        leste = u.leste;
+        norte = u.norte;
+      }
+      if (modo === 'inserir') onInserir(lat, lon);
+      else if ((modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'simbolo' || modo === 'medir') && onCliqueDesenho) onCliqueDesenho(lat, lon);
+      else if (modo === 'copiar_base') onConfirmarCopiaBase?.({ lat, lon, leste, norte });
+      else if (modo === 'copiar_destino') onConfirmarCopiaDestino?.({ lat, lon, leste, norte });
     },
     dblclick(e) {
       // duplo clique abre o editor de texto (não dá zoom — doubleClickZoom desligado)
@@ -268,10 +322,10 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
       }
     },
     mousemove(e) {
-      if (modo === 'medir') onMouseMove?.(e.latlng);
+      if (['medir', 'copiar_destino'].includes(modo)) onMouseMove?.(e.latlng);
     },
     mouseout() {
-      if (modo === 'medir') onMouseOut?.();
+      if (['medir', 'copiar_destino'].includes(modo)) onMouseOut?.();
     }
   });
   return null;
@@ -292,11 +346,104 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 // item clicável o ponteiro de mãozinha continua valendo (CSS do próprio item vence).
 function CursorMapa({ ativo }: { ativo: boolean }) {
   const map = useMap();
+
   useEffect(() => {
     const el = map.getContainer();
-    el.style.cursor = ativo ? 'crosshair' : '';
-    return () => { el.style.cursor = ''; };
+    if (!ativo) {
+      el.style.cursor = '';
+      return;
+    }
+
+    el.style.cursor = 'none';
+
+    const crosshair = document.createElement('div');
+    crosshair.className = 'cad-crosshair-overlay';
+    
+    Object.assign(crosshair.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      width: '100%',
+      height: '100%',
+      pointerEvents: 'none',
+      overflow: 'hidden',
+      zIndex: '9999',
+      display: 'none',
+    });
+
+    const hLine = document.createElement('div');
+    Object.assign(hLine.style, {
+      position: 'absolute',
+      left: '0',
+      width: '100%',
+      height: '1px',
+      background: 'rgba(255, 255, 255, 0.45)',
+      boxShadow: '0 0 1px rgba(0, 0, 0, 0.6)',
+      pointerEvents: 'none',
+    });
+    crosshair.appendChild(hLine);
+
+    const vLine = document.createElement('div');
+    Object.assign(vLine.style, {
+      position: 'absolute',
+      top: '0',
+      width: '1px',
+      height: '100%',
+      background: 'rgba(255, 255, 255, 0.45)',
+      boxShadow: '0 0 1px rgba(0, 0, 0, 0.6)',
+      pointerEvents: 'none',
+    });
+    crosshair.appendChild(vLine);
+
+    const box = document.createElement('div');
+    Object.assign(box.style, {
+      position: 'absolute',
+      width: '8px',
+      height: '8px',
+      border: '1px solid rgba(255, 255, 255, 0.8)',
+      boxShadow: '0 0 1px rgba(0, 0, 0, 0.8)',
+      transform: 'translate(-50%, -50%)',
+      pointerEvents: 'none',
+    });
+    crosshair.appendChild(box);
+
+    el.appendChild(crosshair);
+
+    const onMouseMove = (e: MouseEvent) => {
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      crosshair.style.display = 'block';
+      hLine.style.top = `${y}px`;
+      vLine.style.left = `${x}px`;
+      box.style.left = `${x}px`;
+      box.style.top = `${y}px`;
+    };
+
+    const onMouseLeave = () => {
+      crosshair.style.display = 'none';
+    };
+
+    const onMouseEnter = () => {
+      crosshair.style.display = 'block';
+    };
+
+    el.addEventListener('mousemove', onMouseMove);
+    el.addEventListener('mouseleave', onMouseLeave);
+    el.addEventListener('mouseenter', onMouseEnter);
+
+    return () => {
+      el.style.cursor = '';
+      el.removeEventListener('mousemove', onMouseMove);
+      el.removeEventListener('mouseleave', onMouseLeave);
+      el.removeEventListener('mouseenter', onMouseEnter);
+      if (el.contains(crosshair)) {
+        el.removeChild(crosshair);
+      }
+    };
   }, [ativo, map]);
+
   return null;
 }
 
@@ -326,6 +473,590 @@ function MedidaDinamica({ base, orto, zona, hemisferio }: { base: [number, numbe
   );
 }
 
+interface SnapIndicatorProps {
+  snapAtivo: boolean;
+  alvos: AlvoSnap[];
+  segmentos: SegmentoSnap[];
+  pontoOrigem: AlvoSnap | null;
+  zona?: number;
+  hemisferio?: 'N' | 'S';
+  onSnapChange?: (res: SnapResult | null) => void;
+}
+
+function SnapIndicator({ snapAtivo, alvos, segmentos, pontoOrigem, zona, hemisferio, onSnapChange }: SnapIndicatorProps) {
+  const [snapRes, setSnapRes] = useState<SnapResult | null>(null);
+  const z = zona ?? 23;
+  const h = hemisferio ?? 'S';
+
+  useMapEvents({
+    mousemove(e) {
+      if (!snapAtivo) {
+        if (snapRes) { setSnapRes(null); onSnapChange?.(null); }
+        return;
+      }
+      const { lat, lng } = e.latlng;
+      const u = geoParaUtm(lat, lng, z, h);
+      
+      const s = snapUtm(u.leste, u.norte, alvos, {
+        tolVerticeM: 10,
+        segmentos,
+        pontoOrigem
+      });
+
+      if (s.tipo) {
+        setSnapRes(s);
+        onSnapChange?.(s);
+      } else {
+        if (snapRes) { setSnapRes(null); onSnapChange?.(null); }
+      }
+    },
+    mouseout() {
+      setSnapRes(null);
+      onSnapChange?.(null);
+    }
+  });
+
+  if (!snapRes || !snapRes.tipo) return null;
+
+  const g = utmParaGeo(snapRes.leste, snapRes.norte, z, h);
+
+  let shape = '';
+  let color = '#22c55e'; // verde
+  const size = 16;
+  const anchor = [8, 8];
+
+  if (snapRes.tipo === 'vertice') {
+    shape = `<rect x="2" y="2" width="12" height="12" fill="none" stroke="${color}" stroke-width="2"/>`;
+  } else if (snapRes.tipo === 'meio') {
+    shape = `<polygon points="8,2 15,14 1,14" fill="none" stroke="${color}" stroke-width="2"/>`;
+  } else if (snapRes.tipo === 'intersecao') {
+    shape = `<path d="M2,2 L14,14 M14,2 L2,14" fill="none" stroke="${color}" stroke-width="2"/>`;
+  } else if (snapRes.tipo === 'perpendicular') {
+    color = '#2563eb'; // azul
+    shape = `<path d="M2,14 L2,2 L14,2" fill="none" stroke="${color}" stroke-width="2"/>`;
+  } else if (snapRes.tipo === 'extensao') {
+    color = '#e11d48'; // vermelho
+    shape = `<circle cx="8" cy="8" r="5" fill="none" stroke="${color}" stroke-dasharray="2 2" stroke-width="2"/>`;
+  } else {
+    return null;
+  }
+
+  let auxPolyline = null;
+  if (snapRes.pontosAuxUTM && snapRes.pontosAuxUTM.length >= 2) {
+    const ptsGeo = snapRes.pontosAuxUTM.map(p => {
+      const gPt = utmParaGeo(p.leste, p.norte, z, h);
+      return [gPt.lat, gPt.lon] as [number, number];
+    });
+    auxPolyline = (
+      <Polyline
+        positions={ptsGeo}
+        pathOptions={{ color, weight: 1.2, dashArray: '3 4', opacity: 0.8 }}
+        interactive={false}
+      />
+    );
+  }
+
+  return (
+    <>
+      {auxPolyline}
+      <Marker
+        position={[g.lat, g.lon]}
+        interactive={false}
+        icon={L.divIcon({
+          className: 'snap-indicator-icon',
+          html: `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="overflow:visible;filter:drop-shadow(0 0 1px rgba(0,0,0,.6))">${shape}</svg>`,
+          iconSize: [size, size],
+          iconAnchor: anchor as [number, number]
+        })}
+      />
+    </>
+  );
+}
+
+interface SegmentoProximo {
+  segmento: SegmentoSnap;
+  distancia: number;
+}
+
+function encontrarSegmentoProximo(cursor: { leste: number; norte: number }, segmentos: SegmentoSnap[]): SegmentoProximo | null {
+  if (segmentos.length === 0) return null;
+  let best: SegmentoSnap | null = null;
+  let bestD = Infinity;
+
+  for (const seg of segmentos) {
+    const dx = seg.b.leste - seg.a.leste;
+    const dy = seg.b.norte - seg.a.norte;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq > 1e-6) {
+      let t = ((cursor.leste - seg.a.leste) * dx + (cursor.norte - seg.a.norte) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t)); // limitar ao segmento
+      const px = seg.a.leste + t * dx;
+      const py = seg.a.norte + t * dy;
+      const dist = Math.hypot(cursor.leste - px, cursor.norte - py);
+      if (dist < bestD) {
+        bestD = dist;
+        best = seg;
+      }
+    }
+  }
+
+  if (best) {
+    return { segmento: best, distancia: bestD };
+  }
+  return null;
+}
+
+interface ParalelaControllerProps {
+  modo: ModoEdicao;
+  segmentos: SegmentoSnap[];
+  zona: number;
+  hemisferio: 'N' | 'S';
+  onSegmentoSelecionado?: (seg: SegmentoSnap | null) => void;
+  segmentoSelecionado: SegmentoSnap | null;
+  offsetDistancia: number;
+  onConfirmarParalela?: (pontos: [PontoLL, PontoLL]) => void;
+}
+
+function ParalelaController({ modo, segmentos, zona, hemisferio, onSegmentoSelecionado, segmentoSelecionado, offsetDistancia, onConfirmarParalela }: ParalelaControllerProps) {
+  const [hoverSeg, setHoverSeg] = useState<SegmentoSnap | null>(null);
+  const [previewPontos, setPreviewPontos] = useState<[number, number][] | null>(null);
+
+  useMapEvents({
+    mousemove(e) {
+      if (modo !== 'paralela') {
+        if (hoverSeg) setHoverSeg(null);
+        if (previewPontos) setPreviewPontos(null);
+        return;
+      }
+
+      const { lat, lng } = e.latlng;
+      const cursorUtm = geoParaUtm(lat, lng, zona, hemisferio);
+
+      if (!segmentoSelecionado) {
+        const segProx = encontrarSegmentoProximo(cursorUtm, segmentos);
+        if (segProx && segProx.distancia < 20) {
+          setHoverSeg(segProx.segmento);
+        } else {
+          setHoverSeg(null);
+        }
+      } else {
+        setHoverSeg(null);
+        const seg = segmentoSelecionado;
+        const dx = seg.b.leste - seg.a.leste;
+        const dy = seg.b.norte - seg.a.norte;
+        const len = Math.hypot(dx, dy);
+        if (len > 1e-6) {
+          const ux = dx / len;
+          const uy = dy / len;
+          
+          const nx = -uy;
+          const ny = ux;
+
+          const signedDist = (cursorUtm.leste - seg.a.leste) * nx + (cursorUtm.norte - seg.a.norte) * ny;
+          const side = signedDist >= 0 ? 'esquerda' : 'direita';
+
+          const offsetSign = side === 'esquerda' ? 1 : -1;
+          const offsetDist = offsetDistancia;
+
+          const pa_e = seg.a.leste + offsetDist * nx * offsetSign;
+          const pa_n = seg.a.norte + offsetDist * ny * offsetSign;
+          const pb_e = seg.b.leste + offsetDist * nx * offsetSign;
+          const pb_n = seg.b.norte + offsetDist * ny * offsetSign;
+
+          const gA = utmParaGeo(pa_e, pa_n, zona, hemisferio);
+          const gB = utmParaGeo(pb_e, pb_n, zona, hemisferio);
+
+          setPreviewPontos([[gA.lat, gA.lon], [gB.lat, gB.lon]]);
+        }
+      }
+    },
+    click(e) {
+      if (modo !== 'paralela') return;
+
+      const { lat, lng } = e.latlng;
+      const cursorUtm = geoParaUtm(lat, lng, zona, hemisferio);
+
+      if (!segmentoSelecionado) {
+        const segProx = encontrarSegmentoProximo(cursorUtm, segmentos);
+        if (segProx && segProx.distancia < 20) {
+          onSegmentoSelecionado?.(segProx.segmento);
+        }
+      } else {
+        if (previewPontos && previewPontos.length >= 2) {
+          const ptA_geo = previewPontos[0];
+          const ptB_geo = previewPontos[1];
+          const utmA = geoParaUtm(ptA_geo[0], ptA_geo[1], zona, hemisferio);
+          const utmB = geoParaUtm(ptB_geo[0], ptB_geo[1], zona, hemisferio);
+          
+          const pontoA: PontoLL = { lat: ptA_geo[0], lon: ptA_geo[1], leste: utmA.leste, norte: utmA.norte };
+          const pontoB: PontoLL = { lat: ptB_geo[0], lon: ptB_geo[1], leste: utmB.leste, norte: utmB.norte };
+          
+          onConfirmarParalela?.([pontoA, pontoB]);
+        }
+      }
+    }
+  });
+
+  if (modo !== 'paralela') return null;
+
+  let hoverPolyline = null;
+  if (hoverSeg && !segmentoSelecionado) {
+    const gA = utmParaGeo(hoverSeg.a.leste, hoverSeg.a.norte, zona, hemisferio);
+    const gB = utmParaGeo(hoverSeg.b.leste, hoverSeg.b.norte, zona, hemisferio);
+    hoverPolyline = (
+      <Polyline
+        positions={[[gA.lat, gA.lon], [gB.lat, gB.lon]]}
+        pathOptions={{ color: '#06b6d4', weight: 6, opacity: 0.8 }}
+        interactive={false}
+      />
+    );
+  }
+
+  let selPolyline = null;
+  if (segmentoSelecionado) {
+    const gA = utmParaGeo(segmentoSelecionado.a.leste, segmentoSelecionado.a.norte, zona, hemisferio);
+    const gB = utmParaGeo(segmentoSelecionado.b.leste, segmentoSelecionado.b.norte, zona, hemisferio);
+    selPolyline = (
+      <Polyline
+        positions={[[gA.lat, gA.lon], [gB.lat, gB.lon]]}
+        pathOptions={{ color: '#eab308', weight: 4, opacity: 0.9 }}
+        interactive={false}
+      />
+    );
+  }
+
+  let previewPolyline = null;
+  if (previewPontos && segmentoSelecionado) {
+    previewPolyline = (
+      <Polyline
+        positions={previewPontos}
+        pathOptions={{ color: '#2563eb', weight: 2.5, dashArray: '4 4', opacity: 0.9 }}
+        interactive={false}
+      />
+    );
+  }
+
+  return (
+    <>
+      {hoverPolyline}
+      {selPolyline}
+      {previewPolyline}
+    </>
+  );
+}
+
+interface DividirControllerProps {
+  modo: ModoEdicao;
+  segmentosAtivo: SegmentoSnap[];
+  validos: Vertex[];
+  zona: number;
+  hemisferio: 'N' | 'S';
+  onDividirSegmento?: (idA: string, idB: string) => void;
+}
+
+function DividirController({ modo, segmentosAtivo, validos, zona, hemisferio, onDividirSegmento }: DividirControllerProps) {
+  const [hoverSeg, setHoverSeg] = useState<SegmentoSnap | null>(null);
+
+  useMapEvents({
+    mousemove(e) {
+      if (modo !== 'dividir') {
+        if (hoverSeg) setHoverSeg(null);
+        return;
+      }
+      const { lat, lng } = e.latlng;
+      const cursorUtm = geoParaUtm(lat, lng, zona, hemisferio);
+      const segProx = encontrarSegmentoProximo(cursorUtm, segmentosAtivo);
+      if (segProx && segProx.distancia < 20) {
+        setHoverSeg(segProx.segmento);
+      } else {
+        setHoverSeg(null);
+      }
+    },
+    click(e) {
+      if (modo !== 'dividir') return;
+      const { lat, lng } = e.latlng;
+      const cursorUtm = geoParaUtm(lat, lng, zona, hemisferio);
+      const segProx = encontrarSegmentoProximo(cursorUtm, segmentosAtivo);
+      if (segProx && segProx.distancia < 20) {
+        const seg = segProx.segmento;
+        const vA = validos.find(v => Math.hypot(v.leste - seg.a.leste, v.norte - seg.a.norte) < 0.1);
+        const vB = validos.find(v => Math.hypot(v.leste - seg.b.leste, v.norte - seg.b.norte) < 0.1);
+        if (vA && vB) {
+          onDividirSegmento?.(vA.id, vB.id);
+        }
+      }
+    }
+  });
+
+  if (modo !== 'dividir' || !hoverSeg) return null;
+
+  const gA = utmParaGeo(hoverSeg.a.leste, hoverSeg.a.norte, zona, hemisferio);
+  const gB = utmParaGeo(hoverSeg.b.leste, hoverSeg.b.norte, zona, hemisferio);
+
+  return (
+    <Polyline
+      positions={[[gA.lat, gA.lon], [gB.lat, gB.lon]]}
+      pathOptions={{ color: '#06b6d4', weight: 6, opacity: 0.8 }}
+      interactive={false}
+    />
+  );
+}
+
+interface TrimExtendControllerProps {
+  modo: ModoEdicao; // 'trim' | 'extend'
+  linhaLimite: SegmentoSnap | null;
+  onLinhaLimite?: (seg: SegmentoSnap | null) => void;
+  segmentos: SegmentoSnap[];
+  objetos: ObjetoDesenho[];
+  zona: number;
+  hemisferio: 'N' | 'S';
+  onConfirmarTrim?: (objetoId: string, novosPontos: PontoLL[]) => void;
+  onConfirmarExtend?: (objetoId: string, novosPontos: PontoLL[]) => void;
+}
+
+function TrimExtendController({
+  modo,
+  linhaLimite,
+  onLinhaLimite,
+  segmentos,
+  objetos,
+  zona,
+  hemisferio,
+  onConfirmarTrim,
+  onConfirmarExtend
+}: TrimExtendControllerProps) {
+  const [hoverSeg, setHoverSeg] = useState<SegmentoSnap | null>(null);
+  const [previewLine, setPreviewLine] = useState<{
+    points: [number, number][];
+    color: string;
+    dash?: string;
+  } | null>(null);
+  const [resultPoints, setResultPoints] = useState<PontoLL[] | null>(null);
+  const [resultObjetoId, setResultObjetoId] = useState<string | null>(null);
+
+  useMapEvents({
+    mousemove(e) {
+      if (modo !== 'trim' && modo !== 'extend') {
+        setHoverSeg(null);
+        setPreviewLine(null);
+        return;
+      }
+
+      const { lat, lng } = e.latlng;
+      const cursorUtm = geoParaUtm(lat, lng, zona, hemisferio);
+
+      // FASE 1: Selecionar a linha limite
+      if (!linhaLimite) {
+        const segProx = encontrarSegmentoProximo(cursorUtm, segmentos);
+        if (segProx && segProx.distancia < 20) {
+          setHoverSeg(segProx.segmento);
+        } else {
+          setHoverSeg(null);
+        }
+        setPreviewLine(null);
+        setResultPoints(null);
+        setResultObjetoId(null);
+      } else {
+        // FASE 2: Realizar Trim ou Extend em uma polilinha
+        setHoverSeg(null);
+        
+        const segsObjeto = segmentos.filter((s) => s.tipoOrigem === 'objeto' && s.objetoId);
+        const segProx = encontrarSegmentoProximo(cursorUtm, segsObjeto);
+
+        if (segProx && segProx.distancia < 20 && segProx.segmento.objetoId) {
+          const seg = segProx.segmento;
+          const o = objetos.find((x) => x.id === seg.objetoId);
+          if (o && o.tipo === 'polilinha' && o.pontos.length >= 2) {
+            const idx = seg.segmentoIdx ?? 0;
+
+            if (modo === 'trim') {
+              const pi = intersecaoRetasUtm(linhaLimite.a, linhaLimite.b, seg.a, seg.b);
+              if (pi) {
+                const dx = seg.b.leste - seg.a.leste;
+                const dy = seg.b.norte - seg.a.norte;
+                const lenSq = dx * dx + dy * dy;
+                let onSegment = false;
+                if (lenSq > 1e-6) {
+                  const t = ((pi.leste - seg.a.leste) * dx + (pi.norte - seg.a.norte) * dy) / lenSq;
+                  if (t >= -0.05 && t <= 1.05) onSegment = true;
+                }
+
+                if (onSegment) {
+                  const g = utmParaGeo(pi.leste, pi.norte, zona, hemisferio);
+                  const pIntersecao: PontoLL = { lat: g.lat, lon: g.lon, leste: pi.leste, norte: pi.norte };
+
+                  const distParaA = Math.hypot(cursorUtm.leste - seg.a.leste, cursorUtm.norte - seg.a.norte);
+                  const distParaB = Math.hypot(cursorUtm.leste - seg.b.leste, cursorUtm.norte - seg.b.norte);
+
+                  let novosPontos: PontoLL[] = [];
+                  let pontosRemovidos: [number, number][] = [];
+
+                  if (distParaA < distParaB) {
+                    novosPontos = [pIntersecao, ...o.pontos.slice(idx + 1)];
+                    pontosRemovidos = [...o.pontos.slice(0, idx + 1).map((p) => [p.lat, p.lon] as [number, number]), [g.lat, g.lon]];
+                  } else {
+                    novosPontos = [...o.pontos.slice(0, idx + 1), pIntersecao];
+                    pontosRemovidos = [[g.lat, g.lon], ...o.pontos.slice(idx + 1).map((p) => [p.lat, p.lon] as [number, number])];
+                  }
+
+                  setResultObjetoId(o.id);
+                  setResultPoints(novosPontos);
+                  setPreviewLine({
+                    points: pontosRemovidos,
+                    color: '#ef4444',
+                    dash: '4 4'
+                  });
+                } else {
+                  setPreviewLine(null);
+                  setResultPoints(null);
+                  setResultObjetoId(null);
+                }
+              } else {
+                setPreviewLine(null);
+                setResultPoints(null);
+                setResultObjetoId(null);
+              }
+            } else if (modo === 'extend') {
+              const q0 = o.pontos[0];
+              const qk = o.pontos[o.pontos.length - 1];
+
+              const distQ0 = Math.hypot(cursorUtm.leste - q0.leste, cursorUtm.norte - q0.norte);
+              const distQk = Math.hypot(cursorUtm.leste - qk.leste, cursorUtm.norte - qk.norte);
+
+              if (distQk < distQ0) {
+                const qk1 = o.pontos[o.pontos.length - 2];
+                const dx = qk.leste - qk1.leste;
+                const dy = qk.norte - qk1.norte;
+
+                const pi = intersecaoRetasUtm(linhaLimite.a, linhaLimite.b, qk1, qk);
+                if (pi) {
+                  const dot = (pi.leste - qk.leste) * dx + (pi.norte - qk.norte) * dy;
+                  if (dot > 0) {
+                    const g = utmParaGeo(pi.leste, pi.norte, zona, hemisferio);
+                    const pIntersecao: PontoLL = { lat: g.lat, lon: g.lon, leste: pi.leste, norte: pi.norte };
+
+                    setResultObjetoId(o.id);
+                    setResultPoints([...o.pontos, pIntersecao]);
+                    setPreviewLine({
+                      points: [[qk.lat, qk.lon], [g.lat, g.lon]],
+                      color: '#2563eb',
+                      dash: '4 4'
+                    });
+                  } else {
+                    setPreviewLine(null);
+                    setResultPoints(null);
+                    setResultObjetoId(null);
+                  }
+                }
+              } else {
+                const q1 = o.pontos[1];
+                const dx = q0.leste - q1.leste;
+                const dy = q0.norte - q1.norte;
+
+                const pi = intersecaoRetasUtm(linhaLimite.a, linhaLimite.b, q1, q0);
+                if (pi) {
+                  const dot = (pi.leste - q0.leste) * dx + (pi.norte - q0.norte) * dy;
+                  if (dot > 0) {
+                    const g = utmParaGeo(pi.leste, pi.norte, zona, hemisferio);
+                    const pIntersecao: PontoLL = { lat: g.lat, lon: g.lon, leste: pi.leste, norte: pi.norte };
+
+                    setResultObjetoId(o.id);
+                    setResultPoints([pIntersecao, ...o.pontos]);
+                    setPreviewLine({
+                      points: [[q0.lat, q0.lon], [g.lat, g.lon]],
+                      color: '#2563eb',
+                      dash: '4 4'
+                    });
+                  } else {
+                    setPreviewLine(null);
+                    setResultPoints(null);
+                    setResultObjetoId(null);
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          setPreviewLine(null);
+          setResultPoints(null);
+          setResultObjetoId(null);
+        }
+      }
+    },
+    click(e) {
+      if (modo !== 'trim' && modo !== 'extend') return;
+
+      const { lat, lng } = e.latlng;
+      const cursorUtm = geoParaUtm(lat, lng, zona, hemisferio);
+
+      if (!linhaLimite) {
+        const segProx = encontrarSegmentoProximo(cursorUtm, segmentos);
+        if (segProx && segProx.distancia < 20) {
+          onLinhaLimite?.(segProx.segmento);
+        }
+      } else {
+        if (resultObjetoId && resultPoints) {
+          if (modo === 'trim') {
+            onConfirmarTrim?.(resultObjetoId, resultPoints);
+          } else {
+            onConfirmarExtend?.(resultObjetoId, resultPoints);
+          }
+          setPreviewLine(null);
+          setResultPoints(null);
+          setResultObjetoId(null);
+        }
+      }
+    }
+  });
+
+  if (modo !== 'trim' && modo !== 'extend') return null;
+
+  let hoverPolyline = null;
+  if (hoverSeg && !linhaLimite) {
+    const gA = utmParaGeo(hoverSeg.a.leste, hoverSeg.a.norte, zona, hemisferio);
+    const gB = utmParaGeo(hoverSeg.b.leste, hoverSeg.b.norte, zona, hemisferio);
+    hoverPolyline = (
+      <Polyline
+        positions={[[gA.lat, gA.lon], [gB.lat, gB.lon]]}
+        pathOptions={{ color: '#06b6d4', weight: 6, opacity: 0.8 }}
+        interactive={false}
+      />
+    );
+  }
+
+  let limitePolyline = null;
+  if (linhaLimite) {
+    const gA = utmParaGeo(linhaLimite.a.leste, linhaLimite.a.norte, zona, hemisferio);
+    const gB = utmParaGeo(linhaLimite.b.leste, linhaLimite.b.norte, zona, hemisferio);
+    limitePolyline = (
+      <Polyline
+        positions={[[gA.lat, gA.lon], [gB.lat, gB.lon]]}
+        pathOptions={{ color: '#eab308', weight: 4, opacity: 0.9 }}
+        interactive={false}
+      />
+    );
+  }
+
+  let prevPolyline = null;
+  if (previewLine) {
+    prevPolyline = (
+      <Polyline
+        positions={previewLine.points}
+        pathOptions={{ color: previewLine.color, weight: 2.5, dashArray: previewLine.dash, opacity: 0.9 }}
+        interactive={false}
+      />
+    );
+  }
+
+  return (
+    <>
+      {hoverPolyline}
+      {limitePolyline}
+      {prevPolyline}
+    </>
+  );
+}
+
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
@@ -344,10 +1075,27 @@ export default function MapEditor(props: Props) {
     zona = 23,
     hemisferio = 'S',
     orto = 'off',
+    snapAtivo = false,
+    segmentoSelecionado = null,
+    onSegmentoSelecionado,
+    offsetDistancia = 5,
+    onConfirmarParalela,
+    copiarPontoBase = null,
+    onConfirmarCopiaBase,
+    onConfirmarCopiaDestino,
+    onDividirSegmento,
+    linhaLimite = null,
+    onLinhaLimite,
+    onConfirmarTrim,
+    onConfirmarExtend,
+    camadasVisiveis = {},
+    camadasBloqueadas = {},
+    estilosCamadas = {},
   } = props;
 
   const [zoom, setZoom] = useState(16);
   const [cursorLatLng, setCursorLatLng] = useState<L.LatLng | null>(null);
+  const [hoverSnap, setHoverSnap] = useState<SnapResult | null>(null);
   const isDesenho = ['linha', 'polilinha', 'tracejado', 'cota', 'texto', 'simbolo', 'medir'].includes(modo);
 
 
@@ -360,6 +1108,137 @@ export default function MapEditor(props: Props) {
   // crescem ao aproximar. Antes ficavam travados em 1x ao afastar, e os blocos ficavam enormes.
   const fzZoom = Math.min(2.2, Math.max(0.6, 1 + (zoom - 16) * 0.2));
   const validos = useMemo(() => vertices.filter(valido), [vertices]);
+  // Compila todos os alvos de snap de pontos (vértices)
+  const todosAlvosSnap = useMemo(() => {
+    const alvos: AlvoSnap[] = [];
+    // 1) Vertices da gleba ativa
+    for (const v of validos) {
+      alvos.push({ leste: v.leste, norte: v.norte });
+    }
+    // 2) Vertices de outras glebas
+    if (outrasGlebas) {
+      for (const ring of outrasGlebas) {
+        for (const pt of ring) {
+          const u = geoParaUtm(pt[0], pt[1], zona, hemisferio);
+          alvos.push({ leste: u.leste, norte: u.norte });
+        }
+      }
+    }
+    // 3) Referências
+    if (referencias) {
+      for (const ring of referencias) {
+        for (const pt of ring) {
+          const u = geoParaUtm(pt[0], pt[1], zona, hemisferio);
+          alvos.push({ leste: u.leste, norte: u.norte });
+        }
+      }
+    }
+    // 4) Vértices vizinhos
+    if (verticesVizinho) {
+      for (const pt of verticesVizinho) {
+        alvos.push({ leste: pt.leste, norte: pt.norte });
+      }
+    }
+    return alvos;
+  }, [validos, outrasGlebas, referencias, verticesVizinho, zona, hemisferio]);
+
+  const segmentosAtivo = useMemo(() => {
+    const segs: SegmentoSnap[] = [];
+    if (validos.length >= 2) {
+      for (let i = 0; i < validos.length; i++) {
+        const a = validos[i];
+        const b = validos[(i + 1) % validos.length];
+        segs.push({
+          a: { leste: a.leste, norte: a.norte },
+          b: { leste: b.leste, norte: b.norte },
+          tipoOrigem: 'perimetro'
+        });
+      }
+    }
+    return segs;
+  }, [validos]);
+
+  // Compila todos os segmentos do mapa em coordenadas UTM para servir de alvo para snaps e paralela.
+  const todosSegmentos = useMemo(() => {
+    const segs: SegmentoSnap[] = [];
+    const z = zona ?? 23;
+    const h = hemisferio ?? 'S';
+
+    const paraUtm = (lat: number, lon: number): AlvoSnap => {
+      const u = geoParaUtm(lat, lon, z, h);
+      return { leste: u.leste, norte: u.norte };
+    };
+
+    // 1) Gleba ativa (vertices)
+    const activePts = validos;
+    if (activePts.length >= 2) {
+      for (let i = 0; i < activePts.length; i++) {
+        const a = activePts[i];
+        const b = activePts[(i + 1) % activePts.length];
+        segs.push({
+          a: { leste: a.leste, norte: a.norte },
+          b: { leste: b.leste, norte: b.norte },
+          tipoOrigem: 'perimetro'
+        });
+      }
+    }
+
+    // 2) Outras glebas (outrasGlebas) - cada uma é um array de [lat, lon]
+    if (outrasGlebas) {
+      for (const ring of outrasGlebas) {
+        if (ring.length >= 2) {
+          for (let i = 0; i < ring.length; i++) {
+            const a = paraUtm(ring[i][0], ring[i][1]);
+            const b = paraUtm(ring[(i + 1) % ring.length][0], ring[(i + 1) % ring.length][1]);
+            segs.push({ a, b, tipoOrigem: 'referencia' });
+          }
+        }
+      }
+    }
+
+    // 3) Referências (referencias) - cada uma é um array de [lat, lon]
+    if (referencias) {
+      for (const ring of referencias) {
+        if (ring.length >= 2) {
+          for (let i = 0; i < ring.length; i++) {
+            const a = paraUtm(ring[i][0], ring[i][1]);
+            const b = paraUtm(ring[(i + 1) % ring.length][0], ring[(i + 1) % ring.length][1]);
+            segs.push({ a, b, tipoOrigem: 'referencia' });
+          }
+        }
+      }
+    }
+
+    // 4) Objetos de desenho (objetos) - polilinhas e cotas
+    if (objetos) {
+      for (const o of objetos) {
+        if (o.tipo === 'polilinha' && o.pontos.length >= 2) {
+          const count = o.preenchido ? o.pontos.length : o.pontos.length - 1;
+          for (let i = 0; i < count; i++) {
+            const a = o.pontos[i];
+            const b = o.pontos[(i + 1) % o.pontos.length];
+            segs.push({
+              a: { leste: a.leste, norte: a.norte },
+              b: { leste: b.leste, norte: b.norte },
+              tipoOrigem: 'objeto',
+              objetoId: o.id,
+              segmentoIdx: i
+            });
+          }
+        } else if (o.tipo === 'cota' && o.pontos.length >= 2) {
+          segs.push({
+            a: { leste: o.pontos[0].leste, norte: o.pontos[0].norte },
+            b: { leste: o.pontos[1].leste, norte: o.pontos[1].norte },
+            tipoOrigem: 'objeto',
+            objetoId: o.id,
+            segmentoIdx: 0
+          });
+        }
+      }
+    }
+
+    return segs;
+  }, [validos, outrasGlebas, referencias, objetos, zona, hemisferio]);
   const centro = useMemo<[number, number]>(() => (validos.length ? [validos[0].lat, validos[0].lon] : ESPERA_FELIZ), [validos]);
   const anel = validos.map((v) => [v.lat, v.lon] as [number, number]);
   const centroideGleba = useMemo<[number, number] | null>(() => {
@@ -392,7 +1271,7 @@ export default function MapEditor(props: Props) {
   // mas permite posicionar vértice com muito mais precisão (pedido do dono, 05/07/2026)
   return (
     <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={28} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
-      <CursorMapa ativo={modo !== 'navegar' && !bloqueado} />
+      <CursorMapa ativo={!bloqueado} />
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Híbrido (Google)">
           <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={28} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
@@ -409,7 +1288,7 @@ export default function MapEditor(props: Props) {
       <Centralizar sig={centralizarSig} vertices={vertices} />
       <VerZoom onZoom={setZoom} />
       <CaixaSelecao ativo={modo === 'multi'} vertices={validos} onBoxSelect={onBoxSelect} />
-      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} />
+      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} hoverSnap={hoverSnap} zona={zona} hemisferio={hemisferio} onConfirmarCopiaBase={onConfirmarCopiaBase} onConfirmarCopiaDestino={onConfirmarCopiaDestino} />
       <FocoMap latLng={focoLatLng} />
 
       {/* referências certificadas (snap) */}
@@ -468,32 +1347,29 @@ export default function MapEditor(props: Props) {
       ))}
 
       {/* polígono ativo */}
-      {anel.length >= 3 ? (
-        <Polygon positions={anel} pathOptions={{ color: '#facc15', weight: 2, fillColor: '#facc15', fillOpacity: 0.12 }} />
-      ) : anel.length === 2 ? (
-        <Polyline positions={anel} pathOptions={{ color: '#facc15', weight: 2 }} />
-      ) : null}
+      {camadasVisiveis.divisas !== false && (
+        anel.length >= 3 ? (
+          <Polygon positions={anel} pathOptions={{ color: estilosCamadas.divisas?.cor ?? '#facc15', weight: estilosCamadas.divisas?.espessura ?? 2, fillColor: estilosCamadas.divisas?.cor ?? '#facc15', fillOpacity: 0.12 }} />
+        ) : anel.length === 2 ? (
+          <Polyline positions={anel} pathOptions={{ color: estilosCamadas.divisas?.cor ?? '#facc15', weight: estilosCamadas.divisas?.espessura ?? 2 }} />
+        ) : null
+      )}
 
       {/* cor de apoio das divisas — deslocada pra FORA do polígono, deixando o traçado livre
           pra cor do confrontante (que fica sobre a linha) não se sobreporem */}
-      {validos.length >= 2 && (() => {
+      {camadasVisiveis.divisas !== false && validos.length >= 2 && (() => {
         const cLat = validos.reduce((s, p) => s + p.lat, 0) / validos.length;
         const cLon = validos.reduce((s, p) => s + p.lon, 0) / validos.length;
-        // afastamento proporcional ao TAMANHO do polígono (não ao zoom): assim as barras ficam
-        // sempre coladas na divisa, seja qual for o enquadramento ao abrir o projeto.
         const lats = validos.map((p) => p.lat), lons = validos.map((p) => p.lon);
         const maxDim = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons)) || 0.0005;
         const off = maxDim * 0.012;
         return validos.map((v, i) => {
-          // linha ideal sai branca SÓ no modo de pintar divisa (todo lado nasce "linha ideal" por
-          // padrão — fora do modo, mostrar branca em tudo poluiria o desenho)
           const cor = v.representacao === 'linha-ideal'
             ? (modo === 'divisa' ? '#ffffff' : null)
             : corDivisa(v.representacao);
           if (!cor) return null;
           const prox = validos[(i + 1) % validos.length];
           if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
-          // normal do segmento apontando pra fora (pro lado oposto ao centróide)
           let nx = -(prox.lat - v.lat), ny = prox.lon - v.lon;
           const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
           const mLat = (v.lat + prox.lat) / 2, mLon = (v.lon + prox.lon) / 2;
@@ -501,7 +1377,7 @@ export default function MapEditor(props: Props) {
           const a: [number, number] = [v.lat + ny * off, v.lon + nx * off];
           const b: [number, number] = [prox.lat + ny * off, prox.lon + nx * off];
           return (
-            <Polyline key={`div${v.id}-${v.representacao}`} positions={[a, b]} pathOptions={{ color: cor, weight: zoom >= 18 ? 7 : 5, opacity: 0.8 }}>
+            <Polyline key={`div${v.id}-${v.representacao}`} positions={[a, b]} pathOptions={{ color: cor, weight: estilosCamadas.divisas?.espessura ? estilosCamadas.divisas.espessura * 2.5 : (zoom >= 18 ? 7 : 5), opacity: 0.8 }}>
               <Tooltip sticky direction="top" opacity={0.9}><span style={{ color: cor }}>Divisa: {REPRES_LABEL[v.representacao || ''] || v.representacao}</span></Tooltip>
             </Polyline>
           );
@@ -509,7 +1385,7 @@ export default function MapEditor(props: Props) {
       })()}
 
       {/* Roteamento visual de confrontantes aplicados sobre os segmentos */}
-      {confrontantePorLado && confrontantes && validos.map((v, i) => {
+      {camadasVisiveis.divisas !== false && confrontantePorLado && confrontantes && validos.map((v, i) => {
         if (validos.length < 2) return null;
         const prox = validos[(i + 1) % validos.length];
         if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
@@ -530,7 +1406,7 @@ export default function MapEditor(props: Props) {
           <Polyline
             key={`conf-seg-${v.id}`}
             positions={[a, b]}
-            pathOptions={{ color: corConf, weight: 4, opacity: 0.85, dashArray: '4 8' }}
+            pathOptions={{ color: corConf, weight: estilosCamadas.divisas?.espessura ?? 4, opacity: 0.85, dashArray: '4 8' }}
           >
             <Tooltip sticky direction="top" opacity={0.9}>
               <span className="font-bold" style={{ color: corConf }}>Confrontante: {conf.nome || '(sem nome)'}</span>
@@ -558,18 +1434,36 @@ export default function MapEditor(props: Props) {
 
       {/* objetos de desenho */}
       {objetos.map((o) => {
+        let camadaKey = 'polilinhas';
+        if (o.tipo === 'polilinha') {
+          camadaKey = o.carTema ? 'ambientais' : 'polilinhas';
+        } else if (o.tipo === 'texto') {
+          camadaKey = 'textos';
+        } else if (o.tipo === 'cota') {
+          camadaKey = 'cotas';
+        } else if (o.tipo === 'simbolo') {
+          camadaKey = 'simbolos';
+        }
+
+        const visivel = camadasVisiveis[camadaKey] !== false;
+        const bloqueada = camadasBloqueadas[camadaKey] === true;
+        const estiloCamada = estilosCamadas[camadaKey];
+
+        if (!visivel) return null;
+
         const pos = o.pontos.map((p) => [p.lat, p.lon] as [number, number]);
         const sel = o.id === objetoSelId;
+
         if (o.tipo === 'polilinha') {
           const estilo = o.estiloLinha ?? (o.tracejado ? 'tracejado' : 'solido');
           const dashArray = estilo === 'tracejado' ? '8 6' : estilo === 'pontilhado' ? '2 4' : undefined;
           const comum = {
-            color: o.cor ?? '#2563eb',
-            weight: (o.espessura ?? 1.5) + (sel ? 1 : 0),
+            color: o.cor ?? estiloCamada?.cor ?? '#2563eb',
+            weight: (o.espessura ?? estiloCamada?.espessura ?? 1.5) + (sel ? 1 : 0),
             dashArray
           };
           const fechado = o.preenchido && pos.length >= 3;
-          let fillColor = o.corPreenchimento ?? o.cor ?? '#2563eb';
+          let fillColor = o.corPreenchimento ?? o.cor ?? estiloCamada?.cor ?? '#2563eb';
           let fillOpacity = 0.4;
           if (fechado && o.achura && o.achura !== 'nenhuma') {
             fillColor = `url(#pat-${o.id})`;
@@ -578,19 +1472,17 @@ export default function MapEditor(props: Props) {
           return (
             <Fragment key={o.id}>
               {fechado
-                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor, fillOpacity }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
+                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor, fillOpacity }} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
                 : (
                   <>
-                    {/* linha "fantasma" invisível e grossa: área mínima de clique em pixels de tela,
-                        senão linha fina/curta fica impossível de selecionar (feedback 05/07/2026) */}
-                    <Polyline positions={pos} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
-                    <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
+                    <Polyline positions={pos} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+                    <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
                   </>
                 )}
-              {sel && pos.map((p, idx) => (
+              {sel && !bloqueada && pos.map((p, idx) => (
                 <CircleMarker key={`c${idx}`} center={p} radius={5} pathOptions={{ color: '#ef4444', fillColor: '#fff', fillOpacity: 1 }} />
               ))}
-              {sel && pos.map((p, idx) => (
+              {sel && !bloqueada && pos.map((p, idx) => (
                 <Marker key={`h${idx}`} position={p} draggable opacity={0}
                   eventHandlers={{
                     dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); }
@@ -617,18 +1509,18 @@ export default function MapEditor(props: Props) {
           const posOffset: [number, number][] = [[g0.lat, g0.lon], [g1.lat, g1.lon]];
           const mid: [number, number] = [(g0.lat + g1.lat) / 2, (g0.lon + g1.lon) / 2];
 
+          const corCota = o.cor ?? estiloCamada?.cor ?? '#b91c1c';
+          const espessuraCota = o.espessura ?? estiloCamada?.espessura ?? 1.2;
+
           return (
             <Fragment key={o.id}>
-              {/* Linhas de extensão perpendiculares tracejadas */}
-              <Polyline positions={[[p0.lat, p0.lon], [g0.lat, g0.lon]]} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 0.8, dashArray: '2 3' }} />
-              <Polyline positions={[[p1.lat, p1.lon], [g1.lat, g1.lon]]} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 0.8, dashArray: '2 3' }} />
-              {/* Linha de cota paralela (com "fantasma" grosso invisível pra cota curta ser clicável) */}
-              <Polyline positions={posOffset} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
-              <Polyline positions={posOffset} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 1.2 + (sel ? 0.8 : 0) }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
-              {/* o rótulo da medida também seleciona/abre menu — em cota pequena ele é o maior alvo */}
-              <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:#b91c1c;background:#fff;padding:0 2px;border:1px solid #b91c1c;border-radius:2px;width:max-content;display:inline-block">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })}
-                eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
-              {sel && pos.map((p, idx) => (
+              <Polyline positions={[[p0.lat, p0.lon], [g0.lat, g0.lon]]} pathOptions={{ color: corCota, weight: 0.8, dashArray: '2 3' }} />
+              <Polyline positions={[[p1.lat, p1.lon], [g1.lat, g1.lon]]} pathOptions={{ color: corCota, weight: 0.8, dashArray: '2 3' }} />
+              <Polyline positions={posOffset} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+              <Polyline positions={posOffset} pathOptions={{ color: corCota, weight: espessuraCota + (sel ? 0.8 : 0) }} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+              <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:${corCota};background:#fff;padding:0 2px;border:1px solid ${corCota};border-radius:2px;width:max-content;display:inline-block">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })}
+                eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+              {sel && !bloqueada && pos.map((p, idx) => (
                 <Marker key={`hc${idx}`} position={p} draggable opacity={0}
                   eventHandlers={{
                     dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, idx, ll.lat, ll.lng); }
@@ -641,21 +1533,21 @@ export default function MapEditor(props: Props) {
           const tam = o.tamanho ?? 30;
           const html = `<svg viewBox="-14 -14 28 28" width="${tam}" height="${tam}" style="overflow:visible;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))">${simboloSvgInterno(o.simbolo ?? '')}</svg>`;
           return (
-            <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable
+            <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable={modo === 'navegar' && !bloqueada}
               icon={L.divIcon({ className: 'simbolo-obj', html, iconSize: [tam, tam], iconAnchor: [tam / 2, tam / 2] })}
               eventHandlers={{
-                click: () => onSelecObjeto?.(o.id),
-                contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY),
+                click: () => { if (!bloqueada) onSelecObjeto?.(o.id); },
+                contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); },
                 dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
               }} />
           );
         }
         // texto
         return (
-          <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable icon={iconeTexto(o, sel)}
+          <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable={modo === 'navegar' && !bloqueada} icon={iconeTexto(o, sel, estiloCamada?.cor)}
             eventHandlers={{
-              click: () => onSelecObjeto?.(o.id),
-              contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY),
+              click: () => { if (!bloqueada) onSelecObjeto?.(o.id); },
+              contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); },
               dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
             }} />
         );
@@ -683,35 +1575,38 @@ export default function MapEditor(props: Props) {
       })()}
 
       {/* rótulos de confrontante (arrastáveis) */}
-      {rotulos.map((r) => (
-        <Marker key={r.id} position={[r.lat, r.lon]} draggable icon={iconeRotulo(r, fzZoom)}
+      {camadasVisiveis.divisas !== false && rotulos.map((r) => (
+        <Marker key={r.id} position={[r.lat, r.lon]} draggable={modo === 'navegar' && !camadasBloqueadas.divisas} icon={iconeRotulo(r, fzZoom)}
           eventHandlers={{
-            click: () => { onEditarConfrontante?.(r.id); },
+            click: () => { if (!camadasBloqueadas.divisas) onEditarConfrontante?.(r.id); },
             dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverRotulo?.(r.id, ll.lat, ll.lng); }
           }} />
       ))}
 
       {/* anel de destaque dos vértices multi-selecionados (modo "triângulo") */}
-      {modo === 'multi' && selMulti && validos.filter((v) => selMulti.has(v.id)).map((v) => (
+      {camadasVisiveis.divisas !== false && modo === 'multi' && selMulti && validos.filter((v) => selMulti.has(v.id)).map((v) => (
         <CircleMarker key={`ms${v.id}`} center={[v.lat, v.lon]} radius={9}
           pathOptions={{ color: '#f59e0b', weight: 2.5, fillColor: '#fde047', fillOpacity: 0.5 }} />
       ))}
 
       {/* vértices */}
-      {validos.map((v) => (
+      {camadasVisiveis.divisas !== false && validos.map((v) => (
         <Marker
           key={v.id}
           position={[v.lat, v.lon]}
-          draggable={modo === 'navegar' && !bloqueado}
+          draggable={modo === 'navegar' && !bloqueado && !camadasBloqueadas.divisas}
           icon={iconeVertice(v, v.id === selecionadoId || v.id === realceId)}
           eventHandlers={{
             click() {
+              if (camadasBloqueadas.divisas) return;
               if (isDesenho) onCliqueDesenho?.(v.lat, v.lon);
               else if (modo === 'apagar') onApagar(v.id);
               else if (modo === 'divisa') onPintarDivisa?.(v.id);
               else if (modo === 'confrontante') onPintarConfrontante?.(v.id);
               else if (modo === 'ignorar') onIgnorarVertice?.(v.id);
               else if (modo === 'multi') onToggleMulti?.(v.id);
+              else if (modo === 'copiar_base') onConfirmarCopiaBase?.({ lat: v.lat, lon: v.lon, leste: v.leste, norte: v.norte });
+              else if (modo === 'copiar_destino') onConfirmarCopiaDestino?.({ lat: v.lat, lon: v.lon, leste: v.leste, norte: v.norte });
               else onSelecionar(v.id);
             },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMover(v.id, ll.lat, ll.lng); },
@@ -720,14 +1615,14 @@ export default function MapEditor(props: Props) {
       ))}
 
       {/* TIQUE DE TROCA DE CONFRONTANTE nos marcos M (sincronizado com a planta via divisaConfAz) */}
-      {mostrarDivisaConf && validos.length >= 3 && (() => {
+      {camadasVisiveis.divisas !== false && mostrarDivisaConf && validos.length >= 3 && (() => {
         const cLat = validos.reduce((s, v) => s + v.lat, 0) / validos.length;
         const cLon = validos.reduce((s, v) => s + v.lon, 0) / validos.length;
         const mLat = 111320, mLon = 111320 * Math.cos((cLat * Math.PI) / 180);
         const lats = validos.map((v) => v.lat), lons = validos.map((v) => v.lon);
         const wM = (Math.max(...lons) - Math.min(...lons)) * mLon, hM = (Math.max(...lats) - Math.min(...lats)) * mLat;
         const L = Math.min(160, Math.max(20, Math.hypot(wM, hM) * 0.16)); // metros (dobro do tamanho, mais visível)
-        const arrastavel = modo === 'navegar' && !!onAjustarDivisaConf;
+        const arrastavel = modo === 'navegar' && !!onAjustarDivisaConf && !camadasBloqueadas.divisas;
         return validos.filter((v) => v.tipo === 'M').map((v) => {
           let az = v.divisaConfAz;
           if (az == null) { const dN = (v.lat - cLat) * mLat, dE = (v.lon - cLon) * mLon; let a = (Math.atan2(dE, dN) * 180) / Math.PI; if (a < 0) a += 360; az = a; }
@@ -750,18 +1645,18 @@ export default function MapEditor(props: Props) {
       })()}
 
       {/* vértices IGNORADOS: pontos brancos com borda preta, super visíveis; no modo "considerar", clicar reinsere */}
-      {verticesIgnorados.filter(valido).map((v) => (
+      {camadasVisiveis.divisas !== false && verticesIgnorados.filter(valido).map((v) => (
         <CircleMarker key={`ign${v.id}`} center={[v.lat, v.lon]} radius={5.5}
           pathOptions={{ color: '#000000', fillColor: '#ffffff', fillOpacity: 1.0, weight: 1.8 }}
-          eventHandlers={{ click() { if (modo === 'considerar') onConsiderarVertice?.(v.id); } }} />
+          eventHandlers={{ click() { if (modo === 'considerar' && !camadasBloqueadas.divisas) onConsiderarVertice?.(v.id); } }} />
       ))}
 
       {/* rótulos dos vértices (caixinha branca; arrastáveis com a ferramenta mover/F5; ocultação adaptativa para evitar poluição visual) */}
-      {(mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => (
+      {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => (
         <Marker
           key={`nome${v.id}`}
           position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}
-          draggable={modo === 'navegar'}
+          draggable={modo === 'navegar' && !camadasBloqueadas.divisas}
           icon={iconeNomeVertice(
             estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome),
             Math.round(tamNomes * fzZoom),
@@ -769,7 +1664,7 @@ export default function MapEditor(props: Props) {
             v.posRotulo ? 0 : (dirsRotulo[i]?.[1] ?? 0),
           )}
           eventHandlers={{
-            click() { onSelecionar(v.id); },
+            click() { if (!camadasBloqueadas.divisas) onSelecionar(v.id); },
             dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },
           }}
         />
@@ -894,6 +1789,84 @@ export default function MapEditor(props: Props) {
           </div>
         );
       })()}
+
+      {snapAtivo && isDesenho && (
+        <SnapIndicator
+          snapAtivo={snapAtivo}
+          alvos={todosAlvosSnap}
+          segmentos={todosSegmentos}
+          pontoOrigem={desenhoAtual.length > 0 ? (() => {
+            const p = desenhoAtual[desenhoAtual.length - 1];
+            const u = geoParaUtm(p[0], p[1], zona, hemisferio);
+            return { leste: u.leste, norte: u.norte };
+          })() : null}
+          zona={zona}
+          hemisferio={hemisferio}
+          onSnapChange={setHoverSnap}
+        />
+      )}
+
+      {modo === 'paralela' && (
+        <ParalelaController
+          modo={modo}
+          segmentos={todosSegmentos}
+          zona={zona}
+          hemisferio={hemisferio}
+          segmentoSelecionado={segmentoSelecionado}
+          onSegmentoSelecionado={onSegmentoSelecionado}
+          offsetDistancia={offsetDistancia}
+          onConfirmarParalela={onConfirmarParalela}
+        />
+      )}
+
+      {modo === 'copiar_destino' && copiarPontoBase && cursorLatLng && selMulti && (() => {
+        const targetPts = validos.filter((v) => selMulti.has(v.id));
+        if (targetPts.length === 0) return null;
+        const cursorUtm = geoParaUtm(cursorLatLng.lat, cursorLatLng.lng, zona, hemisferio);
+        const dL = cursorUtm.leste - copiarPontoBase.leste;
+        const dN = cursorUtm.norte - copiarPontoBase.norte;
+        const previewPts = targetPts.map((v) => {
+          const l = v.leste + dL;
+          const n = v.norte + dN;
+          const g = utmParaGeo(l, n, zona, hemisferio);
+          return [g.lat, g.lon] as [number, number];
+        });
+        const refLine = [[copiarPontoBase.lat, copiarPontoBase.lon], [cursorLatLng.lat, cursorLatLng.lng]] as [number, number][];
+        return (
+          <>
+            <Polyline positions={refLine} pathOptions={{ color: '#ef4444', weight: 1.5, dashArray: '3 3' }} interactive={false} />
+            <Polyline positions={previewPts} pathOptions={{ color: '#2563eb', weight: 2, dashArray: '4 4' }} interactive={false} />
+            {previewPts.map((p, idx) => (
+              <CircleMarker key={`cp${idx}`} center={p} radius={4} pathOptions={{ color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 0.8 }} interactive={false} />
+            ))}
+          </>
+        );
+      })()}
+
+      {modo === 'dividir' && (
+        <DividirController
+          modo={modo}
+          segmentosAtivo={segmentosAtivo}
+          validos={validos}
+          zona={zona}
+          hemisferio={hemisferio}
+          onDividirSegmento={onDividirSegmento}
+        />
+      )}
+
+      {(modo === 'trim' || modo === 'extend') && (
+        <TrimExtendController
+          modo={modo}
+          linhaLimite={linhaLimite}
+          onLinhaLimite={onLinhaLimite}
+          segmentos={todosSegmentos}
+          objetos={objetos}
+          zona={zona}
+          hemisferio={hemisferio}
+          onConfirmarTrim={onConfirmarTrim}
+          onConfirmarExtend={onConfirmarExtend}
+        />
+      )}
     </MapContainer>
   );
 }

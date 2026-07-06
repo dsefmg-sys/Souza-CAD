@@ -24,7 +24,7 @@ import {
   proximoNumeroReciboSeq,
   definirNumeroReciboSeq,
 } from '@/lib/store/settings';
-import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte } from '@/lib/store/suporte';
+import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey } from '@/lib/store/suporte';
 import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes, salvarPadroes, PADROES_PADRAO, type PadroesProjeto } from '@/lib/store/padroes';
 import { carregarPrecos, salvarPrecos, type PrecoServico } from '@/lib/store/precos';
@@ -64,6 +64,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const audioIntroRef = useRef<HTMLInputElement>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [audioIntroNome, setAudioIntroNome] = useState<string>('introducao.mp3 (padrão)');
+  const [geminiKey, setGeminiKey] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -74,7 +75,10 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
       setPadroes(carregarPadroes());
       setPrecos(carregarPrecos());
       setReciboSeq(proximoNumeroReciboSeq());
-      if (souMaster()) carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
+      if (souMaster()) {
+        carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
+        carregarGeminiApiKey().then(setGeminiKey).catch(() => {});
+      }
     }
   }, [open]);
 
@@ -247,24 +251,27 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     <option value="CREA">Engenheiro — CREA (emite ART)</option>
                   </select>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Formação Profissional</Label>
-                  <Input value={t.formacao} onChange={(e) => changeT('formacao', e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Registro {(t.conselho ?? 'CFT') === 'CREA' ? 'CREA' : 'CFT'}</Label>
-                  <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
-                </div>
-                {/* O nº do TRT/ART normalmente é por projeto (imovel.numeroTrt). Este é só a RESERVA,
-                    usada nas peças quando o projeto não tem um número próprio preenchido. */}
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">{(t.conselho ?? 'CFT') === 'CREA' ? 'ART' : 'TRT'} padrão (reserva)</Label>
-                  <Input value={t.art} onChange={(e) => changeT('art', e.target.value)} placeholder="usado quando o projeto não tem número próprio" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Cidade da Assinatura (peças técnicas)</Label>
-                  <Input value={t.cidadeAssinatura} onChange={(e) => changeT('cidadeAssinatura', e.target.value)} />
-                </div>
+                {prefs.modo === 'simples' ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Registro {(t.conselho ?? 'CFT') === 'CREA' ? 'CREA' : 'CFT'}</Label>
+                    <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Formação Profissional</Label>
+                      <Input value={t.formacao} onChange={(e) => changeT('formacao', e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Registro {(t.conselho ?? 'CFT') === 'CREA' ? 'CREA' : 'CFT'}</Label>
+                      <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Cidade da Assinatura (peças técnicas)</Label>
+                      <Input value={t.cidadeAssinatura} onChange={(e) => changeT('cidadeAssinatura', e.target.value)} />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="space-y-3.5 border-t md:border-t-0 md:border-l md:pl-4 pt-3.5 md:pt-0">
@@ -550,72 +557,103 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <Label className="text-xs font-semibold">Razão Social / Nome do Escritório</Label>
                   <Input value={esc.nome} onChange={(e) => changeEsc('nome', e.target.value)} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Nome Fantasia</Label>
-                    <Input value={esc.nomeFantasia ?? ''} onChange={(e) => changeEsc('nomeFantasia', e.target.value)} placeholder="opcional" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Ramo de Atuação</Label>
-                    <Input value={esc.ramo} onChange={(e) => changeEsc('ramo', e.target.value)} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">CNPJ / CPF</Label>
-                    <Input value={esc.cnpj} onChange={(e) => changeEsc('cnpj', e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">WhatsApp / Contato</Label>
-                    <Input value={esc.telefone} onChange={(e) => changeEsc('telefone', e.target.value)} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Inscrição Estadual</Label>
-                    <Input value={esc.inscricaoEstadual ?? ''} onChange={(e) => changeEsc('inscricaoEstadual', e.target.value)} placeholder="IE ou ISENTO" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Inscrição Municipal</Label>
-                    <Input value={esc.inscricaoMunicipal ?? ''} onChange={(e) => changeEsc('inscricaoMunicipal', e.target.value)} placeholder="opcional" />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Endereço (logradouro, número, bairro)</Label>
-                  <Input value={esc.endereco} onChange={(e) => changeEsc('endereco', e.target.value)} placeholder="Rua Exemplo, 123, Centro" />
-                </div>
-                <div className="grid grid-cols-[1fr_auto_auto] gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Cidade</Label>
-                    <Input value={esc.cidade ?? ''} onChange={(e) => changeEsc('cidade', e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">UF</Label>
-                    <Input className="w-16" maxLength={2} value={esc.uf ?? ''} onChange={(e) => changeEsc('uf', e.target.value.toUpperCase())} placeholder="MG" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">CEP</Label>
-                    <Input className="w-28" value={esc.cep ?? ''} onChange={(e) => changeEsc('cep', e.target.value)} placeholder="36830-000" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">E-mail</Label>
-                    <Input type="email" value={esc.email ?? ''} onChange={(e) => changeEsc('email', e.target.value)} placeholder="contato@exemplo.com" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Site / Rede Social</Label>
-                    <Input value={esc.site ?? ''} onChange={(e) => changeEsc('site', e.target.value)} placeholder="opcional" />
-                  </div>
-                </div>
+                {prefs.modo === 'simples' ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">CNPJ / CPF</Label>
+                        <Input value={esc.cnpj} onChange={(e) => changeEsc('cnpj', e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">WhatsApp / Contato</Label>
+                        <Input value={esc.telefone} onChange={(e) => changeEsc('telefone', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">E-mail</Label>
+                      <Input type="email" value={esc.email ?? ''} onChange={(e) => changeEsc('email', e.target.value)} placeholder="contato@exemplo.com" />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">Nome Fantasia</Label>
+                        <Input value={esc.nomeFantasia ?? ''} onChange={(e) => changeEsc('nomeFantasia', e.target.value)} placeholder="opcional" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">Ramo de Atuação</Label>
+                        <Input value={esc.ramo} onChange={(e) => changeEsc('ramo', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">CNPJ / CPF</Label>
+                        <Input value={esc.cnpj} onChange={(e) => changeEsc('cnpj', e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">WhatsApp / Contato</Label>
+                        <Input value={esc.telefone} onChange={(e) => changeEsc('telefone', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">Inscrição Estadual</Label>
+                        <Input value={esc.inscricaoEstadual ?? ''} onChange={(e) => changeEsc('inscricaoEstadual', e.target.value)} placeholder="IE ou ISENTO" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">Inscrição Municipal</Label>
+                        <Input value={esc.inscricaoMunicipal ?? ''} onChange={(e) => changeEsc('inscricaoMunicipal', e.target.value)} placeholder="opcional" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Endereço (logradouro, número, bairro)</Label>
+                      <Input value={esc.endereco} onChange={(e) => changeEsc('endereco', e.target.value)} placeholder="Rua Exemplo, 123, Centro" />
+                    </div>
+                    <div className="grid grid-cols-[1fr_auto_auto] gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">Cidade</Label>
+                        <Input value={esc.cidade ?? ''} onChange={(e) => changeEsc('cidade', e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">UF</Label>
+                        <Input className="w-16" maxLength={2} value={esc.uf ?? ''} onChange={(e) => changeEsc('uf', e.target.value.toUpperCase())} placeholder="MG" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">CEP</Label>
+                        <Input className="w-28" value={esc.cep ?? ''} onChange={(e) => changeEsc('cep', e.target.value)} placeholder="36830-000" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">E-mail</Label>
+                        <Input type="email" value={esc.email ?? ''} onChange={(e) => changeEsc('email', e.target.value)} placeholder="contato@exemplo.com" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">Site / Rede Social</Label>
+                        <Input value={esc.site ?? ''} onChange={(e) => changeEsc('site', e.target.value)} placeholder="opcional" />
+                      </div>
+                    </div>
+                  </>
+                )}
                 {souMaster() && (
-                  <div className="space-y-1 rounded border border-emerald-600/30 bg-emerald-600/5 p-2">
-                    <Label className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">WhatsApp de SUPORTE do sistema (só o master vê este campo)</Label>
-                    <Input placeholder="Ex.: 32 9 9999-9999 — vazio = botão de suporte não aparece"
-                      value={zapSuporte}
-                      onChange={(e) => setZapSuporte(e.target.value)}
-                      onBlur={() => { salvarWhatsappSuporte(zapSuporte).then(() => flash('Suporte salvo')).catch(() => flash('Salvo local; nuvem indisponível')); }} />
-                    <p className="text-xs text-muted-foreground">Aparece pros clientes como botão &quot;Falar com o suporte&quot; no tutorial. Deixe vazio pra esconder.</p>
+                  <div className="space-y-3 rounded border border-emerald-600/30 bg-emerald-600/5 p-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">WhatsApp de SUPORTE do sistema (só o master vê este campo)</Label>
+                      <Input placeholder="Ex.: 32 9 9999-9999 — vazio = botão de suporte não aparece"
+                        value={zapSuporte}
+                        onChange={(e) => setZapSuporte(e.target.value)}
+                        onBlur={() => { salvarWhatsappSuporte(zapSuporte).then(() => flash('Suporte salvo')).catch(() => flash('Salvo local; nuvem indisponível')); }} />
+                      <p className="text-[10px] text-muted-foreground">Aparece pros clientes como botão &quot;Falar com o suporte&quot; no tutorial. Deixe vazio pra esconder.</p>
+                    </div>
+                    <div className="space-y-1 border-t pt-2">
+                      <Label className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Chave de API do Gemini IA (Global para todos os clientes)</Label>
+                      <Input type="password" placeholder="AIzaSy..."
+                        value={geminiKey}
+                        onChange={(e) => setGeminiKey(e.target.value)}
+                        onBlur={() => { salvarGeminiApiKey(geminiKey).then(() => flash('Chave Gemini salva')).catch(() => flash('Salvo local; nuvem indisponível')); }} />
+                      <p className="text-[10px] text-muted-foreground">Chave de API do Google Gemini AI usada no servidor para extrair dados de documentos/matrículas dos clientes.</p>
+                    </div>
                   </div>
                 )}
               </div>

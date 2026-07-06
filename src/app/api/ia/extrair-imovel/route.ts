@@ -7,19 +7,56 @@ import { firebaseApiKeyServidor, tokenDoHeader, verificarTokenFirebase } from '@
 export const runtime = 'nodejs';
 
 const MODELO = 'gemini-2.5-flash';
-// teto do arquivo no SERVIDOR (o navegador já limita a 15MB; base64 infla ~37%, então ~22M chars ≈ 16MB)
 const MAX_BASE64 = 22_000_000;
+let cachedKey: string | null = null;
+let lastFetched = 0;
+const CACHE_KEY_MS = 60_000 * 10; // 10 min
+
+async function obterGeminiApiKey(idToken?: string): Promise<string | null> {
+  const envKey = process.env.GOOGLE_GENAI_API_KEY;
+  if (envKey) return envKey;
+
+  const agora = Date.now();
+  if (cachedKey && (agora - lastFetched < CACHE_KEY_MS)) {
+    return cachedKey;
+  }
+
+  const projId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projId) return null;
+
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${projId}/databases/(default)/documents/config/app`;
+    const headers: Record<string, string> = {};
+    if (idToken) {
+      headers['Authorization'] = `Bearer ${idToken}`;
+    }
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const data = await res.json();
+      const dbKey = data?.fields?.geminiApiKey?.stringValue;
+      if (dbKey) {
+        cachedKey = dbKey;
+        lastFetched = agora;
+        return dbKey;
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao obter geminiApiKey do Firestore REST:', e);
+  }
+  return null;
+}
 
 export async function POST(req: Request) {
-  const key = process.env.GOOGLE_GENAI_API_KEY;
-  if (!key) return NextResponse.json({ erro: 'IA não configurada no servidor (falta GOOGLE_GENAI_API_KEY).' }, { status: 503 });
+  const authToken = tokenDoHeader(req);
+  const key = await obterGeminiApiKey(authToken);
+  if (!key) return NextResponse.json({ erro: 'IA não configurada no servidor (falta chave do Gemini).' }, { status: 503 });
 
   // LOGIN OBRIGATÓRIO: quando o Firebase está configurado, só usuário logado gasta a cota da IA.
   // O navegador manda o ID token no Authorization; conferimos com o Google antes de qualquer coisa.
   // Sem Firebase (modo local/dev), segue liberado só com o limite por IP.
   let uid: string | null = null;
   if (firebaseApiKeyServidor()) {
-    const v = await verificarTokenFirebase(tokenDoHeader(req));
+    const v = await verificarTokenFirebase(authToken);
     if (!v) return NextResponse.json({ erro: 'Entre na sua conta para usar a IA.' }, { status: 401 });
     uid = v.uid;
   }

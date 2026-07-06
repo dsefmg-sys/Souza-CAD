@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad } from '@/lib/topo/types';
+import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad, CorrecaoErrata } from '@/lib/topo/types';
 import { gerarRequerimentoDocx, type TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { numBR } from '@/lib/topo/geometry';
@@ -17,7 +17,7 @@ import { carregarPadroes } from '@/lib/store/padroes';
 const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string; explicacao: string }[] = [
   {
     valor: 'venda', rotulo: 'Compra e venda',
-    explicacao: 'O imóvel está sendo vendido e o comprador (requerente) pede a retificação da área já em nome dele. Precisa do CPF/RG de quem vende e de quem compra.',
+    explicacao: 'O imóvel está sendo vendido e o comprador (requerente) pede a retificação da área já em nome dele. Precisa do CPF/RG de quem vende and de quem compra.',
   },
   {
     valor: 'doacao', rotulo: 'Doação',
@@ -56,6 +56,7 @@ interface Props {
   partesAdicionais: PessoaQualificada[];
   onChangePessoas: (req: PessoaQualificada, trans: PessoaQualificada, tipoAto: TipoAtoRequerimento, partesAdicionais: PessoaQualificada[]) => void;
   sugProp: ProprietarioCad[];
+  correcoes: CorrecaoErrata[];
   onBaixar?: () => void;
 }
 
@@ -102,7 +103,7 @@ function transVazio(imovel: ImovelData): PessoaQualificada {
   return { ...PESSOA_VAZIA, nome: imovel.proprietario, cpf: imovel.cpfProprietario, cidadeUf: imovel.municipio || '' };
 }
 
-export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, tipoAto, partesAdicionais, onChangePessoas, sugProp, onBaixar }: Props) {
+export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, tipoAto, partesAdicionais, onChangePessoas, sugProp, correcoes, onBaixar }: Props) {
   const [req, setReq] = useState<PessoaQualificada>(requerente ?? PESSOA_VAZIA);
   const [trans, setTrans] = useState<PessoaQualificada>(transmitente ?? transVazio(imovel));
   const [localTipoAto, setLocalTipoAto] = useState<TipoAtoRequerimento>(tipoAto);
@@ -142,11 +143,36 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     onChangePessoas(req, trans, localTipoAto, localPartesAdicionais);
     const padroes = carregarPadroes();
     const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
-    const blobBruto = await gerarRequerimentoDocx({ imovel, tecnico, requerente: req, transmitente: trans, areaRealHa, dataExtenso: dataExtensoHoje(), tipoAto: localTipoAto, partesAdicionais: localPartesAdicionais, comarca });
-    const blob = await compatibilizarWord2007(blobBruto);
-    saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);
-    onBaixar?.();
-    setMsg('Requerimento gerado.');
+    try {
+      const response = await fetch('/api/export/requerimento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imovel,
+          tecnico,
+          requerente: req,
+          transmitente: trans,
+          areaRealHa,
+          dataExtenso: dataExtensoHoje(),
+          tipoAto: localTipoAto,
+          partesAdicionais: localPartesAdicionais,
+          comarca,
+          correcoes: correcoes || []
+        })
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.erro || 'Falha ao gerar requerimento no servidor.');
+      }
+      const blobBruto = await response.blob();
+      const blob = await compatibilizarWord2007(blobBruto);
+      saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);
+      onBaixar?.();
+      setMsg('Requerimento gerado.');
+    } catch (e: any) {
+      console.error(e);
+      setMsg(e.message || 'Erro ao gerar requerimento.');
+    }
   }
 
   return (

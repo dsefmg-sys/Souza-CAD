@@ -208,6 +208,32 @@ export function salvarPlantaPadrao(c: PlantaConfig): void {
   localStorage.setItem(KEY_PLANTA, JSON.stringify(c));
 }
 
+export function carregarPlantaTemplates(): Record<string, PlantaConfig> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem('metrica.plantaTemplates');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function salvarPlantaTemplate(titulo: string, c: PlantaConfig): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const templates = carregarPlantaTemplates();
+    const cleanConfig = { ...c };
+    delete cleanConfig.situacaoDataUrl;
+    delete cleanConfig.centroInfoPos;
+    delete cleanConfig.offsetX;
+    delete cleanConfig.offsetY;
+    templates[titulo.trim()] = cleanConfig;
+    localStorage.setItem('metrica.plantaTemplates', JSON.stringify(templates));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 // ----- Tutorial de boas-vindas: já visto? (por navegador, não por projeto) -----
 const KEY_TUTORIAL = 'metrica.onboarded';
 export function tutorialJaVisto(): boolean {

@@ -1,17 +1,10 @@
 import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
-import type { ImovelData, TecnicoData } from '../topo/types';
+import type { ImovelData, TecnicoData, CorrecaoErrata, NaturezaCorrecao } from '../topo/types';
 import { numBR } from '../topo/geometry';
 import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
 import { compatibilizarWord2007 } from './compatWord2007';
-
-/** Uma correção da errata: onde, o que constava (onde se lê) e o que passa a constar (leia-se). */
-export interface CorrecaoErrata {
-  onde: string;     // ex.: "Confrontante Flávio Alves"
-  constava: string; // ex.: "Matrícula nº 3383"
-  passa: string;    // ex.: "Matrícula nº 5.378"
-}
 
 export interface ErrataInput {
   imovel: ImovelData;
@@ -73,19 +66,55 @@ export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
     t(`, ${formacao}, inscrito no ${rot.registro} sob o nº ${tecnico.cft || '—'}, responsável técnico pelos serviços de agrimensura do imóvel rural denominado ${denom}, com área de ${area}${local ? `, localizado no ${local}` : ''}, venho por meio desta apresentar ERRATA FORMAL para retificação de informações constantes na planta e no memorial descritivo anteriormente apresentados.`),
   ]));
 
-  // Seção 1: correções
+  // Seção 1: correções agrupadas por natureza
   let n = 1;
-  c.push(secao(n++, 'Retificação de Dados de Confrontantes e Matrículas'));
-  c.push(par([t('Para fins de correta averbação e para evitar a necessidade de reconfecção de peças gráficas e novas colheitas de assinaturas, onde constam dados divergentes, leia-se conforme a correção abaixo:')]));
-  if (correcoes.length === 0) {
+  const TITULOS_NATUREZA: Record<NaturezaCorrecao, string> = {
+    imovel: 'Retificação de Dados de Identificação do Imóvel',
+    pessoais: 'Retificação de Qualificação Pessoal dos Proprietários',
+    confrontantes: 'Retificação de Dados de Confrontantes e Registros',
+    geometria: 'Retificação de Elementos Geométricos e Vértices',
+    outros: 'Outras Retificações e Esclarecimentos',
+  };
+
+  const naturezasOrdenadas: NaturezaCorrecao[] = ['imovel', 'pessoais', 'confrontantes', 'geometria', 'outros'];
+
+  const agrupadas: Record<NaturezaCorrecao, CorrecaoErrata[]> = {
+    imovel: [],
+    pessoais: [],
+    confrontantes: [],
+    geometria: [],
+    outros: [],
+  };
+
+  for (const cor of correcoes) {
+    const nat = cor.natureza || 'outros';
+    if (agrupadas[nat]) {
+      agrupadas[nat].push(cor);
+    } else {
+      agrupadas.outros.push(cor);
+    }
+  }
+
+  const temCorrecoes = correcoes.length > 0;
+
+  if (!temCorrecoes) {
+    c.push(secao(n++, 'Retificações Solicitadas'));
+    c.push(par([t('Para fins de correta averbação e para evitar a necessidade de reconfecção de peças gráficas e novas colheitas de assinaturas, onde constam dados divergentes, leia-se conforme a correção abaixo:')]));
     c.push(par([t('(nenhuma correção informada)')]));
   } else {
-    for (const cor of correcoes) {
-      c.push(par([
-        t(`${cor.onde}: `, { bold: true }),
-        t('Onde se lê '), t(cor.constava || '—'),
-        t(', leia-se: '), t(cor.passa || '—', { bold: true }), t('.'),
-      ], AlignmentType.JUSTIFIED, 60));
+    for (const nat of naturezasOrdenadas) {
+      const lista = agrupadas[nat];
+      if (lista.length === 0) continue;
+
+      c.push(secao(n++, TITULOS_NATUREZA[nat]));
+      c.push(par([t('Para fins de correta averbação e para evitar a necessidade de reconfecção de peças gráficas, onde constam dados divergentes, leia-se conforme a retificação abaixo:')]));
+      for (const cor of lista) {
+        c.push(par([
+          t(`${cor.onde}: `, { bold: true }),
+          t('Onde se lê '), t(cor.constava || '—'),
+          t(', leia-se: '), t(cor.passa || '—', { bold: true }), t('.'),
+        ], AlignmentType.JUSTIFIED, 60));
+      }
     }
   }
 

@@ -1,5 +1,5 @@
 import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
-import type { ImovelData, TecnicoData, PessoaQualificada } from '../topo/types';
+import type { ImovelData, TecnicoData, PessoaQualificada, CorrecaoErrata, NaturezaCorrecao } from '../topo/types';
 import { numBR, numBRmilhar } from '../topo/geometry';
 import { valorPorExtenso } from '../topo/extenso';
 import { rotulosProfissional } from '../topo/profissional';
@@ -21,6 +21,7 @@ export interface RequerimentoInput {
   tipoAto?: TipoAtoRequerimento;
   /** Partes adicionais (mais de um donatário/coproprietário) além de requerente/transmitente. */
   partesAdicionais?: PessoaQualificada[];
+  correcoes?: CorrecaoErrata[];
 }
 
 const ROTULOS_ATO: Record<TipoAtoRequerimento, { requerente: string; transmitente: string; assinaReq: string; assinaTrans: string }> = {
@@ -175,6 +176,52 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
 
   c.push(titulo('DOS CONFRONTANTES'));
   preencherModeloParagrafos(modelos.requerimentoConfrontantes, varsModelo).forEach((t) => c.push(par(t)));
+
+  if (input.correcoes && input.correcoes.length > 0) {
+    c.push(titulo('DA RETIFICAÇÃO DE DADOS DE MATRÍCULA E DADOS MATERIAIS'));
+    c.push(par('Requer-se igualmente, a fim de sanar contradições e atualizar a qualificação registral do imóvel e das partes no mesmo ato de retificação de área, as seguintes retificações de dados materiais:'));
+    
+    const TITULOS_NATUREZA: Record<NaturezaCorrecao, string> = {
+      imovel: 'Identificação do Imóvel:',
+      pessoais: 'Qualificação Pessoal dos Proprietários:',
+      confrontantes: 'Dados de Confrontantes e Registros:',
+      geometria: 'Elementos Geométricos e Vértices:',
+      outros: 'Outros Detalhes e Esclarecimentos:',
+    };
+
+    const naturezasOrdenadas: NaturezaCorrecao[] = ['imovel', 'pessoais', 'confrontantes', 'geometria', 'outros'];
+    const agrupadas: Record<NaturezaCorrecao, CorrecaoErrata[]> = {
+      imovel: [], pessoais: [], confrontantes: [], geometria: [], outros: [],
+    };
+    for (const cor of input.correcoes) {
+      const nat = cor.natureza || 'outros';
+      if (agrupadas[nat]) {
+        agrupadas[nat].push(cor);
+      } else {
+        agrupadas.outros.push(cor);
+      }
+    }
+
+    for (const nat of naturezasOrdenadas) {
+      const lista = agrupadas[nat];
+      if (lista.length === 0) continue;
+      c.push(new Paragraph({ spacing: { before: 80, after: 40 }, children: [new TextRun({ text: TITULOS_NATUREZA[nat], bold: true, size: 22 })] }));
+      for (const cor of lista) {
+        c.push(new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { after: 60 },
+          children: [
+            new TextRun({ text: `· ${cor.onde}: `, bold: true, size: 22 }),
+            new TextRun({ text: 'Onde se lê ', size: 22 }),
+            new TextRun({ text: cor.constava || '—', size: 22 }),
+            new TextRun({ text: ', leia-se: ', size: 22 }),
+            new TextRun({ text: cor.passa || '—', bold: true, size: 22 }),
+            new TextRun({ text: '.', size: 22 }),
+          ]
+        }));
+      }
+    }
+  }
 
   c.push(titulo('DA RESPONSABILIDADE TÉCNICA'));
   c.push(par(preencherModelo(modelos.requerimentoResponsabilidade, varsModelo)));

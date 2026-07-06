@@ -238,6 +238,102 @@ export default function Planta({
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !editavel || modo === 'navegar') return;
+
+    el.style.cursor = 'none';
+
+    const crosshair = document.createElement('div');
+    crosshair.className = 'cad-crosshair-overlay';
+    
+    Object.assign(crosshair.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      width: '100%',
+      height: '100%',
+      pointerEvents: 'none',
+      overflow: 'hidden',
+      zIndex: '9999',
+      display: 'none',
+    });
+
+    const hLine = document.createElement('div');
+    Object.assign(hLine.style, {
+      position: 'absolute',
+      left: '0',
+      width: '100%',
+      height: '1px',
+      background: 'rgba(0, 0, 0, 0.45)',
+      boxShadow: '0 0 1px rgba(255, 255, 255, 0.6)',
+      pointerEvents: 'none',
+    });
+    crosshair.appendChild(hLine);
+
+    const vLine = document.createElement('div');
+    Object.assign(vLine.style, {
+      position: 'absolute',
+      top: '0',
+      width: '1px',
+      height: '100%',
+      background: 'rgba(0, 0, 0, 0.45)',
+      boxShadow: '0 0 1px rgba(255, 255, 255, 0.6)',
+      pointerEvents: 'none',
+    });
+    crosshair.appendChild(vLine);
+
+    const box = document.createElement('div');
+    Object.assign(box.style, {
+      position: 'absolute',
+      width: '8px',
+      height: '8px',
+      border: '1px solid rgba(0, 0, 0, 0.8)',
+      boxShadow: '0 0 1px rgba(255, 255, 255, 0.8)',
+      transform: 'translate(-50%, -50%)',
+      pointerEvents: 'none',
+    });
+    crosshair.appendChild(box);
+
+    el.appendChild(crosshair);
+
+    const onMouseMove = (e: MouseEvent) => {
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      crosshair.style.display = 'block';
+      hLine.style.top = `${y}px`;
+      vLine.style.left = `${x}px`;
+      box.style.left = `${x}px`;
+      box.style.top = `${y}px`;
+    };
+
+    const onMouseLeave = () => {
+      crosshair.style.display = 'none';
+    };
+
+    const onMouseEnter = () => {
+      crosshair.style.display = 'block';
+    };
+
+    el.addEventListener('mousemove', onMouseMove);
+    el.addEventListener('mouseleave', onMouseLeave);
+    el.addEventListener('mouseenter', onMouseEnter);
+
+    return () => {
+      el.style.cursor = '';
+      el.removeEventListener('mousemove', onMouseMove);
+      el.removeEventListener('mouseleave', onMouseLeave);
+      el.removeEventListener('mouseenter', onMouseEnter);
+      if (el.contains(crosshair)) {
+        el.removeChild(crosshair);
+      }
+    };
+  }, [editavel, modo]);
+
   const escalaDenomRef = useRef(0); // escala atual lida pelo handler da roda (evita depender do valor no efeito)
   const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number }>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
@@ -797,9 +893,9 @@ export default function Planta({
   const rotY = rotuloGrade(linhasY, sy, DRAW.y0, DRAW.y1);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+    <div ref={containerRef} className="relative w-full h-full flex items-center justify-center overflow-hidden">
       <svg ref={svgRef} id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%" height="100%"
-        style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'crosshair') : 'default', touchAction: editavel ? 'none' : undefined }}
+        style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'none') : 'default', touchAction: editavel ? 'none' : undefined }}
         onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
         xmlns="http://www.w3.org/2000/svg">
       {/* padrões de hachura pro preenchimento do polígono (escolhidos no painel, na cor do perímetro) */}
@@ -2651,7 +2747,7 @@ function TextoQuebrado({ x, y, fontSize, larguraChars, texto, textAnchor = 'star
   return (
     <text x={x} y={y} fontSize={fs} fill="#000" textAnchor={textAnchor}>
       {linhas.map((l, i) => (
-        <tspan key={i} x={x} dy={i === 0 ? 0 : fs * lineHeight} textAnchor={textAnchor}>{l}</tspan>
+        <tspan key={i} x={x} dy={i === 0 ? fs * 0.85 : fs * lineHeight} textAnchor={textAnchor}>{l}</tspan>
       ))}
     </text>
   );

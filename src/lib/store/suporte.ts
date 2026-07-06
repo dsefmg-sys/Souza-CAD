@@ -41,3 +41,25 @@ export function linkWhatsapp(numero: string): string | null {
   if (dig.length < 10) return null;
   return `https://wa.me/${dig.startsWith('55') ? dig : `55${dig}`}`;
 }
+
+const CACHE_GEMINI = 'metrica.geminiApiKey';
+
+export async function carregarGeminiApiKey(): Promise<string> {
+  if (firebaseConfigurado) {
+    try {
+      const s = await getDoc(doc(fdb()!, 'config', 'app'));
+      const key = (s.exists() ? String(s.data()?.geminiApiKey ?? '') : '');
+      try { localStorage.setItem(CACHE_GEMINI, key); } catch { /* ignore */ }
+      return key;
+    } catch { /* fallback to cache */ }
+  }
+  try { return localStorage.getItem(CACHE_GEMINI) ?? ''; } catch { return ''; }
+}
+
+export async function salvarGeminiApiKey(key: string): Promise<void> {
+  const cleanKey = key.trim();
+  try { localStorage.setItem(CACHE_GEMINI, cleanKey); } catch { /* ignore */ }
+  if (firebaseConfigurado) {
+    await setDoc(doc(fdb()!, 'config', 'app'), { geminiApiKey: cleanKey }, { merge: true });
+  }
+}

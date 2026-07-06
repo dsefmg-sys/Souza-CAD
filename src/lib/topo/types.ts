@@ -460,6 +460,7 @@ export interface Projeto {
   // Vértices IGNORADOS (pontos soltos fora do anel, ferramenta ignorar/considerar). São do
   // PROJETO, não de uma gleba — sem este campo eles sumiam ao salvar/recarregar (bug 05/07/2026).
   verticesIgnorados?: Vertex[];
+  correcoes?: CorrecaoErrata[];
   // Campos legados (projetos salvos antes do multi-gleba) — migrados ao abrir.
   vertices?: Vertex[];
   confrontantes?: Confrontante[];
@@ -467,4 +468,13 @@ export interface Projeto {
   // Lixeira: quando preenchido, o projeto foi "excluído" (some da lista, mas dá pra restaurar por
   // um prazo antes da limpeza definitiva). Ausente = projeto ativo.
   excluidoEm?: number;
+}
+
+export type NaturezaCorrecao = 'imovel' | 'pessoais' | 'confrontantes' | 'geometria' | 'outros';
+
+export interface CorrecaoErrata {
+  onde: string;     // ex.: "Confrontante Flávio Alves"
+  constava: string; // ex.: "Matrícula nº 3383"
+  passa: string;    // ex.: "Matrícula nº 5.378"
+  natureza?: NaturezaCorrecao;
 }

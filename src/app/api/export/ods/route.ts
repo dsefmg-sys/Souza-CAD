@@ -1,0 +1,70 @@
+import { NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
+import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const {
+      tipo,
+      res,
+      imovel,
+      tecnico,
+      confrontantes,
+      confrontantePorLado,
+      glebas,
+      modeloProprioBase64 // Optional custom template in Base64
+    } = body;
+
+    // Load template
+    let templateBytes: Uint8Array;
+    if (modeloProprioBase64) {
+      const binaryString = atob(modeloProprioBase64);
+      const len = binaryString.length;
+      templateBytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        templateBytes[i] = binaryString.charCodeAt(i);
+      }
+    } else {
+      const filePath = path.join(process.cwd(), 'public', 'templates', 'sigef.ods');
+      templateBytes = new Uint8Array(fs.readFileSync(filePath));
+    }
+
+    let resultBlob: Blob;
+    let contentType = 'application/vnd.oasis.opendocument.spreadsheet';
+    let filename = 'sigef.ods';
+
+    if (tipo === 'separadas') {
+      resultBlob = await gerarSigefOdsSeparadas(templateBytes, imovel, tecnico, glebas);
+      contentType = 'application/zip';
+      filename = 'sigef_glebas.zip';
+    } else {
+      resultBlob = await gerarSigefOds({
+        templateBytes,
+        res,
+        imovel,
+        tecnico,
+        confrontantes,
+        confrontantePorLado,
+        glebas
+      });
+    }
+
+    const buffer = Buffer.from(await resultBlob.arrayBuffer());
+
+    return new Response(buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
+  } catch (err: any) {
+    console.error('Erro na geração de planilha ODS:', err);
+    return NextResponse.json({ erro: err?.message || 'Erro ao gerar planilha SIGEF (ODS) no servidor.' }, { status: 500 });
+  }
+}

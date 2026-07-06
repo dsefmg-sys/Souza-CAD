@@ -22,6 +22,10 @@ export interface PerfilUso {
   ultimoProjetoEm?: number;
   ultimoProjetoNome?: string;
   totalProjetos?: number;
+  mensalidade?: number;
+  statusPagamento?: 'pago' | 'atrasado' | 'isento';
+  vencimentoDia?: number;
+  observacoesAdmin?: string;
 }
 
 const CACHE = 'metrica.perfilUso';
@@ -96,4 +100,15 @@ export async function termosAceitosNuvem(): Promise<boolean> {
     const s = await getDoc(doc(fdb()!, 'perfisUso', u));
     return s.exists() && (s.data() as PerfilUso).termosVersao === TERMOS_VERSAO;
   } catch { return false; }
+}
+
+/** Atualiza dados de faturamento/CRM de um cliente pelo proprietário. */
+export async function atualizarPerfilUsoPorAdmin(clientUid: string, patch: Partial<PerfilUso>): Promise<void> {
+  if (!firebaseConfigurado) return;
+  try {
+    await setDoc(doc(fdb()!, 'perfisUso', clientUid), patch, { merge: true });
+  } catch (e) {
+    console.error('Falha ao atualizar perfil de uso pelo admin:', e);
+    throw new Error('Erro ao salvar dados administrativos no banco de dados.');
+  }
 }

@@ -1,6 +1,4 @@
-'use client';
-
-import { useState, useEffect, type ComponentType } from 'react';
+import { useState, useEffect, useRef, type ComponentType } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -19,7 +17,12 @@ interface Props {
   onOpenChange: (o: boolean) => void;
 }
 
-interface Passo { icone: ComponentType<LucideProps>; titulo: string; texto: string; }
+interface Passo {
+  icone: ComponentType<LucideProps>;
+  titulo: string;
+  texto: string;
+  audioUrl?: string;
+}
 
 // PASSOS BÁSICOS — o caminho essencial de um projeto, na ordem em que a tela conduz.
 const PASSOS_BASE: Passo[] = [
@@ -27,6 +30,7 @@ const PASSOS_BASE: Passo[] = [
     icone: ToggleRight,
     titulo: 'A chave Simples e Completo',
     texto: 'No canto de cima, à direita, você escolhe se prefere usar o modo Simples ou Completo. No Simples, a tela exibe apenas o caminho essencial de um georreferenciamento para que você se acostume com o app sem se perder em botões extras. No Completo, todas as ferramentas avançadas e opcionais aparecem. Mude de modo a qualquer momento sem perder seu progresso. Após cerca de 5 horas acumuladas no Completo, a chave se recolhe automaticamente e pode ser reativada nas Configurações.',
+    audioUrl: '/introducao.mp3',
   },
   {
     icone: Users,
@@ -58,6 +62,11 @@ const PASSOS_BASE: Passo[] = [
     titulo: 'Geração de Peças e Download Único',
     texto: 'Baixe todas as peças finais prontas no padrão do SIGEF e de cartórios: MEM (memorial descritivo em Word editável), ODS (planilha oficial do SIGEF), PLANTA (projeto A3 em PDF) e REQ (requerimento de retificação ao cartório). O botão TRT permite inserir a responsabilidade técnica que constará nos cabeçalhos.',
   },
+  {
+    icone: Save,
+    titulo: 'Passo 7: Nunca Perca um Trabalho & Banco de Pontos',
+    texto: 'O botão Salvar (que muda de cor para avisar quando há alterações pendentes) guarda seu projeto de forma segura na nuvem e alimenta seu banco de pontos pessoal para evitar a repetição acidental de nomes de vértices. Além disso, o Souza CAD possui salvamento automático em segundo plano; se você fechar a aba sem querer, seu progresso recente estará a salvo.',
+  },
 ];
 
 // PASSOS AVANÇADOS — só aparecem quando a tela está no modo Completo.
@@ -70,12 +79,27 @@ const PASSOS_AVANCADOS: Passo[] = [
   {
     icone: Sparkles,
     titulo: 'Desenho Avançado, Achuras e Símbolos',
-    texto: 'No modo Completo, você pode desenhar polilinhas livres, cotas de distância, textos e símbolos (como postes, árvores, pedras ou poços). Os polígonos fechados de desenho aceitam cores de preenchimento e padrões de achura (linhas 45°, grade/X ou círculos de pontos), perfeitos para desenhar áreas ambientais do CAR (como APP, reserva legal ou vegetação). Os símbolos inseridos podem ter seu tamanho ajustado através dos botões S+ e S-.',
+    texto: 'No modo Completo, você pode desenhar polilinhas livres, cotas de distância, textos e símbolos (como postes, árvores ou marcos). Os polígonos fechados de desenho aceitam cores de preenchimento e achuras (linhas 45°, grade/X, etc.), ideais para áreas ambientais do CAR. Ajuste ângulos precisos usando a trava Orto (90°) ou Polar (15°), ou digite diretamente o rumo e distância. Organize tudo pelo Gerenciador de Camadas (ajustando cor, espessura, visibilidade ou bloqueio de edição com o cadeado) e pressione Enter ou Espaço para repetir a última ferramenta.',
   },
   {
     icone: Ruler,
-    titulo: 'Vértices Virtuais e Geometria',
-    texto: 'Precisa criar um ponto de divisa invisível ou inacessível no campo? O modo Completo oferece a ferramenta Vértice Virtual (V) para calcular pontos por afastamento de alinhamentos ou interseções geométricas direto na interface, mantendo a precisão geodésica.',
+    titulo: 'Vértices Virtuais, Imã Esperto & Edição',
+    texto: 'O modo Completo oferece a ferramenta Vértice Virtual (V) para calcular pontos invisíveis/inacessíveis por afastamento ou interseções. O Imã Esperto (Snapping avançado) atrai o cursor para o fim de segmento, meio de segmento (triângulo verde), interseções (X verde), pé da perpendicular e extensão de alinhamentos. Use a ferramenta Paralela (Offset) para desenhar recuos e faixas de domínio, e use as ferramentas Dividir, Aparar (Trim) e Prolongar (Extend) para ajustar seus desenhos.',
+  },
+  {
+    icone: FileText,
+    titulo: 'Retificações Múltiplas e Atos de Errata',
+    texto: 'Precisa retificar mais de um dado na matrícula de uma vez só? Nas abas de Errata e Requerimento, você pode cadastrar múltiplas linhas de correções de diferentes naturezas (área, confrontantes, estado civil ou dados pessoais). O Souza CAD agrupa e escreve a narrativa legal de forma organizada no Word (.docx), permitindo que você entregue uma única peça consolidada para todas as retificações do seu projeto.',
+  },
+  {
+    icone: Ruler,
+    titulo: 'Área SGL (Sem distorção UTM)',
+    texto: 'O Souza CAD calcula automaticamente a Área SGL (Sistema Geodésico Local) no plano topocêntrico local (do elipsoide GRS80/SIRGAS2000). Ao contrário da área UTM bruta, que distorce as distâncias reais por causa do fator de escala do meridiano central da zona, a Área SGL é a exata medida física aceita pelo INCRA e pelo SIGEF na certificação.',
+  },
+  {
+    icone: Upload,
+    titulo: 'Mapeador de Colunas do TXT',
+    texto: 'Seu receptor GNSS exporta arquivos com colunas fora do padrão (ex: Altitude antes do Nome, ou delimitado por ponto e vírgula)? Nas Configurações, você pode ajustar a ordem das colunas e o caractere de separação. O app salva essa configuração no seu navegador e aplica automaticamente em todas as próximas importações.',
   },
   {
     icone: Save,
@@ -83,7 +107,6 @@ const PASSOS_AVANCADOS: Passo[] = [
     texto: 'Gerencie o valor contratado, custos de campo e recebimentos de cada projeto diretamente pela barra inferior. Você pode gerar contratos de prestação de serviços com cláusulas de obrigações e recibos com preenchimento de valor por extenso automático.',
   },
 ];
-
 type TelaAjuda = 'menu' | 'passos' | 'aprenderMais' | 'temas' | 'tema';
 
 export default function TutorialModal({ open, onOpenChange }: Props) {
@@ -98,13 +121,20 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   const [nivel, setNivel] = useState<'iniciante' | 'experiente'>('iniciante');
   const [zapSuporte, setZapSuporte] = useState('');
 
-  // Estados para reprodução de áudio por Text-to-Speech
+  // Estados para reprodução de áudio por Text-to-Speech ou Arquivo Gravado
   const [falando, setFalando] = useState(false);
   const [pausado, setPausado] = useState(false);
+  const [tipoAudio, setTipoAudio] = useState<'tts' | 'gravado'>('tts');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   function pararAudio() {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
     }
     setFalando(false);
     setPausado(false);
@@ -114,12 +144,10 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
 
-    // Limpa alguns caracteres comuns de markdown para uma fala fluida
     const cleanText = texto.replace(/[*_#`[\]()]/g, '');
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'pt-BR';
 
-    // Tenta encontrar uma voz em Português
     const voices = window.speechSynthesis.getVoices();
     const ptVoice = voices.find((v) => v.lang.startsWith('pt'));
     if (ptVoice) utterance.voice = ptVoice;
@@ -135,21 +163,60 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
 
     setFalando(true);
     setPausado(false);
+    setTipoAudio('tts');
     window.speechSynthesis.speak(utterance);
   }
 
-  function alternarAudio(texto: string) {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  function alternarAudio(texto: string, audioUrl?: string) {
+    if (typeof window === 'undefined') return;
+
     if (falando) {
       if (pausado) {
-        window.speechSynthesis.resume();
+        if (tipoAudio === 'gravado' && audioRef.current) {
+          audioRef.current.play().catch((e) => console.error(e));
+        } else if (tipoAudio === 'tts' && window.speechSynthesis) {
+          window.speechSynthesis.resume();
+        }
         setPausado(false);
       } else {
-        window.speechSynthesis.pause();
+        if (tipoAudio === 'gravado' && audioRef.current) {
+          audioRef.current.pause();
+        } else if (tipoAudio === 'tts' && window.speechSynthesis) {
+          window.speechSynthesis.pause();
+        }
         setPausado(true);
       }
     } else {
-      falarTexto(texto);
+      if (audioUrl) {
+        setTipoAudio('gravado');
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+        
+        audio.addEventListener('ended', () => {
+          setFalando(false);
+          setPausado(false);
+          audioRef.current = null;
+        });
+
+        audio.addEventListener('error', () => {
+          console.warn('Erro ao carregar o arquivo gravado. Usando síntese de voz.');
+          audioRef.current = null;
+          setTipoAudio('tts');
+          falarTexto(texto);
+        });
+
+        audio.play().then(() => {
+          setFalando(true);
+          setPausado(false);
+        }).catch((e) => {
+          console.error('Falha ao rodar áudio gravado:', e);
+          setTipoAudio('tts');
+          falarTexto(texto);
+        });
+      } else {
+        setTipoAudio('tts');
+        falarTexto(texto);
+      }
     }
   }
 
@@ -203,36 +270,43 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     </div>
   );
 
-  const audioControls = (texto: string) => (
-    <div className="flex items-center gap-2 mb-1 bg-muted/40 p-1.5 rounded-lg border border-border/50 animate-in fade-in duration-200">
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={() => alternarAudio(texto)}
-        className="h-8 gap-1.5 px-3 font-semibold text-xs transition-colors hover:bg-muted"
-      >
-        {falando && !pausado ? (
-          <>
-            <Pause className="size-3.5 text-amber-500 fill-amber-500" /> Pausar áudio
-          </>
-        ) : (
-          <>
-            <Play className="size-3.5 text-emerald-500 fill-emerald-500" /> {pausado ? 'Retomar áudio' : 'Ouvir instruções'}
-          </>
-        )}
-      </Button>
-      {(falando || pausado) && (
+  const audioControls = (texto: string, audioUrl?: string) => (
+    <div className="flex items-center justify-between mb-1.5 bg-muted/40 p-1.5 rounded-lg border border-border/50 animate-in fade-in duration-200">
+      <div className="flex items-center gap-2">
         <Button
           type="button"
           size="sm"
-          variant="ghost"
-          onClick={pararAudio}
-          className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-          title="Parar áudio"
+          variant="outline"
+          onClick={() => alternarAudio(texto, audioUrl)}
+          className="h-8 gap-1.5 px-3 font-semibold text-xs transition-colors hover:bg-muted"
         >
-          <Square className="size-3.5 fill-destructive" />
+          {falando && !pausado ? (
+            <>
+              <Pause className="size-3.5 text-amber-500 fill-amber-500" /> Pausar áudio
+            </>
+          ) : (
+            <>
+              <Play className="size-3.5 text-emerald-500 fill-emerald-500" /> {pausado ? 'Retomar áudio' : 'Ouvir instruções'}
+            </>
+          )}
         </Button>
+        {(falando || pausado) && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={pararAudio}
+            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+            title="Parar áudio"
+          >
+            <Square className="size-3.5 fill-destructive" />
+          </Button>
+        )}
+      </div>
+      {falando && (
+        <span className="text-[10px] font-semibold text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border/60">
+          {tipoAudio === 'gravado' ? '🎙️ Narração Gravada' : '🤖 Síntese de Voz'}
+        </span>
       )}
     </div>
   );
@@ -261,6 +335,27 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             </div>
             <DialogHeader className="sr-only"><DialogTitle>Central de ajuda</DialogTitle></DialogHeader>
             {seletorNivel}
+
+            <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/20">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-primary"><Play className="size-4 text-emerald-500 fill-emerald-500" /> Audioguia Completo (MP3)</div>
+                <p className="mt-0.5 text-xs text-muted-foreground">Ouça a narração em áudio gravado sobre o Souza CAD.</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => alternarAudio('', '/tutorial.mp3')}
+                className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors hover:bg-muted"
+              >
+                {falando && tipoAudio === 'gravado' && !pausado ? (
+                  <><Pause className="size-3 text-amber-500 fill-amber-500" /> Pausar</>
+                ) : (
+                  <><Play className="size-3 text-emerald-500 fill-emerald-500" /> Ouvir</>
+                )}
+              </Button>
+            </div>
+
             <button type="button" onClick={() => { setPasso(0); setTela('passos'); }}
               className="rounded-lg border p-3 text-left hover:bg-muted/50">
               <div className="flex items-center gap-2 text-sm font-semibold"><CircleCheck className="size-4 text-primary" /> Tutorial passo a passo</div>
@@ -282,7 +377,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
                 <Icone className="size-5 text-primary" /> {p.titulo}
               </DialogTitle>
             </DialogHeader>
-            {audioControls(p.texto)}
+            {audioControls(p.texto, p.audioUrl)}
             <p className="text-sm leading-relaxed text-muted-foreground">{p.texto}</p>
             {modo === 'simples' && noFimDoBasico && (
               <button type="button" onClick={irParaCompleto}

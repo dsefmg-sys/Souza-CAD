@@ -11,6 +11,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
   Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical,
+  Scissors, Expand, GitCommit, Copy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -26,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Planta from '@/components/Planta';
 import RequerimentoModal, { PESSOA_VAZIA } from '@/components/RequerimentoModal';
 import ExtrairIaModal from '@/components/ExtrairIaModal';
+import PainelMasterSaaS from '@/components/PainelMasterSaaS';
 import CarModal from '@/components/CarModal';
 import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
@@ -50,7 +52,7 @@ import EstudioModal from '@/components/EstudioModal';
 import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota, novoSimbolo, areaPoligonoObjeto, CAR_TEMAS } from '@/lib/topo/objetos';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
@@ -70,7 +72,7 @@ import { ufsNoBbox, temaIncra, TEMAS_CONFRONTANTE, INCRA_UFS } from '@/lib/io/in
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
 import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao, ufDoMunicipio } from '@/lib/topo/municipios';
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
-import { snapUtm } from '@/lib/topo/snap';
+import { snapUtm, type SegmentoSnap } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
@@ -78,8 +80,9 @@ import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, RE
 import { numBR, azimuteDMS, azimute } from '@/lib/topo/geometry';
 import { cpfOuCnpjValido } from '@/lib/topo/validation';
 import { aplicarOrto, parseAzimute, type ModoOrto } from '@/lib/topo/orto';
+import { dividirSegmentoUtm } from '@/lib/topo/editing';
 import { porAfastamento } from '@/lib/topo/verticeVirtual';
-import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef, carregarImportVerticesVizinho, tutorialJaVisto, marcarTutorialVisto } from '@/lib/store/settings';
+import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef, carregarImportVerticesVizinho, tutorialJaVisto, marcarTutorialVisto, carregarPlantaTemplates, salvarPlantaTemplate } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
 import { puxarConfigDaNuvem, empurrarConfigParaNuvem, limparConfigLocalNaSaida } from '@/lib/store/configNuvem';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
@@ -212,6 +215,11 @@ const PALETA_DESENHO = [
   { nome: 'Cinza', hex: '#4b5563' },
 ];
 
+export interface EstiloCamada {
+  cor: string;
+  espessura: number;
+}
+
 export default function EditorPage() {
   const { user, carregando: authCarregando, disponivel: nuvemDisponivel } = useAuth();
   // zoom/pan da PRÉVIA da planta (não afeta o PDF exportado, que lê o SVG original)
@@ -267,6 +275,12 @@ export default function EditorPage() {
   const [distDigitada, setDistDigitada] = useState('');        // distância digitada (m)
   const ignorouRef = useRef(false);       // ignorou vértice desde que entrou no modo ignorar
   const modoAntesRef = useRef<ModoEdicao>('navegar');
+  const refUltimaFerramenta = useRef<ModoEdicao>('navegar');
+  useEffect(() => {
+    if (modo !== 'navegar' && modo !== 'copiar_base' && modo !== 'copiar_destino') {
+      refUltimaFerramenta.current = modo;
+    }
+  }, [modo]);
   const [selMulti, setSelMulti] = useState<Set<string>>(new Set()); // vértices marcados no modo "triângulo"
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [tamNomes, setTamNomes] = useState(11); // tamanho da fonte dos nomes dos vértices no mapa
@@ -274,6 +288,39 @@ export default function EditorPage() {
   const [elementosAberto, setElementosAberto] = useState(false); // popover do seletor de elementos
   const [escalaInterface, setEscalaInterface] = useState(1); // acessibilidade: escala das letras da interface
   const [snapAtivo, setSnapAtivo] = useState(false);
+  const [segmentoSelecionado, setSegmentoSelecionado] = useState<SegmentoSnap | null>(null);
+  const [offsetDistancia, setOffsetDistancia] = useState<number>(5);
+  const [copiarPontoBase, setCopiarPontoBase] = useState<PontoLL | null>(null);
+  const [linhaLimite, setLinhaLimite] = useState<SegmentoSnap | null>(null);
+  const [camadasVisiveis, setCamadasVisiveis] = useState<Record<string, boolean>>({
+    divisas: true,
+    ambientais: true,
+    polilinhas: true,
+    textos: true,
+    cotas: true,
+    simbolos: true
+  });
+  const [camadasBloqueadas, setCamadasBloqueadas] = useState<Record<string, boolean>>({
+    divisas: false,
+    ambientais: false,
+    polilinhas: false,
+    textos: false,
+    cotas: false,
+    simbolos: false
+  });
+  const [estilosCamadas, setEstilosCamadas] = useState<Record<string, EstiloCamada>>({
+    divisas: { cor: '#facc15', espessura: 2 },
+    ambientais: { cor: '#22c55e', espessura: 1.5 },
+    polilinhas: { cor: '#2563eb', espessura: 1.5 },
+    textos: { cor: '#000000', espessura: 1 },
+    cotas: { cor: '#b91c1c', espessura: 1.2 },
+    simbolos: { cor: '#06b6d4', espessura: 1 }
+  });
+  useEffect(() => {
+    setSegmentoSelecionado(null);
+    setCopiarPontoBase(null);
+    setLinhaLimite(null);
+  }, [modo]);
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
   const [corPickerAberto, setCorPickerAberto] = useState(false); // painel de ajuste rápido das cores de divisa
@@ -462,6 +509,8 @@ export default function EditorPage() {
   const [transmitente, setTransmitente] = useState<PessoaQualificada | undefined>(undefined);
   const [tipoAto, setTipoAto] = useState<TipoAtoRequerimento>('venda');
   const [partesAdicionais, setPartesAdicionais] = useState<PessoaQualificada[]>([]);
+  const [correcoes, setCorrecoes] = useState<CorrecaoErrata[]>([]);
+  const [modoMaster, setModoMaster] = useState<'editar' | 'gerir'>('editar');
   const [ocultarCobranca, setOcultarCobranca] = useState(false);
   useEffect(() => {
     carregarConfigAssinatura().then((c) => setOcultarCobranca(!!c.ocultarCobranca)).catch(() => {});
@@ -785,6 +834,15 @@ export default function EditorPage() {
         e.preventDefault();
         apagarMultiSelecionados();
       }
+      else if ((k === 'Enter' || k === ' ') && modo === 'navegar') {
+        if (refUltimaFerramenta.current !== 'navegar') {
+          e.preventDefault();
+          setModo(refUltimaFerramenta.current);
+          if (['linha', 'polilinha', 'tracejado', 'cota'].includes(refUltimaFerramenta.current)) {
+            setDesenhoBuffer([]);
+          }
+        }
+      }
       else if (k === 'Escape') {
         // menu de contexto aberto: Esc só fecha o menu (não troca de tela)
         if (menuContexto) { e.preventDefault(); setMenuContexto(null); }
@@ -940,10 +998,42 @@ export default function EditorPage() {
     }));
   }
 
+  // ---- wrapper para setPlantaConfig que carrega templates automaticamente por título ----
+  function atualizarPlantaConfig(patchOuFuncao: PlantaConfig | ((prev: PlantaConfig) => PlantaConfig)) {
+    setPlantaConfig((atual) => {
+      const proximo = typeof patchOuFuncao === 'function' ? patchOuFuncao(atual) : patchOuFuncao;
+      const titNovo = (proximo.textos?.['carimbo.titulo']?.texto ?? proximo.titulo ?? '').trim();
+      const titAntigo = (atual.textos?.['carimbo.titulo']?.texto ?? atual.titulo ?? '').trim();
+      
+      if (titNovo !== titAntigo && titNovo.length > 0) {
+        const templates = carregarPlantaTemplates();
+        const template = templates[titNovo];
+        if (template) {
+          aviso(`Modelo de planta "${titNovo}" aplicado.`);
+          return {
+            ...proximo,
+            ...template,
+            titulo: proximo.titulo || template.titulo || titNovo,
+            textos: {
+              ...(proximo.textos ?? {}),
+              ...(template.textos ?? {}),
+              'carimbo.titulo': { ...(proximo.textos?.['carimbo.titulo'] ?? {}), texto: proximo.titulo || template.titulo || titNovo }
+            },
+            situacaoDataUrl: proximo.situacaoDataUrl || atual.situacaoDataUrl,
+            offsetX: proximo.offsetX !== undefined ? proximo.offsetX : atual.offsetX,
+            offsetY: proximo.offsetY !== undefined ? proximo.offsetY : atual.offsetY,
+            centroInfoPos: proximo.centroInfoPos || atual.centroInfoPos,
+          };
+        }
+      }
+      return proximo;
+    });
+  }
+
   // ---- edição de textos da planta (conteúdo/escala/negrito por id) ----
   function patchTextoPlanta(id: string, patch: { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) {
     snap();
-    setPlantaConfig((c) => ({ ...c, textos: { ...(c.textos ?? {}), [id]: { ...(c.textos?.[id] ?? {}), ...patch } } }));
+    atualizarPlantaConfig((c) => ({ ...c, textos: { ...(c.textos ?? {}), [id]: { ...(c.textos?.[id] ?? {}), ...patch } } }));
   }
   function editarTextoPlanta(id: string, novoTexto: string, larguraChars?: number) {
     if (id.startsWith('vert.')) {
@@ -1215,14 +1305,97 @@ export default function EditorPage() {
     return a;
   }
 
+  function segmentosSnap(): SegmentoSnap[] {
+    const segs: SegmentoSnap[] = [];
+    const activePts = vertices.filter(v => Number.isFinite(v.lat) && Number.isFinite(v.lon));
+    if (activePts.length >= 2) {
+      for (let i = 0; i < activePts.length; i++) {
+        const a = activePts[i];
+        const b = activePts[(i + 1) % activePts.length];
+        segs.push({
+          a: { leste: a.leste, norte: a.norte },
+          b: { leste: b.leste, norte: b.norte }
+        });
+      }
+    }
+    for (const g of glebas) {
+      if (g.id !== glebaAtivaId) {
+        const pts = g.vertices.filter(v => Number.isFinite(v.lat) && Number.isFinite(v.lon));
+        if (pts.length >= 2) {
+          for (let i = 0; i < pts.length; i++) {
+            const a = pts[i];
+            const b = pts[(i + 1) % pts.length];
+            segs.push({
+              a: { leste: a.leste, norte: a.norte },
+              b: { leste: b.leste, norte: b.norte }
+            });
+          }
+        }
+      }
+    }
+    for (const anel of referencias) {
+      if (anel.length >= 2) {
+        for (let i = 0; i < anel.length; i++) {
+          const a = anel[i];
+          const b = anel[(i + 1) % anel.length];
+          segs.push({
+            a: { leste: a.leste, norte: a.norte },
+            b: { leste: b.leste, norte: b.norte }
+          });
+        }
+      }
+    }
+    for (const o of objetos) {
+      if (o.tipo === 'polilinha' && o.pontos.length >= 2) {
+        const count = o.preenchido ? o.pontos.length : o.pontos.length - 1;
+        for (let i = 0; i < count; i++) {
+          const a = o.pontos[i];
+          const b = o.pontos[(i + 1) % o.pontos.length];
+          segs.push({
+            a: { leste: a.leste, norte: a.norte },
+            b: { leste: b.leste, norte: b.norte }
+          });
+        }
+      } else if (o.tipo === 'cota' && o.pontos.length >= 2) {
+        segs.push({
+          a: { leste: o.pontos[0].leste, norte: o.pontos[0].norte },
+          b: { leste: o.pontos[1].leste, norte: o.pontos[1].norte }
+        });
+      }
+    }
+    return segs;
+  }
+
   function moverVertice(id: string, lat: number, lon: number) {
     snap();
     let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
     if (snapAtivo) {
-      const s = snapUtm(leste, norte, alvosSnap(id), { tolVerticeM: 2 });
+      const s = snapUtm(leste, norte, alvosSnap(id), {
+        tolVerticeM: 2,
+        segmentos: segmentosSnap()
+      });
       if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
     }
-    setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, lat, lon, leste, norte } : v)));
+    if (selMulti.has(id)) {
+      const original = vertices.find((v) => v.id === id);
+      if (original) {
+        const dLeste = leste - original.leste;
+        const dNorte = norte - original.norte;
+        setVertices((vs) =>
+          vs.map((v) => {
+            if (selMulti.has(v.id)) {
+              const nLeste = v.leste + dLeste;
+              const nNorte = v.norte + dNorte;
+              const g = utmParaGeo(nLeste, nNorte, zona, hemisferio);
+              return { ...v, lat: g.lat, lon: g.lon, leste: nLeste, norte: nNorte };
+            }
+            return v;
+          })
+        );
+      }
+    } else {
+      setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, lat, lon, leste, norte } : v)));
+    }
   }
 
   function apagarVertice(id: string) {
@@ -1557,7 +1730,11 @@ export default function EditorPage() {
   function pontoLL(lat: number, lon: number, comSnap = true): PontoLL {
     let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
     if (comSnap && snapAtivo) {
-      const s = snapUtm(leste, norte, alvosSnap(), { tolVerticeM: 2 });
+      const s = snapUtm(leste, norte, alvosSnap(), {
+        tolVerticeM: 2,
+        segmentos: segmentosSnap(),
+        pontoOrigem: desenhoBuffer.length > 0 ? { leste: desenhoBuffer[desenhoBuffer.length - 1].leste, norte: desenhoBuffer[desenhoBuffer.length - 1].norte } : null
+      });
       if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
     }
     return { lat, lon, leste, norte };
@@ -1566,7 +1743,11 @@ export default function EditorPage() {
   // desligado) e com tolerância maior, para a extremidade poder ficar exatamente sobre um vértice.
   function pontoDesenho(lat: number, lon: number): PontoLL {
     let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
-    const s = snapUtm(leste, norte, alvosSnap(), { tolVerticeM: snapAtivo ? 12 : 10 });
+    const s = snapUtm(leste, norte, alvosSnap(), {
+      tolVerticeM: snapAtivo ? 12 : 10,
+      segmentos: snapAtivo ? segmentosSnap() : [],
+      pontoOrigem: (snapAtivo && desenhoBuffer.length > 0) ? { leste: desenhoBuffer[desenhoBuffer.length - 1].leste, norte: desenhoBuffer[desenhoBuffer.length - 1].norte } : null
+    });
     if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
     else if (orto !== 'off' && desenhoBuffer.length > 0) {
       // ORTO/POLAR: sem imã no caminho, o trecho gruda no ângulo travado (90° ou 15°) a partir
@@ -1666,6 +1847,123 @@ export default function EditorPage() {
   function finalizarLinha() {
     if (desenhoBuffer.length >= 2) { snap(); setObjetos((os) => [...os, novaPolilinha(desenhoBuffer, modo === 'tracejado' ? { tracejado: true, cor: '#334155' } : {})]); }
     setDesenhoBuffer([]);
+  }
+  function confirmarParalela(pontos: [PontoLL, PontoLL]) {
+    snap();
+    const nova = novaPolilinha(pontos, { cor: '#2563eb', espessura: 1.5 });
+    setObjetos((os) => [...os, nova]);
+    setSegmentoSelecionado(null);
+    setModo('navegar');
+    aviso('Linha paralela criada com sucesso.');
+  }
+  function confirmarCopiaBase(pt: PontoLL) {
+    setCopiarPontoBase(pt);
+    setModo('copiar_destino');
+    aviso('Ponto base definido. Clique no local de destino para colar.');
+  }
+  function confirmarCopiaDestino(pt: PontoLL) {
+    if (!copiarPontoBase) return;
+    snap();
+    const targetPts = vertices.filter((v) => selMulti.has(v.id) && Number.isFinite(v.lat));
+    if (targetPts.length === 0) {
+      aviso('Nenhum vértice selecionado para copiar.');
+      setModo('navegar');
+      return;
+    }
+    const dL = pt.leste - copiarPontoBase.leste;
+    const dN = pt.norte - copiarPontoBase.norte;
+    const novosPontos: PontoLL[] = targetPts.map((v) => {
+      const l = v.leste + dL;
+      const n = v.norte + dN;
+      const g = utmParaGeo(l, n, zona, hemisferio);
+      return { lat: g.lat, lon: g.lon, leste: l, norte: n };
+    });
+    const nova = novaPolilinha(novosPontos, { cor: '#2563eb', espessura: 1.5 });
+    setObjetos((os) => [...os, nova]);
+    setSelMulti(new Set());
+    setCopiarPontoBase(null);
+    setModo('navegar');
+    aviso('Cópia realizada com sucesso como objeto do mapa.');
+  }
+  async function dividirSegmento(idA: string, idB: string) {
+    const input = await perguntar({ titulo: 'Dividir em partes iguais', mensagem: 'Número de partes (mínimo 2):' });
+    if (!input) return;
+    const n = parseInt(input);
+    if (!Number.isFinite(n) || n < 2) {
+      aviso('Número de divisões inválido. Informe um valor inteiro maior ou igual a 2.');
+      return;
+    }
+    let idxA = vertices.findIndex((v) => v.id === idA);
+    let idxB = vertices.findIndex((v) => v.id === idB);
+    if (idxA === -1 || idxB === -1) return;
+    const total = vertices.length;
+    let insertIdx = -1;
+    if ((idxA + 1) % total === idxB) {
+      insertIdx = idxA + 1;
+    } else if ((idxB + 1) % total === idxA) {
+      insertIdx = idxB + 1;
+      const tmp = idxA;
+      idxA = idxB;
+      idxB = tmp;
+    } else {
+      aviso('Os vértices selecionados não formam um segmento de divisa contíguo.');
+      return;
+    }
+    snap();
+    const vA = vertices[idxA];
+    const vB = vertices[idxB];
+    const ptsUtm = dividirSegmentoUtm(
+      { leste: vA.leste, norte: vA.norte },
+      { leste: vB.leste, norte: vB.norte },
+      n
+    );
+    const novosVertices: Vertex[] = ptsUtm.map((pt, i) => {
+      const g = utmParaGeo(pt.leste, pt.norte, zona, hemisferio);
+      const elev = vA.elevacao + ((i + 1) / n) * (vB.elevacao - vA.elevacao);
+      return {
+        id: `v_${Date.now().toString(36)}_${i}`,
+        lat: g.lat,
+        lon: g.lon,
+        leste: pt.leste,
+        norte: pt.norte,
+        tipo: vA.tipo,
+        codigoSigef: '',
+        isDivisa: true,
+        ordem: 0,
+        nome: '',
+        codigoCampo: '',
+        elevacao: +elev.toFixed(2)
+      };
+    });
+    const novaLista = [...vertices];
+    if (insertIdx === 0 || insertIdx === total) {
+      novaLista.push(...novosVertices);
+    } else {
+      novaLista.splice(insertIdx, 0, ...novosVertices);
+    }
+    const ordenado = reordenar(novaLista);
+    setVertices(ordenado);
+    await aplicarCodigos(ordenado);
+    setModo('navegar');
+    aviso(`Segmento dividido em ${n} partes iguais com sucesso.`);
+  }
+  function confirmarTrim(objetoId: string, novosPontos: PontoLL[]) {
+    snap();
+    setObjetos((os) =>
+      os.map((o) => (o.id === objetoId ? { ...o, pontos: novosPontos } : o))
+    );
+    setLinhaLimite(null);
+    setModo('navegar');
+    aviso('Elemento aparado (Trim) com sucesso.');
+  }
+  function confirmarExtend(objetoId: string, novosPontos: PontoLL[]) {
+    snap();
+    setObjetos((os) =>
+      os.map((o) => (o.id === objetoId ? { ...o, pontos: novosPontos } : o))
+    );
+    setLinhaLimite(null);
+    setModo('navegar');
+    aviso('Elemento prolongado (Extend) com sucesso.');
   }
   function cancelarDesenho() {
     setDesenhoBuffer((buf) => {
@@ -1914,13 +2212,33 @@ export default function EditorPage() {
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
-      const blobBruto = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente, zonaUtm: zona, modo });
+      const response = await fetch('/api/export/memorial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          res: r,
+          imovel,
+          tecnico,
+          confrontantes,
+          confrontantePorLado,
+          dataExtenso: dataPorExtenso(),
+          requerente,
+          transmitente,
+          zonaUtm: zona,
+          modo
+        })
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.erro || 'Falha ao gerar memorial no servidor.');
+      }
+      const blobBruto = await response.blob();
       const blob = await compatibilizarWord2007(blobBruto);
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
       const prefixo = modo === 'servidao' ? 'Memorial de servidao' : 'Memorial';
       saveAs(blob, `${prefixo} - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`);
       setBaixou((b) => ({ ...b, memorial: true }));
-    } catch (e) { aviso((e as Error).message || 'Erro ao gerar o memorial.'); }
+    } catch (e: any) { aviso(e.message || 'Erro ao gerar o memorial.'); }
   }
 
   async function exportarOds() {
@@ -1928,12 +2246,21 @@ export default function EditorPage() {
     if (!(await verificarProntoParaExportar())) return;
     const tec = tecnico;
     try {
-      // usa o modelo SIGEF do usuário, se ele substituiu; senão, o modelo embutido do sistema
       const modeloProprio = await carregarModeloSigef();
-      const tpl: ArrayBuffer = modeloProprio !== null ? modeloProprio : await fetch('/templates/sigef.ods').then((rr) => rr.arrayBuffer());
+      
+      const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+      };
+
+      const modeloProprioBase64 = modeloProprio ? arrayBufferToBase64(modeloProprio) : undefined;
+
       if (glebas.length > 1) {
-        // Multi-gleba: registra os pontos de todas (códigos únicos entre parcelas) e gera uma
-        // aba perimetro_N por gleba.
         setProcessando(true);
         const id = projetoId ?? novoId();
         const gs = sincronizarGlebas();
@@ -1945,8 +2272,6 @@ export default function EditorPage() {
             registradas.push({ ...g, vertices: r.vertices });
           }
         } catch (e) {
-          // Falhou no MEIO: preserva as glebas que JÁ registraram antes de abortar — a numeração
-          // delas foi consumida no banco; descartar faria a próxima tentativa duplicar códigos.
           const parcial = [...registradas, ...gs.slice(registradas.length)];
           setGlebas(parcial);
           const ativaParcial = parcial.find((g) => g.id === glebaAtivaId);
@@ -1962,42 +2287,67 @@ export default function EditorPage() {
           denominacao: g.denominacao, parcela: g.parcela,
         }));
         const nome = imovel.denominacao || nomeProjeto || 'imovel';
-        // escolha: uma planilha com várias abas, ou planilhas separadas (zip)
         const unica = await confirmar({
           titulo: 'Planilha SIGEF',
           mensagem: `Planilha SIGEF com ${glebasSigef.length} glebas: gerar uma planilha única (uma aba por gleba) ou planilhas separadas num .zip?`,
           okLabel: 'Planilha única', cancelLabel: 'Separadas (.zip)',
         });
+
+        const response = await fetch('/api/export/ods', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tipo: unica ? 'unica' : 'separadas',
+            imovel,
+            tecnico: tec,
+            glebas: glebasSigef,
+            modeloProprioBase64
+          })
+        });
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.erro || 'Falha ao gerar planilha no servidor.');
+        }
+        const blob = await response.blob();
         if (unica) {
-          const blob = await gerarSigefOds({ templateBytes: tpl, res: glebasSigef[0].res, imovel, tecnico: tec, confrontantes: glebasSigef[0].confrontantes, confrontantePorLado: glebasSigef[0].confrontantePorLado, glebas: glebasSigef });
           saveAs(blob, `SIGEF - ${nome} (${glebasSigef.length} glebas).ods`);
         } else {
-          const zip = await gerarSigefOdsSeparadas(tpl, imovel, tec, glebasSigef);
-          saveAs(zip, `SIGEF - ${nome} (${glebasSigef.length} planilhas).zip`);
+          saveAs(blob, `SIGEF - ${nome} (${glebasSigef.length} planilhas).zip`);
         }
       } else {
         const vs = await comCodigos();
         const r = calcular(vs, confrontantePorLado);
         const ativa = glebas.find((g) => g.id === glebaAtivaId);
-        const blob = await gerarSigefOds({
-          templateBytes: tpl,
-          res: r,
-          imovel,
-          tecnico: tec,
-          confrontantes,
-          confrontantePorLado,
-          glebas: ativa ? [{
+        
+        const response = await fetch('/api/export/ods', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tipo: 'unica',
             res: r,
+            imovel,
+            tecnico: tec,
             confrontantes,
             confrontantePorLado,
-            denominacao: ativa.denominacao || 'Parcela 1',
-            parcela: ativa.parcela || '001'
-          }] : undefined
+            glebas: ativa ? [{
+              res: r,
+              confrontantes,
+              confrontantePorLado,
+              denominacao: ativa.denominacao || 'Parcela 1',
+              parcela: ativa.parcela || '001'
+            }] : undefined,
+            modeloProprioBase64
+          })
         });
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.erro || 'Falha ao gerar planilha no servidor.');
+        }
+        const blob = await response.blob();
         saveAs(blob, `SIGEF - ${imovel.denominacao || nomeProjeto || 'imovel'}.ods`);
       }
       setBaixou((b) => ({ ...b, ods: true }));
-    } catch (e) { aviso((e as Error).message || 'Erro ao gerar a planilha.'); }
+    } catch (e: any) { aviso(e.message || 'Erro ao gerar a planilha.'); }
     finally { setProcessando(false); }
   }
 
@@ -2023,12 +2373,24 @@ export default function EditorPage() {
         ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(url);
-        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 420, 297);
-        const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
-        pdf.save(`Planta - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.pdf`);
-        setBaixou((b) => ({ ...b, planta: true }));
-        aviso('PDF da planta gerado.');
+        
+        const pngBase64 = canvas.toDataURL('image/png');
+        fetch('/api/export/pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pngBase64 })
+        })
+        .then((res) => {
+          if (!res.ok) throw new Error();
+          return res.blob();
+        })
+        .then((blob) => {
+          const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
+          saveAs(blob, `Planta - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.pdf`);
+          setBaixou((b) => ({ ...b, planta: true }));
+          aviso('PDF da planta gerado.');
+        })
+        .catch(() => aviso('Erro ao compilar o PDF da planta no servidor.'));
       };
       img.onerror = () => { URL.revokeObjectURL(url); aviso('Não consegui rasterizar a planta.'); };
       img.src = url;
@@ -2053,9 +2415,19 @@ export default function EditorPage() {
           ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           URL.revokeObjectURL(url);
-          const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
-          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 420, 297);
-          resolve(pdf.output('blob'));
+          
+          const pngBase64 = canvas.toDataURL('image/png');
+          fetch('/api/export/pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pngBase64 })
+          })
+          .then((res) => {
+            if (!res.ok) throw new Error();
+            return res.blob();
+          })
+          .then((blob) => resolve(blob))
+          .catch(() => resolve(null));
         };
         img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
         img.src = url;
@@ -2075,32 +2447,83 @@ export default function EditorPage() {
       const r = calcular(vs, confrontantePorLado);
       const ef = valoresEfetivos(r, imovel);
       const nome = imovel.denominacao || nomeProjeto || 'imovel';
-      const memorialBruto = await gerarMemorialDocx({ res: r, imovel, tecnico, confrontantes, confrontantePorLado, dataExtenso: dataPorExtenso(), requerente, transmitente });
-      const memorial = await compatibilizarWord2007(memorialBruto);
-      const modeloProprio = await carregarModeloSigef();
-      const tpl: ArrayBuffer = modeloProprio !== null ? modeloProprio : await fetch('/templates/sigef.ods').then((rr) => rr.arrayBuffer());
-      const ativa = glebas.find((g) => g.id === glebaAtivaId);
-      const ods = await gerarSigefOds({
-        templateBytes: tpl,
-        res: r,
-        imovel,
-        tecnico,
-        confrontantes,
-        confrontantePorLado,
-        glebas: ativa ? [{
+      const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+      };
+
+      const resMemorial = await fetch('/api/export/memorial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           res: r,
+          imovel,
+          tecnico,
           confrontantes,
           confrontantePorLado,
-          denominacao: ativa.denominacao || 'Parcela 1',
-          parcela: ativa.parcela || '001'
-        }] : undefined
+          dataExtenso: dataPorExtenso(),
+          requerente,
+          transmitente
+        })
       });
-      // se requerente/transmitente ainda não foram preenchidos, cai no proprietário do imóvel
+      if (!resMemorial.ok) throw new Error('Falha ao gerar memorial no servidor.');
+      const memorialBlob = await resMemorial.blob();
+      const memorial = await compatibilizarWord2007(memorialBlob);
+
+      const modeloProprio = await carregarModeloSigef();
+      const modeloProprioBase64 = modeloProprio ? arrayBufferToBase64(modeloProprio) : undefined;
+      const ativa = glebas.find((g) => g.id === glebaAtivaId);
+      
+      const resOds = await fetch('/api/export/ods', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'unica',
+          res: r,
+          imovel,
+          tecnico,
+          confrontantes,
+          confrontantePorLado,
+          glebas: ativa ? [{
+            res: r,
+            confrontantes,
+            confrontantePorLado,
+            denominacao: ativa.denominacao || 'Parcela 1',
+            parcela: ativa.parcela || '001'
+          }] : undefined,
+          modeloProprioBase64
+        })
+      });
+      if (!resOds.ok) throw new Error('Falha ao gerar planilha no servidor.');
+      const ods = await resOds.blob();
+
       const propComoParte: PessoaQualificada = { ...PESSOA_VAZIA, nome: imovel.proprietario || '—', cpf: imovel.cpfProprietario || '', cidadeUf: imovel.municipio || '' };
       const padroes = carregarPadroes();
       const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
-      const requerimentoBruto = await gerarRequerimentoDocx({ imovel, tecnico, requerente: requerente ?? propComoParte, transmitente: transmitente ?? propComoParte, areaRealHa: ef.areaHa, dataExtenso: dataPorExtenso(), tipoAto, partesAdicionais, comarca });
-      const requerimento = await compatibilizarWord2007(requerimentoBruto);
+      
+      const resReq = await fetch('/api/export/requerimento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imovel,
+          tecnico,
+          requerente: requerente ?? propComoParte,
+          transmitente: transmitente ?? propComoParte,
+          areaRealHa: ef.areaHa,
+          dataExtenso: dataPorExtenso(),
+          tipoAto,
+          partesAdicionais,
+          comarca
+        })
+      });
+      if (!resReq.ok) throw new Error('Falha ao gerar requerimento no servidor.');
+      const reqBlob = await resReq.blob();
+      const requerimento = await compatibilizarWord2007(reqBlob);
       const planta = await gerarPlantaPdfBlob();
       const zip = new JSZip();
       zip.file(`Memorial - ${nome}.docx`, memorial);
@@ -2203,7 +2626,21 @@ export default function EditorPage() {
         }
         if (!melhor) return v;
         adotados++;
-        return { ...v, codigoSigef: melhor.nome, nome: melhor.nome, codigoCampo: melhor.nome, registrado: true };
+        return {
+          ...v,
+          codigoSigef: melhor.nome,
+          nome: melhor.nome,
+          codigoCampo: melhor.nome,
+          lat: melhor.lat,
+          lon: melhor.lon,
+          leste: melhor.leste,
+          norte: melhor.norte,
+          elevacao: melhor.elevacao ?? v.elevacao,
+          sigmaX: melhor.sigmaX ?? v.sigmaX,
+          sigmaY: melhor.sigmaY ?? v.sigmaY,
+          metodo: melhor.metodo || v.metodo,
+          registrado: true
+        };
       });
       if (adotados) { snap(); setVertices(novos); }
       setSnapAtivo(true); // deixa o encaixe ligado: arrastar um vértice meu gruda no ponto do vizinho
@@ -2386,27 +2823,52 @@ export default function EditorPage() {
 
   async function exportarDxf() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
-    const vs = await comCodigos();
-    const dxf = gerarDxf(
-      vs.map((v) => ({ leste: v.leste, norte: v.norte, codigoSigef: v.codigoSigef, tipo: v.tipo })),
-      { zona, hemisferio, titulo: imovel.denominacao || nomeProjeto }
-    );
-    const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
-    saveAs(new Blob([dxf], { type: 'application/dxf' }), `${imovel.denominacao || nomeProjeto || 'desenho'}${sufixo}.dxf`);
+    try {
+      const vs = await comCodigos();
+      const response = await fetch('/api/export/dxf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vertices: vs.map((v) => ({ leste: v.leste, norte: v.norte, codigoSigef: v.codigoSigef, tipo: v.tipo })),
+          opts: { zona, hemisferio, titulo: imovel.denominacao || nomeProjeto }
+        })
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.erro || 'Falha ao gerar DXF no servidor.');
+      }
+      const blob = await response.blob();
+      const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
+      saveAs(blob, `${imovel.denominacao || nomeProjeto || 'desenho'}${sufixo}.dxf`);
+    } catch (e: any) { aviso(e.message || 'Erro ao exportar DXF.'); }
   }
 
   // Baixa o polígono de uma parcela certificada (importada do SIGEF) como DXF.
-  function baixarDxfParcela(idx: number) {
+  async function baixarDxfParcela(idx: number) {
     const pc = parcelasCert[idx];
     if (!pc || pc.anel.length < 3) { aviso('Parcela sem contorno para exportar.'); return; }
-    const vs = pc.anel.map(([lat, lon], i) => {
-      const u = geoParaUtm(lat, lon, zona, hemisferio);
-      return { leste: u.leste, norte: u.norte, codigoSigef: `V${String(i + 1).padStart(2, '0')}`, tipo: 'M' as const };
-    });
-    const dxf = gerarDxf(vs, { zona, hemisferio, titulo: pc.info.titulo });
-    const nome = (pc.info.titulo || 'parcela-sigef').replace(/[^\w.-]+/g, '_');
-    saveAs(new Blob([dxf], { type: 'application/dxf' }), `${nome}.dxf`);
-    aviso('DXF da parcela certificada baixado.');
+    try {
+      const vs = pc.anel.map(([lat, lon], i) => {
+        const u = geoParaUtm(lat, lon, zona, hemisferio);
+        return { leste: u.leste, norte: u.norte, codigoSigef: `V${String(i + 1).padStart(2, '0')}`, tipo: 'M' as const };
+      });
+      const response = await fetch('/api/export/dxf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vertices: vs,
+          opts: { zona, hemisferio, titulo: pc.info.titulo }
+        })
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.erro || 'Falha ao gerar DXF no servidor.');
+      }
+      const blob = await response.blob();
+      const nome = (pc.info.titulo || 'parcela-sigef').replace(/[^\w.-]+/g, '_');
+      saveAs(blob, `${nome}.dxf`);
+      aviso('DXF da parcela certificada baixado.');
+    } catch (e: any) { aviso(e.message || 'Erro ao exportar DXF da parcela.'); }
   }
 
   // Baixa o polígono de uma parcela certificada como Shapefile (.zip com shp/shx/dbf/prj).
@@ -2491,7 +2953,7 @@ export default function EditorPage() {
       }
       const p: Projeto = {
         id, nome: nomeProjeto || imovel.denominacao || 'Sem nome', criadoEm: Date.now(), atualizadoEm: Date.now(),
-        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, plantaConfig, parcelasCert, verticesVizinho, verticesIgnorados,
+        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, parcelasCert, verticesVizinho, verticesIgnorados,
       };
       try {
         const destino = await salvarProjeto(p);
@@ -2565,7 +3027,7 @@ export default function EditorPage() {
     return vertices.length > 0 || glebas.some((g) => g.vertices.length > 0) || !!imovel.denominacao || !!imovel.proprietario || !!imovel.matricula;
   }
   function montarRascunho() {
-    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, plantaConfig, glebaAtivaId, parcelasCert, verticesVizinho, verticesIgnorados };
+    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, glebaAtivaId, parcelasCert, verticesVizinho, verticesIgnorados };
   }
   // Recria as referências tracejadas (desenho) a partir das parcelas certificadas gravadas —
   // usado ao reabrir/restaurar um projeto, para não precisar buscar de novo no INCRA.
@@ -2585,6 +3047,7 @@ export default function EditorPage() {
     setTransmitente(d.transmitente);
     setTipoAto(d.tipoAto || 'venda');
     setPartesAdicionais(d.partesAdicionais || []);
+    setCorrecoes((d as any).correcoes || []);
     setPlantaConfig(d.plantaConfig ?? {});
     setGlebas(d.glebas);
     carregarGleba(d.glebas.find((g) => g.id === d.glebaAtivaId) ?? d.glebas[0]);
@@ -2917,9 +3380,18 @@ export default function EditorPage() {
       {/* Topo */}
       {/* Cabeçalho = FLUXO DO TRABALHO (esquerda → direita) + conta fixa à direita */}
       <header className="no-print flex items-stretch border-b">
-        <div className="flex shrink-0 items-center gap-1.5 border-r pl-2 pr-2.5" title="Souza CAD">
-          <Logo className="size-6" />
-          <span className="hidden text-sm font-semibold tracking-tight sm:inline"><span className="text-primary">Souza</span> <span className="text-muted-foreground">CAD</span></span>
+        <div className="flex shrink-0 items-center gap-1.5 border-r pl-2 pr-2.5" title={souMaster() ? "Souza CAD - Painel Master ADM" : "Souza CAD"}>
+          <Logo className={`size-6 transition-all duration-300 ${souMaster() ? 'brightness-110 sepia-[0.3] saturate-[3] hue-rotate-[10deg] drop-shadow-[0_0_4px_#f59e0b]' : ''}`} />
+          <span className="hidden text-sm font-semibold tracking-tight sm:inline">
+            <span className={souMaster() ? 'text-amber-500 font-extrabold dark:text-amber-400' : 'text-primary'}>Souza</span>
+            {' '}
+            <span className={souMaster() ? 'text-amber-600 font-bold dark:text-amber-500' : 'text-muted-foreground'}>CAD</span>
+            {souMaster() && (
+              <span className="ml-1 rounded-full bg-amber-500/10 px-1 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/20 animate-pulse">
+                Master
+              </span>
+            )}
+          </span>
         </div>
         <div className="flex flex-1 items-start gap-1 overflow-x-auto px-2 py-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
         <input ref={fileRef} type="file" accept=".txt,.csv" className="hidden"
@@ -3223,6 +3695,18 @@ export default function EditorPage() {
                             <div className="shrink-0 text-sky-500"><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
                             <span className="truncate">Símbolos</span>
                           </Button>
+                          <Button size="sm" variant={modo === 'paralela' ? 'default' : 'outline'} onClick={() => alternarModo('paralela', true)} title="Paralela: criar linha paralela a uma divisa">
+                            <Waypoints className="text-violet-500 shrink-0" /> <span className="truncate">Paralela</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'dividir' ? 'default' : 'outline'} onClick={() => alternarModo('dividir')} title="Dividir: dividir um segmento de divisa em N partes iguais">
+                            <GitCommit className="text-purple-500 shrink-0" /> <span className="truncate">Dividir</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'trim' ? 'default' : 'outline'} onClick={() => alternarModo('trim')} title="Aparar (Trim): cortar linhas no cruzamento de um limite">
+                            <Scissors className="text-rose-500 shrink-0" /> <span className="truncate">Aparar</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'extend' ? 'default' : 'outline'} onClick={() => alternarModo('extend')} title="Prolongar (Extend): estender uma linha até encontrar um limite">
+                            <Expand className="text-sky-500 shrink-0" /> <span className="truncate">Prolongar</span>
+                          </Button>
                           {modo === 'simbolo' && (
                             <div className="col-span-3 grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
                               {SIMBOLOS.map((s) => (
@@ -3233,6 +3717,42 @@ export default function EditorPage() {
                                   <span className="text-[8px] font-semibold leading-none mt-0.5">{s.rotulo}</span>
                                 </button>
                               ))}
+                            </div>
+                          )}
+                          {modo === 'paralela' && (
+                            <div className="col-span-3 flex items-center justify-between gap-2 rounded border bg-muted/40 p-1.5 animate-in fade-in duration-200">
+                              <span className="text-[9px] font-semibold text-muted-foreground">{segmentoSelecionado ? '2) Clique no lado da paralela:' : '1) Clique em uma linha/aresta'}</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-bold text-muted-foreground">Afast (m):</span>
+                                <input
+                                  type="text"
+                                  className="w-12 rounded border bg-background px-1 py-0.5 text-xs font-bold text-center text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                  value={offsetDistancia}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(',', '.');
+                                    setOffsetDistancia(parseFloat(val) || 0);
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          {modo === 'dividir' && (
+                            <div className="col-span-3 rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-1.5 text-[9px] text-cyan-600 dark:text-cyan-400 font-semibold animate-in fade-in duration-200">
+                              Clique sobre um segmento (divisa) do perímetro ativo para dividi-lo.
+                            </div>
+                          )}
+                          {modo === 'trim' && (
+                            <div className="col-span-3 rounded border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-[9px] text-red-600 dark:text-red-400 font-semibold animate-in fade-in duration-200">
+                              {linhaLimite
+                                ? '2) Clique no segmento de polilinha que deseja aparar (Trim).'
+                                : '1) Clique em qualquer linha para usar como limite de corte.'}
+                            </div>
+                          )}
+                          {modo === 'extend' && (
+                            <div className="col-span-3 rounded border border-blue-500/40 bg-blue-500/10 px-2 py-1.5 text-[9px] text-blue-600 dark:text-blue-400 font-semibold animate-in fade-in duration-200">
+                              {linhaLimite
+                                ? '2) Clique perto da ponta de uma polilinha para prolongá-la até o limite.'
+                                : '1) Clique em qualquer linha para usar como limite de extensão.'}
                             </div>
                           )}
                         </div>
@@ -3266,10 +3786,29 @@ export default function EditorPage() {
                             <span className="truncate text-[11px] font-semibold">Sel. Vários</span>
                           </Button>
                           {modo === 'multi' && (
-                            <div className="col-span-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-600 dark:text-amber-400">
-                              {selMulti.size > 0
-                                ? <button className="w-full text-left font-semibold" onClick={apagarMultiSelecionados}>Apagar {selMulti.size} selecionado(s) — Delete</button>
-                                : 'Clique nos vértices ou arraste uma caixa para selecioná-los.'}
+                            <div className="col-span-3 grid grid-cols-3 gap-1 rounded border bg-muted/40 p-1">
+                              {selMulti.size > 0 ? (
+                                <>
+                                  <Button size="sm" variant="destructive" className="col-span-2 h-7 text-[10px] font-bold gap-1" onClick={apagarMultiSelecionados}>
+                                    <Trash2 className="size-3" /> Apagar ({selMulti.size})
+                                  </Button>
+                                  <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold gap-1 text-violet-600 hover:text-violet-700 dark:text-violet-400" onClick={() => alternarModo('copiar_base')}>
+                                    <Copy className="size-3" /> Copiar
+                                  </Button>
+                                </>
+                              ) : (
+                                <span className="col-span-3 text-[9px] text-muted-foreground text-center py-1 font-semibold">Clique nos vértices ou arraste uma caixa para selecioná-los.</span>
+                              )}
+                            </div>
+                          )}
+                          {modo === 'copiar_base' && (
+                            <div className="col-span-3 rounded border border-violet-500/40 bg-violet-500/10 px-2 py-1.5 text-[9px] text-violet-600 dark:text-violet-400 font-semibold animate-in fade-in duration-200">
+                              1) Clique em um vértice (ou ponto do mapa) para servir como referência base.
+                            </div>
+                          )}
+                          {modo === 'copiar_destino' && (
+                            <div className="col-span-3 rounded border border-violet-500/40 bg-violet-500/10 px-2 py-1.5 text-[9px] text-violet-600 dark:text-violet-400 font-semibold animate-in fade-in duration-200">
+                              2) Mova o cursor e clique no mapa para colar a cópia transladada.
                             </div>
                           )}
                           {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="col-span-2 px-1 text-[10px] text-muted-foreground text-center">Nenhum vértice ignorado.</span>}
@@ -3317,6 +3856,108 @@ export default function EditorPage() {
                         {/* A situação foi movida SÓ para a barra flutuante da planta (evita duplicar aqui). */}
                       </div>
                     )}
+
+                    {/* CARD 4: GERENCIADOR DE CAMADAS */}
+                    {completo && vista === 'mapa' && (
+                      <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm mt-1.5">
+                        <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`}>
+                          <span>Gerenciador de Camadas</span>
+                          <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
+                        </span>
+                        
+                        <div className="flex flex-col gap-1 text-[10px] text-foreground mt-1">
+                          {Object.keys(camadasVisiveis).map((key) => {
+                            const label =
+                              key === 'divisas' ? 'Divisas / Perímetro' :
+                              key === 'ambientais' ? 'Áreas Ambientais (CAR)' :
+                              key === 'polilinhas' ? 'Polilinhas / Linhas' :
+                              key === 'textos' ? 'Textos' :
+                              key === 'cotas' ? 'Cotas / Medidas' : 'Símbolos';
+                            
+                            const estilo = estilosCamadas[key];
+                            const visivel = camadasVisiveis[key];
+                            const bloqueada = camadasBloqueadas[key];
+
+                            return (
+                              <div key={key} className="flex items-center justify-between gap-1 border-b border-border/40 pb-1 last:border-0 last:pb-0">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  {/* Color picker dot */}
+                                  <input
+                                    type="color"
+                                    value={estilo.cor}
+                                    onChange={(e) => {
+                                      const novaCor = e.target.value;
+                                      setEstilosCamadas((prev) => ({
+                                        ...prev,
+                                        [key]: { ...prev[key], cor: novaCor }
+                                      }));
+                                    }}
+                                    className="size-4 rounded-full cursor-pointer border-0 p-0 overflow-hidden shrink-0 bg-transparent"
+                                    title="Alterar cor da camada"
+                                  />
+                                  <span className="truncate font-medium text-[9px]">{label}</span>
+                                </div>
+
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {/* Espessura input */}
+                                  {key !== 'textos' && key !== 'simbolos' && (
+                                    <div className="flex items-center gap-0.5 mr-1 text-[8px] text-muted-foreground font-bold">
+                                      <span>L:</span>
+                                      <input
+                                        type="number"
+                                        min="0.5"
+                                        max="10"
+                                        step="0.5"
+                                        value={estilo.espessura}
+                                        onChange={(e) => {
+                                          const val = parseFloat(e.target.value) || 1;
+                                          setEstilosCamadas((prev) => ({
+                                            ...prev,
+                                            [key]: { ...prev[key], espessura: val }
+                                          }));
+                                        }}
+                                        className="w-8 h-4 rounded border bg-background text-center text-[9px] font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                                        title="Espessura da linha"
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* Visibilidade toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setCamadasVisiveis((prev) => ({
+                                        ...prev,
+                                        [key]: !prev[key]
+                                      }))
+                                    }
+                                    className={`p-0.5 rounded hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
+                                    title={visivel ? 'Ocultar camada' : 'Exibir camada'}
+                                  >
+                                    {visivel ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                                  </button>
+
+                                  {/* Cadeado toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setCamadasBloqueadas((prev) => ({
+                                        ...prev,
+                                        [key]: !prev[key]
+                                      }))
+                                    }
+                                    className={`p-0.5 rounded hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
+                                    title={bloqueada ? 'Desbloquear camada' : 'Bloquear camada'}
+                                  >
+                                    {bloqueada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   /* Coluna única para barra colapsada */
@@ -3335,6 +3976,7 @@ export default function EditorPage() {
                     <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => alternarModo('tracejado', true)} title="Tracejado (F8)"><PenTool className="opacity-70" /></Button>
                     <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => alternarModo('texto')} title="Texto (F9)"><FileText /></Button>
                     <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => alternarModo('cota', true)} title="Cotar (F10)"><IconeCota /></Button>
+                    <Button size="sm" variant={modo === 'paralela' ? 'default' : 'ghost'} onClick={() => alternarModo('paralela', true)} title="Paralela"><Waypoints /></Button>
                     <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
                     <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('inserir'); }} title="Inserir vértice"><Plus /></Button>
                     <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /></Button>
@@ -3511,7 +4153,11 @@ export default function EditorPage() {
           );
         })()}
         <main className="relative isolate min-w-0 flex-1">
-          {/* Coluna de atalhos no canto superior esquerdo. A alternância MAPA/PLANTA (troca mais
+          {modoMaster === 'gerir' && souMaster() ? (
+            <PainelMasterSaaS onVoltarDesenhar={() => setModoMaster('editar')} />
+          ) : (
+            <>
+              {/* Coluna de atalhos no canto superior esquerdo. A alternância MAPA/PLANTA (troca mais
               usada) fica no topo, com destaque; abaixo, no mesmo padrão quadrado, o modo
               Fácil/Completo e — só na planta — travar a folha e o tema da prancha. Ficam aqui pra
               liberar a barra flutuante de cima. */}
@@ -3577,6 +4223,45 @@ export default function EditorPage() {
                   <span className="text-[10px] font-bold leading-none">IMÃ</span>
                 </button>
               </>
+            )}
+
+            {/* IA Extrair, Ajustes e Sair da conta no final da coluna de atalhos */}
+            <button type="button" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }}
+              title="Extrair dados de documentos/matrículas com Inteligência Artificial (Gemini)"
+              className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
+              <Sparkles className="size-5 text-indigo-500 fill-indigo-500/20" />
+              <span className="text-[10px] font-bold leading-none text-indigo-600 dark:text-indigo-400">IA EXTRAIR</span>
+            </button>
+            {souMaster() && (
+              <button type="button" onClick={() => setModoMaster((m) => (m === 'editar' ? 'gerir' : 'editar'))}
+                title={modoMaster === 'editar' ? 'Alternar para o modo GERIR (painel administrativo do SaaS)' : 'Alternar para o modo EDITAR (workspace de desenho)'}
+                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${modoMaster === 'gerir' ? 'border-amber-500 bg-amber-500/10 hover:bg-amber-500/20' : 'border-border bg-background/95 hover:bg-muted'}`}>
+                {modoMaster === 'gerir' ? (
+                  <>
+                    <MapIcon className="size-5 text-amber-500 animate-pulse" />
+                    <span className="text-[10px] font-bold leading-none text-amber-600 dark:text-amber-400">DESENHAR</span>
+                  </>
+                ) : (
+                  <>
+                    <Crown className="size-5 text-amber-500 fill-amber-500/10 animate-bounce" />
+                    <span className="text-[10px] font-bold leading-none text-amber-600 dark:text-amber-400">GERIR SaaS</span>
+                  </>
+                )}
+              </button>
+            )}
+            <button type="button" onClick={() => { setConfigAba(undefined); setConfigAberta(true); }}
+              title="Configurações gerais do sistema"
+              className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
+              <Settings className="size-5 text-slate-600 dark:text-slate-400" />
+              <span className="text-[10px] font-bold leading-none text-slate-600 dark:text-slate-400">AJUSTES</span>
+            </button>
+            {nuvemDisponivel && user && (
+              <button type="button" onClick={() => { limparConfigLocalNaSaida(); sair(); }}
+                title={`Sair da conta: ${user.email}`}
+                className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-red-500/30 bg-red-500/5 shadow-xl backdrop-blur hover:bg-red-500/10">
+                <LogOut className="size-5 text-red-600 dark:text-red-400" />
+                <span className="text-[10px] font-bold leading-none text-red-600 dark:text-red-400">SAIR</span>
+              </button>
             )}
           </div>
 
@@ -3720,7 +4405,7 @@ export default function EditorPage() {
           {vista === 'mapa' ? (
                <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                 confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
-                zona={zona} hemisferio={hemisferio} orto={orto}
+                zona={zona} hemisferio={hemisferio} orto={orto} snapAtivo={snapAtivo} segmentoSelecionado={segmentoSelecionado} onSegmentoSelecionado={setSegmentoSelecionado} offsetDistancia={offsetDistancia} onConfirmarParalela={confirmarParalela} copiarPontoBase={copiarPontoBase} onConfirmarCopiaBase={confirmarCopiaBase} onConfirmarCopiaDestino={confirmarCopiaDestino} onDividirSegmento={dividirSegmento} linhaLimite={linhaLimite} onLinhaLimite={setLinhaLimite} onConfirmarTrim={confirmarTrim} onConfirmarExtend={confirmarExtend} camadasVisiveis={camadasVisiveis} camadasBloqueadas={camadasBloqueadas} estilosCamadas={estilosCamadas}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho} verticesVizinho={verticesVizinho}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
@@ -3837,6 +4522,8 @@ export default function EditorPage() {
                 )}
               </div>
             </div>
+          )}
+            </>
           )}
         </main>
 
@@ -4078,8 +4765,13 @@ export default function EditorPage() {
               <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} projetoId={projetoId} onExtrairConfrontante={extrairDocumentoConfrontante} />
             )}
             {aba === 'planta' && (
-              <PainelPlanta config={plantaConfig} onChange={setPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} numGlebas={glebas.length}
-                onVerPlanta={() => setVista('planta')} onSalvarPadrao={() => { salvarPlantaPadrao(plantaConfig); aviso('Ajustes da planta salvos como padrão para os próximos trabalhos.'); }} />
+              <PainelPlanta config={plantaConfig} onChange={atualizarPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} numGlebas={glebas.length}
+                onVerPlanta={() => setVista('planta')} onSalvarPadrao={() => {
+                  const tit = (plantaConfig.titulo || 'Padrão').trim();
+                  salvarPlantaTemplate(tit, plantaConfig);
+                  salvarPlantaPadrao(plantaConfig);
+                  aviso(`Modelo de planta salvo para o tipo de trabalho: "${tit}".`);
+                }} />
             )}
             {aba === 'conferencia' && (
               <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} onChange={setImovel} conflitos={conflitos} onIrParaConflito={(lat, lon) => setFocoLatLng([lat, lon])} />
@@ -4138,6 +4830,7 @@ export default function EditorPage() {
           setPartesAdicionais(pa);
         }}
         sugProp={sugProp}
+        correcoes={correcoes}
         onBaixar={() => setBaixou((b) => ({ ...b, req: true }))}
       />
       <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
@@ -4186,6 +4879,7 @@ export default function EditorPage() {
       <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
         areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
         onExportarShapefiles={exportarCarShapefiles} onImportarShapefile={() => shapefileRef.current?.click()} processando={processando} />
+      <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} correcoes={correcoes} onChangeCorrecoes={setCorrecoes} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}
@@ -4206,7 +4900,6 @@ export default function EditorPage() {
       />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
-      <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
       <MemorialPreviewModal
         open={prevMemorialAberto}
         onOpenChange={setPrevMemorialAberto}
