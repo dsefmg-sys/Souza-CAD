@@ -533,7 +533,14 @@ export default function MapEditor(props: Props) {
             <Fragment key={o.id}>
               {fechado
                 ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor, fillOpacity }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
-                : <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />}
+                : (
+                  <>
+                    {/* linha "fantasma" invisível e grossa: área mínima de clique em pixels de tela,
+                        senão linha fina/curta fica impossível de selecionar (feedback 05/07/2026) */}
+                    <Polyline positions={pos} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
+                    <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
+                  </>
+                )}
               {sel && pos.map((p, idx) => (
                 <CircleMarker key={`c${idx}`} center={p} radius={5} pathOptions={{ color: '#ef4444', fillColor: '#fff', fillOpacity: 1 }} />
               ))}
@@ -569,9 +576,12 @@ export default function MapEditor(props: Props) {
               {/* Linhas de extensão perpendiculares tracejadas */}
               <Polyline positions={[[p0.lat, p0.lon], [g0.lat, g0.lon]]} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 0.8, dashArray: '2 3' }} />
               <Polyline positions={[[p1.lat, p1.lon], [g1.lat, g1.lon]]} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 0.8, dashArray: '2 3' }} />
-              {/* Linha de cota paralela */}
+              {/* Linha de cota paralela (com "fantasma" grosso invisível pra cota curta ser clicável) */}
+              <Polyline positions={posOffset} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
               <Polyline positions={posOffset} pathOptions={{ color: o.cor ?? '#b91c1c', weight: 1.2 + (sel ? 0.8 : 0) }} eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
-              <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:#b91c1c;background:#fff;padding:0 2px;border:1px solid #b91c1c;border-radius:2px;width:max-content;display:inline-block">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })} />
+              {/* o rótulo da medida também seleciona/abre menu — em cota pequena ele é o maior alvo */}
+              <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:#b91c1c;background:#fff;padding:0 2px;border:1px solid #b91c1c;border-radius:2px;width:max-content;display:inline-block">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })}
+                eventHandlers={{ click: () => onSelecObjeto?.(o.id), contextmenu: (e) => onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY) }} />
               {sel && pos.map((p, idx) => (
                 <Marker key={`hc${idx}`} position={p} draggable opacity={0}
                   eventHandlers={{

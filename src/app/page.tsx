@@ -833,28 +833,36 @@ export default function EditorPage() {
     aviseTimerRef.current = setTimeout(() => setMsg(''), 4000);
   }
 
-  // ---------- desfazer / refazer (histórico de vértices + trechos de confrontante) ----------
-  const histRef = useRef<{ v: Vertex[]; cpl: Record<number, string> }[]>([]);
-  const redoRef = useRef<{ v: Vertex[]; cpl: Record<number, string> }[]>([]);
+  // ---------- desfazer / refazer (histórico de vértices + confrontantes + DESENHOS) ----------
+  // Os desenhos (cota/linha/texto/símbolo) entram no histórico — antes ficavam de fora e o
+  // Ctrl+Z "não funcionava" com a ferramenta Cotar (feedback de usuário, 05/07/2026).
+  const histRef = useRef<{ v: Vertex[]; cpl: Record<number, string>; obj: ObjetoDesenho[] }[]>([]);
+  const redoRef = useRef<{ v: Vertex[]; cpl: Record<number, string>; obj: ObjetoDesenho[] }[]>([]);
   function snap() {
-    histRef.current.push({ v: vertices, cpl: confrontantePorLado });
+    // guarda-duplicata por referência: o StrictMode (dev) roda atualizadores de estado 2x, e um
+    // snap chamado lá dentro empilharia a mesma foto duas vezes (desfazer pediria 2 cliques)
+    const ult = histRef.current[histRef.current.length - 1];
+    if (ult && ult.v === vertices && ult.cpl === confrontantePorLado && ult.obj === objetos) return;
+    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos });
     if (histRef.current.length > 60) histRef.current.shift();
     redoRef.current = []; // uma ação nova invalida o que havia para refazer
   }
   function desfazer() {
     const s = histRef.current.pop();
     if (!s) { aviso('Nada para desfazer.'); return; }
-    redoRef.current.push({ v: vertices, cpl: confrontantePorLado });
+    redoRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos });
     setVertices(s.v);
     setConfrontantePorLado(s.cpl);
+    setObjetos(s.obj);
     aviso('Última ação desfeita.');
   }
   function refazer() {
     const s = redoRef.current.pop();
     if (!s) { aviso('Nada para refazer.'); return; }
-    histRef.current.push({ v: vertices, cpl: confrontantePorLado });
+    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos });
     setVertices(s.v);
     setConfrontantePorLado(s.cpl);
+    setObjetos(s.obj);
     aviso('Ação refeita.');
   }
 
@@ -967,6 +975,9 @@ export default function EditorPage() {
     return glebas.map((g) => (g.id === glebaAtivaId ? { ...g, vertices, confrontantes, confrontantePorLado, objetos } : g));
   }
   function carregarGleba(g: Gleba) {
+    // o histórico NÃO atravessa glebas: um desfazer depois da troca restauraria os vértices da
+    // OUTRA gleba dentro desta (corrupção silenciosa) — melhor recomeçar o histórico
+    histRef.current = []; redoRef.current = [];
     setVertices(g.vertices);
     setConfrontantes(g.confrontantes);
     setConfrontantePorLado(g.confrontantePorLado);
@@ -1405,13 +1416,12 @@ export default function EditorPage() {
    * agrimensor sob o credenciamento dele. Sem `codigoOficial`, gera um código provisório nosso,
    * como sempre.
    */
-  function inserirVertice(
+  async function inserirVertice(
     lat: number,
     lon: number,
     codigoOficial?: string,
     opts?: { tipo?: TipoVertice; metodo?: string; elevacao?: number; sigmaX?: number; sigmaY?: number; sigmaZ?: number; semSnap?: boolean },
   ) {
-    snap();
     let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
     // Vértice virtual (V) vem de coordenada CALCULADA (afastamento/interseção): não gruda no ímã,
     // senão a conta feita à mão seria descartada. Por isso `semSnap`.
@@ -1419,6 +1429,20 @@ export default function EditorPage() {
       const s = snapUtm(leste, norte, alvosSnap(), { tolVerticeM: 2 });
       if (s.tipo) { leste = s.leste; norte = s.norte; const g = utmParaGeo(leste, norte, zona, hemisferio); lat = g.lat; lon = g.lon; }
     }
+    // Clique praticamente em cima de um ponto que já existe: avisa e confirma antes de criar um
+    // segundo sobreposto (feedback de usuário 05/07/2026 — clique repetido criava ponto duplicado
+    // em silêncio). O aviso vem ANTES do snap() de histórico: cancelar não deixa rastro no desfazer.
+    const dup = vertices.find((v) => Math.hypot(v.leste - leste, v.norte - norte) < 1);
+    if (dup) {
+      const dist = Math.hypot(dup.leste - leste, dup.norte - norte);
+      const ok = await confirmar({
+        titulo: 'Ponto já existe aqui',
+        mensagem: `Já existe o ponto ${dup.codigoSigef || dup.nome || 'sem nome'} praticamente neste lugar (a ${dist.toFixed(2).replace('.', ',')} m). Inserir mesmo assim um segundo ponto sobreposto?`,
+        okLabel: 'Inserir mesmo assim',
+      });
+      if (!ok) return;
+    }
+    snap();
     const base = novoVertice({ lat, lon, leste, norte, elevacao: opts?.elevacao ?? 0 });
     let novo = codigoOficial
       ? { ...base, codigoSigef: codigoOficial, nome: codigoOficial, codigoCampo: codigoOficial, registrado: true }
@@ -1538,22 +1562,24 @@ export default function EditorPage() {
   async function onCliqueDesenho(lat: number, lon: number) {
     const p = pontoDesenho(lat, lon);
     if (modo === 'simbolo') {
+      snap();
       setObjetos((os) => [...os, novoSimbolo(p, simboloSel)]);
       return;
     } else if (modo === 'texto') {
       const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' }); if (!t) return;
+      snap();
       setObjetos((os) => [...os, novoTexto(p, t)]);
     } else if (modo === 'cota') {
       setDesenhoBuffer((buf) => {
         const nb = [...buf, p];
-        if (nb.length >= 2) { setObjetos((os) => [...os, novaCota(nb[0], nb[1])]); return []; }
+        if (nb.length >= 2) { snap(); setObjetos((os) => [...os, novaCota(nb[0], nb[1])]); return []; }
         return nb;
       });
     } else if (modo === 'linha') {
       // linha = traço reto de 2 pontos (fecha sozinho no 2º clique)
       setDesenhoBuffer((buf) => {
         const nb = [...buf, p];
-        if (nb.length >= 2) { setObjetos((os) => [...os, novaPolilinha(nb)]); return []; }
+        if (nb.length >= 2) { snap(); setObjetos((os) => [...os, novaPolilinha(nb)]); return []; }
         return nb;
       });
     } else if (modo === 'polilinha') {
@@ -1568,11 +1594,15 @@ export default function EditorPage() {
           // pergunta o que é o polígono: uma GLEBA (entra na área/peças) ou um item do mapa (casa etc.)
           const ehGleba = await confirmar({ titulo: 'Polígono fechado', mensagem: 'O que este polígono representa?', okLabel: 'Gleba do imóvel', cancelLabel: 'Item do mapa' });
           if (ehGleba) {
-            const novos: Vertex[] = buf.map((q, i) => ({ id: `v_${Date.now().toString(36)}_${i}`, lat: q.lat, lon: q.lon, leste: q.leste, norte: q.norte, tipo: 'P', codigoSigef: `P${i + 1}`, isDivisa: false, ordem: i + 1, nome: `P${i + 1}`, codigoCampo: `P${i + 1}`, elevacao: 0 }));
+            const brutos: Vertex[] = buf.map((q, i) => ({ id: `v_${Date.now().toString(36)}_${i}`, lat: q.lat, lon: q.lon, leste: q.leste, norte: q.norte, tipo: 'P' as const, codigoSigef: `P${i + 1}`, isDivisa: false, ordem: i + 1, nome: `P${i + 1}`, codigoCampo: `P${i + 1}`, elevacao: 0 }));
+            // praxe do georreferenciamento (igual ao import de TXT): começa no vértice mais ao
+            // NORTE e percorre em sentido HORÁRIO — desenho manual ganhava nomes na ordem do clique
+            const novos = iniciarDoNorteHorario(brutos).map((v, i) => ({ ...v, ordem: i + 1, nome: `P${i + 1}`, codigoSigef: `P${i + 1}`, codigoCampo: `P${i + 1}` }));
             snap();
             if (vertices.length < 3) { setVertices(novos); aviso('Polígono definido como perímetro da gleba.'); }
             else { const gs = sincronizarGlebas(); const nova = { ...novaGlebaVazia(gs.length + 1), vertices: novos }; setGlebas([...gs, nova]); carregarGleba(nova); aviso('Nova gleba criada a partir do polígono.'); }
           } else {
+            snap();
             setObjetos((os) => [...os, novaPolilinha(buf, { preenchido: true })]);
             aviso('Polígono adicionado como item do mapa.');
           }
@@ -1586,7 +1616,7 @@ export default function EditorPage() {
     }
   }
   function finalizarLinha() {
-    if (desenhoBuffer.length >= 2) setObjetos((os) => [...os, novaPolilinha(desenhoBuffer, modo === 'tracejado' ? { tracejado: true, cor: '#334155' } : {})]);
+    if (desenhoBuffer.length >= 2) { snap(); setObjetos((os) => [...os, novaPolilinha(desenhoBuffer, modo === 'tracejado' ? { tracejado: true, cor: '#334155' } : {})]); }
     setDesenhoBuffer([]);
   }
   function cancelarDesenho() {
@@ -1623,11 +1653,13 @@ export default function EditorPage() {
   }
   function apagarObjetoSel() {
     if (!objetoSelId) return;
+    snap();
     setObjetos((os) => os.filter((o) => o.id !== objetoSelId));
     setObjetoSelId(null);
   }
   function editarObjetoSel(patch: Partial<ObjetoDesenho>) {
     if (!objetoSelId) return;
+    snap();
     setObjetos((os) => os.map((o) => (o.id === objetoSelId ? { ...o, ...patch } : o)));
   }
   function definirDivisaLado(id: string, tipo: string) {
@@ -2567,6 +2599,7 @@ export default function EditorPage() {
     setObjetos([]);
     setPlantaConfig({});
     setObjetoSelId(null);
+    histRef.current = []; redoRef.current = []; // projeto novo começa sem histórico do anterior
     setRequerente(undefined);
     setTransmitente(undefined);
     setTipoAto('venda');
@@ -2625,7 +2658,9 @@ export default function EditorPage() {
           elevacao: 0,
         };
       });
-      setVertices(novosVertices);
+      // mesma praxe do desenho fechado: mais ao norte primeiro, sentido horário, nomes na ordem nova
+      const ordenados = iniciarDoNorteHorario(novosVertices).map((v, i) => ({ ...v, ordem: i + 1, nome: `P${i + 1}`, codigoSigef: `P${i + 1}`, codigoCampo: `P${i + 1}` }));
+      setVertices(ordenados);
       setObjetos((os) => os.filter((x) => x.id !== objetoSelId));
       setObjetoSelId(null);
       aviso('Polilinha convertida em perímetro com sucesso!');
@@ -3616,7 +3651,7 @@ export default function EditorPage() {
                 parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho} verticesVizinho={verticesVizinho}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
                 selMulti={selMulti} onToggleMulti={alternarMulti} onBoxSelect={adicionarMulti}
-                onDblClick={async (lat, lon) => { const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' }); if (t) setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }}
+                onDblClick={async (lat, lon) => { const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' }); if (t) { snap(); setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); } }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
@@ -3685,7 +3720,7 @@ export default function EditorPage() {
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto}
                       onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}
-                      onExcluirObjeto={(id) => setObjetos((os) => os.filter((o) => o.id !== id))}
+                      onExcluirObjeto={(id) => { snap(); setObjetos((os) => os.filter((o) => o.id !== id)); }}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
                       onRemoverSituacao={() => { setSituacaoUrl(undefined); setPlantaConfig((c) => ({ ...c, situacaoDataUrl: undefined })); }}
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
