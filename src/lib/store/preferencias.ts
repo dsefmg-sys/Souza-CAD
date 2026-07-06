@@ -59,8 +59,6 @@ export interface PreferenciasApp {
   casasDecimais: number;
   /** Pede confirmação antes de apagar (vértice, projeto, divisa). Padrão: true. */
   confirmarAntesApagar: boolean;
-  /** Espessura da linha do cursor CAD. Padrão: 1. */
-  cursorEspessura?: number;
 }
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {
@@ -77,7 +75,6 @@ export const PREFERENCIAS_PADRAO: PreferenciasApp = {
   casasDecimaisAtivo: false,
   casasDecimais: 3,
   confirmarAntesApagar: true,
-  cursorEspessura: 1,
 };
 
 const KEY = 'metrica.preferencias';

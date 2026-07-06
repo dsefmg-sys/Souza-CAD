@@ -249,6 +249,25 @@ export interface Lado {
   confrontanteId: string | null;
 }
 
+/**
+ * Papel de um titular na cadeia dominial do imóvel — decide COMO ele assina as peças:
+ * - proprietario: dono pleno (padrão)
+ * - condomino: coproprietário (todos os condôminos assinam)
+ * - usufrutuario: tem o usufruto (assina com o nu-proprietário)
+ * - nu-proprietario: tem a nua-propriedade (assina com o usufrutuário)
+ * - inventariante: assina pelo espólio, quando o titular é falecido
+ */
+export type PapelProprietario = 'proprietario' | 'condomino' | 'usufrutuario' | 'nu-proprietario' | 'inventariante';
+
+/** Um titular ADICIONAL do imóvel (além do principal em ImovelData.proprietario). */
+export interface ProprietarioParte {
+  nome: string;
+  cpf: string;
+  papel: PapelProprietario;
+  conjugeNome?: string;
+  conjugeCpf?: string;
+}
+
 /** Dados de identificação do imóvel (aba identificacao do SIGEF + memorial). */
 export interface ImovelData {
   denominacao: string;        // "Fazenda Ventania"
@@ -263,6 +282,11 @@ export interface ImovelData {
   // cônjuge do proprietário — qualifica e assina junto nas peças
   conjugeProprietario?: string;
   cpfConjugeProprietario?: string;
+  // Papel do proprietário PRINCIPAL na cadeia dominial (padrão 'proprietario').
+  papelProprietario?: PapelProprietario;
+  // Outros titulares do imóvel (condôminos, nu-proprietário, inventariante...). Cada um assina as
+  // peças conforme o seu papel. Vazio/ausente = só o proprietário principal (comportamento antigo).
+  proprietariosAdicionais?: ProprietarioParte[];
   municipio: string;          // "Espera Feliz-MG"
   local: string;              // "Córrego Ventania, Espera Feliz-MG"
   naturezaServico: string;    // "Particular"

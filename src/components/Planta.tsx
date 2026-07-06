@@ -9,12 +9,12 @@ import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
 import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
+import { rotuloPapelProprietario } from '@/lib/export/papelProprietario';
 import type { ObjetoDesenho } from '@/lib/topo/types';
 
 import { Button } from '@/components/ui/button';
 import { Pencil, X, Save, Trash2 } from 'lucide-react';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
-import { carregarPreferencias } from '@/lib/store/preferencias';
 
 interface Props {
   vertices: Vertex[];
@@ -243,99 +243,13 @@ export default function Planta({
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || !editavel || modo === 'navegar') return;
-
-    const prefs = carregarPreferencias();
-    const esp = prefs.cursorEspessura ?? 1;
-
-    el.style.cursor = 'none';
-
-    const crosshair = document.createElement('div');
-    crosshair.className = 'cad-crosshair-overlay';
-    
-    Object.assign(crosshair.style, {
-      position: 'absolute',
-      top: '0',
-      left: '0',
-      width: '100%',
-      height: '100%',
-      pointerEvents: 'none',
-      overflow: 'hidden',
-      zIndex: '9999',
-      display: 'none',
-    });
-
-    const hLine = document.createElement('div');
-    Object.assign(hLine.style, {
-      position: 'absolute',
-      left: '0',
-      width: '100%',
-      height: `${esp}px`,
-      background: 'rgba(0, 0, 0, 0.45)',
-      boxShadow: '0 0 1px rgba(255, 255, 255, 0.6)',
-      pointerEvents: 'none',
-    });
-    crosshair.appendChild(hLine);
-
-    const vLine = document.createElement('div');
-    Object.assign(vLine.style, {
-      position: 'absolute',
-      top: '0',
-      width: `${esp}px`,
-      height: '100%',
-      background: 'rgba(0, 0, 0, 0.45)',
-      boxShadow: '0 0 1px rgba(255, 255, 255, 0.6)',
-      pointerEvents: 'none',
-    });
-    crosshair.appendChild(vLine);
-
-    const box = document.createElement('div');
-    Object.assign(box.style, {
-      position: 'absolute',
-      width: '8px',
-      height: '8px',
-      border: '1px solid rgba(0, 0, 0, 0.8)',
-      boxShadow: '0 0 1px rgba(255, 255, 255, 0.8)',
-      transform: 'translate(-50%, -50%)',
-      pointerEvents: 'none',
-    });
-    crosshair.appendChild(box);
-
-    el.appendChild(crosshair);
-
-    const onMouseMove = (e: MouseEvent) => {
-      const rect = el.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      crosshair.style.display = 'block';
-      hLine.style.top = `${y - esp / 2}px`;
-      vLine.style.left = `${x - esp / 2}px`;
-      box.style.left = `${x}px`;
-      box.style.top = `${y}px`;
-    };
-
-    const onMouseLeave = () => {
-      crosshair.style.display = 'none';
-    };
-
-    const onMouseEnter = () => {
-      crosshair.style.display = 'block';
-    };
-
-    el.addEventListener('mousemove', onMouseMove);
-    el.addEventListener('mouseleave', onMouseLeave);
-    el.addEventListener('mouseenter', onMouseEnter);
-
-    return () => {
-      el.style.cursor = '';
-      el.removeEventListener('mousemove', onMouseMove);
-      el.removeEventListener('mouseleave', onMouseLeave);
-      el.removeEventListener('mouseenter', onMouseEnter);
-      if (el.contains(crosshair)) {
-        el.removeChild(crosshair);
-      }
-    };
+    if (!el) return;
+    // Cursor de cruz NATIVO do navegador quando se está desenhando/editando a planta. Nativo porque
+    // ele fica cravado no ponteiro e alinhado mesmo com o zoom da folha — o crosshair desenhado à
+    // mão saía do lugar justamente por causa do transform de zoom do contêiner.
+    const desenhando = editavel && modo !== 'navegar';
+    el.style.cursor = desenhando ? 'crosshair' : '';
+    return () => { el.style.cursor = ''; };
   }, [editavel, modo]);
 
   const escalaDenomRef = useRef(0); // escala atual lida pelo handler da roda (evita depender do valor no efeito)
@@ -2362,8 +2276,14 @@ function CarimboA3(props: {
   // Lista dos dados do imóvel a serem desenhados na Box de Dados
   const campos: [string, string][] = [
     [imovel.tipoImovel === 'urbano' ? 'LOTE/IMÓVEL:' : 'PROPRIEDADE:', glebaNome || imovel.denominacao || '—'],
-    ['PROPRIETÁRIO(A):', imovel.proprietario || '—'],
+    // O rótulo reflete o PAPEL do titular principal (proprietário / usufrutuário / condômino...).
+    [`${rotuloPapelProprietario(imovel.papelProprietario).toUpperCase()}:`, imovel.proprietario || '—'],
   ];
+  // Demais titulares do imóvel (assinam o memorial anexo); o valor é truncado se muito longo.
+  const outrosTitulares = (imovel.proprietariosAdicionais ?? []).filter((p) => p.nome?.trim());
+  if (outrosTitulares.length) {
+    campos.push(['DEMAIS TITULARES:', outrosTitulares.map((p) => `${p.nome} (${rotuloPapelProprietario(p.papel).toLowerCase()})`).join('; ')]);
+  }
   campos.push(
     ['MUNICÍPIO(S):', imovel.municipio || '—'],
     // Termo do PROJETO (informado no modal) tem prioridade; senão, o do cadastro. Sigla TRT/ART

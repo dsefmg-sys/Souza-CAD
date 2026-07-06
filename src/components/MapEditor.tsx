@@ -10,7 +10,7 @@ import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { corDivisa, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { numBR, azimute, distancia, azimuteDMS } from '@/lib/topo/geometry';
-import { casasTela, carregarPreferencias } from '@/lib/store/preferencias';
+import { casasTela } from '@/lib/store/preferencias';
 import { geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { aplicarOrto, type ModoOrto } from '@/lib/topo/orto';
 import { snapUtm, type SegmentoSnap, type AlvoSnap, type SnapResult } from '@/lib/topo/snap';
@@ -351,110 +351,18 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
   return null;
 }
 
-// CURSOR DE CRUZ (CAD): com qualquer ferramenta ativa, o ponteiro do mapa vira a cruzinha "+"
-// dos softwares de CAD — deixa claro que o clique vai DESENHAR/EDITAR, não navegar. Sobre um
-// item clicável o ponteiro de mãozinha continua valendo (CSS do próprio item vence).
+// CURSOR DE CRUZ (CAD): com uma ferramenta ativa, o ponteiro do mapa vira a cruz "+" NATIVA do
+// navegador — deixa claro que o clique vai DESENHAR/EDITAR, não navegar. Usamos a cruz nativa (e
+// não um desenho seguindo o mouse) porque o navegador a posiciona EXATAMENTE no ponteiro, sem
+// atraso e alinhada mesmo com zoom; o crosshair desenhado à mão ficava fora do lugar. Sobre um
+// item clicável, o ponteiro de mãozinha do próprio item continua valendo (o CSS do item vence).
 function CursorMapa({ ativo }: { ativo: boolean }) {
   const map = useMap();
 
   useEffect(() => {
     const el = map.getContainer();
-    if (!ativo) {
-      el.style.cursor = '';
-      return;
-    }
-
-    const prefs = carregarPreferencias();
-    const esp = prefs.cursorEspessura ?? 1;
-
-    el.style.cursor = 'none';
-
-    const crosshair = document.createElement('div');
-    crosshair.className = 'cad-crosshair-overlay';
-    
-    Object.assign(crosshair.style, {
-      position: 'absolute',
-      top: '0',
-      left: '0',
-      width: '100%',
-      height: '100%',
-      pointerEvents: 'none',
-      overflow: 'hidden',
-      zIndex: '9999',
-      display: 'none',
-    });
-
-    const hLine = document.createElement('div');
-    Object.assign(hLine.style, {
-      position: 'absolute',
-      left: '0',
-      width: '100%',
-      height: `${esp}px`,
-      background: 'rgba(255, 255, 255, 0.45)',
-      boxShadow: '0 0 1px rgba(0, 0, 0, 0.6)',
-      pointerEvents: 'none',
-    });
-    crosshair.appendChild(hLine);
-
-    const vLine = document.createElement('div');
-    Object.assign(vLine.style, {
-      position: 'absolute',
-      top: '0',
-      width: `${esp}px`,
-      height: '100%',
-      background: 'rgba(255, 255, 255, 0.45)',
-      boxShadow: '0 0 1px rgba(0, 0, 0, 0.6)',
-      pointerEvents: 'none',
-    });
-    crosshair.appendChild(vLine);
-
-    const box = document.createElement('div');
-    Object.assign(box.style, {
-      position: 'absolute',
-      width: '8px',
-      height: '8px',
-      border: '1px solid rgba(255, 255, 255, 0.8)',
-      boxShadow: '0 0 1px rgba(0, 0, 0, 0.8)',
-      transform: 'translate(-50%, -50%)',
-      pointerEvents: 'none',
-    });
-    crosshair.appendChild(box);
-
-    el.appendChild(crosshair);
-
-    const onMouseMove = (e: MouseEvent) => {
-      const rect = el.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-
-      crosshair.style.display = 'block';
-      hLine.style.top = `${y - esp / 2}px`;
-      vLine.style.left = `${x - esp / 2}px`;
-      box.style.left = `${x}px`;
-      box.style.top = `${y}px`;
-    };
-
-    const onMouseLeave = () => {
-      crosshair.style.display = 'none';
-    };
-
-    const onMouseEnter = () => {
-      crosshair.style.display = 'block';
-    };
-
-    el.addEventListener('mousemove', onMouseMove);
-    el.addEventListener('mouseleave', onMouseLeave);
-    el.addEventListener('mouseenter', onMouseEnter);
-
-    return () => {
-      el.style.cursor = '';
-      el.removeEventListener('mousemove', onMouseMove);
-      el.removeEventListener('mouseleave', onMouseLeave);
-      el.removeEventListener('mouseenter', onMouseEnter);
-      if (el.contains(crosshair)) {
-        el.removeChild(crosshair);
-      }
-    };
+    el.style.cursor = ativo ? 'crosshair' : '';
+    return () => { el.style.cursor = ''; };
   }, [ativo, map]);
 
   return null;

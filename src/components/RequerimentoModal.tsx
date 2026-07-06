@@ -13,6 +13,7 @@ import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { numBR } from '@/lib/topo/geometry';
 import { carregarPreferencias } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
+import NotaLegal from '@/components/NotaLegal';
 
 const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string; explicacao: string }[] = [
   {
@@ -203,6 +204,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                     {OPCOES_ATO.find((o) => o.valor === localTipoAto)?.explicacao}
                   </p>
                 )}
+                <NotaLegal chave={localTipoAto === 'usucapiao' ? 'usucapiao' : 'requerimento'} />
                 {localTipoAto !== 'venda' && (
                   <p className="text-[10px] text-amber-500 font-semibold leading-snug">
                     Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.

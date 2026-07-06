@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import ModalSpreadsheet from '@/components/ModalSpreadsheet';
 import { Logo } from '@/components/Logo';
 import DocumentosProjeto from '@/components/DocumentosProjeto';
+import NotaLegal from '@/components/NotaLegal';
 import type { ArquivoProjeto } from '@/lib/store/arquivosProjeto';
 import ModalImport from '@/components/ModalImport';
 import { Label } from '@/components/ui/label';
@@ -52,7 +53,7 @@ import EstudioModal from '@/components/EstudioModal';
 import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, CAR_TEMAS } from '@/lib/topo/objetos';
 import { gerarCurvasDeNivel, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
@@ -3075,6 +3076,7 @@ export default function EditorPage() {
       id: '', nome: c.nome, cpf: c.cpf, matricula: c.matricula, cns: c.cns, descricaoExtra: c.descricaoExtra,
       condicao: c.condicao, conjugeNome: c.conjugeNome, conjugeCpf: c.conjugeCpf,
       inventarianteNome: c.inventarianteNome, inventarianteCpf: c.inventarianteCpf,
+      nuProprietarioNome: c.nuProprietarioNome, nuProprietarioCpf: c.nuProprietarioCpf,
       projetoId: projetoId || undefined
     });
     cadConf.listar().then(setSugConf).catch(() => {});
@@ -3092,6 +3094,7 @@ export default function EditorPage() {
       id, nome: c.nome, cpf: c.cpf, matricula: c.matricula, cns: c.cns, descricaoExtra: c.descricaoExtra,
       condicao: c.condicao, conjugeNome: c.conjugeNome, conjugeCpf: c.conjugeCpf,
       inventarianteNome: c.inventarianteNome, inventarianteCpf: c.inventarianteCpf,
+      nuProprietarioNome: c.nuProprietarioNome, nuProprietarioCpf: c.nuProprietarioCpf,
     }]);
     aviso(`Confrontante "${c.nome}" adicionado.`);
   }
@@ -3859,13 +3862,13 @@ export default function EditorPage() {
                           <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); alternarModo('apagar'); }} title="Apagar vértice">
                             <Trash2 className="text-rose-500 shrink-0" /> <span className="truncate">Apagar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} className="relative" onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
-                            <EyeOff className="text-amber-500 shrink-0" /> <span className="truncate">Ignorar</span>
-                            <Atalho k="F12" />
-                          </Button>
                           <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} className="relative" onClick={() => { setVista('mapa'); alternarModo('considerar'); }} title="Considerar vértice (F11)">
                             <Plus className="text-cyan-500 shrink-0" /> <span className="truncate">Considerar</span>
                             <Atalho k="F11" />
+                          </Button>
+                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} className="relative" onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
+                            <EyeOff className="text-amber-500 shrink-0" /> <span className="truncate">Ignorar</span>
+                            <Atalho k="F12" />
                           </Button>
                           <Button size="sm" variant={modo === 'medir' ? 'default' : 'outline'} onClick={() => alternarModo('medir', true)} title="Régua: medir distância e azimute no mapa">
                             <Ruler className="text-sky-500 shrink-0" /> <span className="truncate">Medir</span>
@@ -4098,8 +4101,8 @@ export default function EditorPage() {
                     )}
                     <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
                     <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('inserir'); }} title="Inserir vértice"><Plus /></Button>
-                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /><Atalho k="F12" /></Button>
                     <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('considerar'); }} title="Considerar (F11)"><Plus /><Atalho k="F11" /></Button>
+                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /><Atalho k="F12" /></Button>
                     <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('apagar'); }} title="Apagar vértice"><Trash2 /></Button>
                     <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => alternarModo('medir', true)} title="Medir / Régua"><Ruler /></Button>
                     <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('multi'); }} title="Selecionar vários">
@@ -5666,6 +5669,12 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
     const m = sugProp.find((p) => p.nome === v);
     onChange(m ? { ...imovel, proprietario: v, cpfProprietario: m.cpf, tipoPessoa: m.tipoPessoa } : { ...imovel, proprietario: v });
   }
+  // Outros titulares do imóvel (condôminos, nu-proprietário, inventariante...).
+  const titulares = imovel.proprietariosAdicionais ?? [];
+  const setTitulares = (lista: ProprietarioParte[]) => onChange({ ...imovel, proprietariosAdicionais: lista });
+  const addTitular = () => setTitulares([...titulares, { nome: '', cpf: '', papel: 'condomino' }]);
+  const setTitular = (i: number, patch: Partial<ProprietarioParte>) => setTitulares(titulares.map((p, k) => (k === i ? { ...p, ...patch } : p)));
+  const rmTitular = (i: number) => setTitulares(titulares.filter((_, k) => k !== i));
   return (
     <div className="space-y-2">
       {/* Seletor Deslizante Rural / Urbano */}
@@ -5814,6 +5823,59 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
         <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} aviso={avisoDoc(imovel.cpfConjugeProprietario)} />
       </div>
+
+      {/* Papel do proprietário na cadeia dominial — decide como ele assina as peças. */}
+      <div className="space-y-1">
+        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Papel do proprietário</Label>
+        <select className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+          value={imovel.papelProprietario ?? 'proprietario'} onChange={(e) => set('papelProprietario', e.target.value)}>
+          <option value="proprietario">Proprietário pleno</option>
+          <option value="condomino">Condômino / coproprietário</option>
+          <option value="usufrutuario">Usufrutuário</option>
+          <option value="nu-proprietario">Nu-proprietário</option>
+          <option value="inventariante">Inventariante (espólio)</option>
+        </select>
+        {(imovel.papelProprietario ?? 'proprietario') !== 'proprietario' && (
+          <NotaLegal chave={
+            imovel.papelProprietario === 'condomino' ? 'condomino'
+            : (imovel.papelProprietario === 'usufrutuario' || imovel.papelProprietario === 'nu-proprietario') ? 'usufruto'
+            : imovel.papelProprietario === 'inventariante' ? 'espolio'
+            : 'papelProprietario'} />
+        )}
+      </div>
+
+      {/* Outros titulares: condôminos, nu-proprietário, inventariante — cada um assina conforme o papel. */}
+      <div className="space-y-1.5 rounded-sm border p-2 bg-muted/10">
+        <div className="flex items-center justify-between">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Outros titulares{titulares.length ? ` (${titulares.length})` : ''}</Label>
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={addTitular}><Plus className="size-3.5" /> Adicionar</Button>
+        </div>
+        {titulares.length === 0 && <p className="text-[10px] text-muted-foreground leading-snug">Coproprietários, nu-proprietário, inventariante… Cada um entra com a sua própria assinatura na peça.</p>}
+        {titulares.map((tt, i) => (
+          <div key={i} className="space-y-1.5 rounded-sm border bg-background p-2">
+            <div className="flex items-center gap-1.5">
+              <select className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-xs"
+                value={tt.papel} onChange={(e) => setTitular(i, { papel: e.target.value as ProprietarioParte['papel'] })}>
+                <option value="condomino">Condômino / coproprietário</option>
+                <option value="usufrutuario">Usufrutuário</option>
+                <option value="nu-proprietario">Nu-proprietário</option>
+                <option value="inventariante">Inventariante (espólio)</option>
+                <option value="proprietario">Proprietário</option>
+              </select>
+              <Button size="sm" variant="ghost" className="size-8 shrink-0 p-0 text-destructive" title="Remover titular" onClick={() => rmTitular(i)}><Trash2 className="size-3.5" /></Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Campo label="Nome" value={tt.nome} onChange={(v) => setTitular(i, { nome: v })} />
+              <Campo label="CPF/CNPJ" value={tt.cpf} onChange={(v) => setTitular(i, { cpf: v })} aviso={avisoDoc(tt.cpf)} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Campo label="Cônjuge (se houver)" value={tt.conjugeNome ?? ''} onChange={(v) => setTitular(i, { conjugeNome: v })} />
+              <Campo label="CPF do cônjuge" value={tt.conjugeCpf ?? ''} onChange={(v) => setTitular(i, { conjugeCpf: v })} aviso={avisoDoc(tt.conjugeCpf)} />
+            </div>
+          </div>
+        ))}
+      </div>
+
       <SecaoTitulo>Localização e fuso</SecaoTitulo>
       <div className="space-y-1">
         <Campo label="Município" value={imovel.municipio} onChange={onMunicipio} placeholder="Espera Feliz-MG" />
@@ -5904,6 +5966,7 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
             <li><b>Limites Inacessíveis (LV):</b> 7.50 m (grotas, encostas)</li>
             <li><b>Vertical (Sigma Z):</b> máximo de 0.30 m recomendado para LA</li>
           </ul>
+          <NotaLegal chave="divisaLimite" />
         </CardContent>
       </Card>
 
@@ -5951,6 +6014,9 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
         ))}
       </div>
 
+      {/* Validade jurídica da peça: o app confere a parte técnica; as exigências formais são do cartório. */}
+      <NotaLegal chave="validadePeca" />
+
       <Card>
         <CardHeader className="pb-2"><CardTitle>Reconciliação com o SIGEF</CardTitle></CardHeader>
         <CardContent className="space-y-2">
@@ -5992,7 +6058,8 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
     onChange(confrontantes.map((c) => (c.id === id
       ? (m ? { ...c, nome: v, cpf: m.cpf, matricula: m.matricula, cns: m.cns, descricaoExtra: m.descricaoExtra,
               condicao: m.condicao, conjugeNome: m.conjugeNome, conjugeCpf: m.conjugeCpf,
-              inventarianteNome: m.inventarianteNome, inventarianteCpf: m.inventarianteCpf } : { ...c, nome: v })
+              inventarianteNome: m.inventarianteNome, inventarianteCpf: m.inventarianteCpf,
+              nuProprietarioNome: m.nuProprietarioNome, nuProprietarioCpf: m.nuProprietarioCpf } : { ...c, nome: v })
       : c)));
   };
   const ladosDe = (id: string) => Object.entries(mapa).filter(([, cid]) => cid === id).map(([i]) => Number(i));
@@ -6067,13 +6134,27 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
                   value={c.condicao ?? 'proprietario'} onChange={(e) => {
                     const cond = e.target.value as Confrontante['condicao'];
                     // limpa campos incompatíveis ao trocar a condição (evita dados órfãos na peça)
-                    const limpa = cond === 'espolio' ? { conjugeNome: '', conjugeCpf: '' } : { inventarianteNome: '', inventarianteCpf: '' };
+                    const limpa: Partial<Confrontante> = {
+                      ...(cond === 'espolio' ? { conjugeNome: '', conjugeCpf: '' } : {}),
+                      ...(cond !== 'espolio' ? { inventarianteNome: '', inventarianteCpf: '' } : {}),
+                      ...(cond !== 'usufrutuario' ? { nuProprietarioNome: '', nuProprietarioCpf: '' } : {}),
+                    };
                     onChange(confrontantes.map((x) => (x.id === c.id ? { ...x, condicao: cond, ...limpa } : x)));
                   }}>
                   <option value="proprietario">Proprietário</option>
+                  <option value="condomino">Condômino / coproprietário</option>
+                  <option value="usufrutuario">Usufrutuário (assina com nu-proprietário)</option>
                   <option value="posseiro">Posseiro (sem matrícula)</option>
                   <option value="espolio">Espólio (assina inventariante)</option>
                 </select>
+                {(c.condicao ?? 'proprietario') !== 'proprietario' && (
+                  <NotaLegal chave={
+                    c.condicao === 'condomino' ? 'condomino'
+                    : c.condicao === 'usufrutuario' ? 'usufruto'
+                    : c.condicao === 'espolio' ? 'espolio'
+                    : c.condicao === 'posseiro' ? 'posseiro'
+                    : 'papelProprietario'} />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Campo label="CPF/CNPJ" value={c.cpf} onChange={(v) => set(c.id, 'cpf', v)} />
@@ -6083,6 +6164,12 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
                 <div className="grid grid-cols-2 gap-2">
                   <Campo label="Inventariante" value={c.inventarianteNome ?? ''} onChange={(v) => set(c.id, 'inventarianteNome', v)} />
                   <Campo label="CPF do inventariante" value={c.inventarianteCpf ?? ''} onChange={(v) => set(c.id, 'inventarianteCpf', v)} />
+                </div>
+              )}
+              {(c.condicao ?? 'proprietario') === 'usufrutuario' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Campo label="Nu-proprietário (assina junto)" value={c.nuProprietarioNome ?? ''} onChange={(v) => set(c.id, 'nuProprietarioNome', v)} />
+                  <Campo label="CPF do nu-proprietário" value={c.nuProprietarioCpf ?? ''} onChange={(v) => set(c.id, 'nuProprietarioCpf', v)} />
                 </div>
               )}
               {(c.condicao ?? 'proprietario') !== 'espolio' && (

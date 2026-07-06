@@ -140,12 +140,40 @@ describe('memorial', () => {
     expect(t).toContain('Matrícula nº');
   });
 
+  it('condômino: descrição com "condômino(a)" e mantém matrícula', () => {
+    const c: Confrontante = { id: 'z', nome: 'Ana Condômina', cpf: '123', matricula: '456', cns: '', condicao: 'condomino' };
+    const t = descreverConfrontante(c);
+    expect(t).toContain('na condição de condômino(a)');
+    expect(t).toContain('Matrícula nº');
+  });
+
+  it('usufrutuário: descrição cita usufruto e o nu-proprietário quando informado', () => {
+    const c: Confrontante = { id: 'w', nome: 'Carlos Usufruto', cpf: '789', matricula: '321', cns: '', condicao: 'usufrutuario', nuProprietarioNome: 'Nu Dono' };
+    const t = descreverConfrontante(c);
+    expect(t).toContain('na condição de usufrutuário(a)');
+    expect(t).toContain('nu-proprietário(a) Nu Dono');
+  });
+
   it('memorial com cônjuge e espólio gera .docx sem erro', async () => {
     const { res, confrontantes, confrontantePorLado } = preparar();
     confrontantes[0] = { ...confrontantes[0], condicao: 'espolio', inventarianteNome: 'Inv. Fulano', inventarianteCpf: '333' };
     if (confrontantes[1]) confrontantes[1] = { ...confrontantes[1], conjugeNome: 'Cônjuge Beltrana', conjugeCpf: '444' };
     const imovelConj: ImovelData = { ...imovel, conjugeProprietario: 'Esposa do Dono', cpfConjugeProprietario: '555' };
     const blob = await gerarMemorialDocx({ res, imovel: imovelConj, tecnico, confrontantes, confrontantePorLado });
+    expect((await blob.arrayBuffer()).byteLength).toBeGreaterThan(2000);
+  });
+
+  it('memorial com vários titulares (condômino + usufruto/nu-proprietário) gera .docx sem erro', async () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    const imovelMulti: ImovelData = {
+      ...imovel,
+      papelProprietario: 'usufrutuario',
+      proprietariosAdicionais: [
+        { nome: 'Nu Proprietário', cpf: '111', papel: 'nu-proprietario' },
+        { nome: 'Segundo Condômino', cpf: '222', papel: 'condomino', conjugeNome: 'Cônjuge do Condômino', conjugeCpf: '333' },
+      ],
+    };
+    const blob = await gerarMemorialDocx({ res, imovel: imovelMulti, tecnico, confrontantes, confrontantePorLado });
     expect((await blob.arrayBuffer()).byteLength).toBeGreaterThan(2000);
   });
 });

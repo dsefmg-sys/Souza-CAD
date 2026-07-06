@@ -3,6 +3,7 @@ import type { ImovelData, TecnicoData, Confrontante, Vertex } from '../topo/type
 import { numBR } from '../topo/geometry';
 import { rotulosProfissional } from '../topo/profissional';
 import { REPRES_LABEL } from '../topo/sigefVocab';
+import { rotuloPapelProprietario } from './papelProprietario';
 import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
 
@@ -172,8 +173,11 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
     addAssinatura(confrontante.nuProprietarioNome, 'Nu-proprietário(a) do imóvel confrontante');
   }
 
-  // Proprietário do Imóvel
-  addAssinatura(imovel.proprietario || '_______________________', 'Proprietário Requerente');
+  // Proprietário do Imóvel (requerente) + demais titulares, se houver.
+  addAssinatura(imovel.proprietario || '_______________________', `Proprietário Requerente${rotuloPapelProprietario(imovel.papelProprietario) !== 'Proprietário(a)' ? ` (${rotuloPapelProprietario(imovel.papelProprietario)})` : ''}`);
+  for (const parte of imovel.proprietariosAdicionais ?? []) {
+    if (parte.nome?.trim()) addAssinatura(parte.nome, `Titular do imóvel (${rotuloPapelProprietario(parte.papel)})`);
+  }
 
   // Responsável Técnico
   addAssinatura(tecnico.nome || '_______________________', `${tecnico.formacao || 'Responsável Técnico'} - ${rotuloRT.registro}: ${tecnico.cft || '________'}`);

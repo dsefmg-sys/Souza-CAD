@@ -6,6 +6,7 @@ import { valoresEfetivos } from '../topo/conferencia';
 import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo, sanitizarTexto } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
+import { qualificacaoPapelProprietario } from './papelProprietario';
 import { compatibilizarWord2007 } from './compatWord2007';
 
 function coordTexto(v: Vertex): string {
@@ -377,11 +378,22 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     propLinhas.push(`RG: ${transmitente.rg}`);
   }
   propLinhas.push(`Imóvel de Matrícula: ${imovel.matricula}`);
+  const qualifPrincipal = qualificacaoPapelProprietario(imovel.papelProprietario);
+  if (qualifPrincipal) propLinhas.push(qualifPrincipal);
 
   const conjugePropNome = imovel.conjugeProprietario || transmitente?.conjugeNome || undefined;
   const conjugePropCpf = imovel.cpfConjugeProprietario || transmitente?.conjugeCpf || undefined;
 
   assinaturaComConjuge(propLinhas, conjugePropNome, conjugePropCpf).forEach((c) => children.push(c));
+
+  // Demais titulares (condôminos, nu-proprietário, inventariante...): cada um com a sua assinatura.
+  for (const parte of imovel.proprietariosAdicionais ?? []) {
+    if (!parte.nome?.trim()) continue;
+    const linhas = [`Nome: ${parte.nome}`, `CPF: ${parte.cpf || '—'}`, `Imóvel de Matrícula: ${imovel.matricula}`];
+    const q = qualificacaoPapelProprietario(parte.papel);
+    if (q) linhas.push(q);
+    assinaturaComConjuge(linhas, parte.conjugeNome, parte.conjugeCpf).forEach((c) => children.push(c));
+  }
 
   // Bloco comprador (se houver)
   if (imovel.comprador) {
