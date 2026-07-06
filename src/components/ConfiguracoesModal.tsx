@@ -5,6 +5,7 @@ import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Tra
 import ModelosDocsModal from './ModelosDocsModal';
 import PontosBancoModal from './PontosBancoModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
+import { TERMOS, TERMOS_VERSAO, TERMOS_TITULAR } from '@/lib/legal/termos';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -804,6 +805,18 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 <div className="rounded border border-dashed p-2.5 text-[11px] leading-tight text-muted-foreground">
                   Restaurar substitui os ajustes atuais pelos do arquivo. Os projetos e o banco de vértices não são tocados.
                 </div>
+
+                {/* Sobre o sistema: versão, autoria e as condições de uso — de propósito num canto
+                    discreto, junto das outras informações (decisão do dono, 05/07/2026) */}
+                <details className="rounded border p-2.5 text-[11px] leading-tight text-muted-foreground">
+                  <summary className="cursor-pointer font-semibold">Sobre o sistema</summary>
+                  <div className="mt-2 space-y-2">
+                    <p>Souza CAD — criado e mantido por {TERMOS_TITULAR}. Condições de uso (versão {TERMOS_VERSAO}):</p>
+                    {TERMOS.map((s) => (
+                      <p key={s.titulo}><span className="font-semibold">{s.titulo}.</span> {s.texto}</p>
+                    ))}
+                  </div>
+                </details>
               </div>
             </div>
           )}

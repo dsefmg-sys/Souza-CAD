@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building2, User, LogOut } from 'lucide-react';
 import { carregarEscritorio, salvarEscritorio, carregarTecnico, salvarTecnico } from '@/lib/store/settings';
+import { aceitarTermos } from '@/lib/store/perfilUso';
 
 interface Props {
   open: boolean;
@@ -48,6 +49,9 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
       conselho: eng ? 'CREA' : 'CFT',
       formacao: formacao.trim() || formacaoPadrao,
     });
+    // aceite das condições de uso registrado aqui, discreto (a linha acima do botão avisa;
+    // o texto completo mora em Ajustes → Padrões & Backup → Sobre o sistema)
+    aceitarTermos().catch(() => {});
     onConcluir();
   }
 
@@ -110,6 +114,7 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
             </div>
             <div className="space-y-1"><Label>WhatsApp / telefone</Label><Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 90000-0000" /></div>
             <p className="text-[11px] text-muted-foreground">Você pode completar e ajustar tudo depois em Configurações.</p>
+            <p className="text-[10px] text-muted-foreground/80">Ao concluir, você concorda com as condições de uso do sistema — o texto completo fica em Ajustes, na seção “Sobre o sistema”.</p>
             <div className="flex justify-between">
               <Button variant="ghost" size="sm" onClick={() => setTipo(null)}>Voltar</Button>
               <Button size="sm" disabled={!podeConcluir} onClick={concluir}>Concluir cadastro</Button>

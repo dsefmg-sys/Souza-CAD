@@ -87,12 +87,11 @@ import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/st
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
-import { termosAceitosLocal, termosAceitosNuvem, sincronizarPerfil, registrarProjetoSalvo } from '@/lib/store/perfilUso';
+import { sincronizarPerfil, registrarProjetoSalvo } from '@/lib/store/perfilUso';
 import { carregarPreferencias, salvarPreferencias, salvarModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster } from '@/lib/store/suporte';
 import { carregarConfigAssinatura } from '@/lib/store/assinatura';
-import TermosModal from '@/components/TermosModal';
 import MasterPainelModal from '@/components/MasterPainelModal';
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
 import PlanilhaConferenciaModal from '@/components/PlanilhaConferenciaModal';
@@ -284,9 +283,6 @@ export default function EditorPage() {
   const [avisoReconciliarResolve, setAvisoReconciliarResolve] = useState<((v: 'exportar' | 'voltar' | 'conciliar') => void) | null>(null);
   const [explicacaoReconciliarAberta, setExplicacaoReconciliarAberta] = useState(false);
   const iconeCab = (chave: string, icone: React.ReactNode) => (prefs.iconesCabecalhoOcultos.includes(chave) ? null : icone);
-  const [termosOk, setTermosOk] = useState(true); // aceite dos termos de uso
-  const [termosModalAberto, setTermosModalAberto] = useState(false); // abre ao CRIAR projeto (não na 1ª abertura)
-  const acaoAposTermos = useRef<null | (() => void)>(null);
   const [setupOk, setSetupOk] = useState(true); // primeiro acesso: cadastro de empresa/autônomo
   const [planilhaConfAberta, setPlanilhaConfAberta] = useState(false); // conferência da planilha SIGEF
   const [masterAberto, setMasterAberto] = useState(false); // painel do titular (só master)
@@ -530,9 +526,8 @@ export default function EditorPage() {
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
     iniciarCoresDivisa(); // aplica as cores de divisa personalizadas do projetista
     setPrefs(carregarPreferencias()); // preferências de interface (ícones do cabeçalho etc.)
-    // termos de uso: bloqueia até aceitar (checa local, depois nuvem)
-    if (termosAceitosLocal()) setTermosOk(true);
-    else { setTermosOk(false); termosAceitosNuvem().then((ok) => { if (ok) setTermosOk(true); }).catch(() => {}); }
+    // condições de uso: o aceite é registrado discretamente no primeiro acesso (PrimeiroAcessoModal);
+    // o texto mora em Ajustes → Sobre o sistema — sem tela bloqueando (decisão do dono, 05/07/2026)
     // primeiro acesso: só pede cadastro pra quem não é o titular e ainda não configurou
     try { setSetupOk(souMaster() || localStorage.getItem('metrica.setupFeito') === '1'); } catch { setSetupOk(true); }
     // registra/atualiza o perfil de uso (o titular acompanha empresa, RT, projetos)
@@ -2607,8 +2602,6 @@ export default function EditorPage() {
   }
 
   async function criarNovoProjeto() {
-    // termo de aceite: pede na hora de CRIAR o projeto (não na 1ª abertura do app)
-    if (!termosOk) { acaoAposTermos.current = () => { void criarNovoProjeto(); }; setTermosModalAberto(true); return; }
     if (temConteudoTrabalho()) {
       const ok = await confirmar({ titulo: 'Criar novo projeto', mensagem: 'Deseja SALVAR o projeto atual antes de criar um novo?', okLabel: 'Salvar e criar novo', cancelLabel: 'Descartar e criar novo' });
       if (ok) {
@@ -2725,7 +2718,6 @@ export default function EditorPage() {
 
   // antes de importar um novo TXT, oferece salvar o trabalho atual (que será substituído)
   async function iniciarImportTxt() {
-    if (!termosOk) { acaoAposTermos.current = () => { void iniciarImportTxt(); }; setTermosModalAberto(true); return; }
     if (temConteudoTrabalho()) {
       const ok = await confirmar({ titulo: 'Importar novo arquivo', mensagem: 'Há um trabalho em andamento. Deseja SALVÁ-LO como projeto antes de importar um novo arquivo?', okLabel: 'Salvar e importar', cancelLabel: 'Importar sem salvar' });
       if (ok) { await salvar(); }
@@ -3559,6 +3551,30 @@ export default function EditorPage() {
                   className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
                   {plantaDark ? <Sun className="size-5 text-amber-400" /> : <Moon className="size-5" />}
                   <span className="text-[10px] font-bold leading-none">{plantaDark ? 'ESCURA' : 'CLARA'}</span>
+                </button>
+              </>
+            )}
+
+            {/* Atalhos mais usados na mesma coluna (pedido do dono, 05/07/2026): salvar sempre
+                à mão; no mapa, também enquadrar o desenho e ligar/desligar o imã. */}
+            <button type="button" onClick={() => { void salvar(); }} disabled={processando}
+              title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar' : salvoOk ? 'Trabalho salvo' : 'Salvar o projeto'}
+              className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${salvarLaranja ? 'border-amber-500 bg-amber-500/15 hover:bg-amber-500/25' : 'border-border bg-background/95 hover:bg-muted'}`}>
+              <Save className={`size-5 ${salvarLaranja ? 'text-amber-500' : salvoOk ? 'text-green-600' : ''}`} />
+              <span className="text-[10px] font-bold leading-none">SALVAR</span>
+            </button>
+            {vista === 'mapa' && (
+              <>
+                <button type="button" onClick={centralizar} title="Enquadrar o desenho na tela (foco)"
+                  className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
+                  <Target className="size-5" />
+                  <span className="text-[10px] font-bold leading-none">FOCO</span>
+                </button>
+                <button type="button" onClick={() => setSnapAtivo((v) => !v)}
+                  title={snapAtivo ? 'Imã ligado: o clique encaixa em pontos próximos. Clique para desligar.' : 'Imã desligado. Clique para ligar o encaixe em pontos próximos.'}
+                  className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${snapAtivo ? 'border-primary bg-primary/10 hover:bg-primary/20' : 'border-border bg-background/95 hover:bg-muted'}`}>
+                  <Magnet className={`size-5 ${snapAtivo ? 'text-primary' : ''}`} />
+                  <span className="text-[10px] font-bold leading-none">IMÃ</span>
                 </button>
               </>
             )}
@@ -4683,7 +4699,6 @@ export default function EditorPage() {
 
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
-      <TermosModal open={termosModalAberto} onAceitar={() => { setTermosOk(true); setTermosModalAberto(false); const a = acaoAposTermos.current; acaoAposTermos.current = null; a?.(); }} />
       <PrimeiroAcessoModal open={!setupOk} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); empurrarConfigParaNuvem().catch(() => {}); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
       <MasterPainelModal
         open={masterAberto}
