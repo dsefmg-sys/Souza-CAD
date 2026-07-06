@@ -1261,7 +1261,8 @@ export default function Planta({
           const pp = sp.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
           const estilo = o.estiloLinha ?? (o.tracejado ? 'tracejado' : 'solido');
           const dashArray = estilo === 'tracejado' ? '6 4' : estilo === 'pontilhado' ? '2 3' : undefined;
-          const borderCor = o.cor ?? '#2563eb';
+          // Curva de nível com cor AUTOMÁTICA fica CINZA CLARO na planta (fundo branco) — legível e discreta.
+          const borderCor = (o.curvaNivel != null && (o.cor == null || o.cor === 'auto')) ? '#9ca3af' : (o.cor ?? '#2563eb');
           const esp = o.espessura ?? 1.2;
 
           if (o.preenchido && sp.length >= 3) {

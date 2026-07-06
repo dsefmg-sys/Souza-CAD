@@ -54,7 +54,7 @@ import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte } from '@/lib/topo/types';
-import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, CAR_TEMAS, COR_CURVA_NIVEL } from '@/lib/topo/objetos';
+import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, CAR_TEMAS, COR_CURVA_NIVEL, COR_CURVA_AUTO } from '@/lib/topo/objetos';
 import { gerarCurvasDeNivel, intervaloSugerido, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
@@ -2840,6 +2840,7 @@ export default function EditorPage() {
 
   // AJUSTES DA CURVA DE NÍVEL (a "engrenagem" antes de gerar). Ficam guardados enquanto o app está aberto.
   const [intervaloCurva, setIntervaloCurva] = useState(1);
+  const [curvaCorAuto, setCurvaCorAuto] = useState(true); // cor automática: branca no mapa, cinza na planta
   const [curvaCor, setCurvaCor] = useState(COR_CURVA_NIVEL);
   const [curvaMestraCada, setCurvaMestraCada] = useState(5); // linha mais forte a cada N curvas
   const [curvaEspessura, setCurvaEspessura] = useState<'fina' | 'media' | 'grossa'>('media');
@@ -2878,7 +2879,7 @@ export default function EditorPage() {
     const objs = curvas.map((c) => {
       const mestra = Math.abs(c.nivel / passoMestra - Math.round(c.nivel / passoMestra)) < 1e-6;
       const pontos = c.linha.map((p) => { const g = utmParaGeo(p.x, p.y, zona, hemisferio); return { lat: g.lat, lon: g.lon, leste: p.x, norte: p.y }; });
-      return novaCurvaNivel(pontos, c.nivel, mestra, { cor: curvaCor, espessura: mestra ? esp.mestra : esp.normal });
+      return novaCurvaNivel(pontos, c.nivel, mestra, { cor: curvaCorAuto ? COR_CURVA_AUTO : curvaCor, espessura: mestra ? esp.mestra : esp.normal });
     });
     // remove curvas antigas e coloca as novas (mantém o resto do desenho)
     setObjetos((os) => [...os.filter((o) => o.curvaNivel == null), ...objs]);
@@ -4035,10 +4036,16 @@ export default function EditorPage() {
                           {/* Engrenagem: ajustes profissionais */}
                           {curvaConfigAberta && (
                             <div className="space-y-1.5 rounded-sm bg-muted/30 p-1.5 animate-in fade-in duration-150">
-                              <label className="flex items-center justify-between text-[9px] font-semibold text-muted-foreground">
-                                Cor das curvas
-                                <input type="color" value={curvaCor} onChange={(e) => setCurvaCor(e.target.value)} className="h-5 w-9 cursor-pointer rounded-sm border bg-background p-0" title="Cor das curvas de nível" />
+                              <label className="flex items-center justify-between text-[9px] font-semibold text-muted-foreground" title="Cor automática: branca no mapa (fundo escuro) e cinza claro na planta (fundo branco) — mais legível">
+                                <span>Cor automática <span className="font-normal opacity-70">(branca no mapa, cinza na planta)</span></span>
+                                <input type="checkbox" checked={curvaCorAuto} onChange={(e) => setCurvaCorAuto(e.target.checked)} className="size-3.5 accent-primary" />
                               </label>
+                              {!curvaCorAuto && (
+                                <label className="flex items-center justify-between text-[9px] font-semibold text-muted-foreground">
+                                  Cor fixa
+                                  <input type="color" value={curvaCor} onChange={(e) => setCurvaCor(e.target.value)} className="h-5 w-9 cursor-pointer rounded-sm border bg-background p-0" title="Cor fixa das curvas (vale nas duas telas)" />
+                                </label>
+                              )}
                               <label className="flex items-center justify-between gap-1 text-[9px] font-semibold text-muted-foreground">
                                 Linha forte a cada
                                 <span className="flex items-center gap-1">
@@ -4058,7 +4065,7 @@ export default function EditorPage() {
                           )}
                           <div className="grid grid-cols-2 gap-1">
                             <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={gerarCurvasNivel} title="Traça as curvas de nível a partir dos pontos com altitude (perímetro + internos), recortadas ao imóvel">
-                              <Waypoints className="size-3.5" style={{ color: curvaCor }} /> Gerar
+                              <Waypoints className="size-3.5" style={{ color: curvaCorAuto ? '#9ca3af' : curvaCor }} /> Gerar
                             </Button>
                             <Button size="sm" variant="ghost" className="h-7 gap-1 text-[11px]" disabled={!temCurvas} onClick={limparCurvasNivel} title="Remove as curvas geradas">
                               <Trash2 className="size-3.5" /> Limpar

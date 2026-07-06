@@ -12,6 +12,8 @@ export function novaPolilinha(pontos: PontoLL[], opts: { cor?: string; espessura
 
 /** Cor sépia/marrom clássica de carta topográfica para as curvas de nível. */
 export const COR_CURVA_NIVEL = '#8a5a2b';
+/** Sentinela de cor AUTOMÁTICA da curva: cada tela decide (branca no mapa escuro, cinza na planta branca). */
+export const COR_CURVA_AUTO = 'auto';
 
 /** Cria uma polilinha marcada como CURVA DE NÍVEL na altitude `nivel`. Mestra (a cada Nª) mais grossa.
  * Cor e espessura vêm da engrenagem de ajustes; sem opções, cai no padrão de carta topográfica. */

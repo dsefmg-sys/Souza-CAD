@@ -1378,8 +1378,10 @@ export default function MapEditor(props: Props) {
         if (o.tipo === 'polilinha') {
           const estilo = o.estiloLinha ?? (o.tracejado ? 'tracejado' : 'solido');
           const dashArray = estilo === 'tracejado' ? '8 6' : estilo === 'pontilhado' ? '2 4' : undefined;
+          // Curva de nível com cor AUTOMÁTICA fica BRANCA no mapa (fundo de satélite escuro) — mais legível.
+          const corAutoCurva = o.curvaNivel != null && (o.cor == null || o.cor === 'auto');
           const comum = {
-            color: o.cor ?? estiloCamada?.cor ?? '#2563eb',
+            color: corAutoCurva ? '#ffffff' : (o.cor ?? estiloCamada?.cor ?? '#2563eb'),
             weight: (o.espessura ?? estiloCamada?.espessura ?? 1.5) + (sel ? 1 : 0),
             dashArray
           };
