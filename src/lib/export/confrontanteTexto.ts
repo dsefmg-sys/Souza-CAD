@@ -26,5 +26,10 @@ export function descreverConfrontante(c: Confrontante | undefined): string {
   const sufixo = partes.length ? ` (${partes.join(', ')})` : '';
   const base = `${nomeConfrontante(c)}${sufixo}`;
   if (cond === 'posseiro') return `${base}, na condição de possuidor(a)`;
+  if (cond === 'condomino') return `${base}, na condição de condômino(a)`;
+  if (cond === 'usufrutuario') {
+    const nu = c.nuProprietarioNome?.trim();
+    return nu ? `${base}, na condição de usufrutuário(a), sendo nu-proprietário(a) ${nu}` : `${base}, na condição de usufrutuário(a)`;
+  }
   return base;
 }

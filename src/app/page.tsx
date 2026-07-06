@@ -212,6 +212,13 @@ function Atalho({ k, className }: { k: string; className?: string }) {
   );
 }
 
+// Interruptor único do gerenciamento de camadas na interface. FALSO a pedido do dono: o controle de
+// camadas (visibilidade/bloqueio/cor/espessura) só valia no mapa e confundia na planta. Esconde as
+// DUAS portas — o botão flutuante CAMADAS e o cartão "Gerenciador de Camadas" do mapa. O código e o
+// estado continuam intactos: no padrão, tudo fica visível e desbloqueado (o desenho aparece normal).
+// Basta trocar para `true` pra trazer o gerenciador de volta, sem reescrever nada.
+const GERENCIADOR_CAMADAS_VISIVEL = false;
+
 const PALETA_DESENHO = [
   { nome: 'Azul', hex: '#2563eb' },
   { nome: 'Vermelho', hex: '#dc2626' },
@@ -3965,8 +3972,8 @@ export default function EditorPage() {
                       </div>
                     )}
 
-                    {/* CARD 4: GERENCIADOR DE CAMADAS */}
-                    {medioOuMais && vista === 'mapa' && (
+                    {/* CARD 4: GERENCIADOR DE CAMADAS — escondido pelo interruptor GERENCIADOR_CAMADAS_VISIVEL */}
+                    {GERENCIADOR_CAMADAS_VISIVEL && medioOuMais && vista === 'mapa' && (
                       <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm mt-1.5">
                         <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`}>
                           <span>Gerenciador de Camadas</span>
@@ -4355,7 +4362,8 @@ export default function EditorPage() {
               <span className="text-[10px] font-bold leading-none text-indigo-600 dark:text-indigo-400">IA EXTRAIR</span>
             </button>
 
-            {/* Botão Camadas — abre popover com gerenciamento de camadas */}
+            {/* Botão Camadas — escondido pelo interruptor GERENCIADOR_CAMADAS_VISIVEL */}
+            {GERENCIADOR_CAMADAS_VISIVEL && (
             <div className="relative">
               <button type="button" onClick={() => setCamadasPopoverAberta((v) => !v)}
                 title="Gerenciador de camadas: visibilidade, bloqueio, cores e espessuras"
@@ -4416,6 +4424,7 @@ export default function EditorPage() {
                 </div>
               )}
             </div>
+            )}
             {souMaster() && (
               <button type="button" onClick={() => setModoMaster((m) => (m === 'editar' ? 'gerir' : 'editar'))}
                 title={modoMaster === 'editar' ? 'Alternar para o modo GERIR (painel administrativo do SaaS)' : 'Alternar para o modo EDITAR (workspace de desenho)'}
@@ -6012,9 +6021,24 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
     }
   };
 
+  const addConfrontante = () =>
+    onChange([...confrontantes, { id: `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`, nome: '', cpf: '', matricula: '', cns: '', condicao: 'proprietario' }]);
+
   return (
     <div className="space-y-3">
-      {confrontantes.length === 0 && <p className="text-xs text-muted-foreground">Use “pintar confrontante” no mapa, ou importe os vizinhos certificados, para criar os confrontantes.</p>}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+          Confrontantes{confrontantes.length ? ` (${confrontantes.length})` : ''}
+        </span>
+        <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={addConfrontante}>
+          <Plus className="size-3.5" /> Adicionar
+        </Button>
+      </div>
+      {confrontantes.length === 0 && (
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Crie um confrontante em <b>Adicionar</b>, ou pinte o trecho dele no mapa, ou importe os vizinhos certificados. Depois de criado, dá pra pintar no mapa quais lados são dele.
+        </p>
+      )}
       <datalist id="lista-confrontantes">
         {sugConf.map((s) => <option key={s.id} value={s.nome} />)}
       </datalist>

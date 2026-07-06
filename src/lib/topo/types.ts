@@ -151,8 +151,10 @@ export interface ProprietarioCad extends Partial<PessoaQualificada> {
  * - proprietario: dono com matrícula (padrão)
  * - posseiro: possuidor sem matrícula (descreve "na condição de possuidor(a)")
  * - espolio: imóvel de pessoa falecida, assinado pelo inventariante
+ * - condomino: coproprietário do imóvel vizinho (a anuência de um supre os demais, §10 art. 213 LRP)
+ * - usufrutuario: usufrutuário do imóvel; assina junto com o nu-proprietário (se informado)
  */
-export type CondicaoConfrontante = 'proprietario' | 'posseiro' | 'espolio';
+export type CondicaoConfrontante = 'proprietario' | 'posseiro' | 'espolio' | 'condomino' | 'usufrutuario';
 
 export interface ConfrontanteCad {
   id: string;
@@ -167,6 +169,9 @@ export interface ConfrontanteCad {
   // quando espólio: quem assina pelo espólio (inventariante)
   inventarianteNome?: string;
   inventarianteCpf?: string;
+  // quando usufrutuário: o nu-proprietário assina junto (se houver)
+  nuProprietarioNome?: string;
+  nuProprietarioCpf?: string;
   projetoId?: string;
 }
 
@@ -204,6 +209,9 @@ export interface Confrontante {
   // quando espólio: inventariante que assina pelo espólio
   inventarianteNome?: string;
   inventarianteCpf?: string;
+  // quando usufrutuário: nu-proprietário que assina junto (se houver)
+  nuProprietarioNome?: string;
+  nuProprietarioCpf?: string;
   // posição manual do rótulo na planta (se o usuário arrastou); senão é automática
   posRotulo?: { lat: number; lon: number };
   // tamanho da fonte do rótulo/assinatura (mapa e planta); vazio = padrão
