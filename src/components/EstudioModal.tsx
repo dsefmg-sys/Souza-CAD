@@ -270,14 +270,14 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
         {/* barra de ferramentas */}
         <div className="flex flex-wrap items-center gap-1.5 py-2 text-xs">
           <span className="font-semibold">Formato:</span>
-          <select className="h-8 rounded border bg-background px-2 text-sm" value={`${fmt.w}x${fmt.h}`} onChange={(e) => { const f = FORMATOS.find((x) => `${x.w}x${x.h}` === e.target.value); if (f) setFmt({ w: f.w, h: f.h }); }}>
+          <select className="h-8 rounded-sm border bg-background px-2 text-sm" value={`${fmt.w}x${fmt.h}`} onChange={(e) => { const f = FORMATOS.find((x) => `${x.w}x${x.h}` === e.target.value); if (f) setFmt({ w: f.w, h: f.h }); }}>
             {FORMATOS.map((f) => <option key={f.nome} value={`${f.w}x${f.h}`}>{f.nome}</option>)}
             <option value={`${fmt.w}x${fmt.h}`}>Personalizado</option>
           </select>
-          <input type="number" className="h-8 w-20 rounded border bg-background px-2 text-sm" value={fmt.w} onChange={(e) => setFmt((f) => ({ ...f, w: Math.max(50, Number(e.target.value) || 50) }))} title="Largura (px)" />
+          <input type="number" className="h-8 w-20 rounded-sm border bg-background px-2 text-sm" value={fmt.w} onChange={(e) => setFmt((f) => ({ ...f, w: Math.max(50, Number(e.target.value) || 50) }))} title="Largura (px)" />
           <span>×</span>
-          <input type="number" className="h-8 w-20 rounded border bg-background px-2 text-sm" value={fmt.h} onChange={(e) => setFmt((f) => ({ ...f, h: Math.max(50, Number(e.target.value) || 50) }))} title="Altura (px)" />
-          <label className="ml-1 flex items-center gap-1" title="Cor de fundo"><Palette className="size-4" /><input type="color" value={bg} onChange={(e) => setBg(e.target.value)} className="h-7 w-7 cursor-pointer rounded border" /></label>
+          <input type="number" className="h-8 w-20 rounded-sm border bg-background px-2 text-sm" value={fmt.h} onChange={(e) => setFmt((f) => ({ ...f, h: Math.max(50, Number(e.target.value) || 50) }))} title="Altura (px)" />
+          <label className="ml-1 flex items-center gap-1" title="Cor de fundo"><Palette className="size-4" /><input type="color" value={bg} onChange={(e) => setBg(e.target.value)} className="h-7 w-7 cursor-pointer rounded-sm border" /></label>
           <div className="mx-1 h-6 w-px bg-border" />
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) addImg(f); e.currentTarget.value = ''; }} />
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}><ImageIcon className="size-4" /> Imagem</Button>
@@ -286,7 +286,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
           <Button size="sm" variant="outline" onClick={() => addForma('ellipse')}><Circle className="size-4" /> Elipse</Button>
           <Button size="sm" variant={painelElem ? 'default' : 'outline'} onClick={() => setPainelElem((v) => !v)}><Shapes className="size-4" /> Elementos</Button>
           <Button size="sm" variant={painelFotos ? 'default' : 'outline'} onClick={() => { setPainelFotos((v) => !v); if (!painelFotos && fotos.length === 0) novasFotos(); }}><Images className="size-4" /> Fotos</Button>
-          <select className="h-8 rounded border bg-background px-2 text-sm" value="" onChange={(e) => { if (e.target.value) aplicarModelo(e.target.value); e.currentTarget.value = ''; }} title="Modelos prontos (capa, carimbo)">
+          <select className="h-8 rounded-sm border bg-background px-2 text-sm" value="" onChange={(e) => { if (e.target.value) aplicarModelo(e.target.value); e.currentTarget.value = ''; }} title="Modelos prontos (capa, carimbo)">
             <option value="">Modelos…</option>
             <option value="capa">Capa de entrega</option>
             <option value="carimbo">Carimbo simples</option>
@@ -305,15 +305,15 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
           <div className="flex flex-col gap-2 border-y py-2">
             <div className="flex items-center gap-1.5 text-xs">
               <span className="font-semibold">Elementos:</span>
-              <input className="h-8 w-64 rounded border bg-background px-2 text-sm" placeholder="Buscar ícone (ex.: casa, sol, raio, seta)" value={busca}
+              <input className="h-8 w-64 rounded-sm border bg-background px-2 text-sm" placeholder="Buscar ícone (ex.: casa, sol, raio, seta)" value={busca}
                 onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') buscarElementos(); }} />
               <Button size="sm" variant="outline" disabled={buscando} onClick={buscarElementos}><Search className="size-4" /> {buscando ? 'Buscando…' : 'Buscar'}</Button>
               <span className="text-muted-foreground">Ícones gratuitos. Fotos de banco de imagem já estão no botão "Fotos" ao lado.</span>
             </div>
             {resultados.length > 0 && (
-              <div className="grid max-h-28 grid-flow-col grid-rows-2 gap-1 overflow-x-auto rounded border bg-muted/20 p-1.5">
+              <div className="grid max-h-28 grid-flow-col grid-rows-2 gap-1 overflow-x-auto rounded-sm border bg-muted/20 p-1.5">
                 {resultados.map((n) => (
-                  <button key={n} type="button" title={n} onClick={() => addIcone(n)} className="flex size-11 shrink-0 items-center justify-center rounded border bg-background hover:bg-muted">
+                  <button key={n} type="button" title={n} onClick={() => addIcone(n)} className="flex size-11 shrink-0 items-center justify-center rounded-sm border bg-background hover:bg-muted">
                     <img src={`https://api.iconify.design/${n}.svg?height=28`} alt={n} width={28} height={28} />
                   </button>
                 ))}
@@ -327,21 +327,21 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
           <div className="flex flex-col gap-2 border-y py-2">
             <div className="flex items-center gap-1.5 text-xs">
               <span className="font-semibold">Buscar fotos:</span>
-              <input className="h-8 w-64 rounded border bg-background px-2 text-sm" placeholder="Buscar fotos ou obras de arte (ex.: praia, cachorro, montanha)" value={buscaArte}
+              <input className="h-8 w-64 rounded-sm border bg-background px-2 text-sm" placeholder="Buscar fotos ou obras de arte (ex.: praia, cachorro, montanha)" value={buscaArte}
                 onChange={(e) => setBuscaArte(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') buscarArte(); }} />
               <Button size="sm" variant="outline" disabled={buscandoArte} onClick={buscarArte}><Search className="size-4" /> {buscandoArte ? 'Buscando…' : 'Buscar'}</Button>
               <span className="text-muted-foreground">Sempre busca no acervo público do Art Institute of Chicago (grátis, sem chave).</span>
             </div>
             <div className="flex items-center gap-1.5 text-xs">
               <span className="font-semibold">Chave Pexels (opcional):</span>
-              <input className="h-7 w-72 rounded border bg-background px-2 text-xs font-mono" placeholder="Só se quiser usar a SUA chave de pexels.com/api"
+              <input className="h-7 w-72 rounded-sm border bg-background px-2 text-xs font-mono" placeholder="Só se quiser usar a SUA chave de pexels.com/api"
                 value={pexelsKey} onChange={(e) => salvarPexelsKey(e.target.value)} />
               <span className="text-muted-foreground">Sem chave, a busca de fotos já funciona pelo servidor (logado). Fica salva só neste navegador.</span>
             </div>
             {resultadosArte.length > 0 && (
-              <div className="grid grid-flow-col grid-rows-2 gap-1.5 overflow-x-auto rounded border bg-muted/20 p-1.5">
+              <div className="grid grid-flow-col grid-rows-2 gap-1.5 overflow-x-auto rounded-sm border bg-muted/20 p-1.5">
                 {resultadosArte.map((a) => (
-                  <button key={a.url} type="button" title={a.titulo} onClick={() => addFoto(a.url)} className="size-20 shrink-0 overflow-hidden rounded border bg-background hover:opacity-80">
+                  <button key={a.url} type="button" title={a.titulo} onClick={() => addFoto(a.url)} className="size-20 shrink-0 overflow-hidden rounded-sm border bg-background hover:opacity-80">
                     <img src={a.url} alt={a.titulo} className="size-full object-cover" />
                   </button>
                 ))}
@@ -353,9 +353,9 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
               <span className="text-muted-foreground">Picsum, grátis e sem chave.</span>
             </div>
             {fotos.length > 0 && (
-              <div className="grid grid-flow-col grid-rows-2 gap-1.5 overflow-x-auto rounded border bg-muted/20 p-1.5">
+              <div className="grid grid-flow-col grid-rows-2 gap-1.5 overflow-x-auto rounded-sm border bg-muted/20 p-1.5">
                 {fotos.map((url) => (
-                  <button key={url} type="button" title="Adicionar esta foto" onClick={() => addFoto(url)} className="size-20 shrink-0 overflow-hidden rounded border bg-background hover:opacity-80">
+                  <button key={url} type="button" title="Adicionar esta foto" onClick={() => addFoto(url)} className="size-20 shrink-0 overflow-hidden rounded-sm border bg-background hover:opacity-80">
                     <img src={url} alt="" className="size-full object-cover" />
                   </button>
                 ))}
@@ -377,12 +377,12 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
         {selEl?.t === 'text' && (
           <div className="flex flex-wrap items-center gap-2 border-y py-1.5 text-xs">
             <span className="font-semibold">Texto:</span>
-            <input className="h-7 w-64 rounded border bg-background px-2 text-sm" value={selEl.texto} onChange={(e) => patch(selEl.id, { texto: e.target.value } as Partial<El>)} />
-            <span>Tam.</span><input type="number" className="h-7 w-16 rounded border bg-background px-2 text-sm" value={selEl.size} onChange={(e) => patch(selEl.id, { size: Math.max(6, Number(e.target.value) || 6) } as Partial<El>)} />
-            <input type="color" value={selEl.cor} onChange={(e) => patch(selEl.id, { cor: e.target.value } as Partial<El>)} className="h-7 w-7 cursor-pointer rounded border" />
+            <input className="h-7 w-64 rounded-sm border bg-background px-2 text-sm" value={selEl.texto} onChange={(e) => patch(selEl.id, { texto: e.target.value } as Partial<El>)} />
+            <span>Tam.</span><input type="number" className="h-7 w-16 rounded-sm border bg-background px-2 text-sm" value={selEl.size} onChange={(e) => patch(selEl.id, { size: Math.max(6, Number(e.target.value) || 6) } as Partial<El>)} />
+            <input type="color" value={selEl.cor} onChange={(e) => patch(selEl.id, { cor: e.target.value } as Partial<El>)} className="h-7 w-7 cursor-pointer rounded-sm border" />
             <Button size="sm" variant={selEl.bold ? 'default' : 'outline'} className="h-7 px-2" onClick={() => patch(selEl.id, { bold: !selEl.bold } as Partial<El>)}>Negrito</Button>
             <span>Fonte</span>
-            <select className="h-7 rounded border bg-background px-1 text-sm" value={selEl.fonte ?? 'Arial'} onChange={(e) => patch(selEl.id, { fonte: e.target.value } as Partial<El>)}>
+            <select className="h-7 rounded-sm border bg-background px-1 text-sm" value={selEl.fonte ?? 'Arial'} onChange={(e) => patch(selEl.id, { fonte: e.target.value } as Partial<El>)}>
               {FONTES_ESTUDIO.map((f) => <option key={f.nome} value={f.nome}>{f.nome}</option>)}
             </select>
           </div>
@@ -393,7 +393,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
           <div className="flex flex-wrap items-center gap-2 border-b py-1.5 text-xs">
             <span className="font-semibold">Girar</span>
             <input type="range" min={0} max={360} step={1} value={selEl.rot ?? 0} onChange={(e) => patch(selEl.id, { rot: Number(e.target.value) } as Partial<El>)} className="w-40" />
-            <input type="number" min={0} max={360} className="h-7 w-16 rounded border bg-background px-2 text-sm" value={selEl.rot ?? 0} onChange={(e) => patch(selEl.id, { rot: ((Number(e.target.value) || 0) % 360 + 360) % 360 } as Partial<El>)} />
+            <input type="number" min={0} max={360} className="h-7 w-16 rounded-sm border bg-background px-2 text-sm" value={selEl.rot ?? 0} onChange={(e) => patch(selEl.id, { rot: ((Number(e.target.value) || 0) % 360 + 360) % 360 } as Partial<El>)} />
             <span className="text-muted-foreground">graus</span>
             {!!selEl.rot && <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => patch(selEl.id, { rot: 0 } as Partial<El>)}>Zerar</Button>}
           </div>

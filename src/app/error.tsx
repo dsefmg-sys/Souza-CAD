@@ -18,7 +18,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
           o projeto fica salvo e há um rascunho local. Tente retomar; se não voltar, recarregue a página.
         </p>
         {error?.message && (
-          <p className="rounded border bg-muted/40 px-2 py-1 text-left text-[11px] text-muted-foreground break-words">
+          <p className="rounded-sm border bg-muted/40 px-2 py-1 text-left text-[11px] text-muted-foreground break-words">
             Detalhe técnico: {error.message}
           </p>
         )}

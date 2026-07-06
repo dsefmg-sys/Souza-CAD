@@ -31,7 +31,7 @@ export default class ErrorBoundary extends Component<Props, State> {
       return this.props.fallback ?? (
         <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center text-sm text-muted-foreground">
           <span>Não consegui carregar esta parte. O resto da tela continua funcionando.</span>
-          <button className="rounded border px-3 py-1 text-xs font-semibold hover:bg-muted" onClick={this.reset}>Tentar de novo</button>
+          <button className="rounded-sm border px-3 py-1 text-xs font-semibold hover:bg-muted" onClick={this.reset}>Tentar de novo</button>
         </div>
       );
     }

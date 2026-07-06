@@ -87,7 +87,7 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
                     <span className="text-xs text-muted-foreground">/mês</span>
                   </div>
                   {minha.nivelPct < 100 && (
-                    <p className="mt-2 rounded border border-emerald-600/30 bg-emerald-600/10 p-2 text-xs leading-relaxed text-emerald-800 dark:text-emerald-300">
+                    <p className="mt-2 rounded-sm border border-emerald-600/30 bg-emerald-600/10 p-2 text-xs leading-relaxed text-emerald-800 dark:text-emerald-300">
                       {cfg.textoPrecoAgressivo}
                     </p>
                   )}
@@ -125,7 +125,7 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
                   <MessageCircle className="size-4" /> Assinar / falar sobre o pagamento
                 </a>
               ) : (
-                <p className="rounded border border-dashed p-2 text-center text-[11px] text-muted-foreground">
+                <p className="rounded-sm border border-dashed p-2 text-center text-[11px] text-muted-foreground">
                   A assinatura é combinada direto com o responsável pelo app. Fale com o suporte.
                 </p>
               )}
@@ -136,7 +136,7 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
           {/* ===== VISÃO DO ADMIN: editar tudo ===== */}
           {admin && (
             <>
-              <p className="rounded border border-dashed p-2 text-[11px] leading-tight text-muted-foreground">
+              <p className="rounded-sm border border-dashed p-2 text-[11px] leading-tight text-muted-foreground">
                 Só você vê e edita isto. Defina os planos e o <strong>valor cheio</strong> (100%). Cada usuário paga uma
                 fração dele pelo nível de fidelidade — quem entra começa no nível de custo e você vai promovendo com o tempo.
               </p>
@@ -167,7 +167,7 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
                         <Input type="number" className="h-8 w-16 text-xs" value={p.compromissoMinimoMeses} onChange={(e) => patchPlano(i, 'compromissoMinimoMeses', Math.max(0, Math.floor(Number(e.target.value) || 0)))} />
                       </div>
                     </div>
-                    <textarea className="h-16 w-full rounded border bg-background p-1.5 text-[11px]" value={p.recursos.join('\n')}
+                    <textarea className="h-16 w-full rounded-sm border bg-background p-1.5 text-[11px]" value={p.recursos.join('\n')}
                       onChange={(e) => patchPlano(i, 'recursos', e.target.value.split('\n').map((s) => s.trim()).filter(Boolean))}
                       placeholder="Um recurso por linha" />
                   </div>
@@ -190,13 +190,13 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
                 ))}
                 <div className="flex items-center gap-2">
                   <Label className="text-[11px]">Nível de quem entra (padrão)</Label>
-                  <select className="h-8 rounded border bg-background px-2 text-xs" value={cfg.nivelPadraoPct} onChange={(e) => setCfg((c) => ({ ...c, nivelPadraoPct: Number(e.target.value) }))}>
+                  <select className="h-8 rounded-sm border bg-background px-2 text-xs" value={cfg.nivelPadraoPct} onChange={(e) => setCfg((c) => ({ ...c, nivelPadraoPct: Number(e.target.value) }))}>
                     {cfg.niveis.map((n, i) => <option key={i} value={n.pct}>{n.pct}% — {n.rotulo}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px]">Explicação do preço reduzido (mostrada a quem paga menos que 100%)</Label>
-                  <textarea className="h-16 w-full rounded border bg-background p-1.5 text-[11px]" value={cfg.textoPrecoAgressivo}
+                  <textarea className="h-16 w-full rounded-sm border bg-background p-1.5 text-[11px]" value={cfg.textoPrecoAgressivo}
                     onChange={(e) => setCfg((c) => ({ ...c, textoPrecoAgressivo: e.target.value }))} />
                 </div>
               </div>
@@ -204,7 +204,7 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
               {/* Prévia: planos x níveis */}
               <div className="space-y-1">
                 <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Prévia dos preços</span>
-                <div className="overflow-x-auto rounded border">
+                <div className="overflow-x-auto rounded-sm border">
                   <table className="w-full text-[11px]">
                     <thead>
                       <tr className="bg-muted/40 text-left">
@@ -231,10 +231,10 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
                 {atribuicoesLista.map(([email, at]) => (
                   <div key={email} className="flex flex-wrap items-center gap-1.5">
                     <span className="min-w-[140px] flex-1 truncate text-xs" title={email}>{email}</span>
-                    <select className="h-8 rounded border bg-background px-1 text-xs" value={at.planoId} onChange={(e) => setAtribuicao(email, e.target.value, at.nivelPct)}>
+                    <select className="h-8 rounded-sm border bg-background px-1 text-xs" value={at.planoId} onChange={(e) => setAtribuicao(email, e.target.value, at.nivelPct)}>
                       {cfg.planos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                     </select>
-                    <select className="h-8 rounded border bg-background px-1 text-xs" value={at.nivelPct} onChange={(e) => setAtribuicao(email, at.planoId, Number(e.target.value))}>
+                    <select className="h-8 rounded-sm border bg-background px-1 text-xs" value={at.nivelPct} onChange={(e) => setAtribuicao(email, at.planoId, Number(e.target.value))}>
                       {cfg.niveis.map((n, i) => <option key={i} value={n.pct}>{n.pct}%</option>)}
                     </select>
                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive" onClick={() => removerAtribuicao(email)} aria-label="Remover atribuição"><Trash2 className="size-4" /></Button>

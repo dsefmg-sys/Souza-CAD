@@ -174,7 +174,7 @@ export default function MemorialPreviewModal({
             
             {/* Aviso de Demonstração */}
             {imovel.ficticio && (
-              <div className="border border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 p-2.5 rounded text-center font-bold text-[10px] uppercase tracking-wider">
+              <div className="border border-red-200 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 p-2.5 rounded-sm text-center font-bold text-[10px] uppercase tracking-wider">
                 *** DADOS FICTÍCIOS — DOCUMENTO DE DEMONSTRAÇÃO, SEM VALIDADE LEGAL ***
               </div>
             )}
@@ -339,7 +339,7 @@ export default function MemorialPreviewModal({
                         <div className="text-[10px] text-neutral-500 space-y-0.5">
                           <div>{descCond} {c.matricula && `| Matrícula: ${formatMatricula(c.matricula)}`}</div>
                           <div>CPF: {c.cpf || '—'}</div>
-                          {c.conjugeNome && <div className="text-[9px] text-neutral-400">Cônjuge: {c.conjugeNome} (CPF: {c.conjugeCpf || '—'})</div>}
+                          {c.conjugeNome && <div className="text-[10px] text-neutral-400">Cônjuge: {c.conjugeNome} (CPF: {c.conjugeCpf || '—'})</div>}
                         </div>
                       </div>
                     );

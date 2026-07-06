@@ -78,11 +78,11 @@ export default function ModelosDocsModal({ open, onOpenChange }: Props) {
           <DialogTitle className="flex items-center gap-2"><FileText className="size-5 text-primary" /> Modelos dos documentos</DialogTitle>
         </DialogHeader>
 
-        <div className="rounded border bg-muted/30 p-2 text-[11px]">
+        <div className="rounded-sm border bg-muted/30 p-2 text-[11px]">
           <div className="mb-1 font-semibold">Variáveis disponíveis (o sistema troca pelos dados reais):</div>
           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
             {VARIAVEIS_MODELO.map((v) => (
-              <span key={v.chave}><code className="rounded bg-background px-1 font-mono text-primary">{v.chave}</code> <span className="text-muted-foreground">{v.descricao}</span></span>
+              <span key={v.chave}><code className="rounded-sm bg-background px-1 font-mono text-primary">{v.chave}</code> <span className="text-muted-foreground">{v.descricao}</span></span>
             ))}
           </div>
         </div>
@@ -98,7 +98,7 @@ export default function ModelosDocsModal({ open, onOpenChange }: Props) {
                 <button type="button" className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground" onClick={() => set(chave, MODELOS_PADRAO[chave])}><RotateCcw className="size-3" /> restaurar padrão</button>
               </div>
               <textarea
-                className="min-h-[70px] w-full rounded border bg-background p-2 text-xs leading-relaxed"
+                className="min-h-[70px] w-full rounded-sm border bg-background p-2 text-xs leading-relaxed"
                 value={m[chave]}
                 onChange={(e) => set(chave, e.target.value)}
               />

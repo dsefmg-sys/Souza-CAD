@@ -66,9 +66,9 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
           <DialogTitle>Dados para o {rot.termo}</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">Confira e copie os campos para preencher a {rot.termoExtenso} ({rot.termo}) no conselho.</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded border p-3 bg-muted/20 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-sm border p-3 bg-muted/20 overflow-y-auto">
           {linhas.map(([k, v]) => (
-            <div key={k} className="flex items-center justify-between gap-2 p-2 border rounded bg-background text-sm">
+            <div key={k} className="flex items-center justify-between gap-2 p-2 border rounded-sm bg-background text-sm">
               <div className="min-w-0"><div className="text-[10px] uppercase text-muted-foreground">{k}</div><div className="truncate font-medium">{v || '—'}</div></div>
               <Button size="sm" variant="ghost" className="h-8 w-8 p-0 shrink-0" onClick={() => copiar(v, k)} title="Copiar">{copiado === k ? <CheckCheck className="text-primary size-4" /> : <Copy className="size-4" />}</Button>
             </div>
@@ -83,10 +83,10 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
           <Button size="sm" className="gap-1" onClick={copiarTudo}>{copiado === '__tudo__' ? <CheckCheck className="size-4" /> : <Copy className="size-4" />} Copiar tudo</Button>
         </div>
         {/* Nº do TRT emitido — no FIM; vira dado do projeto e aparece na planta na hora */}
-        <div className="mt-3 flex items-center gap-2 rounded border p-3 bg-background">
+        <div className="mt-3 flex items-center gap-2 rounded-sm border p-3 bg-background">
           <label className="text-sm font-semibold whitespace-nowrap">Nº do {rot.termo} emitido</label>
           <input
-            className="flex-1 rounded border bg-background px-2 py-1 text-sm"
+            className="flex-1 rounded-sm border bg-background px-2 py-1 text-sm"
             placeholder={`Depois de emitir, cole aqui o número — conclui a etapa ${rot.termo} e aparece na planta`}
             value={imovel.numeroTrt ?? ''}
             onChange={(e) => onChangeImovel?.({ ...imovel, numeroTrt: e.target.value })}

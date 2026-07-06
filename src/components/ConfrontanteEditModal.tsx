@@ -19,7 +19,7 @@ function Campo({ label, value, onChange, ph, aviso }: { label: string; value: st
   return (
     <label className="flex flex-col gap-0.5 text-xs">
       <span className="font-semibold text-muted-foreground">{label}</span>
-      <input className="h-8 rounded border bg-background px-2 text-sm" value={value} placeholder={ph} onChange={(e) => onChange(e.target.value)} />
+      <input className="h-8 rounded-sm border bg-background px-2 text-sm" value={value} placeholder={ph} onChange={(e) => onChange(e.target.value)} />
       {aviso && <span className="mt-0.5 block font-medium text-amber-500">{aviso}</span>}
     </label>
   );
@@ -49,7 +49,7 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
           <div className="space-y-2">
             <label className="flex flex-col gap-0.5 text-xs">
               <span className="font-semibold text-muted-foreground">Condição</span>
-              <select className="h-8 rounded border bg-background px-2 text-sm" value={cond} onChange={(e) => set({ condicao: e.target.value as CondicaoConfrontante })}>
+              <select className="h-8 rounded-sm border bg-background px-2 text-sm" value={cond} onChange={(e) => set({ condicao: e.target.value as CondicaoConfrontante })}>
                 <option value="proprietario">Proprietário(a)</option>
                 <option value="posseiro">Possuidor(a) / posseiro</option>
                 <option value="espolio">Espólio</option>
@@ -78,7 +78,7 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
           <div className="flex flex-col gap-2">
             <span className="text-xs font-semibold text-muted-foreground">Prévia do rótulo na planta</span>
             <div className="flex min-h-[120px] items-center justify-center rounded-lg border bg-muted/30 p-4">
-              <div className="rounded border border-neutral-300 bg-white px-4 pb-2 pt-1 text-center text-[13px] text-black shadow-sm">
+              <div className="rounded-sm border border-neutral-300 bg-white px-4 pb-2 pt-1 text-center text-[13px] text-black shadow-sm">
                 <div className="mx-auto mb-1 h-px w-40 bg-black" />
                 {linhas.map((l, i) => <div key={i} className="leading-snug">{l}</div>)}
               </div>

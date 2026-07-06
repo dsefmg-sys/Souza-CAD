@@ -403,11 +403,11 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
           <div className="flex flex-wrap items-center gap-2 border-y py-2 text-xs">
             <span className="font-semibold">Nova entidade vai para:</span>
             {camadas.map((c) => (
-              <div key={c.nome} className={`flex items-center gap-1 rounded border px-1.5 py-1 ${c.nome === camadaAtual ? 'ring-2 ring-primary' : ''}`}>
+              <div key={c.nome} className={`flex items-center gap-1 rounded-sm border px-1.5 py-1 ${c.nome === camadaAtual ? 'ring-2 ring-primary' : ''}`}>
                 <button onClick={() => setCamadaAtual(c.nome)} title="Usar esta camada para novos desenhos" className="font-medium">{c.nome}</button>
                 <input type="color" value={c.cor} title="Cor da camada"
                   onChange={(ev) => setCamadas((cs) => cs.map((x) => (x.nome === c.nome ? { ...x, cor: ev.target.value } : x)))}
-                  className="size-5 cursor-pointer rounded border-0 p-0" />
+                  className="size-5 cursor-pointer rounded-sm border-0 p-0" />
                 <button onClick={() => setCamadas((cs) => cs.map((x) => (x.nome === c.nome ? { ...x, visivel: !x.visivel } : x)))} title={c.visivel ? 'Ocultar camada' : 'Mostrar camada'}>
                   {c.visivel ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5 text-muted-foreground" />}
                 </button>

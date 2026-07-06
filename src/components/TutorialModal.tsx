@@ -117,7 +117,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   // Duas coisas DIFERENTES: `modo` (quantas ferramentas na tela) e `nivel` (quanta explicação a
   // ajuda dá, conforme o tempo de profissão). O seletor visível é o do nível, porque é ele que muda
   // o texto que a pessoa está lendo aqui. O modo só decide se aparecem os passos avançados.
-  const [modo, setModo] = useState<'simples' | 'completo'>('simples');
+  const [modo, setModo] = useState<'simples' | 'medio' | 'completo'>('simples');
   const [nivel, setNivel] = useState<'iniciante' | 'experiente'>('iniciante');
   const [zapSuporte, setZapSuporte] = useState('');
 

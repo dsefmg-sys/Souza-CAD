@@ -111,7 +111,7 @@ export default function ImportTxtConfigModal({ open, onOpenChange }: Props) {
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded border px-3 py-2 text-sm hover:bg-accent">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-sm hover:bg-accent">
             <Upload className="size-4" /> Escolher TXT de exemplo
             <input type="file" accept=".txt,.csv,text/plain" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) lerExemplo(f); e.target.value = ''; }} />
@@ -119,7 +119,7 @@ export default function ImportTxtConfigModal({ open, onOpenChange }: Props) {
 
           <div className="flex items-center gap-1 text-sm">
             <Label className="text-xs">Separador</Label>
-            <select className="h-8 rounded border bg-background px-2 text-sm" value={cfg.separador}
+            <select className="h-8 rounded-sm border bg-background px-2 text-sm" value={cfg.separador}
               onChange={(e) => reaplicarSeparador(e.target.value as ImportTxtConfig['separador'])}>
               <option value=";">ponto e vírgula ;</option>
               <option value=",">vírgula ,</option>
@@ -130,7 +130,7 @@ export default function ImportTxtConfigModal({ open, onOpenChange }: Props) {
 
           <div className="flex items-center gap-1 text-sm">
             <Label className="text-xs">Decimal</Label>
-            <select className="h-8 rounded border bg-background px-2 text-sm" value={cfg.decimal}
+            <select className="h-8 rounded-sm border bg-background px-2 text-sm" value={cfg.decimal}
               onChange={(e) => setCfg((p) => ({ ...p, decimal: e.target.value as '.' | ',' }))}>
               <option value=".">ponto (1.23)</option>
               <option value=",">vírgula (1,23)</option>
@@ -154,8 +154,8 @@ export default function ImportTxtConfigModal({ open, onOpenChange }: Props) {
                 return (
                   <div key={i} className={`rounded-md border p-2 ${usado ? 'bg-card' : 'bg-muted/30'}`}>
                     <div className="mb-1 flex items-center gap-2">
-                      <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-bold text-secondary-foreground">COL {i + 1}</span>
-                      <select className="h-7 min-w-0 flex-1 rounded border border-input bg-background px-1.5 text-xs"
+                      <span className="shrink-0 rounded-sm bg-secondary px-1.5 py-0.5 text-[10px] font-bold text-secondary-foreground">COL {i + 1}</span>
+                      <select className="h-7 min-w-0 flex-1 rounded-sm border border-input bg-background px-1.5 text-xs"
                         value={c} onChange={(e) => setColuna(i, e.target.value as CampoTxt)}>
                         {CAMPOS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
                       </select>
@@ -169,7 +169,7 @@ export default function ImportTxtConfigModal({ open, onOpenChange }: Props) {
             </div>
           </>
         ) : (
-          <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
+          <div className="rounded-sm border border-dashed p-6 text-center text-sm text-muted-foreground">
             Nenhum exemplo carregado ainda. Envie um TXT para ver as colunas.
           </div>
         )}

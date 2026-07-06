@@ -44,7 +44,7 @@ function Campo({ label, value, onChange, ph }: { label: string; value: string; o
   return (
     <label className="flex flex-col gap-1 text-xs">
       <span className="font-semibold text-muted-foreground">{label}</span>
-      <input className="rounded border bg-background px-2 py-1.5 text-sm font-mono" value={value} placeholder={ph} onChange={(e) => onChange(e.target.value)} />
+      <input className="rounded-sm border bg-background px-2 py-1.5 text-sm font-mono" value={value} placeholder={ph} onChange={(e) => onChange(e.target.value)} />
     </label>
   );
 }
@@ -54,7 +54,7 @@ function SeletorVertice({ label, vertices, valor, onEscolher }: { label: string;
   return (
     <label className="flex flex-col gap-1 text-xs">
       <span className="font-semibold text-muted-foreground">{label}</span>
-      <select className="rounded border bg-background px-2 py-1.5 text-sm" value={valor} onChange={(e) => onEscolher(e.target.value)}>
+      <select className="rounded-sm border bg-background px-2 py-1.5 text-sm" value={valor} onChange={(e) => onEscolher(e.target.value)}>
         <option value="">— escolher —</option>
         {vertices.map((v) => (
           <option key={v.id} value={v.id}>{v.codigoSigef || v.nome || `Este ${Math.round(v.leste)}`}</option>
@@ -209,11 +209,11 @@ export default function VerticeVirtualModal({ open, onOpenChange, zona, hemisfer
         </div>
 
         {paralelas ? (
-          <div className="rounded border border-destructive/40 bg-destructive/10 p-2 text-center text-xs text-destructive">
+          <div className="rounded-sm border border-destructive/40 bg-destructive/10 p-2 text-center text-xs text-destructive">
             As duas retas são paralelas — não há um ponto de cruzamento. Escolha alinhamentos que se cruzam.
           </div>
         ) : resultado && geo ? (
-          <div className="rounded border bg-muted/30 p-3 text-center text-sm">
+          <div className="rounded-sm border bg-muted/30 p-3 text-center text-sm">
             <div className="font-mono">E: {numBR(resultado.leste, 3)} &nbsp; N: {numBR(resultado.norte, 3)}</div>
             <div className="font-mono text-xs text-muted-foreground">{grausParaDMS(geo.lat, { estilo: 'memorial' })} &nbsp; {grausParaDMS(geo.lon, { estilo: 'memorial' })}</div>
           </div>

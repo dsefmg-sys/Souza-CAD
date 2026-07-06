@@ -180,7 +180,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                         {lancamentos.slice().sort((a, b) => a.data.localeCompare(b.data)).map((l) => (
                           <tr key={l.id} className="border-t">
                             <td className="p-2">{l.data.split('-').reverse().join('/')}</td>
-                            <td className="p-2">{l.tipo === 'recebimento' ? <span className="text-emerald-600">Recebimento</span> : <span className="text-red-600">Gasto</span>}</td>
+                            <td className="p-2">{l.tipo === 'recebimento' ? <span className="text-emerald-600 dark:text-emerald-400">Recebimento</span> : <span className="text-red-600 dark:text-red-400">Gasto</span>}</td>
                             <td className="p-2">{l.descricao}</td>
                             <td className="p-2 text-right font-medium">{moedaBR(l.valor)}</td>
                             <td className="p-2 text-right"><button onClick={() => remover(l.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="size-3.5" /></button></td>
@@ -190,7 +190,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                     </table>
                     {/* nova linha */}
                     <div className="flex flex-wrap items-end gap-2 border-t bg-muted/20 p-2">
-                      <select className="h-9 rounded border bg-background px-2 text-xs" value={novo.tipo} onChange={(e) => setNovo((n) => ({ ...n, tipo: e.target.value as 'gasto' | 'recebimento' }))}>
+                      <select className="h-9 rounded-sm border bg-background px-2 text-xs" value={novo.tipo} onChange={(e) => setNovo((n) => ({ ...n, tipo: e.target.value as 'gasto' | 'recebimento' }))}>
                         <option value="recebimento">Recebimento</option>
                         <option value="gasto">Gasto</option>
                       </select>
@@ -203,7 +203,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
 
                   <div className="mt-3 space-y-1">
                     <Label className="text-xs">Observações</Label>
-                    <textarea className="w-full rounded border bg-background p-2 text-xs" rows={2} value={financeiro.observacoes ?? ''} onChange={(e) => patch({ observacoes: e.target.value })} />
+                    <textarea className="w-full rounded-sm border bg-background p-2 text-xs" rows={2} value={financeiro.observacoes ?? ''} onChange={(e) => patch({ observacoes: e.target.value })} />
                   </div>
                 </section>
               </div>

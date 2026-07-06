@@ -236,7 +236,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                   <label className="flex items-start gap-3 rounded-xl border border-amber-600/25 bg-amber-600/5 p-4 cursor-pointer hover:bg-amber-600/10 transition-colors w-full h-full">
                     <input
                       type="checkbox"
-                      className="rounded text-[#05140b] focus:ring-amber-500 size-4 mt-0.5 border-[#12361d] accent-amber-500"
+                      className="rounded-sm text-[#05140b] focus:ring-amber-500 size-4 mt-0.5 border-[#12361d] accent-amber-500"
                       checked={!!cfg.ocultarCobranca}
                       onChange={(e) => alterarOcultarCobranca(e.target.checked)}
                     />
@@ -377,7 +377,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                         </td>
 
                         <td className="px-4 py-2.5 text-center">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-[#6b937a] border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-[#6b937a] border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
                         </td>
                       </tr>
                     );

@@ -122,7 +122,7 @@ export default function ModalImport({ isOpen, onClose, onConfirm }: Props) {
             </div>
           </div>
 
-          <div className="p-2.5 rounded bg-muted/40 text-[11px] leading-tight text-muted-foreground border flex items-start gap-1.5">
+          <div className="p-2.5 rounded-sm bg-muted/40 text-[11px] leading-tight text-muted-foreground border flex items-start gap-1.5">
             <Info className="size-4 text-primary shrink-0 mt-0.5" />
             <span>A seleção do município ajuda a refinar a detecção automática do fuso UTM base para a conversão correta de coordenadas planorretangulares.</span>
           </div>

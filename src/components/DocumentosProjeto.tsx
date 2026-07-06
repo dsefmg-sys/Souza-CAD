@@ -70,11 +70,11 @@ export default function DocumentosProjeto({
       </div>
 
       {!projetoId ? (
-        <div className="rounded border border-dashed p-2 text-center text-[11px] text-muted-foreground">Salve o projeto para anexar documentos.</div>
+        <div className="rounded-sm border border-dashed p-2 text-center text-[11px] text-muted-foreground">Salve o projeto para anexar documentos.</div>
       ) : (
         <>
           <div className="flex items-center gap-1.5">
-            <select className="h-7 min-w-0 flex-1 rounded border bg-background px-1 text-[11px]" value={tipoDoc} onChange={(e) => setTipoDoc(e.target.value)} title="Tipo do documento">
+            <select className="h-7 min-w-0 flex-1 rounded-sm border bg-background px-1 text-[11px]" value={tipoDoc} onChange={(e) => setTipoDoc(e.target.value)} title="Tipo do documento">
               {TIPOS_DOC.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <input ref={fileRef} type="file" multiple className="hidden" accept=".pdf,image/*" onChange={(e) => { subir(e.target.files); e.currentTarget.value = ''; }} />
@@ -84,22 +84,22 @@ export default function DocumentosProjeto({
           {carregando ? (
             <div className="p-2 text-center text-[11px] text-muted-foreground">Carregando…</div>
           ) : arquivos.length === 0 ? (
-            <div className="rounded border border-dashed p-2 text-center text-[11px] text-muted-foreground">Nenhum documento. Escolha o tipo e clique em Anexar.</div>
+            <div className="rounded-sm border border-dashed p-2 text-center text-[11px] text-muted-foreground">Nenhum documento. Escolha o tipo e clique em Anexar.</div>
           ) : (
             <div className="space-y-1">
               {arquivos.map((a) => (
-                <div key={a.id} className="flex items-center gap-1.5 rounded border bg-background p-1.5 text-[11px]">
+                <div key={a.id} className="flex items-center gap-1.5 rounded-sm border bg-background p-1.5 text-[11px]">
                   <FileText className="size-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{a.nome}</div>
-                    <div className="text-[9px] text-muted-foreground">{a.tipoDoc ? `${a.tipoDoc} · ` : ''}{tamanhoBR(a.tamanho)}</div>
+                    <div className="text-[10px] text-muted-foreground">{a.tipoDoc ? `${a.tipoDoc} · ` : ''}{tamanhoBR(a.tamanho)}</div>
                   </div>
                   {onExtrair && (
-                    <button className="rounded p-1 text-violet-600 hover:bg-violet-500/10 dark:text-violet-400" title="Extrair dados com IA" aria-label={`Extrair dados de ${a.nome}`} onClick={() => onExtrair(a)}><Sparkles className="size-4" /></button>
+                    <button className="rounded-sm p-1 text-violet-600 hover:bg-violet-500/10 dark:text-violet-400" title="Extrair dados com IA" aria-label={`Extrair dados de ${a.nome}`} onClick={() => onExtrair(a)}><Sparkles className="size-4" /></button>
                   )}
-                  <button className="rounded p-1 hover:bg-muted" title="Visualizar" aria-label={`Visualizar ${a.nome}`} onClick={() => ver(a)}><Eye className="size-4" /></button>
-                  <button className="rounded p-1 hover:bg-muted" title="Baixar" aria-label={`Baixar ${a.nome}`} onClick={() => baixar(a)}><Download className="size-4" /></button>
-                  <button className="rounded p-1 text-destructive hover:bg-destructive hover:text-white" title="Remover" aria-label={`Remover ${a.nome}`} onClick={() => apagar(a)}><Trash2 className="size-4" /></button>
+                  <button className="rounded-sm p-1 hover:bg-muted" title="Visualizar" aria-label={`Visualizar ${a.nome}`} onClick={() => ver(a)}><Eye className="size-4" /></button>
+                  <button className="rounded-sm p-1 hover:bg-muted" title="Baixar" aria-label={`Baixar ${a.nome}`} onClick={() => baixar(a)}><Download className="size-4" /></button>
+                  <button className="rounded-sm p-1 text-destructive hover:bg-destructive hover:text-white" title="Remover" aria-label={`Remover ${a.nome}`} onClick={() => apagar(a)}><Trash2 className="size-4" /></button>
                 </div>
               ))}
             </div>

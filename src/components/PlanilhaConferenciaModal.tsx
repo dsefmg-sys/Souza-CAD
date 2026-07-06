@@ -50,7 +50,7 @@ export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, r
 
         <p className="text-xs text-muted-foreground">Confira antes de baixar. Para corrigir algum valor, edite os campos do projeto (proprietário, confrontantes, vértices) — a planilha é gerada automaticamente a partir deles.</p>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded border p-2 text-xs md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-sm border p-2 text-xs md:grid-cols-3">
           {idt.map(([k, v]) => (
             <div key={k} className="flex justify-between gap-2 border-b border-dashed border-border/50 py-0.5">
               <span className="text-muted-foreground">{k}</span><span className="truncate text-right font-medium">{v}</span>
@@ -58,9 +58,9 @@ export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, r
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto rounded border">
+        <div className="min-h-0 flex-1 overflow-auto rounded-sm border">
           <table className="w-full text-[11px] font-mono">
-            <thead className="sticky top-0 bg-muted/60 text-[9px] uppercase text-muted-foreground">
+            <thead className="sticky top-0 bg-muted/60 text-[10px] uppercase text-muted-foreground">
               <tr>
                 <th className="px-1.5 py-1 text-left">Código</th>
                 <th className="px-1.5 py-1 text-left">Longitude</th>

@@ -65,7 +65,7 @@ export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, 
           <DialogTitle className="flex items-center gap-2"><Info className="size-5 text-primary" /> Informações do projeto</DialogTitle>
         </DialogHeader>
 
-        <div className={`rounded border px-3 py-2 text-xs ${conferencia.ok ? 'border-green-600/40 bg-green-600/10' : conferencia.graves.length > 0 ? 'border-red-600/40 bg-red-600/10' : 'border-amber-600/40 bg-amber-600/10'}`}>
+        <div className={`rounded-sm border px-3 py-2 text-xs ${conferencia.ok ? 'border-green-600/40 bg-green-600/10' : conferencia.graves.length > 0 ? 'border-red-600/40 bg-red-600/10' : 'border-amber-600/40 bg-amber-600/10'}`}>
           {conferencia.ok ? (
             <div className="flex items-center gap-2 font-medium text-green-700 dark:text-green-400">
               <CheckCircle2 className="size-4 shrink-0" /> Projeto completo — sem pendências para exportar.
@@ -103,7 +103,7 @@ export default function ProjetoInfoModal({ open, onOpenChange, projetoId, nome, 
               ))}
             </div>
           </div>
-          <p className="mt-3 rounded border border-dashed p-2 text-[11px] text-muted-foreground">
+          <p className="mt-3 rounded-sm border border-dashed p-2 text-[11px] text-muted-foreground">
             Os documentos do imóvel e dos confrontantes (certidões, CNH, escrituras, fotos) agora ficam no painel <strong>Dados</strong>, cada um na sua aba, com leitura por IA e gestão dos anexos.
           </p>
         </div>

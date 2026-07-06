@@ -92,7 +92,7 @@ import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
 import { sincronizarPerfil, registrarProjetoSalvo } from '@/lib/store/perfilUso';
-import { carregarPreferencias, salvarPreferencias, salvarModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
+import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster } from '@/lib/store/suporte';
 import { carregarConfigAssinatura } from '@/lib/store/assinatura';
@@ -447,6 +447,17 @@ export default function EditorPage() {
   const [prevMemorialAberto, setPrevMemorialAberto] = useState(false);
   const [prevMemorialModo, setPrevMemorialModo] = useState<'normal' | 'servidao'>('normal');
   const [camadasPopoverAberta, setCamadasPopoverAberta] = useState(false);
+
+  const projetoTemServidao = useMemo(() => {
+    const q = 'servid';
+    return (
+      (imovel.denominacao || '').toLowerCase().includes(q) ||
+      (nomeProjeto || '').toLowerCase().includes(q) ||
+      glebas.some(g => (g.denominacao || '').toLowerCase().includes(q)) ||
+      objetos.some(o => (o.texto || '').toLowerCase().includes(q)) ||
+      vertices.some(v => (v.codigoCampo || '').toLowerCase().includes(q) || (v.codigoSigef || '').toLowerCase().includes(q))
+    );
+  }, [imovel.denominacao, nomeProjeto, glebas, objetos, vertices]);
   const [consultarAberto, setConsultarAberto] = useState(false);
   const [iaAberta, setIaAberta] = useState(false);
   // arquivo já anexado que a IA vai ler (quando a extração parte de um documento guardado)
@@ -475,7 +486,7 @@ export default function EditorPage() {
   const [assinaturaAberta, setAssinaturaAberta] = useState(false);
   // A CHAVE do app: 'simples' (tela enxuta, ideal pra aprender) x 'completo' (tudo à mostra).
   // Novo usuário começa no simples. Fica salvo nas preferências e vale no app inteiro.
-  const [modoApp, setModoApp] = useState<'simples' | 'completo'>('simples');
+  const [modoApp, setModoApp] = useState<'simples' | 'medio' | 'completo'>('simples');
   const [tempoCompletoMs, setTempoCompletoMs] = useState(0);
   const [introTocando, setIntroTocando] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -487,8 +498,10 @@ export default function EditorPage() {
     window.addEventListener('souzacad:intro', h);
     return () => window.removeEventListener('souzacad:intro', h);
   }, []);
-  function trocarModoApp(m: 'simples' | 'completo') { setModoApp(m); try { salvarModo(m); } catch { /* ignore */ } }
+  function trocarModoApp(m: 'simples' | 'medio' | 'completo') { setModoApp(m); try { salvarModo(m); } catch { /* ignore */ } }
   const completo = modoApp === 'completo';
+  const medio = modoApp === 'medio';
+  const rotuloModo = completo ? 'COMPL.' : medio ? 'MÉDIO' : 'FÁCIL';
   // Enquanto está no Completo, acumula tempo de uso (resolução de 1 min). Passou de 5 h, a chave
   // do topo some pra deixar a tela limpa — voltar ao Simples fica só nas Configurações.
   useEffect(() => {
@@ -3481,15 +3494,11 @@ export default function EditorPage() {
         {/* 5) Peças */}
         <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}>{iconeCab('trt', <FileText />)} TRT</Button></Etapa>
         <Etapa st={etapas.memorial}>
-          <div className="flex items-center gap-0.5 shrink-0">
-            <Button size="sm" variant="outline" className={`${PREM_BTN} ${COR_PECA} rounded-r-none border-r-0`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
-            <Button size="sm" variant="outline" className={`px-1.5 ${PREM_BTN} ${COR_PECA} rounded-l-none border-amber-500/20 hover:border-amber-500 text-amber-600 hover:text-amber-700 dark:text-amber-400`} title="Pré-visualizar o memorial descritivo" onClick={() => { setPrevMemorialModo('normal'); setPrevMemorialAberto(true); }}><Eye className="size-4" /></Button>
-          </div>
+          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
         </Etapa>
-        <div className="flex items-center gap-0.5 shrink-0">
-          <Button size="sm" variant="outline" className={`${PREM_BTN} ${COR_PECA} rounded-r-none border-r-0`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
-          <Button size="sm" variant="outline" className={`px-1.5 ${PREM_BTN} ${COR_PECA} rounded-l-none border-amber-500/20 hover:border-amber-500 text-amber-600 hover:text-amber-700 dark:text-amber-400`} title="Pré-visualizar o memorial descritivo de servidão" onClick={() => { setPrevMemorialModo('servidao'); setPrevMemorialAberto(true); }}><Eye className="size-4" /></Button>
-        </div>
+        {projetoTemServidao && (
+          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
+        )}
         <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
@@ -3522,7 +3531,7 @@ export default function EditorPage() {
                 <>
                   <span className="text-muted-foreground">Pintando divisa:</span>
                   <span className="relative inline-flex">
-                    <button type="button" className="flex h-7 items-center gap-1 rounded border border-input bg-background px-1.5 hover:bg-muted" title="Ajustar as cores das divisas (fica salvo pra suas plantas)" onClick={() => setCorPickerAberto((v) => !v)}>
+                    <button type="button" className="flex h-7 items-center gap-1 rounded-sm border border-input bg-background px-1.5 hover:bg-muted" title="Ajustar as cores das divisas (fica salvo pra suas plantas)" onClick={() => setCorPickerAberto((v) => !v)}>
                       <span className="inline-block h-0 w-5 border-t-[3px]" style={{ borderColor: corDivisa(tipoDivisaPincel) || '#0f172a' }} />
                       <Palette className="size-3.5 text-muted-foreground" />
                     </button>
@@ -3532,15 +3541,15 @@ export default function EditorPage() {
                         {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
                           <label key={tipo} className="flex items-center justify-between gap-2 py-0.5 text-xs">
                             <span>{REPRES_LABEL[tipo] || tipo}</span>
-                            <input type="color" value={cor || '#9ca3af'} className="h-6 w-8 cursor-pointer rounded border-0 bg-transparent p-0"
+                            <input type="color" value={cor || '#9ca3af'} className="h-6 w-8 cursor-pointer rounded-sm border-0 bg-transparent p-0"
                               onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }} />
                           </label>
                         ))}
-                        <button type="button" className="mt-1 w-full rounded border px-2 py-1 text-[11px] hover:bg-muted" onClick={() => setCorPickerAberto(false)}>Fechar</button>
+                        <button type="button" className="mt-1 w-full rounded-sm border px-2 py-1 text-[11px] hover:bg-muted" onClick={() => setCorPickerAberto(false)}>Fechar</button>
                       </div>
                     )}
                   </span>
-                  <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
+                  <select className="h-7 rounded-sm border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
                     {REPRESENTACOES.map((r) => <option key={r} value={r} style={{ color: corDivisa(r) || undefined }}>{'━ '}{REPRES_LABEL[r] || r}</option>)}
                   </select>
                 </>
@@ -3549,7 +3558,7 @@ export default function EditorPage() {
                 <>
                   <span className="text-muted-foreground">Pintando confrontante:</span>
                   {confrontantePincelId && <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(confrontantePincelId) }} title="Cor deste confrontante no mapa" />}
-                  <select className="h-7 rounded border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
+                  <select className="h-7 rounded-sm border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
                     <option value="">— escolher —</option>
                     {confrontantes.map((c) => <option key={c.id} value={c.id} style={{ color: corPorConfrontante(c.id) }}>{'━ '}{c.nome || '(sem nome)'}</option>)}
                   </select>
@@ -3577,7 +3586,7 @@ export default function EditorPage() {
                         <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                       </span>
                       {mostrandoCoresHeader && (
-                        <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded border border-dashed mb-1 animate-in fade-in duration-200">
+                        <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded-sm border border-dashed mb-1 animate-in fade-in duration-200">
                           {CORES_CABECALHO.map((c) => (
                             <button
                               key={c.id}
@@ -3633,7 +3642,7 @@ export default function EditorPage() {
                           <div className="flex gap-1">
                             {glebas.map((g, i) => (
                               <button key={g.id} type="button" onClick={() => { trocarGleba(g.id); setPainelAberto(true); }} title={g.denominacao}
-                                className={`size-6 rounded flex items-center justify-center text-xs font-bold ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'border bg-background hover:bg-muted'}`}>{i + 1}</button>
+                                className={`size-6 rounded-sm flex items-center justify-center text-xs font-bold ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'border bg-background hover:bg-muted'}`}>{i + 1}</button>
                             ))}
                           </div>
                         </div>
@@ -3647,7 +3656,7 @@ export default function EditorPage() {
                         <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                       </span>
                       {mostrandoCoresHeader && (
-                        <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded border border-dashed mb-1 animate-in fade-in duration-200">
+                        <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded-sm border border-dashed mb-1 animate-in fade-in duration-200">
                           {CORES_CABECALHO.map((c) => (
                             <button
                               key={c.id}
@@ -3699,7 +3708,7 @@ export default function EditorPage() {
                           <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                         </span>
                         {mostrandoCoresHeader && (
-                          <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded border border-dashed mb-1 animate-in fade-in duration-200">
+                          <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded-sm border border-dashed mb-1 animate-in fade-in duration-200">
                             {CORES_CABECALHO.map((c) => (
                               <button
                                 key={c.id}
@@ -3747,10 +3756,10 @@ export default function EditorPage() {
                             <Expand className="text-sky-500 shrink-0" /> <span className="truncate">Prolongar</span>
                           </Button>
                           {modo === 'simbolo' && (
-                            <div className="col-span-3 grid grid-cols-5 gap-1 rounded border bg-muted/40 p-1">
+                            <div className="col-span-3 grid grid-cols-5 gap-1 rounded-sm border bg-muted/40 p-1">
                               {SIMBOLOS.map((s) => (
                                 <button key={s.chave} type="button" title={s.rotulo}
-                                  className={`flex flex-col items-center justify-center rounded p-1 hover:bg-background transition-all ${simboloSel === s.chave ? 'bg-background ring-1 ring-primary' : ''}`}
+                                  className={`flex flex-col items-center justify-center rounded-sm p-1 hover:bg-background transition-all ${simboloSel === s.chave ? 'bg-background ring-1 ring-primary' : ''}`}
                                   onClick={() => setSimboloSel(s.chave)}>
                                   <svg viewBox="-14 -14 28 28" className="size-5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno(s.chave) }} />
                                   <span className="text-[8px] font-semibold leading-none mt-0.5">{s.rotulo}</span>
@@ -3759,13 +3768,13 @@ export default function EditorPage() {
                             </div>
                           )}
                           {modo === 'paralela' && (
-                            <div className="col-span-3 flex items-center justify-between gap-2 rounded border bg-muted/40 p-1.5 animate-in fade-in duration-200">
+                            <div className="col-span-3 flex items-center justify-between gap-2 rounded-sm border bg-muted/40 p-1.5 animate-in fade-in duration-200">
                               <span className="text-[9px] font-semibold text-muted-foreground">{segmentoSelecionado ? '2) Clique no lado da paralela:' : '1) Clique em uma linha/aresta'}</span>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[9px] font-bold text-muted-foreground">Afast (m):</span>
                                 <input
                                   type="text"
-                                  className="w-12 rounded border bg-background px-1 py-0.5 text-xs font-bold text-center text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                  className="w-12 rounded-sm border bg-background px-1 py-0.5 text-xs font-bold text-center text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                                   value={offsetDistancia}
                                   onChange={(e) => {
                                     const val = e.target.value.replace(',', '.');
@@ -3776,19 +3785,19 @@ export default function EditorPage() {
                             </div>
                           )}
                           {modo === 'dividir' && (
-                            <div className="col-span-3 rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-1.5 text-[9px] text-cyan-600 dark:text-cyan-400 font-semibold animate-in fade-in duration-200">
+                            <div className="col-span-3 rounded-sm border border-cyan-500/40 bg-cyan-500/10 px-2 py-1.5 text-[9px] text-cyan-600 dark:text-cyan-400 font-semibold animate-in fade-in duration-200">
                               Clique sobre um segmento (divisa) do perímetro ativo para dividi-lo.
                             </div>
                           )}
                           {modo === 'trim' && (
-                            <div className="col-span-3 rounded border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-[9px] text-red-600 dark:text-red-400 font-semibold animate-in fade-in duration-200">
+                            <div className="col-span-3 rounded-sm border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-[9px] text-red-600 dark:text-red-400 font-semibold animate-in fade-in duration-200">
                               {linhaLimite
                                 ? '2) Clique no segmento de polilinha que deseja aparar (Trim).'
                                 : '1) Clique em qualquer linha para usar como limite de corte.'}
                             </div>
                           )}
                           {modo === 'extend' && (
-                            <div className="col-span-3 rounded border border-blue-500/40 bg-blue-500/10 px-2 py-1.5 text-[9px] text-blue-600 dark:text-blue-400 font-semibold animate-in fade-in duration-200">
+                            <div className="col-span-3 rounded-sm border border-blue-500/40 bg-blue-500/10 px-2 py-1.5 text-[9px] text-blue-600 dark:text-blue-400 font-semibold animate-in fade-in duration-200">
                               {linhaLimite
                                 ? '2) Clique perto da ponta de uma polilinha para prolongá-la até o limite.'
                                 : '1) Clique em qualquer linha para usar como limite de extensão.'}
@@ -3825,7 +3834,7 @@ export default function EditorPage() {
                             <span className="truncate text-[11px] font-semibold">Sel. Vários</span>
                           </Button>
                           {modo === 'multi' && (
-                            <div className="col-span-3 grid grid-cols-3 gap-1 rounded border bg-muted/40 p-1">
+                            <div className="col-span-3 grid grid-cols-3 gap-1 rounded-sm border bg-muted/40 p-1">
                               {selMulti.size > 0 ? (
                                 <>
                                   <Button size="sm" variant="destructive" className="col-span-2 h-7 text-[10px] font-bold gap-1" onClick={apagarMultiSelecionados}>
@@ -3841,12 +3850,12 @@ export default function EditorPage() {
                             </div>
                           )}
                           {modo === 'copiar_base' && (
-                            <div className="col-span-3 rounded border border-violet-500/40 bg-violet-500/10 px-2 py-1.5 text-[9px] text-violet-600 dark:text-violet-400 font-semibold animate-in fade-in duration-200">
+                            <div className="col-span-3 rounded-sm border border-violet-500/40 bg-violet-500/10 px-2 py-1.5 text-[9px] text-violet-600 dark:text-violet-400 font-semibold animate-in fade-in duration-200">
                               1) Clique em um vértice (ou ponto do mapa) para servir como referência base.
                             </div>
                           )}
                           {modo === 'copiar_destino' && (
-                            <div className="col-span-3 rounded border border-violet-500/40 bg-violet-500/10 px-2 py-1.5 text-[9px] text-violet-600 dark:text-violet-400 font-semibold animate-in fade-in duration-200">
+                            <div className="col-span-3 rounded-sm border border-violet-500/40 bg-violet-500/10 px-2 py-1.5 text-[9px] text-violet-600 dark:text-violet-400 font-semibold animate-in fade-in duration-200">
                               2) Mova o cursor e clique no mapa para colar a cópia transladada.
                             </div>
                           )}
@@ -3883,7 +3892,7 @@ export default function EditorPage() {
                             <span className="text-[9px] font-bold uppercase text-muted-foreground">Curvas de nível</span>
                             <div className="flex items-center gap-1">
                               <span className="text-[9px] text-muted-foreground">interv.</span>
-                              <input type="number" min={0.1} step={0.5} value={intervaloCurva} onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))} className="h-6 w-12 rounded border bg-background px-1 text-[11px]" title="Intervalo entre curvas (m)" />
+                              <input type="number" min={0.1} step={0.5} value={intervaloCurva} onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))} className="h-6 w-12 rounded-sm border bg-background px-1 text-[11px]" title="Intervalo entre curvas (m)" />
                               <span className="text-[9px] text-muted-foreground">m</span>
                             </div>
                           </div>
@@ -3975,7 +3984,7 @@ export default function EditorPage() {
                                             [key]: { ...prev[key], espessura: val }
                                           }));
                                         }}
-                                        className="w-8 h-4 rounded border bg-background text-center text-[9px] font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                                        className="w-8 h-4 rounded-sm border bg-background text-center text-[9px] font-bold focus:outline-none focus:ring-1 focus:ring-primary"
                                         title="Espessura da linha"
                                       />
                                     </div>
@@ -3990,7 +3999,7 @@ export default function EditorPage() {
                                         [key]: !prev[key]
                                       }))
                                     }
-                                    className={`p-0.5 rounded hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
+                                    className={`p-0.5 rounded-sm hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
                                     title={visivel ? 'Ocultar camada' : 'Exibir camada'}
                                   >
                                     {visivel ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
@@ -4005,7 +4014,7 @@ export default function EditorPage() {
                                         [key]: !prev[key]
                                       }))
                                     }
-                                    className={`p-0.5 rounded hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
+                                    className={`p-0.5 rounded-sm hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
                                     title={bloqueada ? 'Desbloquear camada' : 'Bloquear camada'}
                                   >
                                     {bloqueada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
@@ -4059,14 +4068,14 @@ export default function EditorPage() {
                   {vista === 'mapa' ? (
                     <div className="grid grid-cols-2 gap-1 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
                       <span className="text-[10px] font-bold uppercase text-foreground col-span-2 px-1 mb-0.5">Ajuste de Tamanhos</span>
-                      <div className="flex flex-col items-center rounded bg-muted/40 p-1" title="Tamanho dos nomes/códigos que aparecem nos vértices">
+                      <div className="flex flex-col items-center rounded-sm bg-muted/40 p-1" title="Tamanho dos nomes/códigos que aparecem nos vértices">
                         <span className="text-[10px] font-bold text-foreground truncate">Rótulos</span>
                         <div className="flex gap-0.5 mt-1">
                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-[9px]">A-</span></Button>
                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-[9px]">A+</span></Button>
                         </div>
                       </div>
-                      <div className="flex flex-col items-center rounded bg-muted/40 p-1" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
+                      <div className="flex flex-col items-center rounded-sm bg-muted/40 p-1" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
                         <span className="text-[10px] font-bold text-foreground truncate">Interface</span>
                         <div className="flex gap-0.5 mt-1">
                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}><span className="text-[9px]">A-</span></Button>
@@ -4079,7 +4088,7 @@ export default function EditorPage() {
                       <span className="text-[10px] font-bold uppercase text-foreground col-span-3 px-1 mb-0.5">Ajuste de Tamanhos</span>
                       
                       {/* Interface */}
-                      <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                      <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
                         <span className="truncate">Interface</span>
                         <div className="flex items-center gap-0.5">
                           <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}>-</Button>
@@ -4093,7 +4102,7 @@ export default function EditorPage() {
                         const passo = 0.05, min = 0.4, max = 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded" title="Tamanho só das tabelas: roteiro perimétrico, quadro de áreas e de coordenadas">
+                          <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm" title="Tamanho só das tabelas: roteiro perimétrico, quadro de áreas e de coordenadas">
                             <span className="truncate">Tabelas</span>
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
@@ -4109,7 +4118,7 @@ export default function EditorPage() {
                         const passo = 0.5, min = 5, max = 20;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
                             <span className="truncate">Rótulos</span>
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
@@ -4125,7 +4134,7 @@ export default function EditorPage() {
                         const passo = 0.05, min = 0.4, max = 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
                             <span className="truncate">Símbolos</span>
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
@@ -4141,7 +4150,7 @@ export default function EditorPage() {
                         const passo = 0.05, min = 0.4, max = 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
                             <span className="truncate">Declarações</span>
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
@@ -4157,7 +4166,7 @@ export default function EditorPage() {
                         const passo = 0.05, min = 0.4, max = 3;
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
                             <span className="truncate">Confront.</span>
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
@@ -4232,8 +4241,8 @@ export default function EditorPage() {
             {/* Salvar — logo abaixo da alternância mapa/planta, sempre visível e acessível */}
             <button type="button" onClick={() => { void salvar(); }} disabled={processando}
               title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar' : salvoOk ? 'Trabalho salvo' : 'Salvar o projeto'}
-              className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${salvarLaranja ? 'border-amber-500 bg-amber-500/15 hover:bg-amber-500/25' : 'border-border bg-background/95 hover:bg-muted'}`}>
-              <Save className={`size-5 ${salvarLaranja ? 'text-amber-500' : salvoOk ? 'text-green-600' : ''}`} />
+              className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${salvarLaranja ? 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 animate-pulse' : 'border-border bg-background/95 hover:bg-muted'}`}>
+              <Save className={`size-5 ${salvarLaranja ? 'text-white' : salvoOk ? 'text-green-600' : ''}`} />
               <span className="text-[10px] font-bold leading-none">SALVAR</span>
             </button>
 
@@ -4279,8 +4288,8 @@ export default function EditorPage() {
             {vista === 'mapa' && (
               <button type="button" onClick={() => setSnapAtivo((v) => !v)}
                 title={snapAtivo ? 'Imã ligado: o clique encaixa em pontos próximos. Clique para desligar.' : 'Imã desligado. Clique para ligar o encaixe em pontos próximos.'}
-                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${snapAtivo ? 'border-primary bg-primary/10 hover:bg-primary/20' : 'border-border bg-background/95 hover:bg-muted'}`}>
-                <Magnet className={`size-5 ${snapAtivo ? 'text-primary' : ''}`} />
+                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${snapAtivo ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90' : 'border-border bg-background/95 hover:bg-muted'}`}>
+                <Magnet className={`size-5 ${snapAtivo ? 'text-primary-foreground' : ''}`} />
                 <span className="text-[10px] font-bold leading-none">IMÃ</span>
               </button>
             )}
@@ -4297,9 +4306,9 @@ export default function EditorPage() {
             <div className="relative">
               <button type="button" onClick={() => setCamadasPopoverAberta((v) => !v)}
                 title="Gerenciador de camadas: visibilidade, bloqueio, cores e espessuras"
-                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${camadasPopoverAberta ? 'border-teal-500 bg-teal-500/10 hover:bg-teal-500/20' : 'border-border bg-background/95 hover:bg-muted'}`}>
+                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${camadasPopoverAberta ? 'border-teal-600 bg-teal-600 text-white dark:bg-teal-500 dark:text-black hover:bg-teal-700 dark:hover:bg-teal-400' : 'border-border bg-background/95 hover:bg-muted'}`}>
                 <Layers className={`size-5 ${camadasPopoverAberta ? 'text-white dark:text-black' : 'text-teal-600 dark:text-teal-400'}`} />
-                <span className={`text-[10px] font-bold leading-none ${camadasPopoverAberta ? 'text-teal-700 dark:text-teal-300' : 'text-teal-600 dark:text-teal-400'}`}>CAMADAS</span>
+                <span className="text-[10px] font-bold leading-none">CAMADAS</span>
               </button>
               {camadasPopoverAberta && (
                 <div className="absolute left-[60px] top-0 z-[2100] w-72 rounded-xl border border-teal-500/30 bg-background/98 shadow-2xl backdrop-blur-xl p-3 animate-in slide-in-from-left-2 fade-in duration-200"
@@ -4333,16 +4342,16 @@ export default function EditorPage() {
                                 <span>L:</span>
                                 <input type="number" min="0.5" max="10" step="0.5" value={estilo.espessura}
                                   onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], espessura: parseFloat(e.target.value) || 1 } }))}
-                                  className="w-9 h-5 rounded border bg-background text-center text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-teal-500" title="Espessura" />
+                                  className="w-9 h-5 rounded-sm border bg-background text-center text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-teal-500" title="Espessura" />
                               </div>
                             )}
                             <button type="button" onClick={() => setCamadasVisiveis((prev) => ({ ...prev, [key]: !prev[key] }))}
-                              className={`p-0.5 rounded hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
+                              className={`p-0.5 rounded-sm hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
                               title={visivel ? 'Ocultar' : 'Exibir'}>
                               {visivel ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                             </button>
                             <button type="button" onClick={() => setCamadasBloqueadas((prev) => ({ ...prev, [key]: !prev[key] }))}
-                              className={`p-0.5 rounded hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
+                              className={`p-0.5 rounded-sm hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
                               title={bloqueada ? 'Desbloquear' : 'Bloquear'}>
                               {bloqueada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
                             </button>
@@ -4357,11 +4366,11 @@ export default function EditorPage() {
             {souMaster() && (
               <button type="button" onClick={() => setModoMaster((m) => (m === 'editar' ? 'gerir' : 'editar'))}
                 title={modoMaster === 'editar' ? 'Alternar para o modo GERIR (painel administrativo do SaaS)' : 'Alternar para o modo EDITAR (workspace de desenho)'}
-                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${modoMaster === 'gerir' ? 'border-amber-500 bg-amber-500/10 hover:bg-amber-500/20' : 'border-border bg-background/95 hover:bg-muted'}`}>
+                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${modoMaster === 'gerir' ? 'border-amber-600 bg-amber-600 text-white dark:bg-amber-500 dark:text-black hover:bg-amber-700 dark:hover:bg-amber-400' : 'border-border bg-background/95 hover:bg-muted'}`}>
                 {modoMaster === 'gerir' ? (
                   <>
-                    <MapIcon className="size-5 text-amber-500 animate-pulse" />
-                    <span className="text-[10px] font-bold leading-none text-amber-600 dark:text-amber-400">DESENHAR</span>
+                    <MapIcon className="size-5 text-white dark:text-black animate-pulse" />
+                    <span className="text-[10px] font-bold leading-none">DESENHAR</span>
                   </>
                 ) : (
                   <>
@@ -4565,16 +4574,16 @@ export default function EditorPage() {
             <div className="absolute bottom-16 left-1/2 z-[1000] -translate-x-1/2 rounded-lg border bg-background/95 px-2.5 py-1.5 shadow-xl backdrop-blur">
               <div className="flex items-center gap-1.5 text-xs">
                 <button
-                  className={`rounded border px-2 py-1 font-bold ${orto === 'off' ? 'text-muted-foreground' : 'border-primary bg-primary/10 text-primary'}`}
+                  className={`rounded-sm border px-2 py-1 font-bold ${orto === 'off' ? 'text-muted-foreground' : 'border-primary bg-primary/10 text-primary'}`}
                   onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}
                   title="Trava de ângulo do desenho: ORTO 90° prende em ângulos retos; POLAR 15° prende de 15 em 15 graus. O imã tem prioridade sobre a trava.">
                   {orto === 'off' ? 'ORTO off' : orto === '90' ? 'ORTO 90°' : 'POLAR 15°'}
                 </button>
                 <span className="text-muted-foreground">Azimute</span>
-                <input className="h-7 w-24 rounded border bg-background px-1.5 font-mono" placeholder="45 30 00" value={azDigitado}
+                <input className="h-7 w-24 rounded-sm border bg-background px-1.5 font-mono" placeholder="45 30 00" value={azDigitado}
                   onChange={(e) => setAzDigitado(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') adicionarPontoDigitado(); }} />
                 <span className="text-muted-foreground">Dist. (m)</span>
-                <input className="h-7 w-20 rounded border bg-background px-1.5 font-mono" placeholder="25,40" value={distDigitada}
+                <input className="h-7 w-20 rounded-sm border bg-background px-1.5 font-mono" placeholder="25,40" value={distDigitada}
                   onChange={(e) => setDistDigitada(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') adicionarPontoDigitado(); }} />
                 <Button size="sm" className="h-7" disabled={desenhoBuffer.length === 0} onClick={adicionarPontoDigitado}
                   title={desenhoBuffer.length === 0 ? 'Clique o primeiro ponto no mapa; os próximos podem ser digitados' : 'Adicionar o próximo ponto por rumo e distância (Enter)'}>
@@ -4591,7 +4600,7 @@ export default function EditorPage() {
             <div className="absolute right-3 top-16 z-[1000] w-72 rounded-lg border bg-background/95 p-3 text-xs shadow-xl backdrop-blur">
               <div className="mb-1.5 flex items-start justify-between gap-2">
                 <span className="font-bold text-cyan-700 dark:text-cyan-300">{parcelasCert[parcelaSel].info.titulo}</span>
-                <button className="rounded p-0.5 hover:bg-muted" onClick={() => setParcelaSel(null)} title="Fechar"><X className="size-4" /></button>
+                <button className="rounded-sm p-0.5 hover:bg-muted" onClick={() => setParcelaSel(null)} title="Fechar"><X className="size-4" /></button>
               </div>
               <div className="space-y-1">
                 {parcelasCert[parcelaSel].info.linhas.length
@@ -4677,7 +4686,7 @@ export default function EditorPage() {
             <div className="flex flex-wrap items-center gap-1.5 border-b p-1.5 bg-muted/20">
             {glebas.map((g) => (
               <button key={g.id} disabled={processando} onClick={() => trocarGleba(g.id)}
-                className={`shrink-0 rounded px-2 py-1 text-xs disabled:opacity-50 ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+                className={`shrink-0 rounded-sm px-2 py-1 text-xs disabled:opacity-50 ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
                 {g.denominacao}
               </button>
             ))}
@@ -4730,7 +4739,7 @@ export default function EditorPage() {
                       <select 
                         value={vSplitInicioId ?? ''} 
                         onChange={(e) => setVSplitInicioId(e.target.value || null)}
-                        className="h-7 w-full rounded border bg-background px-1 text-[11px]"
+                        className="h-7 w-full rounded-sm border bg-background px-1 text-[11px]"
                       >
                         <option value="">(Selecione)</option>
                         {vertices.map(v => <option key={v.id} value={v.id}>{v.codigoSigef || v.codigoCampo || v.nome}</option>)}
@@ -4741,7 +4750,7 @@ export default function EditorPage() {
                       <select 
                         value={vSplitFimId ?? ''} 
                         onChange={(e) => setVSplitFimId(e.target.value || null)}
-                        className="h-7 w-full rounded border bg-background px-1 text-[11px]"
+                        className="h-7 w-full rounded-sm border bg-background px-1 text-[11px]"
                       >
                         <option value="">(Selecione)</option>
                         {vertices.map(v => <option key={v.id} value={v.id}>{v.codigoSigef || v.codigoCampo || v.nome}</option>)}
@@ -4765,7 +4774,7 @@ export default function EditorPage() {
                     <div className="flex items-center gap-1">
                       <input
                         type="text" inputMode="decimal" value={areaAlvoHa} onChange={(e) => setAreaAlvoHa(e.target.value)}
-                        placeholder="ha (ex.: 0,4)" className="h-7 flex-1 rounded border bg-background px-1 text-[11px]" />
+                        placeholder="ha (ex.: 0,4)" className="h-7 flex-1 rounded-sm border bg-background px-1 text-[11px]" />
                       <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] font-semibold"
                         disabled={!vSplitInicioId || !vSplitFimId || vSplitInicioId === vSplitFimId || !areaAlvoHa}
                         onClick={executarDivisaoPorArea} title="A linha de corte fica paralela à reta De→Até e é posicionada para dar esta área de um lado">
@@ -4822,14 +4831,14 @@ export default function EditorPage() {
                       onDragStart={() => setDragVtxIdx(i)}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => { if (dragVtxIdx != null) reordenarVertice(dragVtxIdx, i); setDragVtxIdx(null); }}
-                      className={`cursor-grab rounded border p-2 text-xs ${selecionadoId === v.id ? 'border-primary bg-accent' : ''} ${dragVtxIdx === i ? 'opacity-50' : ''}`}
+                      className={`cursor-grab rounded-sm border p-2 text-xs ${selecionadoId === v.id ? 'border-primary bg-accent' : ''} ${dragVtxIdx === i ? 'opacity-50' : ''}`}
                       onMouseEnter={() => setRealceId(v.id)} onMouseLeave={() => setRealceId((r) => (r === v.id ? null : r))}
                       onClick={() => setSelecionadoId(v.id)}>
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-semibold">{v.codigoSigef || '(sem código)'}</span>
                         <span className="flex gap-1">
-                          <button className="rounded bg-secondary px-2.5 py-1 text-sm font-bold" onClick={(e) => { e.stopPropagation(); alternarTipo(v.id); }} title="Alternar tipo do marco (M/P/V)">{v.tipo}</button>
-                          <button className="rounded bg-destructive px-2 py-1 text-sm text-destructive-foreground" onClick={(e) => { e.stopPropagation(); apagarVertice(v.id); }} title="Apagar vértice">×</button>
+                          <button className="rounded-sm bg-secondary px-2.5 py-1 text-sm font-bold" onClick={(e) => { e.stopPropagation(); alternarTipo(v.id); }} title="Alternar tipo do marco (M/P/V)">{v.tipo}</button>
+                          <button className="rounded-sm bg-destructive px-2 py-1 text-sm text-destructive-foreground" onClick={(e) => { e.stopPropagation(); apagarVertice(v.id); }} title="Apagar vértice">×</button>
                         </span>
                       </div>
                       <div className="mt-1 text-muted-foreground">{v.codigoCampo || v.nome}</div>
@@ -4865,14 +4874,14 @@ export default function EditorPage() {
                             <button
                               type="button"
                               onClick={async () => { setVSplitInicioId(v.id); await avisar({ titulo: 'Início da divisão', mensagem: `Vértice ${v.codigoSigef || v.nome} definido como Início da divisão.` }); }}
-                              className="rounded border border-input bg-background h-6 px-1 text-[9px] hover:bg-accent font-medium text-foreground transition-colors"
+                              className="rounded-sm border border-input bg-background h-6 px-1 text-[9px] hover:bg-accent font-medium text-foreground transition-colors"
                             >
                               Definir como Início
                             </button>
                             <button
                               type="button"
                               onClick={async () => { setVSplitFimId(v.id); await avisar({ titulo: 'Fim da divisão', mensagem: `Vértice ${v.codigoSigef || v.nome} definido como Fim da divisão.` }); }}
-                              className="rounded border border-input bg-background h-6 px-1 text-[9px] hover:bg-accent font-medium text-foreground transition-colors"
+                              className="rounded-sm border border-input bg-background h-6 px-1 text-[9px] hover:bg-accent font-medium text-foreground transition-colors"
                             >
                               Definir como Fim
                             </button>
@@ -4905,7 +4914,7 @@ export default function EditorPage() {
                 <Button size="sm" className="w-full" disabled={processando} onClick={salvar}><Save /> Salvar projeto atual</Button>
                 
                 {/* Botões de backup local JSON */}
-                <div className="grid grid-cols-2 gap-1 bg-muted/20 p-1 rounded border">
+                <div className="grid grid-cols-2 gap-1 bg-muted/20 p-1 rounded-sm border">
                   <Button size="sm" variant="outline" className="h-8 text-[11px] gap-1 px-1" disabled={processando} onClick={exportarProjetoAtualJson} title="Exportar o projeto aberto em um arquivo JSON local para backup">
                     <Download className="size-3.5" /> Exportar JSON
                   </Button>
@@ -4914,13 +4923,13 @@ export default function EditorPage() {
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-2 rounded border bg-muted/40 p-2 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-2 rounded-sm border bg-muted/40 p-2 text-[11px] text-muted-foreground">
                   <Database className="size-3.5" /> {totalPontos} ponto(s) no banco do credenciado (nunca reusados).
                 </div>
                 <SecaoTitulo>Projetos salvos</SecaoTitulo>
                 {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
                 {projetos.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between rounded border p-2 text-xs">
+                  <div key={p.id} className="flex items-center justify-between rounded-sm border p-2 text-xs">
                     <div>
                       <div className="font-medium">{p.nome}</div>
                       <div className="text-muted-foreground">{contarVertices(p)} vértices{(p.glebas?.length ?? 0) > 1 ? ` · ${p.glebas!.length} glebas` : ''}</div>
@@ -5059,21 +5068,21 @@ export default function EditorPage() {
             
             {menuContexto.tipo === 'texto' && (
               <div className="flex flex-col gap-0.5">
-                <button className="block w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { const m = menuContexto; setMenuContexto(null); editarTextoPlanta(m.id!, m.atual!); }}>Editar texto…</button>
-                <button className="block w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { negrito: !(plantaConfig.textos?.[menuContexto.id!]?.negrito) })}>Negrito (liga/desliga)</button>
-                <button className="block w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { escala: Math.min(3, +(escTextoAtual(menuContexto.id!) + 0.1).toFixed(2)) })}>Aumentar este texto</button>
-                <button className="block w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { escala: Math.max(0.4, +(escTextoAtual(menuContexto.id!) - 0.1).toFixed(2)) })}>Diminuir este texto</button>
-                <button className="block w-full border-t px-2 py-1.5 text-left rounded hover:bg-accent text-destructive" onClick={() => { patchTextoPlanta(menuContexto.id!, { dx: 0, dy: 0 }); setMenuContexto(null); }}>Resetar posição</button>
-                <button className="block w-full border-t px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { restaurarTextoPlanta(menuContexto.id!); setMenuContexto(null); }}>Restaurar padrão</button>
+                <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { const m = menuContexto; setMenuContexto(null); editarTextoPlanta(m.id!, m.atual!); }}>Editar texto…</button>
+                <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { negrito: !(plantaConfig.textos?.[menuContexto.id!]?.negrito) })}>Negrito (liga/desliga)</button>
+                <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { escala: Math.min(3, +(escTextoAtual(menuContexto.id!) + 0.1).toFixed(2)) })}>Aumentar este texto</button>
+                <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { escala: Math.max(0.4, +(escTextoAtual(menuContexto.id!) - 0.1).toFixed(2)) })}>Diminuir este texto</button>
+                <button className="block w-full border-t px-2 py-1.5 text-left rounded-sm hover:bg-accent text-destructive" onClick={() => { patchTextoPlanta(menuContexto.id!, { dx: 0, dy: 0 }); setMenuContexto(null); }}>Resetar posição</button>
+                <button className="block w-full border-t px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { restaurarTextoPlanta(menuContexto.id!); setMenuContexto(null); }}>Restaurar padrão</button>
               </div>
             )}
 
             {menuContexto.tipo === 'vertice' && menuContexto.vertice && (
               <div className="flex flex-col gap-0.5">
                 <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">Ações do Vértice</div>
-                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded hover:bg-accent" onClick={() => { snap(); setVertices((vs) => definirInicio(vs, menuContexto.vertice!.id)); setMenuContexto(null); }}><Flag className="size-3.5" /> Definir Início</button>
-                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded hover:bg-accent text-destructive" onClick={() => { apagarVertice(menuContexto.vertice!.id); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Excluir Vértice</button>
-                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded hover:bg-accent" onClick={() => { ignorarVertice(menuContexto.vertice!.id); setMenuContexto(null); }}><EyeOff className="size-3.5" /> Ignorar Vértice</button>
+                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded-sm hover:bg-accent" onClick={() => { snap(); setVertices((vs) => definirInicio(vs, menuContexto.vertice!.id)); setMenuContexto(null); }}><Flag className="size-3.5" /> Definir Início</button>
+                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded-sm hover:bg-accent text-destructive" onClick={() => { apagarVertice(menuContexto.vertice!.id); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Excluir Vértice</button>
+                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded-sm hover:bg-accent" onClick={() => { ignorarVertice(menuContexto.vertice!.id); setMenuContexto(null); }}><EyeOff className="size-3.5" /> Ignorar Vértice</button>
                 
                 <div className="border-t my-1" />
                 <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">Tipo de Vértice</div>
@@ -5081,7 +5090,7 @@ export default function EditorPage() {
                   {['M', 'P', 'V'].map((t) => (
                     <button
                       key={t}
-                      className={`flex-1 text-center py-0.5 text-xs rounded border ${menuContexto.vertice!.tipo === t ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
+                      className={`flex-1 text-center py-0.5 text-xs rounded-sm border ${menuContexto.vertice!.tipo === t ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
                       onClick={() => { editarVertice(menuContexto.vertice!.id, { tipo: t as Vertex['tipo'], isDivisa: t === 'M' }); setMenuContexto(null); }}
                     >
                       {t}
@@ -5095,7 +5104,7 @@ export default function EditorPage() {
               <div className="flex flex-col gap-0.5">
                 <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">Tipo da Divisa</div>
                 <select
-                  className="mx-1 h-8 rounded border bg-background px-1 text-xs"
+                  className="mx-1 h-8 rounded-sm border bg-background px-1 text-xs"
                   value={menuContexto.vertice.representacao || 'linha-ideal'}
                   onChange={(e) => { definirDivisaLado(menuContexto.vertice!.id, e.target.value); setMenuContexto(null); }}
                 >
@@ -5105,7 +5114,7 @@ export default function EditorPage() {
                 <div className="border-t my-1" />
                 <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">Confrontante</div>
                 <select
-                  className="mx-1 h-8 rounded border bg-background px-1 text-xs"
+                  className="mx-1 h-8 rounded-sm border bg-background px-1 text-xs"
                   value={confrontantePorLado[menuContexto.verticeIdx ?? -1] || ''}
                   onChange={(e) => { definirConfrontanteLado(menuContexto.verticeIdx ?? -1, e.target.value); setMenuContexto(null); }}
                 >
@@ -5118,7 +5127,7 @@ export default function EditorPage() {
             {menuContexto.tipo === 'mapa' && (
               <div className="flex flex-col gap-0.5">
                 <button
-                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent"
                   onClick={() => {
                     inserirVertice(menuContexto.lat!, menuContexto.lon!);
                     setMenuContexto(null);
@@ -5127,7 +5136,7 @@ export default function EditorPage() {
                   <Plus className="size-3.5" /> Inserir Vértice Aqui
                 </button>
                 <button
-                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent"
                   onClick={() => {
                     const utm = geoParaUtm(menuContexto.lat!, menuContexto.lon!, zona, hemisferio);
                     setVvBase({ leste: utm.leste, norte: utm.norte });
@@ -5138,7 +5147,7 @@ export default function EditorPage() {
                   <Waypoints className="size-3.5" /> Criar Vértice Virtual (V)…
                 </button>
                 <button
-                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent"
                   onClick={async () => {
                     const txt = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' });
                     if (txt) {
@@ -5159,7 +5168,7 @@ export default function EditorPage() {
                   <FileText className="size-3.5" /> Inserir Texto Aqui
                 </button>
                 <button
-                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent"
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent"
                   onClick={() => {
                     centralizar();
                     setMenuContexto(null);
@@ -5177,11 +5186,11 @@ export default function EditorPage() {
                   const o = objetos.find((x) => x.id === menuContexto.id);
                   return (
                     <>
-                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: o?.texto ?? '' }); if (t != null) editarObjetoSel({ texto: t }); setMenuContexto(null); }}>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: o?.texto ?? '' }); if (t != null) editarObjetoSel({ texto: t }); setMenuContexto(null); }}>
                         <Pencil className="size-3.5" /> Editar texto…
                       </button>
-                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: (o?.tamanho ?? 12) + 2 }); }}><span className="w-3.5 text-center font-bold">A+</span> Aumentar</button>
-                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.max(6, (o?.tamanho ?? 12) - 2) }); }}><span className="w-3.5 text-center font-bold">A-</span> Diminuir</button>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: (o?.tamanho ?? 12) + 2 }); }}><span className="w-3.5 text-center font-bold">A+</span> Aumentar</button>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.max(6, (o?.tamanho ?? 12) - 2) }); }}><span className="w-3.5 text-center font-bold">A-</span> Diminuir</button>
                       <div className="px-2 pt-1">
                         <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Cor do texto</div>
                         <div className="grid grid-cols-5 gap-1.5">
@@ -5202,8 +5211,8 @@ export default function EditorPage() {
                   const o = objetos.find((x) => x.id === menuContexto.id);
                   return (
                     <>
-                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.min(150, (o?.tamanho ?? 30) + 5) }); }}><span className="w-3.5 text-center font-bold">S+</span> Aumentar Símbolo</button>
-                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.max(10, (o?.tamanho ?? 30) - 5) }); }}><span className="w-3.5 text-center font-bold">S-</span> Diminuir Símbolo</button>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.min(150, (o?.tamanho ?? 30) + 5) }); }}><span className="w-3.5 text-center font-bold">S+</span> Aumentar Símbolo</button>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.max(10, (o?.tamanho ?? 30) - 5) }); }}><span className="w-3.5 text-center font-bold">S-</span> Diminuir Símbolo</button>
                       <div className="px-2 pt-1">
                         <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Cor</div>
                         <div className="grid grid-cols-5 gap-1.5">
@@ -5238,8 +5247,8 @@ export default function EditorPage() {
                       <div>
                         <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Espessura: {(o?.espessura ?? 1.2).toFixed(1)}</div>
                         <div className="flex gap-1.5">
-                          <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.max(0.5, (o?.espessura ?? 1.2) - 0.5) })}>−</button>
-                          <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.min(8, (o?.espessura ?? 1.2) + 0.5) })}>+</button>
+                          <button type="button" className="px-2 py-0.5 rounded-sm border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.max(0.5, (o?.espessura ?? 1.2) - 0.5) })}>−</button>
+                          <button type="button" className="px-2 py-0.5 rounded-sm border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.min(8, (o?.espessura ?? 1.2) + 0.5) })}>+</button>
                         </div>
                       </div>
                     </div>
@@ -5271,7 +5280,7 @@ export default function EditorPage() {
                         <div className="flex gap-1.5">
                           {['solido', 'tracejado', 'pontilhado'].map((est) => (
                             <button key={est} type="button"
-                              className={`px-1.5 py-0.5 rounded border text-[9px] font-bold capitalize ${o.estiloLinha === est || (!o.estiloLinha && est === 'solido') ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
+                              className={`px-1.5 py-0.5 rounded-sm border text-[9px] font-bold capitalize ${o.estiloLinha === est || (!o.estiloLinha && est === 'solido') ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
                               onClick={() => editarObjetoSel({ estiloLinha: est })}>
                               {est === 'solido' ? 'Sólida' : est === 'tracejado' ? 'Tracejada' : 'Pontilhada'}
                             </button>
@@ -5283,8 +5292,8 @@ export default function EditorPage() {
                       <div>
                         <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Espessura: {(o.espessura ?? 1.5).toFixed(1)}</div>
                         <div className="flex gap-1.5">
-                          <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.max(0.5, (o.espessura ?? 1.5) - 0.5) })}>−</button>
-                          <button type="button" className="px-2 py-0.5 rounded border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.min(10, (o.espessura ?? 1.5) + 0.5) })}>+</button>
+                          <button type="button" className="px-2 py-0.5 rounded-sm border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.max(0.5, (o.espessura ?? 1.5) - 0.5) })}>−</button>
+                          <button type="button" className="px-2 py-0.5 rounded-sm border font-bold hover:bg-muted" onClick={() => editarObjetoSel({ espessura: Math.min(10, (o.espessura ?? 1.5) + 0.5) })}>+</button>
                         </div>
                       </div>
 
@@ -5321,7 +5330,7 @@ export default function EditorPage() {
                                 { chave: 'pontos', rotulo: 'Pontos' },
                               ].map((ach) => (
                                 <button key={ach.chave} type="button"
-                                  className={`px-1 py-0.5 rounded border text-[9px] font-bold ${o.achura === ach.chave || (!o.achura && ach.chave === 'nenhuma') ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
+                                  className={`px-1 py-0.5 rounded-sm border text-[9px] font-bold ${o.achura === ach.chave || (!o.achura && ach.chave === 'nenhuma') ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
                                   onClick={() => editarObjetoSel({ achura: ach.chave })} >
                                   {ach.rotulo}
                                 </button>
@@ -5334,16 +5343,16 @@ export default function EditorPage() {
                       <div className="border-t pt-1">
                         <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Camada CAR</div>
                         {CAR_TEMAS.map((t) => (
-                          <button key={t.chave} className="flex w-full items-center gap-2 px-2 py-1 text-left rounded hover:bg-accent" onClick={() => { editarObjetoSel({ carTema: t.chave, preenchido: true, cor: t.cor }); setMenuContexto(null); aviso(`Polígono marcado como ${t.rotulo} (entra no CAR).`); }}>
+                          <button key={t.chave} className="flex w-full items-center gap-2 px-2 py-1 text-left rounded-sm hover:bg-accent" onClick={() => { editarObjetoSel({ carTema: t.chave, preenchido: true, cor: t.cor }); setMenuContexto(null); aviso(`Polígono marcado como ${t.rotulo} (entra no CAR).`); }}>
                             <span className="size-3 rounded-sm" style={{ background: t.cor }} /> {t.rotulo}
                           </button>
                         ))}
-                        <button className="flex w-full items-center gap-2 px-2 py-1 text-left rounded hover:bg-accent text-muted-foreground" onClick={() => { editarObjetoSel({ carTema: undefined }); setMenuContexto(null); }}><X className="size-3.5" /> Não é camada CAR</button>
+                        <button className="flex w-full items-center gap-2 px-2 py-1 text-left rounded-sm hover:bg-accent text-muted-foreground" onClick={() => { editarObjetoSel({ carTema: undefined }); setMenuContexto(null); }}><X className="size-3.5" /> Não é camada CAR</button>
                       </div>
                     </div>
                   );
                 })()}
-                <button className="flex items-center gap-2 w-full border-t px-2 py-1.5 text-left rounded hover:bg-accent text-destructive" onClick={() => { apagarObjetoSel(); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Apagar</button>
+                <button className="flex items-center gap-2 w-full border-t px-2 py-1.5 text-left rounded-sm hover:bg-accent text-destructive" onClick={() => { apagarObjetoSel(); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Apagar</button>
               </div>
             )}
 
@@ -5555,7 +5564,7 @@ function MiniSelect({ label, value, options, onChange }: { label: string; value:
   return (
     <div className="space-y-1">
       <Label>{label}</Label>
-      <select className="h-7 w-full rounded border border-input bg-background px-1 text-xs" value={value} onChange={(e) => onChange(e.target.value)}>
+      <select className="h-7 w-full rounded-sm border border-input bg-background px-1 text-xs" value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </div>
@@ -5602,14 +5611,14 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         <button
           type="button"
           onClick={() => onChange({ ...imovel, tipoImovel: 'rural' })}
-          className={`flex-1 rounded py-1 text-center transition-all ${imovel.tipoImovel !== 'urbano' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`flex-1 rounded-sm py-1 text-center transition-all ${imovel.tipoImovel !== 'urbano' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
         >
           Rural
         </button>
         <button
           type="button"
           onClick={() => onChange({ ...imovel, tipoImovel: 'urbano' })}
-          className={`flex-1 rounded py-1 text-center transition-all ${imovel.tipoImovel === 'urbano' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`flex-1 rounded-sm py-1 text-center transition-all ${imovel.tipoImovel === 'urbano' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
         >
           Urbano
         </button>
@@ -5649,7 +5658,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         <div className="flex flex-wrap gap-1">
           {sugCartorios.map((c) => (
             <button key={c.id} onClick={() => set('cns', c.cns)} title={`${c.nome}${c.municipio ? ` — ${c.municipio}` : ''}`}
-              className={`rounded border px-1.5 py-0.5 text-[10px] ${imovel.cns === c.cns ? 'border-primary bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
+              className={`rounded-sm border px-1.5 py-0.5 text-[10px] ${imovel.cns === c.cns ? 'border-primary bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
               {c.nome ? c.nome.replace(/Cart[óo]rio.*?de\s*/i, '').slice(0, 22) : c.cns}
             </button>
           ))}
@@ -5679,14 +5688,14 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
                 <button
                   type="button"
                   onClick={() => onChange({ ...imovel, padraoMemorial: 'incra' })}
-                  className={`flex-1 rounded py-1 text-center transition-all ${(imovel.padraoMemorial ?? 'incra') === 'incra' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`flex-1 rounded-sm py-1 text-center transition-all ${(imovel.padraoMemorial ?? 'incra') === 'incra' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   INCRA / SIGEF
                 </button>
                 <button
                   type="button"
                   onClick={() => onChange({ ...imovel, padraoMemorial: 'intermat' })}
-                  className={`flex-1 rounded py-1 text-center transition-all ${imovel.padraoMemorial === 'intermat' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`flex-1 rounded-sm py-1 text-center transition-all ${imovel.padraoMemorial === 'intermat' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   INTERMAT (MT)
                 </button>
@@ -5749,7 +5758,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         <div className="flex flex-wrap gap-1">
           {MUNICIPIOS_ATALHO.map((m) => (
             <button key={m} onClick={() => onMunicipio(m)} title={`Usar ${m} (ajusta o fuso)`}
-              className={`rounded border px-1.5 py-0.5 text-[10px] ${imovel.municipio === m ? 'border-primary bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
+              className={`rounded-sm border px-1.5 py-0.5 text-[10px] ${imovel.municipio === m ? 'border-primary bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
               {m.replace(/-[A-Z]{2}$/, '')}
             </button>
           ))}
@@ -5762,7 +5771,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
           <div className="flex rounded-md border border-input p-0.5">
             {(['S', 'N'] as const).map((h) => (
               <button key={h} type="button" onClick={() => onHemisferio(h)}
-                className={`rounded px-2.5 py-0.5 text-[11px] font-semibold uppercase transition-colors ${hemisferio === h ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+                className={`rounded-sm px-2.5 py-0.5 text-[11px] font-semibold uppercase transition-colors ${hemisferio === h ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
                 {h === 'S' ? 'Sul' : 'Norte'}
               </button>
             ))}
@@ -5772,7 +5781,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         <div className="grid grid-cols-8 gap-1">
           {[18, 19, 20, 21, 22, 23, 24, 25].map((z) => (
             <button key={z} type="button" onClick={() => onZona(z)} title={`Fuso ${z}${hemisferio}`}
-              className={`rounded border py-1 text-xs font-bold transition-colors ${zona === z ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-input bg-secondary text-secondary-foreground hover:bg-accent'}`}>
+              className={`rounded-sm border py-1 text-xs font-bold transition-colors ${zona === z ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-input bg-secondary text-secondary-foreground hover:bg-accent'}`}>
               {z}
             </button>
           ))}
@@ -5856,7 +5865,7 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
                   key={i}
                   type="button"
                   onClick={() => onIrParaConflito(c.pontoConflito.lat, c.pontoConflito.lon)}
-                  className="w-full text-left flex items-center justify-between text-[11px] rounded border border-border bg-background p-1.5 hover:bg-accent transition-colors"
+                  className="w-full text-left flex items-center justify-between text-[11px] rounded-sm border border-border bg-background p-1.5 hover:bg-accent transition-colors"
                 >
                   <span>
                     Lado {c.ladoIdx + 1} ({vertices[c.ladoIdx]?.codigoSigef || c.ladoIdx + 1} → {vertices[(c.ladoIdx + 1) % vertices.length]?.codigoSigef || c.ladoIdx + 2}): <span className={corLabel}>{label}</span>
@@ -5873,7 +5882,7 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
 
       <div className="space-y-1">
         {problemas.map((p, i) => (
-          <div key={i} className="flex items-start gap-2 rounded border p-2 text-xs">
+          <div key={i} className="flex items-start gap-2 rounded-sm border p-2 text-xs">
             <span className="mt-0.5 [&_svg]:size-4"><Icone n={p.nivel} /></span>
             <span><b className="capitalize">{p.campo}:</b> {p.msg}</span>
           </div>
@@ -6080,7 +6089,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
             onChange={(e) => set({ escalaTextos: e.target.value ? Number(e.target.value) : undefined })} />
         </div>
       </div>
-      <div className="space-y-1 rounded border p-2">
+      <div className="space-y-1 rounded-sm border p-2">
         <div className="text-[10px] uppercase text-muted-foreground">Mostrar na planta</div>
         {chk('Grade de coordenadas', 'mostrarGrade')}
         {chk('Nortes (rosa dos ventos)', 'mostrarNortes')}
@@ -6109,14 +6118,14 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
           Quadro de coordenadas dos vértices (UTM E/N, Altitude, Limite/Método)
         </label>
       </div>
-      <div className="space-y-1 rounded border p-2">
+      <div className="space-y-1 rounded-sm border p-2">
         <div className="text-[10px] uppercase text-muted-foreground">Nome dos vértices</div>
-        <select className="h-8 w-full rounded border bg-background px-2 text-sm" value={config.estiloVertice ?? 'sigef'} onChange={(e) => set({ estiloVertice: e.target.value as 'sigef' | 'convencional' })}>
+        <select className="h-8 w-full rounded-sm border bg-background px-2 text-sm" value={config.estiloVertice ?? 'sigef'} onChange={(e) => set({ estiloVertice: e.target.value as 'sigef' | 'convencional' })}>
           <option value="sigef">Código SIGEF (ex.: COIN-M-0017)</option>
           <option value="convencional">Topografia convencional (P1, P2, P3…)</option>
         </select>
       </div>
-      <div className="space-y-1 rounded border p-2">
+      <div className="space-y-1 rounded-sm border p-2">
         <div className="text-[10px] uppercase text-muted-foreground">Estilização das Linhas (Planta)</div>
         <div className="grid grid-cols-2 gap-2 mt-1">
           {multiplasGlebas ? (
@@ -6139,7 +6148,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
           </div>
           <div className="space-y-1">
             <Label className="text-[10px]">Hachura (preenchimento)</Label>
-            <select className="h-7 w-full rounded border bg-background px-1 text-xs" value={config.hachura ?? 'nenhuma'} onChange={(e) => set({ hachura: e.target.value as PlantaConfig['hachura'] })}>
+            <select className="h-7 w-full rounded-sm border bg-background px-1 text-xs" value={config.hachura ?? 'nenhuma'} onChange={(e) => set({ hachura: e.target.value as PlantaConfig['hachura'] })}>
               <option value="nenhuma">Cor sólida (sem hachura)</option>
               <option value="diagonal">Diagonal</option>
               <option value="cruzada">Cruzada</option>
@@ -6166,16 +6175,16 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
       </div>
       <div className="space-y-1">
         <Label>Laudo técnico (carimbo)</Label>
-        <textarea className="min-h-[84px] w-full rounded border border-input bg-background p-2 text-xs" placeholder="(texto padrão)"
+        <textarea className="min-h-[84px] w-full rounded-sm border border-input bg-background p-2 text-xs" placeholder="(texto padrão)"
           value={config.textoLaudo ?? ''} onChange={(e) => set({ textoLaudo: e.target.value })} />
       </div>
       <div className="space-y-1">
         <Label>Declaração dos confrontantes (carimbo)</Label>
-        <textarea className="min-h-[84px] w-full rounded border border-input bg-background p-2 text-xs" placeholder="(texto padrão)"
+        <textarea className="min-h-[84px] w-full rounded-sm border border-input bg-background p-2 text-xs" placeholder="(texto padrão)"
           value={config.textoConfrontantes ?? ''} onChange={(e) => set({ textoConfrontantes: e.target.value })} />
       </div>
       <Button size="sm" variant="secondary" className="w-full" onClick={onSalvarPadrao} title="Guarda estes ajustes como padrão para os próximos trabalhos"><Save /> Salvar ajustes como padrão</Button>
-      <div className="space-y-1 rounded border bg-muted/40 p-2 text-[11px] text-muted-foreground">
+      <div className="space-y-1 rounded-sm border bg-muted/40 p-2 text-[11px] text-muted-foreground">
         <div>{temLogo ? 'Logotipo carregado (aparece no carimbo).' : 'Sem logotipo — suba a imagem em Config para preencher o carimbo.'}</div>
         <div>{temSituacao ? 'Planta de situação pronta.' : 'Situação não gerada — use "Gerar situação" na visão da planta.'}</div>
       </div>

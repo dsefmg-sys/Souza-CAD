@@ -292,7 +292,7 @@ function Proprietarios({
       <CampoBusca value={busca} onChange={setBusca} placeholder="Buscar por nome ou CPF/CNPJ..." />
       <div className="space-y-1">
         {listaExibicao.map((p) => (
-          <div key={p.id} className="flex items-center justify-between rounded border p-2 text-sm">
+          <div key={p.id} className="flex items-center justify-between rounded-sm border p-2 text-sm">
             <span onClick={() => setForm(p)} className="cursor-pointer font-medium hover:text-primary transition-colors">
               {p.nome} — {p.cpf}
             </span>
@@ -419,7 +419,7 @@ function Confrontantes({
       <CampoBusca value={busca} onChange={setBusca} placeholder="Buscar por nome, CPF/CNPJ ou matrícula..." />
       <div className="space-y-1">
         {listaExibicao.map((c) => (
-          <div key={c.id} className="flex items-center justify-between rounded border p-2 text-sm">
+          <div key={c.id} className="flex items-center justify-between rounded-sm border p-2 text-sm">
             <span onClick={() => setForm(c)} className="cursor-pointer font-medium hover:text-primary transition-colors">
               {c.nome} — {c.cpf} — Mat. {c.matricula}
             </span>
@@ -491,7 +491,7 @@ function Imoveis({
       <CampoBusca value={busca} onChange={setBusca} placeholder="Buscar por denominação, matrícula ou município..." />
       <div className="space-y-1">
         {listaExibicao.map((m) => (
-          <div key={m.id} className="flex items-center justify-between rounded border p-2 text-sm">
+          <div key={m.id} className="flex items-center justify-between rounded-sm border p-2 text-sm">
             <span onClick={() => setForm(m)} className="cursor-pointer font-medium hover:text-primary transition-colors">
               {m.denominacao} — Mat. {m.matricula} — {m.municipio}
             </span>
@@ -557,7 +557,7 @@ function Cartorios({
       <CampoBusca value={busca} onChange={setBusca} placeholder="Buscar por CNS, nome ou município..." />
       <div className="space-y-1">
         {cartoriosFiltrados.map((c) => (
-          <div key={c.id} className="flex items-center justify-between rounded border p-2 text-sm">
+          <div key={c.id} className="flex items-center justify-between rounded-sm border p-2 text-sm">
             <span onClick={() => setForm(c)} className="cursor-pointer font-medium hover:text-primary transition-colors">
               {c.cns} — {c.nome} {c.municipio ? `(${c.municipio})` : ''}
             </span>
@@ -681,7 +681,7 @@ function GlobalSearch({
                         </Button>
                       )}
                       {projetoId && noProjeto && (
-                        <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1 rounded">
+                        <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1 rounded-sm">
                           No projeto
                         </span>
                       )}
@@ -720,7 +720,7 @@ function GlobalSearch({
                         </Button>
                       )}
                       {projetoId && noProjeto && (
-                        <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1 rounded">
+                        <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1 rounded-sm">
                           No projeto
                         </span>
                       )}
@@ -759,7 +759,7 @@ function GlobalSearch({
                         </Button>
                       )}
                       {projetoId && noProjeto && (
-                        <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1 rounded">
+                        <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1 rounded-sm">
                           No projeto
                         </span>
                       )}

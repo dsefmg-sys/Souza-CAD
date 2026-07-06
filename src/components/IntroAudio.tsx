@@ -123,7 +123,7 @@ export function AudioPill({ src, rotulo, titulo }: { src: string; rotulo: string
   return (
     <div className="flex items-center gap-1 rounded-full border bg-background/95 pl-1.5 pr-1 py-0.5 shadow-xl" title={titulo}>
       <Volume2 className="size-3 text-muted-foreground shrink-0" />
-      <span className="text-[8px] font-bold uppercase tracking-wide text-muted-foreground select-none shrink-0">{rotulo}</span>
+      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground select-none shrink-0">{rotulo}</span>
       {/* barra de progresso minúscula — clicável pra retomar de onde parou */}
       <div className="relative h-1 w-10 cursor-pointer rounded-full bg-border overflow-hidden shrink-0" onClick={seek} title="Clique para avançar">
         <div className="absolute left-0 top-0 h-full rounded-full bg-primary transition-all duration-150" style={{ width: `${progresso * 100}%` }} />

@@ -53,13 +53,13 @@ export default function MasterPainelModal({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <span className="rounded bg-muted px-2 py-0.5"><strong>{perfis.length}</strong> contas</span>
-          <span className="rounded bg-emerald-600/10 px-2 py-0.5 text-emerald-700 dark:text-emerald-400"><strong>{ativos.length}</strong> ativas (30 dias)</span>
+          <span className="rounded-sm bg-muted px-2 py-0.5"><strong>{perfis.length}</strong> contas</span>
+          <span className="rounded-sm bg-emerald-600/10 px-2 py-0.5 text-emerald-700 dark:text-emerald-400"><strong>{ativos.length}</strong> ativas (30 dias)</span>
 
-          <label className="flex items-center gap-1.5 rounded border border-amber-600/35 bg-amber-600/10 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300 cursor-pointer hover:bg-amber-600/20 transition-colors ml-2">
+          <label className="flex items-center gap-1.5 rounded-sm border border-amber-600/35 bg-amber-600/10 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300 cursor-pointer hover:bg-amber-600/20 transition-colors ml-2">
             <input
               type="checkbox"
-              className="rounded text-amber-600 focus:ring-amber-500 size-3.5"
+              className="rounded-sm text-amber-600 focus:ring-amber-500 size-3.5"
               checked={!!cfg.ocultarCobranca}
               onChange={(e) => alterarOcultarCobranca(e.target.checked)}
             />
@@ -69,7 +69,7 @@ export default function MasterPainelModal({ open, onOpenChange }: Props) {
           <Button size="sm" variant="outline" className="ml-auto h-8 gap-1" onClick={recarregar} disabled={carregando}><RefreshCw className="size-3.5" /> Atualizar</Button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto rounded border">
+        <div className="min-h-0 flex-1 overflow-auto rounded-sm border">
           {carregando ? (
             <div className="p-4 text-center text-sm text-muted-foreground">Carregando…</div>
           ) : perfis.length === 0 ? (
@@ -101,7 +101,7 @@ export default function MasterPainelModal({ open, onOpenChange }: Props) {
                       <td className="px-2 py-1 text-center">{dataBR(p.ultimoProjetoEm)}</td>
                       <td className="px-2 py-1 text-center">{p.termosVersao ? dataBR(p.termosAceitosEm) : 'não'}</td>
                       <td className="px-2 py-1 text-center">
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${ativo ? 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>{ativo ? 'ativo' : 'inativo'}</span>
+                        <span className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${ativo ? 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>{ativo ? 'ativo' : 'inativo'}</span>
                       </td>
                     </tr>
                   );

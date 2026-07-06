@@ -1693,7 +1693,7 @@ export default function MapEditor(props: Props) {
           segmentOverlays.push(
             <Marker key={`ruler-seg-${i}`} position={mid} interactive={false}
               icon={L.divIcon({ className: 'bg-transparent border-0', html: '', iconSize: [1, 1] })}>
-              <Tooltip permanent direction="center" className="no-print font-bold text-[10px] bg-background/90 text-foreground border border-blue-500 px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+              <Tooltip permanent direction="center" className="no-print font-bold text-[10px] bg-background/90 text-foreground border border-blue-500 px-1.5 py-0.5 rounded-sm shadow whitespace-nowrap">
                 <span>{numBR(distSeg, 2)}m | {azimuteDMS(azSeg)}</span>
               </Tooltip>
             </Marker>
@@ -1716,7 +1716,7 @@ export default function MapEditor(props: Props) {
               <Polyline positions={[lastPt, ptCursor]} pathOptions={{ color: '#f59e0b', weight: 1.5, dashArray: '3 3' }} />
               <Marker position={midCursor} interactive={false}
                 icon={L.divIcon({ className: 'bg-transparent border-0', html: '', iconSize: [1, 1] })}>
-                <Tooltip permanent direction="center" className="no-print font-medium text-[9px] bg-amber-500/90 text-white border border-amber-600 px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+                <Tooltip permanent direction="center" className="no-print font-medium text-[10px] bg-amber-500/90 text-white border border-amber-600 px-1.5 py-0.5 rounded-sm shadow whitespace-nowrap">
                   <span>{numBR(distCursor, 2)}m | {azimuteDMS(azCursor)}</span>
                 </Tooltip>
               </Marker>
@@ -1781,7 +1781,7 @@ export default function MapEditor(props: Props) {
         const lista = confrontantes.filter((c) => usados.has(c.id));
         if (!lista.length) return null;
         return (
-          <div className="absolute bottom-6 right-2 z-[1000] max-h-40 max-w-56 overflow-y-auto rounded border bg-background/90 px-2 py-1.5 text-[11px] shadow backdrop-blur">
+          <div className="absolute bottom-6 right-2 z-[1000] max-h-40 max-w-56 overflow-y-auto rounded-sm border bg-background/90 px-2 py-1.5 text-[11px] shadow backdrop-blur">
             <div className="mb-1 font-semibold text-muted-foreground">Confrontantes</div>
             {lista.map((c) => (
               <div key={c.id} className="flex items-center gap-1.5 py-0.5">

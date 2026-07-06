@@ -208,7 +208,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               Configurações do Sistema
             </DialogTitle>
             {msg && (
-              <span className="text-xs bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded flex items-center gap-1 font-semibold animate-pulse">
+              <span className="text-xs bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded-sm flex items-center gap-1 font-semibold animate-pulse">
                 <Check className="size-3" /> {msg}
               </span>
             )}
@@ -275,11 +275,11 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               </div>
 
               <div className="space-y-3.5 border-t md:border-t-0 md:border-l md:pl-4 pt-3.5 md:pt-0">
-                <div className="p-2.5 rounded bg-muted/40 text-[11px] leading-tight text-muted-foreground border">
+                <div className="p-2.5 rounded-sm bg-muted/40 text-[11px] leading-tight text-muted-foreground border">
                   Estes dados são <strong>pessoais</strong>: cada técnico da empresa assina as peças com os seus. O escritório, a numeração, o fuso e os modelos são da empresa (abas Globais).
                 </div>
                 {/* Ícones do cabeçalho: liga/desliga por botão (fica mais limpo com só o texto) */}
-                <div className="space-y-1.5 rounded border p-2.5">
+                <div className="space-y-1.5 rounded-sm border p-2.5">
                   <Label className="text-xs font-semibold">Ícones dos botões do cabeçalho</Label>
                   <p className="text-[11px] leading-tight text-muted-foreground">Desligado = o botão mostra só o texto (cabeçalho mais limpo).</p>
                   {([['analise', 'Análise / SIGEF'], ['dados', 'Dados'], ['trt', 'TRT']] as [string, string][]).map(([chave, rotulo]) => (
@@ -327,7 +327,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   descricao="Ligado (recomendado): pede confirmação antes de excluir vértice, projeto ou divisa, pra você não apagar sem querer. Desligado: apaga na hora, mais rápido pra quem tem certeza." />
 
                 <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Cursor CAD (Desenho)</div>
-                <div className="rounded border p-2.5 space-y-2.5 bg-muted/20">
+                <div className="rounded-sm border p-2.5 space-y-2.5 bg-muted/20">
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold">Espessura das linhas do cursor</Label>
                     <div className="flex w-fit items-center gap-1 rounded-full border bg-[#05140b] p-0.5 text-xs">
@@ -354,7 +354,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
 
                 {/* Modo da interface: quantas ferramentas aparecem. É AQUI que dá pra voltar pro Simples
                     quando a chave do topo já sumiu (some depois de 5 h de uso no Completo). */}
-                <div className="space-y-1.5 rounded border p-2.5">
+                <div className="space-y-1.5 rounded-sm border p-2.5">
                   <Label className="text-xs font-semibold">Modo da interface</Label>
                   <p className="text-[11px] leading-tight text-muted-foreground">Quanta ferramenta aparece na tela. O <strong>Fácil</strong> mostra só o essencial, pra qualquer nível se adaptar ao software e ainda assim entregar um trabalho básico completo; o <strong>Completo</strong> mostra tudo. Depois de bastante uso no Completo, a chave flutuante some e é aqui que você volta pro Fácil.</p>
                   <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
@@ -366,7 +366,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 </div>
 
                 {/* Nível da ajuda: quanta explicação. Coisa diferente do modo — é sobre tempo de profissão. */}
-                <div className="space-y-1.5 rounded border p-2.5">
+                <div className="space-y-1.5 rounded-sm border p-2.5">
                   <Label className="text-xs font-semibold">Nível da ajuda</Label>
                   <p className="text-[11px] leading-tight text-muted-foreground">Quanta explicação a ajuda dá. <strong>Iniciante</strong> explica os porquês; <strong>Experiente</strong> vai direto ao ponto, pra o agrimensor que já tem tempo de profissão. É separado do modo da interface.</p>
                   <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
@@ -391,9 +391,9 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 {souMaster() && (
                   <>
                     <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Áudio de Introdução (Admin)</div>
-                    <div className="rounded border p-2.5 space-y-2">
+                    <div className="rounded-sm border p-2.5 space-y-2">
                       <p className="text-[11px] leading-tight text-muted-foreground">
-                        O player de introdução fica no canto superior direito da tela. O arquivo padrão é <code className="bg-muted rounded px-1">introducao.mp3</code>. Você pode substituir por outro áudio (MP3, OGG ou WAV, máx 20 MB) — fica salvo localmente neste navegador.
+                        O player de introdução fica no canto superior direito da tela. O arquivo padrão é <code className="bg-muted rounded-sm px-1">introducao.mp3</code>. Você pode substituir por outro áudio (MP3, OGG ou WAV, máx 20 MB) — fica salvo localmente neste navegador.
                       </p>
                       <div className="flex items-center gap-2">
                         <Music className="size-4 shrink-0 text-muted-foreground" />
@@ -447,7 +447,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 )}
 
                 <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Aparência da tela</div>
-                <div className="space-y-1.5 rounded border p-2.5">
+                <div className="space-y-1.5 rounded-sm border p-2.5">
                   <Label className="text-xs font-semibold">Tamanho do texto</Label>
                   <p className="text-[11px] leading-tight text-muted-foreground">Deixa a interface com letra maior ou menor. Bom pra ler no sol ou em tela pequena.</p>
                   <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
@@ -458,7 +458,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     ))}
                   </div>
                 </div>
-                <div className="space-y-2 rounded border p-2.5">
+                <div className="space-y-2 rounded-sm border p-2.5">
                   <label className="flex cursor-pointer items-start gap-2.5">
                     <input type="checkbox" className="mt-0.5 size-4 shrink-0" checked={prefs.casasDecimaisAtivo}
                       onChange={(e) => mudarPref('casasDecimaisAtivo', e.target.checked)} />
@@ -533,18 +533,18 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     }
                   />
                 </div>
-                <div className="p-2.5 rounded bg-muted/40 text-[11px] leading-tight text-muted-foreground border">
+                <div className="p-2.5 rounded-sm bg-muted/40 text-[11px] leading-tight text-muted-foreground border">
                   <strong>Dica de agrimensor:</strong> A numeração dos contadores é a semente inicial. À medida que novos pontos são gerados, o banco de dados interno avança automaticamente para evitar duplicidades de vértices.
                 </div>
 
-                <div className="space-y-1 rounded border p-2.5">
+                <div className="space-y-1 rounded-sm border p-2.5">
                   <Label className="text-xs font-semibold">Próximo número de recibo</Label>
                   <p className="text-[11px] leading-tight text-muted-foreground">O recibo é numerado sozinho, no formato 0001/ano. Ajuste aqui pra continuar de uma numeração antiga.</p>
                   <Input type="number" min={1} className="w-32" value={reciboSeq} onChange={(e) => mudarReciboSeq(Number(e.target.value))} />
                 </div>
 
                 {/* Gestão do banco de vértices: editar um a um (abre o Banco de pontos aqui mesmo) ou zerar tudo */}
-                <div className="space-y-1.5 rounded border p-2.5">
+                <div className="space-y-1.5 rounded-sm border p-2.5">
                   <div className="text-xs font-bold">Editar banco de vértices</div>
                   <p className="text-[11px] leading-tight text-muted-foreground">
                     Abra o <strong>Banco de pontos</strong> para <strong>ver, buscar e excluir vértices um a um</strong> ou resgatar da lixeira. Ou zere TODOS de uma vez (também recuperável) — útil ao trocar de credenciado ou liberar códigos de uma certificação cancelada.
@@ -654,7 +654,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   </>
                 )}
                 {souMaster() && (
-                  <div className="space-y-3 rounded border border-emerald-600/30 bg-emerald-600/5 p-3">
+                  <div className="space-y-3 rounded-sm border border-emerald-600/30 bg-emerald-600/5 p-3">
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">WhatsApp de SUPORTE do sistema (só o master vê este campo)</Label>
                       <Input placeholder="Ex.: 32 9 9999-9999 — vazio = botão de suporte não aparece"
@@ -692,7 +692,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     <span className="text-xs font-medium text-muted-foreground">Clique para selecionar imagem</span>
                   </div>
                   {esc.logoDataUrl && (
-                    <div className="mt-2 p-2 border rounded bg-background flex items-center justify-between">
+                    <div className="mt-2 p-2 border rounded-sm bg-background flex items-center justify-between">
                       <img src={esc.logoDataUrl} alt="Logotipo do Escritório" className="h-10 object-contain" />
                       <Button
                         size="sm"
@@ -705,7 +705,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     </div>
                   )}
                 </div>
-                <div className="p-3 bg-muted/40 rounded border text-[11px] leading-snug text-muted-foreground">
+                <div className="p-3 bg-muted/40 rounded-sm border text-[11px] leading-snug text-muted-foreground">
                   O logotipo será desenhado automaticamente no quadro de convenções e carimbo de assinaturas nas pranchas impressas e exportações em PDF.
                 </div>
               </div>
@@ -714,7 +714,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
 
           {aba === 'modelos' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border rounded p-4 bg-muted/20 flex flex-col justify-between space-y-4">
+              <div className="border rounded-sm p-4 bg-muted/20 flex flex-col justify-between space-y-4">
                 <div className="space-y-2">
                   <h3 className="font-semibold text-sm flex items-center gap-1.5">
                     <FileCog className="size-4" /> Layout do Arquivo TXT (Colunas)
@@ -728,7 +728,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 </Button>
               </div>
 
-              <div className="border rounded p-4 bg-muted/20 flex flex-col justify-between space-y-4">
+              <div className="border rounded-sm p-4 bg-muted/20 flex flex-col justify-between space-y-4">
                 <div className="space-y-2">
                   <h3 className="font-semibold text-sm flex items-center gap-1.5">
                     <FileSpreadsheet className="size-4" /> Modelo de Planilha SIGEF (.ods)
@@ -763,7 +763,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 </div>
               </div>
 
-              <div className="border rounded p-4 bg-muted/20 flex flex-col justify-between space-y-4">
+              <div className="border rounded-sm p-4 bg-muted/20 flex flex-col justify-between space-y-4">
                 <div className="space-y-2">
                   <h3 className="font-semibold text-sm flex items-center gap-1.5">
                     <FileText className="size-4" /> Textos das peças (modelos)
@@ -777,7 +777,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 </Button>
               </div>
 
-              <div className="border rounded p-4 bg-muted/20 flex flex-col justify-between space-y-4">
+              <div className="border rounded-sm p-4 bg-muted/20 flex flex-col justify-between space-y-4">
                 <div className="space-y-2">
                   <h3 className="font-semibold text-sm flex items-center gap-1.5">
                     <UserCheck className="size-4" /> Vértices de Vizinho Certificado
@@ -796,7 +796,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
           {aba === 'padroes' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-4">
-                <div className="space-y-3 rounded border p-3">
+                <div className="space-y-3 rounded-sm border p-3">
                   <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Padrões de novos projetos</div>
                   <p className="text-[11px] leading-tight text-muted-foreground">Todo projeto novo já nasce com estes valores, pra você não repetir a cada trabalho.</p>
                   <div className="grid grid-cols-2 gap-3">
@@ -825,7 +825,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   </div>
                 </div>
 
-                <div className="space-y-2 rounded border p-3">
+                <div className="space-y-2 rounded-sm border p-3">
                   <div className="flex items-center justify-between">
                     <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><DollarSign className="size-3.5" /> Tabela de preços</div>
                     <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={adicionarPreco}><Plus className="size-3.5" /> Adicionar</Button>
@@ -857,13 +857,13 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 <Button variant="outline" className="w-full font-semibold gap-1.5" onClick={() => importConfigRef.current?.click()}>
                   <Upload className="size-4" /> Restaurar configurações de um arquivo
                 </Button>
-                <div className="rounded border border-dashed p-2.5 text-[11px] leading-tight text-muted-foreground">
+                <div className="rounded-sm border border-dashed p-2.5 text-[11px] leading-tight text-muted-foreground">
                   Restaurar substitui os ajustes atuais pelos do arquivo. Os projetos e o banco de vértices não são tocados.
                 </div>
 
                 {/* Sobre o sistema: versão, autoria e as condições de uso — de propósito num canto
                     discreto, junto das outras informações (decisão do dono, 05/07/2026) */}
-                <details className="rounded border p-2.5 text-[11px] leading-tight text-muted-foreground">
+                <details className="rounded-sm border p-2.5 text-[11px] leading-tight text-muted-foreground">
                   <summary className="cursor-pointer font-semibold">Sobre o sistema</summary>
                   <div className="mt-2 space-y-2">
                     <p>Souza CAD — criado e mantido por {TERMOS_TITULAR}. Condições de uso (versão {TERMOS_VERSAO}):</p>
@@ -895,7 +895,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
 /** Interruptor de liga/desliga com título e explicação, no padrão das preferências. */
 function Interruptor({ ligado, onToggle, titulo, descricao }: { ligado: boolean; onToggle: (v: boolean) => void; titulo: string; descricao: string }) {
   return (
-    <label className="flex cursor-pointer items-start gap-2.5 rounded border p-2.5 hover:bg-muted/30">
+    <label className="flex cursor-pointer items-start gap-2.5 rounded-sm border p-2.5 hover:bg-muted/30">
       <input type="checkbox" className="mt-0.5 size-4 shrink-0" checked={ligado} onChange={(e) => onToggle(e.target.checked)} />
       <span className="space-y-0.5">
         <span className="block text-xs font-semibold">{titulo}</span>

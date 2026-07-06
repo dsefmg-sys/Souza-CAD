@@ -22,12 +22,16 @@ export interface PreferenciasApp {
    */
   nivelExperiencia: 'iniciante' | 'experiente';
   /**
-   * MODO DA INTERFACE — quanta ferramenta aparece na tela. Coisa DIFERENTE do `nivelExperiencia`:
+   * MODO DA INTERFACE — quanta ferramenta aparece na tela. Coisa DIFERENTE do `nivelExperiencia`.
+   * Três degraus, do mais enxuto ao mais completo:
    *  - 'simples':  só o caminho essencial do georreferenciamento. Pensado pra QUALQUER nível se adaptar ao software.
-   *  - 'completo': todas as ferramentas à mostra. Pra quem já se acostumou com o app.
+   *  - 'medio':    o essencial + as ferramentas do dia a dia (desenho, anotação, vértices, vizinhos certificados,
+   *                errata, CAR, calculadora e camadas). Um passo além do Fácil, sem ainda mostrar tudo.
+   *  - 'completo': todas as ferramentas à mostra, inclusive as avançadas (geometria CAD, DXF, estúdio, etc.).
+   * A chave do app gira em ciclo: Fácil → Médio → Completo → Fácil.
    * Padrão: 'simples' (todo usuário começa se adaptando ao software).
    */
-  modo: 'simples' | 'completo';
+  modo: 'simples' | 'medio' | 'completo';
   /**
    * Tempo acumulado (ms) que o usuário passou no modo Completo. Ao passar de 5 h, a chave no topo
    * some (interface mais limpa) e voltar ao Simples passa a ser só pelas Configurações.
@@ -132,14 +136,19 @@ export async function confirmarApagar(mensagem: string): Promise<boolean> {
   return confirmar({ titulo: 'Confirmar exclusão', mensagem, okLabel: 'Apagar', perigo: true });
 }
 
-/** Modo atual da interface (a chave Simples/Completo). */
-export function carregarModo(): 'simples' | 'completo' {
+/** Modo atual da interface (a chave Fácil/Médio/Completo). */
+export function carregarModo(): 'simples' | 'medio' | 'completo' {
   return carregarPreferencias().modo;
 }
 
-/** Vira a chave Simples/Completo (não toca no nível da ajuda — são coisas diferentes). */
-export function salvarModo(modo: 'simples' | 'completo'): void {
+/** Vira a chave Fácil/Médio/Completo (não toca no nível da ajuda — são coisas diferentes). */
+export function salvarModo(modo: 'simples' | 'medio' | 'completo'): void {
   salvarPreferencias({ ...carregarPreferencias(), modo });
+}
+
+/** Próximo degrau no ciclo da chave: Fácil → Médio → Completo → Fácil. */
+export function proximoModo(modo: 'simples' | 'medio' | 'completo'): 'simples' | 'medio' | 'completo' {
+  return modo === 'simples' ? 'medio' : modo === 'medio' ? 'completo' : 'simples';
 }
 
 /** Nível de profissão (linguagem da ajuda). Independente do modo. */

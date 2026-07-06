@@ -83,7 +83,7 @@ export default function PontosBancoModal({ open, onOpenChange }: Props) {
 
         <div className="flex items-center gap-2">
           <input
-            className="h-8 flex-1 rounded border bg-background px-2 text-sm"
+            className="h-8 flex-1 rounded-sm border bg-background px-2 text-sm"
             placeholder="Buscar por código do ponto ou do imóvel…"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
@@ -97,7 +97,7 @@ export default function PontosBancoModal({ open, onOpenChange }: Props) {
           )}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto rounded border">
+        <div className="min-h-0 flex-1 overflow-auto rounded-sm border">
           {carregando ? (
             <div className="p-4 text-center text-sm text-muted-foreground">Carregando…</div>
           ) : filtrados.length === 0 ? (
@@ -132,11 +132,11 @@ export default function PontosBancoModal({ open, onOpenChange }: Props) {
                     <td className="px-2 py-1 text-right">{dataBR(p.criadoEm)}</td>
                     {aba === 'lixeira' ? (
                       <td className="px-2 py-1 text-center">
-                        <button className="rounded p-1 text-primary hover:bg-muted" title="Resgatar este ponto" aria-label={`Resgatar ${p.codigo}`} onClick={() => resgatar(p.codigo)}><Undo2 className="size-4" /></button>
+                        <button className="rounded-sm p-1 text-primary hover:bg-muted" title="Resgatar este ponto" aria-label={`Resgatar ${p.codigo}`} onClick={() => resgatar(p.codigo)}><Undo2 className="size-4" /></button>
                       </td>
                     ) : (
                       <td className="px-2 py-1 text-center">
-                        <button className="rounded p-1 text-destructive hover:bg-destructive hover:text-white" title="Excluir este vértice (vai para a lixeira, recuperável)" aria-label={`Excluir ${p.codigo}`} onClick={() => excluir(p.codigo)}><Trash2 className="size-4" /></button>
+                        <button className="rounded-sm p-1 text-destructive hover:bg-destructive hover:text-white" title="Excluir este vértice (vai para a lixeira, recuperável)" aria-label={`Excluir ${p.codigo}`} onClick={() => excluir(p.codigo)}><Trash2 className="size-4" /></button>
                       </td>
                     )}
                   </tr>
@@ -147,7 +147,7 @@ export default function PontosBancoModal({ open, onOpenChange }: Props) {
         </div>
 
         {aba === 'ativos' ? (
-          <div className="flex items-center justify-between gap-2 rounded border border-red-600/30 bg-red-600/5 px-2 py-1.5">
+          <div className="flex items-center justify-between gap-2 rounded-sm border border-red-600/30 bg-red-600/5 px-2 py-1.5">
             <span className="flex items-center gap-1.5 text-[11px] text-red-700 dark:text-red-400"><AlertTriangle className="size-3.5 shrink-0" /> Zona de perigo: manda todos os pontos ativos pra lixeira (recuperável).</span>
             <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1 border-red-600/40 text-red-700 hover:bg-red-600 hover:text-white dark:text-red-400" disabled={!pontos.length} onClick={zerar}><Trash2 className="size-3.5" /> Zerar banco</Button>
           </div>

@@ -171,7 +171,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
                       <select
                         value={v.tipo}
                         onChange={(e) => handleChange(v.id, 'tipo', e.target.value)}
-                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded"
+                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded-sm"
                       >
                         {TIPOS_VERTICE.map((t) => (
                           <option key={t} value={t}>{t}</option>
@@ -186,7 +186,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
                         value={v.codigoSigef || ''}
                         onChange={(e) => handleChange(v.id, 'codigoSigef', e.target.value)}
                         placeholder={v.nome}
-                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded font-mono"
+                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded-sm font-mono"
                       />
                     </td>
 
@@ -197,7 +197,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
                         step="0.001"
                         value={v.leste}
                         onChange={(e) => handleChange(v.id, 'leste', e.target.value)}
-                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded font-mono text-right"
+                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded-sm font-mono text-right"
                       />
                     </td>
 
@@ -208,7 +208,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
                         step="0.001"
                         value={v.norte}
                         onChange={(e) => handleChange(v.id, 'norte', e.target.value)}
-                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded font-mono text-right"
+                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded-sm font-mono text-right"
                       />
                     </td>
 
@@ -219,7 +219,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
                         step="0.01"
                         value={v.elevacao}
                         onChange={(e) => handleChange(v.id, 'elevacao', e.target.value)}
-                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded font-mono text-right"
+                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded-sm font-mono text-right"
                       />
                     </td>
 
@@ -228,7 +228,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
                       <select
                         value={v.tipoLimite || 'LA6'}
                         onChange={(e) => handleChange(v.id, 'tipoLimite', e.target.value)}
-                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded"
+                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded-sm"
                       >
                         {TIPOS_LIMITE.map((tl) => (
                           <option key={tl} value={tl}>{tl}</option>
@@ -241,7 +241,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
                       <select
                         value={v.metodo || 'PG6'}
                         onChange={(e) => handleChange(v.id, 'metodo', e.target.value)}
-                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded"
+                        className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded-sm"
                       >
                         {METODOS_POSICIONAMENTO.map((mp) => (
                           <option key={mp} value={mp}>{mp}</option>

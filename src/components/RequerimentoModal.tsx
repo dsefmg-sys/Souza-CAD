@@ -88,7 +88,7 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
       <div className="grid grid-cols-6 gap-x-2 gap-y-1.5">
         {CAMPOS.map((c) => (
           <div key={c.k} className={`space-y-0.5 ${c.span}`}>
-            <Label className="text-[9px] text-muted-foreground font-semibold leading-none">{c.label}</Label>
+            <Label className="text-[10px] text-muted-foreground font-semibold leading-none">{c.label}</Label>
             {c.k === 'nome'
               ? <Input list="lista-pessoas" value={pessoa.nome} onChange={(e) => setNome(e.target.value)} className="h-7 text-[11px]" />
               : <Input value={pessoa[c.k]} onChange={(e) => onChange({ ...pessoa, [c.k]: e.target.value })} className="h-7 text-[11px]" />}
@@ -199,7 +199,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                   ))}
                 </div>
                 {mostrarDicas && (
-                  <p className="rounded border border-dashed bg-muted/30 p-2 text-[10px] text-muted-foreground leading-snug">
+                  <p className="rounded-sm border border-dashed bg-muted/30 p-2 text-[10px] text-muted-foreground leading-snug">
                     {OPCOES_ATO.find((o) => o.valor === localTipoAto)?.explicacao}
                   </p>
                 )}
@@ -217,24 +217,24 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                   <span className="font-semibold text-foreground text-[11px]">{imovel.denominacao || '—'} · Matrícula {imovel.matricula || '—'}</span>
                 </div>
                 <div>
-                  <span className="font-bold text-muted-foreground uppercase text-[9px] tracking-wider block">Área real</span>
+                  <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">Área real</span>
                   <span className="font-semibold text-foreground text-[11px]">{numBR(areaRealHa, 4)} ha</span>
                 </div>
                 <div>
-                  <span className="font-bold text-muted-foreground uppercase text-[9px] tracking-wider block">Valor do imóvel</span>
+                  <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">Valor do imóvel</span>
                   <span className="font-semibold text-foreground text-[11px]">{imovel.valorImovel ? `R$ ${numBR(imovel.valorImovel, 2)}` : '—'}</span>
                 </div>
                 <div className="space-y-0.5 col-span-2">
-                  <Label className="text-[9px] text-muted-foreground font-semibold">Área anterior na matrícula (ha)</Label>
+                  <Label className="text-[10px] text-muted-foreground font-semibold">Área anterior na matrícula (ha)</Label>
                   <Input type="number" step="0.0001" value={imovel.areaAnterior ?? ''} onChange={(e) => onChangeImovel({ ...imovel, areaAnterior: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
                 </div>
                 <div className="space-y-0.5 col-span-2">
-                  <Label className="text-[9px] text-muted-foreground font-semibold">Valor para custas (R$)</Label>
+                  <Label className="text-[10px] text-muted-foreground font-semibold">Valor para custas (R$)</Label>
                   <Input type="number" step="0.01" value={imovel.valorImovel ?? ''} onChange={(e) => onChangeImovel({ ...imovel, valorImovel: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
                 </div>
                 {localTipoAto === 'unificacao' && (
                   <div className="col-span-2 space-y-0.5">
-                    <Label className="text-[9px] text-muted-foreground font-semibold">Matrículas de origem (separadas por vírgula)</Label>
+                    <Label className="text-[10px] text-muted-foreground font-semibold">Matrículas de origem (separadas por vírgula)</Label>
                     <Input
                       placeholder="ex.: 1234, 5678, 9012"
                       value={(imovel.matriculasOrigem ?? []).join(', ')}

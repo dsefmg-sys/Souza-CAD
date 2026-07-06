@@ -143,7 +143,7 @@ function Ted(props: {
       <foreignObject x={posX + offX} y={posY + offY} width={inputW} height={inputH} style={{ overflow: 'visible' }}>
         <input
           autoFocus
-          className="w-full h-full border border-blue-500 bg-white text-black outline-none px-1 shadow-md rounded"
+          className="w-full h-full border border-blue-500 bg-white text-black outline-none px-1 shadow-md rounded-sm"
           style={{ fontSize: `${fz}px`, fontWeight: peso, textAlign: anchor === 'middle' ? 'center' : anchor === 'end' ? 'right' : 'left', fontFamily: 'Arial, sans-serif' }}
           value={val}
           onChange={(e) => setVal(e.target.value)}
@@ -1851,7 +1851,7 @@ export default function Planta({
                         </button>
                         <button
                           type="button"
-                          className="text-[#87a992] hover:text-red-400 p-1.5 rounded hover:bg-red-500/10 transition-colors"
+                          className="text-[#87a992] hover:text-red-400 p-1.5 rounded-sm hover:bg-red-500/10 transition-colors"
                           onClick={() => excluirTituloCustom(t)}
                           title="Excluir este modelo"
                         >
@@ -2522,7 +2522,7 @@ function CarimboA3(props: {
               <foreignObject x={pxProp - curWidth / 2 - 6} y={pyProp - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
                   autoFocus
-                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded text-center"
+                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded-sm text-center"
                   style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, sans-serif' }}
                   value={txtProp}
                   onChange={(e) => ed.onEditar?.(idProp, e.target.value)}
@@ -2569,7 +2569,7 @@ function CarimboA3(props: {
               <foreignObject x={pxLaudo - curWidth / 2 - 6} y={pyLaudo - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
                   autoFocus
-                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded text-center"
+                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded-sm text-center"
                   style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, sans-serif' }}
                   value={txtLaudo}
                   onChange={(e) => ed.onEditar?.(idLaudo, e.target.value)}
@@ -2616,7 +2616,7 @@ function CarimboA3(props: {
               <foreignObject x={pxConf - curWidth / 2 - 6} y={pyConf - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
                   autoFocus
-                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded text-center"
+                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded-sm text-center"
                   style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, sans-serif' }}
                   value={txtConf}
                   onChange={(e) => ed.onEditar?.(idConf, e.target.value)}
@@ -2680,7 +2680,7 @@ function CarimboA3(props: {
               )}
               {ed?.editandoId === idBloco ? (
                 <foreignObject x={pxB - 110} y={pyB - 14} width={220} height={70} style={{ overflow: 'visible' }}>
-                  <textarea autoFocus className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1 shadow-md rounded text-[9px]" style={{ resize: 'both', overflow: 'auto' }}
+                  <textarea autoFocus className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1 shadow-md rounded-sm text-[9px]" style={{ resize: 'both', overflow: 'auto' }}
                     value={txtB} onChange={(e) => ed.onEditar?.(idBloco, e.target.value)} onBlur={() => ed.onTerminarEditar?.(idBloco, txtB)} />
                 </foreignObject>
               ) : (

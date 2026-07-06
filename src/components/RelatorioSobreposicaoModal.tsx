@@ -91,7 +91,7 @@ export default function RelatorioSobreposicaoModal({
                       <div className="flex items-center justify-between">
                         <span className="font-bold tracking-wide text-sm text-foreground">{res.nomeVizinho}</span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider ${
                             res.tipo === 'PERIGO'
                               ? 'bg-destructive/25 text-destructive border border-destructive/30'
                               : res.tipo === 'ALERTA'

@@ -45,7 +45,7 @@ export default function DialogosHost() {
         {estado.mensagem && <p className="whitespace-pre-line text-sm text-muted-foreground">{estado.mensagem}</p>}
 
         {estado.modo === 'prompt' && (
-          <input ref={inputRef} autoFocus className="w-full rounded border bg-background px-3 py-2 text-sm" placeholder={estado.placeholder}
+          <input ref={inputRef} autoFocus className="w-full rounded-sm border bg-background px-3 py-2 text-sm" placeholder={estado.placeholder}
             value={estado.valor} onChange={(e) => setEstado((s) => (s && s.modo === 'prompt' ? { ...s, valor: e.target.value } : s))}
             onKeyDown={(e) => { if (e.key === 'Enter') responder(estado.valor); }} />
         )}

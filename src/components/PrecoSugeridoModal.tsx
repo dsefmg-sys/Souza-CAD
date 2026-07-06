@@ -157,11 +157,11 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
             </p>
 
             {/* Fator base */}
-            <div className="space-y-1.5 rounded border bg-muted/30 p-2.5">
+            <div className="space-y-1.5 rounded-sm border bg-muted/30 p-2.5">
               <label className="flex flex-col gap-1 text-xs">
                 <span className="font-semibold text-muted-foreground">Valor base (fator)</span>
                 <input
-                  className="w-32 rounded border bg-background px-2 py-1.5 text-sm font-mono"
+                  className="w-32 rounded-sm border bg-background px-2 py-1.5 text-sm font-mono"
                   value={fatorStr}
                   inputMode="numeric"
                   onChange={(e) => setFatorStr(e.target.value)}
@@ -175,7 +175,7 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
             </div>
 
             {/* Desconto para quem está começando */}
-            <div className="space-y-1.5 rounded border border-emerald-200 bg-emerald-50/60 p-2.5 dark:border-emerald-900 dark:bg-emerald-950/30">
+            <div className="space-y-1.5 rounded-sm border border-emerald-200 bg-emerald-50/60 p-2.5 dark:border-emerald-900 dark:bg-emerald-950/30">
               <div className="flex flex-wrap gap-1">
                 {[0, 20, 30, 40, 50].map((pct) => (
                   <Button
@@ -238,7 +238,7 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
                 <label className="flex items-center gap-2 text-xs">
                   <span className="font-semibold text-muted-foreground">Área (ha)</span>
                   <input
-                    className="w-32 rounded border bg-background px-2 py-1.5 text-sm font-mono"
+                    className="w-32 rounded-sm border bg-background px-2 py-1.5 text-sm font-mono"
                     value={areaStr}
                     inputMode="decimal"
                     placeholder="ex.: 12,5"
@@ -256,7 +256,7 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
                         key={i}
                         onClick={() => copiar(precos[i], i)}
                         title="Tocar para copiar o valor"
-                        className={`flex w-full items-center gap-3 rounded border px-3 py-2 text-left transition hover:brightness-95 ${COR_NIVEL[i]}`}
+                        className={`flex w-full items-center gap-3 rounded-sm border px-3 py-2 text-left transition hover:brightness-95 ${COR_NIVEL[i]}`}
                       >
                         <Bolinhas n={i} />
                         <span className="min-w-0 flex-1">
@@ -290,7 +290,7 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
                     <Printer className="size-4" /> Imprimir
                   </Button>
                 </div>
-                <div className="overflow-auto rounded border">
+                <div className="overflow-auto rounded-sm border">
                   <table className="w-full border-collapse text-center text-xs tabular-nums">
                     <thead className="sticky top-0 bg-muted">
                       <tr>
