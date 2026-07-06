@@ -4226,13 +4226,75 @@ export default function EditorPage() {
               </button>
             )}
 
-            {/* IA Extrair, Ajustes e Sair da conta no final da coluna de atalhos */}
+            {/* IA Extrair, Camadas, Ajustes e Sair da conta no final da coluna de atalhos */}
             <button type="button" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }}
               title="Extrair dados de documentos/matrículas com Inteligência Artificial (Gemini)"
               className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
               <Sparkles className="size-5 text-indigo-500 fill-indigo-500/20" />
               <span className="text-[10px] font-bold leading-none text-indigo-600 dark:text-indigo-400">IA EXTRAIR</span>
             </button>
+
+            {/* Botão Camadas — abre popover com gerenciamento de camadas */}
+            <div className="relative">
+              <button type="button" onClick={() => setCamadasPopoverAberta((v) => !v)}
+                title="Gerenciador de camadas: visibilidade, bloqueio, cores e espessuras"
+                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${camadasPopoverAberta ? 'border-teal-500 bg-teal-500/10 hover:bg-teal-500/20' : 'border-border bg-background/95 hover:bg-muted'}`}>
+                <Layers className={`size-5 ${camadasPopoverAberta ? 'text-white dark:text-black' : 'text-teal-600 dark:text-teal-400'}`} />
+                <span className={`text-[10px] font-bold leading-none ${camadasPopoverAberta ? 'text-teal-700 dark:text-teal-300' : 'text-teal-600 dark:text-teal-400'}`}>CAMADAS</span>
+              </button>
+              {camadasPopoverAberta && (
+                <div className="absolute left-[60px] top-0 z-[2100] w-72 rounded-xl border border-teal-500/30 bg-background/98 shadow-2xl backdrop-blur-xl p-3 animate-in slide-in-from-left-2 fade-in duration-200"
+                  onWheel={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-1.5"><Layers className="size-3.5" /> Camadas</span>
+                    <button type="button" onClick={() => setCamadasPopoverAberta(false)} className="size-5 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">×</button>
+                  </div>
+                  <div className="flex flex-col gap-1.5 text-[11px] text-foreground">
+                    {Object.keys(camadasVisiveis).map((key) => {
+                      const label =
+                        key === 'divisas' ? 'Divisas / Perímetro' :
+                        key === 'ambientais' ? 'Áreas Ambientais (CAR)' :
+                        key === 'polilinhas' ? 'Polilinhas / Linhas' :
+                        key === 'textos' ? 'Textos' :
+                        key === 'cotas' ? 'Cotas / Medidas' : 'Símbolos';
+                      const estilo = estilosCamadas[key];
+                      const visivel = camadasVisiveis[key];
+                      const bloqueada = camadasBloqueadas[key];
+                      return (
+                        <div key={key} className="flex items-center justify-between gap-1.5 border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <input type="color" value={estilo.cor}
+                              onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], cor: e.target.value } }))}
+                              className="size-5 rounded-full cursor-pointer border-0 p-0 overflow-hidden shrink-0 bg-transparent" title="Cor da camada" />
+                            <span className="truncate font-medium">{label}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {key !== 'textos' && key !== 'simbolos' && (
+                              <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground font-bold">
+                                <span>L:</span>
+                                <input type="number" min="0.5" max="10" step="0.5" value={estilo.espessura}
+                                  onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], espessura: parseFloat(e.target.value) || 1 } }))}
+                                  className="w-9 h-5 rounded border bg-background text-center text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-teal-500" title="Espessura" />
+                              </div>
+                            )}
+                            <button type="button" onClick={() => setCamadasVisiveis((prev) => ({ ...prev, [key]: !prev[key] }))}
+                              className={`p-0.5 rounded hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
+                              title={visivel ? 'Ocultar' : 'Exibir'}>
+                              {visivel ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                            </button>
+                            <button type="button" onClick={() => setCamadasBloqueadas((prev) => ({ ...prev, [key]: !prev[key] }))}
+                              className={`p-0.5 rounded hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
+                              title={bloqueada ? 'Desbloquear' : 'Bloquear'}>
+                              {bloqueada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
             {souMaster() && (
               <button type="button" onClick={() => setModoMaster((m) => (m === 'editar' ? 'gerir' : 'editar'))}
                 title={modoMaster === 'editar' ? 'Alternar para o modo GERIR (painel administrativo do SaaS)' : 'Alternar para o modo EDITAR (workspace de desenho)'}
@@ -4531,10 +4593,12 @@ export default function EditorPage() {
         {/* Faixa sensível na borda DIREITA: encostar o mouse abre o painel de dados. Some quando o
             painel já está aberto (aí quem manda é o mouse-leave do próprio painel). */}
         {!painelAberto && !introTocando && (
-          <div className="no-print absolute right-0 top-0 bottom-0 z-[1999] w-[18px] bg-green-900 dark:bg-emerald-950 cursor-pointer border-l border-emerald-950/20 shadow-md hover:bg-green-800 transition-all duration-200 flex items-center justify-center text-white/30 hover:text-white/60"
+          <div className="no-print absolute right-0 top-0 bottom-0 z-[1999] w-[18px] bg-gradient-to-b from-emerald-400 via-green-400 to-emerald-500 dark:from-emerald-600 dark:via-green-500 dark:to-emerald-600 cursor-pointer border-l border-emerald-300/40 dark:border-emerald-700/40 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-400/40 hover:w-[22px] transition-all duration-200 flex items-center justify-center overflow-hidden"
             onMouseEnter={() => setPainelAberto(true)}
             title="Dados do projeto (encoste para abrir)" aria-hidden>
-            <div className="w-[2px] h-10 rounded-full bg-current" />
+            <div className="w-[2px] h-10 rounded-full bg-white/50 dark:bg-white/30" />
+            {/* Efeito de brilho que passa esporadicamente */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/40 to-transparent animate-[shimmer_4s_ease-in-out_infinite]" style={{ backgroundSize: '100% 200%' }} />
           </div>
         )}
 
