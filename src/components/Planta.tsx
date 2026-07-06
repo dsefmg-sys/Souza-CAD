@@ -14,6 +14,7 @@ import type { ObjetoDesenho } from '@/lib/topo/types';
 import { Button } from '@/components/ui/button';
 import { Pencil, X, Save, Trash2 } from 'lucide-react';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
+import { carregarPreferencias } from '@/lib/store/preferencias';
 
 interface Props {
   vertices: Vertex[];
@@ -244,7 +245,11 @@ export default function Planta({
     const el = containerRef.current;
     if (!el || !editavel || modo === 'navegar') return;
 
-    el.style.cursor = 'none';
+    const prefs = carregarPreferencias();
+    const esp = prefs.cursorEspessura ?? 1;
+    const mostrarSeta = !!prefs.cursorMostrarSeta;
+
+    el.style.cursor = mostrarSeta ? 'default' : 'none';
 
     const crosshair = document.createElement('div');
     crosshair.className = 'cad-crosshair-overlay';
@@ -266,7 +271,7 @@ export default function Planta({
       position: 'absolute',
       left: '0',
       width: '100%',
-      height: '1px',
+      height: `${esp}px`,
       background: 'rgba(0, 0, 0, 0.45)',
       boxShadow: '0 0 1px rgba(255, 255, 255, 0.6)',
       pointerEvents: 'none',
@@ -277,7 +282,7 @@ export default function Planta({
     Object.assign(vLine.style, {
       position: 'absolute',
       top: '0',
-      width: '1px',
+      width: `${esp}px`,
       height: '100%',
       background: 'rgba(0, 0, 0, 0.45)',
       boxShadow: '0 0 1px rgba(255, 255, 255, 0.6)',

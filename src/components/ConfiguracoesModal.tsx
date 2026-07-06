@@ -319,12 +319,34 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   titulo="Exigir CNS do cartório"
                   descricao="Avisa antes de exportar se o código CNS do cartório do imóvel estiver vazio." />
 
-                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Segurança</div>
+                 <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Segurança</div>
                 <Interruptor
                   ligado={prefs.confirmarAntesApagar}
                   onToggle={(v) => mudarPref('confirmarAntesApagar', v)}
                   titulo="Confirmar antes de apagar"
                   descricao="Ligado (recomendado): pede confirmação antes de excluir vértice, projeto ou divisa, pra você não apagar sem querer. Desligado: apaga na hora, mais rápido pra quem tem certeza." />
+
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Cursor CAD (Desenho)</div>
+                <div className="rounded border p-2.5 space-y-2.5 bg-muted/20">
+                  <Interruptor
+                    ligado={!!prefs.cursorMostrarSeta}
+                    onToggle={(v) => mudarPref('cursorMostrarSeta', v)}
+                    titulo="Mostrar seta do mouse junto ao +"
+                    descricao="Mostra o ponteiro padrão (seta) do mouse junto com as linhas de mira do CAD." />
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Espessura das linhas do cursor</Label>
+                    <div className="flex w-fit items-center gap-1 rounded-full border bg-[#05140b] p-0.5 text-xs">
+                      {([1, 1.5, 2, 3] as const).map((esp) => (
+                        <button key={esp} type="button" onClick={() => mudarPref('cursorEspessura', esp)}
+                          className={`rounded-full px-2.5 py-0.5 font-semibold transition-colors ${
+                            (prefs.cursorEspessura ?? 1) === esp 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'text-muted-foreground hover:bg-muted/80'
+                          }`}>{esp}px</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-3 border-t md:border-t-0 md:border-l md:pl-4 pt-3 md:pt-0">
