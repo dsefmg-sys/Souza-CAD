@@ -95,7 +95,7 @@ import { carregarPreferencias, salvarPreferencias, salvarModo, registrarTempoCom
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster } from '@/lib/store/suporte';
 import { carregarConfigAssinatura } from '@/lib/store/assinatura';
-import MasterPainelModal from '@/components/MasterPainelModal';
+
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
 import PlanilhaConferenciaModal from '@/components/PlanilhaConferenciaModal';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
@@ -332,7 +332,7 @@ export default function EditorPage() {
   const iconeCab = (chave: string, icone: React.ReactNode) => (prefs.iconesCabecalhoOcultos.includes(chave) ? null : icone);
   const [setupOk, setSetupOk] = useState(true); // primeiro acesso: cadastro de empresa/autônomo
   const [planilhaConfAberta, setPlanilhaConfAberta] = useState(false); // conferência da planilha SIGEF
-  const [masterAberto, setMasterAberto] = useState(false); // painel do titular (só master)
+
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
@@ -1704,17 +1704,16 @@ export default function EditorPage() {
   }
 
   async function renumerar() {
-    snap();
-    await aplicarCodigos(vertices);
-    aviso('Vértices renumerados.');
-  }
-
-  // Reordena a partir do vértice mais ao norte, sentido horário (praxe), e renumera.
-  async function ordenarNorteHorario() {
-    if (vertices.length < 3) return;
+    if (vertices.length < 3) { aviso('É necessário ao menos 3 vértices para enumerar.'); return; }
+    const ok = await confirmar({
+      titulo: 'Enumerar e Reordenar Vértices',
+      mensagem: 'Esta ação vai:\n\n• Reordenar os vértices começando pelo mais ao NORTE, em sentido HORÁRIO\n• Renumerar todos os códigos (M-0001, M-0002… ou conforme seu padrão)\n\nDeseja continuar?',
+      okLabel: 'Sim, enumerar', cancelLabel: 'Cancelar',
+    });
+    if (!ok) return;
     snap();
     await aplicarCodigos(iniciarDoNorteHorario(vertices));
-    aviso('Reordenado do norte em sentido horário.');
+    aviso('Vértices reordenados (norte → horário) e renumerados.');
   }
 
   // Reordena o anel arrastando na lista e renumera (muda o polígono e os nomes).
@@ -4125,7 +4124,7 @@ export default function EditorPage() {
                       ['RT', 'Dados do responsável técnico: nome, CFT, código do credenciado e contadores', <UserCheck key="i" className="size-4" />, () => { setConfigAba('pessoal'); setConfigAberta(true); }, 'text-slate-500'],
                       ['Config.', 'Configurações gerais', <Settings key="i" className="size-4" />, () => { setConfigAba(undefined); setConfigAberta(true); }, 'text-slate-500'],
                       ...(!ocultarCobranca || souMaster() ? [['Planos', souMaster() ? 'Cobrança do app: planos, preços e nível de cada cliente (admin)' : 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400']] : []),
-                      ...(souMaster() ? [['Painel ADM', 'Painel administrativo: contas, uso e configuração de cobrança', <Crown key="i" className="size-4" />, () => setMasterAberto(true), 'text-amber-600 dark:text-amber-400']] : []),
+
                       ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400']] : []),
                       ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => { limparConfigLocalNaSaida(); sair(); }, 'text-red-600 dark:text-red-400']] : []),
                     ] as [string, string, React.ReactNode, () => void, string][]).map(([rotuloBtn, dica, icone, acao, cor]) => (
@@ -4171,6 +4170,14 @@ export default function EditorPage() {
               <span className="text-[8px] font-bold leading-none text-amber-500">Esc</span>
             </button>
 
+            {/* Salvar — logo abaixo da alternância mapa/planta, sempre visível e acessível */}
+            <button type="button" onClick={() => { void salvar(); }} disabled={processando}
+              title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar' : salvoOk ? 'Trabalho salvo' : 'Salvar o projeto'}
+              className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${salvarLaranja ? 'border-amber-500 bg-amber-500/15 hover:bg-amber-500/25' : 'border-border bg-background/95 hover:bg-muted'}`}>
+              <Save className={`size-5 ${salvarLaranja ? 'text-amber-500' : salvoOk ? 'text-green-600' : ''}`} />
+              <span className="text-[10px] font-bold leading-none">SALVAR</span>
+            </button>
+
             {/* Modo Fácil/Completo — vale no app inteiro; some durante a abertura e após as 5 h de Completo */}
             {chaveTopoVisivel && !introTocando && (
               <button type="button" onClick={() => trocarModoApp(completo ? 'simples' : 'completo')}
@@ -4202,14 +4209,7 @@ export default function EditorPage() {
               </>
             )}
 
-            {/* Atalhos mais usados na mesma coluna (pedido do dono, 05/07/2026): salvar sempre
-                à mão; no mapa, também enquadrar o desenho e ligar/desligar o imã. */}
-            <button type="button" onClick={() => { void salvar(); }} disabled={processando}
-              title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar' : salvoOk ? 'Trabalho salvo' : 'Salvar o projeto'}
-              className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${salvarLaranja ? 'border-amber-500 bg-amber-500/15 hover:bg-amber-500/25' : 'border-border bg-background/95 hover:bg-muted'}`}>
-              <Save className={`size-5 ${salvarLaranja ? 'text-amber-500' : salvoOk ? 'text-green-600' : ''}`} />
-              <span className="text-[10px] font-bold leading-none">SALVAR</span>
-            </button>
+            {/* Atalhos mais usados na mesma coluna: enquadrar o desenho e ligar/desligar o imã. */}
             <button type="button"
               onClick={vista === 'mapa' ? centralizar : () => atualizarPlantaConfig({ offsetX: 0, offsetY: 0, escalaManual: undefined })}
               title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Centralizar/Enquadrar a folha de desenho (foco automático)'}
@@ -4676,10 +4676,9 @@ export default function EditorPage() {
 
                 <SecaoTitulo>Vértices do polígono</SecaoTitulo>
                 <div className="mb-2 flex flex-wrap gap-1">
-                  <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer última ação"><Undo2 /> Desfazer</Button>
-                  <Button size="sm" variant="outline" onClick={ordenarNorteHorario} title="Começa no vértice mais ao norte e segue no sentido horário">Norte ↻</Button>
-                  <Button size="sm" variant="outline" onClick={renumerar}>Renumerar</Button>
-                  <Button size="sm" variant="outline" className="text-destructive" onClick={limparPoligono} title="Apagar todo o polígono para desenhar de novo à mão"><Trash2 /> Limpar</Button>
+                  <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer última ação" className="border-slate-500/30 hover:bg-slate-500/10"><Undo2 className="text-slate-500" /> Desfazer</Button>
+                  <Button size="sm" variant="outline" onClick={renumerar} title="Reordena do norte (sentido horário) e renumera os códigos" className="border-blue-500/30 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400">Enumerar Vértices</Button>
+                  <Button size="sm" variant="outline" className="text-destructive border-red-500/30 hover:bg-red-500/10" onClick={limparPoligono} title="Apagar todo o polígono para desenhar de novo à mão"><Trash2 /> Limpar</Button>
                   <Button size="sm" variant="default" onClick={abrirPlanilha} title="Editar todos os vértices em uma planilha" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"><Table className="size-4 mr-1" /> Editar em Tabela</Button>
                 </div>
                 <p className="mb-1 text-[10px] text-muted-foreground">Arraste um vértice para reordenar o polígono (renumera automático).</p>
@@ -5394,13 +5393,7 @@ export default function EditorPage() {
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
       <PrimeiroAcessoModal open={!setupOk} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); empurrarConfigParaNuvem().catch(() => {}); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
-      <MasterPainelModal
-        open={masterAberto}
-        onOpenChange={(o) => {
-          setMasterAberto(o);
-          if (!o) carregarConfigAssinatura().then((c) => setOcultarCobranca(!!c.ocultarCobranca)).catch(() => {});
-        }}
-      />
+
       <ProjetoInfoModal
         open={infoAberto}
         onOpenChange={setInfoAberto}
