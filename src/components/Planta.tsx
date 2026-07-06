@@ -1953,12 +1953,16 @@ function FaixaInferior(props: {
                   <Nortes cx={x3 + 75} cy={y0 + 164} conv={conv} decl={decl} fs={fs} variante={estiloDiagrama} />
                 </g>
               ))}
-              {/* rótulo do diagrama — bloco SEPARADO, move livre do diagrama */}
+              {/* rótulo do diagrama — bloco SEPARADO, move livre do diagrama. Padrão: AO LADO
+                  direito do diagrama, com setinha apontando pra ele (print do dono, 05/07/2026). */}
               {verNortes && bloco('coord.diagramaTitulo', (
                 <g>
-                  <rect x={x3 + 35} y={y0 + 104} width={80} height={26} fill="transparent" />
-                  <text x={x3 + 75} y={y0 + 114} fontSize={fs(7.5)} fontWeight="bold" fill="#475569" textAnchor="middle">Diagrama de</text>
-                  <text x={x3 + 75} y={y0 + 124} fontSize={fs(7.5)} fontWeight="bold" fill="#475569" textAnchor="middle">Convergência</text>
+                  <rect x={x3 + 118} y={y0 + 148} width={92} height={30} fill="transparent" />
+                  <text x={x3 + 132} y={y0 + 160} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Diagrama de</text>
+                  <text x={x3 + 132} y={y0 + 170} fontSize={fs(7.5)} fontWeight="bold" fill="#475569">Convergência</text>
+                  {/* setinha de chamada: do rótulo em direção ao diagrama */}
+                  <line x1={x3 + 130} y1={y0 + 163} x2={x3 + 114} y2={y0 + 163} stroke="#475569" strokeWidth={0.8} />
+                  <polygon points={`${x3 + 114},${y0 + 163} ${x3 + 119},${y0 + 160.5} ${x3 + 119},${y0 + 165.5}`} fill="#475569" />
                 </g>
               ))}
 

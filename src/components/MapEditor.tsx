@@ -287,6 +287,19 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
   return null;
 }
 
+// CURSOR DE CRUZ (CAD): com qualquer ferramenta ativa, o ponteiro do mapa vira a cruzinha "+"
+// dos softwares de CAD — deixa claro que o clique vai DESENHAR/EDITAR, não navegar. Sobre um
+// item clicável o ponteiro de mãozinha continua valendo (CSS do próprio item vence).
+function CursorMapa({ ativo }: { ativo: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    el.style.cursor = ativo ? 'crosshair' : '';
+    return () => { el.style.cursor = ''; };
+  }, [ativo, map]);
+  return null;
+}
+
 // MEDIDA DINÂMICA (CAD): enquanto se desenha, o trecho até o cursor aparece como linha elástica
 // com a distância e o azimute ao vivo, respeitando a trava ORTO/POLAR. Componente separado de
 // propósito: o mousemove só re-renderiza este pedacinho, não o mapa inteiro (que é pesado).
@@ -379,6 +392,7 @@ export default function MapEditor(props: Props) {
   // mas permite posicionar vértice com muito mais precisão (pedido do dono, 05/07/2026)
   return (
     <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={28} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
+      <CursorMapa ativo={modo !== 'navegar' && !bloqueado} />
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Híbrido (Google)">
           <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={28} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
