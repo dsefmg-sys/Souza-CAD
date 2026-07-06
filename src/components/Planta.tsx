@@ -45,6 +45,7 @@ interface Props {
   onSelecObjeto?: (id: string | null) => void;
   onContextMenuObjeto?: (id: string, tipo: string, x: number, y: number) => void; // clique direito num objeto desenhado: abre o menu de edição
   onDblClickVertice?: (v: Vertex, x: number, y: number) => void; // duplo clique num vértice: abre o painel de ajuste rápido
+  onAntesEditar?: () => void; // dispara UMA foto pro desfazer no começo de cada arraste/edição da planta
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
@@ -233,7 +234,7 @@ export default function Planta({
   zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], verticesVizinho = [], resumoGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
-  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
+  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
@@ -254,7 +255,7 @@ export default function Planta({
   }, [editavel, modo]);
 
   const escalaDenomRef = useRef(0); // escala atual lida pelo handler da roda (evita depender do valor no efeito)
-  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number }>(null);
+  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number; snapped?: boolean }>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
   // Arraste suave: em vez de atualizar o estado a cada micro-movimento do mouse (que redesenha o
   // SVG inteiro e trava), juntamos as atualizações e aplicamos no máximo uma por quadro de tela.
@@ -680,6 +681,9 @@ export default function Planta({
     if (!editavel || !dragRef.current) return;
     const u = svgPonto(e); if (!u) return;
     const d = dragRef.current;
+    // 1ª mexida do gesto: tira UMA foto pro desfazer (o estado ANTES do arraste). Assim mover/redimensionar
+    // texto, rótulo, folha, escala etc. na planta viram passos desfazíveis — sem inundar o histórico.
+    if (!d.snapped) { onAntesEditar?.(); d.snapped = true; }
     if (d.kind === 'folha') {
       if (folhaLast.current) onMoverFolha?.(u.x - folhaLast.current.x, u.y - folhaLast.current.y);
       folhaLast.current = u;

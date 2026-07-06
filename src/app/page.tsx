@@ -951,35 +951,37 @@ export default function EditorPage() {
   // ---------- desfazer / refazer (histórico de vértices + confrontantes + DESENHOS) ----------
   // Os desenhos (cota/linha/texto/símbolo) entram no histórico — antes ficavam de fora e o
   // Ctrl+Z "não funcionava" com a ferramenta Cotar (feedback de usuário, 05/07/2026).
-  const histRef = useRef<{ v: Vertex[]; cpl: Record<number, string>; obj: ObjetoDesenho[]; ig: Vertex[] }[]>([]);
-  const redoRef = useRef<{ v: Vertex[]; cpl: Record<number, string>; obj: ObjetoDesenho[]; ig: Vertex[] }[]>([]);
+  type FotoHist = { v: Vertex[]; cpl: Record<number, string>; obj: ObjetoDesenho[]; ig: Vertex[]; pc: PlantaConfig };
+  const histRef = useRef<FotoHist[]>([]);
+  const redoRef = useRef<FotoHist[]>([]);
   function snap() {
     // guarda-duplicata por referência: o StrictMode (dev) roda atualizadores de estado 2x, e um
     // snap chamado lá dentro empilharia a mesma foto duas vezes (desfazer pediria 2 cliques)
     const ult = histRef.current[histRef.current.length - 1];
-    if (ult && ult.v === vertices && ult.cpl === confrontantePorLado && ult.obj === objetos && ult.ig === verticesIgnorados) return;
-    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados });
+    if (ult && ult.v === vertices && ult.cpl === confrontantePorLado && ult.obj === objetos && ult.ig === verticesIgnorados && ult.pc === plantaConfig) return;
+    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
     if (histRef.current.length > 60) histRef.current.shift();
     redoRef.current = []; // uma ação nova invalida o que havia para refazer
   }
-  function desfazer() {
-    const s = histRef.current.pop();
-    if (!s) { aviso('Nada para desfazer.'); return; }
-    redoRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados });
+  function aplicarFoto(s: FotoHist) {
     setVertices(s.v);
     setConfrontantePorLado(s.cpl);
     setObjetos(s.obj);
     setVerticesIgnorados(s.ig);
+    setPlantaConfig(s.pc); // posições/tamanhos/textos das caixas da planta (declarações, laudo, etc.)
+  }
+  function desfazer() {
+    const s = histRef.current.pop();
+    if (!s) { aviso('Nada para desfazer.'); return; }
+    redoRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
+    aplicarFoto(s);
     aviso('Última ação desfeita.');
   }
   function refazer() {
     const s = redoRef.current.pop();
     if (!s) { aviso('Nada para refazer.'); return; }
-    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados });
-    setVertices(s.v);
-    setConfrontantePorLado(s.cpl);
-    setObjetos(s.obj);
-    setVerticesIgnorados(s.ig);
+    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
+    aplicarFoto(s);
     aviso('Ação refeita.');
   }
 
@@ -1100,11 +1102,13 @@ export default function EditorPage() {
     }
   }
   function restaurarTextoPlanta(id: string) {
+    snap();
     setPlantaConfig((c) => { const m = { ...(c.textos ?? {}) }; delete m[id]; return { ...c, textos: m }; });
   }
   // Botão direito na rosa dos ventos / barra de escala / diagrama: cicla o estilo e já grava como
   // PADRÃO dos próximos projetos do usuário (planta padrão).
   function ciclarEstiloPlanta(campo: 'estiloRosa' | 'estiloEscala' | 'estiloDiagrama', total: number) {
+    snap();
     const prox = (((plantaConfig[campo] as number | undefined) ?? 0) + 1) % total;
     setPlantaConfig((c) => ({ ...c, [campo]: prox }));
     try { salvarPlantaPadrao({ ...carregarPlantaPadrao(), [campo]: prox }); } catch { /* ignore */ }
@@ -4831,7 +4835,7 @@ export default function EditorPage() {
                       outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))}
                       resumoGlebas={resumoGlebas} verticesVizinho={verticesVizinho}
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
-                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })}
+                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onAntesEditar={snap}
                       onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}
                       onExcluirObjeto={(id) => { snap(); setObjetos((os) => os.filter((o) => o.id !== id)); }}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
