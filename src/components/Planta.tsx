@@ -1632,50 +1632,72 @@ export default function Planta({
             <text x={0} y={-9} fontSize={fs(7)} fontWeight="bold" letterSpacing="0.5" fill="#0f172a">ESCALA  1:{escalaDenom}</text>
             {(() => {
               const estilo = config.estiloEscala ?? 0;
-              if (estilo === 1) {
-                // Variante 1: Linha simples sem blocos
-                return <line x1={0} y1={h} x2={barPx} y2={h} stroke="#0f172a" strokeWidth={1} />;
-              }
-              if (estilo === 2) {
-                // Variante 2: Régua dupla estilo Engenharia (duas linhas finas horizontais paralelas)
-                return (
-                  <>
-                    <line x1={0} y1={0} x2={barPx} y2={0} stroke="#0f172a" strokeWidth={0.8} />
-                    <line x1={0} y1={h} x2={barPx} y2={h} stroke="#0f172a" strokeWidth={0.8} />
-                    {[0, 1, 2, 3, 4].map((k) => (
-                      <line key={k} x1={k * seg} y1={0} x2={k * seg} y2={h} stroke="#0f172a" strokeWidth={0.8} />
-                    ))}
-                  </>
-                );
-              }
-              if (estilo === 3) {
-                // Variante 3: Bloco preenchido estilo cartografia moderna (metade preta, metade branca)
-                return (
-                  <>
-                    <rect x={0} y={0} width={barPx / 2} height={h} fill="#0f172a" />
-                    <rect x={barPx / 2} y={0} width={barPx / 2} height={h} fill="#ffffff" stroke="#0f172a" strokeWidth={0.8} />
-                    <rect x={0} y={0} width={barPx} height={h} fill="none" stroke="#0f172a" strokeWidth={0.8} />
-                  </>
-                );
-              }
-              if (estilo === 4) {
-                // Variante 4: Linha central com ticks cruzados (Ticks centrais)
-                return (
-                  <>
-                    <line x1={0} y1={h / 2} x2={barPx} y2={h / 2} stroke="#0f172a" strokeWidth={1} />
-                    {[0, 1, 2, 3, 4].map((k) => (
-                      <line key={k} x1={k * seg} y1={0} x2={k * seg} y2={h} stroke="#0f172a" strokeWidth={0.8} />
-                    ))}
-                  </>
-                );
-              }
-              // Variante 0: Blocos alternados clássicos (INCRA)
+              const ink = '#0f172a';
+              // Cinco modelos profissionais, padrão de mercado. Cada um é um arquétipo cartográfico
+              // reconhecido — nada de linha solta ou meia-barra. O botão direito cicla entre eles.
+              const nomesEstilo = ['Xadrez clássico', 'Barra dupla', 'Graduada', 'Régua fina', 'Contorno duplo'];
               return (
                 <>
-                  {[0, 1, 2, 3].map((k) => (
-                    <rect key={k} x={k * seg} y={0} width={seg} height={h} fill={k % 2 ? '#ffffff' : '#0f172a'} />
-                  ))}
-                  <rect x={0} y={0} width={barPx} height={h} fill="none" stroke="#0f172a" strokeWidth={0.8} />
+                  <title>{editavel
+                    ? `Escala gráfica — modelo ${estilo + 1} de 5 (${nomesEstilo[estilo]}). Botão direito troca o modelo; arraste para reposicionar.`
+                    : `Escala gráfica 1:${escalaDenom}`}</title>
+                  {estilo === 1 ? (
+                    // Modelo 1 — BARRA DUPLA (duas fileiras alternadas, padrão topográfico IBGE):
+                    // as duas fileiras invertem a cor, formando o clássico xadrez de leitura dupla.
+                    <>
+                      {[0, 1, 2, 3].map((k) => (
+                        <g key={k}>
+                          <rect x={k * seg} y={0} width={seg} height={h / 2} fill={k % 2 ? '#ffffff' : ink} />
+                          <rect x={k * seg} y={h / 2} width={seg} height={h / 2} fill={k % 2 ? ink : '#ffffff'} />
+                        </g>
+                      ))}
+                      <line x1={0} y1={h / 2} x2={barPx} y2={h / 2} stroke={ink} strokeWidth={0.5} />
+                      <rect x={0} y={0} width={barPx} height={h} fill="none" stroke={ink} strokeWidth={0.8} />
+                    </>
+                  ) : estilo === 2 ? (
+                    // Modelo 2 — GRADUADA (padrão USGS): o primeiro intervalo vem subdividido em
+                    // cinco partes para leitura fina; os demais são blocos sólidos alternados.
+                    <>
+                      {[0, 1, 2, 3, 4].map((j) => (
+                        <rect key={`s${j}`} x={(j * seg) / 5} y={0} width={seg / 5} height={h} fill={j % 2 ? '#ffffff' : ink} />
+                      ))}
+                      {[1, 2, 3].map((k) => (
+                        <rect key={`b${k}`} x={k * seg} y={0} width={seg} height={h} fill={k % 2 ? '#ffffff' : ink} />
+                      ))}
+                      <rect x={0} y={0} width={barPx} height={h} fill="none" stroke={ink} strokeWidth={0.8} />
+                    </>
+                  ) : estilo === 3 ? (
+                    // Modelo 3 — RÉGUA FINA (padrão de desenho de engenharia): linha base aberta com
+                    // marcas maiores nas divisões, marcas menores nos meios e serifas mais altas nas pontas.
+                    <>
+                      <line x1={0} y1={h} x2={barPx} y2={h} stroke={ink} strokeWidth={0.9} />
+                      {[1, 3, 5, 7].map((i) => (
+                        <line key={`m${i}`} x1={(i * barPx) / 8} y1={h * 0.55} x2={(i * barPx) / 8} y2={h} stroke={ink} strokeWidth={0.5} />
+                      ))}
+                      {[0, 1, 2, 3, 4].map((k) => {
+                        const ponta = k === 0 || k === 4;
+                        return <line key={`M${k}`} x1={k * seg} y1={ponta ? -2 : 0} x2={k * seg} y2={h} stroke={ink} strokeWidth={ponta ? 1 : 0.8} />;
+                      })}
+                    </>
+                  ) : estilo === 4 ? (
+                    // Modelo 4 — CONTORNO DUPLO (moldura cartográfica premium): xadrez alternado dentro
+                    // de uma moldura fina externa, dando o acabamento emoldurado de carta oficial.
+                    <>
+                      <rect x={-1.4} y={-1.4} width={barPx + 2.8} height={h + 2.8} fill="none" stroke={ink} strokeWidth={0.5} />
+                      {[0, 1, 2, 3].map((k) => (
+                        <rect key={k} x={k * seg} y={0} width={seg} height={h} fill={k % 2 ? '#ffffff' : ink} />
+                      ))}
+                      <rect x={0} y={0} width={barPx} height={h} fill="none" stroke={ink} strokeWidth={0.8} />
+                    </>
+                  ) : (
+                    // Modelo 0 — XADREZ CLÁSSICO (padrão INCRA): blocos alternados preto/branco.
+                    <>
+                      {[0, 1, 2, 3].map((k) => (
+                        <rect key={k} x={k * seg} y={0} width={seg} height={h} fill={k % 2 ? '#ffffff' : ink} />
+                      ))}
+                      <rect x={0} y={0} width={barPx} height={h} fill="none" stroke={ink} strokeWidth={0.8} />
+                    </>
+                  )}
                 </>
               );
             })()}

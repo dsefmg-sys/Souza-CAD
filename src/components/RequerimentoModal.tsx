@@ -268,7 +268,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                 <div key={i} className="space-y-1 rounded-lg border p-3 bg-background/50">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-muted-foreground">Parte adicional {i + 1}</span>
-                    <Button type="button" size="sm" variant="ghost" className="h-6 px-1 hover:bg-destructive/10" onClick={() => rmParte(i)}><Trash2 className="size-3.5 text-destructive" /></Button>
+                    <Button type="button" size="sm" variant="ghost" title="Remover esta parte" className="h-6 px-1 hover:bg-destructive/10" onClick={() => rmParte(i)}><Trash2 className="size-3.5 text-destructive" /></Button>
                   </div>
                   <Bloco titulo="" pessoa={p} onChange={(np) => setParte(i, np)} sugProp={sugProp} />
                 </div>

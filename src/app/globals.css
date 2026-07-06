@@ -96,7 +96,20 @@
   .no-print { display: none !important; }
 }
 
-/* barra de rolagem discreta e moderna (lateral de ferramentas e painéis) */
+/* Barra de rolagem discreta e moderna — MESMO ASPECTO em TODAS as áreas do app (cabeçalho,
+   barra lateral, modais, tabelas...). Firefox usa scrollbar-width/color (herdados); Chrome/Safari/
+   Edge usam os pseudo-elementos ::-webkit-scrollbar. Assim nenhuma barra fica com o visual cru do
+   navegador. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}
+*::-webkit-scrollbar { width: 7px; height: 7px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }
+
+/* .scroll-fino continua funcionando (agora igual ao padrão global) para os pontos que já a usam. */
 .scroll-fino { scrollbar-width: thin; scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent; }
 .scroll-fino::-webkit-scrollbar { width: 7px; height: 7px; }
 .scroll-fino::-webkit-scrollbar-track { background: transparent; }

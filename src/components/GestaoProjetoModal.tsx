@@ -183,7 +183,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                             <td className="p-2">{l.tipo === 'recebimento' ? <span className="text-emerald-600 dark:text-emerald-400">Recebimento</span> : <span className="text-red-600 dark:text-red-400">Gasto</span>}</td>
                             <td className="p-2">{l.descricao}</td>
                             <td className="p-2 text-right font-medium">{moedaBR(l.valor)}</td>
-                            <td className="p-2 text-right"><button onClick={() => remover(l.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="size-3.5" /></button></td>
+                            <td className="p-2 text-right"><button onClick={() => remover(l.id)} title="Excluir este lançamento" className="text-muted-foreground hover:text-destructive"><Trash2 className="size-3.5" /></button></td>
                           </tr>
                         ))}
                       </tbody>

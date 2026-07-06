@@ -198,6 +198,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
                 <Button
                   size="icon"
                   variant="ghost"
+                  title="Remover o arquivo anexado"
                   className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                   onClick={() => setArquivo(null)}
                 >

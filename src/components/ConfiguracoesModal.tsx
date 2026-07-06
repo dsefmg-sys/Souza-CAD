@@ -356,11 +356,11 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     quando a chave do topo já sumiu (some depois de 5 h de uso no Completo). */}
                 <div className="space-y-1.5 rounded-sm border p-2.5">
                   <Label className="text-xs font-semibold">Modo da interface</Label>
-                  <p className="text-[11px] leading-tight text-muted-foreground">Quanta ferramenta aparece na tela. O <strong>Fácil</strong> mostra só o essencial, pra qualquer nível se adaptar ao software e ainda assim entregar um trabalho básico completo; o <strong>Completo</strong> mostra tudo. Depois de bastante uso no Completo, a chave flutuante some e é aqui que você volta pro Fácil.</p>
+                  <p className="text-[11px] leading-tight text-muted-foreground">Quanta ferramenta aparece na tela, em três degraus. O <strong>Fácil</strong> mostra só o essencial, pra qualquer nível se adaptar ao software e ainda assim entregar um trabalho básico completo; o <strong>Médio</strong> acrescenta as ferramentas do dia a dia (desenho, anotação, vértices, vizinhos certificados, errata, CAR, calculadora e camadas); o <strong>Completo</strong> mostra tudo, inclusive as avançadas. Depois de bastante uso no Completo, a chave flutuante some e é aqui que você volta pro Fácil.</p>
                   <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
-                    {(['simples', 'completo'] as const).map((m) => (
+                    {(['simples', 'medio', 'completo'] as const).map((m) => (
                       <button key={m} type="button" onClick={() => mudarPref('modo', m)}
-                        className={`rounded-full px-3 py-1 font-semibold transition-colors ${prefs.modo === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{m === 'simples' ? 'Fácil' : 'Completo'}</button>
+                        className={`rounded-full px-3 py-1 font-semibold transition-colors ${prefs.modo === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>{m === 'simples' ? 'Fácil' : m === 'medio' ? 'Médio' : 'Completo'}</button>
                     ))}
                   </div>
                 </div>
@@ -837,7 +837,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                       <div key={p.id} className="flex items-center gap-1.5">
                         <Input className="h-8 flex-1 text-xs" placeholder="Serviço" value={p.servico} onChange={(e) => mudarPreco(p.id, 'servico', e.target.value)} />
                         <Input className="h-8 w-24 text-xs" type="number" step="0.01" placeholder="R$" value={p.valor || ''} onChange={(e) => mudarPreco(p.id, 'valor', e.target.value)} />
-                        <Button size="sm" variant="ghost" className="size-8 shrink-0 p-0 text-destructive" onClick={() => removerPreco(p.id)}><Trash2 className="size-3.5" /></Button>
+                        <Button size="sm" variant="ghost" className="size-8 shrink-0 p-0 text-destructive" title="Remover este serviço" onClick={() => removerPreco(p.id)}><Trash2 className="size-3.5" /></Button>
                       </div>
                     ))}
                   </div>

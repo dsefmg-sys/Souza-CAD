@@ -219,7 +219,17 @@ function Centralizar({ sig, vertices }: { sig?: number; vertices: Vertex[] }) {
     if (validos.length < 2) return;
     try {
       const b = L.latLngBounds(validos.map((v) => [v.lat, v.lon] as [number, number]));
-      if (b.isValid()) map.fitBounds(b, { padding: [50, 50] });
+      if (!b.isValid()) return;
+      // invalidateSize ANTES do fitBounds: se a área do mapa mudou de tamanho (abrir/fechar um
+      // painel, trocar de aba, redimensionar a janela), o Leaflet ainda guarda o tamanho antigo e
+      // enquadra pela medida errada — dá a impressão de que o Foco não trouxe o desenho pra tela.
+      // Rodamos num quadro seguinte pra garantir que o layout já assentou.
+      requestAnimationFrame(() => {
+        try {
+          map.invalidateSize();
+          map.fitBounds(b, { padding: [50, 50], maxZoom: 19 });
+        } catch { /* sem tamanho */ }
+      });
     } catch { /* ignore */ }
   }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;

@@ -2,6 +2,7 @@ import { Document, Paragraph, TextRun, AlignmentType } from 'docx';
 import type { ImovelData, TecnicoData, Confrontante, Vertex } from '../topo/types';
 import { numBR } from '../topo/geometry';
 import { rotulosProfissional } from '../topo/profissional';
+import { REPRES_LABEL } from '../topo/sigefVocab';
 import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
 
@@ -104,7 +105,7 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
           new TextRun({ text: `: extensão de `, size: 22 }),
           new TextRun({ text: `${dist} m`, bold: true, size: 22 }),
           new TextRun({ text: `, definido por `, size: 22 }),
-          new TextRun({ text: `${trecho.de.representacao || 'linha ideal'}`, italics: true, size: 22 }),
+          new TextRun({ text: (REPRES_LABEL[trecho.de.representacao || 'linha-ideal'] || 'linha ideal').toLowerCase(), italics: true, size: 22 }),
           new TextRun({ text: `.`, size: 22 }),
         ]
       }));

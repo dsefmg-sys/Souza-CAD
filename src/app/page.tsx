@@ -203,6 +203,15 @@ function IconeCota({ className }: { className?: string }) {
   );
 }
 
+// Selo de atalho estampado no canto do botão (ex.: F6, Esc). Usa o âmbar que já é a cor de atalho
+// do app (o "Esc" do botão MAPA/PLANTA). Deixa o usuário aprender os atalhos vendo-os no lugar de
+// uso. O botão precisa ser `relative` — as grades põem `[&>button]:relative` uma vez só.
+function Atalho({ k, className }: { k: string; className?: string }) {
+  return (
+    <span className={`pointer-events-none absolute right-0.5 top-0.5 text-[8px] font-extrabold leading-none tracking-tight text-amber-500 dark:text-amber-400 ${className ?? ''}`}>{k}</span>
+  );
+}
+
 const PALETA_DESENHO = [
   { nome: 'Azul', hex: '#2563eb' },
   { nome: 'Vermelho', hex: '#dc2626' },
@@ -501,6 +510,10 @@ export default function EditorPage() {
   function trocarModoApp(m: 'simples' | 'medio' | 'completo') { setModoApp(m); try { salvarModo(m); } catch { /* ignore */ } }
   const completo = modoApp === 'completo';
   const medio = modoApp === 'medio';
+  // "Pelo menos Médio": vale pro Médio E pro Completo. É o que gate das ferramentas do dia a dia que
+  // o Médio já entrega — usar `medio` sozinho as esconderia no Completo. `completo` fica reservado
+  // só pro que é avançado de verdade.
+  const medioOuMais = modoApp !== 'simples';
   const rotuloModo = completo ? 'COMPL.' : medio ? 'MÉDIO' : 'FÁCIL';
   // Enquanto está no Completo, acumula tempo de uso (resolução de 1 min). Passou de 5 h, a chave
   // do topo some pra deixar a tela limpa — voltar ao Simples fica só nas Configurações.
@@ -822,6 +835,13 @@ export default function EditorPage() {
   // atalhos remapeados em ordem crescente
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // Ctrl+S / Cmd+S: salva o projeto e impede o "salvar página" do navegador. Vale até com o
+      // foco num campo de texto — por isso vem ANTES do filtro de campos abaixo.
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (!processando) void salvar();
+        return;
+      }
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       const k = e.key;
@@ -874,7 +894,7 @@ export default function EditorPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo, desenhoBuffer, selMulti, vertices, confrontantePorLado, desfazer, refazer, menuContexto]);
+  }, [modo, desenhoBuffer, selMulti, vertices, confrontantePorLado, desfazer, refazer, menuContexto, salvar, processando]);
 
   // ao sair do modo "triângulo", esvazia a seleção múltipla
   useEffect(() => { if (modo !== 'multi') setSelMulti((s) => (s.size ? new Set() : s)); }, [modo]);
@@ -977,6 +997,10 @@ export default function EditorPage() {
   function plantaPanMove(e: ReactPointerEvent) { const d = plantaPanRef.current; if (d) { const nx = d.ox + (e.clientX - d.px), ny = d.oy + (e.clientY - d.py); vistaPlantaRef.current = { ...vistaPlantaRef.current, x: nx, y: ny }; setPlantaPan({ x: nx, y: ny }); } }
   function plantaPanUp(e: ReactPointerEvent) { plantaPanRef.current = null; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ } }
   function ajustarPlanta() {
+    // Mede num quadro seguinte: se a Planta acabou de abrir (ou um painel fechou), a área de
+    // visualização ainda pode estar com o tamanho antigo. Esperar o layout assentar evita enquadrar
+    // pela medida errada — que dava a impressão de o Foco não fazer nada.
+    requestAnimationFrame(() => {
     const el = document.getElementById('planta-print');
     if (el) {
       const rect = el.getBoundingClientRect();
@@ -993,6 +1017,7 @@ export default function EditorPage() {
       setPlantaPan({ x: 0, y: 0 });
       vistaPlantaRef.current = { z: 1, x: 0, y: 0 };
     }
+    });
     // NÃO zera offsetX/offsetY aqui: isso é a posição da folha em relação ao polígono, ajustada
     // à mão pelo usuário e salva no projeto. Antes, o auto-ajuste ao abrir a Planta apagava essa
     // posição toda vez. O enquadramento acima é só da tela (zoom/pan da viewport), não da folha.
@@ -3469,10 +3494,10 @@ export default function EditorPage() {
         ) : (
           <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Search /> SIGEF</Button>
         )}</Etapa>
-        {completo && parcelasCert.length > 0 && (
+        {medioOuMais && parcelasCert.length > 0 && (
           <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Casar automaticamente seus vértices com os certificados do INCRA: nos pontos de divisa comum (até 0,5 m), adota a coordenada oficial exata" onClick={casarVerticesCertificados}><Magnet className="size-4" /> CASAR</Button>
         )}
-        {completo && (
+        {medioOuMais && (
           <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Importar um ARQUIVO de coordenadas de um imóvel vizinho já certificado (baixado do Acervo Fundiário do INCRA). Os vértices dele ficam GUARDADOS no projeto com coordenada, sigma e código — mesmo os que estão perto mas não encostam. Aparecem na planta e viram alvo de encaixe (a divisa gruda no ponto oficial), evitando vão e sobreposição. Nos pontos colados (até 2 m) o seu vértice adota o código oficial. As colunas do arquivo se ajustam em Configurações." onClick={() => verticesVizinhoRef.current?.click()}><UserCheck className="size-4" /> VIZINHOS</Button>
         )}
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
@@ -3502,16 +3527,16 @@ export default function EditorPage() {
         <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
-        {completo && (
+        {medioOuMais && (
           <Etapa st={etapas.errata}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button></Etapa>
         )}
 
-        {completo && (
+        {medioOuMais && (
           <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
             <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
           </a>
         )}
-        {completo && (
+        {medioOuMais && (
           <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} border-green-600/40 bg-green-500/10 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf className="size-4" /> CAR</Button>
         )}
        </div>
@@ -3676,32 +3701,37 @@ export default function EditorPage() {
                           <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
                           {/* Mover + ímã + rótulos + travar numa grade de 3 colunas (sem botão de largura total) */}
                           <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
+                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="relative" title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
                               <MousePointer2 className="text-cyan-500" /> <span>Mover</span>
+                              <Atalho k="F2" />
                             </Button>
-                            <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar GRUDA no vértice mais próximo do imóvel (2 m). Bom para cotar de vértice a vértice ou fechar polilinha bem no canto. Se você não desenha perto dos vértices, deixe desligado.`} onClick={() => setSnapAtivo((s) => !s)} className={snapAtivo ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}>
+                            <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar GRUDA no vértice mais próximo do imóvel (2 m). Bom para cotar de vértice a vértice ou fechar polilinha bem no canto. Se você não desenha perto dos vértices, deixe desligado.`} onClick={() => setSnapAtivo((s) => !s)} className={`relative ${snapAtivo ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}`}>
                               <Magnet /> <span>Ímã</span>
+                              <Atalho k="F3" />
                             </Button>
-                            <Button size="sm" variant={mostrarRotulos ? 'default' : 'outline'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={mostrarRotulos ? 'bg-sky-600 text-white hover:bg-sky-700' : ''}>
+                            <Button size="sm" variant={mostrarRotulos ? 'default' : 'outline'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? 'bg-sky-600 text-white hover:bg-sky-700' : ''}`}>
                               {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
+                              <Atalho k="F4" />
                             </Button>
-                            <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={`col-span-3 ${bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'}`} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
+                            <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={`relative col-span-3 ${bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'}`} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
                               {bloqueado ? <Lock /> : <LockOpen />} <span>{bloqueado ? 'Vértices travados' : 'Vértices soltos'}</span>
+                              <Atalho k="F5" />
                             </Button>
                           </div>
                         </>
                       ) : (
                         <div className="flex flex-col gap-1">
                           <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="h-8 justify-center gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}>
+                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="relative h-8 justify-center gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}>
                             <MousePointer2 className="size-4 text-cyan-500" /> <span className="text-xs font-semibold uppercase">Mover / editar</span>
+                            <Atalho k="F1" />
                           </Button>
                         </div>
                       )}
                     </div>
 
                     {/* CARD 3: FERRAMENTAS DE DESENHO */}
-                    {completo && (vista === 'mapa' || editarPlanta) && (
+                    {medioOuMais && (vista === 'mapa' || editarPlanta) && (
                       <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
                         <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
                           <span>Desenho e Geometria</span>
@@ -3724,25 +3754,32 @@ export default function EditorPage() {
                           </div>
                         )}
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
-                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} onClick={() => alternarModo('linha', true)} title="Linha reta: clique 2 pontos (F6)">
+                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} className="relative" onClick={() => alternarModo('linha', true)} title="Linha reta: clique 2 pontos (F6)">
                             <PenTool className="text-amber-500 shrink-0" /> <span className="truncate">Linha</span>
+                            <Atalho k="F6" />
                           </Button>
-                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'outline'} onClick={() => alternarModo('polilinha', true)} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
+                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'outline'} className="relative" onClick={() => alternarModo('polilinha', true)} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
                             <PenTool className="text-cyan-500 shrink-0" /> <span className="truncate">Polilinha</span>
+                            <Atalho k="F7" />
                           </Button>
-                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'outline'} onClick={() => alternarModo('tracejado', true)} title="Tracejado: linha tracejada aberta (F8)">
+                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'outline'} className="relative" onClick={() => alternarModo('tracejado', true)} title="Tracejado: linha tracejada aberta (F8)">
                             <PenTool className="text-indigo-500 opacity-80 shrink-0" /> <span className="truncate">Tracejado</span>
+                            <Atalho k="F8" />
                           </Button>
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} onClick={() => alternarModo('texto')} title="Texto: clique para inserir (F9)">
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} className="relative" onClick={() => alternarModo('texto')} title="Texto: clique para inserir (F9)">
                             <FileText className="text-emerald-500 shrink-0" /> <span className="truncate">Texto</span>
+                            <Atalho k="F9" />
                           </Button>
-                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} onClick={() => alternarModo('cota', true)} title="Cotar: clique dois pontos para medir (F10)">
+                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} className="relative" onClick={() => alternarModo('cota', true)} title="Cotar: clique dois pontos para medir (F10)">
                             <IconeCota className="text-rose-500 shrink-0" /> <span className="truncate">Cota</span>
+                            <Atalho k="F10" />
                           </Button>
                           <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'outline'} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
                             <div className="shrink-0 text-sky-500"><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
                             <span className="truncate">Símbolos</span>
                           </Button>
+                          {/* Geometria avançada de CAD — só no Completo (o Médio fica com o desenho do dia a dia) */}
+                          {completo && (<>
                           <Button size="sm" variant={modo === 'paralela' ? 'default' : 'outline'} onClick={() => alternarModo('paralela', true)} title="Paralela: criar linha paralela a uma divisa">
                             <Waypoints className="text-violet-500 shrink-0" /> <span className="truncate">Paralela</span>
                           </Button>
@@ -3755,6 +3792,7 @@ export default function EditorPage() {
                           <Button size="sm" variant={modo === 'extend' ? 'default' : 'outline'} onClick={() => alternarModo('extend')} title="Prolongar (Extend): estender uma linha até encontrar um limite">
                             <Expand className="text-sky-500 shrink-0" /> <span className="truncate">Prolongar</span>
                           </Button>
+                          </>)}
                           {modo === 'simbolo' && (
                             <div className="col-span-3 grid grid-cols-5 gap-1 rounded-sm border bg-muted/40 p-1">
                               {SIMBOLOS.map((s) => (
@@ -3814,11 +3852,13 @@ export default function EditorPage() {
                           <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); alternarModo('apagar'); }} title="Apagar vértice">
                             <Trash2 className="text-rose-500 shrink-0" /> <span className="truncate">Apagar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
+                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} className="relative" onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
                             <EyeOff className="text-amber-500 shrink-0" /> <span className="truncate">Ignorar</span>
+                            <Atalho k="F12" />
                           </Button>
-                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); alternarModo('considerar'); }} title="Considerar vértice (F11)">
+                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} className="relative" onClick={() => { setVista('mapa'); alternarModo('considerar'); }} title="Considerar vértice (F11)">
                             <Plus className="text-cyan-500 shrink-0" /> <span className="truncate">Considerar</span>
+                            <Atalho k="F11" />
                           </Button>
                           <Button size="sm" variant={modo === 'medir' ? 'default' : 'outline'} onClick={() => alternarModo('medir', true)} title="Régua: medir distância e azimute no mapa">
                             <Ruler className="text-sky-500 shrink-0" /> <span className="truncate">Medir</span>
@@ -3926,7 +3966,7 @@ export default function EditorPage() {
                     )}
 
                     {/* CARD 4: GERENCIADOR DE CAMADAS */}
-                    {completo && vista === 'mapa' && (
+                    {medioOuMais && vista === 'mapa' && (
                       <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm mt-1.5">
                         <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`}>
                           <span>Gerenciador de Camadas</span>
@@ -4029,8 +4069,8 @@ export default function EditorPage() {
                   </div>
                 ) : (
                   /* Coluna única para barra colapsada */
-                  <div className="flex flex-col gap-1 mb-1 [&>button]:size-9 [&>button]:p-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&_svg]:size-4">
-                    <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold' : ''} onClick={salvar} disabled={processando} title="Salvar o projeto"><Save className="size-4" /></Button>
+                  <div className="flex flex-col gap-1 mb-1 [&>button]:relative [&>button]:size-9 [&>button]:p-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&_svg]:size-4">
+                    <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold' : ''} onClick={salvar} disabled={processando} title="Salvar o projeto (Ctrl+S)"><Save className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto"><Plus className="size-4" /></Button>
                     <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} onClick={() => setInfoAberto(true)} title="Detalhes do projeto"><FileText className="size-4" /></Button>
                     <Button size="sm" variant={painelAberto ? 'default' : 'outline'} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto"><Settings className="size-4" /></Button>
@@ -4038,19 +4078,23 @@ export default function EditorPage() {
                     {completo && (<>
                     <Button size="sm" variant="outline" onClick={() => setGestaoAberta(true)} title="Gestão financeira"><Info className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={() => setPontosAberto(true)} title="Banco de pontos"><Database className="size-4" /></Button>
+                    </>)}
+                    {medioOuMais && (<>
                     <div className="h-px bg-border my-1" />
-                    <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => alternarModo('linha', true)} title="Linha reta (F6)"><PenTool /></Button>
-                    <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => alternarModo('polilinha', true)} title="Polilinha (F7)"><PenTool /></Button>
-                    <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => alternarModo('tracejado', true)} title="Tracejado (F8)"><PenTool className="opacity-70" /></Button>
-                    <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => alternarModo('texto')} title="Texto (F9)"><FileText /></Button>
-                    <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => alternarModo('cota', true)} title="Cotar (F10)"><IconeCota /></Button>
+                    <Button size="sm" variant={modo === 'linha' ? 'default' : 'ghost'} onClick={() => alternarModo('linha', true)} title="Linha reta (F6)"><PenTool /><Atalho k="F6" /></Button>
+                    <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'ghost'} onClick={() => alternarModo('polilinha', true)} title="Polilinha (F7)"><PenTool /><Atalho k="F7" /></Button>
+                    <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'ghost'} onClick={() => alternarModo('tracejado', true)} title="Tracejado (F8)"><PenTool className="opacity-70" /><Atalho k="F8" /></Button>
+                    <Button size="sm" variant={modo === 'texto' ? 'default' : 'ghost'} onClick={() => alternarModo('texto')} title="Texto (F9)"><FileText /><Atalho k="F9" /></Button>
+                    <Button size="sm" variant={modo === 'cota' ? 'default' : 'ghost'} onClick={() => alternarModo('cota', true)} title="Cotar (F10)"><IconeCota /><Atalho k="F10" /></Button>
+                    {completo && (
                     <Button size="sm" variant={modo === 'paralela' ? 'default' : 'ghost'} onClick={() => alternarModo('paralela', true)} title="Paralela"><Waypoints /></Button>
+                    )}
                     <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
                     <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('inserir'); }} title="Inserir vértice"><Plus /></Button>
-                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /></Button>
-                    <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('considerar'); }} title="Considerar (F11)"><Plus /></Button>
+                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /><Atalho k="F12" /></Button>
+                    <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('considerar'); }} title="Considerar (F11)"><Plus /><Atalho k="F11" /></Button>
                     <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('apagar'); }} title="Apagar vértice"><Trash2 /></Button>
-                    <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => alternarModo('medir', true)} title="Medir / Régula"><Ruler /></Button>
+                    <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => alternarModo('medir', true)} title="Medir / Régua"><Ruler /></Button>
                     <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('multi'); }} title="Selecionar vários">
                       <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
                         <circle cx="12" cy="5" r="2.4" fill="currentColor" />
@@ -4182,7 +4226,7 @@ export default function EditorPage() {
                     {([
                       // 5º item = cor do ícone por categoria (ferramentas=índigo, sistema=neutro, master=âmbar, sair=vermelho)
                       // Ferramentas extras (índigo): só aparecem no modo Completo — não fazem parte do caminho essencial.
-                      ...(completo ? [['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-4" />, () => setCalcAberta(true), 'text-indigo-600 dark:text-indigo-400']] : []),
+                      ...(medioOuMais ? [['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-4" />, () => setCalcAberta(true), 'text-indigo-600 dark:text-indigo-400']] : []),
                       ...(completo ? [['Vért. V', 'Criar vértice virtual (V): canto que você não ocupou, por afastamento ou interseção de alinhamentos', <Waypoints key="i" className="size-4" />, () => { setVvBase(null); setVvAberto(true); }, 'text-indigo-600 dark:text-indigo-400']] : []),
                       ...(completo ? [['DXF', 'Editor de DXF (abrir e editar um DXF qualquer, ex.: projeto elétrico — isolado do projeto)', <PencilRuler key="i" className="size-4" />, () => setDxfEditorAberto(true), 'text-indigo-600 dark:text-indigo-400']] : []),
                       ...(completo ? [['% Área', 'Porcentagem entre dois polígonos (área de um em relação ao outro e ao total)', <Percent key="i" className="size-4" />, () => setPorcentagemAberta(true), 'text-indigo-600 dark:text-indigo-400']] : []),
@@ -4202,12 +4246,16 @@ export default function EditorPage() {
                       </Button>
                     ))}
                   </div>
-                  {/* Convite pro modo Completo: no Simples a pessoa vê que existe mais e vira a chave quando quiser. */}
+                  {/* Convite pra subir de degrau: a pessoa vê que existe mais e avança a chave quando quiser. */}
                   {!completo && rotulo && (
-                    <button type="button" onClick={() => trocarModoApp('completo')}
-                      title="Toque para abrir o modo Completo, com todas as ferramentas."
+                    <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
+                      title="Toque para subir um degrau e liberar mais ferramentas."
                       className="mt-1 block !h-auto w-full rounded-lg border border-dashed border-primary/40 bg-primary/5 !p-2 text-left !text-[10px] leading-snug text-muted-foreground hover:bg-primary/10">
-                      Você está no modo <b className="text-foreground">Fácil</b>, ideal para se familiarizar com o sistema. Quando se sentir seguro, alterne para o modo <b className="text-primary">Completo</b>.
+                      {medio ? (
+                        <>Você está no modo <b className="text-foreground">Médio</b>, com as ferramentas do dia a dia. Quando quiser tudo, inclusive as avançadas, alterne para o modo <b className="text-primary">Completo</b>.</>
+                      ) : (
+                        <>Você está no modo <b className="text-foreground">Fácil</b>, ideal para se familiarizar com o sistema. Quando se sentir seguro, suba para o modo <b className="text-primary">Médio</b>.</>
+                      )}
                     </button>
                   )}
                 </div>
@@ -4240,21 +4288,25 @@ export default function EditorPage() {
 
             {/* Salvar — logo abaixo da alternância mapa/planta, sempre visível e acessível */}
             <button type="button" onClick={() => { void salvar(); }} disabled={processando}
-              title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar' : salvoOk ? 'Trabalho salvo' : 'Salvar o projeto'}
+              title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar (Ctrl+S)' : salvoOk ? 'Trabalho salvo (Ctrl+S)' : 'Salvar o projeto (Ctrl+S)'}
               className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${salvarLaranja ? 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 animate-pulse' : 'border-border bg-background/95 hover:bg-muted'}`}>
               <Save className={`size-5 ${salvarLaranja ? 'text-white' : salvoOk ? 'text-green-600' : ''}`} />
               <span className="text-[10px] font-bold leading-none">SALVAR</span>
+              <span className={`text-[8px] font-bold leading-none ${salvarLaranja ? 'text-white/90' : 'text-amber-500'}`}>Ctrl S</span>
             </button>
 
-            {/* Modo Fácil/Completo — vale no app inteiro; some durante a abertura e após as 5 h de Completo */}
+            {/* Chave de modo Fácil → Médio → Completo → Fácil — vale no app inteiro; some durante a
+            abertura e após as 5 h de Completo. Um clique avança um degrau e volta ao início. */}
             {chaveTopoVisivel && !introTocando && (
-              <button type="button" onClick={() => trocarModoApp(completo ? 'simples' : 'completo')}
+              <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
                 title={completo
-                  ? 'Modo Completo: todas as ferramentas à mostra. Clique para o Fácil.'
-                  : 'Modo Fácil: só o caminho essencial. Clique para o Completo.'}
+                  ? 'Modo Completo: todas as ferramentas à mostra, inclusive as avançadas. Clique para voltar ao Fácil.'
+                  : medio
+                    ? 'Modo Médio: as ferramentas do dia a dia à mostra. Clique para o Completo.'
+                    : 'Modo Fácil: só o caminho essencial. Clique para o Médio.'}
                 className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
                 <GraduationCap className="size-5 text-primary" />
-                <span className="text-[10px] font-bold leading-none">{completo ? 'COMPL.' : 'FÁCIL'}</span>
+                <span className="text-[10px] font-bold leading-none">{rotuloModo}</span>
               </button>
             )}
 
@@ -4287,10 +4339,11 @@ export default function EditorPage() {
             </button>
             {vista === 'mapa' && (
               <button type="button" onClick={() => setSnapAtivo((v) => !v)}
-                title={snapAtivo ? 'Imã ligado: o clique encaixa em pontos próximos. Clique para desligar.' : 'Imã desligado. Clique para ligar o encaixe em pontos próximos.'}
+                title={snapAtivo ? 'Ímã ligado (F3): o clique encaixa em pontos próximos. Clique para desligar.' : 'Ímã desligado (F3). Clique para ligar o encaixe em pontos próximos.'}
                 className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${snapAtivo ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90' : 'border-border bg-background/95 hover:bg-muted'}`}>
                 <Magnet className={`size-5 ${snapAtivo ? 'text-primary-foreground' : ''}`} />
                 <span className="text-[10px] font-bold leading-none">IMÃ</span>
+                <span className={`text-[8px] font-bold leading-none ${snapAtivo ? 'text-primary-foreground/80' : 'text-amber-500'}`}>F3</span>
               </button>
             )}
 
@@ -4570,7 +4623,7 @@ export default function EditorPage() {
           {/* PAINEL DE PRECISÃO (modo Completo + ferramenta de desenho ativa): trava de ângulo
               ORTO/POLAR e próximo ponto por RUMO E DISTÂNCIA digitados — praxe de CAD pra
               transcrever memorial/escritura sem caçar o ponto com o mouse. */}
-          {vista === 'mapa' && completo && ['linha', 'polilinha', 'tracejado', 'cota', 'medir'].includes(modo) && (
+          {vista === 'mapa' && medioOuMais && ['linha', 'polilinha', 'tracejado', 'cota', 'medir'].includes(modo) && (
             <div className="absolute bottom-16 left-1/2 z-[1000] -translate-x-1/2 rounded-lg border bg-background/95 px-2.5 py-1.5 shadow-xl backdrop-blur">
               <div className="flex items-center gap-1.5 text-xs">
                 <button

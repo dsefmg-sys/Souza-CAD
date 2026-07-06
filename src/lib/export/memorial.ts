@@ -183,6 +183,12 @@ function seguePor(representacao: string): string {
     case 'corrego':
     case 'rio':
     case 'acude': return 'corpo de água';
+    case 'meio-fio': return 'meio-fio';
+    case 'calcada': return 'calçada';
+    case 'alambrado': return 'alambrado';
+    case 'aceiro': return 'aceiro';
+    case 'crista': return 'divisor de águas';
+    case 'cerca-viva': return 'cerca viva';
     default: return 'linha ideal';
   }
 }
