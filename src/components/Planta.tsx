@@ -2492,7 +2492,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
-              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(8.5) * (ovProp.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovProp.escala ?? 1), ovProp.larguraChars ?? 68)} textAnchor="middle" texto={txtProp} lineHeight={1.35} maxHeight={100} />
+              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(8.5) * (ovProp.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovProp.escala ?? 1), ovProp.larguraChars ?? 68)} textAnchor="middle" texto={txtProp} lineHeight={1.35} maxHeight={100} centrarEmAltura={132} />
             </g>
           );
         })()}
@@ -2539,7 +2539,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
-              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(8.5) * (ovLaudo.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovLaudo.escala ?? 1), ovLaudo.larguraChars ?? 68)} textAnchor="middle" texto={txtLaudo} lineHeight={1.35} maxHeight={100} />
+              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(8.5) * (ovLaudo.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovLaudo.escala ?? 1), ovLaudo.larguraChars ?? 68)} textAnchor="middle" texto={txtLaudo} lineHeight={1.35} maxHeight={100} centrarEmAltura={132} />
             </g>
           );
         })()}
@@ -2586,7 +2586,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idConf, e); } : undefined}>
-              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fsConf(8.5) * (ovConf.escala ?? 1)} larguraChars={capChars(fsConf(8.5) * (ovConf.escala ?? 1), ovConf.larguraChars ?? 68)} textAnchor="middle" texto={txtConf} lineHeight={1.35} maxHeight={70} />
+              <TextoQuebrado x={pxConf} y={pyConf} fontSize={fsConf(8.5) * (ovConf.escala ?? 1)} larguraChars={capChars(fsConf(8.5) * (ovConf.escala ?? 1), ovConf.larguraChars ?? 68)} textAnchor="middle" texto={txtConf} lineHeight={1.35} maxHeight={70} centrarEmAltura={70} />
             </g>
           );
         })()}
@@ -2685,7 +2685,7 @@ function SimboloDivisa({ tipo, x, y }: { tipo: string; x: number; y: number }) {
 }
 
 // SVG não quebra texto sozinho; quebramos em linhas por contagem de caracteres (texto nativo, respeitando \n)
-function TextoQuebrado({ x, y, fontSize, larguraChars, texto, textAnchor = 'start', lineHeight = 1.35, maxHeight }: { x: number; y: number; fontSize: number; larguraChars: number; texto: string; textAnchor?: 'start' | 'middle' | 'end'; lineHeight?: number; maxHeight?: number }) {
+function TextoQuebrado({ x, y, fontSize, larguraChars, texto, textAnchor = 'start', lineHeight = 1.35, maxHeight, centrarEmAltura }: { x: number; y: number; fontSize: number; larguraChars: number; texto: string; textAnchor?: 'start' | 'middle' | 'end'; lineHeight?: number; maxHeight?: number; centrarEmAltura?: number }) {
   const partes = texto.split('\n');
   const linhas: string[] = [];
   for (const parte of partes) {
@@ -2717,8 +2717,13 @@ function TextoQuebrado({ x, y, fontSize, larguraChars, texto, textAnchor = 'star
     const precisa = linhas.length * fs * lineHeight;
     if (precisa > maxHeight) fs = Math.max(4, maxHeight / (linhas.length * lineHeight));
   }
+  // centraliza VERTICALMENTE o bloco de texto na faixa disponível (entre o cabeçalho e a assinatura),
+  // pra o texto ficar no meio da caixa em vez de colado no topo. Se o texto é alto demais, começa do
+  // topo (offset 0) — nunca vaza pra fora nem sobe a assinatura.
+  const alturaBloco = linhas.length * fs * lineHeight;
+  const yTopo = centrarEmAltura ? y + Math.max(0, (centrarEmAltura - alturaBloco) / 2) : y;
   return (
-    <text x={x} y={y} fontSize={fs} fill="#000" textAnchor={textAnchor}>
+    <text x={x} y={yTopo} fontSize={fs} fill="#000" textAnchor={textAnchor}>
       {linhas.map((l, i) => (
         <tspan key={i} x={x} dy={i === 0 ? fs * 0.85 : fs * lineHeight} textAnchor={textAnchor}>{l}</tspan>
       ))}
