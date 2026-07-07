@@ -7,6 +7,7 @@ import { Waypoints } from 'lucide-react';
 import { utmParaGeo, grausParaDMS } from '@/lib/topo/coords';
 import { numBR } from '@/lib/topo/geometry';
 import { porAfastamento, porInterseccao } from '@/lib/topo/verticeVirtual';
+import { parseAzimute } from '@/lib/topo/orto';
 import { METODOS_VIRTUAIS } from '@/lib/topo/sigefVocab';
 import type { Vertex } from '@/lib/topo/types';
 
@@ -113,7 +114,9 @@ export default function VerticeVirtualModal({ open, onOpenChange, zona, hemisfer
   // Resultado calculado (E/N) conforme a aba.
   const resultado = useMemo<{ leste: number; norte: number } | null>(() => {
     if (aba === 'afastamento') {
-      const e = num(baseE), n = num(baseN), az = num(azimute), d = num(distancia);
+      const parsedAz = parseAzimute(azimute);
+      const az = parsedAz !== null ? parsedAz : num(azimute);
+      const e = num(baseE), n = num(baseN), d = num(distancia);
       if (![e, n, az, d].every(Number.isFinite) || !(baseE && baseN && azimute && distancia)) return null;
       return porAfastamento({ leste: e, norte: n }, az, d);
     }
