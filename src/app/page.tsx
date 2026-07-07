@@ -181,47 +181,7 @@ function Etapa({ st, children }: { st: EtapaEstado; children: ReactNode }) {
   );
 }
 
-// Botão único de AÇÕES: desfazer à esquerda, refazer no meio, mover à direita (economiza espaço).
-function BotaoAcoes({ onUndo, onRedo, modo, setModo, atalhoK = 'F2' }: { onUndo: () => void; onRedo: () => void; modo?: string; setModo?: (m: any) => void; atalhoK?: string }) {
-  return (
-    <div className="flex h-9 w-full items-stretch overflow-hidden rounded-md border bg-background">
-      <button
-        type="button"
-        onClick={onUndo}
-        title="Desfazer (Ctrl+Z)"
-        className="flex flex-1 items-center justify-center gap-1 hover:bg-muted text-foreground border-r text-[9px] font-bold uppercase leading-none"
-      >
-        <Undo2 className="size-3.5 shrink-0" />
-        <span>Desfazer</span>
-      </button>
 
-      <button
-        type="button"
-        onClick={onRedo}
-        title="Refazer (Ctrl+Y)"
-        className={`flex flex-1 items-center justify-center gap-1 hover:bg-muted text-foreground ${setModo ? 'border-r' : ''} text-[9px] font-bold uppercase leading-none`}
-      >
-        <Redo2 className="size-3.5 shrink-0" />
-        <span>Refazer</span>
-      </button>
-      
-      {setModo && (
-        <button
-          type="button"
-          onClick={() => setModo('navegar')}
-          className={`flex flex-1 items-center justify-center gap-1 text-[9px] font-bold uppercase leading-none transition-colors relative ${
-            modo === 'navegar' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'hover:bg-muted text-cyan-600 dark:text-cyan-400'
-          }`}
-          title={atalhoK === 'F1' ? 'Mover/editar: arrastar textos, rótulos e a folha (F1)' : 'Mover/navegar: arrastar elementos (F2)'}
-        >
-          <MousePointer2 className="size-3.5 shrink-0" />
-          <span>Mover</span>
-          <Atalho k={atalhoK} className="right-1 top-0.5" />
-        </button>
-      )}
-    </div>
-  );
-}
 
 function IconeCota({ className }: { className?: string }) {
   return (
@@ -506,7 +466,7 @@ export default function EditorPage() {
         } catch (_) {}
       }
     }
-    return { x: 8, y: 8 };
+    return { x: 100, y: 56 };
   });
 
   const [arrastandoAtalhos, setArrastandoAtalhos] = useState<{
@@ -518,15 +478,14 @@ export default function EditorPage() {
 
   useEffect(() => {
     if (!arrastandoAtalhos) return;
-
     const handleMouseMove = (e: MouseEvent) => {
       const dx = e.clientX - arrastandoAtalhos.startX;
       const dy = e.clientY - arrastandoAtalhos.startY;
-      const novoX = Math.max(5, Math.min(window.innerWidth - 100, arrastandoAtalhos.startPosX + dx));
-      const novoY = Math.max(5, Math.min(window.innerHeight - 40, arrastandoAtalhos.startPosY + dy));
-      setPosAtalhos({ x: novoX, y: novoY });
+      setPosAtalhos({
+        x: Math.max(0, Math.min(window.innerWidth - 100, arrastandoAtalhos.startPosX + dx)),
+        y: Math.max(0, Math.min(window.innerHeight - 30, arrastandoAtalhos.startPosY + dy)),
+      });
     };
-
     const handleMouseUp = () => {
       localStorage.setItem('metrica:pos_barra_atalhos', JSON.stringify(posAtalhos));
       setArrastandoAtalhos(null);
@@ -541,7 +500,7 @@ export default function EditorPage() {
   }, [arrastandoAtalhos, posAtalhos]);
 
   const [plantaDark, setPlantaDark] = useState(true); // modo escuro só da folha A3 (conforto noturno)
-  const direcaoAtalhos = (typeof window !== 'undefined' && posAtalhos.x < 150) ? 'vertical' : 'horizontal';
+  const direcaoAtalhos = (typeof window !== 'undefined' && posAtalhos.x < 120 && posAtalhos.y > window.innerHeight * 0.25 && posAtalhos.y < window.innerHeight * 0.75) ? 'vertical' : 'horizontal';
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean; errata?: boolean }>({});
@@ -3864,11 +3823,11 @@ export default function EditorPage() {
 
         {medioOuMais && (
           <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
-            <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel">CERT</Button>
+            <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-emerald-800 hover:bg-emerald-900 text-white border-transparent`} title="Acessar o SIGEF para certificação eletrônica do imóvel">CERT</Button>
           </a>
         )}
         {medioOuMais && (
-          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
+          <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 text-white border-transparent`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
         )}
        </div>
 
@@ -4030,7 +3989,19 @@ export default function EditorPage() {
                       )}
                       {vista === 'mapa' ? (
                         <>
-                          <BotaoAcoes onUndo={desfazer} onRedo={refazer} modo={modo} setModo={setModo} atalhoK="F2" />
+                          {/* Grade de 3 colunas: Desfazer + Refazer + Mover */}
+                          <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none mb-1">
+                            <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer (Ctrl+Z)">
+                              <Undo2 /> <span>Desfazer</span>
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={refazer} title="Refazer (Ctrl+Y)">
+                              <Redo2 /> <span>Refazer</span>
+                            </Button>
+                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className={`relative ${modo === 'navegar' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
+                              <MousePointer2 /> <span>Mover</span>
+                              <Atalho k="F2" />
+                            </Button>
+                          </div>
                           {/* Grade de 3 colunas: Travar + Ímã + Rótulos */}
                           <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
                             <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={`relative ${bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'}`} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
@@ -4048,8 +4019,17 @@ export default function EditorPage() {
                           </div>
                         </>
                       ) : (
-                        <div className="flex flex-col gap-1">
-                          <BotaoAcoes onUndo={desfazer} onRedo={refazer} modo={modo} setModo={setModo} atalhoK="F1" />
+                        <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
+                          <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer (Ctrl+Z)">
+                            <Undo2 /> <span>Desfazer</span>
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={refazer} title="Refazer (Ctrl+Y)">
+                            <Redo2 /> <span>Refazer</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className={`relative ${modo === 'navegar' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}`} title="Mover/editar: arrastar textos, rótulos e a folha (F1)" onClick={() => setModo('navegar')}>
+                            <MousePointer2 /> <span>Mover</span>
+                            <Atalho k="F1" />
+                          </Button>
                         </div>
                       )}
                     </div>
