@@ -640,7 +640,7 @@ export default function EditorPage() {
   }, [modoApp]);
   // No Simples a chave sempre aparece (pra poder subir pro Completo). No Completo ela só some depois
   // de 5 h acumuladas — antes disso ainda dá pra voltar fácil pelo topo.
-  const chaveTopoVisivel = modoApp === 'simples' || tempoCompletoMs < LIMITE_MODO_FIXO_MS;
+  const chaveTopoVisivel = true;
   // primeira vez neste navegador: abre o tutorial sozinho (independe de login/rascunho).
   useEffect(() => { if (!tutorialJaVisto()) setTutorialAberto(true); }, []);
   function fecharTutorial(o: boolean) { setTutorialAberto(o); if (!o) marcarTutorialVisto(); }
@@ -3825,7 +3825,7 @@ export default function EditorPage() {
             )}
           </span>
         </div>
-        <div className="flex flex-1 items-start gap-1 overflow-x-auto px-2 py-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
+        <div className="flex flex-1 items-center gap-1 overflow-x-auto px-2 py-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] [&_button_svg]:size-3">
         <input ref={fileRef} type="file" accept=".txt,.csv" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
@@ -3848,7 +3848,7 @@ export default function EditorPage() {
             SIGEF
           </Button>
         </Etapa>
-        <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
+        <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
         {/* 2) Dados do projeto atual */}
         <Etapa st={etapas.dados}>
@@ -3857,12 +3857,12 @@ export default function EditorPage() {
           </Button>
         </Etapa>
         <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}>CADASTROS</Button>
-        <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
+        <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
         <Etapa st={etapas.confro}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>CONFRO</Button></Etapa>
         <Etapa st={etapas.divisas}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>DIVISAS</Button></Etapa>
-        <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
+        <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
         {/* 5) Peças */}
         <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>{tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
@@ -4566,20 +4566,22 @@ export default function EditorPage() {
                 <div className="mt-auto flex flex-col gap-1 border-t pt-1.5">
                   {/* Tamanho dos textos: no mapa mexe nos nomes dos vértices; na planta, 4 escopos separados */}
                   {vista === 'mapa' ? (
-                    <div className="grid grid-cols-2 gap-1 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
-                      <span className="text-[10px] font-bold uppercase text-foreground col-span-2 px-1 mb-0.5">Ajuste de Tamanhos</span>
-                      <div className="flex flex-col items-center rounded-sm bg-muted/40 p-1" title="Tamanho dos nomes/códigos que aparecem nos vértices">
-                        <span className="text-[10px] font-bold text-foreground truncate">Rótulos</span>
-                        <div className="flex gap-0.5 mt-1">
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}><span className="text-[9px]">A-</span></Button>
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}><span className="text-[9px]">A+</span></Button>
+                    <div className="flex flex-col gap-1 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
+                      <span className="text-[10px] font-bold uppercase text-foreground px-1 mb-0.5">Ajuste de Tamanhos</span>
+                      <div className="grid grid-cols-2 gap-1">
+                        <div className="flex items-center justify-between rounded-sm bg-muted/40 px-1.5 py-0.5 text-[10px] font-bold text-foreground" title="Tamanho dos nomes/códigos que aparecem nos vértices">
+                          <span className="truncate">Rótulos</span>
+                          <div className="flex gap-0.5">
+                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}>A-</Button>
+                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}>A+</Button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex flex-col items-center rounded-sm bg-muted/40 p-1" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
-                        <span className="text-[10px] font-bold text-foreground truncate">Interface</span>
-                        <div className="flex gap-0.5 mt-1">
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}><span className="text-[9px]">A-</span></Button>
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 font-bold" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}><span className="text-[9px]">A+</span></Button>
+                        <div className="flex items-center justify-between rounded-sm bg-muted/40 px-1.5 py-0.5 text-[10px] font-bold text-foreground" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
+                          <span className="truncate">Interface</span>
+                          <div className="flex gap-0.5">
+                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}>A-</Button>
+                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}>A+</Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -4816,7 +4818,7 @@ export default function EditorPage() {
               {vista === 'mapa' && (
                 <button type="button" onClick={() => setSnapAtivo((v) => !v)}
                   title={snapAtivo ? 'Ímã ligado (F3): o clique encaixa em pontos próximos. Clique para desligar.' : 'Ímã desligado (F3). Clique para ligar o encaixe em pontos próximos.'}
-                  className={`flex h-7 w-20 items-center justify-center rounded-full border border-transparent shadow-sm transition-all duration-200 active:scale-95 text-white font-bold ${snapAtivo ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-slate-500 hover:bg-slate-600'}`}>
+                  className={`flex h-7 w-20 items-center justify-center rounded-full border border-transparent shadow-sm transition-all duration-200 active:scale-95 text-white font-bold ${snapAtivo ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-slate-700 hover:bg-slate-800'}`}>
                   <Magnet className="size-3.5 text-white mr-1 shrink-0" />
                   <span className="text-[9px] font-extrabold tracking-wide">IMÃ</span>
                 </button>
