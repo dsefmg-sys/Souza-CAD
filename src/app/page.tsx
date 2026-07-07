@@ -3719,12 +3719,11 @@ export default function EditorPage() {
       <header className="no-print flex items-stretch border-b">
         <div className="flex shrink-0 items-center gap-1.5 border-r pl-2 pr-2.5" title={souMaster() ? "Souza CAD - Painel Master ADM" : "Souza CAD"}>
           <Logo className={`size-6 transition-all duration-300 ${souMaster() ? 'brightness-110 sepia-[0.3] saturate-[3] hue-rotate-[10deg] drop-shadow-[0_0_4px_#f59e0b]' : ''}`} />
-          <span className="hidden text-sm font-semibold tracking-tight sm:inline">
-            <span className={souMaster() ? 'text-amber-500 font-extrabold dark:text-amber-400' : 'text-primary'}>Souza</span>
-            {' '}
-            <span className={souMaster() ? 'text-amber-600 font-bold dark:text-amber-500' : 'text-muted-foreground'}>CAD</span>
+          <span className="hidden flex-col text-[9px] font-black uppercase tracking-wider leading-none sm:flex">
+            <span className={souMaster() ? 'text-amber-500 dark:text-amber-400' : 'text-primary'}>Souza</span>
+            <span className={souMaster() ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground'}>CAD</span>
             {souMaster() && (
-              <span className="ml-1 rounded-full bg-amber-500/10 px-1 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/20 animate-pulse">
+              <span className="mt-0.5 rounded-full bg-amber-500/10 px-0.5 py-px text-[7px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/20 text-center animate-pulse">
                 Master
               </span>
             )}
