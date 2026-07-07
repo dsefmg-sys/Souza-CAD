@@ -260,8 +260,21 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
     );
   }
 
+  async function handleCloseRequest() {
+    if (els.length > 0) {
+      const ok = await confirmar({
+        titulo: 'Fechar estúdio',
+        mensagem: 'Você tem elementos no estúdio. Deseja realmente fechar e perder o layout atual?',
+        okLabel: 'Descartar e fechar',
+        perigo: true
+      });
+      if (!ok) return;
+    }
+    onOpenChange(false);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
       <DialogContent className="flex h-screen w-screen max-w-none flex-col gap-0 rounded-none border-0 p-3 sm:rounded-none">
         <DialogHeader className="border-b pb-2">
           <DialogTitle className="flex items-center gap-2 text-base font-bold"><ImageIcon className="size-5 text-primary" /> Estúdio (edição de imagem — isolado do projeto)</DialogTitle>

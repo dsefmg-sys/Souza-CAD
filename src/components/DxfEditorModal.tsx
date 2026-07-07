@@ -341,6 +341,19 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
     return <rect x={p.x - 5} y={p.y - 5} width={10} height={10} fill="none" stroke="#16a34a" strokeWidth={1.6} />;
   }
 
+  async function handleCloseRequest() {
+    if (ents.length > 0 || histRef.current.length > 0) {
+      const ok = await confirmar({
+        titulo: 'Fechar editor',
+        mensagem: 'Você fez alterações no DXF. Deseja realmente fechar o editor e descartar as alterações?',
+        okLabel: 'Descartar e fechar',
+        perigo: true
+      });
+      if (!ok) return;
+    }
+    onOpenChange(false);
+  }
+
   const emDesenho = modo !== 'sel' && modo !== 'texto';
   const dica: Record<Modo, string> = {
     sel: 'Arraste o fundo para mover · roda do mouse dá zoom · clique numa entidade para selecionar e arrastar · Delete apaga.',
@@ -353,7 +366,7 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
       <DialogContent className="flex h-[92vh] w-[94vw] max-w-[94vw] flex-col p-3">
         <DialogHeader className="border-b pb-2">
           <DialogTitle className="flex items-center gap-2 text-base font-bold"><PenTool className="size-5 text-primary" /> Editor de DXF (isolado — não afeta o projeto)</DialogTitle>
