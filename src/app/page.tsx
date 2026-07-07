@@ -155,11 +155,11 @@ const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-M
 
 // Linguagem de cor por FUNÇÃO do botão (deixa o cabeçalho intuitivo: a cor diz o que o grupo faz).
 // O ícone ainda muda de cor pelo progresso (verde=feito, azul=andamento) por cima disso.
-const COR_IMPORT = 'bg-background hover:bg-muted/60 text-sky-600 dark:text-sky-400 border-border/70 hover:border-border';       // entrada de dados
-const COR_VIZINHO = 'bg-background hover:bg-muted/60 text-teal-600 dark:text-teal-400 border-border/70 hover:border-border'; // vizinho certificado (SIGEF/INCRA)
-const COR_DADOS = 'bg-background hover:bg-muted/60 text-violet-600 dark:text-violet-400 border-border/70 hover:border-border'; // cadastro e IA
-const COR_MARCAR = 'bg-background hover:bg-muted/60 text-amber-600 dark:text-amber-400 border-border/70 hover:border-border';    // marcar no mapa
-const COR_PECA = 'bg-background hover:bg-muted/60 text-emerald-600 dark:text-emerald-400 border-border/70 hover:border-border'; // peças de saída
+const COR_IMPORT = 'bg-sky-600 hover:bg-sky-700 text-white border-transparent';       // entrada de dados
+const COR_VIZINHO = 'bg-teal-600 hover:bg-teal-700 text-white border-transparent'; // vizinho certificado (SIGEF/INCRA)
+const COR_DADOS = 'bg-violet-600 hover:bg-violet-700 text-white border-transparent'; // cadastro e IA
+const COR_MARCAR = 'bg-amber-600 hover:bg-amber-700 text-white border-transparent';    // marcar no mapa
+const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída
 const PREM_BTN = 'shadow-xs hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 font-bold border rounded-lg';
 
 type EtapaEstado = 'feito' | 'andamento' | 'pendente';
@@ -3794,9 +3794,9 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarProjetoJson(f); e.currentTarget.value = ''; }} />
 
         {/* 1) Importar e checar vizinhos */}
-        <Etapa st={etapas.txt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
+        <Etapa st={etapas.txt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
         <Etapa st={etapas.sigef}>
-          <Button size="sm" variant={parcelasCert.length > 0 ? 'default' : 'outline'} className={`shrink-0 ${PREM_BTN} ${parcelasCert.length > 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : `${COR_IMPORT}`}`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
+          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
             SIGEF
           </Button>
         </Etapa>
@@ -3804,40 +3804,40 @@ export default function EditorPage() {
 
         {/* 2) Dados do projeto atual */}
         <Etapa st={etapas.dados}>
-          <Button size="sm" variant={painelAberto && aba === 'imovel' ? 'default' : 'outline'} className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
+          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''}`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
             DADOS
           </Button>
         </Etapa>
-        <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}>CADASTROS</Button>
+        <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}>CADASTROS</Button>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
-        <Etapa st={etapas.confro}><Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'confrontante' ? '' : `${PREM_BTN} ${COR_MARCAR}`}`} title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>CONFRO</Button></Etapa>
-        <Etapa st={etapas.divisas}><Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'divisa' ? '' : `${PREM_BTN} ${COR_MARCAR}`}`} title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>DIVISAS</Button></Etapa>
+        <Etapa st={etapas.confro}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>CONFRO</Button></Etapa>
+        <Etapa st={etapas.divisas}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>DIVISAS</Button></Etapa>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 5) Peças */}
-        <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>{tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
+        <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>{tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
         <Etapa st={etapas.memorial}>
-          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
+          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
         </Etapa>
         {projetoTemServidao && (
-          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
+          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
         )}
-        <Etapa st={etapas.ods}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
-        <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
-        <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
+        <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
+        <Etapa st={etapas.planta}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
+        <Etapa st={etapas.req}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
         {medioOuMais && (
-          <Etapa st={etapas.errata}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><Download /> ERRATA</Button></Etapa>
+          <Etapa st={etapas.errata}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><Download /> ERRATA</Button></Etapa>
         )}
 
         {medioOuMais && (
           <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
-            <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel">CERT</Button>
+            <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel">CERT</Button>
           </a>
         )}
         {medioOuMais && (
-          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} border-green-600/40 bg-green-500/10 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
+          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
         )}
        </div>
 
