@@ -69,7 +69,12 @@ export function gerarPdfDesenho(ents: Ent[], camadas: Camada[], nomeArquivo: str
         prev = p;
       }
     }
-    else if (e.t === 'text') { const p = P(e.pos); doc.setFontSize(Math.max(5, (e.altura || 2) * escala * 2.83)); doc.text(e.texto, p.x, p.y); }
+    else if (e.t === 'text') {
+      const p = P(e.pos);
+      doc.setFontSize(Math.max(5, (e.altura || 2) * escala * 2.83));
+      const opt = e.rotacao ? { angle: e.rotacao } : undefined;
+      doc.text(e.texto, p.x, p.y, opt);
+    }
     else if (e.t === 'point') { const p = P(e.p); doc.circle(p.x, p.y, 0.4, 'F'); }
   }
 

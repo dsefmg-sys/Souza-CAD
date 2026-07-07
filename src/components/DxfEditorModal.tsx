@@ -461,7 +461,12 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
                   const grande = varredura > 180 ? 1 : 0;
                   return <path key={e.id} d={`M ${p0.x} ${p0.y} A ${rr} ${rr} 0 ${grande} 0 ${p1.x} ${p1.y}`} fill="none" stroke={cor} strokeWidth={sw} />;
                 }
-                if (e.t === 'text') { const p = T(e.pos); const fz = Math.max(7, (e.altura || 2) * view.s); return <text key={e.id} x={p.x} y={p.y} fontSize={fz} fill={cor}>{e.texto}</text>; }
+                if (e.t === 'text') {
+                  const p = T(e.pos);
+                  const fz = Math.max(7, (e.altura || 2) * view.s);
+                  const rot = e.rotacao ? `rotate(${-e.rotacao}, ${p.x}, ${p.y})` : undefined;
+                  return <text key={e.id} x={p.x} y={p.y} fontSize={fz} fill={cor} transform={rot}>{e.texto}</text>;
+                }
                 const pt = T(e.p); return <circle key={e.id} cx={pt.x} cy={pt.y} r={on ? 3 : 1.6} fill={cor} />;
               })}
               <Previa />
