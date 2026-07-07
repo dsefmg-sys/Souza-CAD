@@ -520,6 +520,7 @@ export default function EditorPage() {
   const ultimoSalvoSig = useRef<string>('');
   const acabouDeSalvar = useRef(false);
   const [errataAberto, setErrataAberto] = useState(false);
+  const [sigefMenuAberto, setSigefMenuAberto] = useState(false);
   const [prevMemorialAberto, setPrevMemorialAberto] = useState(false);
   const [prevMemorialModo, setPrevMemorialModo] = useState<'normal' | 'servidao'>('normal');
   const [camadasPopoverAberta, setCamadasPopoverAberta] = useState(false);
@@ -3793,19 +3794,12 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarProjetoJson(f); e.currentTarget.value = ''; }} />
 
         {/* 1) Importar e checar vizinhos */}
-        {/* 1) Importar e checar vizinhos */}
         <Etapa st={etapas.txt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
-        <Etapa st={etapas.sigef}>{parcelasCert.length > 0 ? (
-          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} title="Vizinhos certificados já baixados — ver relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}>ANÁLISE</Button>
-        ) : (
-          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}>SIGEF</Button>
-        )}</Etapa>
-        {medioOuMais && parcelasCert.length > 0 && (
-          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Casar automaticamente seus vértices com os certificados do INCRA: nos pontos de divisa comum (até 0,5 m), adota a coordenada oficial exata" onClick={casarVerticesCertificados}>CASAR</Button>
-        )}
-        {medioOuMais && (
-          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Importar um ARQUIVO de coordenadas de um imóvel vizinho já certificado (baixado do Acervo Fundiário do INCRA). Os vértices dele ficam GUARDADOS no projeto com coordenada, sigma e código — mesmo os que estão perto mas não encostam. Aparecem na planta e viram alvo de encaixe (a divisa gruda no ponto oficial), evitando vão e sobreposição. Nos pontos colados (até 2 m) o seu vértice adota o código oficial. As colunas do arquivo se ajustam em Configurações." onClick={() => verticesVizinhoRef.current?.click()}>VIZINHOS</Button>
-        )}
+        <Etapa st={etapas.sigef}>
+          <Button size="sm" variant={parcelasCert.length > 0 ? 'default' : 'outline'} className={`shrink-0 ${PREM_BTN} ${parcelasCert.length > 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : `${COR_IMPORT}`}`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
+            SIGEF
+          </Button>
+        </Etapa>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 2) Dados do projeto atual */}
@@ -3823,7 +3817,7 @@ export default function EditorPage() {
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 5) Peças */}
-        <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}>TRT</Button></Etapa>
+        <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>{tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
         <Etapa st={etapas.memorial}>
           <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
         </Etapa>
@@ -3834,7 +3828,7 @@ export default function EditorPage() {
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
         {medioOuMais && (
-          <Etapa st={etapas.errata}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}>ERRATA</Button></Etapa>
+          <Etapa st={etapas.errata}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><Download /> ERRATA</Button></Etapa>
         )}
 
         {medioOuMais && (
@@ -5473,6 +5467,110 @@ export default function EditorPage() {
           }
         }} />
       <PrecoSugeridoModal open={precoSugAberto} onOpenChange={setPrecoSugAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
+      <Dialog open={sigefMenuAberto} onOpenChange={setSigefMenuAberto}>
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+              <Database className="size-5" /> Integração SIGEF / INCRA
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-4 mt-2">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              O principal objetivo deste módulo é obter e importar os vértices e polígonos confrontantes oficiais do INCRA para casar com o seu projeto, garantindo conformidade jurídica, e nomes e dados corretos de confrontações.
+            </p>
+
+            <div className="border border-border/60 rounded-xl p-3 bg-muted/20 space-y-3">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">1. Importar Polígonos Vizinhos</span>
+                  <Button
+                    size="sm"
+                    className="h-8 font-bold"
+                    onClick={() => {
+                      setSigefMenuAberto(false);
+                      void importarVizinhosAuto();
+                    }}
+                  >
+                    Buscar Online
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Busca automática online por região de todos os imóveis certificados que confrontam com o perímetro trabalhado, gerando os confrontantes automaticamente.
+                </p>
+              </div>
+
+              <div className="border-t border-border/30 pt-3 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">2. Importar Coordenadas de Vizinho</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 font-bold"
+                    onClick={() => {
+                      setSigefMenuAberto(false);
+                      verticesVizinhoRef.current?.click();
+                    }}
+                  >
+                    Importar Arquivo
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Importa arquivo (TXT/CSV) do Acervo Fundiário do INCRA de um confrontante. Os vértices ficam guardados como referência e alvos de encaixe para evitar vãos/sobreposições.
+                </p>
+              </div>
+
+              <div className="border-t border-border/30 pt-3 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1">
+                    3. Casar Vértices
+                    {parcelasCert.length > 0 && (
+                      <span className="inline-flex size-2 rounded-full bg-emerald-500 animate-pulse" title="Vizinhos carregados" />
+                    )}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 font-bold border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                    disabled={vertices.length < 3}
+                    onClick={() => {
+                      setSigefMenuAberto(false);
+                      void casarVerticesCertificados();
+                    }}
+                  >
+                    Casar Vértices
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Adota a coordenada oficial exata do INCRA nos pontos de divisa comuns (tolerância de até 0,5m para parcelas do SIGEF ou 2m para arquivos), aplicando os códigos oficiais aos seus vértices.
+                </p>
+              </div>
+
+              {parcelasCert.length > 0 && (
+                <div className="border-t border-border/30 pt-3 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground">4. Relatório de Sobreposição</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 font-bold border-teal-600 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/20"
+                      onClick={() => {
+                        setSigefMenuAberto(false);
+                        setModalSobreposicaoAberto(true);
+                      }}
+                    >
+                      Ver Relatório
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Analisa e exibe a sobreposição espacial com os polígonos baixados.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
         areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
         onExportarShapefiles={exportarCarShapefiles} onImportarShapefile={() => shapefileRef.current?.click()} processando={processando} />
