@@ -1721,7 +1721,12 @@ export default function MapEditor(props: Props) {
         const lista = confrontantes.filter((c) => usados.has(c.id));
         if (!lista.length) return null;
         return (
-          <div className="absolute bottom-6 right-2 z-[1000] max-h-40 max-w-56 overflow-y-auto rounded-sm border bg-background/90 px-2 py-1.5 text-[11px] shadow backdrop-blur">
+          <div
+            className="absolute bottom-6 right-2 z-[1000] max-h-40 max-w-56 overflow-y-auto rounded-sm border bg-background/90 px-2 py-1.5 text-[11px] shadow backdrop-blur"
+            onWheel={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-1 font-semibold text-muted-foreground">Confrontantes</div>
             {lista.map((c) => (
               <div key={c.id} className="flex items-center gap-1.5 py-0.5">

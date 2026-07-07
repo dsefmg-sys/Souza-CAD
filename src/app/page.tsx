@@ -499,6 +499,64 @@ export default function EditorPage() {
     };
   }, [arrastandoAtalhos, posAtalhos]);
 
+  const [posArea, setPosArea] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const salva = localStorage.getItem('metrica:pos_barra_medidas');
+      if (salva) {
+        try {
+          const p = JSON.parse(salva);
+          if (typeof p.x === 'number' && typeof p.y === 'number') {
+            return p;
+          }
+        } catch (_) {}
+      }
+    }
+    return { x: 300, y: 680 };
+  });
+
+  const [arrastandoArea, setArrastandoArea] = useState<{
+    startX: number;
+    startY: number;
+    startPosX: number;
+    startPosY: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!arrastandoArea) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - arrastandoArea.startX;
+      const dy = e.clientY - arrastandoArea.startY;
+      setPosArea({
+        x: Math.max(0, Math.min(window.innerWidth - 180, arrastandoArea.startPosX + dx)),
+        y: Math.max(0, Math.min(window.innerHeight - 40, arrastandoArea.startPosY + dy)),
+      });
+    };
+    const handleMouseUp = () => {
+      localStorage.setItem('metrica:pos_barra_medidas', JSON.stringify(posArea));
+      setArrastandoArea(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [arrastandoArea, posArea]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const salvaAtalhos = localStorage.getItem('metrica:pos_barra_atalhos');
+      if (!salvaAtalhos) {
+        setPosAtalhos({ x: window.innerWidth / 2 - 250, y: 64 });
+      }
+      const salvaArea = localStorage.getItem('metrica:pos_barra_medidas');
+      if (!salvaArea) {
+        setPosArea({ x: window.innerWidth / 2 - 120, y: window.innerHeight - 80 });
+      }
+    }
+  }, []);
+
   const [plantaDark, setPlantaDark] = useState(true); // modo escuro só da folha A3 (conforto noturno)
   const direcaoAtalhos = (typeof window !== 'undefined' && posAtalhos.x < 120 && posAtalhos.y > window.innerHeight * 0.25 && posAtalhos.y < window.innerHeight * 0.75) ? 'vertical' : 'horizontal';
   // progresso por etapa (ações do usuário que não se completam sozinhas)
@@ -4751,20 +4809,22 @@ export default function EditorPage() {
               <button type="button"
                 onClick={vista === 'mapa' ? centralizar : () => ajustarPlanta()}
                 title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Enquadrar a FOLHA A3 inteira na tela (foco)'}
-                className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-foreground hover:bg-muted shadow-sm transition-all duration-200 active:scale-95 font-bold">
+                className="flex h-7 w-20 items-center justify-center rounded-full border border-transparent bg-slate-700 hover:bg-slate-800 text-white shadow-sm transition-all duration-200 active:scale-95 font-bold">
+                <Crosshair className="size-3.5 text-white mr-1 shrink-0" />
                 <span className="text-[9px] font-extrabold tracking-wide">FOCO</span>
               </button>
               {vista === 'mapa' && (
                 <button type="button" onClick={() => setSnapAtivo((v) => !v)}
                   title={snapAtivo ? 'Ímã ligado (F3): o clique encaixa em pontos próximos. Clique para desligar.' : 'Ímã desligado (F3). Clique para ligar o encaixe em pontos próximos.'}
-                  className={`flex h-7 w-20 items-center justify-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 ${snapAtivo ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
+                  className={`flex h-7 w-20 items-center justify-center rounded-full border border-transparent shadow-sm transition-all duration-200 active:scale-95 text-white font-bold ${snapAtivo ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-slate-500 hover:bg-slate-600'}`}>
+                  <Magnet className="size-3.5 text-white mr-1 shrink-0" />
                   <span className="text-[9px] font-extrabold tracking-wide">IMÃ</span>
                 </button>
               )}
 
               {/* IA EXTRAIR */}
               <button type="button" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }}
-                title="Extrair dados de documentos/matrículas com Inteligência Artificial (Gemini)"
+                title="Extrair quaisquer dados (coordenadas, proprietários, confrontantes, áreas, etc.) de PDFs, imagens e documentos com Inteligência Artificial"
                 className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-indigo-600 dark:text-indigo-400 hover:bg-muted hover:border-indigo-500/50 shadow-sm transition-all duration-200 active:scale-95 font-bold">
                 <span className="text-[9px] font-extrabold tracking-wide">IA EXTRAIR</span>
               </button>
@@ -4856,6 +4916,43 @@ export default function EditorPage() {
             </div>
           </div>
 
+          {/* Área e Perímetro - Barra Flutuante e Arrastável */}
+          {res && (
+            <div
+              style={{ left: `${posArea.x}px`, top: `${posArea.y}px` }}
+              className="no-print pointer-events-auto absolute z-[1160] flex items-center gap-1.5 rounded-full border border-border/80 bg-background/90 backdrop-blur-sm p-1.5 shadow-xl select-none"
+            >
+              {/* Alça de arrasto */}
+              <div
+                className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-1"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setArrastandoArea({
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    startPosX: posArea.x,
+                    startPosY: posArea.y,
+                  });
+                }}
+              >
+                <GripVertical className="size-3.5" />
+              </div>
+
+              <div className="flex items-center gap-3 text-[11px] font-semibold text-foreground pr-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider">Área SGL:</span>
+                  <span>{numBR(res.areaHa, casasTela(4))} <span className="text-[9px] font-normal text-muted-foreground">ha</span></span>
+                </div>
+                <div className="h-3 w-px bg-border" />
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider">Perímetro:</span>
+                  <span>{numBR(res.perimetro)} <span className="text-[9px] font-normal text-muted-foreground">m</span></span>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {/* Barra flutuante de ferramentas unificada (Mapa/Planta) — arrastável e persistente */}
           {(vista === 'mapa' || vista === 'planta') && (
             <div
@@ -4898,20 +4995,6 @@ export default function EditorPage() {
               )}
 
 
-              {/* Área e Perímetro (sempre visíveis, em ambos os modos!) */}
-              {res && (
-                <div className="flex items-center gap-3 rounded-full border border-border bg-background/95 px-3.5 py-1.5 shadow-xl backdrop-blur text-[11px] font-semibold text-foreground">
-                  <div className="flex items-center gap-1">
-                    <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider animate-pulse-slow">Área SGL:</span>
-                    <span>{numBR(res.areaHa, casasTela(4))} <span className="text-[9px] font-normal text-muted-foreground">ha</span></span>
-                  </div>
-                  <div className="h-3 w-px bg-border" />
-                  <div className="flex items-center gap-1">
-                    <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider">Perímetro:</span>
-                    <span>{numBR(res.perimetro)} <span className="text-[9px] font-normal text-muted-foreground">m</span></span>
-                  </div>
-                </div>
-              )}
 
               {/* Player de áudio de introdução e tutorial (some durante o vídeo).
                   O contêiner é transparente, então cada pill carrega a própria sombra. */}

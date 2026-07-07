@@ -158,8 +158,8 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4 min-h-0 pr-1">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Arraste um arquivo (PDF da Matrícula, Escritura ou Foto do Documento) ou cole o texto abaixo. 
-            A inteligência artificial irá analisar os dados e preencher o cadastro para você conferir.
+            Arraste qualquer tipo de arquivo (PDF de Matrícula, Escritura, Planta, lista de coordenadas ou foto de papel) ou cole o texto livre abaixo. 
+            A inteligência artificial analisará o texto para extrair qualquer informação útil (coordenadas, proprietários, confrontantes, áreas, etc.) e preencher o cadastro.
           </p>
 
           {/* Area Multimodal: Upload / Dropzone */}
