@@ -8,7 +8,6 @@ function separadorRegex(sep: ImportTxtConfig['separador']): RegExp {
   return /;/;
 }
 
-/** Lê um número respeitando o separador decimal configurado. */
 function numero(s: string | undefined, decimal: '.' | ','): number {
   if (s == null) return NaN;
   let t = s.trim();
@@ -17,6 +16,10 @@ function numero(s: string | undefined, decimal: '.' | ','): number {
     // uma coordenada como "300000.25" (ponto decimal) viraria "30000025" e o vértice iria parar a
     // quilômetros do lugar. Notação científica ("1.5e6") também fica preservada.
     if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  } else {
+    // Se o decimal configurado for ponto, mas a célula contiver vírgula E não contiver pontos,
+    // é quase certeza que é um decimal no padrão BR (ex.: "123,45"). Corrigimos para evitar truncamento silencioso.
+    if (t.includes(',') && !t.includes('.')) t = t.replace(',', '.');
   }
   return parseFloat(t);
 }
