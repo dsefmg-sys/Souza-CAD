@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import type { ImovelData, EscritorioData, TecnicoData } from '../topo/types';
 import { rotulosProfissional } from '../topo/profissional';
 import { carregarModelos, preencherModelo } from '../store/modelos';
+import { valorPorExtenso } from '../topo/extenso';
 
 /** Variáveis dos modelos (recibo/contrato) a partir dos dados do serviço. */
 function varsFinanceiro(a: { imovel: ImovelData; tecnico: TecnicoData; areaHa: number; perimetro?: number }): Record<string, string> {
@@ -20,38 +21,8 @@ export function moedaBR(v: number): string {
 }
 
 // ----- valor por extenso (para o recibo) -----
-const UNID = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
-const DEZ = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
-const CEM = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
-
-function ext3(n: number): string {
-  if (n === 0) return '';
-  if (n === 100) return 'cem';
-  const c = Math.floor(n / 100), r = n % 100;
-  let s = c ? CEM[c] : '';
-  if (r) {
-    if (s) s += ' e ';
-    if (r < 20) s += UNID[r];
-    else { const d = Math.floor(r / 10), u = r % 10; s += DEZ[d] + (u ? ' e ' + UNID[u] : ''); }
-  }
-  return s;
-}
-
-/** "1234,50" -> "Mil duzentos e trinta e quatro reais e cinquenta centavos". */
 export function extensoReais(v: number): string {
-  const inteiro = Math.floor(v);
-  const centavos = Math.round((v - inteiro) * 100);
-  const milhoes = Math.floor(inteiro / 1_000_000);
-  const milhares = Math.floor((inteiro % 1_000_000) / 1000);
-  const resto = inteiro % 1000;
-  const partes: string[] = [];
-  if (milhoes) partes.push(ext3(milhoes) + (milhoes === 1 ? ' milhão' : ' milhões'));
-  if (milhares) partes.push(milhares === 1 ? 'mil' : ext3(milhares) + ' mil');
-  if (resto) partes.push(ext3(resto));
-  let txt = partes.join(' e ') || 'zero';
-  txt += inteiro === 1 ? ' real' : ' reais';
-  if (centavos) txt += ` e ${ext3(centavos)} ${centavos === 1 ? 'centavo' : 'centavos'}`;
-  return txt.charAt(0).toUpperCase() + txt.slice(1);
+  return valorPorExtenso(v, { estilo: 'conjuncao', capitalizar: true });
 }
 
 interface BaseArgs {

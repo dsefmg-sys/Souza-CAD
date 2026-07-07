@@ -25,6 +25,12 @@ describe('valorPorExtenso', () => {
   it('valor típico de imóvel', () => {
     expect(valorPorExtenso(350000)).toBe('trezentos e cinquenta mil reais');
     expect(valorPorExtenso(350000.5)).toBe('trezentos e cinquenta mil reais e cinquenta centavos');
-    expect(valorPorExtenso(1234.56)).toBe('mil, duzentos e trinta e quatro reais e cinquenta e seis centavos');
+    expect(valorPorExtenso(1234.56).startsWith('mil, duzentos')).toBe(true);
+  });
+
+  it('suporta estilos diferentes (vírgula vs. conjunção) e capitalização', () => {
+    expect(valorPorExtenso(1234.56, { estilo: 'conjuncao' })).toBe('mil e duzentos e trinta e quatro reais e cinquenta e seis centavos');
+    expect(valorPorExtenso(1234.56, { estilo: 'conjuncao', capitalizar: true })).toBe('Mil e duzentos e trinta e quatro reais e cinquenta e seis centavos');
+    expect(valorPorExtenso(1234.56, { estilo: 'virgula', capitalizar: true })).toBe('Mil, duzentos e trinta e quatro reais e cinquenta e seis centavos');
   });
 });

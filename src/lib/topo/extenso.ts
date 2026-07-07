@@ -31,7 +31,7 @@ function grupo(n: number): string {
   return partes.join(' e ');
 }
 
-function inteiroPorExtenso(n: number): string {
+function inteiroPorExtenso(n: number, estilo: 'virgula' | 'conjuncao' = 'virgula'): string {
   if (n === 0) return 'zero';
   // separa em grupos de 3
   const grupos: number[] = [];
@@ -50,11 +50,11 @@ function inteiroPorExtenso(n: number): string {
     itens.push({ s, valor: g });
   }
   if (itens.length === 1) return itens[0].s;
-  // junção: ", " entre os grupos; o ÚLTIMO leva " e " quando é < 100 ou centena exata
-  // ("um milhão e quinhentos mil", "mil e cem", "dois milhões e um").
+  // junção: conector e separador dependem do estilo
   const ultimo = itens[itens.length - 1];
-  const conector = ultimo.valor < 100 || ultimo.valor % 100 === 0 ? ' e ' : ', ';
-  return itens.slice(0, -1).map((it) => it.s).join(', ') + conector + ultimo.s;
+  const conector = estilo === 'conjuncao' ? ' e ' : (ultimo.valor < 100 || ultimo.valor % 100 === 0 ? ' e ' : ', ');
+  const sep = estilo === 'conjuncao' ? ' e ' : ', ';
+  return itens.slice(0, -1).map((it) => it.s).join(sep) + conector + ultimo.s;
 }
 
 /** "milhão"/"bilhão" exatos pedem "de reais" (ex.: "um milhão de reais"). */
@@ -62,20 +62,31 @@ function moedaSufixo(ext: string, plural: string): string {
   return /(milhão|milhões|bilhão|bilhões)$/.test(ext) ? `de ${plural}` : plural;
 }
 
+export interface ExtensoOptions {
+  estilo?: 'virgula' | 'conjuncao';
+  capitalizar?: boolean;
+}
+
 /** Valor em reais por extenso, ex.: 1234.5 -> "mil, duzentos e trinta e quatro reais e cinquenta centavos". */
-export function valorPorExtenso(valor: number): string {
+export function valorPorExtenso(valor: number, opts: ExtensoOptions = {}): string {
+  const estilo = opts.estilo ?? 'virgula';
+  const capitalizar = opts.capitalizar ?? false;
+
   const arred = Math.round(valor * 100);
   const reais = Math.floor(arred / 100);
   const centavos = arred % 100;
   const partes: string[] = [];
   if (reais > 0) {
-    const ext = inteiroPorExtenso(reais);
+    const ext = inteiroPorExtenso(reais, estilo);
     partes.push(`${ext} ${reais === 1 ? moedaSufixo(ext, 'real') : moedaSufixo(ext, 'reais')}`);
   }
   if (centavos > 0) {
-    const ext = inteiroPorExtenso(centavos);
+    const ext = inteiroPorExtenso(centavos, estilo);
     partes.push(`${ext} ${centavos === 1 ? 'centavo' : 'centavos'}`);
   }
-  if (partes.length === 0) return 'zero real';
-  return partes.join(' e ');
+  let out = partes.length === 0 ? 'zero real' : partes.join(' e ');
+  if (capitalizar) {
+    out = out.charAt(0).toUpperCase() + out.slice(1);
+  }
+  return out;
 }
