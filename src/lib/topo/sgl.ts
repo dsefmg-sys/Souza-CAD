@@ -20,10 +20,11 @@ function geodeticToECEF(latDeg: number, lonDeg: number, h: number) {
   const sinp = Math.sin(lat);
   const cosp = Math.cos(lat);
   const N = GRS80_A / Math.sqrt(1 - GRS80_E2 * sinp * sinp);
+  const alt = Number.isFinite(h) ? h : 0;
   return {
-    X: (N + h) * cosp * Math.cos(lon),
-    Y: (N + h) * cosp * Math.sin(lon),
-    Z: (N * (1 - GRS80_E2) + h) * sinp,
+    X: (N + alt) * cosp * Math.cos(lon),
+    Y: (N + alt) * cosp * Math.sin(lon),
+    Z: (N * (1 - GRS80_E2) + alt) * sinp,
   };
 }
 

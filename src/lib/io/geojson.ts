@@ -24,8 +24,8 @@ function coletarAneis(geom: { type: string; coordinates: unknown }, out: Pos[][]
 export function importarGeoJsonAneis(texto: string): AneisGeoJson {
   const obj = JSON.parse(texto);
   const geoms: Pos[][] = [];
-  if (obj.type === 'FeatureCollection') {
-    for (const f of obj.features ?? []) if (f.geometry) coletarAneis(f.geometry, geoms);
+  if (obj.type === 'FeatureCollection' && Array.isArray(obj.features)) {
+    for (const f of obj.features) if (f.geometry) coletarAneis(f.geometry, geoms);
   } else if (obj.type === 'Feature') {
     if (obj.geometry) coletarAneis(obj.geometry, geoms);
   } else if (obj.type) {

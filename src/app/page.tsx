@@ -2922,9 +2922,16 @@ export default function EditorPage() {
 
   // Junta os pontos com altitude (perímetro + ignorados/internos) no plano UTM — base pra sugerir e gerar.
   function pontos3dCurvas(): Ponto3D[] {
-    return [...vertices, ...verticesIgnorados]
+    const pts = [...vertices, ...verticesIgnorados]
       .filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte) && Number.isFinite(v.elevacao))
       .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }));
+    const vistos = new Set<string>();
+    return pts.filter((p) => {
+      const k = `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
+      if (vistos.has(k)) return false;
+      vistos.add(k);
+      return true;
+    });
   }
   // Preenche o intervalo com a sugestão pelo desnível (evita o emaranhado do padrão fixo).
   function sugerirIntervaloCurva() {

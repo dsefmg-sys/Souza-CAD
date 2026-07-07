@@ -87,7 +87,10 @@ export function detectarFusoPorRegiao(
  */
 export function ufDoMunicipio(municipio: string | undefined): string | null {
   const m = (municipio || '').trim().match(/-\s*([A-Za-z]{2})\s*$/);
-  return m ? m[1].toUpperCase() : null;
+  if (!m) return null;
+  const uf = m[1].toUpperCase();
+  const ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+  return ufs.includes(uf) ? uf : null;
 }
 
 /** Devolve a âncora do município (se conhecido). Aceita com ou sem UF. */
@@ -95,9 +98,11 @@ export function ancoraMunicipio(nome: string): { lat: number; lon: number } | nu
   const n = normaliza(nome);
   if (MUNICIPIOS[n]) return MUNICIPIOS[n];
   // tenta casar só pelo nome (sem UF)
-  const semUf = n.replace(/-[a-z]{2}$/, '');
+  const ufs = 'ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to';
+  const semUf = n.replace(new RegExp(`-(${ufs})$`), '');
   for (const [k, v] of Object.entries(MUNICIPIOS)) {
-    if (k.replace(/-[a-z]{2}$/, '') === semUf) return v;
+    const kSemUf = k.replace(new RegExp(`-(${ufs})$`), '');
+    if (kSemUf === semUf) return v;
   }
   return null;
 }

@@ -93,7 +93,7 @@ export function parseGmlParcelas(gml: string): ParcelaSigef[] {
     const campo = (tag: string): string | undefined => {
       const mm = m.match(new RegExp(`<ms:${tag}>([^<]*)</ms:${tag}>`));
       const v = mm ? mm[1].trim() : '';
-      return v ? v.replace(/&amp;/g, '&').replace(/&quot;/g, '"') : undefined;
+      return v ? v.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>') : undefined;
     };
     out.push({
       codigoImovel: campo('codigo_imovel'),
