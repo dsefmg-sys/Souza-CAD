@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth, entrarGoogle, entrarEmail, cadastrarEmail, traduzErroAuth } from '@/lib/firebase/auth';
 import { LogoHorizontal, FundoRedeMarca } from '@/components/Logo';
+import IntroVideo from '@/components/IntroVideo';
 
 /**
  * Exige login na entrada quando o Firebase está configurado. Sem nuvem (sem variáveis), libera
@@ -39,6 +40,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative flex h-screen items-center justify-center p-4">
+      <IntroVideo />
       <FundoRedeMarca />
       <div className="relative z-10 w-full max-w-sm space-y-4 rounded-lg border border-white/10 bg-background/95 p-6 shadow-2xl backdrop-blur-sm">
         <div className="space-y-2 text-center">

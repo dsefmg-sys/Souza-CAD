@@ -16,6 +16,8 @@ import { carregarPreferencias } from '@/lib/store/preferencias';
 export default function IntroVideo() {
   const [aberto, setAberto] = useState(() => {
     if (typeof window === 'undefined') return false;
+    const jaTocou = sessionStorage.getItem('metrica:intro_tocada_sessao');
+    if (jaTocou) return false;
     return carregarPreferencias().introVideoAtiva;
   });
   const [comSom, setComSom] = useState(() => {
@@ -60,6 +62,7 @@ export default function IntroVideo() {
   function fechar() {
     setAberto(false);
     setTocando(false);
+    sessionStorage.setItem('metrica:intro_tocada_sessao', 'true');
   }
 
   function alternarSom() {

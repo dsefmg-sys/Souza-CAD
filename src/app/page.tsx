@@ -3750,34 +3750,34 @@ export default function EditorPage() {
         {/* 1) Importar e checar vizinhos */}
         <Etapa st={etapas.txt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
         <Etapa st={etapas.sigef}>{parcelasCert.length > 0 ? (
-          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} title="Vizinhos certificados já baixados — ver relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}>{iconeCab('analise', <ShieldCheck className="size-4" />)} ANÁLISE</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} title="Vizinhos certificados já baixados — ver relatório de sobreposição SIGEF" onClick={() => setModalSobreposicaoAberto(true)}>ANÁLISE</Button>
         ) : (
-          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}><Search /> SIGEF</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Vizinhos certificados: busca automática no INCRA (por região) os imóveis que encostam no seu e cria os confrontantes" onClick={importarVizinhosAuto}>SIGEF</Button>
         )}</Etapa>
         {medioOuMais && parcelasCert.length > 0 && (
-          <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Casar automaticamente seus vértices com os certificados do INCRA: nos pontos de divisa comum (até 0,5 m), adota a coordenada oficial exata" onClick={casarVerticesCertificados}><Magnet className="size-4" /> CASAR</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Casar automaticamente seus vértices com os certificados do INCRA: nos pontos de divisa comum (até 0,5 m), adota a coordenada oficial exata" onClick={casarVerticesCertificados}>CASAR</Button>
         )}
         {medioOuMais && (
-          <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Importar um ARQUIVO de coordenadas de um imóvel vizinho já certificado (baixado do Acervo Fundiário do INCRA). Os vértices dele ficam GUARDADOS no projeto com coordenada, sigma e código — mesmo os que estão perto mas não encostam. Aparecem na planta e viram alvo de encaixe (a divisa gruda no ponto oficial), evitando vão e sobreposição. Nos pontos colados (até 2 m) o seu vértice adota o código oficial. As colunas do arquivo se ajustam em Configurações." onClick={() => verticesVizinhoRef.current?.click()}><UserCheck className="size-4" /> VIZINHOS</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} disabled={vertices.length < 3} title="Importar um ARQUIVO de coordenadas de um imóvel vizinho já certificado (baixado do Acervo Fundiário do INCRA). Os vértices dele ficam GUARDADOS no projeto com coordenada, sigma e código — mesmo os que estão perto mas não encostam. Aparecem na planta e viram alvo de encaixe (a divisa gruda no ponto oficial), evitando vão e sobreposição. Nos pontos colados (até 2 m) o seu vértice adota o código oficial. As colunas do arquivo se ajustam em Configurações." onClick={() => verticesVizinhoRef.current?.click()}>VIZINHOS</Button>
         )}
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 2) Dados do projeto atual */}
         <Etapa st={etapas.dados}>
           <Button size="sm" variant={painelAberto && aba === 'imovel' ? 'default' : 'outline'} className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
-            <BookUser className="size-4" /> DADOS
+            DADOS
           </Button>
         </Etapa>
-        <Button size="sm" variant="outline" className={`shrink-0 px-2 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Search /></Button>
+        <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}>CADASTROS</Button>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
-        <Etapa st={etapas.confro}><Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'confrontante' ? '' : `${PREM_BTN} ${COR_MARCAR}`}`} title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Users /> CONFRO</Button></Etapa>
-        <Etapa st={etapas.divisas}><Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'divisa' ? '' : `${PREM_BTN} ${COR_MARCAR}`}`} title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Brush /> DIVISAS</Button></Etapa>
+        <Etapa st={etapas.confro}><Button size="sm" variant={modo === 'confrontante' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'confrontante' ? '' : `${PREM_BTN} ${COR_MARCAR}`}`} title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>CONFRO</Button></Etapa>
+        <Etapa st={etapas.divisas}><Button size="sm" variant={modo === 'divisa' ? 'default' : 'outline'} className={`shrink-0 ${modo === 'divisa' ? '' : `${PREM_BTN} ${COR_MARCAR}`}`} title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>DIVISAS</Button></Etapa>
         <ChevronRight className="-mx-1.5 mt-1.5 size-3.5 shrink-0 self-start text-amber-500/60" aria-hidden />
 
         {/* 5) Peças */}
-        <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}>{iconeCab('trt', <FileText />)} TRT</Button></Etapa>
+        <Etapa st={etapas.trt}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Abrir os dados do TRT (cole o número emitido para concluir a etapa)" onClick={() => setTrtAberto(true)}>TRT</Button></Etapa>
         <Etapa st={etapas.memorial}>
           <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
         </Etapa>
@@ -3788,31 +3788,18 @@ export default function EditorPage() {
         <Etapa st={etapas.planta}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
         {medioOuMais && (
-          <Etapa st={etapas.errata}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><FileWarning /> ERRATA</Button></Etapa>
+          <Etapa st={etapas.errata}><Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}>ERRATA</Button></Etapa>
         )}
 
         {medioOuMais && (
           <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
-            <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
+            <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Acessar o SIGEF para certificação eletrônica do imóvel">CERT</Button>
           </a>
         )}
         {medioOuMais && (
-          <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} border-green-600/40 bg-green-500/10 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf className="size-4" /> CAR</Button>
+          <Button size="sm" variant="outline" className={`shrink-0 ${PREM_BTN} border-green-600/40 bg-green-500/10 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
         )}
        </div>
-
-       {/* Usuário logado e botão de sair no topo direito */}
-       {nuvemDisponivel && user && (
-         <div className="flex shrink-0 items-center border-l px-3 gap-2 bg-muted/5">
-           <span className="hidden text-xs font-semibold text-muted-foreground max-w-[150px] truncate sm:inline" title={user.email || ''}>
-             {user.email}
-           </span>
-           <Button size="sm" variant="ghost" className="h-8 gap-1 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-700 font-bold"
-             onClick={() => { confirmar({ titulo: 'Sair da conta', mensagem: 'Deseja realmente sair da sua conta?' }).then((sim) => { if (sim) { limparConfigLocalNaSaida(); sair(); } }); }}>
-             <LogOut className="size-3.5" /> Sair
-           </Button>
-         </div>
-       )}
 
        {/* (o botão "Dados do Projeto" foi para a barra flutuante, ao lado do DETALHES) */}
        {/* A CHAVE do app saiu do topo (atrapalhava a leitura dos botões) e virou uma barrinha
@@ -4608,9 +4595,11 @@ export default function EditorPage() {
                       ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400']] : []),
                       ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => { limparConfigLocalNaSaida(); sair(); }, 'text-red-600 dark:text-red-400']] : []),
                     ] as [string, string, React.ReactNode, () => void, string][]).map(([rotuloBtn, dica, icone, acao, cor]) => (
-                      <Button key={rotuloBtn} size="sm" variant="outline" className={`h-11 min-w-0 flex-col gap-0.5 overflow-hidden p-0 px-0.5 [&_svg]:${cor}`} title={dica} onClick={acao}>
+                      <Button key={rotuloBtn} size="sm" variant="outline"
+                        className={`h-11 min-w-0 flex-col gap-0.5 overflow-hidden p-0.5 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:${cor} [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
+                        title={dica} onClick={acao}>
                         <span className={cor}>{icone}</span>
-                        <span className="w-full truncate text-center text-[10px] leading-none">{rotuloBtn}</span>
+                        <span className="w-full truncate text-center text-[10px] font-semibold leading-none">{rotuloBtn}</span>
                       </Button>
                     ))}
                   </div>
@@ -4657,10 +4646,8 @@ export default function EditorPage() {
             {/* Salvar — logo abaixo da alternância mapa/planta, sempre visível e acessível */}
             <button type="button" onClick={() => { void salvar(); }} disabled={processando}
               title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar (Ctrl+S)' : salvoOk ? 'Trabalho salvo (Ctrl+S)' : 'Salvar o projeto (Ctrl+S)'}
-              className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${salvarLaranja ? 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 animate-pulse' : 'border-border bg-background/95 hover:bg-muted'}`}>
-              <Save className={`size-5 ${salvarLaranja ? 'text-white' : salvoOk ? 'text-green-600' : ''}`} />
-              <span className="text-[10px] font-bold leading-none">SALVAR</span>
-              <span className={`text-[8px] font-bold leading-none ${salvarLaranja ? 'text-white/90' : 'text-amber-500'}`}>Ctrl S</span>
+              className={`flex h-9 w-32 items-center justify-center rounded-lg border shadow-md transition-all duration-200 active:scale-95 ${salvarLaranja ? 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 animate-pulse font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
+              <span className="text-[10px] font-extrabold tracking-wide">SALVAR</span>
             </button>
 
             {/* Chave de modo Fácil → Médio → Completo → Fácil — vale no app inteiro; some durante a
@@ -4672,9 +4659,8 @@ export default function EditorPage() {
                   : medio
                     ? 'Modo Médio: as ferramentas do dia a dia à mostra. Clique para o Completo.'
                     : 'Modo Fácil: só o caminho essencial. Clique para o Médio.'}
-                className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
-                <GraduationCap className="size-5 text-primary" />
-                <span className="text-[10px] font-bold leading-none">{rotuloModo}</span>
+                className="flex h-9 w-32 items-center justify-center rounded-lg border border-border bg-background/95 text-foreground hover:bg-muted shadow-md transition-all duration-200 active:scale-95">
+                <span className="text-[10px] font-extrabold tracking-wide">{rotuloModo}</span>
               </button>
             )}
 
@@ -4684,15 +4670,13 @@ export default function EditorPage() {
                 <button type="button"
                   onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
                   title={folhaTravada ? 'Moldura travada — clique para soltar e arrastar a prancha' : 'Moldura solta — clique para travar o layout da folha'}
-                  className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${folhaTravada ? 'border-border bg-background/95 hover:bg-muted' : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'}`}>
-                  {folhaTravada ? <Lock className="size-5" /> : <LockOpen className="size-5" />}
-                  <span className="text-[10px] font-bold leading-none">{folhaTravada ? 'TRAVADA' : 'SOLTA'}</span>
+                  className={`flex h-9 w-32 items-center justify-center rounded-lg border shadow-md transition-all duration-200 active:scale-95 ${folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted font-bold' : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600 font-bold'}`}>
+                  <span className="text-[10px] font-extrabold tracking-wide">{folhaTravada ? 'TRAVADA' : 'SOLTA'}</span>
                 </button>
                 <button type="button" onClick={() => setPlantaDark((v) => !v)}
                   title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
-                  className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
-                  {plantaDark ? <Sun className="size-5 text-amber-400" /> : <Moon className="size-5" />}
-                  <span className="text-[10px] font-bold leading-none">{plantaDark ? 'ESCURA' : 'CLARA'}</span>
+                  className="flex h-9 w-32 items-center justify-center rounded-lg border border-border bg-background/95 text-foreground hover:bg-muted shadow-md transition-all duration-200 active:scale-95 font-bold">
+                  <span className="text-[10px] font-extrabold tracking-wide">{plantaDark ? 'ESCURA' : 'CLARA'}</span>
                 </button>
               </>
             )}
@@ -4701,26 +4685,22 @@ export default function EditorPage() {
             <button type="button"
               onClick={vista === 'mapa' ? centralizar : () => ajustarPlanta()}
               title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Enquadrar a FOLHA A3 inteira na tela (foco)'}
-              className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
-              <Target className="size-5" />
-              <span className="text-[10px] font-bold leading-none">FOCO</span>
+              className="flex h-9 w-32 items-center justify-center rounded-lg border border-border bg-background/95 text-foreground hover:bg-muted shadow-md transition-all duration-200 active:scale-95 font-bold">
+              <span className="text-[10px] font-extrabold tracking-wide">FOCO</span>
             </button>
             {vista === 'mapa' && (
               <button type="button" onClick={() => setSnapAtivo((v) => !v)}
                 title={snapAtivo ? 'Ímã ligado (F3): o clique encaixa em pontos próximos. Clique para desligar.' : 'Ímã desligado (F3). Clique para ligar o encaixe em pontos próximos.'}
-                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${snapAtivo ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90' : 'border-border bg-background/95 hover:bg-muted'}`}>
-                <Magnet className={`size-5 ${snapAtivo ? 'text-primary-foreground' : ''}`} />
-                <span className="text-[10px] font-bold leading-none">IMÃ</span>
-                <span className={`text-[8px] font-bold leading-none ${snapAtivo ? 'text-primary-foreground/80' : 'text-amber-500'}`}>F3</span>
+                className={`flex h-9 w-32 items-center justify-center rounded-lg border shadow-md transition-all duration-200 active:scale-95 ${snapAtivo ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
+                <span className="text-[10px] font-extrabold tracking-wide">IMÃ</span>
               </button>
             )}
 
             {/* IA Extrair, Camadas, Ajustes e Sair da conta no final da coluna de atalhos */}
             <button type="button" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }}
               title="Extrair dados de documentos/matrículas com Inteligência Artificial (Gemini)"
-              className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
-              <Sparkles className="size-5 text-indigo-500 fill-indigo-500/20" />
-              <span className="text-[10px] font-bold leading-none text-indigo-600 dark:text-indigo-400">IA EXTRAIR</span>
+              className="flex h-9 w-32 items-center justify-center rounded-lg border border-border bg-background/95 text-indigo-600 dark:text-indigo-400 hover:bg-muted hover:border-indigo-500/50 shadow-md transition-all duration-200 active:scale-95 font-bold">
+              <span className="text-[10px] font-extrabold tracking-wide">EXTRAIR COM IA</span>
             </button>
 
             {/* Botão Camadas — escondido pelo interruptor GERENCIADOR_CAMADAS_VISIVEL */}
@@ -4728,12 +4708,11 @@ export default function EditorPage() {
             <div className="relative">
               <button type="button" onClick={() => setCamadasPopoverAberta((v) => !v)}
                 title="Gerenciador de camadas: visibilidade, bloqueio, cores e espessuras"
-                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${camadasPopoverAberta ? 'border-teal-600 bg-teal-600 text-white dark:bg-teal-500 dark:text-black hover:bg-teal-700 dark:hover:bg-teal-400' : 'border-border bg-background/95 hover:bg-muted'}`}>
-                <Layers className={`size-5 ${camadasPopoverAberta ? 'text-white dark:text-black' : 'text-teal-600 dark:text-teal-400'}`} />
-                <span className="text-[10px] font-bold leading-none">CAMADAS</span>
+                className={`flex h-9 w-32 items-center justify-center rounded-lg border shadow-md transition-all duration-200 active:scale-95 ${camadasPopoverAberta ? 'border-teal-600 bg-teal-600 text-white dark:bg-teal-500 dark:text-black hover:bg-teal-700 dark:hover:bg-teal-400 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted hover:border-teal-500/50 font-bold'}`}>
+                <span className="text-[10px] font-extrabold tracking-wide">CAMADAS</span>
               </button>
               {camadasPopoverAberta && (
-                <div className="absolute left-[60px] top-0 z-[2100] w-72 rounded-xl border border-teal-500/30 bg-background/98 shadow-2xl backdrop-blur-xl p-3 animate-in slide-in-from-left-2 fade-in duration-200"
+                <div className="absolute left-[136px] top-0 z-[2100] w-72 rounded-xl border border-teal-500/30 bg-background/98 shadow-2xl backdrop-blur-xl p-3 animate-in slide-in-from-left-2 fade-in duration-200"
                   onWheel={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-extrabold uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-1.5"><Layers className="size-3.5" /> Camadas</span>
@@ -4789,32 +4768,20 @@ export default function EditorPage() {
             {souMaster() && (
               <button type="button" onClick={() => setModoMaster((m) => (m === 'editar' ? 'gerir' : 'editar'))}
                 title={modoMaster === 'editar' ? 'Alternar para o modo GERIR (painel administrativo do SaaS)' : 'Alternar para o modo EDITAR (workspace de desenho)'}
-                className={`flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border shadow-xl backdrop-blur transition-colors ${modoMaster === 'gerir' ? 'border-amber-600 bg-amber-600 text-white dark:bg-amber-500 dark:text-black hover:bg-amber-700 dark:hover:bg-amber-400' : 'border-border bg-background/95 hover:bg-muted'}`}>
-                {modoMaster === 'gerir' ? (
-                  <>
-                    <MapIcon className="size-5 text-white dark:text-black animate-pulse" />
-                    <span className="text-[10px] font-bold leading-none">DESENHAR</span>
-                  </>
-                ) : (
-                  <>
-                    <Crown className="size-5 text-amber-500 fill-amber-500/10 animate-bounce" />
-                    <span className="text-[10px] font-bold leading-none text-amber-600 dark:text-amber-400">GERIR SaaS</span>
-                  </>
-                )}
+                className={`flex h-9 w-32 items-center justify-center rounded-lg border shadow-md transition-all duration-200 active:scale-95 ${modoMaster === 'gerir' ? 'border-amber-600 bg-amber-600 text-white dark:bg-amber-500 dark:text-black hover:bg-amber-700 dark:hover:bg-amber-400 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
+                <span className="text-[10px] font-extrabold tracking-wide">{modoMaster === 'gerir' ? 'DESENHAR' : 'GERIR SAAS'}</span>
               </button>
             )}
             <button type="button" onClick={() => { setConfigAba(undefined); setConfigAberta(true); }}
               title="Configurações gerais do sistema"
-              className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
-              <Settings className="size-5 text-slate-600 dark:text-slate-400" />
-              <span className="text-[10px] font-bold leading-none text-slate-600 dark:text-slate-400">AJUSTES</span>
+              className="flex h-9 w-32 items-center justify-center rounded-lg border border-border bg-background/95 text-slate-600 dark:text-slate-400 hover:bg-muted shadow-md transition-all duration-200 active:scale-95 font-bold">
+              <span className="text-[10px] font-extrabold tracking-wide">AJUSTES</span>
             </button>
             {nuvemDisponivel && user && (
               <button type="button" onClick={() => { limparConfigLocalNaSaida(); sair(); }}
                 title={`Sair da conta: ${user.email}`}
-                className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-red-500/30 bg-red-500/5 shadow-xl backdrop-blur hover:bg-red-500/10">
-                <LogOut className="size-5 text-red-600 dark:text-red-400" />
-                <span className="text-[10px] font-bold leading-none text-red-600 dark:text-red-400">SAIR</span>
+                className="flex h-9 w-32 items-center justify-center rounded-lg border border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-500/50 shadow-md transition-all duration-200 active:scale-95 font-bold">
+                <span className="text-[10px] font-extrabold tracking-wide">LOGOUT</span>
               </button>
             )}
           </div>

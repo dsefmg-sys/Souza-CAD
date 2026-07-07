@@ -31,8 +31,9 @@ describe('grausParaDMS', () => {
     expect(grausParaDMS(-42.000846, { estilo: 'sigef', eixo: 'lon', casas: 3 })).toBe('42 00 03,046 W');
   });
   it('carry de arredondamento dos segundos', () => {
-    // 0,9999999° -> não pode virar 60" nos segundos
-    const s = grausParaDMS(-1 + 0.9999999 / 1, { estilo: 'memorial', casas: 3 });
+    // 0,9999999° arredonda os segundos para 60" -> tem de "subir" para 1°00'00,000"
+    const s = grausParaDMS(0.9999999, { estilo: 'memorial', casas: 3 });
     expect(s).not.toContain('60,000');
+    expect(s).toBe('1°00\'00,000"');
   });
 });
