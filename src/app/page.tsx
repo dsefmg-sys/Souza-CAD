@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal, SlidersHorizontal,
   Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -558,7 +558,7 @@ export default function EditorPage() {
   }, []);
 
   const [plantaDark, setPlantaDark] = useState(true); // modo escuro só da folha A3 (conforto noturno)
-  const direcaoAtalhos = (typeof window !== 'undefined' && posAtalhos.x < 120 && posAtalhos.y > window.innerHeight * 0.25 && posAtalhos.y < window.innerHeight * 0.75) ? 'vertical' : 'horizontal';
+  const direcaoAtalhos = (typeof window !== 'undefined' && posAtalhos.x < 140 && posAtalhos.y > window.innerHeight * 0.25 && posAtalhos.y < window.innerHeight * 0.75) ? 'vertical' : 'horizontal';
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean; errata?: boolean }>({});
@@ -701,6 +701,7 @@ export default function EditorPage() {
 
   const themeCabecalho = CORES_CABECALHO.find((c) => c.id === corCabecalho) ?? CORES_CABECALHO[0];
   const dxfRef = useRef<HTMLInputElement>(null);
+  const kmlRef = useRef<HTMLInputElement>(null);
   const geojsonRef = useRef<HTMLInputElement>(null);
   const shapefileRef = useRef<HTMLInputElement>(null);
   const vizinhosRef = useRef<HTMLInputElement>(null);
@@ -1321,6 +1322,35 @@ export default function EditorPage() {
   }
   const glebaAtivaNome = glebas.find((g) => g.id === glebaAtivaId)?.denominacao ?? 'Parcela 1';
 
+  function parseKml(xmlText: string): { lat: number; lon: number; alt: number }[] {
+    const points: { lat: number; lon: number; alt: number }[] = [];
+    try {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+      const coordsNodes = xmlDoc.getElementsByTagName("coordinates");
+      
+      for (let i = 0; i < coordsNodes.length; i++) {
+        const text = coordsNodes[i].textContent || "";
+        const lines = text.trim().split(/[\s\r\n]+/);
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const parts = line.split(",");
+          if (parts.length >= 2) {
+            const lon = parseFloat(parts[0]);
+            const lat = parseFloat(parts[1]);
+            const alt = parts[2] ? parseFloat(parts[2]) : 0;
+            if (Number.isFinite(lat) && Number.isFinite(lon)) {
+              points.push({ lat, lon, alt });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao processar XML KML:", err);
+    }
+    return points;
+  }
+
   async function importarArquivo(file: File) {
     if (processando) return;
     setImportPendingFile(file);
@@ -1333,24 +1363,66 @@ export default function EditorPage() {
     setProcessando(true);
     try {
       const buf = await importPendingFile.arrayBuffer();
-      // TXT do GNSS costuma vir em Windows-1252 (acentos)
-      const texto = new TextDecoder('windows-1252').decode(buf);
-      const pontos = parseTxt(texto, carregarImportTxt());
-      const perim = pontosDePerimetro(pontos);
-      if (perim.length < 3) { aviso('O arquivo não tem pontos de perímetro suficientes.'); return; }
+      let perim: any[] = [];
+      let z = fuso;
+
+      if (importPendingFile.name.toLowerCase().endsWith('.kml')) {
+        const xmlText = new TextDecoder('utf-8').decode(buf);
+        const geoPoints = parseKml(xmlText);
+        if (geoPoints.length < 3) {
+          aviso('O arquivo KML não tem pontos suficientes.');
+          setProcessando(false);
+          return;
+        }
+        if (geoPoints.length > 2) {
+          const pFirst = geoPoints[0];
+          const pLast = geoPoints[geoPoints.length - 1];
+          if (pFirst.lat === pLast.lat && pFirst.lon === pLast.lon) {
+            geoPoints.pop();
+          }
+        }
+        
+        // Fuso AUTOMÁTICO ou informado
+        if (!z) {
+          const firstPt = geoPoints[0];
+          z = Math.floor((firstPt.lon + 180) / 6) + 1;
+        }
+
+        perim = geoPoints.map((gp, idx) => {
+          const utm = geoParaUtm(gp.lat, gp.lon, z, hemisferio);
+          return {
+            leste: utm.leste,
+            norte: utm.norte,
+            altitude: gp.alt,
+            id: `P${idx + 1}`,
+            nome: `P${idx + 1}`
+          };
+        });
+      } else {
+        // TXT do GNSS costuma vir em Windows-1252 (acentos)
+        const texto = new TextDecoder('windows-1252').decode(buf);
+        const pontos = parseTxt(texto, carregarImportTxt());
+        perim = pontosDePerimetro(pontos);
+        if (perim.length < 3) {
+          aviso('O arquivo não tem pontos de perímetro suficientes.');
+          setProcessando(false);
+          return;
+        }
+
+        const tec = tecnico ?? carregarTecnico();
+        const fusos = tec.fusosPermitidos ?? [18, 19, 20, 21, 22, 23, 24, 25];
+        
+        // Fuso AUTOMÁTICO pela região (não precisa do município): testa cada fuso e fica com o que
+        // coloca o ponto dentro da nossa área de trabalho (resolve a divisa 23/24 sozinho).
+        z = detectarFusoPorRegiao(perim[0].leste, perim[0].norte, hemisferio, fusos).zona;
+        // Se o município foi informado, sua âncora confirma/refina (mais específica).
+        const anc = ancoraMunicipio(municipio);
+        if (anc) z = escolherZonaPorAncora(perim[0].leste, perim[0].norte, hemisferio, anc, fusos);
+      }
 
       // Define o município no imóvel
       const novoImovel = { ...imovel, municipio, local: `${municipio}` };
-
       const tec = tecnico ?? carregarTecnico();
-      const fusos = tec.fusosPermitidos ?? [18, 19, 20, 21, 22, 23, 24, 25];
-      
-      // Fuso AUTOMÁTICO pela região (não precisa do município): testa cada fuso e fica com o que
-      // coloca o ponto dentro da nossa área de trabalho (resolve a divisa 23/24 sozinho).
-      let z = detectarFusoPorRegiao(perim[0].leste, perim[0].norte, hemisferio, fusos).zona;
-      // Se o município foi informado, sua âncora confirma/refina (mais específica).
-      const anc = ancoraMunicipio(municipio);
-      if (anc) z = escolherZonaPorAncora(perim[0].leste, perim[0].norte, hemisferio, anc, fusos);
 
       // numeração provisória a partir do banco de pontos (para não colidir com o já usado)
       const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
@@ -1358,7 +1430,9 @@ export default function EditorPage() {
       const vs = recodificar(iniciarDoNorteHorario(vs0), tec.credenciamentoIncra, cont.M, cont.P);
       // defesa: não importar coordenadas que viraram inválidas (NaN/fora de faixa) — protege a peça
       if (vs.some((v) => !Number.isFinite(v.lat) || !Number.isFinite(v.lon) || Math.abs(v.lat) > 90 || Math.abs(v.lon) > 180)) {
-        aviso('Coordenadas inválidas após a conversão — confira o fuso/hemisfério e o arquivo.'); return;
+        aviso('Coordenadas inválidas após a conversão — confira o fuso/hemisfério e o arquivo.');
+        setProcessando(false);
+        return;
       }
 
       setPreviewData({
@@ -3830,6 +3904,8 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarDxfArquivo(f); e.currentTarget.value = ''; }} />
+        <input ref={kmlRef} type="file" accept=".kml" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={geojsonRef} type="file" accept=".geojson,.json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarReferenciaGeoJson(f); e.currentTarget.value = ''; }} />
         <input ref={shapefileRef} type="file" accept=".zip,.shp" className="hidden"
@@ -4409,9 +4485,12 @@ export default function EditorPage() {
                               <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Importar DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-3.5" /></Button>
                             </div>
                           </div>
-                          <div className={`flex items-center justify-between rounded-md border px-2 py-0.5 ${COR_IMPORT}`}>
+                          <div className={`flex items-center justify-between rounded-md border px-1.5 py-0.5 ${COR_IMPORT}`}>
                             <span className="text-[9px] font-bold shrink-0">KML</span>
-                            <Button size="sm" variant="ghost" className="size-7 p-0" title="Exportar KML" onClick={() => exportarKML(vertices, imovel)}><Download className="size-3.5" /></Button>
+                            <div className="flex gap-0.5">
+                              <Button size="sm" variant="ghost" className="size-7 p-0" title="Exportar KML" onClick={() => exportarKML(vertices, imovel)}><Download className="size-3.5" /></Button>
+                              <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Importar KML" onClick={() => kmlRef.current?.click()}><Upload className="size-3.5" /></Button>
+                            </div>
                           </div>
                         </div>
 
@@ -4563,7 +4642,22 @@ export default function EditorPage() {
                 )}
 
                 {/* RODAPÉ FIXO: ajuste de texto + sistema (calculadora, tema, config, sair) */}
-                <div className="mt-auto flex flex-col gap-1 border-t pt-1.5">
+                <div className="mt-auto flex flex-col gap-1.5 border-t pt-1.5 px-1">
+                  {/* Botão Salvar no rodapé fixo da barra lateral */}
+                  <Button
+                    type="button"
+                    onClick={() => { void salvar(); }}
+                    disabled={processando}
+                    title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar (Ctrl+S)' : salvoOk ? 'Trabalho salvo (Ctrl+S)' : 'Salvar o projeto (Ctrl+S)'}
+                    className={`w-full h-8 text-[11px] font-bold shadow-sm transition-all duration-200 active:scale-95 flex items-center justify-center gap-1.5 rounded-md border ${
+                      salvarLaranja 
+                        ? 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700' 
+                        : 'border-primary/20 bg-primary/10 hover:bg-primary/20 text-primary dark:bg-primary/20 dark:hover:bg-primary/30'
+                    }`}
+                  >
+                    <Save className="size-3.5" />
+                    <span>{salvarLaranja ? 'SALVAR PROJETO *' : 'SALVAR PROJETO'}</span>
+                  </Button>
                   {/* Tamanho dos textos: no mapa mexe nos nomes dos vértices; na planta, 4 escopos separados */}
                   {vista === 'mapa' ? (
                     <div className="flex flex-col gap-1 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
@@ -4738,8 +4832,8 @@ export default function EditorPage() {
               Fácil/Completo e — só na planta — travar a folha e o tema da prancha. Ficam aqui pra
               liberar a barra flutuante de cima. */}
           <div
-            className={`no-print absolute z-[1160] flex select-none items-center gap-1 bg-background/90 backdrop-blur-sm border border-border/80 p-1.5 rounded-2xl shadow-xl transition-shadow hover:shadow-2xl ${
-              direcaoAtalhos === 'vertical' ? 'flex-col w-[92px]' : 'flex-row h-10'
+            className={`no-print absolute z-[1160] flex select-none items-center gap-1.5 bg-background/90 backdrop-blur-sm border border-border/80 p-1.5 rounded-2xl shadow-xl transition-shadow hover:shadow-2xl ${
+              direcaoAtalhos === 'vertical' ? 'flex-col w-[124px]' : 'flex-row h-11'
             }`}
             style={{ left: `${posAtalhos.x}px`, top: `${posAtalhos.y}px` }}
           >
@@ -4763,159 +4857,182 @@ export default function EditorPage() {
             </div>
 
             {/* Lista de botões */}
-            <div className={`flex gap-1 ${direcaoAtalhos === 'vertical' ? 'flex-col' : 'flex-row'}`}>
-              <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
-                title="Alternar entre mapa e planta (Esc)"
-                className="flex h-7 w-20 items-center justify-center rounded-full border-2 border-primary/50 bg-background/95 text-primary hover:bg-muted shadow-sm transition-all duration-200 active:scale-95 font-bold">
-                <span className="text-[9px] font-extrabold tracking-wide">{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
-              </button>
+            {(() => {
+              const btnStyle = (custom: string) => `flex h-8 items-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 text-[10px] font-bold ${
+                direcaoAtalhos === 'vertical' ? 'w-full justify-start px-2.5' : 'px-3 justify-center'
+              } ${custom}`;
+              return (
+                <div className={`flex gap-1 ${direcaoAtalhos === 'vertical' ? 'flex-col w-full' : 'flex-row'}`}>
+                  {/* Alternar Vista (Mapa/Planta) */}
+                  <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
+                    title="Alternar entre mapa e planta (Esc)"
+                    className={btnStyle("border-primary/50 bg-background/95 text-primary hover:bg-muted")}>
+                    {vista === 'mapa' ? (
+                      <>
+                        <Printer className="size-3.5 mr-1.5 shrink-0" />
+                        <span>PLANTA</span>
+                      </>
+                    ) : (
+                      <>
+                        <MapIcon className="size-3.5 mr-1.5 shrink-0" />
+                        <span>MAPA</span>
+                      </>
+                    )}
+                  </button>
 
-              {/* Salvar — sempre visível e acessível */}
-              <button type="button" onClick={() => { void salvar(); }} disabled={processando}
-                title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar (Ctrl+S)' : salvoOk ? 'Trabalho salvo (Ctrl+S)' : 'Salvar o projeto (Ctrl+S)'}
-                className={`flex h-7 w-20 items-center justify-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 ${salvarLaranja ? 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
-                <span className="text-[9px] font-extrabold tracking-wide">{salvarLaranja ? 'SALVAR *' : 'SALVAR'}</span>
-              </button>
+                  {/* Chave de modo Fácil → Médio → Completo */}
+                  {chaveTopoVisivel && !introTocando && (
+                    <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
+                      title={completo
+                        ? 'Modo Completo: todas as ferramentas à mostra, inclusive as avançadas. Clique para voltar ao Fácil.'
+                        : medio
+                          ? 'Modo Médio: as ferramentas do dia a dia à mostra. Clique para o Completo.'
+                          : 'Modo Fácil: só o caminho essencial. Clique para o Médio.'}
+                      className={btnStyle("border-border bg-background/95 text-foreground hover:bg-muted")}>
+                      <SlidersHorizontal className="size-3.5 mr-1.5 shrink-0" />
+                      <span>{rotuloModo}</span>
+                    </button>
+                  )}
 
-              {/* Chave de modo Fácil → Médio → Completo → Fácil */}
-              {chaveTopoVisivel && !introTocando && (
-                <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
-                  title={completo
-                    ? 'Modo Completo: todas as ferramentas à mostra, inclusive as avançadas. Clique para voltar ao Fácil.'
-                    : medio
-                      ? 'Modo Médio: as ferramentas do dia a dia à mostra. Clique para o Completo.'
-                      : 'Modo Fácil: só o caminho essencial. Clique para o Médio.'}
-                  className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-foreground hover:bg-muted shadow-sm transition-all duration-200 active:scale-95">
-                  <span className="text-[9px] font-extrabold tracking-wide">{rotuloModo}</span>
-                </button>
-              )}
+                  {/* Só na planta: travar a folha e alternar o tema da prancha */}
+                  {vista === 'planta' && (
+                    <>
+                      <button type="button"
+                        onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
+                        title={folhaTravada ? 'Moldura travada — clique para soltar e arrastar a prancha' : 'Moldura solta — clique para travar o layout da folha'}
+                        className={btnStyle(folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted font-bold' : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600 font-bold')}>
+                        {folhaTravada ? <Lock className="size-3.5 mr-1.5 shrink-0" /> : <LockOpen className="size-3.5 mr-1.5 shrink-0" />}
+                        <span>{folhaTravada ? 'TRAVADA' : 'SOLTA'}</span>
+                      </button>
+                      <button type="button" onClick={() => setPlantaDark((v) => !v)}
+                        title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
+                        className={btnStyle("border-border bg-background/95 text-foreground hover:bg-muted")}>
+                        {plantaDark ? <Moon className="size-3.5 mr-1.5 shrink-0" /> : <Sun className="size-3.5 mr-1.5 shrink-0" />}
+                        <span>{plantaDark ? 'ESCURA' : 'CLARA'}</span>
+                      </button>
+                    </>
+                  )}
 
-              {/* Só na planta: travar a folha e alternar o tema da prancha */}
-              {vista === 'planta' && (
-                <>
+                  {/* Foco e Imã */}
                   <button type="button"
-                    onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
-                    title={folhaTravada ? 'Moldura travada — clique para soltar e arrastar a prancha' : 'Moldura solta — clique para travar o layout da folha'}
-                    className={`flex h-7 w-20 items-center justify-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 ${folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted font-bold' : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600 font-bold'}`}>
-                    <span className="text-[9px] font-extrabold tracking-wide">{folhaTravada ? 'TRAVADA' : 'SOLTA'}</span>
+                    onClick={vista === 'mapa' ? centralizar : () => ajustarPlanta()}
+                    title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Enquadrar a FOLHA A3 inteira na tela (foco)'}
+                    className={btnStyle("border-transparent bg-slate-700 hover:bg-slate-800 text-white")}>
+                    <Crosshair className="size-3.5 text-white mr-1.5 shrink-0" />
+                    <span>FOCO</span>
                   </button>
-                  <button type="button" onClick={() => setPlantaDark((v) => !v)}
-                    title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
-                    className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-foreground hover:bg-muted shadow-sm transition-all duration-200 active:scale-95 font-bold">
-                    <span className="text-[9px] font-extrabold tracking-wide">{plantaDark ? 'ESCURA' : 'CLARA'}</span>
+
+                  {vista === 'mapa' && (
+                    <button type="button" onClick={() => setSnapAtivo((v) => !v)}
+                      title={snapAtivo ? 'Ímã ligado (F3): o clique encaixa em pontos próximos. Clique para desligar.' : 'Ímã desligado (F3). Clique para ligar o encaixe em pontos próximos.'}
+                      className={btnStyle(`border-transparent text-white ${snapAtivo ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-slate-700 hover:bg-slate-800'}`)}>
+                      <Magnet className="size-3.5 text-white mr-1.5 shrink-0" />
+                      <span>IMÃ</span>
+                    </button>
+                  )}
+
+                  {/* IA EXTRAIR */}
+                  <button type="button" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }}
+                    title="Extrair quaisquer dados (coordenadas, proprietários, confrontantes, áreas, etc.) de PDFs, imagens e documentos com Inteligência Artificial"
+                    className={btnStyle("border-border bg-background/95 text-indigo-600 dark:text-indigo-400 hover:bg-muted hover:border-indigo-500/50")}>
+                    <Sparkles className="size-3.5 text-indigo-500 mr-1.5 shrink-0" />
+                    <span>IA EXTRAIR</span>
                   </button>
-                </>
-              )}
 
-              {/* Foco e Imã */}
-              <button type="button"
-                onClick={vista === 'mapa' ? centralizar : () => ajustarPlanta()}
-                title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Enquadrar a FOLHA A3 inteira na tela (foco)'}
-                className="flex h-7 w-20 items-center justify-center rounded-full border border-transparent bg-slate-700 hover:bg-slate-800 text-white shadow-sm transition-all duration-200 active:scale-95 font-bold">
-                <Crosshair className="size-3.5 text-white mr-1 shrink-0" />
-                <span className="text-[9px] font-extrabold tracking-wide">FOCO</span>
-              </button>
-              {vista === 'mapa' && (
-                <button type="button" onClick={() => setSnapAtivo((v) => !v)}
-                  title={snapAtivo ? 'Ímã ligado (F3): o clique encaixa em pontos próximos. Clique para desligar.' : 'Ímã desligado (F3). Clique para ligar o encaixe em pontos próximos.'}
-                  className={`flex h-7 w-20 items-center justify-center rounded-full border border-transparent shadow-sm transition-all duration-200 active:scale-95 text-white font-bold ${snapAtivo ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-slate-700 hover:bg-slate-800'}`}>
-                  <Magnet className="size-3.5 text-white mr-1 shrink-0" />
-                  <span className="text-[9px] font-extrabold tracking-wide">IMÃ</span>
-                </button>
-              )}
-
-              {/* IA EXTRAIR */}
-              <button type="button" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }}
-                title="Extrair quaisquer dados (coordenadas, proprietários, confrontantes, áreas, etc.) de PDFs, imagens e documentos com Inteligência Artificial"
-                className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-indigo-600 dark:text-indigo-400 hover:bg-muted hover:border-indigo-500/50 shadow-sm transition-all duration-200 active:scale-95 font-bold">
-                <span className="text-[9px] font-extrabold tracking-wide">IA EXTRAIR</span>
-              </button>
-
-              {/* Botão Camadas */}
-              {GERENCIADOR_CAMADAS_VISIVEL && (
-              <div className="relative">
-                <button type="button" onClick={() => setCamadasPopoverAberta((v) => !v)}
-                  title="Gerenciador de camadas: visibilidade, bloqueio, cores e espessuras"
-                  className={`flex h-7 w-20 items-center justify-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 ${camadasPopoverAberta ? 'border-teal-600 bg-teal-600 text-white dark:bg-teal-500 dark:text-black hover:bg-teal-700 dark:hover:bg-teal-400 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted hover:border-teal-500/50 font-bold'}`}>
-                  <span className="text-[9px] font-extrabold tracking-wide">CAMADAS</span>
-                </button>
-                {camadasPopoverAberta && (
-                  <div className={`absolute z-[2100] w-72 rounded-xl border border-teal-500/30 bg-background/98 shadow-2xl backdrop-blur-xl p-3 animate-in fade-in duration-200 ${direcaoAtalhos === 'vertical' ? 'left-[84px] top-0 slide-in-from-left-2' : 'bottom-[34px] left-0 slide-in-from-bottom-2'}`}
-                    onWheel={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-extrabold uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-1.5"><Layers className="size-3.5" /> Camadas</span>
-                      <button type="button" onClick={() => setCamadasPopoverAberta(false)} className="size-5 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">×</button>
-                    </div>
-                    <div className="flex flex-col gap-1.5 text-[11px] text-foreground">
-                      {Object.keys(camadasVisiveis).map((key) => {
-                        const label =
-                          key === 'divisas' ? 'Divisas / Perímetro' :
-                          key === 'ambientais' ? 'Áreas Ambientais (CAR)' :
-                          key === 'polilinhas' ? 'Polilinhas / Linhas' :
-                          key === 'textos' ? 'Textos' :
-                          key === 'cotas' ? 'Cotas / Medidas' : 'Símbolos';
-                        const estilo = estilosCamadas[key];
-                        const visivel = camadasVisiveis[key];
-                        const bloqueada = camadasBloqueadas[key];
-                        return (
-                          <div key={key} className="flex items-center justify-between gap-1.5 border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <input type="color" value={estilo.cor}
-                                onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], cor: e.target.value } }))}
-                                className="size-5 rounded-full cursor-pointer border-0 p-0 overflow-hidden shrink-0 bg-transparent" title="Cor da camada" />
-                              <span className="truncate font-medium">{label}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {key !== 'textos' && key !== 'simbolos' && (
-                                <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground font-bold">
-                                  <span>L:</span>
-                                  <input type="number" min="0.5" max="10" step="0.5" value={estilo.espessura}
-                                    onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], espessura: parseFloat(e.target.value) || 1 } }))}
-                                    className="w-9 h-5 rounded-sm border bg-background text-center text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-teal-500" title="Espessura" />
-                                </div>
-                              )}
-                              <button type="button" onClick={() => setCamadasVisiveis((prev) => ({ ...prev, [key]: !prev[key] }))}
-                                className={`p-0.5 rounded-sm hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
-                                title={visivel ? 'Ocultar' : 'Exibir'}>
-                                {visivel ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                              </button>
-                              <button type="button" onClick={() => setCamadasBloqueadas((prev) => ({ ...prev, [key]: !prev[key] }))}
-                                className={`p-0.5 rounded-sm hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
-                                title={bloqueada ? 'Desbloquear' : 'Bloquear'}>
-                                {bloqueada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
-                              </button>
-                            </div>
+                  {/* Botão Camadas */}
+                  {GERENCIADOR_CAMADAS_VISIVEL && (
+                    <div className="relative">
+                      <button type="button" onClick={() => setCamadasPopoverAberta((v) => !v)}
+                        title="Gerenciador de camadas: visibilidade, bloqueio, cores e espessuras"
+                        className={btnStyle(camadasPopoverAberta ? 'border-teal-600 bg-teal-600 text-white dark:bg-teal-500 dark:text-black hover:bg-teal-700 dark:hover:bg-teal-400' : 'border-border bg-background/95 text-foreground hover:bg-muted hover:border-teal-500/50')}>
+                        <Layers className="size-3.5 mr-1.5 shrink-0" />
+                        <span>CAMADAS</span>
+                      </button>
+                      {camadasPopoverAberta && (
+                        <div className={`absolute z-[2100] w-72 rounded-xl border border-teal-500/30 bg-background/98 shadow-2xl backdrop-blur-xl p-3 animate-in fade-in duration-200 ${direcaoAtalhos === 'vertical' ? 'left-[120px] top-0 slide-in-from-left-2' : 'bottom-[38px] left-0 slide-in-from-bottom-2'}`}
+                          onWheel={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-extrabold uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-1.5"><Layers className="size-3.5" /> Camadas</span>
+                            <button type="button" onClick={() => setCamadasPopoverAberta(false)} className="size-5 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">×</button>
                           </div>
-                        );
-                      })}
+                          <div className="flex flex-col gap-1.5 text-[11px] text-foreground">
+                            {Object.keys(camadasVisiveis).map((key) => {
+                              const label =
+                                key === 'divisas' ? 'Divisas / Perímetro' :
+                                key === 'ambientais' ? 'Áreas Ambientais (CAR)' :
+                                key === 'polilinhas' ? 'Polilinhas / Linhas' :
+                                key === 'textos' ? 'Textos' :
+                                key === 'cotas' ? 'Cotas / Medidas' : 'Símbolos';
+                              const estilo = estilosCamadas[key];
+                              const visivel = camadasVisiveis[key];
+                              const bloqueada = camadasBloqueadas[key];
+                              return (
+                                <div key={key} className="flex items-center justify-between gap-1.5 border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <input type="color" value={estilo.cor}
+                                      onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], cor: e.target.value } }))}
+                                      className="size-5 rounded-full cursor-pointer border-0 p-0 overflow-hidden shrink-0 bg-transparent" title="Cor da camada" />
+                                    <span className="truncate font-medium">{label}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {key !== 'textos' && key !== 'simbolos' && (
+                                      <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground font-bold">
+                                        <span>L:</span>
+                                        <input type="number" min="0.5" max="10" step="0.5" value={estilo.espessura}
+                                          onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], espessura: parseFloat(e.target.value) || 1 } }))}
+                                          className="w-9 h-5 rounded-sm border bg-background text-center text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-teal-500" title="Espessura" />
+                                      </div>
+                                    )}
+                                    <button type="button" onClick={() => setCamadasVisiveis((prev) => ({ ...prev, [key]: !prev[key] }))}
+                                      className={`p-0.5 rounded-sm hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
+                                      title={visivel ? 'Ocultar' : 'Exibir'}>
+                                      {visivel ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                                    </button>
+                                    <button type="button" onClick={() => setCamadasBloqueadas((prev) => ({ ...prev, [key]: !prev[key] }))}
+                                      className={`p-0.5 rounded-sm hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
+                                      title={bloqueada ? 'Desbloquear' : 'Bloquear'}>
+                                      {bloqueada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-              </div>
-              )}
+                  )}
 
-              {souMaster() && (
-                <button type="button" onClick={() => setModoMaster((m) => (m === 'editar' ? 'gerir' : 'editar'))}
-                  title={modoMaster === 'editar' ? 'Alternar para o modo GERIR (painel administrativo do SaaS)' : 'Alternar para o modo EDITAR (workspace de desenho)'}
-                  className={`flex h-7 w-20 items-center justify-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 ${modoMaster === 'gerir' ? 'border-amber-600 bg-amber-600 text-white dark:bg-amber-500 dark:text-black hover:bg-amber-700 dark:hover:bg-amber-400 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
-                  <span className="text-[9px] font-extrabold tracking-wide">{modoMaster === 'gerir' ? 'DESENHAR' : 'GERIR SAAS'}</span>
-                </button>
-              )}
+                  {/* Gerir SaaS */}
+                  {souMaster() && (
+                    <button type="button" onClick={() => setModoMaster((m) => (m === 'editar' ? 'gerir' : 'editar'))}
+                      title={modoMaster === 'editar' ? 'Alternar para o modo GERIR (painel administrativo do SaaS)' : 'Alternar para o modo EDITAR (workspace de desenho)'}
+                      className={btnStyle(modoMaster === 'gerir' ? 'border-amber-600 bg-amber-600 text-white dark:bg-amber-500 dark:text-black hover:bg-amber-700 dark:hover:bg-amber-400' : 'border-border bg-background/95 text-foreground hover:bg-muted')}>
+                      <ShieldCheck className="size-3.5 mr-1.5 shrink-0" />
+                      <span>{modoMaster === 'gerir' ? 'DESENHAR' : 'GERIR SAAS'}</span>
+                    </button>
+                  )}
 
-              <button type="button" onClick={() => { setConfigAba(undefined); setConfigAberta(true); }}
-                title="Configurações gerais do sistema"
-                className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-slate-600 dark:text-slate-400 hover:bg-muted shadow-sm transition-all duration-200 active:scale-95 font-bold">
-                <span className="text-[9px] font-extrabold tracking-wide font-bold">AJUSTES</span>
-              </button>
+                  {/* Ajustes */}
+                  <button type="button" onClick={() => { setConfigAba(undefined); setConfigAberta(true); }}
+                    title="Configurações gerais do sistema"
+                    className={btnStyle("border-border bg-background/95 text-slate-600 dark:text-slate-400 hover:bg-muted")}>
+                    <Settings className="size-3.5 mr-1.5 shrink-0" />
+                    <span>AJUSTES</span>
+                  </button>
 
-              {nuvemDisponivel && user && (
-                <button type="button" onClick={() => { limparConfigLocalNaSaida(); sair(); }}
-                  title={`Sair da conta: ${user.email}`}
-                  className="flex h-7 w-20 items-center justify-center rounded-full border border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-500/50 shadow-sm transition-all duration-200 active:scale-95 font-bold">
-                  <span className="text-[9px] font-extrabold tracking-wide font-bold">LOGOUT</span>
-                </button>
-              )}
-            </div>
+                  {/* Logout */}
+                  {nuvemDisponivel && user && (
+                    <button type="button" onClick={() => { limparConfigLocalNaSaida(); sair(); }}
+                      title={`Sair da conta: ${user.email}`}
+                      className={btnStyle("border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-500/50")}>
+                      <LogOut className="size-3.5 mr-1.5 shrink-0" />
+                      <span>LOGOUT</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Área e Perímetro - Barra Flutuante e Arrastável */}
