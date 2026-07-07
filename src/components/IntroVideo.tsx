@@ -40,18 +40,23 @@ export default function IntroVideo() {
     return () => window.removeEventListener('souzacad:ver-intro', rever);
   }, []);
 
-  // Ao abrir, tenta dar play (com áudio ativado por padrão; se o navegador bloquear, tenta mudo).
+  // Ao abrir, garante o autoplay: começa SEMPRE mudo (todo navegador libera vídeo mudo). Depois, se
+  // a preferência é com som, tenta ligar o áudio — se o navegador barrar, segue mudo com o botão de
+  // som. Antes ele tentava tocar com som primeiro, que os navegadores bloqueiam, e às vezes o vídeo
+  // nem chegava a rodar.
   useEffect(() => {
-    if (aberto && videoRef.current) {
-      const v = videoRef.current;
-      v.muted = !comSom;
-      v.play().catch(() => {
-        // Fallback: se o navegador proibir autoplay com áudio, inicia mutado
-        v.muted = true;
-        setComSom(false);
-        v.play().catch(() => {});
-      });
-    }
+    if (!aberto || !videoRef.current) return;
+    const v = videoRef.current;
+    let cancelado = false;
+    v.muted = true;
+    v.play().then(() => {
+      if (cancelado) return;
+      if (comSom) {
+        v.muted = false;
+        v.play().catch(() => { v.muted = true; setComSom(false); });
+      }
+    }).catch(() => { /* nem mudo tocou; o usuário pode pular */ });
+    return () => { cancelado = true; };
   }, [aberto, comSom]);
 
   // Avisa o resto do app quando a abertura está na tela.
@@ -101,10 +106,12 @@ export default function IntroVideo() {
             className="aspect-video w-full object-cover transition-opacity duration-150"
             style={{ opacity: tocando ? 1 : 0 }}
             autoPlay
+            muted
             playsInline
             preload="auto"
             onPlaying={() => setTocando(true)}
             onEnded={fechar}
+            onError={fechar}
           />
 
           {/* Tarja de marca na base (largura inteira): rodapé profissional com o logo. A altura em
