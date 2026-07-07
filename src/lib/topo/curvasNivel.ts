@@ -175,11 +175,19 @@ export function suavizarChaikin(linha: Ponto2D[], passos = 2): Ponto2D[] {
  * em cerca de uma dúzia de curvas no desnível total — legível em terreno plano OU acidentado.
  */
 export function intervaloSugerido(pontos: Ponto3D[]): number {
-  const zs = pontos.map((p) => p.z).filter((z) => Number.isFinite(z));
-  if (zs.length < 2) return 1;
+  const validos = pontos.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
+  if (validos.length < 2) return 1;
+  const zs = validos.map((p) => p.z);
   const desnivel = Math.max(...zs) - Math.min(...zs);
   if (!(desnivel > 0)) return 1;
-  const alvo = desnivel / 12; // mira ~12 curvas
+  // Lógica INTELIGENTE: leva em conta o RELEVO (desnível) E o TAMANHO do imóvel. Num terreno grande as
+  // curvas se espalham por mais espaço, então cabem MAIS curvas sem virar emaranhado; num pequeno, menos.
+  // O nº-alvo de curvas cresce suavemente com o tamanho (diagonal da nuvem de pontos, em metros), entre
+  // ~8 (imóvel pequeno) e ~24 (grande). O intervalo é o desnível dividido por esse alvo, arredondado.
+  const xs = validos.map((p) => p.x), ys = validos.map((p) => p.y);
+  const tamanho = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)); // metros
+  const alvoN = Math.min(24, Math.max(8, Math.round(8 + tamanho / 150)));
+  const alvo = desnivel / alvoN;
   const redondos = [0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50, 100];
   return redondos.find((n) => n >= alvo) ?? Math.ceil(alvo);
 }

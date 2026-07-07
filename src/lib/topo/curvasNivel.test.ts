@@ -83,17 +83,16 @@ describe('suavizarChaikin', () => {
 });
 
 describe('intervaloSugerido', () => {
-  it('desnível grande → intervalo maior (evita emaranhado)', () => {
-    const pts: Ponto3D[] = [{ x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 120 }];
-    expect(intervaloSugerido(pts)).toBe(10); // 120/12=10
-  });
-  it('desnível pequeno → intervalo fino', () => {
-    const pts: Ponto3D[] = [{ x: 0, y: 0, z: 0 }, { x: 1, y: 1, z: 5 }];
-    expect(intervaloSugerido(pts)).toBe(0.5); // 5/12≈0.42 → 0.5
+  it('considera relevo E tamanho: imóvel grande cabe mais curvas (intervalo menor) que um pequeno com o mesmo desnível', () => {
+    const grande: Ponto3D[] = [{ x: 0, y: 0, z: 0 }, { x: 3000, y: 0, z: 30 }];  // ~3 km, desnível 30
+    const pequeno: Ponto3D[] = [{ x: 0, y: 0, z: 0 }, { x: 300, y: 0, z: 30 }];   // 300 m, desnível 30
+    expect(intervaloSugerido(grande)).toBe(2);  // 30 / ~24 curvas = 1,25 → 2
+    expect(intervaloSugerido(pequeno)).toBe(5); // 30 / ~10 curvas = 3 → 5
+    expect(intervaloSugerido(grande)).toBeLessThan(intervaloSugerido(pequeno));
   });
   it('sem desnível ou poucos pontos → 1', () => {
     expect(intervaloSugerido([{ x: 0, y: 0, z: 5 }])).toBe(1);
-    expect(intervaloSugerido([{ x: 0, y: 0, z: 5 }, { x: 1, y: 1, z: 5 }])).toBe(1);
+    expect(intervaloSugerido([{ x: 0, y: 0, z: 5 }, { x: 100, y: 0, z: 5 }])).toBe(1);
   });
 });
 
