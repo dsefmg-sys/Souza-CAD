@@ -176,8 +176,15 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     }
   }
 
+  function handleOpenChange(o: boolean) {
+    if (!o) {
+      onChangePessoas(req, trans, localTipoAto, localPartesAdicionais);
+    }
+    onOpenChange(o);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] flex flex-col p-6">
         <DialogHeader className="shrink-0">
           <DialogTitle>Requerimento ao cartório (retificação de área)</DialogTitle>
