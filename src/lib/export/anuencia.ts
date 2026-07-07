@@ -78,7 +78,7 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
         size: 22
       }),
       new TextRun({ text: imovel.denominacao || '________________', bold: true, size: 22 }),
-      new TextRun({ text: `, de propriedade de `, size: 22 }),
+      new TextRun({ text: imovel.regimeTerra === 'posse' ? `, sob a posse de ` : `, de propriedade de `, size: 22 }),
       new TextRun({ text: imovel.proprietario || '________________', bold: true, size: 22 }),
       new TextRun({ text: `, executado sob a responsabilidade técnica do profissional `, size: 22 }),
       new TextRun({ text: tecnico.nome || '________________', bold: true, size: 22 }),
@@ -174,7 +174,8 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
   }
 
   // Proprietário do Imóvel (requerente) + demais titulares, se houver.
-  addAssinatura(imovel.proprietario || '_______________________', `Proprietário Requerente${rotuloPapelProprietario(imovel.papelProprietario) !== 'Proprietário(a)' ? ` (${rotuloPapelProprietario(imovel.papelProprietario)})` : ''}`);
+  const rotuloAssinaturaRequerente = imovel.regimeTerra === 'posse' ? 'Possuidor(a) Requerente' : `Proprietário Requerente${rotuloPapelProprietario(imovel.papelProprietario) !== 'Proprietário(a)' ? ` (${rotuloPapelProprietario(imovel.papelProprietario)})` : ''}`;
+  addAssinatura(imovel.proprietario || '_______________________', rotuloAssinaturaRequerente);
   for (const parte of imovel.proprietariosAdicionais ?? []) {
     if (parte.nome?.trim()) addAssinatura(parte.nome, `Titular do imóvel (${rotuloPapelProprietario(parte.papel)})`);
   }

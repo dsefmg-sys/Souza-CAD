@@ -1529,8 +1529,8 @@ export default function Planta({
 
         const linhas = [
           glebaNome || imovel.denominacao || 'Imóvel',
-          imovel.matricula ? `Matrícula nº ${formatMatricula(imovel.matricula)}` : '',
-          imovel.proprietario ? `Prop.: ${imovel.proprietario}` : '',
+          imovel.matricula ? `Matrícula nº ${formatMatricula(imovel.matricula)}` : imovel.regimeTerra === 'posse' ? 'Imóvel sob Posse' : '',
+          imovel.proprietario ? `${imovel.regimeTerra === 'posse' ? 'Poss.' : 'Prop.'}: ${imovel.proprietario}` : '',
           `Área: ${numBR(ef.areaHa, 4)} ha`,
         ].filter(Boolean);
 
@@ -2340,7 +2340,7 @@ function CarimboA3(props: {
   const campos: [string, string][] = [
     [imovel.tipoImovel === 'urbano' ? 'LOTE/IMÓVEL:' : 'PROPRIEDADE:', glebaNome || imovel.denominacao || '—'],
     // O rótulo reflete o PAPEL do titular principal (proprietário / usufrutuário / condômino...).
-    [`${rotuloPapelProprietario(imovel.papelProprietario).toUpperCase()}:`, imovel.proprietario || '—'],
+    [imovel.regimeTerra === 'posse' ? 'POSSUIDOR(A):' : `${rotuloPapelProprietario(imovel.papelProprietario).toUpperCase()}:`, imovel.proprietario || '—'],
   ];
   // Demais titulares do imóvel (assinam o memorial anexo); o valor é truncado se muito longo.
   const outrosTitulares = (imovel.proprietariosAdicionais ?? []).filter((p) => p.nome?.trim());
@@ -2352,7 +2352,7 @@ function CarimboA3(props: {
     // Termo do PROJETO (informado no modal) tem prioridade; senão, o do cadastro. Sigla TRT/ART
     // conforme o conselho (técnico=TRT, engenheiro=ART).
     [`${rotulosProfissional(tecnico).termo}:`, imovel.numeroTrt || tecnico.art || '—'],
-    ['MAT./TRANSC.:', imovel.matricula || '—'],
+    [imovel.regimeTerra === 'posse' ? 'SITUAÇÃO JURÍDICA:' : 'MAT./TRANSC.:', imovel.regimeTerra === 'posse' && !imovel.matricula ? 'POSSE (SEM REGISTRO)' : imovel.matricula || '—'],
   );
   if (imovel.tipoImovel === 'urbano') {
     if (imovel.inscricaoMunicipal) {
@@ -2511,7 +2511,7 @@ function CarimboA3(props: {
       {/* ── CARD A: DECLARAÇÃO DO(S) PROPRIETÁRIO(S) ──────────────────────── */}
       <g>
         <rect x={lx} y={Y_PROP} width={wBox} height={H_PROP} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-        {Cab(Y_PROP, 'DECLARAÇÃO DO(S) PROPRIETÁRIO(S)', 'carimbo.tituloProp')}
+        {Cab(Y_PROP, imovel.regimeTerra === 'posse' ? 'DECLARAÇÃO DO(S) POSSUIDOR(ES)' : 'DECLARAÇÃO DO(S) PROPRIETÁRIO(S)', 'carimbo.tituloProp')}
 
         {(() => {
           const idProp = 'carimbo.declProprietario';

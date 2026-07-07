@@ -6104,6 +6104,25 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         <Campo label="Matrícula" value={imovel.matricula} onChange={(v) => set('matricula', v)} />
         <Campo label="Cartório (CNS)" value={imovel.cns} onChange={(v) => set('cns', v)} list="lista-cns" />
       </div>
+      <div className="space-y-1">
+        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Regime de terra</Label>
+        <div className="flex rounded-md bg-secondary p-0.5 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => onChange({ ...imovel, regimeTerra: 'propriedade' })}
+            className={`flex-1 rounded-sm py-1 text-center transition-all ${(imovel.regimeTerra ?? 'propriedade') === 'propriedade' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Propriedade
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ ...imovel, regimeTerra: 'posse' })}
+            className={`flex-1 rounded-sm py-1 text-center transition-all ${imovel.regimeTerra === 'posse' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Posse
+          </button>
+        </div>
+      </div>
       {sugCartorios.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {sugCartorios.map((c) => (

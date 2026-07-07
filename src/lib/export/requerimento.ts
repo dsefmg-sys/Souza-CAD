@@ -122,7 +122,13 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   const input = sanitizarProfundo(inputBruto);
   const { imovel, tecnico, requerente, transmitente, areaRealHa } = input;
   const tipo = input.tipoAto ?? 'venda';
-  const rot = ROTULOS_ATO[tipo];
+  const rotOriginal = ROTULOS_ATO[tipo];
+  const rot = imovel.regimeTerra === 'posse' ? {
+    requerente: rotOriginal.requerente.replace('PROPRIETÁRIO', 'POSSUIDOR'),
+    transmitente: rotOriginal.transmitente.replace('PROPRIETÁRIO', 'POSSUIDOR'),
+    assinaReq: rotOriginal.assinaReq.replace('Proprietário', 'Possuidor'),
+    assinaTrans: rotOriginal.assinaTrans.replace('Proprietário', 'Possuidor'),
+  } : rotOriginal;
   const comarca = input.comarca || imovel.municipio || '—';
   const c: Paragraph[] = [];
 
@@ -162,6 +168,8 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   const origens = (imovel.matriculasOrigem ?? []).filter((m) => m.trim());
   if (tipo === 'unificacao' && origens.length > 0) {
     c.push(par(`O imóvel resulta da unificação das matrículas nº ${origens.join(', nº ')}, situado no município de ${imovel.municipio || '—'}, passando a constituir uma só matrícula sob nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${transmitente.nome || imovel.proprietario || '—'}.`));
+  } else if (imovel.regimeTerra === 'posse') {
+    c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, é detido sob regime de posse por ${transmitente.nome || imovel.proprietario || '—'}${imovel.matricula ? `, com referência ao registro/transcrição nº ${imovel.matricula}` : ' (sem matrícula registrada)'}.`));
   } else {
     c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, encontra-se registrado neste Cartório sob a matrícula nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${transmitente.nome || imovel.proprietario || '—'}.`));
   }

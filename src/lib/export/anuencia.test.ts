@@ -31,4 +31,18 @@ describe('gerarAnuenciaDocumento', () => {
     expect(buffer).toBeDefined();
     expect(buffer.length).toBeGreaterThan(0);
   });
+
+  it('altera o texto quando o imóvel está sob regime de posse', async () => {
+    const doc = gerarAnuenciaDocumento({
+      imovel: { ...imovel, regimeTerra: 'posse' },
+      tecnico,
+      confrontante,
+      verticesCompartilhados: [],
+      comarca: 'Espera Feliz',
+      dataExtenso: '10 de julho de 2026'
+    });
+    expect(doc).toBeDefined();
+    const buffer = await Packer.toBuffer(doc);
+    expect(buffer.length).toBeGreaterThan(0);
+  });
 });

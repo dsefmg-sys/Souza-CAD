@@ -309,6 +309,7 @@ export interface ImovelData {
   declinacaoMagnetica?: number; // graus (negativo = oeste), do serviço de declinação
   variacaoAnual?: number;       // minutos/ano
   tipoImovel?: 'rural' | 'urbano';
+  regimeTerra?: 'propriedade' | 'posse';
   // Padrão do memorial descritivo. 'incra' (padrão nacional SIGEF) ou 'intermat' (variante do
   // Instituto de Terras de Mato Grosso, para regularização de terras públicas estaduais). O padrão
   // INTERMAT só é oferecido quando o imóvel é de Mato Grosso. Ausente = 'incra'.

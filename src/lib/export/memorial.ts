@@ -246,8 +246,8 @@ function linhasCabecalho(imovel: ImovelData, areaHa: number, perimetro: number):
 
   return [
     linha(isUrbano ? 'Imóvel/Lote:' : 'Imóvel:', imovel.denominacao),
-    linha('Matrícula:', `${imovel.matricula}${idMunicipal}`),
-    linha('Proprietário(a):', imovel.proprietario),
+    linha(imovel.regimeTerra === 'posse' ? 'Situação jurídica:' : 'Matrícula:', imovel.regimeTerra === 'posse' && !imovel.matricula ? 'Posse' : `${imovel.matricula}${idMunicipal}`),
+    linha(imovel.regimeTerra === 'posse' ? 'Possuidor(a):' : 'Proprietário(a):', imovel.proprietario),
     linha(labelArea, valArea),
     linha('Local:', imovel.local),
     linha('Perímetro (m):', `${numBR(perimetro)} m`),
@@ -366,8 +366,9 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     `Credenciamento INCRA: ${tecnico.credenciamentoIncra}`,
   ], true).forEach((c) => children.push(c));
 
-  // Bloco proprietários (com cônjuge, se houver)
-  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'PROPRIETÁRIOS', bold: true, size: 24 })] }));
+  // Bloco proprietários/possuidores (com cônjuge, se houver)
+  const tituloBloco = imovel.regimeTerra === 'posse' ? 'POSSUIDORES' : 'PROPRIETÁRIOS';
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: tituloBloco, bold: true, size: 24 })] }));
   children.push(p(mod('declProprietario')));
   
   const propLinhas = [
@@ -377,7 +378,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   if (transmitente?.rg) {
     propLinhas.push(`RG: ${transmitente.rg}`);
   }
-  propLinhas.push(`Imóvel de Matrícula: ${imovel.matricula}`);
+  propLinhas.push(imovel.matricula ? `Imóvel de Matrícula: ${imovel.matricula}` : 'Imóvel de Posse (sem matrícula)');
   const qualifPrincipal = qualificacaoPapelProprietario(imovel.papelProprietario);
   if (qualifPrincipal) propLinhas.push(qualifPrincipal);
 
@@ -389,7 +390,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   // Demais titulares (condôminos, nu-proprietário, inventariante...): cada um com a sua assinatura.
   for (const parte of imovel.proprietariosAdicionais ?? []) {
     if (!parte.nome?.trim()) continue;
-    const linhas = [`Nome: ${parte.nome}`, `CPF: ${parte.cpf || '—'}`, `Imóvel de Matrícula: ${imovel.matricula}`];
+    const linhas = [`Nome: ${parte.nome}`, `CPF: ${parte.cpf || '—'}`, imovel.matricula ? `Imóvel de Matrícula: ${imovel.matricula}` : 'Imóvel de Posse (sem matrícula)'];
     const q = qualificacaoPapelProprietario(parte.papel);
     if (q) linhas.push(q);
     assinaturaComConjuge(linhas, parte.conjugeNome, parte.conjugeCpf).forEach((c) => children.push(c));
