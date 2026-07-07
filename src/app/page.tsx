@@ -510,7 +510,7 @@ export default function EditorPage() {
   }, [arrastandoAtalhos, posAtalhos]);
 
   const [plantaDark, setPlantaDark] = useState(true); // modo escuro só da folha A3 (conforto noturno)
-  const direcaoAtalhos = (typeof window !== 'undefined' && (posAtalhos.x < 120 || posAtalhos.x > window.innerWidth - 180)) ? 'vertical' : 'horizontal';
+  const direcaoAtalhos = (typeof window !== 'undefined' && posAtalhos.x < 150) ? 'vertical' : 'horizontal';
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean; errata?: boolean }>({});
