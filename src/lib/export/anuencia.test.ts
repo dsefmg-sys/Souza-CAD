@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gerarAnuenciaDocumento } from './anuencia';
+import { gerarAnuenciaDocumento, gerarAnuenciaLoteDocumento } from './anuencia';
 import type { ImovelData, TecnicoData, Confrontante, Vertex, Lado } from '../topo/types';
 import { Packer } from 'docx';
 
@@ -42,6 +42,25 @@ describe('gerarAnuenciaDocumento', () => {
       dataExtenso: '10 de julho de 2026'
     });
     expect(doc).toBeDefined();
+    const buffer = await Packer.toBuffer(doc);
+    expect(buffer.length).toBeGreaterThan(0);
+  });
+});
+
+describe('gerarAnuenciaLoteDocumento', () => {
+  it('gera um único documento com todas as cartas (uma por confrontante)', async () => {
+    const c2 = { ...confrontante, id: 'c2', nome: 'Maria Oliveira', condicao: 'posseiro' } as Confrontante;
+    const doc = gerarAnuenciaLoteDocumento([
+      { imovel, tecnico, confrontante, verticesCompartilhados: [] },
+      { imovel, tecnico, confrontante: c2, verticesCompartilhados: [] },
+    ]);
+    expect(doc).toBeDefined();
+    const buffer = await Packer.toBuffer(doc);
+    expect(buffer.length).toBeGreaterThan(0);
+  });
+
+  it('não quebra com lista vazia', async () => {
+    const doc = gerarAnuenciaLoteDocumento([]);
     const buffer = await Packer.toBuffer(doc);
     expect(buffer.length).toBeGreaterThan(0);
   });

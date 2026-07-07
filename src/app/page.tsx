@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal, SlidersHorizontal,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal, SlidersHorizontal, ChevronDown, Briefcase,
   Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,7 @@ import ConsultarModal from '@/components/ConsultarModal';
 import { Packer } from 'docx';
 import { gerarAnuenciaDocumento } from '@/lib/export/anuencia';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
+import AnuenciaModal from '@/components/AnuenciaModal';
 import GestaoProjetoModal from '@/components/GestaoProjetoModal';
 import TutorialModal from '@/components/TutorialModal';
 import AssinaturaModal from '@/components/AssinaturaModal';
@@ -86,6 +87,7 @@ import { dividirSegmentoUtm } from '@/lib/topo/editing';
 import { porAfastamento } from '@/lib/topo/verticeVirtual';
 import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef, carregarImportVerticesVizinho, tutorialJaVisto, marcarTutorialVisto, carregarPlantaTemplates, salvarPlantaTemplate } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
+import { definirModoEntrada, useModoEntrada } from '@/lib/store/loginSkip';
 import { puxarConfigDaNuvem, empurrarConfigParaNuvem, limparConfigLocalNaSaida } from '@/lib/store/configNuvem';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
@@ -231,6 +233,9 @@ export interface EstiloCamada {
 
 export default function EditorPage() {
   const { user, carregando: authCarregando, disponivel: nuvemDisponivel } = useAuth();
+  const modoEntrada = useModoEntrada();
+  const entrouSemLogin = nuvemDisponivel && !user && modoEntrada === 'semLogin';
+  const [perfilMenuAberto, setPerfilMenuAberto] = useState(false);
   const [perfil, setPerfil] = useState<PerfilUso | null>(null);
   const [configAssinatura, setConfigAssinatura] = useState<ConfigAssinatura | null>(null);
   const [avisoPagamentoAberto, setAvisoPagamentoAberto] = useState(false);
@@ -398,6 +403,7 @@ export default function EditorPage() {
   const [nomeProjeto, setNomeProjeto] = useState('');
   const [nomeProjetoManual, setNomeProjetoManual] = useState(false);
   const [reqAberto, setReqAberto] = useState(false);
+  const [anuenciaAberta, setAnuenciaAberta] = useState(false);
   const [modalSobreposicaoAberto, setModalSobreposicaoAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
   const [calcAberta, setCalcAberta] = useState(false);
@@ -615,6 +621,11 @@ export default function EditorPage() {
   const [tempoCompletoMs, setTempoCompletoMs] = useState(0);
   const [introTocando, setIntroTocando] = useState(() => {
     if (typeof window === 'undefined') return false;
+    // Espelha a lógica do IntroVideo: se a abertura JÁ tocou nesta sessão (ex.: rodou na tela de
+    // login antes do app montar), ela não está rodando agora. Sem isso, o app perde o aviso de
+    // "abertura fechada" (disparado cedo demais) e esconde pra sempre tudo que depende de !introTocando
+    // — inclusive as pílulas de áudio de introdução e tutorial.
+    try { if (sessionStorage.getItem('metrica:intro_tocada_sessao')) return false; } catch { /* ignore */ }
     return carregarPreferencias().introVideoAtiva;
   }); // enquanto a abertura roda, escondemos a chave de modo
   useEffect(() => { try { const p = carregarPreferencias(); setModoApp(p.modo); setTempoCompletoMs(p.tempoCompletoMs || 0); } catch { /* ignore */ } }, []);
@@ -3951,6 +3962,7 @@ export default function EditorPage() {
         <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
         <Etapa st={etapas.planta}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
         <Etapa st={etapas.req}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
+        <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Cartas de anuência dos confrontantes (.docx) — baixe todas num só documento ou uma por vez" onClick={() => setAnuenciaAberta(true)}><Download /> ANUENCIA</Button>
         {medioOuMais && (
           <Etapa st={etapas.errata}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><Download /> ERRATA</Button></Etapa>
         )}
@@ -4057,9 +4069,6 @@ export default function EditorPage() {
                       {/* Botões de Gestão — grade de 3 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo
                           (sem botão de largura total; menos rolagem). */}
                       <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                        <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''} onClick={salvar} disabled={processando} title="Salvar o projeto (Ctrl+S)">
-                          <Save /> <span>Salvar</span>
-                        </Button>
                         <Button size="sm" variant="outline" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
                           <Plus className="text-amber-500" /> <span>Novo</span>
                         </Button>
@@ -4071,6 +4080,9 @@ export default function EditorPage() {
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
                           <Target className="text-rose-500" /> <span>Foco</span>
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }} title="Extrair dados (coordenadas, proprietários, confrontantes, áreas) de PDFs, imagens e documentos com Inteligência Artificial">
+                          <Sparkles className="text-indigo-500" /> <span>IA</span>
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => setPrecoSugAberto(true)} title="Preço sugerido: quanto cobrar por este imóvel">
                           <PencilRuler className="text-emerald-600" /> <span>Preço</span>
@@ -4608,6 +4620,7 @@ export default function EditorPage() {
                     <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} onClick={() => setInfoAberto(true)} title="Detalhes do projeto"><FileText className="size-4" /></Button>
                     <Button size="sm" variant={painelAberto ? 'default' : 'outline'} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto"><Settings className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Foco"><Target className="size-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }} title="IA Extrair: dados de PDFs, imagens e documentos"><Sparkles className="size-4 text-indigo-500" /></Button>
                     {completo && (<>
                     <Button size="sm" variant="outline" onClick={() => setGestaoAberta(true)} title="Gestão financeira"><Info className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={() => setPontosAberto(true)} title="Banco de pontos"><Database className="size-4" /></Button>
@@ -4827,306 +4840,139 @@ export default function EditorPage() {
             <PainelMasterSaaS onVoltarDesenhar={() => setModoMaster('editar')} />
           ) : (
             <>
-              {/* Coluna de atalhos no canto superior esquerdo. A alternância MAPA/PLANTA (troca mais
-              usada) fica no topo, com destaque; abaixo, no mesmo padrão quadrado, o modo
-              Fácil/Completo e — só na planta — travar a folha e o tema da prancha. Ficam aqui pra
-              liberar a barra flutuante de cima. */}
-          <div
-            className={`no-print absolute z-[1160] flex select-none items-center gap-1.5 bg-background/90 backdrop-blur-sm border border-border/80 p-1.5 rounded-2xl shadow-xl transition-shadow hover:shadow-2xl ${
-              direcaoAtalhos === 'vertical' ? 'flex-col w-[124px]' : 'flex-row h-11'
-            }`}
-            style={{ left: `${posAtalhos.x}px`, top: `${posAtalhos.y}px` }}
-          >
-            {/* Alça de Arrasto (Drag Handle) */}
-            <div
-              className={`flex cursor-grab items-center justify-center rounded hover:bg-accent text-muted-foreground/60 hover:text-muted-foreground active:cursor-grabbing transition-colors ${
-                direcaoAtalhos === 'vertical' ? 'h-3.5 w-full mb-0.5' : 'w-3.5 h-full mr-0.5'
-              }`}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                setArrastandoAtalhos({
-                  startX: e.clientX,
-                  startY: e.clientY,
-                  startPosX: posAtalhos.x,
-                  startPosY: posAtalhos.y,
-                });
-              }}
-              title="Arraste para mover o menu de atalhos (horizontal no meio, vertical nas laterais)"
-            >
-              {direcaoAtalhos === 'vertical' ? <GripHorizontal className="size-3.5" /> : <GripVertical className="size-3.5" />}
-            </div>
+              {/* Botão de perfil (canto superior direito, fixo): avatar + nome do usuário. Ao clicar,
+                  abre Ajustes, Gerir SaaS (só para o ADM) e Sair. Reúne o que antes ficava espalhado
+                  na barra de atalhos, que foi dissolvida. */}
+          <div className="no-print fixed right-2 top-2 z-[1300]">
+            <button type="button" onClick={() => setPerfilMenuAberto((v) => !v)}
+              title="Sua conta"
+              className="flex items-center gap-2 rounded-full border border-border/80 bg-background/90 py-1 pl-1 pr-2.5 shadow-xl backdrop-blur-sm transition-colors hover:bg-muted">
+              {user?.photoURL ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.photoURL} alt="" className="size-7 rounded-full object-cover" />
+              ) : (
+                <span className="flex size-7 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
+                  {(user?.displayName || user?.email || 'V').slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <span className="max-w-[120px] truncate text-[11px] font-semibold text-foreground">
+                {user?.displayName || user?.email || 'Visitante'}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+            </button>
 
-            {/* Lista de botões */}
-            {(() => {
-              const btnStyle = (custom: string) => `flex h-8 items-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 text-[10px] font-bold ${
-                direcaoAtalhos === 'vertical' ? 'w-full justify-start px-2.5' : 'px-3 justify-center'
-              } ${custom}`;
-              return (
-                <div className={`flex gap-1 ${direcaoAtalhos === 'vertical' ? 'flex-col w-full' : 'flex-row'}`}>
-                  {/* Alternar Vista (Mapa/Planta) */}
-                  <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
-                    title="Alternar entre mapa e planta (Esc)"
-                    className={btnStyle("border-primary/50 bg-background/95 text-primary hover:bg-muted")}>
-                    {vista === 'mapa' ? (
-                      <>
-                        <Printer className="size-3.5 mr-1.5 shrink-0" />
-                        <span>PLANTA</span>
-                      </>
-                    ) : (
-                      <>
-                        <MapIcon className="size-3.5 mr-1.5 shrink-0" />
-                        <span>MAPA</span>
-                      </>
-                    )}
+            {perfilMenuAberto && (
+              <>
+                <div className="fixed inset-0 z-[1290]" onClick={() => setPerfilMenuAberto(false)} />
+                <div className="absolute right-0 top-[calc(100%+6px)] z-[1300] w-52 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
+                  <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
+                    <Settings className="size-4 text-muted-foreground" /> Ajustes
                   </button>
-
-                  {/* Chave de modo Fácil → Médio → Completo */}
-                  {chaveTopoVisivel && !introTocando && (
-                    <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
-                      title={completo
-                        ? 'Modo Completo: todas as ferramentas à mostra, inclusive as avançadas. Clique para voltar ao Fácil.'
-                        : medio
-                          ? 'Modo Médio: as ferramentas do dia a dia à mostra. Clique para o Completo.'
-                          : 'Modo Fácil: só o caminho essencial. Clique para o Médio.'}
-                      className={btnStyle("border-border bg-background/95 text-foreground hover:bg-muted")}>
-                      <SlidersHorizontal className="size-3.5 mr-1.5 shrink-0" />
-                      <span>{rotuloModo}</span>
-                    </button>
-                  )}
-
-                  {/* Só na planta: travar a folha e alternar o tema da prancha */}
-                  {vista === 'planta' && (
-                    <>
-                      <button type="button"
-                        onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
-                        title={folhaTravada ? 'Moldura travada — clique para soltar e arrastar a prancha' : 'Moldura solta — clique para travar o layout da folha'}
-                        className={btnStyle(folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted font-bold' : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600 font-bold')}>
-                        {folhaTravada ? <Lock className="size-3.5 mr-1.5 shrink-0" /> : <LockOpen className="size-3.5 mr-1.5 shrink-0" />}
-                        <span>{folhaTravada ? 'TRAVADA' : 'SOLTA'}</span>
-                      </button>
-                      <button type="button" onClick={() => setPlantaDark((v) => !v)}
-                        title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
-                        className={btnStyle("border-border bg-background/95 text-foreground hover:bg-muted")}>
-                        {plantaDark ? <Moon className="size-3.5 mr-1.5 shrink-0" /> : <Sun className="size-3.5 mr-1.5 shrink-0" />}
-                        <span>{plantaDark ? 'ESCURA' : 'CLARA'}</span>
-                      </button>
-                    </>
-                  )}
-
-                  {/* Foco e Imã */}
-                  <button type="button"
-                    onClick={vista === 'mapa' ? centralizar : () => ajustarPlanta()}
-                    title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Enquadrar a FOLHA A3 inteira na tela (foco)'}
-                    className={btnStyle("border-transparent bg-slate-700 hover:bg-slate-800 text-white")}>
-                    <Crosshair className="size-3.5 text-white mr-1.5 shrink-0" />
-                    <span>FOCO</span>
-                  </button>
-
-                  {vista === 'mapa' && (
-                    <button type="button" onClick={() => setSnapAtivo((v) => !v)}
-                      title={snapAtivo ? 'Ímã ligado (F3): o clique encaixa em pontos próximos. Clique para desligar.' : 'Ímã desligado (F3). Clique para ligar o encaixe em pontos próximos.'}
-                      className={btnStyle(`border-transparent text-white ${snapAtivo ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-slate-700 hover:bg-slate-800'}`)}>
-                      <Magnet className="size-3.5 text-white mr-1.5 shrink-0" />
-                      <span>IMÃ</span>
-                    </button>
-                  )}
-
-                  {/* IA EXTRAIR */}
-                  <button type="button" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }}
-                    title="Extrair quaisquer dados (coordenadas, proprietários, confrontantes, áreas, etc.) de PDFs, imagens e documentos com Inteligência Artificial"
-                    className={btnStyle("border-border bg-background/95 text-indigo-600 dark:text-indigo-400 hover:bg-muted hover:border-indigo-500/50")}>
-                    <Sparkles className="size-3.5 text-indigo-500 mr-1.5 shrink-0" />
-                    <span>IA EXTRAIR</span>
-                  </button>
-
-                  {/* Botão Camadas */}
-                  {GERENCIADOR_CAMADAS_VISIVEL && (
-                    <div className="relative">
-                      <button type="button" onClick={() => setCamadasPopoverAberta((v) => !v)}
-                        title="Gerenciador de camadas: visibilidade, bloqueio, cores e espessuras"
-                        className={btnStyle(camadasPopoverAberta ? 'border-teal-600 bg-teal-600 text-white dark:bg-teal-500 dark:text-black hover:bg-teal-700 dark:hover:bg-teal-400' : 'border-border bg-background/95 text-foreground hover:bg-muted hover:border-teal-500/50')}>
-                        <Layers className="size-3.5 mr-1.5 shrink-0" />
-                        <span>CAMADAS</span>
-                      </button>
-                      {camadasPopoverAberta && (
-                        <div className={`absolute z-[2100] w-72 rounded-xl border border-teal-500/30 bg-background/98 shadow-2xl backdrop-blur-xl p-3 animate-in fade-in duration-200 ${direcaoAtalhos === 'vertical' ? 'left-[120px] top-0 slide-in-from-left-2' : 'bottom-[38px] left-0 slide-in-from-bottom-2'}`}
-                          onWheel={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-extrabold uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-1.5"><Layers className="size-3.5" /> Camadas</span>
-                            <button type="button" onClick={() => setCamadasPopoverAberta(false)} className="size-5 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">×</button>
-                          </div>
-                          <div className="flex flex-col gap-1.5 text-[11px] text-foreground">
-                            {Object.keys(camadasVisiveis).map((key) => {
-                              const label =
-                                key === 'divisas' ? 'Divisas / Perímetro' :
-                                key === 'ambientais' ? 'Áreas Ambientais (CAR)' :
-                                key === 'polilinhas' ? 'Polilinhas / Linhas' :
-                                key === 'textos' ? 'Textos' :
-                                key === 'cotas' ? 'Cotas / Medidas' : 'Símbolos';
-                              const estilo = estilosCamadas[key];
-                              const visivel = camadasVisiveis[key];
-                              const bloqueada = camadasBloqueadas[key];
-                              return (
-                                <div key={key} className="flex items-center justify-between gap-1.5 border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <input type="color" value={estilo.cor}
-                                      onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], cor: e.target.value } }))}
-                                      className="size-5 rounded-full cursor-pointer border-0 p-0 overflow-hidden shrink-0 bg-transparent" title="Cor da camada" />
-                                    <span className="truncate font-medium">{label}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {key !== 'textos' && key !== 'simbolos' && (
-                                      <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground font-bold">
-                                        <span>L:</span>
-                                        <input type="number" min="0.5" max="10" step="0.5" value={estilo.espessura}
-                                          onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], espessura: parseFloat(e.target.value) || 1 } }))}
-                                          className="w-9 h-5 rounded-sm border bg-background text-center text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-teal-500" title="Espessura" />
-                                      </div>
-                                    )}
-                                    <button type="button" onClick={() => setCamadasVisiveis((prev) => ({ ...prev, [key]: !prev[key] }))}
-                                      className={`p-0.5 rounded-sm hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
-                                      title={visivel ? 'Ocultar' : 'Exibir'}>
-                                      {visivel ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                                    </button>
-                                    <button type="button" onClick={() => setCamadasBloqueadas((prev) => ({ ...prev, [key]: !prev[key] }))}
-                                      className={`p-0.5 rounded-sm hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
-                                      title={bloqueada ? 'Desbloquear' : 'Bloquear'}>
-                                      {bloqueada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Gerir SaaS */}
                   {souMaster() && (
-                    <button type="button" onClick={() => setModoMaster((m) => (m === 'editar' ? 'gerir' : 'editar'))}
-                      title={modoMaster === 'editar' ? 'Alternar para o modo GERIR (painel administrativo do SaaS)' : 'Alternar para o modo EDITAR (workspace de desenho)'}
-                      className={btnStyle(modoMaster === 'gerir' ? 'border-amber-600 bg-amber-600 text-white dark:bg-amber-500 dark:text-black hover:bg-amber-700 dark:hover:bg-amber-400' : 'border-border bg-background/95 text-foreground hover:bg-muted')}>
-                      <ShieldCheck className="size-3.5 mr-1.5 shrink-0" />
-                      <span>{modoMaster === 'gerir' ? 'DESENHAR' : 'GERIR SAAS'}</span>
+                    <button type="button" onClick={() => { setPerfilMenuAberto(false); setModoMaster('gerir'); }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
+                      <ShieldCheck className="size-4 text-amber-500" /> Gerir SaaS
                     </button>
                   )}
-
-                  {/* Ajustes */}
-                  <button type="button" onClick={() => { setConfigAba(undefined); setConfigAberta(true); }}
-                    title="Configurações gerais do sistema"
-                    className={btnStyle("border-border bg-background/95 text-slate-600 dark:text-slate-400 hover:bg-muted")}>
-                    <Settings className="size-3.5 mr-1.5 shrink-0" />
-                    <span>AJUSTES</span>
-                  </button>
-
-                  {/* Logout */}
                   {nuvemDisponivel && user && (
-                    <button type="button" onClick={() => { limparConfigLocalNaSaida(); sair(); }}
-                      title={`Sair da conta: ${user.email}`}
-                      className={btnStyle("border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-500/50")}>
-                      <LogOut className="size-3.5 mr-1.5 shrink-0" />
-                      <span>LOGOUT</span>
+                    <button type="button" onClick={() => { setPerfilMenuAberto(false); limparConfigLocalNaSaida(); sair(); }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-500/10 dark:text-red-400">
+                      <LogOut className="size-4" /> Sair
                     </button>
                   )}
                 </div>
-              );
-            })()}
+              </>
+            )}
           </div>
 
-          {/* Área e Perímetro - Barra Flutuante e Arrastável */}
-          {res && (
+          {/* BARRA FLUTUANTE ÚNICA — arrastável. Reúne tudo que ficava espalhado em várias barras:
+              alternar Mapa/Planta, a chave Fácil/Médio/Completo, área e perímetro, seletor de glebas,
+              os controles da planta (situação, escala, travar folha, tema) e os players de áudio. */}
+          {(vista === 'mapa' || vista === 'planta') && (
             <div
-              style={{ left: `${posArea.x}px`, top: `${posArea.y}px` }}
-              className="no-print pointer-events-auto absolute z-[1160] flex items-center gap-1.5 rounded-full border border-border/80 bg-background/90 backdrop-blur-sm p-1.5 shadow-xl select-none"
+              style={{ left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)' }}
+              className="no-print pointer-events-auto absolute z-[1160] flex flex-wrap items-center gap-y-1 gap-x-1.5 rounded-2xl border border-border/80 bg-background/90 backdrop-blur-sm p-1.5 shadow-xl select-none"
             >
               {/* Alça de arrasto */}
               <div
-                className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-1"
+                className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  setArrastandoArea({
-                    startX: e.clientX,
-                    startY: e.clientY,
-                    startPosX: posArea.x,
-                    startPosY: posArea.y,
-                  });
+                  setArrastandoArea({ startX: e.clientX, startY: e.clientY, startPosX: posArea.x, startPosY: posArea.y });
                 }}
+                title="Arraste para mover a barra"
               >
                 <GripVertical className="size-3.5" />
               </div>
 
-              <div className="flex items-center gap-3 text-[11px] font-semibold text-foreground pr-2">
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider">Área SGL:</span>
-                  <span>{numBR(res.areaHa, casasTela(4))} <span className="text-[9px] font-normal text-muted-foreground">ha</span></span>
-                </div>
-                <div className="h-3 w-px bg-border" />
-                <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider">Perímetro:</span>
-                  <span>{numBR(res.perimetro)} <span className="text-[9px] font-normal text-muted-foreground">m</span></span>
-                </div>
-              </div>
-            </div>
-          )}
+              {/* Alternar Mapa/Planta */}
+              <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
+                title="Alternar entre mapa e planta (Esc)"
+                className="flex h-7 items-center gap-1 rounded-full border border-primary/50 bg-background/95 px-2.5 text-[10px] font-bold text-primary hover:bg-muted transition-colors">
+                {vista === 'mapa' ? <Printer className="size-3.5" /> : <MapIcon className="size-3.5" />}
+                <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
+              </button>
 
+              {/* Chave de modo Fácil → Médio → Completo */}
+              {chaveTopoVisivel && !introTocando && (
+                <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
+                  title={completo
+                    ? 'Modo Completo: todas as ferramentas à mostra. Clique para voltar ao Fácil.'
+                    : medio
+                      ? 'Modo Médio: as ferramentas do dia a dia. Clique para o Completo.'
+                      : 'Modo Fácil: só o essencial. Clique para o Médio.'}
+                  className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2.5 text-[10px] font-bold text-foreground hover:bg-muted transition-colors">
+                  {/* Ícone conta a história do degrau: beca (aprendizado) no Fácil, régua/plano no
+                      Médio, maleta (profissional) no Completo. */}
+                  {completo ? <Briefcase className="size-3.5" /> : medio ? <PencilRuler className="size-3.5" /> : <GraduationCap className="size-3.5" />}
+                  <span>{rotuloModo}</span>
+                </button>
+              )}
 
-          {/* Barra flutuante de ferramentas unificada (Mapa/Planta) — arrastável e persistente */}
-          {(vista === 'mapa' || vista === 'planta') && (vista === 'planta' || glebas.length > 1 || !introTocando) && (
-            <div
-              className="no-print absolute z-[1160] flex items-center gap-2 select-none"
-              style={{ left: `${posBarra.x}px`, top: `${posBarra.y}px` }}
-            >
-              {/* Alça de Arrasto (Drag Handle) */}
-              <div
-                className="flex size-7 cursor-grab items-center justify-center rounded-full border border-border bg-background/95 shadow-xl backdrop-blur active:cursor-grabbing text-muted-foreground hover:bg-accent transition-colors"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setArrastandoBarra({
-                    startX: e.clientX,
-                    startY: e.clientY,
-                    startPosX: posBarra.x,
-                    startPosY: posBarra.y,
-                  });
-                }}
-                title="Clique e arraste para mover este painel de controles"
-              >
-                <GripVertical className="size-3.5" />
-              </div>
+              {/* Área e Perímetro */}
+              {res && (
+                <>
+                  <div className="h-4 w-px bg-border" />
+                  <div className="flex items-center gap-3 text-[11px] font-semibold text-foreground px-0.5">
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider">Área SGL:</span>
+                      <span>{numBR(res.areaHa, casasTela(4))} <span className="text-[9px] font-normal text-muted-foreground">ha</span></span>
+                    </div>
+                    <div className="h-3 w-px bg-border" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider">Perímetro:</span>
+                      <span>{numBR(res.perimetro)} <span className="text-[9px] font-normal text-muted-foreground">m</span></span>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Seletor de Glebas (se houver múltiplas glebas no projeto) */}
               {glebas.length > 1 && (
-                <div className="flex items-center gap-1 rounded-full border border-border bg-background/95 px-2.5 py-1 shadow-xl backdrop-blur text-[11px] font-semibold text-foreground">
-                  <Waypoints className="size-3.5 text-primary shrink-0 mr-1" />
-                  <select
-                    value={glebaAtivaId}
-                    onChange={(e) => trocarGleba(e.target.value)}
-                    className="bg-transparent border-0 outline-none text-xs font-bold font-sans cursor-pointer text-foreground pr-2 focus:ring-0 max-w-[120px] truncate"
-                  >
-                    {glebas.map((g, idx) => (
-                      <option key={g.id} value={g.id} className="text-foreground bg-background">
-                        {g.denominacao || `Gleba ${idx + 1}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <>
+                  <div className="h-4 w-px bg-border" />
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground">
+                    <Waypoints className="size-3.5 text-primary shrink-0" />
+                    <select
+                      value={glebaAtivaId}
+                      onChange={(e) => trocarGleba(e.target.value)}
+                      className="bg-transparent border-0 outline-none text-xs font-bold font-sans cursor-pointer text-foreground pr-1 focus:ring-0 max-w-[120px] truncate"
+                    >
+                      {glebas.map((g, idx) => (
+                        <option key={g.id} value={g.id} className="text-foreground bg-background">
+                          {g.denominacao || `Gleba ${idx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
-
-
-              {/* Player de áudio de introdução e tutorial (some durante o vídeo).
-                  O contêiner é transparente, então cada pill carrega a própria sombra. */}
-              {!introTocando && (
-                <div className="flex items-center gap-1">
-                  <IntroAudioPill />
-                  <TutorialAudioPill />
-                </div>
-              )}
-
-              {/* Controles específicos do modo PLANTA (travar folha e tema foram pra coluna esquerda) */}
+              {/* Controles específicos do modo PLANTA */}
               {vista === 'planta' && (
                 <>
+                  <div className="h-4 w-px bg-border" />
                   {/* Situação da Planta */}
                   {(() => {
                     const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
@@ -5137,7 +4983,7 @@ export default function EditorPage() {
                     return (
                       <button type="button" onClick={gerarSituacaoPlanta}
                         title={!situacaoUrl ? 'Capturar a planta de situação (satélite)' : stale ? 'A situação está desatualizada — clique para atualizar' : 'Situação pronta'}
-                        className={`flex items-center gap-1 rounded-full border px-3 py-1.5 text-[10px] font-bold shadow-xl bg-background/95 transition-colors ${cor}`}>
+                        className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-[10px] font-bold transition-colors ${cor}`}>
                         {pronto ? <Check className="size-3.5" /> : <Camera className="size-3.5" />}
                         {!situacaoUrl ? 'Situação' : stale ? 'Atualizar Situação' : 'Situação Pronta'}
                       </button>
@@ -5145,40 +4991,54 @@ export default function EditorPage() {
                   })()}
 
                   {/* Escala da Planta */}
-                  <div className="flex items-center rounded-full border border-border bg-background/95 overflow-hidden h-8 p-1 shadow-xl gap-0.5">
-                    <button
-                      type="button"
-                      className="h-6 w-6 rounded-full hover:bg-accent text-foreground font-bold transition-colors text-sm flex items-center justify-center"
-                      title="Zoom Out / Reduzir escala"
-                      onClick={() => alterarEscala(250)}
-                    >
-                      -
-                    </button>
-                    <button
-                      type="button"
-                      className={`h-6 px-2.5 rounded-full hover:bg-accent font-bold transition-colors text-[9px] tracking-wider flex items-center justify-center ${!plantaConfig.escalaManual ? 'text-primary' : 'text-foreground/80'}`}
+                  <div className="flex items-center rounded-full border border-border bg-background/95 overflow-hidden h-7 p-0.5 gap-0.5">
+                    <button type="button" className="h-5 w-5 rounded-full hover:bg-accent text-foreground font-bold transition-colors text-sm flex items-center justify-center"
+                      title="Zoom Out / Reduzir escala" onClick={() => alterarEscala(250)}>-</button>
+                    <button type="button"
+                      className={`h-5 px-2 rounded-full hover:bg-accent font-bold transition-colors text-[9px] tracking-wider flex items-center justify-center ${!plantaConfig.escalaManual ? 'text-primary' : 'text-foreground/80'}`}
                       title="Escala da Planta (clique para alternar para Automática)"
-                      onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}
-                    >
+                      onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>
                       ESCALA{!plantaConfig.escalaManual ? ' (AUTO)' : ''}
                     </button>
-                    <button
-                      type="button"
-                      className="h-6 w-6 rounded-full hover:bg-accent text-foreground font-bold transition-colors text-sm flex items-center justify-center"
-                      title="Zoom In / Aumentar escala"
-                      onClick={() => alterarEscala(-250)}
-                    >
-                      +
-                    </button>
+                    <button type="button" className="h-5 w-5 rounded-full hover:bg-accent text-foreground font-bold transition-colors text-sm flex items-center justify-center"
+                      title="Zoom In / Aumentar escala" onClick={() => alterarEscala(-250)}>+</button>
                   </div>
+
+                  {/* Toast indicador de Escala efetiva */}
+                  {mostrarEscalaToast && (
+                    <div className="flex items-center bg-black text-white h-7 px-2.5 rounded-full text-[10px] tracking-wider font-bold border border-black animate-in fade-in slide-in-from-left-2 duration-200">
+                      1 : {obterEscalaEfetiva()}
+                    </div>
+                  )}
+
+                  {/* Travar / soltar folha */}
+                  <button type="button"
+                    onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
+                    title={folhaTravada ? 'Moldura travada — clique para soltar e arrastar a prancha' : 'Moldura solta — clique para travar o layout da folha'}
+                    className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-[10px] font-bold transition-colors ${folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted' : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'}`}>
+                    {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
+                    <span>{folhaTravada ? 'TRAVADA' : 'SOLTA'}</span>
+                  </button>
+
+                  {/* Tema da prancha */}
+                  <button type="button" onClick={() => setPlantaDark((v) => !v)}
+                    title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
+                    className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2.5 text-[10px] font-bold text-foreground hover:bg-muted transition-colors">
+                    {plantaDark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
+                    <span>{plantaDark ? 'ESCURA' : 'CLARA'}</span>
+                  </button>
                 </>
               )}
 
-              {/* Toast indicador de Escala efetiva */}
-              {vista === 'planta' && mostrarEscalaToast && (
-                <div className="flex items-center bg-black text-white h-8 px-3.5 rounded-full text-[10px] tracking-wider font-bold border border-black shadow-xl animate-in fade-in slide-in-from-left-2 duration-200">
-                  1 : {obterEscalaEfetiva()}
-                </div>
+              {/* Players de áudio (some durante o vídeo de abertura) */}
+              {!introTocando && (
+                <>
+                  <div className="h-4 w-px bg-border" />
+                  <div className="flex items-center gap-1">
+                    <IntroAudioPill />
+                    <TutorialAudioPill />
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -5782,6 +5642,7 @@ export default function EditorPage() {
         areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
         onExportarShapefiles={exportarCarShapefiles} onImportarShapefile={() => shapefileRef.current?.click()} processando={processando} />
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} correcoes={correcoes} onChangeCorrecoes={setCorrecoes} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
+      <AnuenciaModal open={anuenciaAberta} onOpenChange={setAnuenciaAberta} confrontantes={confrontantes} lados={lados} mapa={confrontantePorLado} imovel={imovel} tecnico={tecnico} />
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}
@@ -5827,6 +5688,17 @@ export default function EditorPage() {
       {imovel.ficticio && (
         <div className="pointer-events-none fixed inset-x-0 bottom-2 z-[1500] flex justify-center">
           <span className="animate-pulse rounded-full border border-green-400/40 bg-green-500/10 px-4 py-1 text-sm font-bold text-green-400 shadow-lg backdrop-blur">DADOS FICTÍCIOS — projeto de demonstração</span>
+        </div>
+      )}
+
+      {/* Entrou sem login: aviso pra criar a conta e salvar configurações/projetos. Ao clicar,
+          volta pra tela de login. Fica um pouco acima do banner de dados fictícios pra não sobrepor. */}
+      {nuvemDisponivel && !user && (
+        <div className={`no-print fixed inset-x-0 z-[1500] flex justify-center ${imovel.ficticio ? 'bottom-11' : 'bottom-2'}`}>
+          <button type="button" onClick={() => definirModoEntrada('login')}
+            className="pointer-events-auto animate-pulse rounded-full border border-emerald-300/50 bg-emerald-500/15 px-4 py-1 text-sm font-semibold text-emerald-300 shadow-lg backdrop-blur transition-colors hover:bg-emerald-500/25">
+            Crie seu usuário para salvar suas configurações e gerenciar seus projetos
+          </button>
         </div>
       )}
 
@@ -6331,7 +6203,7 @@ export default function EditorPage() {
 
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
-      <PrimeiroAcessoModal open={!setupOk} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); empurrarConfigParaNuvem().catch(() => {}); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
+      <PrimeiroAcessoModal open={!setupOk && !entrouSemLogin} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); empurrarConfigParaNuvem().catch(() => {}); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
 
       <ProjetoInfoModal
         open={infoAberto}

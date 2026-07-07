@@ -174,12 +174,14 @@ const iconeRotulo = (r: RotuloMapa, fator = 1) => {
 
 // rótulo central da gleba: dados-chave (denominação, proprietário, matrícula, área) no meio do polígono.
 // Não captura clique (pointer-events:none) para não atrapalhar a edição embaixo dele.
-const iconeCentro = (linhas: string[], fator = 1) => {
+const iconeCentro = (linhas: string[], fator = 1, arrastavel = false) => {
   const corpo = linhas.map((l, i) => `<div style="font-weight:${i === 0 ? 700 : 600};font-size:${Math.round((i === 0 ? 13 : 11) * fator)}px">${(l || '').replace(/</g, '&lt;')}</div>`).join('');
-  // caixa branca sólida e centrada no ponto (legível sobre o satélite); não captura clique
+  // caixa branca sólida e centrada no ponto (legível sobre o satélite). Quando arrastável (modo
+  // navegar), captura o clique e mostra o cursor de mover; senão, deixa o clique passar pro mapa.
+  const eventos = arrastavel ? 'pointer-events:auto;cursor:move' : 'pointer-events:none';
   return L.divIcon({
     className: 'gleba-centro',
-    html: `<div style="transform:translate(-50%,-50%);display:inline-block;pointer-events:none;color:#000;background:#fff;border:1.5px solid #222;border-radius:5px;padding:3px 9px;text-align:center;line-height:1.3;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.5);width:max-content">${corpo}</div>`,
+    html: `<div style="transform:translate(-50%,-50%);display:inline-block;${eventos};color:#000;background:#fff;border:1.5px solid #222;border-radius:5px;padding:3px 9px;text-align:center;line-height:1.3;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.5);width:max-content">${corpo}</div>`,
     iconSize: [1, 1], iconAnchor: [0, 0],
   });
 };
@@ -1503,7 +1505,7 @@ export default function MapEditor(props: Props) {
         const arrastavel = modo === 'navegar' && !!onMoverCentro;
         return (
           <Marker position={pos} draggable={arrastavel} interactive={arrastavel}
-            icon={iconeCentro(centroGleba.linhas, fzZoom)}
+            icon={iconeCentro(centroGleba.linhas, fzZoom, arrastavel)}
             eventHandlers={arrastavel ? { dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverCentro?.(ll.lat, ll.lng); } } : undefined} />
         );
       })()}

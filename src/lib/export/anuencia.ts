@@ -1,4 +1,4 @@
-import { Document, Paragraph, TextRun, AlignmentType } from 'docx';
+import { Document, Paragraph, TextRun, AlignmentType, PageBreak } from 'docx';
 import type { ImovelData, TecnicoData, Confrontante, Vertex } from '../topo/types';
 import { numBR } from '../topo/geometry';
 import { rotulosProfissional } from '../topo/profissional';
@@ -16,7 +16,9 @@ export interface AnuenciaInput {
   dataExtenso?: string;
 }
 
-export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
+/** Monta os parágrafos de UMA carta de anuência. Isolado pra ser reaproveitado tanto na carta
+ *  individual quanto no documento único com todas as cartas (uma por confrontante). */
+function montarParagrafosAnuencia(input: AnuenciaInput): Paragraph[] {
   const { imovel, tecnico, confrontante, verticesCompartilhados, comarca, dataExtenso } = sanitizarProfundo(input);
 
   const local = comarca || imovel.municipio || '________';
@@ -136,7 +138,8 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
   const addAssinatura = (nome: string, rotulo: string) => {
     paragraphs.push(new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { before: 200, after: 20 },
+      // Duas linhas a mais de respiro acima da linha de assinatura, pra sobrar espaço pra firma.
+      spacing: { before: 680, after: 20 },
       keepNext: true,
       keepLines: true,
       children: [
@@ -186,10 +189,37 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
   // Responsável Técnico
   addAssinatura(tecnico.nome || '_______________________', `${tecnico.formacao || 'Responsável Técnico'} - ${rotuloRT.registro}: ${tecnico.cft || '________'}`);
 
+  return paragraphs;
+}
+
+/** Uma carta de anuência (um confrontante) — um documento .docx. */
+export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
   return new Document({
     sections: [{
       properties: {},
-      children: paragraphs,
+      children: montarParagrafosAnuencia(input),
+    }],
+  });
+}
+
+/**
+ * TODAS as cartas num único documento .docx: uma carta por confrontante, cada uma começando
+ * numa página nova. Assim o usuário baixa tudo de uma vez, já separado pra imprimir e colher
+ * as assinaturas. A ordem segue a lista recebida.
+ */
+export function gerarAnuenciaLoteDocumento(inputs: AnuenciaInput[]): Document {
+  const children: Paragraph[] = [];
+  inputs.forEach((input, i) => {
+    if (i > 0) {
+      // Quebra de página antes de cada carta seguinte, pra cada confrontante ter a sua folha.
+      children.push(new Paragraph({ children: [new PageBreak()] }));
+    }
+    children.push(...montarParagrafosAnuencia(input));
+  });
+  return new Document({
+    sections: [{
+      properties: {},
+      children: children.length ? children : [new Paragraph({})],
     }],
   });
 }

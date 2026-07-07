@@ -1,28 +1,34 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { LogIn } from 'lucide-react';
+import { LogIn, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth, entrarGoogle, entrarEmail, cadastrarEmail, traduzErroAuth } from '@/lib/firebase/auth';
 import { LogoHorizontal, FundoRedeMarca } from '@/components/Logo';
+import { useModoEntrada, definirModoEntrada } from '@/lib/store/loginSkip';
 import IntroVideo from '@/components/IntroVideo';
 
 /**
- * Exige login na entrada quando o Firebase está configurado. Sem nuvem (sem variáveis), libera
- * direto em modo local. Há uma saída discreta "usar sem login (local)" para nunca travar o dono
- * caso os provedores ainda não estejam ativos no console.
+ * Porta de entrada quando o Firebase está configurado. Fluxo em duas telas:
+ *  1) BOAS-VINDAS (tela verde): explica o valor da conta e oferece dois caminhos —
+ *     "Iniciar" (abre o login) e "Iniciar sem login" (entra direto no app).
+ *  2) LOGIN: Google ou e-mail/senha.
+ * Sem nuvem (sem variáveis do Firebase), libera direto em modo local. Quem entra sem
+ * login vê um aviso na barra inferior do app pedindo pra criar a conta.
  */
 export default function AuthGate({ children }: { children: ReactNode }) {
   const { user, carregando, disponivel } = useAuth();
+  const modo = useModoEntrada();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
 
-  // Login OBRIGATÓRIO quando há nuvem configurada. Sem Firebase (ambiente sem variáveis), segue local.
-  if (!disponivel || user) return <>{children}</>;
+  // Login OBRIGATÓRIO quando há nuvem configurada, a menos que o usuário tenha optado por
+  // entrar sem login. Sem Firebase (ambiente sem variáveis), segue local.
+  if (!disponivel || user || modo === 'semLogin') return <>{children}</>;
   if (carregando) {
     // Tela de carregamento NEUTRA (preta), sem a arte estática — assim nenhuma imagem aparece antes
     // do vídeo de abertura, que também começa no preto. A transição fica limpa: preto → vídeo.
@@ -38,6 +44,40 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     try { await fn(); } catch (e) { setErro(traduzErroAuth((e as Error).message)); } finally { setOcupado(false); }
   }
 
+  // TELA 1 — BOAS-VINDAS (verde). Mensagem de apresentação + dois caminhos de entrada.
+  if (modo === 'boasVindas') {
+    return (
+      <div className="relative flex h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-800 via-green-700 to-emerald-900 p-4">
+        <div className="relative z-10 w-full max-w-md space-y-6 text-center">
+          <LogoHorizontal className="mx-auto h-14" />
+          <h1 className="text-2xl font-bold text-white">Bem-vindo ao Souza CAD</h1>
+          <p className="text-sm leading-relaxed text-emerald-50/90">
+            Através da sua conta de usuário, você poderá gerenciar seus projetos de qualquer lugar
+            que estiver, e todas as suas configurações serão salvas, para que você faça o melhor uso
+            do software. Você encontrará também um botão de suporte e um campo para sugerir melhorias.
+          </p>
+          <div className="flex flex-col gap-3 pt-2">
+            <Button
+              className="w-full bg-emerald-300 text-emerald-950 hover:bg-emerald-200"
+              disabled={ocupado}
+              onClick={() => { setErro(''); definirModoEntrada('login'); }}
+            >
+              <LogIn /> Iniciar
+            </Button>
+            <Button
+              className="w-full bg-emerald-400/90 text-emerald-950 hover:bg-emerald-300"
+              disabled={ocupado}
+              onClick={() => definirModoEntrada('semLogin')}
+            >
+              Iniciar sem login
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // TELA 2 — LOGIN.
   return (
     <div className="relative flex h-screen items-center justify-center p-4">
       <IntroVideo />
@@ -58,9 +98,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           </div>
         </div>
         {erro && <p className="text-xs text-destructive">{erro}</p>}
-        <p className="text-center text-[11px] text-muted-foreground">
-          Entre com sua conta para acessar seus projetos e as configurações da empresa.
-        </p>
+        <button type="button" className="flex w-full items-center justify-center gap-1 text-center text-[11px] text-muted-foreground hover:text-foreground" onClick={() => { setErro(''); definirModoEntrada('boasVindas'); }}>
+          <ArrowLeft className="size-3" /> Voltar
+        </button>
       </div>
     </div>
   );
