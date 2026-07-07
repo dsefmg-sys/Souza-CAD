@@ -100,11 +100,17 @@ export default function CalculadoraModal({ open, onOpenChange, zona, hemisferio 
         }
       }
 
+      let rotParsed = '';
+      if (numsValidos.length >= 3 && !numsValidos[0].raw.includes('.') && !numsValidos[0].raw.includes(',')) {
+        rotParsed = numsValidos[0].raw;
+        numsValidos = numsValidos.slice(1);
+      }
+
       if (numsValidos.length >= 2) {
         const xVal = numsValidos[0].val;
         const yVal = numsValidos[1].val;
-        let rot = '';
-        if (toks.length > numsValidos.length) {
+        let rot = rotParsed;
+        if (!rot && toks.length > numsValidos.length) {
           const idxs = new Set(numsValidos.map((n) => n.idx));
           const textTokens = toks.filter((_, i) => !idxs.has(i));
           rot = textTokens.join(' ');
