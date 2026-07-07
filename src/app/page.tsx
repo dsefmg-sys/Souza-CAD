@@ -3194,7 +3194,7 @@ export default function EditorPage() {
         ultimoSalvoSig.current = projSig; acabouDeSalvar.current = true; setSalvarLaranja(false);
         aviso(destino === 'nuvem'
           ? (registrou ? 'Projeto salvo na nuvem e pontos registrados.' : 'Projeto salvo na nuvem, mas falhou registrar os pontos — tente salvar de novo.')
-          : 'Projeto salvo localmente (sem login/nuvem).');
+          : (user?.uid ? 'Projeto salvo localmente (offline/nuvem indisponível).' : 'Projeto salvo localmente (sem login/nuvem).'));
         registrarProjetoSalvo(p.nome).catch(() => {}); // atualiza o perfil de uso (painel do titular)
       } catch (e) {
         setProjetoId(id);

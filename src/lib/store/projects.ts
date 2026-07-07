@@ -76,7 +76,7 @@ export async function salvarProjeto(p: Projeto): Promise<DestinoSalvamento> {
       if (String((e as { code?: string }).code) === 'permission-denied' || /permission/i.test((e as Error).message)) {
         throw new NuvemSemPermissao();
       }
-      throw e;
+      return 'local';
     }
   }
   const d = await db();
