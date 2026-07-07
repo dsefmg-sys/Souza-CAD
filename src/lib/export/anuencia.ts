@@ -14,12 +14,14 @@ export interface AnuenciaInput {
   verticesCompartilhados: { de: Vertex; para: Vertex; distancia: number }[];
   comarca?: string;
   dataExtenso?: string;
+  /** Quando true, anexa a relação de vértices do trecho anuído, com código e coordenadas E/N. */
+  incluirVerticesLista?: boolean;
 }
 
 /** Monta os parágrafos de UMA carta de anuência. Isolado pra ser reaproveitado tanto na carta
  *  individual quanto no documento único com todas as cartas (uma por confrontante). */
 function montarParagrafosAnuencia(input: AnuenciaInput): Paragraph[] {
-  const { imovel, tecnico, confrontante, verticesCompartilhados, comarca, dataExtenso } = sanitizarProfundo(input);
+  const { imovel, tecnico, confrontante, verticesCompartilhados, comarca, dataExtenso, incluirVerticesLista } = sanitizarProfundo(input);
 
   const local = comarca || imovel.municipio || '________';
   const data = dataExtenso || '___ de __________________ de 20___';
@@ -120,6 +122,29 @@ function montarParagrafosAnuencia(input: AnuenciaInput): Paragraph[] {
         ]
       }));
     });
+  }
+
+  // Relação de vértices (opcional): lista os vértices do trecho anuído com código e coordenadas,
+  // sem repetir, pra a carta ficar autossuficiente pra conferência.
+  if (incluirVerticesLista && verticesCompartilhados.length > 0) {
+    addVazio(80);
+    addP('RELAÇÃO DE VÉRTICES DO TRECHO ANUÍDO:', true, AlignmentType.LEFT, 80, 20);
+    const vistos = new Set<string>();
+    const listarVertice = (v: Vertex) => {
+      const cod = v.codigoSigef || v.nome || v.id;
+      if (!cod || vistos.has(cod)) return;
+      vistos.add(cod);
+      paragraphs.push(new Paragraph({
+        alignment: AlignmentType.LEFT,
+        spacing: { after: 30 },
+        children: [
+          new TextRun({ text: 'Vértice ', size: 20 }),
+          new TextRun({ text: cod, bold: true, size: 20 }),
+          new TextRun({ text: `   E: ${numBR(v.leste, 3)} m   N: ${numBR(v.norte, 3)} m`, size: 20 }),
+        ],
+      }));
+    };
+    verticesCompartilhados.forEach((t) => { listarVertice(t.de); listarVertice(t.para); });
   }
 
   addVazio(120);

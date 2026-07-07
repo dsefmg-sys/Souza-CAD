@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal, SlidersHorizontal, ChevronDown, Briefcase,
+  Settings, LogOut, LogIn, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal, SlidersHorizontal, ChevronDown, Briefcase,
   Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -3977,6 +3977,50 @@ export default function EditorPage() {
         )}
        </div>
 
+        {/* Bolinha do perfil, à direita do cabeçalho: só a foto, sem o nome. Clique abre a conta. */}
+        <div className="relative flex shrink-0 items-center border-l px-2">
+          <button type="button" onClick={() => setPerfilMenuAberto((v) => !v)} title="Sua conta"
+            className="rounded-full transition-transform hover:scale-105">
+            {user?.photoURL ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.photoURL} alt="Perfil" className="size-7 rounded-full border border-border object-cover" />
+            ) : (
+              <span className="flex size-7 items-center justify-center rounded-full border border-border bg-primary/15 text-[11px] font-bold text-primary">
+                {(user?.displayName || user?.email || 'V').slice(0, 1).toUpperCase()}
+              </span>
+            )}
+          </button>
+          {perfilMenuAberto && (
+            <>
+              <div className="fixed inset-0 z-[1290]" onClick={() => setPerfilMenuAberto(false)} />
+              <div className="absolute right-0 top-[calc(100%+6px)] z-[1300] w-52 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
+                {entrouSemLogin && (
+                  <button type="button" onClick={() => { setPerfilMenuAberto(false); definirModoEntrada('login'); }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-primary hover:bg-primary/10">
+                    <LogIn className="size-4" /> Fazer login
+                  </button>
+                )}
+                <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
+                  <Settings className="size-4 text-muted-foreground" /> Ajustes
+                </button>
+                {souMaster() && (
+                  <button type="button" onClick={() => { setPerfilMenuAberto(false); setModoMaster('gerir'); }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
+                    <ShieldCheck className="size-4 text-amber-500" /> Gerir SaaS
+                  </button>
+                )}
+                {nuvemDisponivel && user && (
+                  <button type="button" onClick={() => { setPerfilMenuAberto(false); limparConfigLocalNaSaida(); sair(); }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-500/10 dark:text-red-400">
+                    <LogOut className="size-4" /> Sair
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
        {/* (o botão "Dados do Projeto" foi para a barra flutuante, ao lado do DETALHES) */}
        {/* A CHAVE do app saiu do topo (atrapalhava a leitura dos botões) e virou uma barrinha
            FLUTUANTE na lateral direita — ver logo abaixo do <header>. */}
@@ -4840,53 +4884,7 @@ export default function EditorPage() {
             <PainelMasterSaaS onVoltarDesenhar={() => setModoMaster('editar')} />
           ) : (
             <>
-              {/* Botão de perfil (canto superior direito, fixo): avatar + nome do usuário. Ao clicar,
-                  abre Ajustes, Gerir SaaS (só para o ADM) e Sair. Reúne o que antes ficava espalhado
-                  na barra de atalhos, que foi dissolvida. */}
-          <div className="no-print fixed right-2 top-2 z-[1300]">
-            <button type="button" onClick={() => setPerfilMenuAberto((v) => !v)}
-              title="Sua conta"
-              className="flex items-center gap-2 rounded-full border border-border/80 bg-background/90 py-1 pl-1 pr-2.5 shadow-xl backdrop-blur-sm transition-colors hover:bg-muted">
-              {user?.photoURL ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.photoURL} alt="" className="size-7 rounded-full object-cover" />
-              ) : (
-                <span className="flex size-7 items-center justify-center rounded-full bg-primary/15 text-[11px] font-bold text-primary">
-                  {(user?.displayName || user?.email || 'V').slice(0, 1).toUpperCase()}
-                </span>
-              )}
-              <span className="max-w-[120px] truncate text-[11px] font-semibold text-foreground">
-                {user?.displayName || user?.email || 'Visitante'}
-              </span>
-              <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-            </button>
-
-            {perfilMenuAberto && (
-              <>
-                <div className="fixed inset-0 z-[1290]" onClick={() => setPerfilMenuAberto(false)} />
-                <div className="absolute right-0 top-[calc(100%+6px)] z-[1300] w-52 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
-                  <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
-                    <Settings className="size-4 text-muted-foreground" /> Ajustes
-                  </button>
-                  {souMaster() && (
-                    <button type="button" onClick={() => { setPerfilMenuAberto(false); setModoMaster('gerir'); }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
-                      <ShieldCheck className="size-4 text-amber-500" /> Gerir SaaS
-                    </button>
-                  )}
-                  {nuvemDisponivel && user && (
-                    <button type="button" onClick={() => { setPerfilMenuAberto(false); limparConfigLocalNaSaida(); sair(); }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-500/10 dark:text-red-400">
-                      <LogOut className="size-4" /> Sair
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* BARRA FLUTUANTE ÚNICA — arrastável. Reúne tudo que ficava espalhado em várias barras:
+              {/* BARRA FLUTUANTE ÚNICA — arrastável. Reúne tudo que ficava espalhado em várias barras:
               alternar Mapa/Planta, a chave Fácil/Médio/Completo, área e perímetro, seletor de glebas,
               os controles da planta (situação, escala, travar folha, tema) e os players de áudio. */}
           {(vista === 'mapa' || vista === 'planta') && (

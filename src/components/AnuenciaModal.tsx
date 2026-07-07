@@ -34,11 +34,13 @@ export default function AnuenciaModal({
   tecnico: TecnicoData | null;
 }) {
   const [ocupado, setOcupado] = useState(false);
+  const [incluirVertices, setIncluirVertices] = useState(false);
 
   const ladosDe = (id: string) => Object.entries(mapa).filter(([, cid]) => cid === id).map(([i]) => Number(i));
   const compartilhadosDe = (c: Confrontante) => ladosDe(c.id).map((i) => lados[i]).filter(Boolean);
   const inputDe = (c: Confrontante): AnuenciaInput => ({
     imovel, tecnico: tecnico as TecnicoData, confrontante: c, verticesCompartilhados: compartilhadosDe(c),
+    incluirVerticesLista: incluirVertices,
   });
 
   const nome = (c: Confrontante) => c.nome?.trim() || 'Confrontante sem nome';
@@ -95,6 +97,15 @@ export default function AnuenciaModal({
           </p>
         ) : (
           <>
+            {/* Opções da carta (valem para o download em lote e individual) */}
+            <label className="flex cursor-pointer items-start gap-2 rounded-lg border bg-muted/20 p-2.5 text-sm">
+              <input type="checkbox" className="mt-0.5 size-4 accent-primary" checked={incluirVertices} onChange={(e) => setIncluirVertices(e.target.checked)} />
+              <span>
+                <span className="font-medium">Incluir a relação de vértices</span>
+                <span className="block text-xs text-muted-foreground">Anexa, no fim de cada carta, a lista dos vértices do trecho anuído com código e coordenadas Leste/Norte.</span>
+              </span>
+            </label>
+
             {/* Baixar TODAS num único documento */}
             <button
               type="button"
