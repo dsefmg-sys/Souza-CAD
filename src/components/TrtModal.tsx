@@ -21,8 +21,8 @@ interface Props {
 export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, perimetro, onChangeImovel }: Props) {
   const [copiado, setCopiado] = useState<string | null>(null);
   const rot = rotulosProfissional(tecnico);
-  // Onde emitir o termo: TRT do técnico via SINCETI; ART do engenheiro via CONFEA/CREA.
-  const linkEmitir = rot.termo === 'ART' ? 'https://www.confea.org.br/' : 'https://servicos.sinceti.net.br/';
+  // Onde emitir o termo: TRT do técnico via SINCETI; ART do engenheiro via CREA-MG (portal SITAC).
+  const linkEmitir = rot.termo === 'ART' ? 'https://servicos-crea-mg.sitac.com.br/index.php' : 'https://servicos.sinceti.net.br/';
 
   const linhas: [string, string][] = [
     ['Responsável técnico', tecnico?.nome ?? ''],
