@@ -65,7 +65,10 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
   if (confrontante.cpf) qualConfrontante += `inscrito(a) no CPF sob o nº ${confrontante.cpf}, `;
   qualConfrontante += `na qualidade de ${condicaoTxt} do imóvel confrontante `;
   if (confrontante.matricula) qualConfrontante += `registrado sob a Matrícula nº ${confrontante.matricula} (CNS: ${confrontante.cns || '________'}) `;
-  qualConfrontante += `${conjugeTxt}${inventarianteTxt}, residente e domiciliado(a) em ${confrontante.descricaoExtra || 'endereço não informado'}, `;
+  // Não há campo de endereço no confrontante; o `descricaoExtra` é descrição livre (espólio/inventariante),
+  // usada pelo memorial e pela planilha SIGEF. Deixa um espaço para preencher o endereço à mão, em vez de
+  // despejar a descrição no lugar do endereço.
+  qualConfrontante += `${conjugeTxt}${inventarianteTxt}, residente e domiciliado(a) em ____________________________________, `;
 
   paragraphs.push(new Paragraph({
     alignment: AlignmentType.JUSTIFIED,

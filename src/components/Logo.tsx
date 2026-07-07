@@ -9,12 +9,14 @@
  * <Logo /> mostra só o ícone. <LogoHorizontal /> mostra o logo com o nome.
  * <FundoRedeMarca /> desenha o fundo de rede (splash) atrás do login.
  */
+const bp = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 export function Logo({ className = 'size-8' }: { className?: string }) {
-  return <img src="/marca/icone.png" alt="Souza CAD" className={`rounded-md object-contain ${className}`} />;
+  return <img src={`${bp}/marca/icone.png`} alt="Souza CAD" className={`rounded-md object-contain ${className}`} />;
 }
 
 export function LogoHorizontal({ className = 'h-10' }: { className?: string }) {
-  return <img src="/marca/logo-horizontal.png" alt="Souza CAD" className={`w-auto object-contain ${className}`} />;
+  return <img src={`${bp}/marca/logo-horizontal.png`} alt="Souza CAD" className={`w-auto object-contain ${className}`} />;
 }
 
 /**
@@ -25,7 +27,7 @@ export function LogoHorizontal({ className = 'h-10' }: { className?: string }) {
 export function FundoRedeMarca({ className = '' }: { className?: string }) {
   return (
     <div className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`} aria-hidden>
-      <img src="/marca/fundo-campo.png" alt="" className="absolute inset-0 size-full object-cover" />
+      <img src={`${bp}/marca/fundo-campo.png`} alt="" className="absolute inset-0 size-full object-cover" />
       <div className="absolute inset-0 bg-[#0a1f14]/55" />
     </div>
   );
@@ -39,7 +41,7 @@ export function FundoRedeMarca({ className = '' }: { className?: string }) {
 export function Splash({ legenda }: { legenda?: string }) {
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#0a1f14]">
-      <img src="/marca/splash.png" alt="Souza CAD" className="max-h-full max-w-full object-contain" />
+      <img src={`${bp}/marca/splash.png`} alt="Souza CAD" className="max-h-full max-w-full object-contain" />
       {legenda && <p className="absolute bottom-8 text-sm text-white/70">{legenda}</p>}
     </div>
   );

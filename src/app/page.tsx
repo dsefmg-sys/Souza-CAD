@@ -2910,10 +2910,10 @@ export default function EditorPage() {
     } finally { setProcessando(false); }
   }
 
-  // AJUSTES DA CURVA DE NÍVEL (a "engrenagem" antes de gerar). Ficam guardados enquanto o app está aberto.
   const [intervaloCurva, setIntervaloCurva] = useState(1);
   const [curvaCorAuto, setCurvaCorAuto] = useState(true); // cor automática: branca no mapa, cinza na planta
-  const [curvaCor, setCurvaCor] = useState(COR_CURVA_NIVEL);
+  const [curvaCorFina, setCurvaCorFina] = useState(COR_CURVA_NIVEL);
+  const [curvaCorMestra, setCurvaCorMestra] = useState(COR_CURVA_NIVEL);
   const [curvaMestraCada, setCurvaMestraCada] = useState(5); // linha mais forte a cada N curvas
   const [curvaEspessura, setCurvaEspessura] = useState<'fina' | 'media' | 'grossa'>('media');
   const [curvaConfigAberta, setCurvaConfigAberta] = useState(false);
@@ -2958,7 +2958,7 @@ export default function EditorPage() {
     const objs = curvas.map((c) => {
       const mestra = Math.abs(c.nivel / passoMestra - Math.round(c.nivel / passoMestra)) < 1e-6;
       const pontos = c.linha.map((p) => { const g = utmParaGeo(p.x, p.y, zona, hemisferio); return { lat: g.lat, lon: g.lon, leste: p.x, norte: p.y }; });
-      return novaCurvaNivel(pontos, c.nivel, mestra, { cor: curvaCorAuto ? COR_CURVA_AUTO : curvaCor, espessura: mestra ? esp.mestra : esp.normal });
+      return novaCurvaNivel(pontos, c.nivel, mestra, { cor: curvaCorAuto ? COR_CURVA_AUTO : (mestra ? curvaCorMestra : curvaCorFina), espessura: mestra ? esp.mestra : esp.normal });
     });
     // remove curvas antigas e coloca as novas (mantém o resto do desenho)
     setObjetos((os) => [...os.filter((o) => o.curvaNivel == null), ...objs]);
@@ -3800,6 +3800,20 @@ export default function EditorPage() {
           <Button size="sm" variant="outline" className={`shrink-0 gap-1 ${PREM_BTN} border-green-600/40 bg-green-500/10 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf className="size-4" /> CAR</Button>
         )}
        </div>
+
+       {/* Usuário logado e botão de sair no topo direito */}
+       {nuvemDisponivel && user && (
+         <div className="flex shrink-0 items-center border-l px-3 gap-2 bg-muted/5">
+           <span className="hidden text-xs font-semibold text-muted-foreground max-w-[150px] truncate sm:inline" title={user.email || ''}>
+             {user.email}
+           </span>
+           <Button size="sm" variant="ghost" className="h-8 gap-1 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-700 font-bold"
+             onClick={() => { confirmar({ titulo: 'Sair da conta', mensagem: 'Deseja realmente sair da sua conta?' }).then((sim) => { if (sim) { limparConfigLocalNaSaida(); sair(); } }); }}>
+             <LogOut className="size-3.5" /> Sair
+           </Button>
+         </div>
+       )}
+
        {/* (o botão "Dados do Projeto" foi para a barra flutuante, ao lado do DETALHES) */}
        {/* A CHAVE do app saiu do topo (atrapalhava a leitura dos botões) e virou uma barrinha
            FLUTUANTE na lateral direita — ver logo abaixo do <header>. */}
@@ -4193,59 +4207,109 @@ export default function EditorPage() {
                         </div>
 
                         {/* Curvas de nível (planialtimétrico): triangula os pontos com altitude e traça as isolinhas */}
-                        <div className="mt-1.5 rounded-md border p-1.5 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-bold uppercase text-muted-foreground">Curvas de nível</span>
-                            <button type="button" onClick={() => setCurvaConfigAberta((v) => !v)} title="Ajustes: cor, intervalo, linha mestra a cada N curvas e espessura"
-                              className={`flex items-center gap-0.5 rounded-sm px-1.5 h-6 text-[9px] font-bold transition-colors ${curvaConfigAberta ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
-                              <Settings className="size-3" /> Ajustes
-                            </button>
-                          </div>
-                          {/* Intervalo + sugestão pelo desnível (some o emaranhado do 1 m fixo) */}
-                          <div className="flex items-center gap-1">
-                            <span className="text-[9px] text-muted-foreground">Intervalo</span>
-                            <input type="number" min={0.1} step={0.5} value={intervaloCurva} onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))} className="h-6 w-12 rounded-sm border bg-background px-1 text-[11px]" title="Intervalo entre curvas (m)" />
-                            <span className="text-[9px] text-muted-foreground">m</span>
-                            <button type="button" onClick={sugerirIntervaloCurva} title="Sugerir o intervalo pelo desnível do terreno (mira ~12 curvas)" className="ml-auto h-6 rounded-sm border px-1.5 text-[9px] font-bold text-primary hover:bg-primary/10">sugerir</button>
-                          </div>
-                          {/* Engrenagem: ajustes profissionais */}
+                        <div className="mt-1.5 rounded-md border border-border/60 overflow-hidden">
+                          <button type="button"
+                            onClick={() => setCurvaConfigAberta((v) => !v)}
+                            className="flex w-full items-center justify-between bg-muted/20 px-2 py-1.5 text-[10px] font-extrabold uppercase text-foreground hover:bg-muted/40 transition-colors">
+                            <span className="flex items-center gap-1.5">
+                              <Waypoints className="size-3.5 text-indigo-500" />
+                              Curvas de nível
+                            </span>
+                            <span className="text-[9px] text-muted-foreground">{curvaConfigAberta ? '▲' : '▼'}</span>
+                          </button>
+
                           {curvaConfigAberta && (
-                            <div className="space-y-1.5 rounded-sm bg-muted/30 p-1.5 animate-in fade-in duration-150">
-                              <label className="flex items-center justify-between text-[9px] font-semibold text-muted-foreground" title="Cor automática: branca no mapa (fundo escuro) e cinza claro na planta (fundo branco) — mais legível">
-                                <span>Cor automática <span className="font-normal opacity-70">(branca no mapa, cinza na planta)</span></span>
-                                <input type="checkbox" checked={curvaCorAuto} onChange={(e) => setCurvaCorAuto(e.target.checked)} className="size-3.5 accent-primary" />
-                              </label>
-                              {!curvaCorAuto && (
-                                <label className="flex items-center justify-between text-[9px] font-semibold text-muted-foreground">
-                                  Cor fixa
-                                  <input type="color" value={curvaCor} onChange={(e) => setCurvaCor(e.target.value)} className="h-5 w-9 cursor-pointer rounded-sm border bg-background p-0" title="Cor fixa das curvas (vale nas duas telas)" />
-                                </label>
-                              )}
-                              <label className="flex items-center justify-between gap-1 text-[9px] font-semibold text-muted-foreground">
-                                Linha forte a cada
-                                <span className="flex items-center gap-1">
-                                  <input type="number" min={1} step={1} value={curvaMestraCada} onChange={(e) => setCurvaMestraCada(Math.max(1, Math.round(Number(e.target.value) || 5)))} className="h-6 w-10 rounded-sm border bg-background px-1 text-center text-[11px]" title="Curva mestra (mais grossa e destacada) a cada N curvas" />
-                                  <span className="text-muted-foreground">curvas</span>
-                                </span>
-                              </label>
-                              <div className="flex items-center justify-between text-[9px] font-semibold text-muted-foreground">
-                                Espessura
-                                <div className="flex gap-0.5">
-                                  {(['fina', 'media', 'grossa'] as const).map((e) => (
-                                    <button key={e} type="button" onClick={() => setCurvaEspessura(e)} title="Espessura/nitidez do traço" className={`h-6 rounded-sm border px-1.5 text-[9px] font-bold transition-colors ${curvaEspessura === e ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>{e === 'fina' ? 'Fina' : e === 'media' ? 'Média' : 'Grossa'}</button>
-                                  ))}
+                            <div className="p-2 space-y-2.5 bg-muted/5 animate-in slide-in-from-top-1 fade-in duration-200">
+                              
+                              {/* Seção 1: Intervalo e Sugestão */}
+                              <div className="space-y-1">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Parâmetros do Relevo</span>
+                                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/20 p-1.5">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-medium">Intervalo:</span>
+                                    <input type="number" min={0.1} step={0.5} value={intervaloCurva}
+                                      onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))}
+                                      className="h-6 w-11 rounded-sm border border-input bg-background px-1 text-center text-[10px] font-bold"
+                                      title="Intervalo entre as curvas de nível (metros)" />
+                                    <span className="text-[10px] text-muted-foreground">m</span>
+                                  </div>
+                                  <button type="button" onClick={sugerirIntervaloCurva}
+                                    title="Sugerir intervalo pelo desnível (mira ~12 curvas)"
+                                    className="h-6 rounded-sm bg-indigo-500 hover:bg-indigo-600 text-white px-2 text-[9px] font-bold shadow-sm transition-colors">
+                                    Sugerir
+                                  </button>
                                 </div>
                               </div>
+
+                              {/* Seção 2: Linha Mestra */}
+                              <div className="space-y-1">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Destaque de Curvas</span>
+                                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/20 p-1.5">
+                                  <span className="text-[10px] font-medium">Linha mestra a cada:</span>
+                                  <div className="flex items-center gap-1">
+                                    <input type="number" min={1} step={1} value={curvaMestraCada}
+                                      onChange={(e) => setCurvaMestraCada(Math.max(1, Math.round(Number(e.target.value) || 5)))}
+                                      className="h-6 w-9 rounded-sm border border-input bg-background text-center text-[10px] font-bold"
+                                      title="Curva mestra (mais grossa e destacada) a cada N curvas" />
+                                    <span className="text-[10px] text-muted-foreground">curvas</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Seção 3: Espessura */}
+                              <div className="space-y-1">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Nitidez dos Traços</span>
+                                <div className="flex items-center justify-between gap-1 rounded-md bg-muted/20 p-1.5">
+                                  <span className="text-[10px] font-medium">Espessura:</span>
+                                  <div className="flex gap-0.5">
+                                    {(['fina', 'media', 'grossa'] as const).map((e) => (
+                                      <button key={e} type="button" onClick={() => setCurvaEspessura(e)}
+                                        className={`h-6 rounded-sm border px-2 text-[9px] font-bold transition-colors ${curvaEspessura === e ? 'bg-primary text-primary-foreground border-transparent' : 'bg-background hover:bg-muted text-foreground'}`}>
+                                        {e === 'fina' ? 'Fina' : e === 'media' ? 'Média' : 'Grossa'}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Seção 4: Cores das Linhas */}
+                              <div className="space-y-1">
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Esquema de Cores</span>
+                                <div className="rounded-md bg-muted/20 p-1.5 space-y-1.5">
+                                  <label className="flex items-center justify-between text-[10px] font-medium cursor-pointer">
+                                    <span>Cores automáticas</span>
+                                    <input type="checkbox" checked={curvaCorAuto} onChange={(e) => setCurvaCorAuto(e.target.checked)} className="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-primary" />
+                                  </label>
+                                  
+                                  {!curvaCorAuto && (
+                                    <div className="space-y-1.5 border-t border-border/30 pt-1.5 animate-in fade-in duration-150">
+                                      <label className="flex items-center justify-between text-[10px] font-medium">
+                                        <span>Linha Fina (Intermediária):</span>
+                                        <input type="color" value={curvaCorFina} onChange={(e) => setCurvaCorFina(e.target.value)} className="h-5 w-8 cursor-pointer rounded border bg-background p-0" title="Cor das curvas finas/intermediárias" />
+                                      </label>
+                                      <label className="flex items-center justify-between text-[10px] font-medium">
+                                        <span>Linha Grossa (Mestra):</span>
+                                        <input type="color" value={curvaCorMestra} onChange={(e) => setCurvaCorMestra(e.target.value)} className="h-5 w-8 cursor-pointer rounded border bg-background p-0" title="Cor das curvas mestras/grossas" />
+                                      </label>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Ações */}
+                              <div className="grid grid-cols-2 gap-1 pt-1">
+                                <Button type="button" onClick={gerarCurvasNivel}
+                                  className="h-7 bg-primary text-primary-foreground hover:bg-primary/90 font-bold border-0 shadow-sm rounded-md flex items-center justify-center gap-1 text-[10px]">
+                                  <Waypoints className="size-3.5" /> Gerar
+                                </Button>
+                                <Button type="button" disabled={!temCurvas} onClick={limparCurvasNivel}
+                                  className="h-7 bg-red-600 hover:bg-red-700 text-white disabled:bg-gray-400 disabled:opacity-40 disabled:cursor-not-allowed font-bold border-0 shadow-sm rounded-md flex items-center justify-center gap-1 text-[10px]">
+                                  <Trash2 className="size-3.5" /> Apagar
+                                </Button>
+                              </div>
+
                             </div>
                           )}
-                          <div className="grid grid-cols-2 gap-1">
-                            <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={gerarCurvasNivel} title="Traça as curvas de nível a partir dos pontos com altitude (perímetro + internos), recortadas ao imóvel">
-                              <Waypoints className="size-3.5" style={{ color: curvaCorAuto ? '#9ca3af' : curvaCor }} /> Gerar
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-7 gap-1 text-[11px]" disabled={!temCurvas} onClick={limparCurvasNivel} title="Remove as curvas geradas">
-                              <Trash2 className="size-3.5" /> Limpar
-                            </Button>
-                          </div>
                         </div>
 
                         {/* DXF e KML lado a lado */}

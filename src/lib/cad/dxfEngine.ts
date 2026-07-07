@@ -242,7 +242,7 @@ export function dxfParaEnts(d: DxfEntidades): Ent[] {
   d.polilinhas.forEach((p) => e.push({ id: novoId(), t: 'poly', pts: p.pontos, fechada: p.fechada, layer: p.layer }));
   d.circulos.forEach((c) => e.push({ id: novoId(), t: 'circle', c: c.c, r: c.r, layer: c.layer }));
   d.arcos.forEach((a) => e.push({ id: novoId(), t: 'arc', c: a.c, r: a.r, a0: a.a0, a1: a.a1, layer: a.layer }));
-  d.textos.forEach((t) => e.push({ id: novoId(), t: 'text', pos: t.pos, texto: t.texto, altura: t.altura ?? 0, layer: t.layer }));
+  d.textos.forEach((t) => e.push({ id: novoId(), t: 'text', pos: t.pos, texto: t.texto, altura: t.altura ?? 0, rotacao: t.rotacao, layer: t.layer }));
   d.pontos.forEach((p) => e.push({ id: novoId(), t: 'point', p: { x: p.x, y: p.y }, layer: p.layer }));
   return e;
 }

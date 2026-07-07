@@ -57,6 +57,19 @@ const ROTULOS_ATO: Record<TipoAtoRequerimento, { requerente: string; transmitent
   },
 };
 
+/**
+ * Troca os rótulos de "propriedade" por "posse" quando o imóvel é de posse (não registrado).
+ * Cobre todas as variações de caixa numa passada só — inclusive quando "proprietário" está embutido
+ * em "COPROPRIETÁRIO"/"Coproprietário" — para o cabeçalho e a linha de assinatura não divergirem
+ * (antes, o cabeçalho virava "COPOSSUIDOR" mas a assinatura seguia "Coproprietário").
+ */
+function rotuloPosse(s: string): string {
+  return s
+    .replace(/PROPRIETÁRIO/g, 'POSSUIDOR')
+    .replace(/Proprietário/g, 'Possuidor')
+    .replace(/proprietário/g, 'possuidor');
+}
+
 function fraseContextoAto(tipo: TipoAtoRequerimento): string {
   switch (tipo) {
     case 'doacao':
@@ -124,10 +137,10 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   const tipo = input.tipoAto ?? 'venda';
   const rotOriginal = ROTULOS_ATO[tipo];
   const rot = imovel.regimeTerra === 'posse' ? {
-    requerente: rotOriginal.requerente.replace('PROPRIETÁRIO', 'POSSUIDOR'),
-    transmitente: rotOriginal.transmitente.replace('PROPRIETÁRIO', 'POSSUIDOR'),
-    assinaReq: rotOriginal.assinaReq.replace('Proprietário', 'Possuidor'),
-    assinaTrans: rotOriginal.assinaTrans.replace('Proprietário', 'Possuidor'),
+    requerente: rotuloPosse(rotOriginal.requerente),
+    transmitente: rotuloPosse(rotOriginal.transmitente),
+    assinaReq: rotuloPosse(rotOriginal.assinaReq),
+    assinaTrans: rotuloPosse(rotOriginal.assinaTrans),
   } : rotOriginal;
   const comarca = input.comarca || imovel.municipio || '—';
   const c: Paragraph[] = [];

@@ -356,10 +356,10 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
 
   // Data e assinatura do técnico
   const data = input.dataExtenso ? `, ${input.dataExtenso}` : '';
-  children.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 40 }, children: [new TextRun({ text: `${tecnico.cidadeAssinatura}${data}.`, size: CORPO })] }));
+  children.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 40 }, children: [new TextRun({ text: `${tecnico.cidadeAssinatura || ''}${data}.`, size: CORPO })] }));
   const rot = rotulosProfissional(tecnico);
   assinatura([
-    tecnico.nome.toUpperCase(),
+    (tecnico.nome || '').toUpperCase(),
     tecnico.formacao,
     `${rot.registro}: ${tecnico.cft}`,
     `${rot.termo} nº ${imovel.numeroTrt || tecnico.art}`,
