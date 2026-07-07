@@ -5073,7 +5073,7 @@ export default function EditorPage() {
 
 
           {/* Barra flutuante de ferramentas unificada (Mapa/Planta) — arrastável e persistente */}
-          {(vista === 'mapa' || vista === 'planta') && (vista === 'planta' || glebas.length > 1) && (
+          {(vista === 'mapa' || vista === 'planta') && (vista === 'planta' || glebas.length > 1 || !introTocando) && (
             <div
               className="no-print absolute z-[1160] flex items-center gap-2 select-none"
               style={{ left: `${posBarra.x}px`, top: `${posBarra.y}px` }}
@@ -5183,13 +5183,6 @@ export default function EditorPage() {
             </div>
           )}
 
-          {/* Audio pills fixed fallback if the main toolbar is hidden */}
-          {vista === 'mapa' && glebas.length <= 1 && !introTocando && (
-            <div className="no-print fixed bottom-3 right-3 z-[1100] flex items-center gap-1">
-              <IntroAudioPill />
-              <TutorialAudioPill />
-            </div>
-          )}
 
 
           {vista === 'mapa' ? (
