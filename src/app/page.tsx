@@ -181,28 +181,44 @@ function Etapa({ st, children }: { st: EtapaEstado; children: ReactNode }) {
   );
 }
 
-// Botão único de AÇÕES: desfazer à esquerda, mover no meio, refazer à direita (economiza espaço).
+// Botão único de AÇÕES: desfazer à esquerda, refazer no meio, mover à direita (economiza espaço).
 function BotaoAcoes({ onUndo, onRedo, modo, setModo, atalhoK = 'F2' }: { onUndo: () => void; onRedo: () => void; modo?: string; setModo?: (m: any) => void; atalhoK?: string }) {
   return (
     <div className="flex h-9 w-full items-stretch overflow-hidden rounded-md border bg-background">
-      <button type="button" onClick={onUndo} title="Desfazer (Ctrl+Z)" className="flex flex-1 items-center justify-center hover:bg-muted text-foreground border-r"><Undo2 className="size-4" /></button>
+      <button
+        type="button"
+        onClick={onUndo}
+        title="Desfazer (Ctrl+Z)"
+        className="flex flex-1 items-center justify-center gap-1 hover:bg-muted text-foreground border-r text-[9px] font-bold uppercase leading-none"
+      >
+        <Undo2 className="size-3.5 shrink-0" />
+        <span>Desfazer</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onRedo}
+        title="Refazer (Ctrl+Y)"
+        className={`flex flex-1 items-center justify-center gap-1 hover:bg-muted text-foreground ${setModo ? 'border-r' : ''} text-[9px] font-bold uppercase leading-none`}
+      >
+        <Redo2 className="size-3.5 shrink-0" />
+        <span>Refazer</span>
+      </button>
       
       {setModo && (
         <button
           type="button"
           onClick={() => setModo('navegar')}
-          className={`flex-[2] flex items-center justify-center text-[9px] font-extrabold uppercase tracking-wide gap-1 transition-colors relative border-r ${
+          className={`flex flex-1 items-center justify-center gap-1 text-[9px] font-bold uppercase leading-none transition-colors relative ${
             modo === 'navegar' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'hover:bg-muted text-cyan-600 dark:text-cyan-400'
           }`}
           title={atalhoK === 'F1' ? 'Mover/editar: arrastar textos, rótulos e a folha (F1)' : 'Mover/navegar: arrastar elementos (F2)'}
         >
-          <MousePointer2 className="size-3.5" />
-          <span>MOVER</span>
+          <MousePointer2 className="size-3.5 shrink-0" />
+          <span>Mover</span>
           <Atalho k={atalhoK} className="right-1 top-0.5" />
         </button>
       )}
-
-      <button type="button" onClick={onRedo} title="Refazer (Ctrl+Y)" className="flex flex-1 items-center justify-center hover:bg-muted text-foreground"><Redo2 className="size-4" /></button>
     </div>
   );
 }
