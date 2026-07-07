@@ -34,8 +34,10 @@ interface Props {
   onSelParcelaCert?: (i: number | null) => void;
   verticesVizinho?: VerticeVizinho[]; // vértices de imóveis vizinhos certificados (desenho + adotar)
   selMulti?: Set<string>;
+  objSelMulti?: Set<string>;
   onToggleMulti?: (id: string) => void;
   onBoxSelect?: (ids: string[]) => void;
+  onBoxSelectObj?: (ids: string[]) => void;
   onAdotarVertice?: (lat: number, lon: number) => void;
   onDblClick?: (lat: number, lon: number) => void;
   outrasGlebas?: [number, number][][];
@@ -244,7 +246,7 @@ function VerZoom({ onZoom }: { onZoom: (z: number) => void }) {
 }
 
 // Caixa de seleção por arrasto (modo multi): desenha um retângulo e seleciona os vértices dentro.
-function CaixaSelecao({ ativo, vertices, onBoxSelect }: { ativo: boolean; vertices: Vertex[]; onBoxSelect?: (ids: string[]) => void }) {
+function CaixaSelecao({ ativo, vertices, objetos = [], onBoxSelect, onBoxSelectObj }: { ativo: boolean; vertices: Vertex[]; objetos?: ObjetoDesenho[]; onBoxSelect?: (ids: string[]) => void; onBoxSelectObj?: (ids: string[]) => void }) {
   const [inicio, setInicio] = useState<L.LatLng | null>(null);
   const [atual, setAtual] = useState<L.LatLng | null>(null);
   const map = useMap();
@@ -265,6 +267,10 @@ function CaixaSelecao({ ativo, vertices, onBoxSelect }: { ativo: boolean; vertic
       if (arrastou) {
         const dentro = vertices.filter((v) => Number.isFinite(v.lat) && b.contains([v.lat, v.lon])).map((v) => v.id);
         if (dentro.length) onBoxSelect?.(dentro);
+        // objetos do desenho (linha, texto, símbolo, cota, retângulo, arco...) com algum ponto na caixa.
+        // Curva de nível fica de fora (não é editável).
+        const objDentro = objetos.filter((o) => o.curvaNivel == null && o.pontos.some((p) => Number.isFinite(p.lat) && b.contains([p.lat, p.lon]))).map((o) => o.id);
+        if (objDentro.length) onBoxSelectObj?.(objDentro);
       }
       setInicio(null); setAtual(null);
     },
@@ -981,7 +987,7 @@ function TrimExtendController({
 
 export default function MapEditor(props: Props) {
   const {
-    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, onToggleMulti, onBoxSelect, onAdotarVertice, onDblClick, outrasGlebas = [],
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
@@ -1209,7 +1215,7 @@ export default function MapEditor(props: Props) {
       <AjustarLimites vertices={validos} referencias={referencias} />
       <Centralizar sig={centralizarSig} vertices={vertices} />
       <VerZoom onZoom={setZoom} />
-      <CaixaSelecao ativo={modo === 'multi'} vertices={validos} onBoxSelect={onBoxSelect} />
+      <CaixaSelecao ativo={modo === 'multi'} vertices={validos} objetos={objetos} onBoxSelect={onBoxSelect} onBoxSelectObj={onBoxSelectObj} />
       <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} hoverSnap={hoverSnap} zona={zona} hemisferio={hemisferio} onConfirmarCopiaBase={onConfirmarCopiaBase} onConfirmarCopiaDestino={onConfirmarCopiaDestino} />
       <FocoMap latLng={focoLatLng} />
 
@@ -1375,6 +1381,7 @@ export default function MapEditor(props: Props) {
 
         const pos = o.pontos.map((p) => [p.lat, p.lon] as [number, number]);
         const sel = o.id === objetoSelId;
+        const multiSel = !!objSelMulti && objSelMulti.has(o.id); // marcado na caixa de seleção em lote
 
         if (o.tipo === 'polilinha') {
           const estilo = o.estiloLinha ?? (o.tracejado ? 'tracejado' : 'solido');
@@ -1382,8 +1389,8 @@ export default function MapEditor(props: Props) {
           // Curva de nível com cor AUTOMÁTICA fica BRANCA no mapa (fundo de satélite escuro) — mais legível.
           const corAutoCurva = o.curvaNivel != null && (o.cor == null || o.cor === 'auto');
           const comum = {
-            color: corAutoCurva ? '#ffffff' : (o.cor ?? estiloCamada?.cor ?? '#2563eb'),
-            weight: (o.espessura ?? estiloCamada?.espessura ?? 1.5) + (sel ? 1 : 0),
+            color: multiSel ? '#f59e0b' : (corAutoCurva ? '#ffffff' : (o.cor ?? estiloCamada?.cor ?? '#2563eb')),
+            weight: (o.espessura ?? estiloCamada?.espessura ?? 1.5) + (sel ? 1 : 0) + (multiSel ? 1.5 : 0),
             dashArray
           };
           const fechado = o.preenchido && pos.length >= 3;

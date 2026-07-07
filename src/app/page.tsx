@@ -307,6 +307,7 @@ export default function EditorPage() {
     }
   }, [modo]);
   const [selMulti, setSelMulti] = useState<Set<string>>(new Set()); // vértices marcados no modo "triângulo"
+  const [objSelMulti, setObjSelMulti] = useState<Set<string>>(new Set()); // OBJETOS marcados na mesma caixa de seleção (linhas, textos, símbolos, cotas, retângulos, arcos)
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
   const [tamNomes, setTamNomes] = useState(11); // tamanho da fonte dos nomes dos vértices no mapa
   const [simboloSel, setSimboloSel] = useState('arvore'); // elemento cartográfico ativo (modo 'simbolo')
@@ -896,7 +897,7 @@ export default function EditorPage() {
       else if (k === 'Escape') {
         // menu de contexto aberto: Esc só fecha o menu (não troca de tela)
         if (menuContexto) { e.preventDefault(); setMenuContexto(null); }
-        else if (modo === 'multi' && selMulti.size > 0) { e.preventDefault(); setSelMulti(new Set()); }
+        else if (modo === 'multi' && (selMulti.size > 0 || objSelMulti.size > 0)) { e.preventDefault(); limparSelMulti(); }
         else if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'medir' || modo === 'retangulo' || modo === 'arco') {
           e.preventDefault();
           cancelarDesenho();
@@ -909,7 +910,7 @@ export default function EditorPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo, desenhoBuffer, selMulti, vertices, confrontantePorLado, desfazer, refazer, menuContexto, salvar, processando]);
+  }, [modo, desenhoBuffer, selMulti, objSelMulti, vertices, confrontantePorLado, desfazer, refazer, menuContexto, salvar, processando]);
 
   // ao sair do modo "triângulo", esvazia a seleção múltipla
   useEffect(() => { if (modo !== 'multi') setSelMulti((s) => (s.size ? new Set() : s)); }, [modo]);
@@ -1470,12 +1471,19 @@ export default function EditorPage() {
   function adicionarMulti(ids: string[]) {
     setSelMulti((s) => { const n = new Set(s); ids.forEach((i) => n.add(i)); return n; });
   }
+  function adicionarMultiObj(ids: string[]) {
+    setObjSelMulti((s) => { const n = new Set(s); ids.forEach((i) => n.add(i)); return n; });
+  }
+  function limparSelMulti() { setSelMulti(new Set()); setObjSelMulti(new Set()); }
   async function apagarMultiSelecionados() {
-    if (selMulti.size === 0) return;
-    if (!(await confirmarApagar(`Apagar ${selMulti.size} vértice(s) selecionado(s)?`))) return;
+    const nVert = selMulti.size, nObj = objSelMulti.size;
+    if (nVert === 0 && nObj === 0) return;
+    const partes = [nVert ? `${nVert} vértice(s)` : '', nObj ? `${nObj} elemento(s)` : ''].filter(Boolean).join(' e ');
+    if (!(await confirmarApagar(`Apagar ${partes} selecionado(s)?`))) return;
     snap();
-    setVertices((vs) => reordenar(vs.filter((v) => !selMulti.has(v.id))));
-    setSelMulti(new Set());
+    if (nVert) setVertices((vs) => reordenar(vs.filter((v) => !selMulti.has(v.id))));
+    if (nObj) setObjetos((os) => os.filter((o) => !objSelMulti.has(o.id)));
+    limparSelMulti();
   }
 
   // Apaga TODO o polígono (vértices + ignorados + trechos), para redesenhar à mão depois.
@@ -4735,7 +4743,7 @@ export default function EditorPage() {
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho} verticesVizinho={verticesVizinho}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
-                selMulti={selMulti} onToggleMulti={alternarMulti} onBoxSelect={adicionarMulti}
+                selMulti={selMulti} objSelMulti={objSelMulti} onToggleMulti={alternarMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj}
                 onDblClick={async (lat, lon) => { const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' }); if (t) { snap(); setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); } }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
@@ -4755,10 +4763,10 @@ export default function EditorPage() {
           ) : null}
 
           {/* MULTI-SELEÇÃO: ação flutuante para apagar os vértices marcados */}
-          {vista === 'mapa' && modo === 'multi' && selMulti.size > 0 && (
+          {vista === 'mapa' && modo === 'multi' && (selMulti.size > 0 || objSelMulti.size > 0) && (
             <div className="absolute left-1/2 top-3 z-[1000] -translate-x-1/2">
               <button className="flex items-center gap-2 rounded-full border border-red-500/40 bg-background/95 px-4 py-1.5 text-sm font-semibold text-red-600 shadow-lg backdrop-blur hover:bg-red-500 hover:text-white" onClick={apagarMultiSelecionados}>
-                <Trash2 className="size-4" /> Apagar {selMulti.size} vértice(s) selecionado(s)
+                <Trash2 className="size-4" /> Apagar {[selMulti.size ? `${selMulti.size} vértice(s)` : '', objSelMulti.size ? `${objSelMulti.size} elemento(s)` : ''].filter(Boolean).join(' + ')}
               </button>
             </div>
           )}
