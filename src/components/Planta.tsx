@@ -41,6 +41,11 @@ interface Props {
   modo?: string;
   objetoSelId?: string | null;
   desenhoAtual?: PontoLL[];
+  selMulti?: Set<string>;
+  objSelMulti?: Set<string>;
+  onBoxSelect?: (ids: string[]) => void;
+  onBoxSelectObj?: (ids: string[]) => void;
+  onToggleMulti?: (id: string) => void;
   onCliquePlanta?: (lat: number, lon: number) => void;
   onSelecObjeto?: (id: string | null) => void;
   onContextMenuObjeto?: (id: string, tipo: string, x: number, y: number) => void; // clique direito num objeto desenhado: abre o menu de edição
@@ -234,6 +239,7 @@ export default function Planta({
   zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], verticesVizinho = [], resumoGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
+  selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti,
   onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
@@ -255,7 +261,7 @@ export default function Planta({
   }, [editavel, modo]);
 
   const escalaDenomRef = useRef(0); // escala atual lida pelo handler da roda (evita depender do valor no efeito)
-  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number; snapped?: boolean }>(null);
+  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf' | 'selecao'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number; snapped?: boolean }>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
   // Arraste suave: em vez de atualizar o estado a cada micro-movimento do mouse (que redesenha o
   // SVG inteiro e trava), juntamos as atualizações e aplicamos no máximo uma por quadro de tela.
@@ -276,6 +282,8 @@ export default function Planta({
     if (id) onTextoStartEdit?.();
   };
   const [guiaAlinhamento, setGuiaAlinhamento] = useState<{ x?: number; y?: number } | null>(null);
+  const [boxStart, setBoxStart] = useState<{ x: number; y: number } | null>(null);
+  const [boxEnd, setBoxEnd] = useState<{ x: number; y: number } | null>(null);
 
 
 
@@ -316,7 +324,7 @@ export default function Planta({
 
   // Estado para arrasto fluído/suave (evita recálculos geográficos pesados em tempo real)
   const [dragTemp, setDragTemp] = useState<{
-    kind: 'rotConf' | 'rotVert' | 'ted' | 'divisaConf' | 'folha' | 'objPonto';
+    kind: 'rotConf' | 'rotVert' | 'ted' | 'divisaConf' | 'folha' | 'objPonto' | 'selecao';
     id: string;
     dx: number;
     dy: number;
@@ -655,6 +663,15 @@ export default function Planta({
     }
     if (e.button !== 0) return; // botão do meio/direito não arrasta itens
     const u = svgPonto(e); if (!u) return;
+    if (modo === 'multi') {
+      if (u.x >= DRAW.x0 && u.x <= DRAW.x1 && u.y >= DRAW.y0 && u.y <= DRAW.y1) {
+        dragRef.current = { kind: 'selecao', id: 'box-select', dx: 0, dy: 0 };
+        setBoxStart(u);
+        setBoxEnd(u);
+        captura(e);
+        return;
+      }
+    }
     // modos de desenho: o clique cria/continua o objeto (só dentro da área de desenho, nunca no carimbo)
     if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto' || modo === 'retangulo' || modo === 'arco') {
       if (u.x < DRAW.x0 || u.x > DRAW.x1 || u.y < DRAW.y0 || u.y > DRAW.y1) return;
@@ -681,6 +698,10 @@ export default function Planta({
     if (!editavel || !dragRef.current) return;
     const u = svgPonto(e); if (!u) return;
     const d = dragRef.current;
+    if (d.kind === 'selecao') {
+      setBoxEnd(u);
+      return;
+    }
     // 1ª mexida do gesto: tira UMA foto pro desfazer (o estado ANTES do arraste). Assim mover/redimensionar
     // texto, rótulo, folha, escala etc. na planta viram passos desfazíveis — sem inundar o histórico.
     if (!d.snapped) { onAntesEditar?.(); d.snapped = true; }
@@ -778,6 +799,38 @@ export default function Planta({
         let az = (Math.atan2(ddx, -ddy) * 180) / Math.PI; if (az < 0) az += 360;
         const len = Math.min(400, Math.max(15, Math.hypot(ddx, ddy)));
         onAjustarDivisaConf?.(d.id, +az.toFixed(1), +len.toFixed(0));
+      } else if (d.kind === 'selecao' && boxStart && boxEnd) {
+        const xMin = Math.min(boxStart.x, boxEnd.x);
+        const xMax = Math.max(boxStart.x, boxEnd.x);
+        const yMin = Math.min(boxStart.y, boxEnd.y);
+        const yMax = Math.max(boxStart.y, boxEnd.y);
+        const arrastou = Math.hypot(boxStart.x - boxEnd.x, boxStart.y - boxEnd.y) > 3;
+        if (arrastou) {
+          const dentroVert = vertices.filter((v) => {
+            const vx = sx(v.leste);
+            const vy = sy(v.norte);
+            return vx >= xMin && vx <= xMax && vy >= yMin && vy <= yMax;
+          }).map((v) => v.id);
+
+          if (dentroVert.length) {
+            onBoxSelect?.(dentroVert);
+          }
+
+          const dentroObj = (objetos || []).filter((o) => {
+            if (o.curvaNivel != null) return false;
+            return o.pontos.some((p) => {
+              const ox = sx(p.leste);
+              const oy = sy(p.norte);
+              return ox >= xMin && ox <= xMax && oy >= yMin && oy <= yMax;
+            });
+          }).map((o) => o.id);
+
+          if (dentroObj.length) {
+            onBoxSelectObj?.(dentroObj);
+          }
+        }
+        setBoxStart(null);
+        setBoxEnd(null);
       } else {
         const g = paraGeo({ x: finalX, y: finalY });
         if (d.kind === 'rotConf') onMoverRotuloConf?.(d.id, g.lat, g.lon);
@@ -1218,6 +1271,7 @@ export default function Planta({
       {/* ---------- OBJETOS DE DESENHO ---------- */}
       {objetos.map((o) => {
         const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
+        const isMultiSelected = objSelMulti?.has(o.id);
         // Clique direito num objeto abre o mesmo menu de edição do mapa (aumentar, diminuir,
         // cor, espessura, apagar…). Só quando a planta é editável. O texto já tem o seu via <Ted>.
         const ctx = (editavel && onContextMenuObjeto && o.curvaNivel == null) ? {
@@ -1227,12 +1281,12 @@ export default function Planta({
         if (o.tipo === 'simbolo' && sp[0]) {
           const tam = o.tamanho ?? 30;
           const esc = (tam / 20).toFixed(2);
-          return <g key={o.id} {...ctx} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(${esc})`} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
+          return <g key={o.id} {...ctx} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(${esc})`} style={isMultiSelected ? { filter: 'drop-shadow(0 0 4px #f59e0b)' } : undefined} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
         }
         if (o.tipo === 'texto' && sp[0]) {
           const anchor = o.alinhamento === 'center' ? 'middle' : o.alinhamento === 'right' ? 'end' : 'start';
           return (
-            <Ted key={o.id} x={sp[0].x} y={sp[0].y} base={o.texto || ''} size={(o.tamanho ?? 12) * 0.8} fill={o.cor ?? '#000'} anchor={anchor} {...tProps(o.id)} halo />
+            <Ted key={o.id} x={sp[0].x} y={sp[0].y} base={o.texto || ''} size={(o.tamanho ?? 12) * 0.8} fill={isMultiSelected ? '#f59e0b' : (o.cor ?? '#000')} anchor={anchor} {...tProps(o.id)} halo />
           );
         }
         if (o.tipo === 'cota' && sp.length >= 2) {
@@ -1251,15 +1305,16 @@ export default function Planta({
           const svgBOffset = { x: sx(blOffset.leste), y: sy(blOffset.norte) };
           const mx = (svgAOffset.x + svgBOffset.x) / 2;
           const my = (svgAOffset.y + svgBOffset.y) / 2;
+          const corCota = isMultiSelected ? '#f59e0b' : (o.cor ?? '#b91c1c');
 
           return (
             <g key={o.id} {...ctx}>
               {/* Linhas de extensão perpendiculares tracejadas */}
-              <line x1={sp[0].x} y1={sp[0].y} x2={svgAOffset.x} y2={svgAOffset.y} stroke={o.cor ?? '#b91c1c'} strokeWidth={0.5} strokeDasharray="2 1" />
-              <line x1={sp[1].x} y1={sp[1].y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={o.cor ?? '#b91c1c'} strokeWidth={0.5} strokeDasharray="2 1" />
+              <line x1={sp[0].x} y1={sp[0].y} x2={svgAOffset.x} y2={svgAOffset.y} stroke={corCota} strokeWidth={0.5} strokeDasharray="2 1" />
+              <line x1={sp[1].x} y1={sp[1].y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={corCota} strokeWidth={0.5} strokeDasharray="2 1" />
               {/* Linha de cota paralela */}
-              <line x1={svgAOffset.x} y1={svgAOffset.y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={o.cor ?? '#b91c1c'} strokeWidth={0.8} />
-              <text x={mx} y={my - 3} fontSize={8} textAnchor="middle" fill={o.cor ?? '#b91c1c'}>{numBR(distanciaCota(o))} m</text>
+              <line x1={svgAOffset.x} y1={svgAOffset.y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={corCota} strokeWidth={0.8 + (isMultiSelected ? 0.8 : 0)} />
+              <text x={mx} y={my - 3} fontSize={8} textAnchor="middle" fill={corCota}>{numBR(distanciaCota(o))} m</text>
             </g>
           );
         }
@@ -1268,8 +1323,8 @@ export default function Planta({
           const estilo = o.estiloLinha ?? (o.tracejado ? 'tracejado' : 'solido');
           const dashArray = estilo === 'tracejado' ? '6 4' : estilo === 'pontilhado' ? '2 3' : undefined;
           // Curva de nível com cor AUTOMÁTICA fica CINZA CLARO na planta (fundo branco) — legível e discreta.
-          const borderCor = (o.curvaNivel != null && (o.cor == null || o.cor === 'auto')) ? '#9ca3af' : (o.cor ?? '#2563eb');
-          const esp = o.espessura ?? 1.2;
+          const borderCor = isMultiSelected ? '#f59e0b' : ((o.curvaNivel != null && (o.cor == null || o.cor === 'auto')) ? '#9ca3af' : (o.cor ?? '#2563eb'));
+          const esp = (o.espessura ?? 1.2) + (isMultiSelected ? 1.2 : 0);
 
           if (o.preenchido && sp.length >= 3) {
             let fillVal = o.corPreenchimento ?? borderCor;

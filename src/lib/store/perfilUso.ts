@@ -25,6 +25,7 @@ export interface PerfilUso {
   mensalidade?: number;
   statusPagamento?: 'pago' | 'atrasado' | 'isento';
   vencimentoDia?: number;
+  atrasadoDesde?: number | null;
   observacoesAdmin?: string;
 }
 
@@ -110,5 +111,25 @@ export async function atualizarPerfilUsoPorAdmin(clientUid: string, patch: Parti
   } catch (e) {
     console.error('Falha ao atualizar perfil de uso pelo admin:', e);
     throw new Error('Erro ao salvar dados administrativos no banco de dados.');
+  }
+}
+
+/** Obtém o perfil do usuário logado. Com fallback seguro pro cache local caso offline. */
+export async function obterPerfilUsuario(): Promise<PerfilUso | null> {
+  const u = uid();
+  const cached = lerCache();
+  if (!u || !firebaseConfigurado) {
+    return Object.keys(cached).length ? (cached as PerfilUso) : null;
+  }
+  try {
+    const s = await getDoc(doc(fdb()!, 'perfisUso', u));
+    if (s.exists()) {
+      const data = s.data() as PerfilUso;
+      try { localStorage.setItem(CACHE, JSON.stringify(data)); } catch { /* ignore */ }
+      return data;
+    }
+    return Object.keys(cached).length ? (cached as PerfilUso) : null;
+  } catch {
+    return Object.keys(cached).length ? (cached as PerfilUso) : null;
   }
 }

@@ -11,14 +11,14 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
   Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical,
-  Scissors, Expand, GitCommit, Copy, Square, Spline,
+  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
 import { Input } from '@/components/ui/input';
 import ModalSpreadsheet from '@/components/ModalSpreadsheet';
-import { Logo } from '@/components/Logo';
+import { Logo, FundoRedeMarca } from '@/components/Logo';
 import DocumentosProjeto from '@/components/DocumentosProjeto';
 import NotaLegal from '@/components/NotaLegal';
 import type { ArquivoProjeto } from '@/lib/store/arquivosProjeto';
@@ -92,11 +92,11 @@ import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/st
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
-import { sincronizarPerfil, registrarProjetoSalvo } from '@/lib/store/perfilUso';
+import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, type PerfilUso } from '@/lib/store/perfilUso';
 import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster } from '@/lib/store/suporte';
-import { carregarConfigAssinatura } from '@/lib/store/assinatura';
+import { carregarConfigAssinatura, type ConfigAssinatura } from '@/lib/store/assinatura';
 
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
 import PlanilhaConferenciaModal from '@/components/PlanilhaConferenciaModal';
@@ -240,6 +240,10 @@ export interface EstiloCamada {
 
 export default function EditorPage() {
   const { user, carregando: authCarregando, disponivel: nuvemDisponivel } = useAuth();
+  const [perfil, setPerfil] = useState<PerfilUso | null>(null);
+  const [configAssinatura, setConfigAssinatura] = useState<ConfigAssinatura | null>(null);
+  const [avisoPagamentoAberto, setAvisoPagamentoAberto] = useState(false);
+  const [pagamentoVerificando, setPagamentoVerificando] = useState(false);
   // zoom/pan da PRÉVIA da planta (não afeta o PDF exportado, que lê o SVG original)
   const [plantaZoom, setPlantaZoom] = useState(1);
   const [plantaPan, setPlantaPan] = useState({ x: 0, y: 0 });
@@ -650,6 +654,50 @@ export default function EditorPage() {
         setTemaCarregadoDaNuvem(true);
       });
 
+      // Carrega informações de assinatura/faturamento
+      obterPerfilUsuario().then((p) => {
+        setPerfil(p);
+        if (p?.statusPagamento === 'atrasado' && !souMaster()) {
+          // Mostrar o aviso popup ao abrir o app (caso ainda não esteja bloqueado)
+          const agora = Date.now();
+          const atrasadoDesde = p.atrasadoDesde || agora;
+          const diffMs = agora - atrasadoDesde;
+          const diasDecorridos = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+          const diasRestantes = Math.max(0, 7 - diasDecorridos);
+          if (diasRestantes > 0) {
+            setAvisoPagamentoAberto(true);
+          }
+        }
+      }).catch(() => {});
+
+      carregarConfigAssinatura().then(setConfigAssinatura).catch(() => {});
+
+      // Verifica se retornou do Mercado Pago com pagamento aprovado
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentId = urlParams.get('payment_id');
+      const collectionStatus = urlParams.get('collection_status');
+      if (paymentId && collectionStatus === 'approved') {
+        setPagamentoVerificando(true);
+        user.getIdToken().then((token) => {
+          fetch(`/api/mp/verify?payment_id=${paymentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+          .then((res) => res.json())
+          .then(async (data) => {
+            if (data.success) {
+              // Atualiza o perfil na nuvem e localmente
+              await sincronizarPerfil({ statusPagamento: 'pago', atrasadoDesde: null });
+              const atualizado = await obterPerfilUsuario();
+              setPerfil(atualizado);
+              // Limpa a URL para não ficar re-verificando
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          })
+          .catch((err) => console.error("Erro ao verificar pagamento:", err))
+          .finally(() => setPagamentoVerificando(false));
+        }).catch(() => setPagamentoVerificando(false));
+      }
+
       // Cadastro do RT/escritório é POR CONTA (multi-empresa): puxa da nuvem, atualiza a tela e
       // decide se ainda precisa do primeiro acesso. Se a conta for nova, o cache local é resetado
       // (em branco), então um usuário nunca herda o cadastro de outro no mesmo navegador.
@@ -676,6 +724,8 @@ export default function EditorPage() {
       setTecnico(carregarTecnico());
       setEscritorio(carregarEscritorio());
       setTemaCarregadoDaNuvem(true);
+      setPerfil(null);
+      setConfigAssinatura(null);
     }
   }, [user, authCarregando]);
 
@@ -1481,7 +1531,10 @@ export default function EditorPage() {
     const partes = [nVert ? `${nVert} vértice(s)` : '', nObj ? `${nObj} elemento(s)` : ''].filter(Boolean).join(' e ');
     if (!(await confirmarApagar(`Apagar ${partes} selecionado(s)?`))) return;
     snap();
-    if (nVert) setVertices((vs) => reordenar(vs.filter((v) => !selMulti.has(v.id))));
+    if (nVert) {
+      setVertices((vs) => reordenar(vs.filter((v) => !selMulti.has(v.id))));
+      setVerticesIgnorados((vs) => vs.filter((v) => !selMulti.has(v.id)));
+    }
     if (nObj) setObjetos((os) => os.filter((o) => !objSelMulti.has(o.id)));
     limparSelMulti();
   }
@@ -3556,6 +3609,102 @@ export default function EditorPage() {
 
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
 
+  const { bloqueadoPorFaturamento, diasAtrasoRestantes } = useMemo(() => {
+    if (!perfil || perfil.statusPagamento !== 'atrasado' || souMaster() || configAssinatura?.ocultarCobranca) {
+      return { bloqueadoPorFaturamento: false, diasAtrasoRestantes: 7 };
+    }
+    const agora = Date.now();
+    const atrasadoDesde = perfil.atrasadoDesde || agora;
+    const diffMs = agora - atrasadoDesde;
+    const diasDecorridos = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+    const diasRestantes = Math.max(0, 7 - diasDecorridos);
+    return {
+      bloqueadoPorFaturamento: diasRestantes <= 0,
+      diasAtrasoRestantes: diasRestantes,
+    };
+  }, [perfil, configAssinatura]);
+
+  async function iniciarPagamentoMercadoPago() {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const valor = perfil?.mensalidade || 129;
+      const res = await fetch('/api/mp/preference', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ amount: valor })
+      });
+      const data = await res.json();
+      if (data.init_point) {
+        window.location.href = data.init_point;
+      } else {
+        alert(data.error || 'Não foi possível gerar a cobrança no momento.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erro de conexão ao processar pagamento.');
+    }
+  }
+
+  if (pagamentoVerificando) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/90 z-[9999] space-y-4">
+        <RefreshCw className="h-10 w-10 animate-spin text-emerald-500" />
+        <span className="text-sm font-medium tracking-wide text-white/80">Confirmando seu pagamento com o Mercado Pago...</span>
+        <span className="text-xs text-white/40">Por favor, não feche esta página.</span>
+      </div>
+    );
+  }
+
+  if (bloqueadoPorFaturamento) {
+    return (
+      <div className="relative flex h-screen items-center justify-center p-4 bg-[#020804]">
+        <FundoRedeMarca />
+        <div className="relative z-10 w-full max-w-md space-y-6 rounded-xl border border-red-500/20 bg-[#05140b]/95 p-8 shadow-2xl text-center backdrop-blur-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
+            <AlertTriangle className="h-8 w-8 animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold tracking-tight text-white">Acesso Suspenso</h2>
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              Detectamos uma pendência financeira em sua conta. Seu prazo de tolerância de 7 dias expirou e o acesso ao Souza CAD está temporariamente suspenso.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/10 text-left space-y-1">
+            <div className="text-xs text-zinc-400">Valor pendente:</div>
+            <div className="text-2xl font-bold text-red-400 font-mono">
+              R$ {(perfil?.mensalidade || 129).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <div className="text-[11px] text-zinc-500">Assinatura mensal recorrente</div>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <Button 
+              className="w-full h-11 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/10" 
+              onClick={iniciarPagamentoMercadoPago}
+            >
+              Pagar com Mercado Pago
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full h-11 text-sm bg-transparent hover:bg-white/5 text-white border-white/10" 
+              onClick={() => sair()}
+            >
+              Sair da conta
+            </Button>
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            O acesso será restabelecido automaticamente assim que o pagamento for confirmado pelo Mercado Pago.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       {/* Topo */}
@@ -4843,6 +4992,7 @@ export default function EditorPage() {
                       outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))}
                       resumoGlebas={resumoGlebas} verticesVizinho={verticesVizinho}
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
+                      selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onAntesEditar={snap}
                       onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}
                       onExcluirObjeto={(id) => { snap(); setObjetos((os) => os.filter((o) => o.id !== id)); }}
@@ -5794,6 +5944,52 @@ export default function EditorPage() {
         zona={previewData?.z ?? zona} hemisferio={hemisferio} fusosPermitidos={tecnico?.fusosPermitidos}
         onConfirm={concluirImportacao}
       />
+
+      {avisoPagamentoAberto && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-[9999] p-4">
+          <div className="w-full max-w-md bg-[#05140b] border border-amber-500/20 rounded-xl p-6 shadow-2xl space-y-5 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+              <AlertTriangle className="h-6 w-6 animate-bounce" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-white">Aviso de Pagamento Pendente</h3>
+              <p className="text-sm text-zinc-300 leading-relaxed">
+                Identificamos um atraso na sua mensalidade. Seu acesso será encerrado em{' '}
+                <span className="font-extrabold text-amber-500 text-base">{diasAtrasoRestantes} {diasAtrasoRestantes === 1 ? 'dia' : 'dias'}</span>.
+              </p>
+            </div>
+            
+            <div className="p-3.5 rounded-lg bg-amber-500/5 border border-amber-500/10 text-left flex justify-between items-center">
+              <div>
+                <div className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">Valor da Mensalidade</div>
+                <div className="text-lg font-bold text-amber-500">
+                  R$ {(perfil?.mensalidade || 129).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+              <Button 
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+                onClick={iniciarPagamentoMercadoPago}
+              >
+                Pagar Agora
+              </Button>
+            </div>
+
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className="flex-1 bg-transparent hover:bg-white/5 text-white border-white/10" 
+                onClick={() => setAvisoPagamentoAberto(false)}
+              >
+                Continuar no App
+              </Button>
+            </div>
+            <p className="text-[10px] text-zinc-400">
+              Evite interrupções regularizando sua assinatura antes do prazo final.
+            </p>
+          </div>
+        </div>
+      )}
 
     </div>
   );

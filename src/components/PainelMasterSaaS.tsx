@@ -347,7 +347,16 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                         <td className="px-2 py-2.5 text-center">
                           <select
                             value={status}
-                            onChange={(e) => atualizarClienteCRM(p.uid, { statusPagamento: e.target.value as any })}
+                            onChange={(e) => {
+                              const newStatus = e.target.value as any;
+                              const patch: any = { statusPagamento: newStatus };
+                              if (newStatus === 'atrasado') {
+                                patch.atrasadoDesde = Date.now();
+                              } else {
+                                patch.atrasadoDesde = null;
+                              }
+                              atualizarClienteCRM(p.uid, patch);
+                            }}
                             className={`w-28 h-9 rounded-lg px-2 text-[11px] font-bold bg-[#07170d] border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 cursor-pointer transition-colors ${
                               status === 'pago' ? 'text-emerald-400 border-emerald-500/40' :
                               status === 'isento' ? 'text-zinc-400 border-zinc-500/40' :

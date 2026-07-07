@@ -1215,7 +1215,7 @@ export default function MapEditor(props: Props) {
       <AjustarLimites vertices={validos} referencias={referencias} />
       <Centralizar sig={centralizarSig} vertices={vertices} />
       <VerZoom onZoom={setZoom} />
-      <CaixaSelecao ativo={modo === 'multi'} vertices={validos} objetos={objetos} onBoxSelect={onBoxSelect} onBoxSelectObj={onBoxSelectObj} />
+      <CaixaSelecao ativo={modo === 'multi'} vertices={[...validos, ...verticesIgnorados]} objetos={objetos} onBoxSelect={onBoxSelect} onBoxSelectObj={onBoxSelectObj} />
       <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} hoverSnap={hoverSnap} zona={zona} hemisferio={hemisferio} onConfirmarCopiaBase={onConfirmarCopiaBase} onConfirmarCopiaDestino={onConfirmarCopiaDestino} />
       <FocoMap latLng={focoLatLng} />
 
@@ -1518,7 +1518,7 @@ export default function MapEditor(props: Props) {
       ))}
 
       {/* anel de destaque dos vértices multi-selecionados (modo "triângulo") */}
-      {camadasVisiveis.divisas !== false && modo === 'multi' && selMulti && validos.filter((v) => selMulti.has(v.id)).map((v) => (
+      {camadasVisiveis.divisas !== false && modo === 'multi' && selMulti && [...validos, ...verticesIgnorados].filter((v) => selMulti.has(v.id)).map((v) => (
         <CircleMarker key={`ms${v.id}`} center={[v.lat, v.lon]} radius={9}
           pathOptions={{ color: '#f59e0b', weight: 2.5, fillColor: '#fde047', fillOpacity: 0.5 }} />
       ))}
@@ -1583,7 +1583,15 @@ export default function MapEditor(props: Props) {
       {camadasVisiveis.divisas !== false && verticesIgnorados.filter(valido).map((v) => (
         <CircleMarker key={`ign${v.id}`} center={[v.lat, v.lon]} radius={5.5}
           pathOptions={{ color: '#000000', fillColor: '#ffffff', fillOpacity: 1.0, weight: 1.8 }}
-          eventHandlers={{ click() { if (modo === 'considerar' && !camadasBloqueadas.divisas) onConsiderarVertice?.(v.id); } }} />
+          eventHandlers={{
+            click() {
+              if (modo === 'multi') {
+                onToggleMulti?.(v.id);
+              } else if (modo === 'considerar' && !camadasBloqueadas.divisas) {
+                onConsiderarVertice?.(v.id);
+              }
+            }
+          }} />
       ))}
 
       {/* rótulos dos vértices (caixinha branca; arrastáveis com a ferramenta mover/F5; ocultação adaptativa para evitar poluição visual) */}
