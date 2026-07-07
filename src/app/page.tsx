@@ -4901,17 +4901,6 @@ export default function EditorPage() {
                 </div>
               )}
 
-              {/* Se estiver no MAPA e tiver parcelas INCRA */}
-              {vista === 'mapa' && parcelasCert.length > 0 && (
-                <div className="flex items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 shadow-xl backdrop-blur">
-                  <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-foreground">
-                    <input type="checkbox" className="size-3.5 accent-cyan-600" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
-                    INCRA ({parcelasCert.length})
-                  </label>
-                  <span className="text-[9px] uppercase text-muted-foreground">opacidade</span>
-                  <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} disabled={!mostrarCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-16 accent-cyan-600 disabled:opacity-40" title="Opacidade do preenchimento das parcelas" />
-                </div>
-              )}
 
               {/* Área e Perímetro (sempre visíveis, em ambos os modos!) */}
               {res && (
@@ -5505,6 +5494,18 @@ export default function EditorPage() {
                 <p className="text-[11px] text-muted-foreground leading-snug">
                   Busca automática online por região de todos os imóveis certificados que confrontam com o perímetro trabalhado, gerando os confrontantes automaticamente.
                 </p>
+                {parcelasCert.length > 0 && (
+                  <div className="mt-2 flex items-center justify-between gap-2 border border-dashed border-emerald-600/30 rounded-lg p-2 bg-background/50">
+                    <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-bold text-foreground select-none">
+                      <input type="checkbox" className="size-3.5 accent-emerald-600 rounded-sm" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
+                      Exibir no Mapa ({parcelasCert.length})
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] uppercase text-muted-foreground font-semibold">Opacidade:</span>
+                      <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} disabled={!mostrarCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-20 accent-emerald-600 disabled:opacity-40" title="Opacidade do preenchimento das parcelas" />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="border-t border-border/30 pt-3 flex flex-col gap-1.5">
