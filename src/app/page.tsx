@@ -181,13 +181,28 @@ function Etapa({ st, children }: { st: EtapaEstado; children: ReactNode }) {
   );
 }
 
-// Botão único de AÇÕES: desfazer à esquerda, refazer à direita, rótulo no meio (economiza espaço).
-function BotaoAcoes({ onUndo, onRedo }: { onUndo: () => void; onRedo: () => void }) {
+// Botão único de AÇÕES: desfazer à esquerda, mover no meio, refazer à direita (economiza espaço).
+function BotaoAcoes({ onUndo, onRedo, modo, setModo, atalhoK = 'F2' }: { onUndo: () => void; onRedo: () => void; modo?: string; setModo?: (m: any) => void; atalhoK?: string }) {
   return (
     <div className="flex h-9 w-full items-stretch overflow-hidden rounded-md border bg-background">
-      <button type="button" onClick={onUndo} title="Desfazer" className="flex flex-1 items-center justify-center hover:bg-muted"><Undo2 className="size-4" /></button>
-      <span className="flex items-center border-x px-1.5 text-[9px] font-bold tracking-wide text-muted-foreground">AÇÕES</span>
-      <button type="button" onClick={onRedo} title="Refazer" className="flex flex-1 items-center justify-center hover:bg-muted"><Redo2 className="size-4" /></button>
+      <button type="button" onClick={onUndo} title="Desfazer (Ctrl+Z)" className="flex flex-1 items-center justify-center hover:bg-muted text-foreground border-r"><Undo2 className="size-4" /></button>
+      
+      {setModo && (
+        <button
+          type="button"
+          onClick={() => setModo('navegar')}
+          className={`flex-[2] flex items-center justify-center text-[9px] font-extrabold uppercase tracking-wide gap-1 transition-colors relative border-r ${
+            modo === 'navegar' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : 'hover:bg-muted text-cyan-600 dark:text-cyan-400'
+          }`}
+          title={atalhoK === 'F1' ? 'Mover/editar: arrastar textos, rótulos e a folha (F1)' : 'Mover/navegar: arrastar elementos (F2)'}
+        >
+          <MousePointer2 className="size-3.5" />
+          <span>MOVER</span>
+          <Atalho k={atalhoK} className="right-1 top-0.5" />
+        </button>
+      )}
+
+      <button type="button" onClick={onRedo} title="Refazer (Ctrl+Y)" className="flex flex-1 items-center justify-center hover:bg-muted text-foreground"><Redo2 className="size-4" /></button>
     </div>
   );
 }
@@ -3999,12 +4014,12 @@ export default function EditorPage() {
                       )}
                       {vista === 'mapa' ? (
                         <>
-                          <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                          {/* Mover + ímã + rótulos + travar numa grade de 3 colunas (sem botão de largura total) */}
+                          <BotaoAcoes onUndo={desfazer} onRedo={refazer} modo={modo} setModo={setModo} atalhoK="F2" />
+                          {/* Grade de 3 colunas: Travar + Ímã + Rótulos */}
                           <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="relative" title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
-                              <MousePointer2 className="text-cyan-500" /> <span>Mover</span>
-                              <Atalho k="F2" />
+                            <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={`relative ${bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'}`} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
+                              {bloqueado ? <Lock /> : <LockOpen />} <span>{bloqueado ? 'TRAVADO' : 'SOLTO'}</span>
+                              <Atalho k="F5" />
                             </Button>
                             <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar GRUDA no vértice mais próximo do imóvel (2 m). Bom para cotar de vértice a vértice ou fechar polilinha bem no canto. Se você não desenha perto dos vértices, deixe desligado.`} onClick={() => setSnapAtivo((s) => !s)} className={`relative ${snapAtivo ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}`}>
                               <Magnet /> <span>Ímã</span>
@@ -4014,19 +4029,11 @@ export default function EditorPage() {
                               {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
                               <Atalho k="F4" />
                             </Button>
-                            <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={`relative col-span-3 ${bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'}`} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
-                              {bloqueado ? <Lock /> : <LockOpen />} <span>{bloqueado ? 'Vértices travados' : 'Vértices soltos'}</span>
-                              <Atalho k="F5" />
-                            </Button>
                           </div>
                         </>
                       ) : (
                         <div className="flex flex-col gap-1">
-                          <BotaoAcoes onUndo={desfazer} onRedo={refazer} />
-                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className="relative h-8 justify-center gap-2" title="Mover/editar: arrastar textos, rótulos e a folha (F1). Duplo clique num confrontante edita o nome; botão direito ajusta o tamanho." onClick={() => setModo('navegar')}>
-                            <MousePointer2 className="size-4 text-cyan-500" /> <span className="text-xs font-semibold uppercase">Mover / editar</span>
-                            <Atalho k="F1" />
-                          </Button>
+                          <BotaoAcoes onUndo={desfazer} onRedo={refazer} modo={modo} setModo={setModo} atalhoK="F1" />
                         </div>
                       )}
                     </div>
