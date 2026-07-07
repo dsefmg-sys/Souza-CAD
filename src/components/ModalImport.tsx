@@ -17,16 +17,23 @@ interface Props {
 }
 
 function formatarNome(s: string): string {
-  return s.split(' ')
-    .map(word => {
+  const lastHyphen = s.lastIndexOf('-');
+  if (lastHyphen === -1) return s;
+  const cidadeRaw = s.slice(0, lastHyphen);
+  const ufRaw = s.slice(lastHyphen + 1);
+
+  const cidade = cidadeRaw
+    .split(' ')
+    .map((word) => {
       if (word.length <= 2 && /^(de|do|da|dos|das|e)$/i.test(word)) return word.toLowerCase();
       if (word.includes('-')) {
-        const parts = word.split('-');
-        return parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase() + '-' + parts[1].toUpperCase();
+        return word.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('-');
       }
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
     .join(' ');
+
+  return `${cidade}-${ufRaw.toUpperCase()}`;
 }
 
 const MUNICIPIOS_PADRAO = Object.entries(MUNICIPIOS).map(([key, value]) => {
