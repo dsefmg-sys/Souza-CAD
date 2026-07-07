@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical,
+  Settings, LogOut, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal,
   Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -463,7 +463,54 @@ export default function EditorPage() {
     };
   }, [arrastandoBarra, posBarra]);
 
+  const [posAtalhos, setPosAtalhos] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const salva = localStorage.getItem('metrica:pos_barra_atalhos');
+      if (salva) {
+        try {
+          const p = JSON.parse(salva);
+          if (typeof p.x === 'number' && typeof p.y === 'number') {
+            return p;
+          }
+        } catch (_) {}
+      }
+    }
+    return { x: 8, y: 8 };
+  });
+
+  const [arrastandoAtalhos, setArrastandoAtalhos] = useState<{
+    startX: number;
+    startY: number;
+    startPosX: number;
+    startPosY: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!arrastandoAtalhos) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - arrastandoAtalhos.startX;
+      const dy = e.clientY - arrastandoAtalhos.startY;
+      const novoX = Math.max(5, Math.min(window.innerWidth - 100, arrastandoAtalhos.startPosX + dx));
+      const novoY = Math.max(5, Math.min(window.innerHeight - 40, arrastandoAtalhos.startPosY + dy));
+      setPosAtalhos({ x: novoX, y: novoY });
+    };
+
+    const handleMouseUp = () => {
+      localStorage.setItem('metrica:pos_barra_atalhos', JSON.stringify(posAtalhos));
+      setArrastandoAtalhos(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [arrastandoAtalhos, posAtalhos]);
+
   const [plantaDark, setPlantaDark] = useState(true); // modo escuro só da folha A3 (conforto noturno)
+  const direcaoAtalhos = (typeof window !== 'undefined' && (posAtalhos.x < 120 || posAtalhos.x > window.innerWidth - 180)) ? 'vertical' : 'horizontal';
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean; errata?: boolean }>({});
@@ -4633,154 +4680,183 @@ export default function EditorPage() {
               usada) fica no topo, com destaque; abaixo, no mesmo padrão quadrado, o modo
               Fácil/Completo e — só na planta — travar a folha e o tema da prancha. Ficam aqui pra
               liberar a barra flutuante de cima. */}
-          <div className="absolute left-2 top-2 z-[1160] flex flex-col gap-1">
-            <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
-              title="Alternar entre mapa e planta (Esc)"
-              className="flex h-8 w-24 items-center justify-center rounded-lg border-2 border-primary/50 bg-background/95 text-primary hover:bg-muted shadow-md transition-all duration-200 active:scale-95 font-bold">
-              <span className="text-[10px] font-extrabold tracking-wide">{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
-            </button>
+          <div
+            className={`no-print absolute z-[1160] flex select-none items-center gap-1 bg-background/90 backdrop-blur-sm border border-border/80 p-1.5 rounded-2xl shadow-xl transition-shadow hover:shadow-2xl ${
+              direcaoAtalhos === 'vertical' ? 'flex-col w-[92px]' : 'flex-row h-10'
+            }`}
+            style={{ left: `${posAtalhos.x}px`, top: `${posAtalhos.y}px` }}
+          >
+            {/* Alça de Arrasto (Drag Handle) */}
+            <div
+              className={`flex cursor-grab items-center justify-center rounded hover:bg-accent text-muted-foreground/60 hover:text-muted-foreground active:cursor-grabbing transition-colors ${
+                direcaoAtalhos === 'vertical' ? 'h-3.5 w-full mb-0.5' : 'w-3.5 h-full mr-0.5'
+              }`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setArrastandoAtalhos({
+                  startX: e.clientX,
+                  startY: e.clientY,
+                  startPosX: posAtalhos.x,
+                  startPosY: posAtalhos.y,
+                });
+              }}
+              title="Arraste para mover o menu de atalhos (horizontal no meio, vertical nas laterais)"
+            >
+              {direcaoAtalhos === 'vertical' ? <GripHorizontal className="size-3.5" /> : <GripVertical className="size-3.5" />}
+            </div>
 
-            {/* Salvar — logo abaixo da alternância mapa/planta, sempre visível e acessível */}
-            <button type="button" onClick={() => { void salvar(); }} disabled={processando}
-              title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar (Ctrl+S)' : salvoOk ? 'Trabalho salvo (Ctrl+S)' : 'Salvar o projeto (Ctrl+S)'}
-              className={`flex h-8 w-24 items-center justify-center rounded-lg border shadow-md transition-all duration-200 active:scale-95 ${salvarLaranja ? 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
-              <span className="text-[10px] font-extrabold tracking-wide">{salvarLaranja ? 'SALVAR *' : 'SALVAR'}</span>
-            </button>
-
-            {/* Chave de modo Fácil → Médio → Completo → Fácil — vale no app inteiro; some durante a
-            abertura e após as 5 h de Completo. Um clique avança um degrau e volta ao início. */}
-            {chaveTopoVisivel && !introTocando && (
-              <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
-                title={completo
-                  ? 'Modo Completo: todas as ferramentas à mostra, inclusive as avançadas. Clique para voltar ao Fácil.'
-                  : medio
-                    ? 'Modo Médio: as ferramentas do dia a dia à mostra. Clique para o Completo.'
-                    : 'Modo Fácil: só o caminho essencial. Clique para o Médio.'}
-                className="flex h-8 w-24 items-center justify-center rounded-lg border border-border bg-background/95 text-foreground hover:bg-muted shadow-md transition-all duration-200 active:scale-95">
-                <span className="text-[10px] font-extrabold tracking-wide">{rotuloModo}</span>
+            {/* Lista de botões */}
+            <div className={`flex gap-1 ${direcaoAtalhos === 'vertical' ? 'flex-col' : 'flex-row'}`}>
+              <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
+                title="Alternar entre mapa e planta (Esc)"
+                className="flex h-7 w-20 items-center justify-center rounded-full border-2 border-primary/50 bg-background/95 text-primary hover:bg-muted shadow-sm transition-all duration-200 active:scale-95 font-bold">
+                <span className="text-[9px] font-extrabold tracking-wide">{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
               </button>
-            )}
 
-            {/* Só na planta: travar a folha e alternar o tema da prancha */}
-            {vista === 'planta' && (
-              <>
-                <button type="button"
-                  onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
-                  title={folhaTravada ? 'Moldura travada — clique para soltar e arrastar a prancha' : 'Moldura solta — clique para travar o layout da folha'}
-                  className={`flex h-8 w-24 items-center justify-center rounded-lg border shadow-md transition-all duration-200 active:scale-95 ${folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted font-bold' : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600 font-bold'}`}>
-                  <span className="text-[10px] font-extrabold tracking-wide">{folhaTravada ? 'TRAVADA' : 'SOLTA'}</span>
+              {/* Salvar — sempre visível e acessível */}
+              <button type="button" onClick={() => { void salvar(); }} disabled={processando}
+                title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar (Ctrl+S)' : salvoOk ? 'Trabalho salvo (Ctrl+S)' : 'Salvar o projeto (Ctrl+S)'}
+                className={`flex h-7 w-20 items-center justify-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 ${salvarLaranja ? 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
+                <span className="text-[9px] font-extrabold tracking-wide">{salvarLaranja ? 'SALVAR *' : 'SALVAR'}</span>
+              </button>
+
+              {/* Chave de modo Fácil → Médio → Completo → Fácil */}
+              {chaveTopoVisivel && !introTocando && (
+                <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
+                  title={completo
+                    ? 'Modo Completo: todas as ferramentas à mostra, inclusive as avançadas. Clique para voltar ao Fácil.'
+                    : medio
+                      ? 'Modo Médio: as ferramentas do dia a dia à mostra. Clique para o Completo.'
+                      : 'Modo Fácil: só o caminho essencial. Clique para o Médio.'}
+                  className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-foreground hover:bg-muted shadow-sm transition-all duration-200 active:scale-95">
+                  <span className="text-[9px] font-extrabold tracking-wide">{rotuloModo}</span>
                 </button>
-                <button type="button" onClick={() => setPlantaDark((v) => !v)}
-                  title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
-                  className="flex h-8 w-24 items-center justify-center rounded-lg border border-border bg-background/95 text-foreground hover:bg-muted shadow-md transition-all duration-200 active:scale-95 font-bold">
-                  <span className="text-[10px] font-extrabold tracking-wide">{plantaDark ? 'ESCURA' : 'CLARA'}</span>
+              )}
+
+              {/* Só na planta: travar a folha e alternar o tema da prancha */}
+              {vista === 'planta' && (
+                <>
+                  <button type="button"
+                    onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
+                    title={folhaTravada ? 'Moldura travada — clique para soltar e arrastar a prancha' : 'Moldura solta — clique para travar o layout da folha'}
+                    className={`flex h-7 w-20 items-center justify-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 ${folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted font-bold' : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600 font-bold'}`}>
+                    <span className="text-[9px] font-extrabold tracking-wide">{folhaTravada ? 'TRAVADA' : 'SOLTA'}</span>
+                  </button>
+                  <button type="button" onClick={() => setPlantaDark((v) => !v)}
+                    title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
+                    className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-foreground hover:bg-muted shadow-sm transition-all duration-200 active:scale-95 font-bold">
+                    <span className="text-[9px] font-extrabold tracking-wide">{plantaDark ? 'ESCURA' : 'CLARA'}</span>
+                  </button>
+                </>
+              )}
+
+              {/* Foco e Imã */}
+              <button type="button"
+                onClick={vista === 'mapa' ? centralizar : () => ajustarPlanta()}
+                title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Enquadrar a FOLHA A3 inteira na tela (foco)'}
+                className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-foreground hover:bg-muted shadow-sm transition-all duration-200 active:scale-95 font-bold">
+                <span className="text-[9px] font-extrabold tracking-wide">FOCO</span>
+              </button>
+              {vista === 'mapa' && (
+                <button type="button" onClick={() => setSnapAtivo((v) => !v)}
+                  title={snapAtivo ? 'Ímã ligado (F3): o clique encaixa em pontos próximos. Clique para desligar.' : 'Ímã desligado (F3). Clique para ligar o encaixe em pontos próximos.'}
+                  className={`flex h-7 w-20 items-center justify-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 ${snapAtivo ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
+                  <span className="text-[9px] font-extrabold tracking-wide">IMÃ</span>
                 </button>
-              </>
-            )}
+              )}
 
-            {/* Atalhos mais usados na mesma coluna: enquadrar o desenho e ligar/desligar o imã. */}
-            <button type="button"
-              onClick={vista === 'mapa' ? centralizar : () => ajustarPlanta()}
-              title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Enquadrar a FOLHA A3 inteira na tela (foco)'}
-              className="flex h-8 w-24 items-center justify-center rounded-lg border border-border bg-background/95 text-foreground hover:bg-muted shadow-md transition-all duration-200 active:scale-95 font-bold">
-              <span className="text-[10px] font-extrabold tracking-wide">FOCO</span>
-            </button>
-            {vista === 'mapa' && (
-              <button type="button" onClick={() => setSnapAtivo((v) => !v)}
-                title={snapAtivo ? 'Ímã ligado (F3): o clique encaixa em pontos próximos. Clique para desligar.' : 'Ímã desligado (F3). Clique para ligar o encaixe em pontos próximos.'}
-                className={`flex h-8 w-24 items-center justify-center rounded-lg border shadow-md transition-all duration-200 active:scale-95 ${snapAtivo ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
-                <span className="text-[10px] font-extrabold tracking-wide">IMÃ</span>
+              {/* IA EXTRAIR */}
+              <button type="button" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }}
+                title="Extrair dados de documentos/matrículas com Inteligência Artificial (Gemini)"
+                className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-indigo-600 dark:text-indigo-400 hover:bg-muted hover:border-indigo-500/50 shadow-sm transition-all duration-200 active:scale-95 font-bold">
+                <span className="text-[9px] font-extrabold tracking-wide">IA EXTRAIR</span>
               </button>
-            )}
 
-            {/* IA EXTRAIR, Camadas, Ajustes e Sair da conta no final da coluna de atalhos */}
-            <button type="button" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }}
-              title="Extrair dados de documentos/matrículas com Inteligência Artificial (Gemini)"
-              className="flex h-8 w-24 items-center justify-center rounded-lg border border-border bg-background/95 text-indigo-600 dark:text-indigo-400 hover:bg-muted hover:border-indigo-500/50 shadow-md transition-all duration-200 active:scale-95 font-bold">
-              <span className="text-[10px] font-extrabold tracking-wide">IA EXTRAIR</span>
-            </button>
+              {/* Botão Camadas */}
+              {GERENCIADOR_CAMADAS_VISIVEL && (
+              <div className="relative">
+                <button type="button" onClick={() => setCamadasPopoverAberta((v) => !v)}
+                  title="Gerenciador de camadas: visibilidade, bloqueio, cores e espessuras"
+                  className={`flex h-7 w-20 items-center justify-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 ${camadasPopoverAberta ? 'border-teal-600 bg-teal-600 text-white dark:bg-teal-500 dark:text-black hover:bg-teal-700 dark:hover:bg-teal-400 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted hover:border-teal-500/50 font-bold'}`}>
+                  <span className="text-[9px] font-extrabold tracking-wide">CAMADAS</span>
+                </button>
+                {camadasPopoverAberta && (
+                  <div className={`absolute z-[2100] w-72 rounded-xl border border-teal-500/30 bg-background/98 shadow-2xl backdrop-blur-xl p-3 animate-in fade-in duration-200 ${direcaoAtalhos === 'vertical' ? 'left-[84px] top-0 slide-in-from-left-2' : 'bottom-[34px] left-0 slide-in-from-bottom-2'}`}
+                    onWheel={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-1.5"><Layers className="size-3.5" /> Camadas</span>
+                      <button type="button" onClick={() => setCamadasPopoverAberta(false)} className="size-5 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">×</button>
+                    </div>
+                    <div className="flex flex-col gap-1.5 text-[11px] text-foreground">
+                      {Object.keys(camadasVisiveis).map((key) => {
+                        const label =
+                          key === 'divisas' ? 'Divisas / Perímetro' :
+                          key === 'ambientais' ? 'Áreas Ambientais (CAR)' :
+                          key === 'polilinhas' ? 'Polilinhas / Linhas' :
+                          key === 'textos' ? 'Textos' :
+                          key === 'cotas' ? 'Cotas / Medidas' : 'Símbolos';
+                        const estilo = estilosCamadas[key];
+                        const visivel = camadasVisiveis[key];
+                        const bloqueada = camadasBloqueadas[key];
+                        return (
+                          <div key={key} className="flex items-center justify-between gap-1.5 border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <input type="color" value={estilo.cor}
+                                onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], cor: e.target.value } }))}
+                                className="size-5 rounded-full cursor-pointer border-0 p-0 overflow-hidden shrink-0 bg-transparent" title="Cor da camada" />
+                              <span className="truncate font-medium">{label}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {key !== 'textos' && key !== 'simbolos' && (
+                                <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground font-bold">
+                                  <span>L:</span>
+                                  <input type="number" min="0.5" max="10" step="0.5" value={estilo.espessura}
+                                    onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], espessura: parseFloat(e.target.value) || 1 } }))}
+                                    className="w-9 h-5 rounded-sm border bg-background text-center text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-teal-500" title="Espessura" />
+                                </div>
+                              )}
+                              <button type="button" onClick={() => setCamadasVisiveis((prev) => ({ ...prev, [key]: !prev[key] }))}
+                                className={`p-0.5 rounded-sm hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
+                                title={visivel ? 'Ocultar' : 'Exibir'}>
+                                {visivel ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                              </button>
+                              <button type="button" onClick={() => setCamadasBloqueadas((prev) => ({ ...prev, [key]: !prev[key] }))}
+                                className={`p-0.5 rounded-sm hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
+                                title={bloqueada ? 'Desbloquear' : 'Bloquear'}>
+                                {bloqueada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+              )}
 
-            {/* Botão Camadas — escondido pelo interruptor GERENCIADOR_CAMADAS_VISIVEL */}
-            {GERENCIADOR_CAMADAS_VISIVEL && (
-            <div className="relative">
-              <button type="button" onClick={() => setCamadasPopoverAberta((v) => !v)}
-                title="Gerenciador de camadas: visibilidade, bloqueio, cores e espessuras"
-                className={`flex h-8 w-24 items-center justify-center rounded-lg border shadow-md transition-all duration-200 active:scale-95 ${camadasPopoverAberta ? 'border-teal-600 bg-teal-600 text-white dark:bg-teal-500 dark:text-black hover:bg-teal-700 dark:hover:bg-teal-400 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted hover:border-teal-500/50 font-bold'}`}>
-                <span className="text-[10px] font-extrabold tracking-wide">CAMADAS</span>
+              {souMaster() && (
+                <button type="button" onClick={() => setModoMaster((m) => (m === 'editar' ? 'gerir' : 'editar'))}
+                  title={modoMaster === 'editar' ? 'Alternar para o modo GERIR (painel administrativo do SaaS)' : 'Alternar para o modo EDITAR (workspace de desenho)'}
+                  className={`flex h-7 w-20 items-center justify-center rounded-full border shadow-sm transition-all duration-200 active:scale-95 ${modoMaster === 'gerir' ? 'border-amber-600 bg-amber-600 text-white dark:bg-amber-500 dark:text-black hover:bg-amber-700 dark:hover:bg-amber-400 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
+                  <span className="text-[9px] font-extrabold tracking-wide">{modoMaster === 'gerir' ? 'DESENHAR' : 'GERIR SAAS'}</span>
+                </button>
+              )}
+
+              <button type="button" onClick={() => { setConfigAba(undefined); setConfigAberta(true); }}
+                title="Configurações gerais do sistema"
+                className="flex h-7 w-20 items-center justify-center rounded-full border border-border bg-background/95 text-slate-600 dark:text-slate-400 hover:bg-muted shadow-sm transition-all duration-200 active:scale-95 font-bold">
+                <span className="text-[9px] font-extrabold tracking-wide font-bold">AJUSTES</span>
               </button>
-              {camadasPopoverAberta && (
-                <div className="absolute left-[108px] top-0 z-[2100] w-72 rounded-xl border border-teal-500/30 bg-background/98 shadow-2xl backdrop-blur-xl p-3 animate-in slide-in-from-left-2 fade-in duration-200"
-                  onWheel={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-extrabold uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-1.5"><Layers className="size-3.5" /> Camadas</span>
-                    <button type="button" onClick={() => setCamadasPopoverAberta(false)} className="size-5 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground">×</button>
-                  </div>
-                  <div className="flex flex-col gap-1.5 text-[11px] text-foreground">
-                    {Object.keys(camadasVisiveis).map((key) => {
-                      const label =
-                        key === 'divisas' ? 'Divisas / Perímetro' :
-                        key === 'ambientais' ? 'Áreas Ambientais (CAR)' :
-                        key === 'polilinhas' ? 'Polilinhas / Linhas' :
-                        key === 'textos' ? 'Textos' :
-                        key === 'cotas' ? 'Cotas / Medidas' : 'Símbolos';
-                      const estilo = estilosCamadas[key];
-                      const visivel = camadasVisiveis[key];
-                      const bloqueada = camadasBloqueadas[key];
-                      return (
-                        <div key={key} className="flex items-center justify-between gap-1.5 border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <input type="color" value={estilo.cor}
-                              onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], cor: e.target.value } }))}
-                              className="size-5 rounded-full cursor-pointer border-0 p-0 overflow-hidden shrink-0 bg-transparent" title="Cor da camada" />
-                            <span className="truncate font-medium">{label}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {key !== 'textos' && key !== 'simbolos' && (
-                              <div className="flex items-center gap-0.5 text-[9px] text-muted-foreground font-bold">
-                                <span>L:</span>
-                                <input type="number" min="0.5" max="10" step="0.5" value={estilo.espessura}
-                                  onChange={(e) => setEstilosCamadas((prev) => ({ ...prev, [key]: { ...prev[key], espessura: parseFloat(e.target.value) || 1 } }))}
-                                  className="w-9 h-5 rounded-sm border bg-background text-center text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-teal-500" title="Espessura" />
-                              </div>
-                            )}
-                            <button type="button" onClick={() => setCamadasVisiveis((prev) => ({ ...prev, [key]: !prev[key] }))}
-                              className={`p-0.5 rounded-sm hover:bg-muted ${visivel ? 'text-primary' : 'text-muted-foreground/40'}`}
-                              title={visivel ? 'Ocultar' : 'Exibir'}>
-                              {visivel ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                            </button>
-                            <button type="button" onClick={() => setCamadasBloqueadas((prev) => ({ ...prev, [key]: !prev[key] }))}
-                              className={`p-0.5 rounded-sm hover:bg-muted ${bloqueada ? 'text-red-500' : 'text-muted-foreground/40'}`}
-                              title={bloqueada ? 'Desbloquear' : 'Bloquear'}>
-                              {bloqueada ? <Lock className="size-4" /> : <LockOpen className="size-4" />}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+
+              {nuvemDisponivel && user && (
+                <button type="button" onClick={() => { limparConfigLocalNaSaida(); sair(); }}
+                  title={`Sair da conta: ${user.email}`}
+                  className="flex h-7 w-20 items-center justify-center rounded-full border border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-500/50 shadow-sm transition-all duration-200 active:scale-95 font-bold">
+                  <span className="text-[9px] font-extrabold tracking-wide font-bold">LOGOUT</span>
+                </button>
               )}
             </div>
-            )}
-            {souMaster() && (
-              <button type="button" onClick={() => setModoMaster((m) => (m === 'editar' ? 'gerir' : 'editar'))}
-                title={modoMaster === 'editar' ? 'Alternar para o modo GERIR (painel administrativo do SaaS)' : 'Alternar para o modo EDITAR (workspace de desenho)'}
-                className={`flex h-8 w-24 items-center justify-center rounded-lg border shadow-md transition-all duration-200 active:scale-95 ${modoMaster === 'gerir' ? 'border-amber-600 bg-amber-600 text-white dark:bg-amber-500 dark:text-black hover:bg-amber-700 dark:hover:bg-amber-400 font-bold' : 'border-border bg-background/95 text-foreground hover:bg-muted font-bold'}`}>
-                <span className="text-[10px] font-extrabold tracking-wide">{modoMaster === 'gerir' ? 'DESENHAR' : 'GERIR SAAS'}</span>
-              </button>
-            )}
-            <button type="button" onClick={() => { setConfigAba(undefined); setConfigAberta(true); }}
-              title="Configurações gerais do sistema"
-              className="flex h-9 w-32 items-center justify-center rounded-lg border border-border bg-background/95 text-slate-600 dark:text-slate-400 hover:bg-muted shadow-md transition-all duration-200 active:scale-95 font-bold">
-              <span className="text-[10px] font-extrabold tracking-wide">AJUSTES</span>
-            </button>
-            {nuvemDisponivel && user && (
-              <button type="button" onClick={() => { limparConfigLocalNaSaida(); sair(); }}
-                title={`Sair da conta: ${user.email}`}
-                className="flex h-9 w-32 items-center justify-center rounded-lg border border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-500/50 shadow-md transition-all duration-200 active:scale-95 font-bold">
-                <span className="text-[10px] font-extrabold tracking-wide">LOGOUT</span>
-              </button>
-            )}
           </div>
 
           {/* Barra flutuante de ferramentas unificada (Mapa/Planta) — arrastável e persistente */}
