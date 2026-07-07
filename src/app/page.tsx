@@ -4471,8 +4471,8 @@ export default function EditorPage() {
 
             {/* Atalhos mais usados na mesma coluna: enquadrar o desenho e ligar/desligar o imã. */}
             <button type="button"
-              onClick={vista === 'mapa' ? centralizar : () => atualizarPlantaConfig({ offsetX: 0, offsetY: 0, escalaManual: undefined })}
-              title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Centralizar/Enquadrar a folha de desenho (foco automático)'}
+              onClick={vista === 'mapa' ? centralizar : () => ajustarPlanta()}
+              title={vista === 'mapa' ? 'Enquadrar o desenho no mapa (foco)' : 'Enquadrar a FOLHA A3 inteira na tela (foco)'}
               className="flex size-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-border bg-background/95 shadow-xl backdrop-blur hover:bg-muted">
               <Target className="size-5" />
               <span className="text-[10px] font-bold leading-none">FOCO</span>

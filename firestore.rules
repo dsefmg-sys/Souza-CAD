@@ -12,10 +12,12 @@ service cloud.firestore {
       allow write: if ehMaster();
     }
 
-    // Perfil de uso por conta: cada usuário escreve/lê o seu; o master lê todos (acompanhamento).
+    // Perfil de uso por conta: cada usuário escreve/lê o seu; o master lê E escreve todos (o painel
+    // administrativo edita faturamento/CRM de qualquer cliente — sem o master no write, dava
+    // "Erro ao salvar dados administrativos").
     match /perfisUso/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || ehMaster());
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && (request.auth.uid == uid || ehMaster());
     }
 
     // Cada usuário só lê/escreve os próprios dados (projetos, cadastros, banco de pontos).
