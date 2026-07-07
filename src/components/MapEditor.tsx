@@ -1199,7 +1199,7 @@ export default function MapEditor(props: Props) {
   // mas permite posicionar vértice com muito mais precisão (pedido do dono, 05/07/2026)
   return (
     <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={28} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
-      <CursorMapa ativo={!bloqueado} />
+      <CursorMapa ativo={modo !== 'navegar' && !bloqueado} />
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Híbrido (Google)">
           <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={28} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
