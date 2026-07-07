@@ -18,13 +18,25 @@ export function partesDaDivisa(codigo: string): string[] {
     .filter(Boolean);
 }
 
+function toTitleCase(str: string): string {
+  const particulas = new Set(['de', 'da', 'do', 'dos', 'das', 'e']);
+  return str
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word, idx) => {
+      if (particulas.has(word) && idx > 0) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+}
+
 /** Nome comum entre duas etiquetas de divisa (o confrontante do trecho entre elas). */
 function nomeComum(labelA: string, labelB: string): string {
   const a = partesDaDivisa(labelA);
   const b = partesDaDivisa(labelB);
   for (const x of a) {
     for (const y of b) {
-      if (x.toUpperCase() === y.toUpperCase()) return x;
+      if (x.toUpperCase() === y.toUpperCase()) return toTitleCase(x);
     }
   }
   // Sem nome em comum, o confrontante do trecho é AMBÍGUO. Deixar em branco força a revisão

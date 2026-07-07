@@ -17,7 +17,7 @@ export type Ent =
   | { id: number; t: 'poly'; pts: Pt[]; fechada: boolean; layer?: string }
   | { id: number; t: 'circle'; c: Pt; r: number; layer?: string }
   | { id: number; t: 'arc'; c: Pt; r: number; a0: number; a1: number; layer?: string }
-  | { id: number; t: 'text'; pos: Pt; texto: string; altura: number; layer?: string }
+  | { id: number; t: 'text'; pos: Pt; texto: string; altura: number; rotacao?: number; layer?: string }
   | { id: number; t: 'point'; p: Pt; layer?: string };
 
 /** Nome da camada de uma entidade (padrão '0' quando ausente). */
@@ -76,7 +76,7 @@ export function girarEnt(e: Ent, centro: Pt, anguloGrausVal: number): Ent {
     case 'poly': return { ...e, pts: e.pts.map(r) };
     case 'circle': return { ...e, c: r(e.c) };
     case 'arc': return { ...e, c: r(e.c), a0: (e.a0 + anguloGrausVal + 360) % 360, a1: (e.a1 + anguloGrausVal + 360) % 360 };
-    case 'text': return { ...e, pos: r(e.pos) }; // gira a posição; o ângulo de escrita do texto em si fica de fora (básico)
+    case 'text': return { ...e, pos: r(e.pos), rotacao: ((e.rotacao ?? 0) + anguloGrausVal + 360) % 360 };
     case 'point': return { ...e, p: r(e.p) };
   }
 }
@@ -144,7 +144,7 @@ export function gerarDxf(ents: Ent[]): string {
     else if (e.t === 'poly') { const p: (string | number)[] = ['90', e.pts.length, '70', e.fechada ? 1 : 0]; e.pts.forEach((q) => p.push('10', q.x.toFixed(3), '20', q.y.toFixed(3))); E('LWPOLYLINE', lay, p); }
     else if (e.t === 'circle') E('CIRCLE', lay, ['10', e.c.x.toFixed(3), '20', e.c.y.toFixed(3), '40', e.r.toFixed(3)]);
     else if (e.t === 'arc') E('ARC', lay, ['10', e.c.x.toFixed(3), '20', e.c.y.toFixed(3), '40', e.r.toFixed(3), '50', e.a0.toFixed(3), '51', e.a1.toFixed(3)]);
-    else if (e.t === 'text') E('TEXT', lay, ['10', e.pos.x.toFixed(3), '20', e.pos.y.toFixed(3), '40', (e.altura || 2).toFixed(3), '1', valorDxfSeguro(e.texto)]);
+    else if (e.t === 'text') E('TEXT', lay, ['10', e.pos.x.toFixed(3), '20', e.pos.y.toFixed(3), '40', (e.altura || 2).toFixed(3), '1', valorDxfSeguro(e.texto), ...((e.rotacao) ? ['50', e.rotacao.toFixed(3)] : [])]);
     else if (e.t === 'point') E('POINT', lay, ['10', e.p.x.toFixed(3), '20', e.p.y.toFixed(3)]);
   }
   return ['0', 'SECTION', '2', 'ENTITIES', ...corpo, '0', 'ENDSEC', '0', 'EOF'].join('\n');

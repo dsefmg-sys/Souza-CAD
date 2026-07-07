@@ -10,7 +10,7 @@ export interface DxfEntidades {
   polilinhas: { fechada: boolean; pontos: PontoXY[]; layer?: string }[];
   linhas: { a: PontoXY; b: PontoXY; layer?: string }[];
   pontos: { x: number; y: number; layer?: string }[];
-  textos: { pos: PontoXY; texto: string; altura?: number; layer?: string }[];
+  textos: { pos: PontoXY; texto: string; altura?: number; rotacao?: number; layer?: string }[];
   circulos: { c: PontoXY; r: number; layer?: string }[];
   arcos: { c: PontoXY; r: number; a0: number; a1: number; layer?: string }[];
 }
@@ -62,7 +62,7 @@ export function importarDxf(conteudo: string): DxfEntidades {
     } else if (tipo === 'POINT') {
       if (xs.length >= 1) out.pontos.push({ x: xs[0], y: ys[0], layer: layerVal });
     } else if (tipo === 'TEXT' || tipo === 'MTEXT') {
-      if (xs.length >= 1) out.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal, altura: alturaTxt || undefined, layer: layerVal });
+      if (xs.length >= 1) out.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal, altura: alturaTxt || undefined, rotacao: ang0 || undefined, layer: layerVal });
     } else if (tipo === 'CIRCLE') {
       if (xs.length >= 1 && raio > 0) out.circulos.push({ c: { x: xs[0], y: ys[0] }, r: raio, layer: layerVal });
     } else if (tipo === 'ARC') {
@@ -145,7 +145,7 @@ export function lerDxfDocumento(conteudo: string): DxfDocumento {
     else if (tipo === 'VERTEX') { if (polyAberto && xs.length >= 1) polyAberto.pontos.push({ x: xs[0], y: ys[0] }); }
     else if (tipo === 'LINE') { if (xs.length >= 2) alvoEnt.linhas.push({ a: { x: xs[0], y: ys[0] }, b: { x: xs[1], y: ys[1] }, layer: layerVal }); }
     else if (tipo === 'POINT') { if (xs.length >= 1) alvoEnt.pontos.push({ x: xs[0], y: ys[0], layer: layerVal }); }
-    else if (tipo === 'TEXT' || tipo === 'MTEXT') { if (xs.length >= 1) alvoEnt.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal, altura: alturaTxt || undefined, layer: layerVal }); }
+    else if (tipo === 'TEXT' || tipo === 'MTEXT') { if (xs.length >= 1) alvoEnt.textos.push({ pos: { x: xs[0], y: ys[0] }, texto: textoVal, altura: alturaTxt || undefined, rotacao: ang0 || undefined, layer: layerVal }); }
     else if (tipo === 'CIRCLE') { if (xs.length >= 1 && raio > 0) alvoEnt.circulos.push({ c: { x: xs[0], y: ys[0] }, r: raio, layer: layerVal }); }
     else if (tipo === 'ARC') { if (xs.length >= 1 && raio > 0) alvoEnt.arcos.push({ c: { x: xs[0], y: ys[0] }, r: raio, a0: ang0, a1: ang1, layer: layerVal }); }
     else if (tipo === 'INSERT') { if (xs.length >= 1 && insNome) alvoIns.push({ nome: insNome, pos: { x: xs[0], y: ys[0] }, sx: insSx, sy: insSy, rot: insRot }); }

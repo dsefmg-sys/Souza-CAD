@@ -41,8 +41,13 @@ export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onE
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const numIn = (s: string) => parseFloat((s || '').replace(',', '.')) || 0;
-  const mf = parseFloat(moduloFiscal.replace(',', '.'));
+  const numIn = (s: string) => {
+    const clean = (s || '').replace(/[^\d.,]/g, '').replace(',', '.');
+    const val = parseFloat(clean);
+    return Number.isFinite(val) ? val : 0;
+  };
+  const mfClean = moduloFiscal.replace(/[^\d.,]/g, '').replace(',', '.');
+  const mf = parseFloat(mfClean);
   const r = resumirCar({
     areaImovelHa: areaHa,
     bioma,
