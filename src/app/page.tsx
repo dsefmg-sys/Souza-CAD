@@ -52,6 +52,7 @@ import ConfrontanteEditModal from '@/components/ConfrontanteEditModal';
 import DxfEditorModal from '@/components/DxfEditorModal';
 import PorcentagemModal from '@/components/PorcentagemModal';
 import EstudioModal from '@/components/EstudioModal';
+import HistoriaModal from '@/components/HistoriaModal';
 import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
@@ -284,6 +285,7 @@ export default function EditorPage() {
   const [vertices, setVertices] = useState<Vertex[]>([]);
   const [verticesIgnorados, setVerticesIgnorados] = useState<Vertex[]>([]); // fora do anel (ferramenta ignorar/considerar)
   const [gradeAltimetrica, setGradeAltimetrica] = useState<{ lat: number; lon: number; leste: number; norte: number; elevacao: number }[]>([]);
+  const [historiaAberta, setHistoriaAberta] = useState(false);
   const [imovel, setImovel] = useState<ImovelData>(IMOVEL_VAZIO);
   const [confrontantes, setConfrontantes] = useState<Confrontante[]>([]);
   const [confrontantePorLado, setConfrontantePorLado] = useState<Record<number, string>>({});
@@ -4233,7 +4235,9 @@ export default function EditorPage() {
       {/* Topo */}
       {/* Cabeçalho = FLUXO DO TRABALHO (esquerda → direita) + conta fixa à direita */}
       <header className="no-print flex items-stretch border-b">
-        <div className="flex shrink-0 items-center gap-1.5 border-r pl-2 pr-2.5" title={souMaster() ? "Souza CAD - Painel Master ADM" : "Souza CAD"}>
+        <div className="flex shrink-0 items-center gap-1.5 border-r pl-2 pr-2.5 cursor-pointer hover:bg-muted/30 select-none transition-colors"
+          onClick={() => setHistoriaAberta(true)}
+          title="Conheça a história do Souza CAD e compartilhe">
           <Logo className={`size-6 transition-all duration-300 ${souMaster() ? 'brightness-110 sepia-[0.3] saturate-[3] hue-rotate-[10deg] drop-shadow-[0_0_4px_#f59e0b]' : ''}`} />
           <span className="hidden flex-col text-[9px] font-black uppercase tracking-wider leading-none sm:flex">
             <span className={souMaster() ? 'text-amber-500 dark:text-amber-400' : 'text-primary'}>Souza</span>
@@ -6039,6 +6043,7 @@ export default function EditorPage() {
         onExportarShapefiles={exportarCarShapefiles} onImportarShapefile={() => shapefileRef.current?.click()} processando={processando} />
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} correcoes={correcoes} onChangeCorrecoes={setCorrecoes} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
       <AnuenciaModal open={anuenciaAberta} onOpenChange={setAnuenciaAberta} confrontantes={confrontantes} lados={lados} mapa={confrontantePorLado} imovel={imovel} tecnico={tecnico} />
+      <HistoriaModal open={historiaAberta} onOpenChange={setHistoriaAberta} />
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}
