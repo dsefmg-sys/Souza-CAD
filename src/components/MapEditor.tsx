@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
-import { Ruler } from 'lucide-react';
+import { Ruler, Box } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho, Confrontante, VerticeVizinho, PontoLL } from '@/lib/topo/types';
@@ -67,6 +68,7 @@ interface Props {
   conflitos?: { ladoIdx: number; tipo: 'sobreposicao' | 'vao'; distancia: number }[];
   focoLatLng?: [number, number] | null;
   onCancelDesenho?: () => void;
+  onAtivar3D?: () => void;
   tamNomes?: number;
   verticesIgnorados?: Vertex[];
   onIgnorarVertice?: (id: string) => void;
@@ -1077,6 +1079,7 @@ export default function MapEditor(props: Props) {
     conflitos = [],
     focoLatLng = null,
     onCancelDesenho,
+    onAtivar3D,
     tamNomes = 11,
     verticesIgnorados = [],
     onIgnorarVertice, onConsiderarVertice, onDblClickVertice,
@@ -1920,6 +1923,20 @@ export default function MapEditor(props: Props) {
           onConfirmarTrim={onConfirmarTrim}
           onConfirmarExtend={onConfirmarExtend}
         />
+      )}
+
+      {onAtivar3D && (
+        <div className={`absolute left-2 z-[1000] transition-all duration-200 ${modo === 'medir' ? 'bottom-40' : 'bottom-6'}`}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onAtivar3D}
+            className="h-9 px-3 gap-1.5 font-bold shadow-2xl bg-amber-600 hover:bg-amber-500 text-white border-transparent"
+            title="Alternar para visualização 3D do terreno e polígono"
+          >
+            <Box className="size-4" /> 3D
+          </Button>
+        </div>
       )}
     </MapContainer>
   );

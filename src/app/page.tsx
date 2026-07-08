@@ -53,6 +53,7 @@ import DxfEditorModal from '@/components/DxfEditorModal';
 import PorcentagemModal from '@/components/PorcentagemModal';
 import EstudioModal from '@/components/EstudioModal';
 import HistoriaModal from '@/components/HistoriaModal';
+import Map3DViewer from '@/components/Map3DViewer';
 import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
@@ -411,7 +412,7 @@ export default function EditorPage() {
   const [contadorSugerido, setContadorSugerido] = useState<Contadores | null>(null);
   const [importModalAberto, setImportModalAberto] = useState(false);
   const [importPendingFile, setImportPendingFile] = useState<File | null>(null);
-  const [vista, setVista] = useState<'mapa' | 'planta'>('mapa');
+  const [vista, setVista] = useState<'mapa' | 'planta' | '3d'>('mapa');
   const [aba, setAba] = useState<Aba>('imovel');
   const [projetoId, setProjetoId] = useState<string | null>(null);
   const [nomeProjeto, setNomeProjeto] = useState('');
@@ -5409,8 +5410,18 @@ export default function EditorPage() {
 
 
 
-          {vista === 'mapa' ? (
+          {vista === '3d' ? (
+            <Map3DViewer
+              vertices={vertices}
+              objetos={objetos}
+              zona={zona}
+              hemisferio={hemisferio}
+              imovel={imovel}
+              onVoltar2D={() => setVista('mapa')}
+            />
+          ) : vista === 'mapa' ? (
                <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
+                 onAtivar3D={() => setVista('3d')}
                 confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
                 zona={zona} hemisferio={hemisferio} orto={orto} snapAtivo={snapAtivo} segmentoSelecionado={segmentoSelecionado} onSegmentoSelecionado={setSegmentoSelecionado} offsetDistancia={offsetDistancia} onConfirmarParalela={confirmarParalela} copiarPontoBase={copiarPontoBase} onConfirmarCopiaBase={confirmarCopiaBase} onConfirmarCopiaDestino={confirmarCopiaDestino} onDividirSegmento={dividirSegmento} linhaLimite={linhaLimite} onLinhaLimite={setLinhaLimite} onConfirmarTrim={confirmarTrim} onConfirmarExtend={confirmarExtend} camadasVisiveis={camadasVisiveis} camadasBloqueadas={camadasBloqueadas} estilosCamadas={estilosCamadas}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
