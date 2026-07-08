@@ -25,7 +25,7 @@ const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string; explicacao: stri
     explicacao: 'O proprietário (doador) está doando o imóvel a alguém (donatário). O documento usa os termos "doador" e "donatário" em vez de vendedor/comprador.',
   },
   {
-    valor: 'unificacao', rotulo: 'Unificação / remembramento',
+    valor: 'unificacao', rotulo: 'Remembramento',
     explicacao: 'Duas ou mais matrículas do mesmo dono estão sendo unidas numa só, depois do levantamento. Preencha as "matrículas de origem" para o cartório saber quais matrículas somem e viram uma.',
   },
   {

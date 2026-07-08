@@ -37,6 +37,7 @@ import ConsultarModal from '@/components/ConsultarModal';
 import { Packer } from 'docx';
 import { gerarAnuenciaDocumento } from '@/lib/export/anuencia';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
+import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import AnuenciaModal from '@/components/AnuenciaModal';
 import GestaoProjetoModal from '@/components/GestaoProjetoModal';
 import TutorialModal from '@/components/TutorialModal';
@@ -588,6 +589,7 @@ export default function EditorPage() {
   const [prevMemorialAberto, setPrevMemorialAberto] = useState(false);
   const [prevMemorialModo, setPrevMemorialModo] = useState<'normal' | 'servidao'>('normal');
   const [camadasPopoverAberta, setCamadasPopoverAberta] = useState(false);
+  const [importTxtConfigAberto, setImportTxtConfigAberto] = useState(false);
 
   const projetoTemServidao = useMemo(() => {
     const q = 'servid';
@@ -1391,6 +1393,29 @@ export default function EditorPage() {
   async function importarArquivo(file: File) {
     if (processando) return;
     setImportPendingFile(file);
+
+    if (file.name.toLowerCase().endsWith('.txt') || file.name.toLowerCase().endsWith('.csv')) {
+      try {
+        const buf = await file.arrayBuffer();
+        const texto = new TextDecoder('windows-1252').decode(buf);
+        const pontos = parseTxt(texto, carregarImportTxt());
+        
+        const validos = pontos.filter((p) => Number.isFinite(p.norte) && Number.isFinite(p.leste) && p.norte !== 0 && p.leste !== 0);
+        const ehValido = pontos.length >= 3 && (validos.length / pontos.length) >= 0.5;
+
+        if (!ehValido) {
+          setImportTxtConfigAberto(true);
+          await avisar({
+            titulo: 'Configuração do arquivo necessária',
+            mensagem: 'O formato deste arquivo TXT/CSV não condiz com a configuração de importação atual. A tela de configurações foi aberta e detectou os campos automaticamente. Por favor, confira os papéis das colunas e clique em Salvar para concluir a importação.'
+          });
+          return;
+        }
+      } catch (err) {
+        console.error('Erro ao pré-validar TXT:', err);
+      }
+    }
+
     setImportModalAberto(true);
   }
 
@@ -4036,7 +4061,7 @@ export default function EditorPage() {
        </div>
 
         {/* Bolinha do perfil, à direita do cabeçalho: só a foto, sem o nome. Abre ao passar o mouse. */}
-        <div className="relative flex shrink-0 items-center border-l px-2"
+        <div className="relative flex shrink-0 items-center border-l px-2 self-stretch"
           onMouseEnter={() => setPerfilMenuAberto(true)}
           onMouseLeave={() => setPerfilMenuAberto(false)}>
           <button type="button" onClick={() => setPerfilMenuAberto((v) => !v)} title="Sua conta"
@@ -4153,7 +4178,7 @@ export default function EditorPage() {
                           : medio
                             ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
                             : 'Modo Fácil: só o essencial. Clique para o Médio.'}
-                        className="flex w-full h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-background/80 text-[10px] font-bold text-foreground hover:bg-muted transition-colors shadow-sm shrink-0">
+                        className="flex w-full h-8 items-center justify-center gap-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors shadow-md shrink-0 text-[10px] font-bold border border-transparent">
                         {completo ? <Briefcase className="size-3.5 text-sky-500" /> : medio ? <PencilRuler className="size-3.5 text-emerald-500" /> : <GraduationCap className="size-3.5 text-amber-500" />}
                         <span>{completo ? 'MODO COMPLETO' : medio ? 'MODO MÉDIO' : 'MODO FÁCIL'}</span>
                       </button>
@@ -4190,8 +4215,8 @@ export default function EditorPage() {
                         <Button size="sm" variant="outline" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
                           <Plus className="text-amber-500" /> <span>Novo</span>
                         </Button>
-                        <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold' : ''} onClick={salvar} disabled={processando} title="Salvar projeto atual (Ctrl+S)">
-                          <Save className={salvarLaranja ? 'text-white' : 'text-emerald-500'} /> <span>SALVAR</span>
+                        <Button size="sm" variant="outline" onClick={salvar} disabled={processando} title="Salvar projeto atual (Ctrl+S)">
+                          <Save className="text-emerald-500" /> <span>SALVAR</span>
                         </Button>
                         <Button size="sm" variant={painelAberto ? 'default' : 'outline'} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
                           <Settings className="text-indigo-500" /> <span>Dados</span>
@@ -4787,7 +4812,6 @@ export default function EditorPage() {
                 ) : (
                   /* Coluna única para barra colapsada */
                   <div className="flex flex-col gap-1 mb-1 [&>button]:relative [&>button]:size-9 [&>button]:p-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&_svg]:size-4">
-                    <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold' : ''} onClick={salvar} disabled={processando} title="Salvar o projeto (Ctrl+S)"><Save className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto"><Plus className="size-4" /></Button>
                     <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} onClick={() => setInfoAberto(true)} title="Detalhes do projeto"><FileText className="size-4" /></Button>
                     <Button size="sm" variant={painelAberto ? 'default' : 'outline'} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto"><Settings className="size-4" /></Button>
@@ -4828,21 +4852,6 @@ export default function EditorPage() {
 
                 {/* RODAPÉ FIXO: ajuste de texto + sistema (calculadora, tema, config, sair) */}
                 <div className="mt-auto flex flex-col gap-1.5 border-t pt-1.5 px-1">
-                  {/* Botão Salvar no rodapé fixo da barra lateral */}
-                  <Button
-                    type="button"
-                    onClick={() => { void salvar(); }}
-                    disabled={processando}
-                    title={salvarLaranja ? 'Há mudanças não salvas — clique para salvar (Ctrl+S)' : salvoOk ? 'Trabalho salvo (Ctrl+S)' : 'Salvar o projeto (Ctrl+S)'}
-                    className={`w-full h-8 text-[11px] font-bold shadow-sm transition-all duration-200 active:scale-95 flex items-center justify-center gap-1.5 rounded-md border ${
-                      salvarLaranja 
-                        ? 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700' 
-                        : 'border-primary/20 bg-primary/10 hover:bg-primary/20 text-primary dark:bg-primary/20 dark:hover:bg-primary/30'
-                    }`}
-                  >
-                    <Save className="size-3.5" />
-                    <span>{salvarLaranja ? 'SALVAR PROJETO *' : 'SALVAR PROJETO'}</span>
-                  </Button>
                   {/* Tamanho dos textos: no mapa mexe nos nomes dos vértices; na planta, 4 escopos separados */}
                   {vista === 'mapa' ? (
                     <div className="flex flex-col gap-1 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
@@ -6185,6 +6194,22 @@ export default function EditorPage() {
         isOpen={importModalAberto}
         onClose={() => setImportModalAberto(false)}
         onConfirm={processarImportacao}
+      />
+      <ImportTxtConfigModal
+        open={importTxtConfigAberto}
+        onOpenChange={(open) => {
+          setImportTxtConfigAberto(open);
+          if (!open) {
+            setTimeout(() => {
+              setImportPendingFile(null);
+            }, 100);
+          }
+        }}
+        autoLoadFile={importPendingFile}
+        onSaveSuccess={() => {
+          setImportTxtConfigAberto(false);
+          setImportModalAberto(true);
+        }}
       />
       <ConfiguracoesModal
         open={configAberta}

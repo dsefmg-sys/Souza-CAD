@@ -11,6 +11,8 @@ import { carregarImportTxt, salvarImportTxt, IMPORT_TXT_PADRAO } from '@/lib/sto
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  autoLoadFile?: File | null;
+  onSaveSuccess?: () => void;
 }
 
 // Rótulos amigáveis para cada campo que uma coluna pode representar.
@@ -44,12 +46,125 @@ function detectarSeparador(linha: string): ImportTxtConfig['separador'] {
   return candidatos[0][1] > 0 ? candidatos[0][0] : 'espaco';
 }
 
-export default function ImportTxtConfigModal({ open, onOpenChange }: Props) {
+function descobrirCamposAutomatico(linhasMatriz: string[][]): CampoTxt[] {
+  if (linhasMatriz.length === 0) return [];
+  const numColunas = Math.max(...linhasMatriz.map((r) => r.length));
+  const campos: CampoTxt[] = Array(numColunas).fill('ignorar');
+
+  // Analisa cada coluna
+  for (let colIdx = 0; colIdx < numColunas; colIdx++) {
+    const valoresOriginal = linhasMatriz.map((row) => row[colIdx]?.trim()).filter(Boolean);
+    if (valoresOriginal.length === 0) continue;
+
+    // Pula cabeçalho se a primeira linha não parecer número e houver mais linhas
+    const looksLikeHeader = !isFinite(parseFloat(valoresOriginal[0]?.replace(',', '.'))) && valoresOriginal.length > 1;
+    const valores = looksLikeHeader ? valoresOriginal.slice(1) : valoresOriginal;
+
+    if (valores.length === 0) continue;
+
+    let numCount = 0;
+    let coordinateNorteLike = 0;
+    let coordinateLesteLike = 0;
+    let latLike = 0;
+    let lonLike = 0;
+    let sigmaLike = 0;
+    let isCodePattern = 0;
+    let isNamePattern = 0;
+    let isMethodPattern = 0;
+
+    for (const val of valores) {
+      const cleanVal = val.replace(',', '.');
+      const parsedVal = parseFloat(cleanVal);
+      const isNum = !isNaN(parsedVal) && isFinite(parsedVal);
+      
+      if (isNum) {
+        numCount++;
+        if (parsedVal > 0 && parsedVal < 1.5) {
+          sigmaLike++;
+        }
+        if (parsedVal > 5000000 && parsedVal < 10500000) {
+          coordinateNorteLike++;
+        } else if (parsedVal > 100000 && parsedVal < 900000) {
+          coordinateLesteLike++;
+        }
+        if (parsedVal > -36 && parsedVal < 6) {
+          latLike++;
+        } else if (parsedVal > -76 && parsedVal < -29) {
+          lonLike++;
+        }
+      } else {
+        if (/^(M|P|V)[0-9]+/i.test(val) || /^(M|P|V)-[0-9]+/i.test(val)) {
+          isNamePattern++;
+        } else if (/divisa|cerca|muro|estrada|linha|valador/i.test(val)) {
+          isCodePattern++;
+        } else if (/rtk|static|gnss|gps|single|float|fixed/i.test(val)) {
+          isMethodPattern++;
+        }
+      }
+    }
+
+    const pctNum = numCount / valores.length;
+    
+    if (pctNum > 0.7) {
+      if (coordinateNorteLike / valores.length > 0.5) {
+        campos[colIdx] = 'norte';
+      } else if (coordinateLesteLike / valores.length > 0.5) {
+        campos[colIdx] = 'leste';
+      } else if (latLike / valores.length > 0.5) {
+        campos[colIdx] = 'norte';
+      } else if (lonLike / valores.length > 0.5) {
+        campos[colIdx] = 'leste';
+      } else if (sigmaLike / valores.length > 0.6) {
+        const sigmasJaAlocados = campos.filter(c => c.startsWith('sigma'));
+        if (sigmasJaAlocados.length === 0) campos[colIdx] = 'sigmaY';
+        else if (sigmasJaAlocados.length === 1) campos[colIdx] = 'sigmaX';
+        else campos[colIdx] = 'sigmaZ';
+      } else {
+        campos[colIdx] = 'elevacao';
+      }
+    } else {
+      if (isNamePattern > 0) {
+        campos[colIdx] = 'nome';
+      } else if (isCodePattern > 0) {
+        campos[colIdx] = 'codigo';
+      } else if (isMethodPattern > 0) {
+        campos[colIdx] = 'metodo';
+      } else {
+        if (!campos.includes('nome')) {
+          campos[colIdx] = 'nome';
+        } else if (!campos.includes('codigo')) {
+          campos[colIdx] = 'codigo';
+        }
+      }
+    }
+  }
+
+  // Defesa/fallback se norte ou leste faltar
+  if (!campos.includes('norte') || !campos.includes('leste')) {
+    if (numColunas >= 4) {
+      if (campos[2] === 'ignorar' || campos[2] === 'elevacao') campos[2] = 'norte';
+      if (campos[3] === 'ignorar' || campos[3] === 'elevacao') campos[3] = 'leste';
+    }
+  }
+
+  return campos;
+}
+
+export default function ImportTxtConfigModal({ open, onOpenChange, autoLoadFile, onSaveSuccess }: Props) {
   const [cfg, setCfg] = useState<ImportTxtConfig>(IMPORT_TXT_PADRAO);
   const [linhasCruas, setLinhasCruas] = useState<string[]>([]); // primeiras linhas do exemplo, sem dividir
   const [msg, setMsg] = useState('');
 
-  useEffect(() => { if (open) { setCfg(carregarImportTxt()); setLinhasCruas([]); setMsg(''); } }, [open]);
+  useEffect(() => {
+    if (open) {
+      setCfg(carregarImportTxt());
+      setLinhasCruas([]);
+      setMsg('');
+      if (autoLoadFile) {
+        lerExemplo(autoLoadFile);
+      }
+    }
+  }, [open, autoLoadFile]);
 
   // Divide as linhas cruas pelo separador escolhido (recalcula sempre que troca o separador).
   const amostra = linhasCruas.map((l) => l.split(sepRegex(cfg.separador)).map((c) => c.trim()));
@@ -66,14 +181,13 @@ export default function ImportTxtConfigModal({ open, onOpenChange }: Props) {
     const matriz = linhas.map((l) => l.split(sepRegex(sep)));
     const cols = Math.max(...matriz.map((r) => r.length));
 
-    // se o nº de colunas bate com a config salva, mantém; senão chuta um padrão
-    const base = cfg.colunas.length === cols ? cfg.colunas : adivinharColunas(cols);
-    // primeira linha parece cabeçalho? (sem número na 3ª coluna)
-    const temCab = !isFinite(parseFloat((matriz[0][2] ?? '').trim()));
+    // Descoberta automática inteligente das colunas
+    const base = descobrirCamposAutomatico(matriz);
+    const temCab = !isFinite(parseFloat((matriz[0][2] ?? '').trim().replace(',', '.'))) && !isFinite(parseFloat((matriz[0][3] ?? '').trim().replace(',', '.')));
 
     setCfg((p) => ({ ...p, separador: sep, temCabecalho: temCab, colunas: base }));
     setLinhasCruas(linhas);
-    setMsg(`${cols} colunas detectadas. Confira o papel de cada uma abaixo.`);
+    setMsg(`${cols} colunas mapeadas automaticamente. Ajuste se necessário.`);
   }
 
   function setColuna(i: number, v: CampoTxt) {
@@ -93,7 +207,10 @@ export default function ImportTxtConfigModal({ open, onOpenChange }: Props) {
     }
     salvarImportTxt(cfg);
     setMsg('Configuração salva. Vale para as próximas importações de TXT.');
-    setTimeout(() => onOpenChange(false), 900);
+    setTimeout(() => {
+      onOpenChange(false);
+      onSaveSuccess?.();
+    }, 900);
   }
 
   function restaurar() { setCfg(IMPORT_TXT_PADRAO); setMsg('Voltou ao padrão do GNSS.'); }
