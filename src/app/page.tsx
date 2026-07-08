@@ -669,6 +669,7 @@ export default function EditorPage() {
   const [partesAdicionais, setPartesAdicionais] = useState<PessoaQualificada[]>([]);
   const [correcoes, setCorrecoes] = useState<CorrecaoErrata[]>([]);
   const [modoMaster, setModoMaster] = useState<'editar' | 'gerir'>('editar');
+  const [avisoCriarContaFechado, setAvisoCriarContaFechado] = useState(false);
   const [ocultarCobranca, setOcultarCobranca] = useState(false);
   useEffect(() => {
     carregarConfigAssinatura().then((c) => setOcultarCobranca(!!c.ocultarCobranca)).catch(() => {});
@@ -5692,14 +5693,42 @@ export default function EditorPage() {
         </div>
       )}
 
-      {/* Entrou sem login: aviso pra criar a conta e salvar configurações/projetos. Ao clicar,
-          volta pra tela de login. Fica um pouco acima do banner de dados fictícios pra não sobrepor. */}
-      {nuvemDisponivel && !user && (
+      {/* Entrou sem login: aviso pra criar a conta e salvar configurações/projetos. Fica um pouco
+          acima do banner de dados fictícios para não sobrepor. */}
+      {nuvemDisponivel && !user && !avisoCriarContaFechado && (
         <div className={`no-print fixed inset-x-0 z-[1500] flex justify-center ${imovel.ficticio ? 'bottom-11' : 'bottom-2'}`}>
-          <button type="button" onClick={() => definirModoEntrada('login')}
-            className="pointer-events-auto rounded-full border border-emerald-300/50 bg-emerald-500/15 px-4 py-1 text-sm font-semibold text-emerald-300 shadow-lg backdrop-blur transition-colors hover:bg-emerald-500/25">
-            Crie seu usuário para salvar suas configurações e gerenciar seus projetos
-          </button>
+          <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-amber-400/40 bg-background/95 px-3 py-2 shadow-2xl backdrop-blur-md max-w-[95vw]">
+            {/* Ícone */}
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-400/15">
+              <LogIn className="size-3.5 text-amber-400" />
+            </div>
+            {/* Texto principal */}
+            <div className="flex flex-col leading-tight">
+              <span className="text-[11px] font-bold text-foreground">Você está sem login</span>
+              <span className="text-[10px] text-muted-foreground">Projetos, configurações e suporte não serão salvos na nuvem.</span>
+            </div>
+            {/* Separador */}
+            <div className="hidden sm:block h-6 w-px bg-border mx-1" />
+            {/* Pílulas de benefício */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              {['☁️ Nuvem', '💻 Multi-dispositivo', '📞 Suporte'].map((b) => (
+                <span key={b} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">{b}</span>
+              ))}
+            </div>
+            {/* Botão de ação */}
+            <button type="button"
+              onClick={() => { setAvisoCriarContaFechado(false); definirModoEntrada('login'); }}
+              className="ml-1 shrink-0 rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground hover:opacity-90 transition-opacity">
+              Fazer login
+            </button>
+            {/* Fechar temporariamente */}
+            <button type="button"
+              onClick={() => setAvisoCriarContaFechado(true)}
+              className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted transition-colors"
+              title="Fechar aviso">
+              <X className="size-3.5" />
+            </button>
+          </div>
         </div>
       )}
 
