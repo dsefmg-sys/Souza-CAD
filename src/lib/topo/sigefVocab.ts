@@ -26,18 +26,12 @@ export const METODO_PADRAO = 'PG6';
 /** Rótulos amigáveis para a representação visual da divisa na planta (Etapa 3). */
 export const REPRESENTACOES = [
   'linha-ideal', 'cerca', 'estrada', 'corrego', 'rio', 'acude', 'muro', 'vala',
-  // Urbanas (imóvel de cidade): meio-fio/guia, calçada, alambrado/gradil.
-  'meio-fio', 'calcada', 'alambrado',
-  // Rurais complementares: aceiro (faixa limpa antifogo), crista/divisor de águas, cerca viva (sebe).
-  'aceiro', 'crista', 'cerca-viva',
 ] as const;
 export type Representacao = (typeof REPRESENTACOES)[number];
 
 export const REPRES_LABEL: Record<string, string> = {
   'linha-ideal': 'Linha ideal', cerca: 'Cerca', estrada: 'Estrada', corrego: 'Córrego',
   rio: 'Rio', acude: 'Açude', muro: 'Muro', vala: 'Vala',
-  'meio-fio': 'Meio-fio / guia', calcada: 'Calçada', alambrado: 'Alambrado / gradil',
-  aceiro: 'Aceiro', crista: 'Crista / divisor de águas', 'cerca-viva': 'Cerca viva',
 };
 
 /**
@@ -54,12 +48,6 @@ export const CORES_DIVISA: Record<string, string> = {
   acude: '#3b82f6',    // azul claro
   muro: '#6b7280',     // cinza
   vala: '#a16207',     // marrom
-  'meio-fio': '#a8a29e', // cinza-pedra (urbano)
-  calcada: '#d6d3d1',    // cinza claro (urbano)
-  alambrado: '#64748b',  // aço/slate (urbano)
-  aceiro: '#eab308',     // amarelo terra (faixa limpa)
-  crista: '#57534e',     // pedra escura (divisor de águas)
-  'cerca-viva': '#16a34a', // verde (sebe viva)
 };
 
 // Overrides de cor por projetista (injetados de coresDivisa.ts na inicialização). Ficam em módulo
