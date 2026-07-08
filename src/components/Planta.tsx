@@ -968,6 +968,10 @@ export default function Planta({
       })}
 
       {/* ---------- POLÍGONO (gleba ativa) ---------- */}
+      {/* Polígono de fundo branco para mascarar a grade (só quando a grade estiver visível) */}
+      {verGrade && (
+        <polygon points={pts} fill="#ffffff" fillOpacity={1} stroke="none" />
+      )}
       <polygon points={pts}
         fill={config.hachura && config.hachura !== 'nenhuma' ? `url(#hach-${config.hachura})` : (config.fillPoligono || '#15803d')}
         fillOpacity={config.hachura && config.hachura !== 'nenhuma' ? 1 : 0.08}
@@ -2562,7 +2566,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
-              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(8.5) * (ovProp.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovProp.escala ?? 1), ovProp.larguraChars ?? 68)} textAnchor="middle" texto={txtProp} lineHeight={1.35} maxHeight={100} centrarEmAltura={132} />
+              <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(8.5) * (ovProp.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovProp.escala ?? 1), ovProp.larguraChars ?? 68)} textAnchor="middle" texto={txtProp} lineHeight={1.35} maxHeight={100} centrarEmAltura={60} />
             </g>
           );
         })()}
@@ -2609,7 +2613,7 @@ function CarimboA3(props: {
                onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
-              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(8.5) * (ovLaudo.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovLaudo.escala ?? 1), ovLaudo.larguraChars ?? 68)} textAnchor="middle" texto={txtLaudo} lineHeight={1.35} maxHeight={100} centrarEmAltura={132} />
+              <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(8.5) * (ovLaudo.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovLaudo.escala ?? 1), ovLaudo.larguraChars ?? 68)} textAnchor="middle" texto={txtLaudo} lineHeight={1.35} maxHeight={100} centrarEmAltura={60} />
             </g>
           );
         })()}

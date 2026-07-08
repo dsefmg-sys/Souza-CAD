@@ -365,7 +365,7 @@ export default function EditorPage() {
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
-  const [toolW, setToolW] = useState(340); // largura confortável pra não espremer os rótulos dos botões
+  const [toolW, setToolW] = useState(270); // largura confortável pra não espremer os rótulos dos botões
   const toolDrag = useRef(false);
   const [centralizarSig, setCentralizarSig] = useState(0); // incrementa para enquadrar o desenho
   // largura do painel da direita (redimensionável, salva por usuário)
@@ -4089,6 +4089,21 @@ export default function EditorPage() {
                 {/* DADOS E AÇÕES DO PROJETO */}
                 {rotulo ? (
                   <div className="flex flex-col gap-2 text-xs">
+                    {/* Chave de Modo (Fácil / Médio / Completo) - Fica no topo da barra, acima de Gestão */}
+                    {chaveTopoVisivel && !introTocando && (
+                      <button type="button"
+                        onClick={() => trocarModoApp(proximoModo(modoApp))}
+                        title={completo
+                          ? 'Modo Completo: todas as ferramentas. Clique para o Fácil.'
+                          : medio
+                            ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
+                            : 'Modo Fácil: só o essencial. Clique para o Médio.'}
+                        className="flex w-full h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-background/80 text-[10px] font-bold text-foreground hover:bg-muted transition-colors shadow-sm shrink-0">
+                        {completo ? <Briefcase className="size-3.5 text-sky-500" /> : medio ? <PencilRuler className="size-3.5 text-emerald-500" /> : <GraduationCap className="size-3.5 text-amber-500" />}
+                        <span>{completo ? 'MODO COMPLETO' : medio ? 'MODO MÉDIO' : 'MODO FÁCIL'}</span>
+                      </button>
+                    )}
+
                     {/* CARD 1: GESTÃO DO PROJETO */}
                     <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
                       <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
@@ -4455,20 +4470,7 @@ export default function EditorPage() {
                                 </div>
                               )}
 
-                              {/* Chave de Modo (Fácil / Médio / Completo) */}
-                              {chaveTopoVisivel && !introTocando && (
-                                <button type="button"
-                                  onClick={() => trocarModoApp(proximoModo(modoApp))}
-                                  title={completo
-                                    ? 'Modo Completo: todas as ferramentas. Clique para o Fácil.'
-                                    : medio
-                                      ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
-                                      : 'Modo Fácil: só o essencial. Clique para o Médio.'}
-                                  className="flex w-full h-7 items-center justify-center gap-1.5 rounded-md border border-border bg-background/80 text-[10px] font-bold text-foreground hover:bg-muted transition-colors">
-                                  {completo ? <Briefcase className="size-3.5" /> : medio ? <PencilRuler className="size-3.5" /> : <GraduationCap className="size-3.5" />}
-                                  <span>{rotuloModo}</span>
-                                </button>
-                              )}
+
 
                               {/* Escala da Planta (só no modo Planta) */}
                               {vista === 'planta' && (
@@ -5204,7 +5206,7 @@ export default function EditorPage() {
 
         {/* Painel suspenso de dados do projeto — ocupa toda a altura disponível do fim da página ao cabeçalho */}
         <div ref={painelWrap}
-          className={`no-print absolute right-0 top-0 bottom-0 z-[2000] flex w-[550px] h-full flex-col border-l bg-background shadow-2xl transition-all duration-300 ${
+          className={`no-print absolute right-0 top-0 bottom-0 z-[2000] flex w-[460px] h-full flex-col border-l bg-background shadow-2xl transition-all duration-300 ${
             painelAberto
               ? 'translate-x-0 opacity-100 visible'
               : 'translate-x-full opacity-0 invisible pointer-events-none'
