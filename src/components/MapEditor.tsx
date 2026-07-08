@@ -1372,23 +1372,34 @@ export default function MapEditor(props: Props) {
       {/* cor de apoio das divisas — deslocada pra FORA do polígono, deixando o traçado livre
           pra cor do confrontante (que fica sobre a linha) não se sobreporem */}
       {camadasVisiveis.divisas !== false && validos.length >= 2 && (() => {
-        const cLat = validos.reduce((s, p) => s + p.lat, 0) / validos.length;
-        const cLon = validos.reduce((s, p) => s + p.lon, 0) / validos.length;
         const lats = validos.map((p) => p.lat), lons = validos.map((p) => p.lon);
         const maxDim = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons)) || 0.0005;
         const off = maxDim * 0.012;
         const algumasDivisas = validos.some((x) => x.representacao && x.representacao !== 'linha-ideal');
+        
+        const isClockwise = (() => {
+          if (validos.length < 3) return true;
+          let sum = 0;
+          for (let i = 0; i < validos.length; i++) {
+            const curr = validos[i];
+            const next = validos[(i + 1) % validos.length];
+            sum += (next.lon - curr.lon) * (next.lat + curr.lat);
+          }
+          return sum > 0;
+        })();
+
         return validos.map((v, i) => {
           const cor = (v.representacao === 'linha-ideal' || !v.representacao)
-            ? (modo === 'divisa' || algumasDivisas ? '#94a3b8' : null)
+            ? (modo === 'divisa' || algumasDivisas ? '#cbd5e1' : null)
             : corDivisa(v.representacao);
           if (!cor) return null;
           const prox = validos[(i + 1) % validos.length];
           if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
-          let nx = -(prox.lat - v.lat), ny = prox.lon - v.lon;
+          
+          let nx = isClockwise ? -(prox.lat - v.lat) : (prox.lat - v.lat);
+          let ny = isClockwise ? (prox.lon - v.lon) : -(prox.lon - v.lon);
           const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
-          const mLat = (v.lat + prox.lat) / 2, mLon = (v.lon + prox.lon) / 2;
-          if ((mLon - cLon) * nx + (mLat - cLat) * ny < 0) { nx = -nx; ny = -ny; }
+
           const a: [number, number] = [v.lat + ny * off, v.lon + nx * off];
           const b: [number, number] = [prox.lat + ny * off, prox.lon + nx * off];
           return (
@@ -1401,11 +1412,20 @@ export default function MapEditor(props: Props) {
 
       {/* Roteamento visual de confrontantes aplicados sobre os segmentos */}
       {camadasVisiveis.divisas !== false && confrontantePorLado && confrontantes && validos.length >= 2 && (() => {
-        const cLat = validos.reduce((s, p) => s + p.lat, 0) / validos.length;
-        const cLon = validos.reduce((s, p) => s + p.lon, 0) / validos.length;
         const lats = validos.map((p) => p.lat), lons = validos.map((p) => p.lon);
         const maxDim = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons)) || 0.0005;
         const off = maxDim * 0.012;
+
+        const isClockwise = (() => {
+          if (validos.length < 3) return true;
+          let sum = 0;
+          for (let i = 0; i < validos.length; i++) {
+            const curr = validos[i];
+            const next = validos[(i + 1) % validos.length];
+            sum += (next.lon - curr.lon) * (next.lat + curr.lat);
+          }
+          return sum > 0;
+        })();
 
         return validos.map((v, i) => {
           const prox = validos[(i + 1) % validos.length];
@@ -1419,10 +1439,9 @@ export default function MapEditor(props: Props) {
           const conf = confrontantes.find((c) => c.id === confId);
           if (!conf) return null;
 
-          let nx = -(prox.lat - v.lat), ny = prox.lon - v.lon;
+          let nx = isClockwise ? -(prox.lat - v.lat) : (prox.lat - v.lat);
+          let ny = isClockwise ? (prox.lon - v.lon) : -(prox.lon - v.lon);
           const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
-          const mLat = (v.lat + prox.lat) / 2, mLon = (v.lon + prox.lon) / 2;
-          if ((mLon - cLon) * nx + (mLat - cLat) * ny < 0) { nx = -nx; ny = -ny; }
 
           // Desloca para DENTRO do polígono (sinal negativo)
           const a: [number, number] = [v.lat - ny * off, v.lon - nx * off];
