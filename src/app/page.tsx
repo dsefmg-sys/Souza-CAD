@@ -11,7 +11,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
   Settings, LogOut, LogIn, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal, SlidersHorizontal, ChevronDown, Briefcase,
-  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw,
+  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -394,7 +394,7 @@ export default function EditorPage() {
   const [situacaoUrl, setSituacaoUrl] = useState<string | undefined>(undefined);
   // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
   const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
-  const [parcelasCert, setParcelasCert] = useState<{ anel: [number, number][]; info: { titulo: string; linhas: string[] } }[]>([]);
+  const [parcelasCert, setParcelasCert] = useState<{ anel: [number, number][]; info: { titulo: string; linhas: string[] }; codigoImovel?: string }[]>([]);
   // vértices de imóveis vizinhos já certificados (importados do Distribuidor de Coordenadas): ficam
   // guardados no projeto para reaproveitar coordenada/sigma/nome na planta e servir de alvo de encaixe
   const [verticesVizinho, setVerticesVizinho] = useState<VerticeVizinho[]>([]);
@@ -3258,6 +3258,20 @@ export default function EditorPage() {
       setReferencias(parcelasParaReferencias(parcelas, zona, hemisferio));
       const meuAnel = vertices.map((v) => ({ lat: v.lat, lon: v.lon }));
       const vizinhas = vertices.length >= 3 ? parcelasVizinhas(meuAnel, parcelas, 15) : [];
+      if (vizinhas.length) {
+        setParcelasCert((prev) => [...prev, ...vizinhas.map((p) => ({
+          anel: p.anel.map((q) => [q.lat, q.lon] as [number, number]),
+          info: {
+            titulo: p.denominacao || 'Imóvel certificado SIGEF',
+            linhas: [
+              p.codigoImovel ? `Código INCRA: ${p.codigoImovel}` : '',
+              p.matricula ? `Matrícula: ${p.matricula}` : '',
+              p.municipio ? `Cód. município (IBGE): ${p.municipio}` : '',
+            ].filter(Boolean),
+          },
+          codigoImovel: p.codigoImovel,
+        }))]);
+      }
       const novos = confrontantesDeVizinhas(vizinhas);
       if (novos.length) {
         snap();
@@ -3313,6 +3327,7 @@ export default function EditorPage() {
             p.municipio ? `Cód. município (IBGE): ${p.municipio}` : '',
           ].filter(Boolean),
         },
+        codigoImovel: p.codigoImovel,
       }))]);
       const novos = confrontantesDeVizinhas(vizinhas);
       snap();
@@ -5352,9 +5367,28 @@ export default function EditorPage() {
                   ? parcelasCert[parcelaSel].info.linhas.map((l, k) => <div key={k} className="border-b border-dashed border-border/50 pb-0.5">{l}</div>)
                   : <div className="text-muted-foreground">Sem metadados extras (o serviço público do INCRA não trouxe).</div>}
                 <div className="pt-1 text-[10px] text-muted-foreground">{parcelasCert[parcelaSel].anel.length} vértices. Clique num ponto da divisa para adotá-lo no seu projeto.</div>
-                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => baixarDxfParcela(parcelaSel)}><Download className="size-3.5" /> DXF</Button>
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => baixarShapefileParcela(parcelaSel)}><Download className="size-3.5" /> Shapefile</Button>
+                
+                <div className="mt-2.5 flex flex-col gap-1.5">
+                  {parcelasCert[parcelaSel].codigoImovel && (
+                    <div className="flex gap-1.5">
+                      <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => {
+                        if (parcelasCert[parcelaSel].codigoImovel) {
+                          navigator.clipboard.writeText(parcelasCert[parcelaSel].codigoImovel!);
+                          aviso('Código do imóvel copiado!');
+                        }
+                      }}>
+                        <Copy className="size-3.5" /> Copiar Código
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => {
+                        window.open('https://sigef.incra.gov.br/consultar/parcelas/', '_blank');
+                      }}>
+                        <ExternalLink className="size-3.5" /> SIGEF 🔗
+                      </Button>
+                    </div>
+                  )}
+                  <Button size="sm" className="w-full gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium" onClick={() => verticesVizinhoRef.current?.click()}>
+                    <Upload className="size-3.5" /> Importar GML do Confrontante
+                  </Button>
                 </div>
               </div>
             </div>
