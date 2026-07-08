@@ -204,3 +204,80 @@ export function confrontantesDeVizinhas(parcelas: ParcelaSigef[]): Confrontante[
     descricaoExtra: p.codigoImovel ? `Imóvel certificado SIGEF (código ${p.codigoImovel})` : undefined,
   }));
 }
+
+/**
+ * Lê um GML/XML de certificação do SIGEF contendo os vértices com atributos completos
+ * (código do vértice, coordenadas de latitude/longitude, altitude, tipo, método e limite).
+ */
+export function parseVerticesSigefGml(xmlText: string): any[] {
+  const vertices: any[] = [];
+  
+  // Encontra as tags de vértices (<Vértice>, <vertice>, <geo:Vértice>, etc.)
+  const regexNode = /<(?:[a-zA-Z0-9_-]+:)?(Vértice|vertice)[^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?\1>/gi;
+  
+  let match;
+  let idx = 1;
+  while ((match = regexNode.exec(xmlText)) !== null) {
+    const content = match[2];
+    
+    // Helper regex para extrair valor de uma tag ignorando namespaces
+    const tagValue = (tagName: string): string => {
+      const r = new RegExp(`<(?:[a-zA-Z0-9_-]+:)?${tagName}[^>]*>\\s*([\\s\\S]*?)\\s*</(?:[a-zA-Z0-9_-]+:)?${tagName}>`, 'i');
+      const m = r.exec(content);
+      return m ? m[1].trim() : '';
+    };
+    
+    const codigo = tagValue('codigo') || tagValue('nome') || tagValue('id');
+    const latitudeStr = tagValue('latitude') || tagValue('lat');
+    const longitudeStr = tagValue('longitude') || tagValue('lon') || tagValue('long');
+    const altitudeStr = tagValue('altitude') || tagValue('elevacao') || tagValue('alt') || tagValue('h');
+    const tipoStr = tagValue('tipo');
+    const metodoStr = tagValue('metodo') || tagValue('metodo_posicionamento');
+    const limiteStr = tagValue('limite') || tagValue('tipo_limite');
+    const sigmaHStr = tagValue('sigma') || tagValue('sigmaH') || tagValue('longitudeSigma') || tagValue('latitudeSigma');
+    const sigmaVStr = tagValue('sigmaV') || tagValue('altitudeSigma');
+    
+    const lat = parseFloat(latitudeStr.replace(',', '.'));
+    const lon = parseFloat(longitudeStr.replace(',', '.'));
+    
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      const elev = parseFloat(altitudeStr.replace(',', '.')) || 0;
+      const sigmaH = parseFloat(sigmaHStr.replace(',', '.')) || undefined;
+      const sigmaV = parseFloat(sigmaVStr.replace(',', '.')) || undefined;
+      
+      // Heurística de tipo (M = Marco, P = Ponto, V = Virtual)
+      let tipo: 'M' | 'P' | 'V' = 'P';
+      const upperTipo = tipoStr.toUpperCase();
+      if (upperTipo === 'M' || upperTipo === 'MARCO') {
+        tipo = 'M';
+      } else if (upperTipo === 'V' || upperTipo === 'VIRTUAL') {
+        tipo = 'V';
+      } else if (upperTipo === 'P' || upperTipo === 'PONTO') {
+        tipo = 'P';
+      } else if (codigo) {
+        // tenta deduzir do código, ex: COIN-M-0017 ou COIN_M_0017
+        const parts = codigo.split(/[-_]/);
+        if (parts.includes('M')) tipo = 'M';
+        else if (parts.includes('V')) tipo = 'V';
+        else if (parts.includes('P')) tipo = 'P';
+      }
+      
+      vertices.push({
+        lat,
+        lon,
+        altitude: elev,
+        id: codigo || `P${idx}`,
+        nome: codigo || `P${idx}`,
+        codigoSigef: codigo || undefined,
+        tipo,
+        metodo: metodoStr || undefined,
+        limite: limiteStr || undefined,
+        sigmaH,
+        sigmaV
+      });
+      idx++;
+    }
+  }
+  
+  return vertices;
+}

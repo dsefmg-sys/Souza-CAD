@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseParcelasSigef, parseGmlParcelas, parcelasVizinhas, confrontantesDeVizinhas, parcelasParaReferencias, type ParcelaSigef } from './sigefVizinhos';
+import { parseParcelasSigef, parseGmlParcelas, parcelasVizinhas, confrontantesDeVizinhas, parcelasParaReferencias, parseVerticesSigefGml, type ParcelaSigef } from './sigefVizinhos';
 
 // quadrado ~100m de lado perto de Espera Feliz (graus aproximados)
 const d = 0.001; // ~110 m em latitude
@@ -86,5 +86,49 @@ describe('sigefVizinhos', () => {
       expect(Number.isFinite(p.leste)).toBe(true);
       expect(Number.isFinite(p.norte)).toBe(true);
     }
+  });
+
+  it('parseia vertices completos a partir de um GML de certificacao do SIGEF', () => {
+    const gmlText = `
+      <sigef:vertice>
+        <geo:Vértice>
+          <geo:codigo>COIN-M-0017</geo:codigo>
+          <geo:latitude>-20.672012</geo:latitude>
+          <geo:longitude>-41.947413</geo:longitude>
+          <geo:altitude>842.15</geo:altitude>
+          <geo:tipo>M</geo:tipo>
+          <geo:metodo>PG2</geo:metodo>
+          <geo:limite>muro</geo:limite>
+        </geo:Vértice>
+      </sigef:vertice>
+      <sigef:vertice>
+        <geo:Vértice>
+          <geo:codigo>COIN-P-0128</geo:codigo>
+          <geo:latitude>-20.675711</geo:latitude>
+          <geo:longitude>-41.945012</geo:longitude>
+          <geo:altitude>831.50</geo:altitude>
+          <geo:tipo>P</geo:tipo>
+          <geo:metodo>PG1</geo:metodo>
+          <geo:limite>cerca</geo:limite>
+        </geo:Vértice>
+      </sigef:vertice>
+    `;
+    const vs = parseVerticesSigefGml(gmlText);
+    expect(vs.length).toBe(2);
+    expect(vs[0].id).toBe('COIN-M-0017');
+    expect(vs[0].lat).toBe(-20.672012);
+    expect(vs[0].lon).toBe(-41.947413);
+    expect(vs[0].altitude).toBe(842.15);
+    expect(vs[0].tipo).toBe('M');
+    expect(vs[0].metodo).toBe('PG2');
+    expect(vs[0].limite).toBe('muro');
+
+    expect(vs[1].id).toBe('COIN-P-0128');
+    expect(vs[1].lat).toBe(-20.675711);
+    expect(vs[1].lon).toBe(-41.945012);
+    expect(vs[1].altitude).toBe(831.50);
+    expect(vs[1].tipo).toBe('P');
+    expect(vs[1].metodo).toBe('PG1');
+    expect(vs[1].limite).toBe('cerca');
   });
 });

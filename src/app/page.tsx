@@ -70,7 +70,7 @@ import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarShapefileZip, importarShapefileZip, lerShp } from '@/lib/io/shapefile';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
-import { parseParcelasSigef, parseGmlParcelas, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas } from '@/lib/io/sigefVizinhos';
+import { parseParcelasSigef, parseGmlParcelas, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas, parseVerticesSigefGml } from '@/lib/io/sigefVizinhos';
 import { parseVerticesVizinho } from '@/lib/io/verticesVizinho';
 import { ufsNoBbox, temaIncra, TEMAS_CONFRONTANTE, INCRA_UFS } from '@/lib/io/incraTemas';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
@@ -1432,8 +1432,87 @@ export default function EditorPage() {
       const buf = await importPendingFile.arrayBuffer();
       let perim: any[] = [];
       let z = fuso;
+      let vs: Vertex[] = [];
+      let isGmlImport = false;
 
-      if (importPendingFile.name.toLowerCase().endsWith('.kml')) {
+      const tec = tecnico ?? carregarTecnico();
+      const nameLower = importPendingFile.name.toLowerCase();
+
+      if (nameLower.endsWith('.gml') || nameLower.endsWith('.xml')) {
+        const xmlText = new TextDecoder('utf-8').decode(buf);
+        const ptsGml = parseVerticesSigefGml(xmlText);
+        
+        if (ptsGml.length >= 3) {
+          isGmlImport = true;
+          if (!z) {
+            z = Math.floor((ptsGml[0].lon + 180) / 6) + 1;
+          }
+          perim = ptsGml.map((p) => {
+            const utm = geoParaUtm(p.lat, p.lon, z, hemisferio);
+            return {
+              leste: utm.leste,
+              norte: utm.norte,
+              altitude: p.altitude,
+              id: p.id,
+              nome: p.nome,
+              tipo: p.tipo,
+              metodo: p.metodo,
+              limite: p.limite,
+              sigmaH: p.sigmaH,
+              sigmaV: p.sigmaV,
+              codigoSigef: p.codigoSigef
+            };
+          });
+          
+          vs = perim.map((p, idx) => {
+            const { lat, lon } = utmParaGeo(p.leste, p.norte, z, hemisferio);
+            return {
+              id: `v_${Date.now().toString(36)}_${idx}`,
+              ordem: idx,
+              nome: p.nome,
+              codigoCampo: p.nome,
+              norte: p.norte,
+              leste: p.leste,
+              elevacao: p.altitude,
+              lat,
+              lon,
+              tipo: p.tipo,
+              metodo: p.metodo || tec.metodoPosicionamento || 'PG1',
+              tipoLimite: p.limite || tec.tipoLimite || 'ideal',
+              representacao: 'linha-ideal',
+              codigoSigef: p.codigoSigef || p.nome,
+              isDivisa: p.tipo === 'M',
+              ...(p.sigmaH != null ? { sigmaX: p.sigmaH, sigmaY: p.sigmaH } : {}),
+              ...(p.sigmaV != null ? { sigmaZ: p.sigmaV } : {})
+            };
+          });
+          
+          vs = iniciarDoNorteHorario(vs).map((v, idx) => ({ ...v, ordem: idx }));
+        } else {
+          // Fallback para GML/XML sem vértices estruturados detalhados (ex.: apenas anel de coordenadas)
+          const parcelas = parseParcelasSigef(xmlText).length ? parseParcelasSigef(xmlText) : parseGmlParcelas(xmlText);
+          if (parcelas.length > 0 && parcelas[0].anel.length >= 3) {
+            const geoPoints = parcelas[0].anel;
+            if (!z) {
+              z = Math.floor((geoPoints[0].lon + 180) / 6) + 1;
+            }
+            perim = geoPoints.map((gp, idx) => {
+              const utm = geoParaUtm(gp.lat, gp.lon, z, hemisferio);
+              return {
+                leste: utm.leste,
+                norte: utm.norte,
+                altitude: 0,
+                id: `P${idx + 1}`,
+                nome: `P${idx + 1}`
+              };
+            });
+          } else {
+            aviso('Nenhum vértice ou polígono válido encontrado no arquivo GML/XML.');
+            setProcessando(false);
+            return;
+          }
+        }
+      } else if (nameLower.endsWith('.kml')) {
         const xmlText = new TextDecoder('utf-8').decode(buf);
         const geoPoints = parseKml(xmlText);
         if (geoPoints.length < 3) {
@@ -1449,7 +1528,6 @@ export default function EditorPage() {
           }
         }
         
-        // Fuso AUTOMÁTICO ou informado
         if (!z) {
           const firstPt = geoPoints[0];
           z = Math.floor((firstPt.lon + 180) / 6) + 1;
@@ -1466,7 +1544,6 @@ export default function EditorPage() {
           };
         });
       } else {
-        // TXT do GNSS costuma vir em Windows-1252 (acentos)
         const texto = new TextDecoder('windows-1252').decode(buf);
         const pontos = parseTxt(texto, carregarImportTxt());
         perim = pontosDePerimetro(pontos);
@@ -1476,25 +1553,24 @@ export default function EditorPage() {
           return;
         }
 
-        const tec = tecnico ?? carregarTecnico();
         const fusos = tec.fusosPermitidos ?? [18, 19, 20, 21, 22, 23, 24, 25];
-        
-        // Fuso AUTOMÁTICO pela região (não precisa do município): testa cada fuso e fica com o que
-        // coloca o ponto dentro da nossa área de trabalho (resolve a divisa 23/24 sozinho).
         z = detectarFusoPorRegiao(perim[0].leste, perim[0].norte, hemisferio, fusos).zona;
-        // Se o município foi informado, sua âncora confirma/refina (mais específica).
         const anc = ancoraMunicipio(municipio);
         if (anc) z = escolherZonaPorAncora(perim[0].leste, perim[0].norte, hemisferio, anc, fusos);
       }
 
       // Define o município no imóvel
       const novoImovel = { ...imovel, municipio, local: `${municipio}` };
-      const tec = tecnico ?? carregarTecnico();
 
-      // numeração provisória a partir do banco de pontos (para não colidir com o já usado)
-      const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
-      const vs0 = montarVertices(perim, z, hemisferio, { credenciamentoIncra: tec.credenciamentoIncra, contadorMarco: cont.M, contadorPonto: cont.P });
-      const vs = recodificar(iniciarDoNorteHorario(vs0), tec.credenciamentoIncra, cont.M, cont.P);
+      let contM = 1, contP = 1;
+      if (!isGmlImport) {
+        const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
+        contM = cont.M;
+        contP = cont.P;
+        const vs0 = montarVertices(perim, z, hemisferio, { credenciamentoIncra: tec.credenciamentoIncra, contadorMarco: cont.M, contadorPonto: cont.P });
+        vs = recodificar(iniciarDoNorteHorario(vs0), tec.credenciamentoIncra, cont.M, cont.P);
+      }
+
       // defesa: não importar coordenadas que viraram inválidas (NaN/fora de faixa) — protege a peça
       if (vs.some((v) => !Number.isFinite(v.lat) || !Number.isFinite(v.lon) || Math.abs(v.lat) > 90 || Math.abs(v.lon) > 180)) {
         aviso('Coordenadas inválidas após a conversão — confira o fuso/hemisfério e o arquivo.');
@@ -1510,9 +1586,10 @@ export default function EditorPage() {
         fuso,
         z,
         novoImovel,
-        contM: cont.M,
-        contP: cont.P,
+        contM,
+        contP,
         prefixo: tec.credenciamentoIncra,
+        isGmlImport
       });
 
     } catch (e) {
@@ -1540,7 +1617,7 @@ export default function EditorPage() {
     const anel = gerarPoligono ? importados.filter((p) => p.poligono).map((p) => p.v) : [];
     const ignorados = gerarPoligono ? importados.filter((p) => !p.poligono).map((p) => p.v) : importados.map((p) => p.v);
     // renumera o anel na ordem final (M/P sequenciais a partir do contador do banco)
-    const vs = recodificar(anel, prefixo || 'VER', contM, contP);
+    const vs = previewData.isGmlImport ? anel : recodificar(anel, prefixo || 'VER', contM, contP);
 
     setImovel(novoImovel);
     setZona(z);
@@ -3999,7 +4076,7 @@ export default function EditorPage() {
           </span>
         </div>
         <div className="flex flex-1 items-center gap-1 overflow-x-auto px-2 py-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] [&_button_svg]:size-3">
-        <input ref={fileRef} type="file" accept=".txt,.csv" className="hidden"
+        <input ref={fileRef} type="file" accept=".txt,.csv,.gml,.xml" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
         <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarDxfArquivo(f); e.currentTarget.value = ''; }} />
