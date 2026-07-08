@@ -1478,7 +1478,7 @@ export default function Planta({
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     const u = svgPonto(e); if (!u) return;
-                    dragRef.current = { kind: 'divisaConf', id: v.id, vx, vy };
+                    dragRef.current = { kind: 'divisaConf', id: v.id, vx, vy, baseX: ex, baseY: ey };
                     setDragTemp({ kind: 'divisaConf', id: v.id, dx: 0, dy: 0, baseX: ex, baseY: ey });
                     folhaLast.current = u;
                     captura(e);
