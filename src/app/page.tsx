@@ -5810,7 +5810,7 @@ export default function EditorPage() {
             ))}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto p-2.5 scroll-fino">
+          <div className={`min-h-0 flex-1 overflow-auto p-2.5 scroll-fino ${telaEstreita ? 'mobile-conforto' : ''}`}>
             <datalist id="lista-cns">{sugCns.map((c) => <option key={c} value={c} />)}</datalist>
             {aba === 'imovel' && <>
               <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} onIa={() => { setIaArquivoInicial(null); setIaAberta(true); }} />

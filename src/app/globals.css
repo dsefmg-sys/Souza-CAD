@@ -121,3 +121,15 @@
   0%, 100% { background-position: 0% 200%; }
   50% { background-position: 0% -100%; }
 }
+
+/* Conforto mobile no painel de Dados (consulta/ação em campo): campos maiores e com fonte 16px
+   — que de quebra evita o zoom automático do iPhone ao focar um campo — e os textos minúsculos
+   um pouco maiores pra ler no sol. Só no celular; no desktop nada muda. */
+@media (max-width: 767px) {
+  .mobile-conforto input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  .mobile-conforto select,
+  .mobile-conforto textarea { font-size: 16px; min-height: 40px; }
+  .mobile-conforto .text-\[9px\],
+  .mobile-conforto .text-\[10px\] { font-size: 11px; line-height: 1.25; }
+  .mobile-conforto .text-\[11px\] { font-size: 12px; }
+}
