@@ -2114,12 +2114,50 @@ export default function EditorPage() {
   /** Adota um vértice de um imóvel vizinho certificado (clique na divisa dele no mapa): pede o
    * código oficial que o outro agrimensor já usou, se o dono souber (do memorial do vizinho). */
   async function adotarVerticeVizinho(lat: number, lon: number) {
+    const TOL = 0.5; // tolerância de 50cm para proximidade
+    let codigoSugerido = '';
+    let dadosOrigem: VerticeVizinho | null = null;
+    
+    const utmCli = geoParaUtm(lat, lon, zona, hemisferio);
+    let minDist = TOL;
+    for (const vv of verticesVizinho) {
+      const d = Math.hypot(vv.leste - utmCli.leste, vv.norte - utmCli.norte);
+      if (d < minDist) {
+        minDist = d;
+        codigoSugerido = vv.nome;
+        dadosOrigem = vv;
+      }
+    }
+
+    const mensagem = codigoSugerido
+      ? `Encontramos o vértice oficial "${codigoSugerido}" nessa posição (do arquivo de confrontação "${dadosOrigem?.origem || ''}").\n\nConfirme ou ajuste o código para adotá-lo no seu projeto:`
+      : 'Se você já sabe o código oficial que o agrimensor vizinho usou para este vértice (ex.: CODI-P-0007), digite aqui — ele será reaproveitado em vez de gerar um novo.\n\nDeixe em branco se não souber (o sistema gera um código provisório seu).';
+
     const digitado = await perguntar({
       titulo: 'Vértice de vizinho',
-      mensagem: 'Se você já sabe o código oficial que o agrimensor vizinho usou para este vértice (ex.: CODI-P-0007), digite aqui — ele será reaproveitado em vez de gerar um novo.\n\nDeixe em branco se não souber (o sistema gera um código provisório seu).',
+      mensagem,
+      valorInicial: codigoSugerido,
     });
-    const codigo = digitado?.trim();
-    inserirVertice(lat, lon, codigo ? codigo.toUpperCase() : undefined);
+    
+    if (digitado == null) return; // cancelou
+    const codigo = digitado.trim().toUpperCase() || undefined;
+
+    if (dadosOrigem) {
+      // Adota a coordenada exata, altitude, sigmas e métodos do vizinho original
+      const parts = dadosOrigem.nome.split(/[-_]/);
+      const tipoDet = parts.includes('M') ? 'M' : (parts.includes('V') ? 'V' : 'P');
+      
+      inserirVertice(dadosOrigem.lat, dadosOrigem.lon, codigo, {
+        tipo: tipoDet,
+        metodo: dadosOrigem.metodo,
+        elevacao: dadosOrigem.elevacao,
+        sigmaX: dadosOrigem.sigmaX,
+        sigmaY: dadosOrigem.sigmaY,
+        sigmaZ: dadosOrigem.sigmaZ
+      });
+    } else {
+      inserirVertice(lat, lon, codigo);
+    }
   }
 
   /** Cria um vértice virtual (tipo V) a partir da coordenada calculada no modal (afastamento ou
@@ -3124,19 +3162,42 @@ export default function EditorPage() {
       const texto = await file.text();
       const cfg = carregarImportVerticesVizinho();
       const origem = file.name.replace(/\.[^.]+$/, '');
-      const lidos: VerticeVizinho[] = parseVerticesVizinho(texto, cfg, zona, hemisferio)
-        .filter((l) => l.nome)
-        .map((l) => {
-          const u = geoParaUtm(l.lat, l.lon, zona, hemisferio);
+      const nameLower = file.name.toLowerCase();
+      
+      let lidos: VerticeVizinho[] = [];
+      if (nameLower.endsWith('.gml') || nameLower.endsWith('.xml')) {
+        const ptsGml = parseVerticesSigefGml(texto);
+        lidos = ptsGml.map((p) => {
+          const u = geoParaUtm(p.lat, p.lon, zona, hemisferio);
           return {
-            nome: l.nome, lat: l.lat, lon: l.lon, leste: u.leste, norte: u.norte,
-            ...(l.elevacao != null ? { elevacao: l.elevacao } : {}),
-            ...(l.sigmaX != null ? { sigmaX: l.sigmaX } : {}),
-            ...(l.sigmaY != null ? { sigmaY: l.sigmaY } : {}),
-            ...(l.metodo ? { metodo: l.metodo } : {}),
-            origem,
+            nome: p.nome,
+            lat: p.lat,
+            lon: p.lon,
+            leste: u.leste,
+            norte: u.norte,
+            elevacao: p.altitude,
+            sigmaX: p.sigmaH,
+            sigmaY: p.sigmaH,
+            sigmaZ: p.sigmaV,
+            metodo: p.metodo,
+            origem
           };
         });
+      } else {
+        lidos = parseVerticesVizinho(texto, cfg, zona, hemisferio)
+          .filter((l) => l.nome)
+          .map((l) => {
+            const u = geoParaUtm(l.lat, l.lon, zona, hemisferio);
+            return {
+              nome: l.nome, lat: l.lat, lon: l.lon, leste: u.leste, norte: u.norte,
+              ...(l.elevacao != null ? { elevacao: l.elevacao } : {}),
+              ...(l.sigmaX != null ? { sigmaX: l.sigmaX } : {}),
+              ...(l.sigmaY != null ? { sigmaY: l.sigmaY } : {}),
+              ...(l.metodo ? { metodo: l.metodo } : {}),
+              origem,
+            };
+          });
+      }
       if (!lidos.length) { aviso('Nenhum vértice com nome/código reconhecido neste arquivo. Confira o mapeamento de colunas em Configurações → Importação e Modelos.'); return; }
 
       // GUARDA os vértices do vizinho no projeto (dedupe por nome + coordenada ~1 cm), para desenhar
@@ -4098,7 +4159,7 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarShapefileRef(f); e.currentTarget.value = ''; }} />
         <input ref={vizinhosRef} type="file" accept=".geojson,.json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
-        <input ref={verticesVizinhoRef} type="file" accept=".txt,.csv,text/plain" className="hidden"
+         <input ref={verticesVizinhoRef} type="file" accept=".txt,.csv,.gml,.xml,text/plain" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVerticesVizinho(f); e.currentTarget.value = ''; }} />
         <input ref={jsonBackupRef} type="file" accept=".json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarProjetoJson(f); e.currentTarget.value = ''; }} />

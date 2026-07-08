@@ -464,6 +464,7 @@ export interface VerticeVizinho {
   elevacao?: number;   // altitude (m), quando o arquivo traz
   sigmaX?: number;     // precisão horizontal X (m), quando o arquivo traz
   sigmaY?: number;     // precisão horizontal Y (m), quando o arquivo traz
+  sigmaZ?: number;     // precisão vertical Z (m), quando o arquivo traz
   metodo?: string;     // método de posicionamento (PG6, PA2...), quando o arquivo traz
   origem?: string;     // rótulo do imóvel/arquivo de origem, para agrupar/identificar
 }
