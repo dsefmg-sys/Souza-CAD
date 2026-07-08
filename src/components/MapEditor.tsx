@@ -1377,9 +1377,10 @@ export default function MapEditor(props: Props) {
         const lats = validos.map((p) => p.lat), lons = validos.map((p) => p.lon);
         const maxDim = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons)) || 0.0005;
         const off = maxDim * 0.012;
+        const algumasDivisas = validos.some((x) => x.representacao && x.representacao !== 'linha-ideal');
         return validos.map((v, i) => {
-          const cor = v.representacao === 'linha-ideal'
-            ? (modo === 'divisa' ? '#ffffff' : null)
+          const cor = (v.representacao === 'linha-ideal' || !v.representacao)
+            ? (modo === 'divisa' || algumasDivisas ? '#94a3b8' : null)
             : corDivisa(v.representacao);
           if (!cor) return null;
           const prox = validos[(i + 1) % validos.length];

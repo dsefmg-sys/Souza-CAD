@@ -2641,7 +2641,7 @@ export default function EditorPage() {
   function pintarDivisa(id: string) {
     if (!pincelInicioId) {
       setPincelInicioId(id);
-      aviso('Vértice inicial selecionado. Clique no próximo vértice para pintar o trecho.');
+      aviso('Vértice inicial selecionado. Clique no próximo vértice (no sentido horário) para pintar o trecho.');
       return;
     }
 
@@ -2681,7 +2681,7 @@ export default function EditorPage() {
     
     if (!pincelInicioId) {
       setPincelInicioId(id);
-      aviso('Vértice inicial selecionado. Clique no próximo vértice para pintar o trecho.');
+      aviso('Vértice inicial selecionado. Clique no próximo vértice (no sentido horário) para pintar o trecho.');
       return;
     }
 
@@ -4287,8 +4287,8 @@ export default function EditorPage() {
         <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
-        <Etapa st={etapas.confro}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar confrontante: clique os vértices do trecho" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>CONFRO</Button></Etapa>
-        <Etapa st={etapas.divisas}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar divisa: escolha o tipo e clique os vértices" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>DIVISAS</Button></Etapa>
+        <Etapa st={etapas.confro}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>CONFRO</Button></Etapa>
+        <Etapa st={etapas.divisas}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>DIVISAS</Button></Etapa>
         <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
         {/* 5) Peças */}
