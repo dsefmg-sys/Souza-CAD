@@ -15,16 +15,20 @@ interface State { erro: boolean }
  * dinâmico como o satélite) e mostra um fallback, em vez de derrubar a tela inteira.
  */
 export default class ErrorBoundary extends Component<Props, State> {
-  state: State = { erro: false };
+  constructor(props: Props) {
+    super(props);
+    this.state = { erro: false };
+    this.reset = this.reset.bind(this);
+  }
 
   static getDerivedStateFromError(): State {
     return { erro: true };
   }
 
-  reset = () => {
+  reset() {
     this.setState({ erro: false });
     this.props.onReset?.();
-  };
+  }
 
   render() {
     if (this.state.erro) {
