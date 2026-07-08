@@ -31,6 +31,7 @@ interface Props {
   situacaoUrl?: string;
   outrasGlebas?: { nome: string; pts: { leste: number; norte: number }[] }[];
   verticesVizinho?: VerticeVizinho[]; // vértices de imóveis vizinhos certificados (desenho de apoio)
+  parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
   resumoGlebas?: { nome: string; areaHa: number; perimetro: number }[]; // quadro de áreas
   objetos?: ObjetoDesenho[];
   config?: PlantaConfig;
@@ -239,7 +240,7 @@ function intervaloGrade(extent: number): number {
 
 export default function Planta({
   vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado,
-  zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], verticesVizinho = [], resumoGlebas = [], objetos = [], config = {},
+  zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], verticesVizinho = [], parcelasCert = [], resumoGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
@@ -962,23 +963,33 @@ export default function Planta({
         );
       })}
 
-      {/* ---------- VÉRTICES DE IMÓVEIS VIZINHOS JÁ CERTIFICADOS ---------- */}
-      {/* pontos oficiais do vizinho, com o código dele: mostram que a divisa foi amarrada na
-          coordenada certificada (sem vão nem sobreposição). Só desenha os que caem dentro da folha. */}
-      {verVizinhoVtx && verticesVizinho
-        .filter((p) => {
-          const coincide = vertices.some((v) => Math.hypot(v.leste - p.leste, v.norte - p.norte) < 0.05);
-          return !coincide;
-        })
-        .map((p, i) => {
-          const x = sx(p.leste), y = sy(p.norte);
-          if (x < DRAW.x0 || x > DRAW.x1 || y < DRAW.y0 || y > DRAW.y1) return null;
-        const r = 2.4 * escVert;
+      {/* ---------- IMÓVEIS VIZINHOS CERTIFICADOS ---------- */}
+      {/* Desenha as parcelas vizinhas certificadas no SIGEF em azul claro, mostrando o confrontamento homologado */}
+      {verVizinhoVtx && parcelasCert.map((pc, idx) => {
+        const ptsSvg = pc.anel.map(([lat, lon]) => {
+          const u = geoParaUtm(lat, lon, zona, hemisferio);
+          return `${sx(u.leste)},${sy(u.norte)}`;
+        }).join(' ');
+
+        if (!ptsSvg) return null;
+
+        let cx = 0, cy = 0;
+        pc.anel.forEach(([lat, lon]) => {
+          const u = geoParaUtm(lat, lon, zona, hemisferio);
+          cx += sx(u.leste);
+          cy += sy(u.norte);
+        });
+        cx /= pc.anel.length;
+        cy /= pc.anel.length;
+
+        const label = pc.info?.titulo || 'Certificado';
+
         return (
-          <g key={`vv${i}`}>
-            <path d={`M ${x} ${y - r} L ${x + r} ${y} L ${x} ${y + r} L ${x - r} ${y} Z`}
-              fill="#ffffff" stroke="#a21caf" strokeWidth={0.8 * escVert} />
-            {p.nome && <text x={x + r + 1.5} y={y + fs(6) * 0.35} fontSize={fs(6)} fill="#a21caf">{p.nome}</text>}
+          <g key={`pc_cert_${idx}`}>
+            <polygon points={ptsSvg} fill="#0284c7" fillOpacity={0.04} stroke="#0284c7" strokeWidth={0.8} strokeDasharray="3 3" />
+            {cx >= DRAW.x0 && cx <= DRAW.x1 && cy >= DRAW.y0 && cy <= DRAW.y1 && (
+              <text x={cx} y={cy} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#0369a1" fillOpacity={0.7}>{label}</text>
+            )}
           </g>
         );
       })}

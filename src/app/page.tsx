@@ -57,7 +57,7 @@ import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, CAR_TEMAS, COR_CURVA_NIVEL, COR_CURVA_AUTO } from '@/lib/topo/objetos';
-import { gerarCurvasDeNivel, intervaloSugerido, type Ponto3D } from '@/lib/topo/curvasNivel';
+import { gerarCurvasDeNivel, intervaloSugerido, pontoNoPoligono, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
@@ -283,6 +283,7 @@ export default function EditorPage() {
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
   const [vertices, setVertices] = useState<Vertex[]>([]);
   const [verticesIgnorados, setVerticesIgnorados] = useState<Vertex[]>([]); // fora do anel (ferramenta ignorar/considerar)
+  const [gradeAltimetrica, setGradeAltimetrica] = useState<{ lat: number; lon: number; leste: number; norte: number; elevacao: number }[]>([]);
   const [imovel, setImovel] = useState<ImovelData>(IMOVEL_VAZIO);
   const [confrontantes, setConfrontantes] = useState<Confrontante[]>([]);
   const [confrontantePorLado, setConfrontantePorLado] = useState<Record<number, string>>({});
@@ -1117,8 +1118,8 @@ export default function EditorPage() {
 
   // assinatura do conteúdo do projeto, para acender o disquete laranja quando há mudança não salva
   const projSig = useMemo(
-    () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas.map((g) => g.id), vv: verticesVizinho, ig: verticesIgnorados, np: nomeProjeto, rq: requerente, tr: transmitente, ta: tipoAto, pa: partesAdicionais }),
-    [vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas, verticesVizinho, verticesIgnorados, nomeProjeto, requerente, transmitente, tipoAto, partesAdicionais],
+    () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas.map((g) => g.id), vv: verticesVizinho, ig: verticesIgnorados, np: nomeProjeto, rq: requerente, tr: transmitente, ta: tipoAto, pa: partesAdicionais, ga: gradeAltimetrica }),
+    [vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas, verticesVizinho, verticesIgnorados, nomeProjeto, requerente, transmitente, tipoAto, partesAdicionais, gradeAltimetrica],
   );
   useEffect(() => {
     if (ultimoSalvoSig.current === '') {
@@ -3357,13 +3358,15 @@ export default function EditorPage() {
   // Espessura (mm de tela) da curva normal e da mestra, por nível de nitidez escolhido.
   const ESP_CURVA = { fina: { normal: 0.5, mestra: 1.1 }, media: { normal: 0.7, mestra: 1.5 }, grossa: { normal: 1.0, mestra: 2.1 } } as const;
 
-  // Junta os pontos com altitude (perímetro + ignorados/internos) no plano UTM — base pra sugerir e gerar.
+  // Junta os pontos com altitude (perímetro + ignorados/internos + grade digital online) no plano UTM — base pra sugerir e gerar.
   function pontos3dCurvas(): Ponto3D[] {
     const pts = [...vertices, ...verticesIgnorados]
       .filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte) && Number.isFinite(v.elevacao))
       .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }));
+    const ptsGrade = gradeAltimetrica.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
+    const total = [...pts, ...ptsGrade];
     const vistos = new Set<string>();
-    return pts.filter((p) => {
+    return total.filter((p) => {
       const k = `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
       if (vistos.has(k)) return false;
       vistos.add(k);
@@ -3405,6 +3408,80 @@ export default function EditorPage() {
 
   function limparCurvasNivel() {
     setObjetos((os) => os.filter((o) => o.curvaNivel == null));
+  }
+
+  async function buscarGradeAltitudesOnline() {
+    if (vertices.length < 3) { aviso('Defina o perímetro do imóvel primeiro para gerar a grade.'); return; }
+    setProcessando(true);
+    aviso('Buscando grade de altitudes oficiais do terreno (Copernicus DEM)...');
+    try {
+      const lats = vertices.map(v => v.lat);
+      const lons = vertices.map(v => v.lon);
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+      const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+
+      // Gera um grid de 8x8 pontos (suficientemente denso e rápido)
+      const GRID_SIZE = 8;
+      const candidatos: { lat: number; lon: number }[] = [];
+      const poly = vertices.map(v => ({ x: v.lon, y: v.lat })); // verificação em coordenadas geográficas
+
+      for (let i = 0; i < GRID_SIZE; i++) {
+        const lat = minLat + (maxLat - minLat) * (i / (GRID_SIZE - 1));
+        for (let j = 0; j < GRID_SIZE; j++) {
+          const lon = minLon + (maxLon - minLon) * (j / (GRID_SIZE - 1));
+          if (pontoNoPoligono(lon, lat, poly)) {
+            candidatos.push({ lat, lon });
+          }
+        }
+      }
+
+      if (candidatos.length === 0) {
+        // Fallback: se nenhum ponto caiu estritamente dentro (ex.: polígono estreito ou em L), usa o baricentro
+        const cLat = lats.reduce((a, b) => a + b, 0) / vertices.length;
+        const cLon = lons.reduce((a, b) => a + b, 0) / vertices.length;
+        candidatos.push({ lat: cLat, lon: cLon });
+      }
+
+      // Adiciona também os próprios vértices do perímetro no lote para recalibrar a altitude se vierem zerados
+      // Mas com menor peso ou opcional. Vamos buscar apenas a grade interna para adensar.
+      const latsStr = candidatos.map(c => c.lat.toFixed(6)).join(',');
+      const lonsStr = candidatos.map(c => c.lon.toFixed(6)).join(',');
+
+      const resApi = await fetch(`https://elevation-api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}`);
+      if (!resApi.ok) throw new Error('Falha na resposta do servidor Open-Meteo.');
+      const data = await resApi.json();
+
+      if (!data || !Array.isArray(data.elevation)) {
+        throw new Error('Formato de resposta inválido.');
+      }
+
+      const pontosObtidos: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[] = [];
+      for (let k = 0; k < candidatos.length; k++) {
+        const elev = data.elevation[k];
+        if (Number.isFinite(elev)) {
+          const cand = candidatos[k];
+          const u = geoParaUtm(cand.lat, cand.lon, zona, hemisferio);
+          pontosObtidos.push({
+            lat: cand.lat,
+            lon: cand.lon,
+            leste: u.leste,
+            norte: u.norte,
+            elevacao: elev
+          });
+        }
+      }
+
+      if (!pontosObtidos.length) {
+        aviso('Não foi possível obter altitudes válidas para a região.');
+      } else {
+        setGradeAltimetrica(pontosObtidos);
+        aviso(`Grade de relevo ativada com ${pontosObtidos.length} pontos de altitude online. Clique em [Gerar] para traçar as curvas.`);
+      }
+    } catch (e) {
+      aviso('Erro ao buscar altitudes: ' + ((e as Error).message || 'serviço indisponível'));
+    } finally {
+      setProcessando(false);
+    }
   }
 
   const temCurvas = objetos.some((o) => o.curvaNivel != null);
@@ -3629,7 +3706,7 @@ export default function EditorPage() {
       }
       const p: Projeto = {
         id, nome: nomeProjeto || imovel.denominacao || 'Sem nome', criadoEm: Date.now(), atualizadoEm: Date.now(),
-        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, parcelasCert, verticesVizinho, verticesIgnorados,
+        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, parcelasCert, verticesVizinho, verticesIgnorados, gradeAltimetrica,
       };
       try {
         const destino = await salvarProjeto(p);
@@ -3705,7 +3782,7 @@ export default function EditorPage() {
     return vertices.length > 0 || glebas.some((g) => g.vertices.length > 0) || !!imovel.denominacao || !!imovel.proprietario || !!imovel.matricula;
   }
   function montarRascunho() {
-    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, glebaAtivaId, parcelasCert, verticesVizinho, verticesIgnorados };
+    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, glebaAtivaId, parcelasCert, verticesVizinho, verticesIgnorados, gradeAltimetrica };
   }
   // Recria as referências tracejadas (desenho) a partir das parcelas certificadas gravadas —
   // usado ao reabrir/restaurar um projeto, para não precisar buscar de novo no INCRA.
@@ -3738,6 +3815,7 @@ export default function EditorPage() {
     setReferencias(referenciasDeParcelasCert(pc, d.zona, d.hemisferio));
     setVerticesVizinho(d.verticesVizinho ?? []);
     setVerticesIgnorados(d.verticesIgnorados ?? []);
+    setGradeAltimetrica((d as any).gradeAltimetrica ?? (d as any).ga ?? []);
     return true;
   }
 
@@ -3887,6 +3965,7 @@ export default function EditorPage() {
     setReferencias(referenciasDeParcelasCert(pc, p.zonaUtm, p.hemisferio));
     setVerticesVizinho(p.verticesVizinho ?? []);
     setVerticesIgnorados(p.verticesIgnorados ?? []);
+    setGradeAltimetrica(p.gradeAltimetrica ?? (p as any).ga ?? []);
     acabouDeSalvar.current = true; setSalvarLaranja(false); setSalvoOk(true); // recém-carregado = "salvo"
     aviso(`Projeto carregado (${p.glebas.length} gleba(s)).`);
   }
@@ -3957,6 +4036,7 @@ export default function EditorPage() {
         setParcelasCert(pc);
         setReferencias(referenciasDeParcelasCert(pc, proj.zonaUtm, proj.hemisferio));
         setVerticesVizinho(proj.verticesVizinho ?? []);
+        setGradeAltimetrica(proj.gradeAltimetrica ?? (proj as any).ga ?? []);
         acabouDeSalvar.current = true;
         setSalvarLaranja(false);
         setSalvoOk(true);
@@ -4875,6 +4955,12 @@ export default function EditorPage() {
                                 </Button>
                               </div>
 
+                              <Button type="button" onClick={buscarGradeAltitudesOnline} disabled={vertices.length < 3 || processando}
+                                className="mt-1.5 w-full h-7 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-600/40 text-white font-bold border-0 shadow-sm rounded-md flex items-center justify-center gap-1 text-[10px]"
+                                title="Gera uma grade digital dentro do imóvel e busca altitudes oficiais do Copernicus DEM (via Open-Meteo) para traçar curvas de nível realistas">
+                                <Database className="size-3.5" /> Adensar Relevo (Altitudes Online)
+                              </Button>
+
                             </div>
                           )}
                         </div>
@@ -5458,7 +5544,7 @@ export default function EditorPage() {
                       glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
                       requerente={requerente} transmitente={transmitente}
                       outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))}
-                      resumoGlebas={resumoGlebas} verticesVizinho={verticesVizinho}
+                      resumoGlebas={resumoGlebas} verticesVizinho={verticesVizinho} parcelasCert={parcelasCert}
                       editavel={editarPlanta} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onAntesEditar={snap}

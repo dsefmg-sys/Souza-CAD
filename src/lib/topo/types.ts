@@ -495,6 +495,7 @@ export interface Projeto {
   // Vértices IGNORADOS (pontos soltos fora do anel, ferramenta ignorar/considerar). São do
   // PROJETO, não de uma gleba — sem este campo eles sumiam ao salvar/recarregar (bug 05/07/2026).
   verticesIgnorados?: Vertex[];
+  gradeAltimetrica?: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[];
   correcoes?: CorrecaoErrata[];
   // Campos legados (projetos salvos antes do multi-gleba) — migrados ao abrir.
   vertices?: Vertex[];
