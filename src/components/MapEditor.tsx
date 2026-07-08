@@ -1396,35 +1396,48 @@ export default function MapEditor(props: Props) {
       })()}
 
       {/* Roteamento visual de confrontantes aplicados sobre os segmentos */}
-      {camadasVisiveis.divisas !== false && confrontantePorLado && confrontantes && validos.map((v, i) => {
-        if (validos.length < 2) return null;
-        const prox = validos[(i + 1) % validos.length];
-        if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
-        
-        const idxOriginal = vertices.findIndex((x) => x.id === v.id);
-        if (idxOriginal === -1) return null;
-        
-        const confId = confrontantePorLado[idxOriginal];
-        if (!confId) return null;
-        const conf = confrontantes.find((c) => c.id === confId);
-        if (!conf) return null;
+      {camadasVisiveis.divisas !== false && confrontantePorLado && confrontantes && validos.length >= 2 && (() => {
+        const cLat = validos.reduce((s, p) => s + p.lat, 0) / validos.length;
+        const cLon = validos.reduce((s, p) => s + p.lon, 0) / validos.length;
+        const lats = validos.map((p) => p.lat), lons = validos.map((p) => p.lon);
+        const maxDim = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons)) || 0.0005;
+        const off = maxDim * 0.012;
 
-        const a: [number, number] = [v.lat, v.lon];
-        const b: [number, number] = [prox.lat, prox.lon];
-        const corConf = corPorConfrontante(conf.id);
+        return validos.map((v, i) => {
+          const prox = validos[(i + 1) % validos.length];
+          if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
+          
+          const idxOriginal = vertices.findIndex((x) => x.id === v.id);
+          if (idxOriginal === -1) return null;
+          
+          const confId = confrontantePorLado[idxOriginal];
+          if (!confId) return null;
+          const conf = confrontantes.find((c) => c.id === confId);
+          if (!conf) return null;
 
-        return (
-          <Polyline
-            key={`conf-seg-${v.id}`}
-            positions={[a, b]}
-            pathOptions={{ color: corConf, weight: estilosCamadas.divisas?.espessura ?? 4, opacity: 0.85, dashArray: '4 8' }}
-          >
-            <Tooltip sticky direction="top" opacity={0.9}>
-              <span className="font-bold" style={{ color: corConf }}>Confrontante: {conf.nome || '(sem nome)'}</span>
-            </Tooltip>
-          </Polyline>
-        );
-      })}
+          let nx = -(prox.lat - v.lat), ny = prox.lon - v.lon;
+          const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
+          const mLat = (v.lat + prox.lat) / 2, mLon = (v.lon + prox.lon) / 2;
+          if ((mLon - cLon) * nx + (mLat - cLat) * ny < 0) { nx = -nx; ny = -ny; }
+
+          // Desloca para DENTRO do polígono (sinal negativo)
+          const a: [number, number] = [v.lat - ny * off, v.lon - nx * off];
+          const b: [number, number] = [prox.lat - ny * off, prox.lon - nx * off];
+          const corConf = corPorConfrontante(conf.id);
+
+          return (
+            <Polyline
+              key={`conf-seg-${v.id}`}
+              positions={[a, b]}
+              pathOptions={{ color: corConf, weight: estilosCamadas.divisas?.espessura ?? 4, opacity: 0.85, dashArray: '4 8' }}
+            >
+              <Tooltip sticky direction="top" opacity={0.9}>
+                <span className="font-bold" style={{ color: corConf }}>Confrontante: {conf.nome || '(sem nome)'}</span>
+              </Tooltip>
+            </Polyline>
+          );
+        });
+      })()}
 
       {/* Realce de conflitos (sobreposição/vãos) */}
       {conflitos.map((conf) => {

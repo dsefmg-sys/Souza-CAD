@@ -5368,6 +5368,21 @@ export default function EditorPage() {
                   : <div className="text-muted-foreground">Sem metadados extras (o serviço público do INCRA não trouxe).</div>}
                 <div className="pt-1 text-[10px] text-muted-foreground">{parcelasCert[parcelaSel].anel.length} vértices. Clique num ponto da divisa para adotá-lo no seu projeto.</div>
                 
+                
+                <div className="my-2.5 rounded border border-cyan-500/20 bg-cyan-500/5 p-2.5 text-[10px] text-muted-foreground leading-relaxed">
+                  <div className="font-semibold text-cyan-800 dark:text-cyan-400 mb-1.5 flex items-center gap-1">
+                    <Info className="size-3.5 text-cyan-600" /> Como baixar o GML no SIGEF:
+                  </div>
+                  <ol className="list-decimal pl-3 space-y-1">
+                    <li>Clique em <strong>Copiar Código</strong> abaixo;</li>
+                    <li>Clique em <strong>SIGEF 🔗</strong> para abrir a pesquisa;</li>
+                    <li>No site do SIGEF, cole no campo <strong>Código do Imóvel</strong> e clique em Pesquisar;</li>
+                    <li><span className="text-amber-600 dark:text-amber-400 font-semibold">Importante:</span> Não clique no botão de nuvenzinha! Clique no <strong>nome azul do imóvel</strong> (ex: <em>Fazenda Ventania...</em>) nos resultados para abrir a página de detalhes;</li>
+                    <li>Na página de detalhes que se abre, clique no botão <strong>Exportar GML</strong> no topo;</li>
+                    <li>Volte ao app e clique no botão violeta abaixo para importar o arquivo baixado.</li>
+                  </ol>
+                </div>
+
                 <div className="mt-2.5 flex flex-col gap-1.5">
                   {parcelasCert[parcelaSel].codigoImovel && (
                     <div className="flex gap-1.5">
