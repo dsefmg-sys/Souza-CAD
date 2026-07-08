@@ -4164,6 +4164,9 @@ export default function EditorPage() {
                         <Button size="sm" variant="outline" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
                           <Plus className="text-amber-500" /> <span>Novo</span>
                         </Button>
+                        <Button size="sm" variant={salvarLaranja ? 'default' : 'outline'} className={salvarLaranja ? 'bg-amber-500 hover:bg-amber-600 text-white font-bold' : ''} onClick={salvar} disabled={processando} title="Salvar projeto atual (Ctrl+S)">
+                          <Save className={salvarLaranja ? 'text-white' : 'text-emerald-500'} /> <span>SALVAR</span>
+                        </Button>
                         <Button size="sm" variant={painelAberto ? 'default' : 'outline'} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
                           <Settings className="text-indigo-500" /> <span>Dados</span>
                         </Button>
@@ -5474,8 +5477,8 @@ export default function EditorPage() {
             {aba === 'projetos' && (
               <div className="space-y-2">
                 <SecaoTitulo>Projeto atual</SecaoTitulo>
-                <Button size="sm" className="w-full" disabled={processando} onClick={salvar}><Save /> Salvar projeto atual</Button>
                 
+
                 {/* Botões de backup local JSON */}
                 <div className="grid grid-cols-2 gap-1 bg-muted/20 p-1 rounded-sm border">
                   <Button size="sm" variant="outline" className="h-8 text-[11px] gap-1 px-1" disabled={processando} onClick={exportarProjetoAtualJson} title="Exportar o projeto aberto em um arquivo JSON local para backup">
