@@ -164,6 +164,32 @@ export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onE
                 <li>• Lago rural até 20 ha: <strong className="text-foreground">{appLago(10)} m</strong> · acima de 20 ha: <strong className="text-foreground">{appLago(30)} m</strong></li>
               </ul>
             </div>
+
+            <div className="rounded-xl border border-amber-500/20 p-4 bg-amber-500/5 text-left text-xs leading-relaxed space-y-2">
+              <div className="font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                ⚠️ Diretrizes Técnicas, Legais e Responsabilidade no CAR
+              </div>
+              <p className="text-muted-foreground">
+                O <strong>Cadastro Ambiental Rural (CAR)</strong> é um registro público eletrônico obrigatório para todos os imóveis rurais. Como agrimensor, atente-se às bases leis (Lei Federal 12.651/2012):
+              </p>
+              <ul className="space-y-1.5 list-disc pl-4 text-muted-foreground">
+                <li>
+                  <strong>Módulos Fiscais e Benefícios:</strong> Imóveis com área total inferior a 4 módulos fiscais são classificados como pequenas propriedades ou posse rural familiar, contando com regras mais brandas para reserva legal (recomposição simplificada ou dispensa em áreas consolidadas antes de 22/07/2008).
+                </li>
+                <li>
+                  <strong>Reserva Legal (RL):</strong> Deve ser mantida em 20% da área do imóvel na maior parte do país. Na Amazônia Legal, esse percentual sobe para 35% em áreas de cerrado e 80% em áreas de floresta.
+                </li>
+                <li>
+                  <strong>Uso Consolidado vs. Vegetação Nativa:</strong> Áreas consolidadas (desmatadas e sob uso antrópico antes de 22/07/2008) devem ser demarcadas para que o proprietário não seja multado e tenha direito à regularização de passivos ambientais.
+                </li>
+                <li>
+                  <strong>Pronto para o SICAR (Shapefiles compactados):</strong> É <strong>100% normal e esperado</strong> que os arquivos gerados tenham tamanho reduzido (cerca de 1KB a 2KB). Como representam apenas o perímetro das geometrias (um único polígono por arquivo), o formato vetorial compactado no ZIP é extremamente leve. Cada tema (imóvel, APP, RL) é exportado com todos os seus 5 arquivos obrigatórios (<code>.shp</code>, <code>.shx</code>, <code>.dbf</code>, <code>.prj</code>, <code>.cpg</code>) codificados em UTF-8 e prontos para o importador do SICAR.
+                </li>
+              </ul>
+              <div className="border-t border-amber-500/10 pt-2 font-bold text-foreground">
+                Isenção de Responsabilidade: Os cálculos e shapefiles gerados pelo sistema servem como base técnica de apoio geométrico. A validação das feições em campo, o enquadramento nas normas estaduais específicas e a veracidade das informações declaradas no SICAR são de exclusiva responsabilidade técnica e legal do agrimensor.
+              </div>
+            </div>
           </div>
         </div>
 
