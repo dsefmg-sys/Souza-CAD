@@ -3234,7 +3234,10 @@ export default function EditorPage() {
           elevacao: melhor.elevacao ?? v.elevacao,
           sigmaX: melhor.sigmaX ?? v.sigmaX,
           sigmaY: melhor.sigmaY ?? v.sigmaY,
+          sigmaZ: melhor.sigmaZ ?? v.sigmaZ,
           metodo: melhor.metodo || v.metodo,
+          tipo: (melhor.nome.split(/[-_]/).includes('M') ? 'M' : (melhor.nome.split(/[-_]/).includes('V') ? 'V' : 'P')) as TipoVertice,
+          isDivisa: melhor.nome.split(/[-_]/).includes('M'),
           registrado: true
         };
       });
