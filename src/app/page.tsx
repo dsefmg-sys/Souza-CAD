@@ -4893,7 +4893,7 @@ export default function EditorPage() {
           {(vista === 'mapa' || vista === 'planta') && (
             <div
               style={{ left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)' }}
-              className="no-print pointer-events-auto absolute z-[1160] flex flex-wrap items-center gap-y-1 gap-x-1.5 rounded-2xl border border-border/80 bg-background/90 backdrop-blur-sm p-1.5 shadow-xl select-none"
+              className="no-print pointer-events-auto absolute z-[1160] flex items-center gap-x-1.5 overflow-x-auto rounded-2xl border border-border/80 bg-background/90 backdrop-blur-sm p-1.5 shadow-xl select-none"
             >
               {/* Alça de arrasto */}
               <div
