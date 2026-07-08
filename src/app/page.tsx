@@ -4371,47 +4371,124 @@ export default function EditorPage() {
 
       <div className="relative flex min-h-0 flex-1">
         {/* Faixa de status/controles — sobreposta (não empurra o mapa/planta); some sozinha */}
-        {(!!msg || (vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante'))) && (
-          <div className="no-print pointer-events-none absolute left-1/2 top-2 z-[1200] flex max-w-[90%] -translate-x-1/2 justify-center">
-            <div className="pointer-events-auto flex items-center gap-2 rounded-full border bg-background/95 px-3 py-1 text-xs shadow-lg backdrop-blur">
-              {vista === 'mapa' && modo === 'divisa' && (
+        {vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante') && (
+          <div className="no-print pointer-events-none absolute left-1/2 top-4 z-[1200] flex max-w-[90%] -translate-x-1/2 justify-center animate-in slide-in-from-top duration-200">
+            <div className="pointer-events-auto flex items-center gap-3.5 rounded-full border border-amber-500/40 bg-zinc-950/95 px-4 py-2 text-xs shadow-2xl backdrop-blur-md text-white">
+              
+              {/* Badge Indicador de Modo */}
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                modo === 'divisa' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              }`}>
+                {modo === 'divisa' ? 'Pintar Divisas' : 'Pintar Confro.'}
+              </span>
+
+              {modo === 'divisa' && (
                 <>
-                  <span className="text-muted-foreground">Pintando divisa:</span>
-                  <span className="relative inline-flex">
-                    <button type="button" className="flex h-7 items-center gap-1 rounded-sm border border-input bg-background px-1.5 hover:bg-muted" title="Ajustar as cores das divisas (fica salvo pra suas plantas)" onClick={() => setCorPickerAberto((v) => !v)}>
-                      <span className="inline-block h-0 w-5 border-t-[3px]" style={{ borderColor: corDivisa(tipoDivisaPincel) || '#0f172a' }} />
-                      <Palette className="size-3.5 text-muted-foreground" />
-                    </button>
-                    {corPickerAberto && (
-                      <div className="absolute left-0 top-8 z-[1300] w-52 rounded-lg border bg-background p-2 shadow-xl" data-cor-bump={corBump}>
-                        <div className="mb-1 text-[10px] font-semibold uppercase text-muted-foreground">Cores das divisas</div>
-                        {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
-                          <label key={tipo} className="flex items-center justify-between gap-2 py-0.5 text-xs">
-                            <span>{REPRES_LABEL[tipo] || tipo}</span>
-                            <input type="color" value={cor || '#9ca3af'} className="h-6 w-8 cursor-pointer rounded-sm border-0 bg-transparent p-0"
-                              onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }} />
-                          </label>
-                        ))}
-                        <button type="button" className="mt-1 w-full rounded-sm border px-2 py-1 text-[11px] hover:bg-muted" onClick={() => setCorPickerAberto(false)}>Fechar</button>
-                      </div>
+                  <div className="flex items-center gap-2">
+                    <span className="relative inline-flex">
+                      <button 
+                        type="button" 
+                        className="flex h-8 items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 hover:bg-zinc-800 hover:border-zinc-700 transition-colors" 
+                        title="Ajustar as cores das divisas (salvo nas plantas)" 
+                        onClick={() => setCorPickerAberto((v) => !v)}
+                      >
+                        <span className="inline-block h-1 w-5 rounded-full" style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }} />
+                        <Palette className="size-3.5 text-zinc-400" />
+                      </button>
+                      
+                      {corPickerAberto && (
+                        <div className="absolute left-0 top-10 z-[1300] w-56 rounded-xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl text-left" data-cor-bump={corBump}>
+                          <div className="mb-2 text-[9px] font-black uppercase text-zinc-500 tracking-wider">Cores das Divisas</div>
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scroll-fino">
+                            {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
+                              <label key={tipo} className="flex items-center justify-between gap-3 text-[11px] text-zinc-300">
+                                <span>{REPRES_LABEL[tipo] || tipo}</span>
+                                <input 
+                                  type="color" 
+                                  value={cor || '#9ca3af'} 
+                                  className="h-6 w-8 cursor-pointer rounded border border-zinc-800 bg-transparent p-0"
+                                  onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }} 
+                                />
+                              </label>
+                            ))}
+                          </div>
+                          <Button 
+                            type="button" 
+                            size="sm"
+                            className="mt-3 w-full h-8 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold border border-zinc-800 text-[10px] rounded-lg" 
+                            onClick={() => setCorPickerAberto(false)}
+                          >
+                            Fechar
+                          </Button>
+                        </div>
+                      )}
+                    </span>
+
+                    <select 
+                      className="h-8 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-100 px-2.5 text-xs font-semibold outline-none focus:border-amber-500/50" 
+                      value={tipoDivisaPincel} 
+                      onChange={(e) => setTipoDivisaPincel(e.target.value)} 
+                      title="Tipo de divisa a pintar"
+                    >
+                      {REPRESENTACOES.map((r) => (
+                        <option key={r} value={r} className="bg-zinc-950 text-zinc-100">
+                          {REPRES_LABEL[r] || r}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {modo === 'confrontante' && (
+                <>
+                  <div className="flex items-center gap-2">
+                    {confrontantePincelId && (
+                      <span 
+                        className="inline-block h-3 w-3 rounded-full shrink-0 border border-white/20" 
+                        style={{ backgroundColor: corPorConfrontante(confrontantePincelId) }} 
+                        title="Cor deste confrontante no mapa" 
+                      />
                     )}
-                  </span>
-                  <select className="h-7 rounded-sm border border-input bg-background px-1 text-xs" value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
-                    {REPRESENTACOES.map((r) => <option key={r} value={r} style={{ color: corDivisa(r) || undefined }}>{'━ '}{REPRES_LABEL[r] || r}</option>)}
-                  </select>
+                    
+                    <select 
+                      className="h-8 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-100 px-2.5 text-xs font-semibold outline-none focus:border-emerald-500/50 max-w-44" 
+                      value={confrontantePincelId} 
+                      onChange={(e) => setConfrontantePincelId(e.target.value)} 
+                      title="Confrontante a pintar"
+                    >
+                      <option value="" className="bg-zinc-950 text-zinc-400">— Escolher confrontante —</option>
+                      {confrontantes.map((c) => (
+                        <option key={c.id} value={c.id} className="bg-zinc-950 text-zinc-100">
+                          {c.nome || '(sem nome)'}
+                        </option>
+                      ))}
+                    </select>
+
+                    <Button 
+                      size="sm" 
+                      className="h-8 px-2.5 text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white gap-1 rounded-lg border-none" 
+                      onClick={novoConfrontantePincel} 
+                      title="Novo confrontante"
+                    >
+                      <Plus className="size-3.5" /> Novo
+                    </Button>
+                  </div>
                 </>
               )}
-              {vista === 'mapa' && modo === 'confrontante' && (
-                <>
-                  <span className="text-muted-foreground">Pintando confrontante:</span>
-                  {confrontantePincelId && <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(confrontantePincelId) }} title="Cor deste confrontante no mapa" />}
-                  <select className="h-7 rounded-sm border border-input bg-background px-1 text-xs" value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
-                    <option value="">— escolher —</option>
-                    {confrontantes.map((c) => <option key={c.id} value={c.id} style={{ color: corPorConfrontante(c.id) }}>{'━ '}{c.nome || '(sem nome)'}</option>)}
-                  </select>
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus className="size-3" /> Novo confront.</Button>
-                </>
-              )}
+
+              <div className="w-px h-4 bg-zinc-800" />
+
+              {/* Botão de Fechar / Sair do Modo */}
+              <button 
+                type="button" 
+                className="text-zinc-400 hover:text-white rounded-lg p-1 hover:bg-white/10 transition-colors" 
+                onClick={() => setModo('navegar')} 
+                title="Sair do modo de pintura"
+              >
+                <X className="size-4" />
+              </button>
+
             </div>
           </div>
         )}
