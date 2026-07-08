@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { listarPerfisUso, atualizarPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
-import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey } from '@/lib/store/suporte';
+import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl } from '@/lib/store/suporte';
 
 function dataBR(ms?: number): string {
   if (!ms) return '—';
@@ -29,6 +29,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [cfg, setCfg] = useState<ConfigAssinatura>(CONFIG_ASSINATURA_PADRAO);
   const [zap, setZap] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
+  const [appUrl, setAppUrl] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [msg, setMsg] = useState('');
   const [busca, setBusca] = useState('');
@@ -41,6 +42,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       setCfg(await carregarConfigAssinatura());
       setZap(await carregarWhatsappSuporte());
       setGeminiKey(await carregarGeminiApiKey());
+      setAppUrl(await carregarAppUrl());
     } catch (e) {
       console.error(e);
     } finally {
@@ -83,6 +85,15 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       flash('Chave Gemini salva!');
     } catch {
       flash('Erro ao salvar chave.');
+    }
+  }
+
+  async function salvarAppUrlConfig() {
+    try {
+      await salvarAppUrl(appUrl);
+      flash('Link do App salvo!');
+    } catch {
+      flash('Erro ao salvar Link do App.');
     }
   }
 
@@ -210,7 +221,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
 
           {configExpandido && (
             <div className="px-5 pb-5 pt-2 border-t border-[#12361d]/40">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                 {/* WhatsApp */}
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-[#87a992]">WhatsApp de Suporte Técnico</Label>
@@ -229,6 +240,16 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     <Button size="sm" onClick={salvarGemini} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-10 px-4">Salvar</Button>
                   </div>
                   <p className="text-[10px] text-[#6b937a]">Usada no servidor para extrair dados de matrículas.</p>
+                </div>
+
+                {/* Link do App */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-[#87a992]">Link Oficial do App (Souza CAD)</Label>
+                  <div className="flex gap-2">
+                    <Input placeholder="https://..." value={appUrl} onChange={(e) => setAppUrl(e.target.value)} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
+                    <Button size="sm" onClick={salvarAppUrlConfig} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-10 px-4">Salvar</Button>
+                  </div>
+                  <p className="text-[10px] text-[#6b937a]">Link base usado nas peças e compartilhamento.</p>
                 </div>
 
                 {/* Ocultar cobrança */}

@@ -63,3 +63,28 @@ export async function salvarGeminiApiKey(key: string): Promise<void> {
     await setDoc(doc(fdb()!, 'config', 'app'), { geminiApiKey: cleanKey }, { merge: true });
   }
 }
+
+const CACHE_APP_URL = 'metrica.appUrl';
+const DEFAULT_APP_URL = 'https://souzacad--souza-cad.us-east4.hosted.app/';
+
+export async function carregarAppUrl(): Promise<string> {
+  if (firebaseConfigurado) {
+    try {
+      const s = await getDoc(doc(fdb()!, 'config', 'app'));
+      const url = (s.exists() ? String(s.data()?.appUrl ?? '') : '');
+      if (url) {
+        try { localStorage.setItem(CACHE_APP_URL, url); } catch { /* ignore */ }
+        return url;
+      }
+    } catch { /* fallback to cache */ }
+  }
+  try { return localStorage.getItem(CACHE_APP_URL) ?? DEFAULT_APP_URL; } catch { return DEFAULT_APP_URL; }
+}
+
+export async function salvarAppUrl(url: string): Promise<void> {
+  const cleanUrl = url.trim();
+  try { localStorage.setItem(CACHE_APP_URL, cleanUrl); } catch { /* ignore */ }
+  if (firebaseConfigurado) {
+    await setDoc(doc(fdb()!, 'config', 'app'), { appUrl: cleanUrl }, { merge: true });
+  }
+}

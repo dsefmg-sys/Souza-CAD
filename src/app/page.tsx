@@ -5983,10 +5983,10 @@ export default function EditorPage() {
                   </Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  Importa arquivo de vértices (TXT/CSV/GML) do confrontante para servir como referência e alvo de encaixe no desenho, prevenindo vãos ou sobreposições.
+                  Importa arquivo de coordenadas (CSV ou GML) do confrontante para servir como referência e alvo de encaixe no desenho, prevenindo vãos ou sobreposições.
                 </p>
                 <div className="rounded-lg bg-indigo-500/5 border border-indigo-500/10 p-2 text-[10px] text-muted-foreground space-y-1 mt-1">
-                  <span className="font-extrabold uppercase text-[9px] tracking-wider text-indigo-600 dark:text-indigo-400 block">💡 Como obter este arquivo no SIGEF:</span>
+                  <span className="font-extrabold uppercase text-[9px] tracking-wider text-indigo-600 dark:text-indigo-400 block">Como obter este arquivo no SIGEF:</span>
                   <ol className="list-decimal pl-4 space-y-0.5">
                     <li>Acesse a <strong>Consulta Pública de Certificações</strong> do SIGEF/INCRA.</li>
                     <li>Busque pela parcela do vizinho usando o código do vértice/imóvel, CPF/CNPJ ou nome do proprietário.</li>
