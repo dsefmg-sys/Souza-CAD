@@ -5233,17 +5233,17 @@ export default function EditorPage() {
           </div>
         )}
 
-        {/* Painel suspenso de dados do projeto — ocupa 50% de altura centralizado verticalmente */}
+        {/* Painel suspenso de dados do projeto — ocupa toda a altura disponível do fim da página ao cabeçalho */}
         <div ref={painelWrap}
-          className={`no-print absolute right-0 top-1/2 z-[2000] flex w-[460px] h-[50%] flex-col border border-r-0 rounded-l-2xl bg-background shadow-2xl transition-all duration-300 ${
+          className={`no-print absolute right-0 top-0 bottom-0 z-[2000] flex w-[460px] h-full flex-col border-l bg-background shadow-2xl transition-all duration-300 ${
             painelAberto
-              ? 'translate-x-0 -translate-y-1/2 opacity-100 visible'
-              : 'translate-x-full -translate-y-1/2 opacity-0 invisible pointer-events-none'
+              ? 'translate-x-0 opacity-100 visible'
+              : 'translate-x-full opacity-0 invisible pointer-events-none'
           }`}
           onMouseEnter={() => { painelMouseDentro.current = true; }}
           onMouseLeave={() => { painelMouseDentro.current = false; if (!asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
           onBlurCapture={() => { setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 50); }}>
-          <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background rounded-l-2xl">
+          <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background">
             {/* (sem barra de fechar: o painel some sozinho quando o mouse sai dele) */}
             {/* glebas */}
             <div className="flex flex-wrap items-center gap-1.5 border-b p-1.5 bg-muted/20">
