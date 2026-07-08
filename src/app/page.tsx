@@ -234,6 +234,13 @@ export interface EstiloCamada {
   espessura: number;
 }
 
+function montarSnapshotDesenho(glebasArr: { vertices: Vertex[]; objetos?: ObjetoDesenho[] }[]) {
+  return JSON.stringify({
+    glebas: glebasArr.map((g) => g.vertices.map((v) => ({ leste: v.leste, norte: v.norte }))),
+    objetos: glebasArr.flatMap((g) => (g.objetos || []).filter((o) => o.tipo === 'polilinha' && o.preenchido).map((o) => o.pontos.map((p) => ({ leste: p.leste, norte: p.norte })))),
+  });
+}
+
 export default function EditorPage() {
   const { user, carregando: authCarregando, disponivel: nuvemDisponivel } = useAuth();
   const modoEntrada = useModoEntrada();
@@ -662,6 +669,9 @@ export default function EditorPage() {
   const [pontosAberto, setPontosAberto] = useState(false);
   const [previewData, setPreviewData] = useState<any | null>(null);
   const [situacaoVersSnapshot, setSituacaoVersSnapshot] = useState<string>('');
+  const snapshotDesenho = useMemo(() => {
+    return montarSnapshotDesenho(sincronizarGlebas());
+  }, [glebas, glebaAtivaId, vertices, objetos]);
   const rascunhoRestaurado = useRef(false); // garante restaurar o rascunho só uma vez
   const [requerente, setRequerente] = useState<PessoaQualificada | undefined>(undefined);
   const [transmitente, setTransmitente] = useState<PessoaQualificada | undefined>(undefined);
@@ -997,8 +1007,20 @@ export default function EditorPage() {
     if (vertices.length < 3) return;
     situacaoAutoRef.current = true;
     gerarSituacaoPlanta();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vista, situacaoUrl, vertices.length]);
+
+  // Atualiza automaticamente a situação na Planta se estiver desatualizada e em navegação
+  useEffect(() => {
+    if (vista !== 'planta' || modo !== 'navegar' || !situacaoUrl || processando) return;
+    const stale = situacaoVersSnapshot !== snapshotDesenho;
+    if (!stale) return;
+
+    // Debounce de 1.5s para não disparar chamadas repetidas
+    const timer = setTimeout(() => {
+      gerarSituacaoPlanta();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [vista, modo, situacaoUrl, situacaoVersSnapshot, snapshotDesenho, processando]);
 
   // Atualiza automaticamente o nome do projeto se não foi modificado manualmente
   useEffect(() => {
@@ -3232,7 +3254,7 @@ export default function EditorPage() {
     const url = await gerarSituacao(aneis);
     if (url) {
       setSituacaoUrl(url);
-      setSituacaoVersSnapshot(JSON.stringify(vertices));
+      setSituacaoVersSnapshot(snapshotDesenho);
       // guarda no projeto pra não precisar recapturar ao reabrir (limite: cabe no doc da nuvem)
       setPlantaConfig((c) => ({ ...c, situacaoDataUrl: url.length < 700_000 ? url : undefined }));
       aviso('Planta de situação atualizada.');
@@ -3509,8 +3531,7 @@ export default function EditorPage() {
     carregarGleba(d.glebas.find((g) => g.id === d.glebaAtivaId) ?? d.glebas[0]);
     setSituacaoUrl(d.plantaConfig?.situacaoDataUrl);
     if (d.plantaConfig?.situacaoDataUrl) {
-      const gAtiva = d.glebas.find((g) => g.id === d.glebaAtivaId) ?? d.glebas[0];
-      setSituacaoVersSnapshot(JSON.stringify(gAtiva.vertices));
+      setSituacaoVersSnapshot(montarSnapshotDesenho(d.glebas));
     }
     const pc = d.parcelasCert ?? [];
     setParcelasCert(pc);
@@ -3660,7 +3681,7 @@ export default function EditorPage() {
     carregarGleba(p.glebas[0]);
     // restaura a planta de situação salva (não precisa recapturar o satélite)
     setSituacaoUrl(p.plantaConfig?.situacaoDataUrl);
-    if (p.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(JSON.stringify(p.glebas[0].vertices));
+    if (p.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(montarSnapshotDesenho(p.glebas));
     const pc = p.parcelasCert ?? [];
     setParcelasCert(pc);
     setReferencias(referenciasDeParcelasCert(pc, p.zonaUtm, p.hemisferio));
@@ -3731,7 +3752,7 @@ export default function EditorPage() {
         setGlebas(proj.glebas);
         carregarGleba(proj.glebas[0]);
         setSituacaoUrl(proj.plantaConfig?.situacaoDataUrl);
-        if (proj.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(JSON.stringify(proj.glebas[0].vertices));
+        if (proj.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(montarSnapshotDesenho(proj.glebas));
         const pc = proj.parcelasCert ?? [];
         setParcelasCert(pc);
         setReferencias(referenciasDeParcelasCert(pc, proj.zonaUtm, proj.hemisferio));
@@ -5208,7 +5229,7 @@ export default function EditorPage() {
                       onExcluirObjeto={excluirObjetoPorId}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
                       onRemoverSituacao={() => { setSituacaoUrl(undefined); setPlantaConfig((c) => ({ ...c, situacaoDataUrl: undefined })); }}
-                      situacaoStale={!!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices)}
+                      situacaoStale={!!situacaoUrl && situacaoVersSnapshot !== snapshotDesenho}
                       onAtualizarSituacao={gerarSituacaoPlanta}
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
