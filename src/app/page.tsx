@@ -161,10 +161,10 @@ const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-M
 // Coerência de cor: as ETAPAS de processo (importar, SIGEF, dados, marcar) ficam em tom suave,
 // distintas pela cor mas calmas; só as PEÇAS de saída usam o verde forte da marca — a cor de ação
 // principal, porque baixar as peças é o objetivo do trabalho. Assim o olho é guiado, não gritado.
-const COR_IMPORT = 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/40';       // entrada de dados
-const COR_VIZINHO = 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 border-teal-500/40'; // vizinho certificado (SIGEF/INCRA)
-const COR_DADOS = 'bg-violet-500/10 hover:bg-violet-500/20 text-violet-700 dark:text-violet-300 border-violet-500/40'; // cadastro e IA
-const COR_MARCAR = 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40';    // marcar no mapa
+const COR_IMPORT = 'bg-sky-100 dark:bg-sky-950 hover:bg-sky-200 dark:hover:bg-sky-900 text-sky-800 dark:text-sky-200 border-sky-200 dark:border-sky-800';       // entrada de dados
+const COR_VIZINHO = 'bg-teal-100 dark:bg-teal-950 hover:bg-teal-200 dark:hover:bg-teal-900 text-teal-800 dark:text-teal-200 border-teal-200 dark:border-teal-800'; // vizinho certificado (SIGEF/INCRA)
+const COR_DADOS = 'bg-violet-100 dark:bg-violet-950 hover:bg-violet-200 dark:hover:bg-violet-900 text-violet-800 dark:text-violet-200 border-violet-200 dark:border-violet-800'; // cadastro e IA
+const COR_MARCAR = 'bg-amber-100 dark:bg-amber-950 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800';    // marcar no mapa
 const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída — cor de ação principal (verde da marca)
 const PREM_BTN = 'shadow-xs hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 font-bold border rounded-lg';
 
@@ -1121,6 +1121,11 @@ export default function EditorPage() {
     [vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas, verticesVizinho, verticesIgnorados, nomeProjeto, requerente, transmitente, tipoAto, partesAdicionais],
   );
   useEffect(() => {
+    if (ultimoSalvoSig.current === '') {
+      ultimoSalvoSig.current = projSig;
+      setSalvarLaranja(false);
+      return;
+    }
     // o salvar muda os vértices (códigos); adota essa mudança imediata como "salva"
     if (acabouDeSalvar.current) { acabouDeSalvar.current = false; ultimoSalvoSig.current = projSig; setSalvarLaranja(false); return; }
     if (projSig === ultimoSalvoSig.current) { setSalvarLaranja(false); return; }
@@ -4056,7 +4061,7 @@ export default function EditorPage() {
           </a>
         )}
         {medioOuMais && (
-          <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-500/10 hover:bg-lime-500/20 text-lime-700 dark:text-lime-300 border-lime-500/40`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
+          <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-100 dark:bg-lime-950 hover:bg-lime-200 dark:hover:bg-lime-900 text-lime-800 dark:text-lime-200 border-lime-200 dark:border-lime-800`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
         )}
        </div>
 
@@ -4155,7 +4160,6 @@ export default function EditorPage() {
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={novoConfrontantePincel} title="Novo confrontante"><Plus className="size-3" /> Novo confront.</Button>
                 </>
               )}
-              {msg && <span className="text-primary">{msg}</span>}
             </div>
           </div>
         )}
@@ -5766,17 +5770,10 @@ export default function EditorPage() {
         onInserirImovel={inserirImovelConsulta} onInserirCartorio={inserirCartorioConsulta} />
 
       {/* menu de contexto multiuso (clique direito dependendo do elemento/situação) */}
-      {/* aviso de projeto de demonstração: verde-claro pulsante na base da tela (não vai no PDF) */}
-      {imovel.ficticio && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-2 z-[1500] flex justify-center">
-          <span className="animate-pulse rounded-full border border-green-400/40 bg-green-500/10 px-4 py-1 text-sm font-bold text-green-400 shadow-lg backdrop-blur">DADOS FICTÍCIOS — projeto de demonstração</span>
-        </div>
-      )}
-
       {/* Entrou sem login: aviso pra criar a conta e salvar configurações/projetos. Fica um pouco
           acima do banner de dados fictícios para não sobrepor. */}
       {nuvemDisponivel && !user && !avisoCriarContaFechado && (
-        <div className={`no-print fixed inset-x-0 z-[1500] flex justify-center ${imovel.ficticio ? 'bottom-11' : 'bottom-2'}`}>
+        <div className={`no-print fixed inset-x-0 z-[1500] flex justify-center ${(msg || imovel.ficticio) ? 'bottom-9' : 'bottom-2'}`}>
           <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-amber-400/40 bg-background/95 px-3 py-2 shadow-2xl backdrop-blur-md max-w-[95vw]">
             {/* Ícone */}
             <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-400/15">
@@ -6402,6 +6399,23 @@ export default function EditorPage() {
               Evite interrupções regularizando sua assinatura antes do prazo final.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Barra de Notificação/Alerta unificada na parte inferior */}
+      {(msg || imovel.ficticio) && (
+        <div className="no-print fixed bottom-0 left-0 right-0 z-[2000] flex h-7 items-center justify-center bg-slate-900 text-white text-[11px] font-semibold border-t border-slate-800 shadow-lg animate-in slide-in-from-bottom duration-200">
+          {msg ? (
+            <div className="flex items-center gap-1.5 text-amber-400">
+              <span className="inline-block size-2 rounded-full bg-amber-400 animate-pulse" />
+              <span>{msg}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-emerald-400">
+              <span className="inline-block size-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>DADOS FICTÍCIOS — projeto de demonstração (as peças geradas saem sem validade legal)</span>
+            </div>
+          )}
         </div>
       )}
 
