@@ -5012,22 +5012,18 @@ export default function EditorPage() {
               {vista === 'planta' && (
                 <>
                   <div className="h-4 w-px bg-border" />
-                  {/* Situação da Planta */}
-                  {(() => {
-                    const stale = !!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices);
-                    const pronto = !!situacaoUrl && !stale;
-                    const cor = pronto
-                      ? 'border-emerald-600/40 bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400'
-                      : 'border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400';
-                    return (
-                      <button type="button" onClick={gerarSituacaoPlanta}
-                        title={!situacaoUrl ? 'Capturar a planta de situação (satélite)' : stale ? 'A situação está desatualizada — clique para atualizar' : 'Situação pronta'}
-                        className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-[10px] font-bold transition-colors ${cor}`}>
-                        {pronto ? <Check className="size-3.5" /> : <Camera className="size-3.5" />}
-                        {!situacaoUrl ? 'Situação' : stale ? 'Atualizar Situação' : 'Situação Pronta'}
-                      </button>
-                    );
-                  })()}
+                  {/* Botão de captura da Situação: só aparece quando ainda não há imagem.
+                      Quando já existe e o desenho mudou, o overlay laranja na própria
+                      imagem (Planta.tsx) avisa e atualiza sem poluir a barra. */}
+                  {!situacaoUrl && (
+                    <button type="button" onClick={gerarSituacaoPlanta}
+                      title="Capturar a planta de situação (satélite)"
+                      className="flex h-7 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400 px-2.5 text-[10px] font-bold transition-colors">
+                      <Camera className="size-3.5" />
+                      Situação
+                    </button>
+                  )}
+
 
 
 
@@ -5178,6 +5174,8 @@ export default function EditorPage() {
                       onExcluirObjeto={(id) => { snap(); setObjetos((os) => os.filter((o) => o.id !== id)); }}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
                       onRemoverSituacao={() => { setSituacaoUrl(undefined); setPlantaConfig((c) => ({ ...c, situacaoDataUrl: undefined })); }}
+                      situacaoStale={!!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices)}
+                      onAtualizarSituacao={gerarSituacaoPlanta}
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}

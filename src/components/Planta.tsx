@@ -55,6 +55,8 @@ interface Props {
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
   onRemoverSituacao?: () => void;      // clicar na imagem da situação mostra um X; o X chama isto
+  situacaoStale?: boolean;             // desenho mudou desde a última captura do satélite
+  onAtualizarSituacao?: () => void;    // clicar no overlay laranja recaptura a situação
   onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
   onEditarConfrontante?: (id: string) => void;                     // duplo clique no rótulo: editar nome/matrícula
   onTamRotuloConf?: (id: string, delta: number) => void;           // ajusta o tamanho da fonte do rótulo
@@ -240,7 +242,7 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti,
-  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao,
+  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
@@ -1733,6 +1735,7 @@ export default function Planta({
         onCoordItemDown={(id, e) => { e.stopPropagation(); tedComum.onDragStart(id, e); }}
         situacaoSel={situacaoSel} onSituacaoClick={() => setSituacaoSel((s) => !s)}
         onRemoverSituacao={() => { setSituacaoSel(false); onRemoverSituacao?.(); }}
+        situacaoStale={situacaoStale} onAtualizarSituacao={onAtualizarSituacao}
       />
 
       {/* ---------- CARIMBO (coluna direita - reformulada) ---------- */}
@@ -1930,8 +1933,9 @@ function FaixaInferior(props: {
   estiloDiagrama?: number; onCiclarEstilo?: (campo: 'estiloRosa' | 'estiloEscala' | 'estiloDiagrama', total: number) => void;
   coordEditavel?: boolean; coordGetOv?: (id: string) => TextoOverride; onCoordItemDown?: (id: string, e: ReactPointerEvent) => void;
   situacaoSel?: boolean; onSituacaoClick?: () => void; onRemoverSituacao?: () => void;
+  situacaoStale?: boolean; onAtualizarSituacao?: () => void;
 }) {
-  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao } = props;
+  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -1962,7 +1966,18 @@ function FaixaInferior(props: {
             <image href={situacaoUrl} x={x1 + 6} y={y0 + 30} width={w1 - 12} height={hBox - 36} preserveAspectRatio="xMidYMid slice"
               style={coordEditavel ? { cursor: 'pointer' } : undefined}
               onClick={coordEditavel && onSituacaoClick ? (e) => { e.stopPropagation(); onSituacaoClick(); } : undefined} />
-            {coordEditavel && situacaoSel && (
+            {/* Overlay laranja "Atualizar" — aparece sobre a imagem quando o desenho mudou */}
+            {coordEditavel && situacaoStale && (
+              <g style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); onAtualizarSituacao?.(); }}
+                className="no-print">
+                {/* Fundo semi-transparente sobre toda a imagem */}
+                <rect x={x1 + 6} y={y0 + 30} width={w1 - 12} height={hBox - 36} fill="rgba(234,88,12,0.35)" rx={4} />
+                {/* Pill laranja centralizada */}
+                <rect x={x1 + w1 / 2 - 34} y={y0 + 30 + (hBox - 36) / 2 - 11} width={68} height={22} rx={11} fill="#ea580c" />
+                <text x={x1 + w1 / 2} y={y0 + 30 + (hBox - 36) / 2 + 4} fontSize={fs(8)} fontWeight="bold" fill="#fff" textAnchor="middle" style={{ userSelect: 'none' }}>ATUALIZAR</text>
+              </g>
+            )}
+            {coordEditavel && situacaoSel && !situacaoStale && (
               <g style={{ cursor: 'pointer' }} onClick={async (e) => { e.stopPropagation(); if (await confirmar({ titulo: 'Remover situação', mensagem: 'Remover a planta de situação?', okLabel: 'Remover', perigo: true })) onRemoverSituacao?.(); }}>
                 <circle cx={x1 + w1 - 14} cy={y0 + 38} r={8} fill="#fee2e2" stroke="#dc2626" strokeWidth={1} />
                 <text x={x1 + w1 - 14} y={y0 + 41.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#dc2626" style={{ userSelect: 'none' }}>×</text>
