@@ -965,9 +965,14 @@ export default function Planta({
       {/* ---------- VÉRTICES DE IMÓVEIS VIZINHOS JÁ CERTIFICADOS ---------- */}
       {/* pontos oficiais do vizinho, com o código dele: mostram que a divisa foi amarrada na
           coordenada certificada (sem vão nem sobreposição). Só desenha os que caem dentro da folha. */}
-      {verVizinhoVtx && verticesVizinho.map((p, i) => {
-        const x = sx(p.leste), y = sy(p.norte);
-        if (x < DRAW.x0 || x > DRAW.x1 || y < DRAW.y0 || y > DRAW.y1) return null;
+      {verVizinhoVtx && verticesVizinho
+        .filter((p) => {
+          const coincide = vertices.some((v) => Math.hypot(v.leste - p.leste, v.norte - p.norte) < 0.05);
+          return !coincide;
+        })
+        .map((p, i) => {
+          const x = sx(p.leste), y = sy(p.norte);
+          if (x < DRAW.x0 || x > DRAW.x1 || y < DRAW.y0 || y > DRAW.y1) return null;
         const r = 2.4 * escVert;
         return (
           <g key={`vv${i}`}>
