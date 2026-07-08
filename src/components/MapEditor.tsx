@@ -36,6 +36,7 @@ interface Props {
   selMulti?: Set<string>;
   objSelMulti?: Set<string>;
   onToggleMulti?: (id: string) => void;
+  onToggleMultiObj?: (id: string) => void;
   onBoxSelect?: (ids: string[]) => void;
   onBoxSelectObj?: (ids: string[]) => void;
   onAdotarVertice?: (lat: number, lon: number) => void;
@@ -989,7 +990,7 @@ function TrimExtendController({
 
 export default function MapEditor(props: Props) {
   const {
-    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [],
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [],
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
@@ -1408,11 +1409,11 @@ export default function MapEditor(props: Props) {
                 // Curva de nível: só DESENHO, não é editável (nada de selecionar/arrastar pontos).
                 ? <Polyline positions={pos} pathOptions={comum} interactive={false} />
                 : fechado
-                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor, fillOpacity }} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor, fillOpacity }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
                 : (
                   <>
-                    <Polyline positions={pos} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
-                    <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+                    <Polyline positions={pos} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+                    <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
                   </>
                 )}
               {sel && !bloqueada && pos.map((p, idx) => (
@@ -1452,10 +1453,10 @@ export default function MapEditor(props: Props) {
             <Fragment key={o.id}>
               <Polyline positions={[[p0.lat, p0.lon], [g0.lat, g0.lon]]} pathOptions={{ color: corCota, weight: 0.8, dashArray: '2 3' }} />
               <Polyline positions={[[p1.lat, p1.lon], [g1.lat, g1.lon]]} pathOptions={{ color: corCota, weight: 0.8, dashArray: '2 3' }} />
-              <Polyline positions={posOffset} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
-              <Polyline positions={posOffset} pathOptions={{ color: corCota, weight: espessuraCota + (sel ? 0.8 : 0) }} eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+              <Polyline positions={posOffset} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+              <Polyline positions={posOffset} pathOptions={{ color: corCota, weight: espessuraCota + (sel ? 0.8 : 0) }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
               <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:${corCota};background:#fff;padding:0 2px;border:1px solid ${corCota};border-radius:2px;width:max-content;display:inline-block">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })}
-                eventHandlers={{ click: () => { if (!bloqueada) onSelecObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+                eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
               {sel && !bloqueada && pos.map((p, idx) => (
                 <Marker key={`hc${idx}`} position={p} draggable opacity={0}
                   eventHandlers={{
@@ -1472,7 +1473,7 @@ export default function MapEditor(props: Props) {
             <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable={modo === 'navegar' && !bloqueada}
               icon={L.divIcon({ className: 'simbolo-obj', html, iconSize: [tam, tam], iconAnchor: [tam / 2, tam / 2] })}
               eventHandlers={{
-                click: () => { if (!bloqueada) onSelecObjeto?.(o.id); },
+                click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } },
                 contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); },
                 dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
               }} />
@@ -1482,7 +1483,7 @@ export default function MapEditor(props: Props) {
         return (
           <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable={modo === 'navegar' && !bloqueada} icon={iconeTexto(o, sel, estiloCamada?.cor)}
             eventHandlers={{
-              click: () => { if (!bloqueada) onSelecObjeto?.(o.id); },
+              click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } },
               contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); },
               dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
             }} />

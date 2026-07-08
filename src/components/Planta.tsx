@@ -46,6 +46,7 @@ interface Props {
   onBoxSelect?: (ids: string[]) => void;
   onBoxSelectObj?: (ids: string[]) => void;
   onToggleMulti?: (id: string) => void;
+  onToggleMultiObj?: (id: string) => void;
   onCliquePlanta?: (lat: number, lon: number) => void;
   onSelecObjeto?: (id: string | null) => void;
   onContextMenuObjeto?: (id: string, tipo: string, x: number, y: number) => void; // clique direito num objeto desenhado: abre o menu de edição
@@ -241,7 +242,7 @@ export default function Planta({
   zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], verticesVizinho = [], resumoGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
-  selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti,
+  selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
   onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
@@ -631,12 +632,22 @@ export default function Planta({
     }
   };
 
-  const tProps = (id: string) => ({
-    ...tedComum,
-    id,
-    ov: getOverride(id),
-    editando: editandoId === id,
-  });
+  const tProps = (id: string) => {
+    const isDrawingText = objetos.some((o) => o.id === id);
+    return {
+      ...tedComum,
+      id,
+      ov: getOverride(id),
+      editando: editandoId === id,
+      onSelect: (selId: string | null) => {
+        if (selId && isDrawingText && modo === 'multi') {
+          onToggleMultiObj?.(selId);
+        } else {
+          setSelecionadoId(selId);
+        }
+      }
+    };
+  };
 
   // ---- EDIÇÃO NA PLANTA: converte pixel do SVG -> terreno e arrasta itens ----
   function svgPonto(e: ReactPointerEvent): { x: number; y: number } | null {
@@ -1278,6 +1289,15 @@ export default function Planta({
       {objetos.map((o) => {
         const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
         const isMultiSelected = objSelMulti?.has(o.id);
+        const handlePlantaObjClick = (e: React.MouseEvent) => {
+          if (!editavel || o.curvaNivel != null) return;
+          e.stopPropagation();
+          if (modo === 'multi') {
+            onToggleMultiObj?.(o.id);
+          } else {
+            onSelecObjeto?.(o.id);
+          }
+        };
         // Clique direito num objeto abre o mesmo menu de edição do mapa (aumentar, diminuir,
         // cor, espessura, apagar…). Só quando a planta é editável. O texto já tem o seu via <Ted>.
         const ctx = (editavel && onContextMenuObjeto && o.curvaNivel == null) ? {
@@ -1287,7 +1307,7 @@ export default function Planta({
         if (o.tipo === 'simbolo' && sp[0]) {
           const tam = o.tamanho ?? 30;
           const esc = (tam / 20).toFixed(2);
-          return <g key={o.id} {...ctx} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(${esc})`} style={isMultiSelected ? { filter: 'drop-shadow(0 0 4px #f59e0b)' } : undefined} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
+          return <g key={o.id} {...ctx} onClick={handlePlantaObjClick} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(${esc})`} style={isMultiSelected ? { filter: 'drop-shadow(0 0 4px #f59e0b)' } : undefined} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
         }
         if (o.tipo === 'texto' && sp[0]) {
           const anchor = o.alinhamento === 'center' ? 'middle' : o.alinhamento === 'right' ? 'end' : 'start';
@@ -1314,7 +1334,7 @@ export default function Planta({
           const corCota = isMultiSelected ? '#f59e0b' : (o.cor ?? '#b91c1c');
 
           return (
-            <g key={o.id} {...ctx}>
+            <g key={o.id} {...ctx} onClick={handlePlantaObjClick}>
               {/* Linhas de extensão perpendiculares tracejadas */}
               <line x1={sp[0].x} y1={sp[0].y} x2={svgAOffset.x} y2={svgAOffset.y} stroke={corCota} strokeWidth={0.5} strokeDasharray="2 1" />
               <line x1={sp[1].x} y1={sp[1].y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={corCota} strokeWidth={0.5} strokeDasharray="2 1" />
@@ -1340,11 +1360,11 @@ export default function Planta({
               fillOp = 0.95;
             }
             return (
-              <polygon key={o.id} {...ctx} points={pp} fill={fillVal} fillOpacity={fillOp} stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
+              <polygon key={o.id} {...ctx} onClick={handlePlantaObjClick} points={pp} fill={fillVal} fillOpacity={fillOp} stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
             );
           } else {
             return (
-              <polyline key={o.id} {...ctx} points={pp} fill="none" stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
+              <polyline key={o.id} {...ctx} onClick={handlePlantaObjClick} points={pp} fill="none" stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
             );
           }
         }
@@ -1457,9 +1477,18 @@ export default function Planta({
         const vsel = editavel && selecionadoId === `vsel.${v.id}`;
         return (
           <g key={v.id}>
-            {vsel && <circle cx={vx} cy={vy} r={9} fill="none" stroke="#3b82f6" strokeWidth={0.9} strokeDasharray="3 2" />}
+            {(vsel || (editavel && selMulti?.has(v.id))) && (
+              <circle cx={vx} cy={vy} r={9} fill={selMulti?.has(v.id) ? "rgba(245, 158, 11, 0.4)" : "none"} stroke={selMulti?.has(v.id) ? "#f59e0b" : "#3b82f6"} strokeWidth={0.9} strokeDasharray={selMulti?.has(v.id) ? undefined : "3 2"} />
+            )}
             <g style={editavel ? { cursor: 'pointer' } : undefined}
-               onClick={editavel ? (e) => { e.stopPropagation(); setSelecionadoId(selecionadoId === `vsel.${v.id}` ? null : `vsel.${v.id}`); } : undefined}
+               onClick={editavel ? (e) => {
+                 e.stopPropagation();
+                 if (modo === 'multi') {
+                   onToggleMulti?.(v.id);
+                 } else {
+                   setSelecionadoId(selecionadoId === `vsel.${v.id}` ? null : `vsel.${v.id}`);
+                 }
+               } : undefined}
                onDoubleClick={editavel && onDblClickVertice ? (e) => { e.stopPropagation(); onDblClickVertice(v, e.clientX, e.clientY); } : undefined}>
               {editavel && <circle cx={vx} cy={vy} r={8} fill="transparent" />}
               <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} />

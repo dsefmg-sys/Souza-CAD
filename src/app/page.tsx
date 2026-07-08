@@ -1728,6 +1728,9 @@ export default function EditorPage() {
   function alternarMulti(id: string) {
     setSelMulti((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }
+  function alternarMultiObj(id: string) {
+    setObjSelMulti((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
   function adicionarMulti(ids: string[]) {
     setSelMulti((s) => { const n = new Set(s); ids.forEach((i) => n.add(i)); return n; });
   }
@@ -4048,7 +4051,8 @@ export default function EditorPage() {
             )}
           </button>
           {perfilMenuAberto && (
-            <div className="absolute right-0 top-[calc(100%+6px)] z-[1300] w-52 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
+            <div className="absolute right-0 top-full pt-1.5 z-[1300]">
+              <div className="w-52 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
                 {entrouSemLogin && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); definirModoEntrada('login'); }}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-primary hover:bg-primary/10">
@@ -4072,6 +4076,7 @@ export default function EditorPage() {
                   </button>
                 )}
               </div>
+            </div>
           )}
         </div>
 
@@ -4418,46 +4423,41 @@ export default function EditorPage() {
                         {/* Vértices e geometria — mesmo cartão, separados por um traço fino (economiza espaço) */}
                         <div className="my-0.5 h-px bg-border/50" />
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
-                          <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); alternarModo('inserir'); }} title="Inserir vértice: clique numa aresta">
+                          <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { alternarModo('inserir'); }} title="Inserir vértice: clique numa aresta">
                             <Plus className="text-emerald-500 shrink-0" /> <span className="truncate">Inserir</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); alternarModo('apagar'); }} title="Apagar vértice">
+                          <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { alternarModo('apagar'); }} title="Apagar vértice">
                             <Trash2 className="text-rose-500 shrink-0" /> <span className="truncate">Apagar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} className="relative" onClick={() => { setVista('mapa'); alternarModo('considerar'); }} title="Considerar vértice (F11)">
+                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'outline'} onClick={() => { alternarModo('multi'); }} title="Selecionar vários vértices ou objetos">
+                            <span className="truncate text-[11px] font-semibold">Sel. Vários</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} className="relative" onClick={() => { alternarModo('considerar'); }} title="Considerar vértice (F11)">
                             <Plus className="text-cyan-500 shrink-0" /> <span className="truncate">Considerar</span>
                             <Atalho k="F11" />
                           </Button>
-                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} className="relative" onClick={() => { setVista('mapa'); setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
+                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} className="relative" onClick={() => { setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
                             <EyeOff className="text-amber-500 shrink-0" /> <span className="truncate">Ignorar</span>
                             <Atalho k="F12" />
                           </Button>
                           <Button size="sm" variant={modo === 'medir' ? 'default' : 'outline'} onClick={() => alternarModo('medir', true)} title="Régua: medir distância e azimute no mapa">
                             <Ruler className="text-sky-500 shrink-0" /> <span className="truncate">Medir</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'outline'} onClick={() => { setVista('mapa'); setModo(modo === 'multi' ? 'navegar' : 'multi'); }} title="Selecionar vários vértices">
-                            <div className="shrink-0 text-indigo-500">
-                              <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden>
-                                <circle cx="12" cy="5" r="2.4" fill="currentColor" />
-                                <circle cx="5" cy="18" r="2.4" fill="currentColor" />
-                                <circle cx="19" cy="18" r="2.4" fill="currentColor" />
-                              </svg>
-                            </div>
-                            <span className="truncate text-[11px] font-semibold">Sel. Vários</span>
-                          </Button>
                           {modo === 'multi' && (
                             <div className="col-span-3 grid grid-cols-3 gap-1 rounded-sm border bg-muted/40 p-1">
-                              {selMulti.size > 0 ? (
+                              {selMulti.size > 0 || objSelMulti.size > 0 ? (
                                 <>
-                                  <Button size="sm" variant="destructive" className="col-span-2 h-7 text-[10px] font-bold gap-1" onClick={apagarMultiSelecionados}>
-                                    <Trash2 className="size-3" /> Apagar ({selMulti.size})
+                                  <Button size="sm" variant="destructive" className={selMulti.size > 0 ? "col-span-2 h-7 text-[10px] font-bold gap-1" : "col-span-3 h-7 text-[10px] font-bold gap-1"} onClick={apagarMultiSelecionados}>
+                                    <Trash2 className="size-3" /> Apagar ({selMulti.size + objSelMulti.size})
                                   </Button>
-                                  <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold gap-1 text-violet-600 hover:text-violet-700 dark:text-violet-400" onClick={() => alternarModo('copiar_base')}>
-                                    <Copy className="size-3" /> Copiar
-                                  </Button>
+                                  {selMulti.size > 0 && (
+                                    <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold gap-1 text-violet-600 hover:text-violet-700 dark:text-violet-400" onClick={() => alternarModo('copiar_base')}>
+                                      <Copy className="size-3" /> Copiar
+                                    </Button>
+                                  )}
                                 </>
                               ) : (
-                                <span className="col-span-3 text-[9px] text-muted-foreground text-center py-1 font-semibold">Clique nos vértices ou arraste uma caixa para selecioná-los.</span>
+                                <span className="col-span-3 text-[9px] text-muted-foreground text-center py-1 font-semibold">Clique nos itens ou arraste uma caixa para selecioná-los.</span>
                               )}
                             </div>
                           )}
@@ -4810,12 +4810,12 @@ export default function EditorPage() {
                     <Button size="sm" variant={modo === 'paralela' ? 'default' : 'ghost'} onClick={() => alternarModo('paralela', true)} title="Paralela"><Waypoints /></Button>
                     )}
                     <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
-                    <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('inserir'); }} title="Inserir vértice"><Plus /></Button>
-                    <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('considerar'); }} title="Considerar (F11)"><Plus /><Atalho k="F11" /></Button>
-                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('ignorar'); }} title="Ignorar (F12)"><EyeOff /><Atalho k="F12" /></Button>
-                    <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('apagar'); }} title="Apagar vértice"><Trash2 /></Button>
+                    <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => alternarModo('inserir')} title="Inserir vértice"><Plus /></Button>
+                    <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => alternarModo('considerar')} title="Considerar (F11)"><Plus /><Atalho k="F11" /></Button>
+                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => alternarModo('ignorar')} title="Ignorar (F12)"><EyeOff /><Atalho k="F12" /></Button>
+                    <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => alternarModo('apagar')} title="Apagar vértice"><Trash2 /></Button>
                     <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => alternarModo('medir', true)} title="Medir / Régua"><Ruler /></Button>
-                    <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => { setVista('mapa'); alternarModo('multi'); }} title="Selecionar vários">
+                    <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => alternarModo('multi')} title="Selecionar vários">
                       <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
                         <circle cx="12" cy="5" r="2.4" fill="currentColor" />
                         <circle cx="5" cy="18" r="2.4" fill="currentColor" />
@@ -5123,7 +5123,7 @@ export default function EditorPage() {
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
                 parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho} verticesVizinho={verticesVizinho}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
-                selMulti={selMulti} objSelMulti={objSelMulti} onToggleMulti={alternarMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj}
+                selMulti={selMulti} objSelMulti={objSelMulti} onToggleMulti={alternarMulti} onToggleMultiObj={alternarMultiObj} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj}
                 onDblClick={async (lat, lon) => { const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' }); if (t) { snap(); setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); } }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
