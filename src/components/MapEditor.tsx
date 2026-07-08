@@ -1531,6 +1531,7 @@ export default function MapEditor(props: Props) {
           key={v.id}
           position={[v.lat, v.lon]}
           draggable={modo === 'navegar' && !bloqueado && !camadasBloqueadas.divisas}
+          zIndexOffset={500}
           icon={iconeVertice(v, v.id === selecionadoId || v.id === realceId)}
           eventHandlers={{
             click() {
@@ -1596,12 +1597,25 @@ export default function MapEditor(props: Props) {
           }} />
       ))}
 
+      {/* Linhas-guia dos rótulos dos vértices que foram movidos manualmente para evitar confusão */}
+      {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v) => {
+        if (!v.posRotulo) return null;
+        return (
+          <Polyline
+            key={`guia${v.id}`}
+            positions={[[v.lat, v.lon], [v.posRotulo.lat, v.posRotulo.lon]]}
+            pathOptions={{ color: '#64748b', weight: 1.2, dashArray: '4 4', interactive: false }}
+          />
+        );
+      })}
+
       {/* rótulos dos vértices (caixinha branca; arrastáveis com a ferramenta mover/F5; ocultação adaptativa para evitar poluição visual) */}
       {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => (
         <Marker
           key={`nome${v.id}`}
           position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}
           draggable={modo === 'navegar' && !camadasBloqueadas.divisas}
+          zIndexOffset={1000}
           icon={iconeNomeVertice(
             estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome),
             Math.round(tamNomes * fzZoom),

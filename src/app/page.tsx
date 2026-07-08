@@ -4007,7 +4007,7 @@ export default function EditorPage() {
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
                   <Settings className="size-4 text-muted-foreground" /> Ajustes
                 </button>
-                {souMaster() && (
+                {souMaster() && user && !entrouSemLogin && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); setModoMaster('gerir'); }}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
                     <ShieldCheck className="size-4 text-amber-500" /> Gerir SaaS
@@ -4883,7 +4883,7 @@ export default function EditorPage() {
           );
         })()}
         <main className="relative isolate min-w-0 flex-1">
-          {modoMaster === 'gerir' && souMaster() ? (
+          {modoMaster === 'gerir' && souMaster() && user && !entrouSemLogin ? (
             <PainelMasterSaaS onVoltarDesenhar={() => setModoMaster('editar')} />
           ) : (
             <>
