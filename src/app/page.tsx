@@ -4430,6 +4430,75 @@ export default function EditorPage() {
                           )}
                         </div>
 
+                        {/* MÉTRICAS DO LEVANTAMENTO: Área, Perímetro, Modo e Escala — exibidos
+                            abaixo de Desenho e Geometria e acima de Curvas de Nível */}
+                        {(res || chaveTopoVisivel || vista === 'planta') && (
+                          <div className="mt-1.5 rounded-md border border-border/60 bg-muted/5 overflow-hidden">
+                            <div className="flex items-center justify-between bg-muted/20 px-2 py-1.5">
+                              <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Métricas</span>
+                            </div>
+                            <div className="p-2 space-y-2">
+
+                              {/* Área e Perímetro */}
+                              {res && (
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <div className="flex flex-col items-center justify-center rounded-md bg-muted/30 py-1.5 px-1">
+                                    <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground">Área SGL</span>
+                                    <span className="text-[12px] font-bold text-foreground leading-tight">{numBR(res.areaHa, casasTela(4))}</span>
+                                    <span className="text-[8px] text-muted-foreground">ha</span>
+                                  </div>
+                                  <div className="flex flex-col items-center justify-center rounded-md bg-muted/30 py-1.5 px-1">
+                                    <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground">Perímetro</span>
+                                    <span className="text-[12px] font-bold text-foreground leading-tight">{numBR(res.perimetro)}</span>
+                                    <span className="text-[8px] text-muted-foreground">m</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Chave de Modo (Fácil / Médio / Completo) */}
+                              {chaveTopoVisivel && !introTocando && (
+                                <button type="button"
+                                  onClick={() => trocarModoApp(proximoModo(modoApp))}
+                                  title={completo
+                                    ? 'Modo Completo: todas as ferramentas. Clique para o Fácil.'
+                                    : medio
+                                      ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
+                                      : 'Modo Fácil: só o essencial. Clique para o Médio.'}
+                                  className="flex w-full h-7 items-center justify-center gap-1.5 rounded-md border border-border bg-background/80 text-[10px] font-bold text-foreground hover:bg-muted transition-colors">
+                                  {completo ? <Briefcase className="size-3.5" /> : medio ? <PencilRuler className="size-3.5" /> : <GraduationCap className="size-3.5" />}
+                                  <span>{rotuloModo}</span>
+                                </button>
+                              )}
+
+                              {/* Escala da Planta (só no modo Planta) */}
+                              {vista === 'planta' && (
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center justify-between gap-1 rounded-md border border-border bg-background/80 overflow-hidden h-7 px-0.5">
+                                    <button type="button"
+                                      className="h-6 w-6 rounded-sm hover:bg-accent text-foreground font-bold transition-colors text-base flex items-center justify-center"
+                                      title="Reduzir escala" onClick={() => alterarEscala(250)}>-</button>
+                                    <button type="button"
+                                      className={`flex-1 h-6 rounded-sm hover:bg-accent font-bold transition-colors text-[9px] tracking-wider flex items-center justify-center ${!plantaConfig.escalaManual ? 'text-primary' : 'text-foreground/80'}`}
+                                      title="Escala da Planta (clique para Automática)"
+                                      onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>
+                                      ESCALA{!plantaConfig.escalaManual ? ' (AUTO)' : ` 1:${obterEscalaEfetiva()}`}
+                                    </button>
+                                    <button type="button"
+                                      className="h-6 w-6 rounded-sm hover:bg-accent text-foreground font-bold transition-colors text-base flex items-center justify-center"
+                                      title="Aumentar escala" onClick={() => alterarEscala(-250)}>+</button>
+                                  </div>
+                                  {mostrarEscalaToast && (
+                                    <div className="flex items-center justify-center rounded-md bg-black text-white h-6 text-[10px] tracking-wider font-bold animate-in fade-in duration-200">
+                                      1 : {obterEscalaEfetiva()}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                            </div>
+                          </div>
+                        )}
+
                         {/* Curvas de nível (planialtimétrico): triangula os pontos com altitude e traça as isolinhas */}
                         <div className="mt-1.5 rounded-md border border-border/60 overflow-hidden">
                           <button type="button"
@@ -4916,41 +4985,9 @@ export default function EditorPage() {
                 <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
               </button>
 
-              {/* Chave de modo Fácil → Médio → Completo */}
-              {chaveTopoVisivel && !introTocando && (
-                <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
-                  title={completo
-                    ? 'Modo Completo: todas as ferramentas à mostra. Clique para voltar ao Fácil.'
-                    : medio
-                      ? 'Modo Médio: as ferramentas do dia a dia. Clique para o Completo.'
-                      : 'Modo Fácil: só o essencial. Clique para o Médio.'}
-                  className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2.5 text-[10px] font-bold text-foreground hover:bg-muted transition-colors">
-                  {/* Ícone conta a história do degrau: beca (aprendizado) no Fácil, régua/plano no
-                      Médio, maleta (profissional) no Completo. */}
-                  {completo ? <Briefcase className="size-3.5" /> : medio ? <PencilRuler className="size-3.5" /> : <GraduationCap className="size-3.5" />}
-                  <span>{rotuloModo}</span>
-                </button>
-              )}
 
-              {/* Área e Perímetro */}
-              {res && (
-                <>
-                  <div className="h-4 w-px bg-border" />
-                  <div className="flex items-center gap-3 text-[11px] font-semibold text-foreground px-0.5">
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider">Área SGL:</span>
-                      <span>{numBR(res.areaHa, casasTela(4))} <span className="text-[9px] font-normal text-muted-foreground">ha</span></span>
-                    </div>
-                    <div className="h-3 w-px bg-border" />
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground text-[8px] uppercase font-extrabold tracking-wider">Perímetro:</span>
-                      <span>{numBR(res.perimetro)} <span className="text-[9px] font-normal text-muted-foreground">m</span></span>
-                    </div>
-                  </div>
-                </>
-              )}
 
-              {/* Seletor de Glebas (se houver múltiplas glebas no projeto) */}
+
               {glebas.length > 1 && (
                 <>
                   <div className="h-4 w-px bg-border" />
@@ -4992,26 +5029,7 @@ export default function EditorPage() {
                     );
                   })()}
 
-                  {/* Escala da Planta */}
-                  <div className="flex items-center rounded-full border border-border bg-background/95 overflow-hidden h-7 p-0.5 gap-0.5">
-                    <button type="button" className="h-5 w-5 rounded-full hover:bg-accent text-foreground font-bold transition-colors text-sm flex items-center justify-center"
-                      title="Zoom Out / Reduzir escala" onClick={() => alterarEscala(250)}>-</button>
-                    <button type="button"
-                      className={`h-5 px-2 rounded-full hover:bg-accent font-bold transition-colors text-[9px] tracking-wider flex items-center justify-center ${!plantaConfig.escalaManual ? 'text-primary' : 'text-foreground/80'}`}
-                      title="Escala da Planta (clique para alternar para Automática)"
-                      onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>
-                      ESCALA{!plantaConfig.escalaManual ? ' (AUTO)' : ''}
-                    </button>
-                    <button type="button" className="h-5 w-5 rounded-full hover:bg-accent text-foreground font-bold transition-colors text-sm flex items-center justify-center"
-                      title="Zoom In / Aumentar escala" onClick={() => alterarEscala(-250)}>+</button>
-                  </div>
 
-                  {/* Toast indicador de Escala efetiva */}
-                  {mostrarEscalaToast && (
-                    <div className="flex items-center bg-black text-white h-7 px-2.5 rounded-full text-[10px] tracking-wider font-bold border border-black animate-in fade-in slide-in-from-left-2 duration-200">
-                      1 : {obterEscalaEfetiva()}
-                    </div>
-                  )}
 
                   {/* Travar / soltar folha */}
                   <button type="button"
