@@ -7060,16 +7060,37 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
             onChange={(e) => set({ escalaManual: e.target.value ? Number(e.target.value) : undefined })} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 border rounded-sm p-2 bg-muted/5">
+        <div className="col-span-2 text-[10px] uppercase font-bold text-muted-foreground">Ajuste de Tamanhos e Escalas</div>
         <div className="space-y-1">
-          <Label>Fonte dos rótulos</Label>
+          <Label className="text-[11px]">Fonte dos rótulos</Label>
           <Input type="number" step="0.5" placeholder="8.5" value={config.fonteRotulos ? String(config.fonteRotulos) : ''}
-            onChange={(e) => set({ fonteRotulos: e.target.value ? Number(e.target.value) : undefined })} />
+            onChange={(e) => set({ fonteRotulos: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
         </div>
         <div className="space-y-1">
-          <Label>Escala de todos os textos</Label>
+          <Label className="text-[11px]">Escala de todos os textos</Label>
           <Input type="number" step="0.05" placeholder="1.0" value={config.escalaTextos ? String(config.escalaTextos) : ''}
-            onChange={(e) => set({ escalaTextos: e.target.value ? Number(e.target.value) : undefined })} />
+            onChange={(e) => set({ escalaTextos: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[11px]">Escala das tabelas</Label>
+          <Input type="number" step="0.05" placeholder="1.0" value={config.escalaTabelas ? String(config.escalaTabelas) : ''}
+            onChange={(e) => set({ escalaTabelas: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[11px]">Escala dos símbolos (M/P/V)</Label>
+          <Input type="number" step="0.05" placeholder="1.0" value={config.escalaVertices ? String(config.escalaVertices) : ''}
+            onChange={(e) => set({ escalaVertices: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[11px]">Escala das declarações</Label>
+          <Input type="number" step="0.05" placeholder="1.0" value={config.escalaDeclaracoes ? String(config.escalaDeclaracoes) : ''}
+            onChange={(e) => set({ escalaDeclaracoes: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[11px]">Escala dos confrontantes</Label>
+          <Input type="number" step="0.05" placeholder="1.0" value={config.escalaConfront ? String(config.escalaConfront) : ''}
+            onChange={(e) => set({ escalaConfront: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
         </div>
       </div>
       <div className="space-y-1 rounded-sm border p-2">
