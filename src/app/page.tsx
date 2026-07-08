@@ -1002,31 +1002,23 @@ export default function EditorPage() {
     }
   }, [vista]);
 
-  // Na PRIMEIRA vez que a planta é aberta já existindo ao menos um polígono (3+ vértices),
-  // gera a planta de situação sozinha (recorte de satélite). Dispara uma única vez por projeto
-  // e nunca por cima de uma situação que já exista — o agrimensor segue podendo refazer ou
-  // remover pela câmera. Falha em silêncio se a rede/satélite não responder.
-  const situacaoAutoRef = useRef(false);
-  useEffect(() => { situacaoAutoRef.current = false; }, [projetoId]);
+  // Gera e atualiza automaticamente a planta de situação (recorte de satélite)
   useEffect(() => {
-    if (vista !== 'planta' || situacaoAutoRef.current || situacaoUrl) return;
-    if (vertices.length < 3) return;
-    situacaoAutoRef.current = true;
-    gerarSituacaoPlanta();
-  }, [vista, situacaoUrl, vertices.length]);
+    if (vista !== 'planta' || processando) return;
+    
+    const gs = sincronizarGlebas();
+    const temPoligono = gs.some((g) => g.vertices.length >= 3);
+    if (!temPoligono) return;
 
-  // Atualiza automaticamente a situação na Planta se estiver desatualizada e em navegação
-  useEffect(() => {
-    if (vista !== 'planta' || modo !== 'navegar' || !situacaoUrl || processando) return;
-    const stale = situacaoVersSnapshot !== snapshotDesenho;
+    const stale = !situacaoUrl || situacaoVersSnapshot !== snapshotDesenho;
     if (!stale) return;
 
-    // Debounce de 1.5s para não disparar chamadas repetidas
+    // Debounce de 1.5s para evitar chamadas de rede repetidas durante edições rápidas
     const timer = setTimeout(() => {
       gerarSituacaoPlanta();
     }, 1500);
     return () => clearTimeout(timer);
-  }, [vista, modo, situacaoUrl, situacaoVersSnapshot, snapshotDesenho, processando]);
+  }, [vista, situacaoUrl, situacaoVersSnapshot, snapshotDesenho, processando, glebas, vertices]);
 
   // Atualiza automaticamente o nome do projeto se não foi modificado manualmente
   useEffect(() => {
@@ -3522,13 +3514,15 @@ export default function EditorPage() {
   }
 
   async function gerarSituacaoPlanta() {
-    if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
+    const gs = sincronizarGlebas();
+    const temPoligono = gs.some((g) => g.vertices.length >= 3);
+    if (!temPoligono) return;
+
     aviso('Buscando satélite da situação…');
-    // todas as glebas (a ativa primeiro), para a situação mostrar mais de um polígono; e também os
+    // todas as glebas (com 3+ vertices), para a situação mostrar os polígonos; e também os
     // polígonos DESENHADOS (polilinha fechada/preenchida) — assim um polígono novo aparece na situação.
     const aneis = [
-      vertices.map((v) => ({ lat: v.lat, lon: v.lon })),
-      ...glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.map((v) => ({ lat: v.lat, lon: v.lon }))),
+      ...gs.filter((g) => g.vertices.length >= 3).map((g) => g.vertices.map((v) => ({ lat: v.lat, lon: v.lon }))),
       ...objetos.filter((o) => o.tipo === 'polilinha' && o.preenchido && o.pontos.length >= 3).map((o) => o.pontos.map((p) => ({ lat: p.lat, lon: p.lon }))),
     ];
     const url = await gerarSituacao(aneis);
@@ -6110,10 +6104,33 @@ export default function EditorPage() {
                 </p>
               </div>
 
+              <div className="border-t border-border/30 pt-3 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">
+                    4. Gerar Vértices Virtuais (V)
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 font-bold border-indigo-500 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
+                    onClick={() => {
+                      setSigefMenuAberto(false);
+                      setVvBase(null);
+                      setVvAberto(true);
+                    }}
+                  >
+                    Gerar Virtual
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Calcula e cria vértices virtuais (tipo V) para cantos inacessíveis (como córregos, vãos ou limites intangíveis), por afastamento de alinhamento ou interseção de rumos.
+                </p>
+              </div>
+
               {parcelasCert.length > 0 && (
                 <div className="border-t border-border/30 pt-3 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground">4. Relatório de Sobreposição</span>
+                    <span className="text-xs font-bold text-foreground">5. Relatório de Sobreposição</span>
                     <Button
                       size="sm"
                       variant="outline"
@@ -6816,7 +6833,10 @@ export default function EditorPage() {
 
       {/* Barra de Notificação/Alerta unificada na parte inferior */}
       {(msg || imovel.ficticio) && (
-        <div className="no-print fixed bottom-0 left-0 right-0 z-[2000] flex h-7 items-center justify-center bg-slate-900 text-white text-[11px] font-semibold border-t border-slate-800 shadow-lg animate-in slide-in-from-bottom duration-200">
+        <div 
+          className="no-print fixed bottom-0 right-0 z-[2000] flex h-7 items-center justify-center bg-slate-900 text-white text-[11px] font-semibold border-t border-slate-800 shadow-lg animate-in slide-in-from-bottom duration-200"
+          style={{ left: toolW }}
+        >
           {msg ? (
             <div className="flex items-center gap-1.5 text-amber-400">
               <span className="inline-block size-2 rounded-full bg-amber-400 animate-pulse" />

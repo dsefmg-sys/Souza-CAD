@@ -1452,7 +1452,7 @@ export default function MapEditor(props: Props) {
             <Polyline
               key={`conf-seg-${v.id}`}
               positions={[a, b]}
-              pathOptions={{ color: corConf, weight: estilosCamadas.divisas?.espessura ?? 4, opacity: 0.85, dashArray: '4 8' }}
+              pathOptions={{ color: corConf, weight: estilosCamadas.divisas?.espessura ? estilosCamadas.divisas.espessura * 2.2 : 8, opacity: 0.95, dashArray: '6 8' }}
             >
               <Tooltip sticky direction="top" opacity={0.9}>
                 <span className="font-bold" style={{ color: corConf }}>Confrontante: {conf.nome || '(sem nome)'}</span>
