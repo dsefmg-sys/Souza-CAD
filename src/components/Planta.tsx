@@ -6,7 +6,7 @@ import { numBR, formatMatricula, azimuteDMS, azimute, distancia } from '@/lib/to
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { rotulosProfissional } from '@/lib/topo/profissional';
 import { simboloSvgInterno } from '@/lib/topo/simbolos';
-import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
+import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo, aproximarDeclinacaoMagnetica } from '@/lib/topo/coords';
 import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
 import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import { rotuloPapelProprietario } from '@/lib/export/papelProprietario';
@@ -67,6 +67,7 @@ interface Props {
   onTextoEditar?: (id: string, atual: string, larguraChars?: number) => void;            // clique duplo: editar conteúdo
   onTextoMenu?: (id: string, atual: string, x: number, y: number) => void; // clique direito: formatar
   onMoverFolha?: (dx: number, dy: number) => void;                // arrastar o vazio: reposiciona a folha
+  onToggleTravaFolha?: () => void;                                // clique do botão central: trava/destrava a folha
   onTextoMover?: (id: string, dx: number, dy: number) => void;     // arrastar o texto: salva o offset
   onConfigPatch?: (patch: Partial<PlantaConfig>) => void;          // muda config da planta (cor/linha do polígono) a partir da seleção
   onAlternarTipoVertice?: (id: string) => void;                    // clicar num vértice na planta: cicla o tipo (M/P/V)
@@ -247,7 +248,7 @@ export default function Planta({
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
   onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
-  onTextoEditar, onTextoMenu, onMoverFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
+  onTextoEditar, onTextoMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
 }: Props) {
   // hooks antes de qualquer retorno condicional
@@ -668,12 +669,9 @@ export default function Planta({
     if (!editavel) return;
     if (e.button === 1) {
       e.preventDefault(); // Impede o auto-scroll nativo do botão do meio do mouse
-      const u = svgPonto(e);
-      if (u) {
-        dragRef.current = { kind: 'folha', id: 'middle-pan', dx: 0, dy: 0 };
-        folhaLast.current = u;
-        captura(e);
-      }
+      // Clique do botão central ALTERNA a trava da folha (destrava; outro clique trava de novo).
+      // O arraste com o botão central foi removido — não estava funcionando bem.
+      onToggleTravaFolha?.();
       return;
     }
     if (e.button !== 0) return; // botão do meio/direito não arrasta itens
@@ -865,7 +863,10 @@ export default function Planta({
   // ---- cálculo de nortes e coordenadas ----
   const vref = vertices[0];
   const conv = convergenciaMeridiana(vref.lat, vref.lon, zona);
-  const decl = imovel.declinacaoMagnetica ?? 0;
+  // Declinação magnética: usa o valor informado no imóvel se houver; senão, estima pela posição
+  // (lat/lon) do vértice de referência — no Brasil ela nunca é zero (fica ~10° a 25° oeste), então
+  // deixar zero por falta de valor seria erro na planta.
+  const decl = imovel.declinacaoMagnetica ?? aproximarDeclinacaoMagnetica(vref.lat, vref.lon);
   const dLamb = ((vref.lon - meridianoCentral(zona)) * Math.PI) / 180;
   const phiRef = (vref.lat * Math.PI) / 180;
   const fatorK = 0.9996 * (1 + Math.pow(dLamb * Math.cos(phiRef), 2) / 2);

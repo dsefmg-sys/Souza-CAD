@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { listarPerfisUso, atualizarPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
-import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl } from '@/lib/store/suporte';
+import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado } from '@/lib/store/suporte';
 
 function dataBR(ms?: number): string {
   if (!ms) return '—';
@@ -30,6 +30,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [zap, setZap] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
   const [appUrl, setAppUrl] = useState('');
+  const [modo3d, setModo3d] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [msg, setMsg] = useState('');
   const [busca, setBusca] = useState('');
@@ -43,6 +44,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       setZap(await carregarWhatsappSuporte());
       setGeminiKey(await carregarGeminiApiKey());
       setAppUrl(await carregarAppUrl());
+      setModo3d(await carregarModo3dAtivado());
     } catch (e) {
       console.error(e);
     } finally {
@@ -85,6 +87,16 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       flash('Chave Gemini salva!');
     } catch {
       flash('Erro ao salvar chave.');
+    }
+  }
+
+  async function alterarModo3d(val: boolean) {
+    setModo3d(val);
+    try {
+      await salvarModo3dAtivado(val);
+      flash(val ? 'Modo 3D ativado para os clientes.' : 'Modo 3D desativado.');
+    } catch {
+      flash('Erro ao salvar Modo 3D.');
     }
   }
 
@@ -264,6 +276,22 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     <div className="space-y-1">
                       <span className="text-sm font-bold text-amber-300">Ocultar cobrança</span>
                       <p className="text-[11px] text-[#87a992] leading-snug">Se ativado, clientes usam de graça — sem alertas ou telas de planos.</p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Modo 3D (recurso opcional) */}
+                <div className="flex items-start">
+                  <label className="flex items-start gap-3 rounded-xl border border-emerald-600/25 bg-emerald-600/5 p-4 cursor-pointer hover:bg-emerald-600/10 transition-colors w-full h-full">
+                    <input
+                      type="checkbox"
+                      className="rounded-sm text-[#05140b] focus:ring-emerald-500 size-4 mt-0.5 border-[#12361d] accent-emerald-500"
+                      checked={modo3d}
+                      onChange={(e) => alterarModo3d(e.target.checked)}
+                    />
+                    <div className="space-y-1">
+                      <span className="text-sm font-bold text-emerald-300">Modo 3D (relevo)</span>
+                      <p className="text-[11px] text-[#87a992] leading-snug">Mostra o botão de visualização 3D do terreno para os clientes. Desligado por padrão enquanto amadurece. Os clientes precisam recarregar o app para a mudança valer.</p>
                     </div>
                   </label>
                 </div>

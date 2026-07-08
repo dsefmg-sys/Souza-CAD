@@ -88,3 +88,28 @@ export async function salvarAppUrl(url: string): Promise<void> {
     await setDoc(doc(fdb()!, 'config', 'app'), { appUrl: cleanUrl }, { merge: true });
   }
 }
+
+// Modo 3D (visualização de relevo): recurso opcional que o MASTER liga/desliga pra todos os clientes.
+// Padrão DESLIGADO — enquanto amadurece, não aparece o botão de 3D pra ninguém a menos que o master ative.
+const CACHE_MODO3D = 'metrica.modo3dAtivado';
+
+export async function carregarModo3dAtivado(): Promise<boolean> {
+  if (firebaseConfigurado) {
+    try {
+      const s = await getDoc(doc(fdb()!, 'config', 'app'));
+      const v = s.exists() ? s.data()?.modo3dAtivado : undefined;
+      if (typeof v === 'boolean') {
+        try { localStorage.setItem(CACHE_MODO3D, v ? '1' : '0'); } catch { /* ignore */ }
+        return v;
+      }
+    } catch { /* offline/regras — cai pro cache */ }
+  }
+  try { return localStorage.getItem(CACHE_MODO3D) === '1'; } catch { return false; }
+}
+
+export async function salvarModo3dAtivado(ativo: boolean): Promise<void> {
+  try { localStorage.setItem(CACHE_MODO3D, ativo ? '1' : '0'); } catch { /* ignore */ }
+  if (firebaseConfigurado) {
+    await setDoc(doc(fdb()!, 'config', 'app'), { modo3dAtivado: ativo }, { merge: true });
+  }
+}

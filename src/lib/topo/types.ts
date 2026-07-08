@@ -71,6 +71,7 @@ export interface Vertex {
   norte: number;
   leste: number;
   elevacao: number;
+  elevacaoInterpolada?: boolean; // cota CALCULADA (não medida) pela ferramenta de completar altitudes
   lat: number;         // graus decimais
   lon: number;         // graus decimais
   tipo: TipoVertice;   // M = marco/canto de divisa, P = ponto, V = virtual

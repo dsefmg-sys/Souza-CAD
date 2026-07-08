@@ -413,28 +413,29 @@ function MarcadoresRotulos({
             click() { if (!camadasBloqueadas.divisas) onSelecionar(v.id); },
             dragend(e) {
               const marker = e.target as L.Marker;
-              let ll = marker.getLatLng();
-              
+              const ll = marker.getLatLng();
+
+              // Primeira vez (rótulo ainda SEM posição salva): o ícone é ancorado descentralizado —
+              // deslocado do vértice pela direção de repulsão — então a latlng do marcador NÃO é o
+              // centro visível do rótulo. Antes isso era compensado ESTIMANDO o deslocamento pela
+              // largura do texto (caracteres × fonte), estimativa que erra quando o texto muda e faz o
+              // rótulo PULAR na primeira vez. Agora MEDIMOS o centro real do rótulo renderizado na
+              // tela e salvamos ali — fica exatamente onde foi solto, sem depender de estimativa.
               if (!v.posRotulo) {
-                const dirx = dirsRotulo[i]?.[0] ?? 1;
-                const diry = dirsRotulo[i]?.[1] ?? 0;
-                if (dirx !== 0 || diry !== 0) {
-                  const fs = Math.round(tamNomes * fzZoom) || 11;
-                  const txt = (estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome)) || '';
-                  const estW = txt.length * fs * 0.62 + 10;
-                  const estH = fs + 8;
-                  const c = 11 + fs * 0.35;
-                  const half = (Math.abs(dirx) * estW + Math.abs(diry) * estH) / 2;
-                  
-                  const ax = -dirx * (c + half);
-                  const ay = -diry * (c + half);
-                  
-                  const pt = map.latLngToContainerPoint(ll);
-                  const ptNovo = L.point(pt.x + ax, pt.y + ay);
-                  ll = map.containerPointToLatLng(ptNovo);
+                const el = (marker as unknown as { _icon?: HTMLElement })._icon;
+                const box = el?.firstElementChild ?? el; // o bloco branco visível (o _icon em si é 1×1)
+                const cont = map.getContainer();
+                if (box && cont) {
+                  const b = box.getBoundingClientRect();
+                  const c = cont.getBoundingClientRect();
+                  const centro = map.containerPointToLatLng(
+                    L.point(b.left - c.left + b.width / 2, b.top - c.top + b.height / 2),
+                  );
+                  onMoverRotuloVertice?.(v.id, centro.lat, centro.lng);
+                  return;
                 }
               }
-              
+
               onMoverRotuloVertice?.(v.id, ll.lat, ll.lng);
             },
           }}

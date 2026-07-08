@@ -60,6 +60,7 @@ import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, CAR_TEMAS, COR_CURVA_NIVEL, COR_CURVA_AUTO } from '@/lib/topo/objetos';
 import { gerarCurvasDeNivel, intervaloSugerido, pontoNoPoligono, type Ponto3D } from '@/lib/topo/curvasNivel';
+import { estimarAltitudes } from '@/lib/topo/altitudes';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
@@ -100,7 +101,7 @@ import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/
 import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, type PerfilUso } from '@/lib/store/perfilUso';
 import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
-import { souMaster } from '@/lib/store/suporte';
+import { souMaster, carregarModo3dAtivado } from '@/lib/store/suporte';
 import { carregarConfigAssinatura, type ConfigAssinatura } from '@/lib/store/assinatura';
 
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
@@ -413,6 +414,10 @@ export default function EditorPage() {
   const [importModalAberto, setImportModalAberto] = useState(false);
   const [importPendingFile, setImportPendingFile] = useState<File | null>(null);
   const [vista, setVista] = useState<'mapa' | 'planta' | '3d'>('mapa');
+  // Modo 3D: recurso opcional, LIGADO/DESLIGADO pelo gestor (master) no painel. Padrão desligado —
+  // enquanto amadurece, o botão de 3D só aparece se o master ativar em config/app.
+  const [modo3dAtivado, setModo3dAtivado] = useState(false);
+  useEffect(() => { carregarModo3dAtivado().then(setModo3dAtivado).catch(() => {}); }, []);
   const [aba, setAba] = useState<Aba>('imovel');
   const [projetoId, setProjetoId] = useState<string | null>(null);
   const [nomeProjeto, setNomeProjeto] = useState('');
@@ -3479,6 +3484,40 @@ export default function EditorPage() {
     }
   }
 
+  // Completa a altitude (cota Z) dos vértices que estão SEM cota, calculando a partir dos pontos que
+  // TÊM altitude (vértices medidos, ignorados e a grade de relevo). Nunca sobrepõe cota medida: a base
+  // exclui as próprias interpoladas; o alvo é só quem está com cota 0; e o resultado entra marcado como
+  // calculado (`elevacaoInterpolada`) e passa pelo histórico (`snap`), então dá pra desfazer.
+  async function completarAltitudes() {
+    const semCota = vertices.filter((v) => !v.elevacao && Number.isFinite(v.leste) && Number.isFinite(v.norte));
+    if (semCota.length === 0) { await avisar({ titulo: 'Completar altitudes', mensagem: 'Todos os vértices já têm altitude.' }); return; }
+
+    const base: Ponto3D[] = [
+      ...[...vertices, ...verticesIgnorados]
+        .filter((v) => v.elevacao && !v.elevacaoInterpolada && Number.isFinite(v.leste) && Number.isFinite(v.norte))
+        .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao })),
+      ...gradeAltimetrica.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao })),
+    ];
+    if (base.length === 0) { await avisar({ titulo: 'Completar altitudes', mensagem: 'Não há nenhum ponto com altitude pra servir de base. Traga pontos com cota (levantamento) ou use a grade de relevo online.' }); return; }
+
+    const estimados = estimarAltitudes(base, semCota.map((v) => ({ x: v.leste, y: v.norte })));
+    const validos = estimados.filter((z) => z != null).length;
+    if (validos === 0) { await avisar({ titulo: 'Completar altitudes', mensagem: 'Não consegui estimar a altitude desses vértices com os pontos disponíveis.' }); return; }
+
+    const ok = await confirmar({
+      titulo: 'Completar altitudes',
+      mensagem: `${semCota.length} vértice(s) estão sem altitude. Calcular a cota deles a partir dos ${base.length} ponto(s) que têm altitude? A cota fica marcada como CALCULADA (não medida) e você pode desfazer.`,
+      okLabel: 'Calcular', cancelLabel: 'Cancelar',
+    });
+    if (!ok) return;
+
+    snap();
+    const novaZ = new Map<string, number>();
+    semCota.forEach((v, i) => { const z = estimados[i]; if (z != null) novaZ.set(v.id, +z.toFixed(2)); });
+    setVertices((vs) => vs.map((v) => (novaZ.has(v.id) ? { ...v, elevacao: novaZ.get(v.id)!, elevacaoInterpolada: true } : v)));
+    await avisar({ titulo: 'Completar altitudes', mensagem: `${novaZ.size} vértice(s) receberam altitude calculada. Ela aparece marcada com "~" no 3D; edite manualmente se tiver o valor medido.` });
+  }
+
   const temCurvas = objetos.some((o) => o.curvaNivel != null);
 
   // Exporta os shapefiles do CAR: o perímetro do imóvel + cada camada ambiental (APP, reserva legal,
@@ -4865,12 +4904,12 @@ export default function EditorPage() {
                                   {/* Valores Calculados pelo Sistema */}
                                   <div className="grid grid-cols-2 gap-1.5">
                                     <div className="flex flex-col items-center justify-center rounded-md bg-muted/30 py-1.5 px-1">
-                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground">Área (Sistema)</span>
+                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Área (Sistema)</span>
                                       <span className="text-[12px] font-bold text-foreground leading-tight">{numBR(res.areaHa, casasTela(4))}</span>
                                       <span className="text-[8px] text-muted-foreground">ha</span>
                                     </div>
                                     <div className="flex flex-col items-center justify-center rounded-md bg-muted/30 py-1.5 px-1">
-                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground">Perímetro (Sistema)</span>
+                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Perímetro (Sistema)</span>
                                       <span className="text-[12px] font-bold text-foreground leading-tight">{numBR(res.perimetro)}</span>
                                       <span className="text-[8px] text-muted-foreground">m</span>
                                     </div>
@@ -5485,6 +5524,9 @@ export default function EditorPage() {
             <Map3DViewer
               vertices={vertices}
               objetos={objetos}
+              pontos3D={pontos3dCurvas()}
+              verticesSemCota={vertices.filter((v) => !v.elevacao).length}
+              onCompletarAltitudes={completarAltitudes}
               zona={zona}
               hemisferio={hemisferio}
               imovel={imovel}
@@ -5492,7 +5534,7 @@ export default function EditorPage() {
             />
           ) : vista === 'mapa' ? (
                <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
-                 onAtivar3D={() => setVista('3d')}
+                 onAtivar3D={modo3dAtivado ? () => setVista('3d') : undefined}
                 confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
                 zona={zona} hemisferio={hemisferio} orto={orto} snapAtivo={snapAtivo} segmentoSelecionado={segmentoSelecionado} onSegmentoSelecionado={setSegmentoSelecionado} offsetDistancia={offsetDistancia} onConfirmarParalela={confirmarParalela} copiarPontoBase={copiarPontoBase} onConfirmarCopiaBase={confirmarCopiaBase} onConfirmarCopiaDestino={confirmarCopiaDestino} onDividirSegmento={dividirSegmento} linhaLimite={linhaLimite} onLinhaLimite={setLinhaLimite} onConfirmarTrim={confirmarTrim} onConfirmarExtend={confirmarExtend} camadasVisiveis={camadasVisiveis} camadasBloqueadas={camadasBloqueadas} estilosCamadas={estilosCamadas}
                 referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
@@ -5642,7 +5684,7 @@ export default function EditorPage() {
                       onAtualizarSituacao={gerarSituacaoPlanta}
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
-                      onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
+                      onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onToggleTravaFolha={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
                       onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} onCiclarEstilo={ciclarEstiloPlanta} />
                     </ErrorBoundary>
                   </div>
@@ -6005,7 +6047,7 @@ export default function EditorPage() {
         }} />
       <PrecoSugeridoModal open={precoSugAberto} onOpenChange={setPrecoSugAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
       <Dialog open={sigefMenuAberto} onOpenChange={setSigefMenuAberto}>
-        <DialogContent className="max-w-md p-6">
+        <DialogContent className="max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
               <Database className="size-5" /> Integração SIGEF / INCRA
@@ -6017,8 +6059,8 @@ export default function EditorPage() {
               O principal objetivo deste módulo é obter e importar os vértices e polígonos confrontantes oficiais do INCRA para casar com o seu projeto, garantindo conformidade jurídica, e nomes e dados corretos de confrontações.
             </p>
 
-            <div className="border border-border/60 rounded-xl p-3 bg-muted/20 space-y-3">
-              <div className="flex flex-col gap-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-foreground">1. Importar Polígonos Vizinhos</span>
                   <Button
@@ -6049,7 +6091,7 @@ export default function EditorPage() {
                 )}
               </div>
 
-              <div className="border-t border-border/30 pt-3 flex flex-col gap-1.5">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-foreground">2. Importar Coordenadas de Vizinho</span>
                   <Button
@@ -6072,13 +6114,13 @@ export default function EditorPage() {
                   <ol className="list-decimal pl-4 space-y-0.5">
                     <li>Acesse a <strong>Consulta Pública de Certificações</strong> do SIGEF/INCRA.</li>
                     <li>Busque pela parcela do vizinho usando o código do vértice/imóvel, CPF/CNPJ ou nome do proprietário.</li>
-                    <li>Na página de detalhes da parcela, clique para exportar/baixar a lista de coordenadas como <strong>CSV</strong> (ou faça download do <strong>GML</strong>).</li>
+                    <li>Na página de detalhes da parcela, exporte as coordenadas (<strong>CSV</strong> ou <strong>GML</strong>).</li>
                     <li>Importe o arquivo baixado aqui no botão acima.</li>
                   </ol>
                 </div>
               </div>
 
-              <div className="border-t border-border/30 pt-3 flex flex-col gap-1.5">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-foreground flex items-center gap-1">
                     3. Casar Vértices
@@ -6104,7 +6146,7 @@ export default function EditorPage() {
                 </p>
               </div>
 
-              <div className="border-t border-border/30 pt-3 flex flex-col gap-1.5">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-foreground">
                     4. Gerar Vértices Virtuais (V)
@@ -6128,7 +6170,7 @@ export default function EditorPage() {
               </div>
 
               {parcelasCert.length > 0 && (
-                <div className="border-t border-border/30 pt-3 flex flex-col gap-1.5">
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-foreground">5. Relatório de Sobreposição</span>
                     <Button

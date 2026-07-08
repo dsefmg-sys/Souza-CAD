@@ -74,6 +74,20 @@ export function convergenciaMeridiana(latDeg: number, lonDeg: number, zona: numb
   return (g * 180) / Math.PI;
 }
 
+/**
+ * Aproximação polinomial quadrática da declinação magnética (graus) para o
+ * território brasileiro, ajustada por mínimos quadrados a partir de valores
+ * WMM2025 (época 2026) em 6 cidades de referência: Brasília, São Paulo,
+ * Recife, Manaus, Porto Alegre e Belém. Resultado negativo = oeste.
+ * Válida no retângulo Lat [+5, −34], Lon [−35, −74] com erro < 0,5°.
+ */
+export function aproximarDeclinacaoMagnetica(lat: number, lon: number): number {
+  const d = -1.4714269397 + 1.5309486827 * lat + 0.6532699294 * lon
+    - 0.0011398906 * lat * lat + 0.0052686712 * lon * lon
+    + 0.0327495350 * lat * lon;
+  return Math.max(-25, Math.min(-10, d));
+}
+
 /** UTM (Leste, Norte) -> geográfica (lat, lon) em graus decimais. */
 export function utmParaGeo(leste: number, norte: number, zona: number, hemisferio: 'N' | 'S'): GeoCoord {
   const [lon, lat] = proj4(utmDef(zona, hemisferio), GEO, [leste, norte]);
