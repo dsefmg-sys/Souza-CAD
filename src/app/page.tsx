@@ -377,8 +377,19 @@ export default function EditorPage() {
 
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
+  // Tela estreita (celular em pé): o app é pensado pra tela horizontal, então no mobile a gente
+  // encolhe a barra de ferramentas pra só ícones, senão ela sozinha come quase toda a largura e
+  // sobra um filete pro mapa. Deitar o aparelho (paisagem) volta ao layout normal.
+  const [telaEstreita, setTelaEstreita] = useState(false);
+  useEffect(() => {
+    const check = () => setTelaEstreita(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
   const [toolW, setToolW] = useState(270); // largura confortável pra não espremer os rótulos dos botões
+  const toolWEfetivo = telaEstreita ? 54 : toolW; // no celular em pé, barra só de ícones
   const toolDrag = useRef(false);
   const [centralizarSig, setCentralizarSig] = useState(0); // incrementa para enquadrar o desenho
   // largura do painel da direita (redimensionável, salva por usuário)
@@ -4551,11 +4562,11 @@ export default function EditorPage() {
         )}
         {/* Área principal: mapa ou planta */}
         {(() => {
-          const rotulo = toolW >= 104;
+          const rotulo = toolWEfetivo >= 104;
           const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t.toUpperCase()}</span> : null);
           return (
             <>
-              <aside style={{ width: toolW }} className="no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
+              <aside style={{ width: toolWEfetivo }} className="no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
                 {/* DADOS E AÇÕES DO PROJETO */}
                 {rotulo ? (
                   <div className="flex flex-col gap-2 text-xs">
@@ -5427,7 +5438,7 @@ export default function EditorPage() {
                   )}
                 </div>
               </aside>
-              {vista === 'mapa' && (
+              {vista === 'mapa' && !telaEstreita && (
                 <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
                   onDoubleClick={() => setToolW(200)}
                   className="no-print w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-primary/50" title="Arraste para redimensionar a barra · duplo clique = largura ideal (rótulos visíveis)" />
@@ -5734,16 +5745,25 @@ export default function EditorPage() {
 
         {/* Painel suspenso de dados do projeto — ocupa toda a altura disponível do fim da página ao cabeçalho */}
         <div ref={painelWrap}
-          className={`no-print absolute right-0 top-0 bottom-0 z-[2000] flex w-[460px] h-full flex-col border-l bg-background shadow-2xl transition-all duration-300 ${
+          className={`no-print absolute right-0 top-0 bottom-0 z-[2000] flex w-[min(460px,100vw)] h-full flex-col border-l bg-background shadow-2xl transition-all duration-300 ${
             painelAberto
               ? 'translate-x-0 opacity-100 visible'
               : 'translate-x-full opacity-0 invisible pointer-events-none'
           }`}
           onMouseEnter={() => { painelMouseDentro.current = true; }}
-          onMouseLeave={() => { painelMouseDentro.current = false; if (!asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
-          onBlurCapture={() => { setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 50); }}>
+          onMouseLeave={() => { painelMouseDentro.current = false; if (!telaEstreita && !asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
+          onBlurCapture={() => { if (telaEstreita) return; setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 50); }}>
           <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background">
-            {/* (sem barra de fechar: o painel some sozinho quando o mouse sai dele) */}
+            {/* No desktop o painel some sozinho quando o mouse sai; no celular (sem mouse) mostramos
+                um botão Fechar, senão não teria como sair dele. */}
+            {telaEstreita && (
+              <div className="flex items-center justify-between border-b bg-muted/20 px-2 py-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Dados do projeto</span>
+                <button type="button" onClick={() => setPainelAberto(false)} className="flex h-7 items-center gap-1 rounded-md px-2 text-xs font-semibold text-muted-foreground hover:bg-muted">
+                  <X className="size-4" /> Fechar
+                </button>
+              </div>
+            )}
             {/* glebas */}
             <div className="flex flex-wrap items-center gap-1.5 border-b p-1.5 bg-muted/20">
             {glebas.map((g) => (
