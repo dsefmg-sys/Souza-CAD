@@ -1982,7 +1982,7 @@ function FaixaInferior(props: {
               </g>
             )}
             {coordEditavel && situacaoSel && !situacaoStale && (
-              <g style={{ cursor: 'pointer' }} onClick={async (e) => { e.stopPropagation(); if (await confirmar({ titulo: 'Remover situação', mensagem: 'Remover a planta de situação?', okLabel: 'Remover', perigo: true })) onRemoverSituacao?.(); }}>
+              <g style={{ cursor: 'pointer' }} onClick={async (e) => { e.stopPropagation(); if (await confirmar({ titulo: 'Remover situação', mensagem: 'Deseja realmente apagar esta planta de situação?', okLabel: 'Apagar', perigo: true })) onRemoverSituacao?.(); }}>
                 <circle cx={x1 + w1 - 14} cy={y0 + 38} r={8} fill="#fee2e2" stroke="#dc2626" strokeWidth={1} />
                 <text x={x1 + w1 - 14} y={y0 + 41.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#dc2626" style={{ userSelect: 'none' }}>×</text>
               </g>

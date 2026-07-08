@@ -1326,7 +1326,7 @@ export default function EditorPage() {
     aviso(`Gleba "${nova.denominacao}" criada.`);
   }
   async function removerGleba(id: string) {
-    if (sincronizarGlebas().length > 1 && !(await confirmarApagar('Remover esta gleba do imóvel?'))) return;
+    if (sincronizarGlebas().length > 1 && !(await confirmarApagar('Deseja realmente apagar esta gleba?'))) return;
     const gs = sincronizarGlebas().filter((g) => g.id !== id);
     if (gs.length === 0) { aviso('O imóvel precisa de ao menos uma gleba.'); return; }
     setGlebas(gs);
@@ -1693,7 +1693,10 @@ export default function EditorPage() {
     }
   }
 
-  function apagarVertice(id: string) {
+  async function apagarVertice(id: string) {
+    const v = vertices.find((x) => x.id === id);
+    const label = v ? `o vértice ${v.codigoSigef || v.id}` : 'este vértice';
+    if (!(await confirmarApagar(`Deseja realmente apagar ${label}?`))) return;
     snap();
     setVertices((vs) => reordenar(vs.filter((v) => v.id !== id)));
     if (selecionadoId === id) setSelecionadoId(null);
@@ -1713,8 +1716,15 @@ export default function EditorPage() {
   async function apagarMultiSelecionados() {
     const nVert = selMulti.size, nObj = objSelMulti.size;
     if (nVert === 0 && nObj === 0) return;
-    const partes = [nVert ? `${nVert} vértice(s)` : '', nObj ? `${nObj} elemento(s)` : ''].filter(Boolean).join(' e ');
-    if (!(await confirmarApagar(`Apagar ${partes} selecionado(s)?`))) return;
+    let msg = 'Deseja realmente apagar os elementos selecionados?';
+    if (nVert > 0 && nObj === 0) {
+      msg = `Deseja realmente apagar estes ${nVert} vértices?`;
+    } else if (nVert === 0 && nObj > 0) {
+      msg = `Deseja realmente apagar estes ${nObj} elementos?`;
+    } else if (nVert > 0 && nObj > 0) {
+      msg = `Deseja realmente apagar estes ${nVert} vértices e ${nObj} elementos?`;
+    }
+    if (!(await confirmarApagar(msg))) return;
     snap();
     if (nVert) {
       setVertices((vs) => reordenar(vs.filter((v) => !selMulti.has(v.id))));
@@ -1727,7 +1737,7 @@ export default function EditorPage() {
   // Apaga TODO o polígono (vértices + ignorados + trechos), para redesenhar à mão depois.
   async function limparPoligono() {
     if (vertices.length === 0 && verticesIgnorados.length === 0) return;
-    if (!(await confirmarApagar(`Apagar todo o polígono (${vertices.length} vértices)? Você poderá desenhar de novo com a ferramenta "Inserir vértice".`))) return;
+    if (!(await confirmarApagar(`Deseja realmente apagar todo o polígono (${vertices.length} vértices)?`))) return;
     snap();
     setVertices([]);
     setVerticesIgnorados([]);
@@ -2359,11 +2369,31 @@ export default function EditorPage() {
     const p = pontoLL(lat, lon);
     setObjetos((os) => os.map((o) => (o.id === id ? { ...o, pontos: o.pontos.map((q, i) => (i === idx ? p : q)) } : o)));
   }
+  async function excluirObjetoPorId(id: string) {
+    const obj = objetos.find((o) => o.id === id);
+    let msg = 'Deseja realmente apagar este elemento?';
+    if (obj) {
+      if (obj.tipo === 'polilinha') {
+        if (obj.tracejado) msg = 'Deseja realmente apagar este tracejado?';
+        else if (obj.preenchido) msg = 'Deseja realmente apagar este polígono?';
+        else if (obj.pontos.length === 2) msg = 'Deseja realmente apagar esta linha?';
+        else msg = 'Deseja realmente apagar esta polilinha?';
+      } else if (obj.tipo === 'texto') {
+        msg = 'Deseja realmente apagar este texto?';
+      } else if (obj.tipo === 'simbolo') {
+        msg = 'Deseja realmente apagar este símbolo?';
+      } else if (obj.tipo === 'cota') {
+        msg = 'Deseja realmente apagar esta cota?';
+      }
+    }
+    if (!(await confirmarApagar(msg))) return;
+    snap();
+    setObjetos((os) => os.filter((o) => o.id !== id));
+    if (objetoSelId === id) setObjetoSelId(null);
+  }
   function apagarObjetoSel() {
     if (!objetoSelId) return;
-    snap();
-    setObjetos((os) => os.filter((o) => o.id !== objetoSelId));
-    setObjetoSelId(null);
+    excluirObjetoPorId(objetoSelId);
   }
   function editarObjetoSel(patch: Partial<ObjetoDesenho>) {
     if (!objetoSelId) return;
@@ -3640,7 +3670,7 @@ export default function EditorPage() {
     aviso(`Projeto carregado (${p.glebas.length} gleba(s)).`);
   }
   async function remover(id: string) {
-    if (!(await confirmarApagar('Excluir este projeto do banco de dados? Esta ação não pode ser desfeita.'))) return;
+    if (!(await confirmarApagar('Deseja realmente apagar este imóvel? Esta ação não pode ser desfeita.'))) return;
     await excluirProjeto(id); atualizarLista();
   }
   async function renomear(p: Projeto) {
@@ -3981,8 +4011,10 @@ export default function EditorPage() {
         )}
        </div>
 
-        {/* Bolinha do perfil, à direita do cabeçalho: só a foto, sem o nome. Clique abre a conta. */}
-        <div className="relative flex shrink-0 items-center border-l px-2">
+        {/* Bolinha do perfil, à direita do cabeçalho: só a foto, sem o nome. Abre ao passar o mouse. */}
+        <div className="relative flex shrink-0 items-center border-l px-2"
+          onMouseEnter={() => setPerfilMenuAberto(true)}
+          onMouseLeave={() => setPerfilMenuAberto(false)}>
           <button type="button" onClick={() => setPerfilMenuAberto((v) => !v)} title="Sua conta"
             className="rounded-full transition-transform hover:scale-105">
             {user?.photoURL ? (
@@ -3995,9 +4027,7 @@ export default function EditorPage() {
             )}
           </button>
           {perfilMenuAberto && (
-            <>
-              <div className="fixed inset-0 z-[1290]" onClick={() => setPerfilMenuAberto(false)} />
-              <div className="absolute right-0 top-[calc(100%+6px)] z-[1300] w-52 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
+            <div className="absolute right-0 top-[calc(100%+6px)] z-[1300] w-52 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
                 {entrouSemLogin && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); definirModoEntrada('login'); }}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-primary hover:bg-primary/10">
@@ -4021,7 +4051,6 @@ export default function EditorPage() {
                   </button>
                 )}
               </div>
-            </>
           )}
         </div>
 
@@ -5173,7 +5202,7 @@ export default function EditorPage() {
                       selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onAntesEditar={snap}
                       onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}
-                      onExcluirObjeto={(id) => { snap(); setObjetos((os) => os.filter((o) => o.id !== id)); }}
+                      onExcluirObjeto={excluirObjetoPorId}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
                       onRemoverSituacao={() => { setSituacaoUrl(undefined); setPlantaConfig((c) => ({ ...c, situacaoDataUrl: undefined })); }}
                       situacaoStale={!!situacaoUrl && situacaoVersSnapshot !== JSON.stringify(vertices)}
