@@ -19,9 +19,10 @@ export const DialogContent = React.forwardRef<
       className={cn(
         // borda clara + anel + sombra forte: garante contraste com o fundo mesmo quando a janela
         // tem cor parecida com a página (ex.: Gestão do Projeto)
-        // No celular a janela ganha uma margem lateral (não cola nas bordas) e menos padding, pra
-        // parecer feita pra mobile; no desktop mantém o max-w e o respiro maiores.
-        'fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-1rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 gap-3 border-2 border-white/80 dark:border-white/25 ring-1 ring-black/20 bg-background p-4 sm:p-5 shadow-2xl rounded-lg max-h-[92vh] overflow-auto',
+        // No celular a janela ganha uma margem lateral (não cola nas bordas), menos padding e o
+        // conforto de campo (campos de 16px que evitam o zoom do iPhone) via `mobile-conforto`.
+        // No desktop mantém o max-w e o respiro maiores e a classe não faz efeito.
+        'mobile-conforto fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-1rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 gap-3 border-2 border-white/80 dark:border-white/25 ring-1 ring-black/20 bg-background p-4 sm:p-5 shadow-2xl rounded-lg max-h-[92vh] overflow-auto',
         className
       )}
       {...props}
