@@ -154,7 +154,7 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     matricula: imovel.matricula || '', cns: imovel.cns || '', municipio: imovel.municipio || '', comarca,
     area: `${numBR(areaRealHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : '',
     codigoIncra: imovel.codigoImovelIncra || '', tecnico: tecnico.nome || '', cft: tecnico.cft || '',
-    numeroTrt: imovel.numeroTrt || tecnico.art || '', cidade: tecnico.cidadeAssinatura || '', data: input.dataExtenso || '',
+    numeroTrt: imovel.numeroTrt || tecnico.art || '', cidade: imovel.municipio || tecnico.cidadeAssinatura || '', data: input.dataExtenso || '',
   };
 
   if (imovel.ficticio) {

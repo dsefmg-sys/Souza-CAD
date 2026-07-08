@@ -313,7 +313,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     area: `${numBR(efMod.areaHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : '',
     perimetro: `${numBR(efMod.perimetro)} m`, codigoIncra: imovel.codigoImovelIncra || '',
     tecnico: tecnico.nome || '', cft: tecnico.cft || '', numeroTrt: imovel.numeroTrt || tecnico.art || '',
-    cidade: tecnico.cidadeAssinatura || '', data: input.dataExtenso || '',
+    cidade: imovel.municipio || tecnico.cidadeAssinatura || '', data: input.dataExtenso || '',
   };
   const mod = (chave: keyof typeof modelos) => sanitizarTexto(preencherModelo(modelos[chave], varsModelo));
 
@@ -356,7 +356,8 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
 
   // Data e assinatura do técnico
   const data = input.dataExtenso ? `, ${input.dataExtenso}` : '';
-  children.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 40 }, children: [new TextRun({ text: `${tecnico.cidadeAssinatura || ''}${data}.`, size: CORPO })] }));
+  const cidadeAss = imovel.municipio || tecnico.cidadeAssinatura || '';
+  children.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 40 }, children: [new TextRun({ text: `${cidadeAss}${data}.`, size: CORPO })] }));
   const rot = rotulosProfissional(tecnico);
   assinatura([
     (tecnico.nome || '').toUpperCase(),

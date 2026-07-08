@@ -70,7 +70,7 @@ export default function MemorialPreviewModal({
     tecnico: tecnico?.nome || '',
     cft: tecnico?.cft || '',
     numeroTrt: imovel.numeroTrt || tecnico?.art || '',
-    cidade: tecnico?.cidadeAssinatura || '',
+    cidade: imovel.municipio || tecnico?.cidadeAssinatura || '',
     data: dataExtenso || '',
   };
 
@@ -116,7 +116,7 @@ export default function MemorialPreviewModal({
       texto += `OBSERVAÇÕES\n`;
       texto += `${getMod(ehUrbano ? 'memorialObservacoesUrbano' : 'memorialObservacoes')}\n\n`;
       
-      texto += `${tecnico.cidadeAssinatura}, ${dataExtenso}.\n\n`;
+      texto += `${imovel.municipio || tecnico.cidadeAssinatura}, ${dataExtenso}.\n\n`;
       texto += `________________________________________\n`;
       texto += `${tecnico.nome.toUpperCase()}\n`;
       texto += `${tecnico.formacao}\n`;
@@ -242,7 +242,7 @@ export default function MemorialPreviewModal({
             {/* Data e Local de Assinatura */}
             {tecnico && (
               <div className="text-right font-medium pt-2">
-                {tecnico.cidadeAssinatura || '—'}, {dataExtenso || '—'}.
+                {imovel.municipio || tecnico.cidadeAssinatura || '—'}, {dataExtenso || '—'}.
               </div>
             )}
 

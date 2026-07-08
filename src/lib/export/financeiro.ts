@@ -11,7 +11,7 @@ function varsFinanceiro(a: { imovel: ImovelData; tecnico: TecnicoData; areaHa: n
     matricula: a.imovel.matricula || '', municipio: a.imovel.municipio || '',
     area: `${a.areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha`,
     perimetro: a.perimetro != null ? `${a.perimetro.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m` : '',
-    tecnico: a.tecnico.nome || '', cft: a.tecnico.cft || '', cidade: a.tecnico.cidadeAssinatura || '',
+    tecnico: a.tecnico.nome || '', cft: a.tecnico.cft || '', cidade: a.imovel.municipio || a.tecnico.cidadeAssinatura || '',
   };
 }
 
@@ -94,7 +94,7 @@ export function gerarReciboPdf(a: BaseArgs & { valor: number; referente?: string
   doc.text('Para clareza, firmo(amos) o presente recibo, dando plena e geral quitação do valor recebido.', margem, y, { maxWidth: larg - margem * 2 });
   y += 16;
 
-  doc.text(`${a.tecnico.cidadeAssinatura || a.imovel.municipio || '—'}, ${a.dataExtenso}.`, margem, y);
+  doc.text(`${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 26;
   doc.setLineWidth(0.3); doc.line(larg / 2 - 45, y, larg / 2 + 45, y);
   doc.setFontSize(10);
@@ -126,7 +126,7 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
     ['CLÁUSULA 2ª – DO VALOR E PAGAMENTO', `Pelos serviços, o CONTRATANTE pagará ao CONTRATADO o valor de ${moedaBR(a.valor)} (${extensoReais(a.valor)}), ${a.formaPagamento || 'na forma combinada entre as partes'}.`],
     ['CLÁUSULA 3ª – DO PRAZO', `O CONTRATADO executará os serviços no prazo de ${a.prazoDias ?? '____'} dias, ressalvadas as etapas que dependam de terceiros (cartório, INCRA, confrontantes) e de condições de campo.`],
     ['CLÁUSULA 4ª – DAS OBRIGAÇÕES', preencherModelo(carregarModelos().contratoObrigacoes, varsFinanceiro(a))],
-    ['CLÁUSULA 5ª – DO FORO', `Fica eleito o foro da comarca de ${a.tecnico.cidadeAssinatura || a.imovel.municipio || '—'} para dirimir eventuais dúvidas oriundas deste contrato.`],
+    ['CLÁUSULA 5ª – DO FORO', `Fica eleito o foro da comarca de ${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'} para dirimir eventuais dúvidas oriundas deste contrato.`],
   ];
 
   doc.setFontSize(10.5);
@@ -141,7 +141,7 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
 
   if (y > alt - 60) { doc.addPage(); y = margem; }
   y += 6;
-  doc.text(`${a.tecnico.cidadeAssinatura || a.imovel.municipio || '—'}, ${a.dataExtenso}.`, margem, y);
+  doc.text(`${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 24;
   doc.setLineWidth(0.3);
   doc.line(margem, y, margem + 70, y);
@@ -194,7 +194,7 @@ export function gerarPropostaPdf(a: BaseArgs & { valor: number; prazoDias?: numb
 
   y += 6;
   if (y > alt - 40) { doc.addPage(); y = margem; }
-  doc.text(`${a.tecnico.cidadeAssinatura || a.imovel.municipio || '—'}, ${a.dataExtenso}.`, margem, y);
+  doc.text(`${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 22;
   doc.setLineWidth(0.3); doc.line(larg / 2 - 45, y, larg / 2 + 45, y);
   doc.setFontSize(10);

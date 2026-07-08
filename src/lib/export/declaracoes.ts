@@ -14,7 +14,7 @@ function varsDeclaracao(imovel: ImovelData, tecnico: TecnicoData): Record<string
   return {
     proprietario: imovel.proprietario || '', cpf: imovel.cpfProprietario || '', denominacao: imovel.denominacao || '',
     matricula: imovel.matricula || '', cns: imovel.cns || '', municipio: imovel.municipio || '', comarca: imovel.municipio || '',
-    codigoIncra: imovel.codigoImovelIncra || '', tecnico: tecnico.nome || '', cft: tecnico.cft || '', cidade: tecnico.cidadeAssinatura || '',
+    codigoIncra: imovel.codigoImovelIncra || '', tecnico: tecnico.nome || '', cft: tecnico.cft || '', cidade: imovel.municipio || tecnico.cidadeAssinatura || '',
   };
 }
 
@@ -43,7 +43,7 @@ async function montar(titulo: string, corpo: string, assinaNome: string, assinaR
   c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [new TextRun({ text: titulo, bold: true, size: 24 })] }));
   c.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 200 }, children: [new TextRun({ text: corpo, size: 22 })] }));
 
-  const local = tecnico.cidadeAssinatura || imovel.municipio || '—';
+  const local = imovel.municipio || tecnico.cidadeAssinatura || '—';
   const data = dataExtenso ? `${local}, ${dataExtenso}.` : `${local}, ____ de __________ de ______.`;
   c.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 320 }, children: [new TextRun({ text: data, size: 22 })] }));
 
