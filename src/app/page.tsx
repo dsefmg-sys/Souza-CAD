@@ -1444,7 +1444,11 @@ export default function EditorPage() {
         const xmlText = new TextDecoder('utf-8').decode(buf);
         const ptsGml = parseVerticesSigefGml(xmlText);
         propsGml = parsePropriedadeSigefGml(xmlText);
-        
+        const totalNosGml = (ptsGml as unknown as { totalNos?: number }).totalNos ?? ptsGml.length;
+        if (totalNosGml > ptsGml.length) {
+          aviso(`Atenção: ${totalNosGml - ptsGml.length} de ${totalNosGml} vértice(s) do arquivo não puderam ser lidos (formato de coordenada não reconhecido) e ficaram de fora do polígono importado.`);
+        }
+
         if (ptsGml.length >= 3) {
           isGmlImport = true;
           if (!z) {
@@ -3166,8 +3170,13 @@ export default function EditorPage() {
       const nameLower = file.name.toLowerCase();
       
       let lidos: VerticeVizinho[] = [];
+      let verticesDescartadosVizinho = 0; // vértices do GML que não puderam ser lidos (formato não reconhecido)
       if (nameLower.endsWith('.gml') || nameLower.endsWith('.xml')) {
         const ptsGml = parseVerticesSigefGml(texto);
+        const totalNosVizinho = (ptsGml as unknown as { totalNos?: number }).totalNos ?? ptsGml.length;
+        if (totalNosVizinho > ptsGml.length) {
+          verticesDescartadosVizinho = totalNosVizinho - ptsGml.length;
+        }
         lidos = ptsGml.map((p) => {
           const u = geoParaUtm(p.lat, p.lon, zona, hemisferio);
           return {
@@ -3248,7 +3257,11 @@ export default function EditorPage() {
       const partes = [];
       if (guardados) partes.push(`${guardados} vértice(s) do vizinho guardado(s) para a planta`);
       if (adotados) partes.push(`${adotados} do seu perímetro adotaram o código oficial`);
-      aviso(partes.length ? `${partes.join('; ')}.` : 'Esses vértices do vizinho já estavam guardados.');
+      const resumo = partes.length ? `${partes.join('; ')}.` : 'Esses vértices do vizinho já estavam guardados.';
+      const alertaDescarte = verticesDescartadosVizinho
+        ? ` Atenção: ${verticesDescartadosVizinho} vértice(s) do arquivo tinham formato de coordenada não reconhecido e ficaram de fora.`
+        : '';
+      aviso(resumo + alertaDescarte);
     } catch { aviso('Não consegui ler o arquivo de vértices do vizinho.'); }
   }
 
@@ -3504,9 +3517,20 @@ export default function EditorPage() {
     const validos = estimados.filter((z) => z != null).length;
     if (validos === 0) { await avisar({ titulo: 'Completar altitudes', mensagem: 'Não consegui estimar a altitude desses vértices com os pontos disponíveis.' }); return; }
 
+    // Lista os vértices afetados por nome/código: o teste de "sem cota" (elevação 0) não distingue um
+    // vértice que nunca teve altitude medida de um que foi medido com cota LOCAL/ARBITRÁRIA igual a
+    // zero (comum quando o RN de referência é definido como 0 por convenção). Mostrar a lista deixa o
+    // dono checar visualmente se reconhece algum desses códigos como um ponto de referência de propósito
+    // antes de a ferramenta sobrescrever a cota dele com uma estimativa.
+    const LIMITE_LISTA = 12;
+    const nomesSemCota = semCota.map((v) => v.codigoSigef || v.nome || `V${v.ordem}`);
+    const listaTexto = nomesSemCota.length > LIMITE_LISTA
+      ? `${nomesSemCota.slice(0, LIMITE_LISTA).join(', ')} e mais ${nomesSemCota.length - LIMITE_LISTA}`
+      : nomesSemCota.join(', ');
+
     const ok = await confirmar({
       titulo: 'Completar altitudes',
-      mensagem: `${semCota.length} vértice(s) estão sem altitude. Calcular a cota deles a partir dos ${base.length} ponto(s) que têm altitude? A cota fica marcada como CALCULADA (não medida) e você pode desfazer.`,
+      mensagem: `${semCota.length} vértice(s) estão sem altitude: ${listaTexto}.\n\nCalcular a cota deles a partir dos ${base.length} ponto(s) que têm altitude? A cota fica marcada como CALCULADA (não medida) e você pode desfazer.\n\nAtenção: se algum destes já tem cota LOCAL/ARBITRÁRIA de propósito igual a 0,00 (ex.: seu RN de referência), ele será tratado como "sem altitude" e terá o valor SOBRESCRITO — cancele e ajuste manualmente se for o caso.`,
       okLabel: 'Calcular', cancelLabel: 'Cancelar',
     });
     if (!ok) return;

@@ -130,6 +130,33 @@ describe('sigefVizinhos', () => {
     expect(vs[1].tipo).toBe('P');
     expect(vs[1].metodo).toBe('PG1');
     expect(vs[1].limite).toBe('cerca');
+
+    // totalNos deve bater com a contagem quando nenhum vértice foi descartado
+    expect((vs as unknown as { totalNos: number }).totalNos).toBe(2);
+  });
+
+  it('NAO perde em silencio um vertice cuja tag de coordenada nao e reconhecida — totalNos denuncia o descarte', () => {
+    const gmlText = `
+      <sigef:vertice>
+        <geo:Vértice>
+          <geo:codigo>COIN-M-0017</geo:codigo>
+          <geo:latitude>-20.672012</geo:latitude>
+          <geo:longitude>-41.947413</geo:longitude>
+        </geo:Vértice>
+      </sigef:vertice>
+      <sigef:vertice>
+        <geo:Vértice>
+          <geo:codigo>COIN-P-0128</geo:codigo>
+          <geo:coordenadaXYZ>-20.675711,-41.945012</geo:coordenadaXYZ>
+        </geo:Vértice>
+      </sigef:vertice>
+    `;
+    const vs = parseVerticesSigefGml(gmlText);
+    // só o 1º vértice tem tag de latitude/longitude reconhecida pela heurística — o 2º é descartado
+    expect(vs.length).toBe(1);
+    expect(vs[0].id).toBe('COIN-M-0017');
+    // mas totalNos revela que havia 2 nós <Vértice> no XML — dá pra quem chama avisar da perda
+    expect((vs as unknown as { totalNos: number }).totalNos).toBe(2);
   });
 
   it('parseia metadados da propriedade a partir de um GML/XML do SIGEF', () => {

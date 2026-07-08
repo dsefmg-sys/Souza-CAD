@@ -211,13 +211,18 @@ export function confrontantesDeVizinhas(parcelas: ParcelaSigef[]): Confrontante[
  */
 export function parseVerticesSigefGml(xmlText: string): any[] {
   const vertices: any[] = [];
-  
+  // Conta quantos nós <Vértice> existem no XML, mesmo os que falharem no parse — dá pra quem chama
+  // perceber se algum vértice foi DESCARTADO em silêncio (ex.: tag de lat/lon num formato não previsto
+  // pela heurística), comparando `vertices.length` com `vertices.totalNos` no retorno.
+  let totalNos = 0;
+
   // Encontra as tags de vértices (<Vértice>, <vertice>, <geo:Vértice>, etc.)
   const regexNode = /<(?:[a-zA-Z0-9_-]+:)?(Vértice|vertice)[^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?\1>/gi;
-  
+
   let match;
   let idx = 1;
   while ((match = regexNode.exec(xmlText)) !== null) {
+    totalNos++;
     const content = match[2];
     
     // Helper regex para extrair valor de uma tag ignorando namespaces e limpando escapes XML
@@ -288,6 +293,10 @@ export function parseVerticesSigefGml(xmlText: string): any[] {
     }
   }
   
+  // Anexa a contagem total de nós encontrados (inclusive os descartados) como propriedade extra do
+  // array — não quebra quem usa `vertices` como array normal (.length, [i], .map...), só permite
+  // detectar perda silenciosa comparando `.length` com `.totalNos`.
+  (vertices as any).totalNos = totalNos;
   return vertices;
 }
 
