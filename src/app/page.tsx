@@ -161,10 +161,10 @@ const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-M
 // Coerência de cor: as ETAPAS de processo (importar, SIGEF, dados, marcar) ficam em tom suave,
 // distintas pela cor mas calmas; só as PEÇAS de saída usam o verde forte da marca — a cor de ação
 // principal, porque baixar as peças é o objetivo do trabalho. Assim o olho é guiado, não gritado.
-const COR_IMPORT = 'bg-sky-100 dark:bg-sky-950 hover:bg-sky-200 dark:hover:bg-sky-900 text-sky-800 dark:text-sky-200 border-sky-200 dark:border-sky-800';       // entrada de dados
-const COR_VIZINHO = 'bg-teal-100 dark:bg-teal-950 hover:bg-teal-200 dark:hover:bg-teal-900 text-teal-800 dark:text-teal-200 border-teal-200 dark:border-teal-800'; // vizinho certificado (SIGEF/INCRA)
-const COR_DADOS = 'bg-violet-100 dark:bg-violet-950 hover:bg-violet-200 dark:hover:bg-violet-900 text-violet-800 dark:text-violet-200 border-violet-200 dark:border-violet-800'; // cadastro e IA
-const COR_MARCAR = 'bg-amber-100 dark:bg-amber-950 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800';    // marcar no mapa
+const COR_IMPORT = 'bg-sky-500 hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-700 text-white border-transparent';       // entrada de dados
+const COR_VIZINHO = 'bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800 text-white border-transparent'; // vizinho certificado (SIGEF/INCRA)
+const COR_DADOS = 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-800 text-white border-transparent'; // cadastro e IA
+const COR_MARCAR = 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white border-transparent';    // marcar no mapa
 const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída — cor de ação principal (verde da marca)
 const PREM_BTN = 'shadow-xs hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 font-bold border rounded-lg';
 
@@ -4061,7 +4061,7 @@ export default function EditorPage() {
           </a>
         )}
         {medioOuMais && (
-          <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-100 dark:bg-lime-950 hover:bg-lime-200 dark:hover:bg-lime-900 text-lime-800 dark:text-lime-200 border-lime-200 dark:border-lime-800`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
+          <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
         )}
        </div>
 
