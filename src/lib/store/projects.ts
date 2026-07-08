@@ -28,8 +28,13 @@ function ehMeuLocal(p: { _uidLocal?: string }): boolean {
 }
 
 /** Erro sinalizando que a nuvem negou e o projeto foi guardado localmente como reserva. */
-export class NuvemSemPermissao extends Error {
-  constructor() { super('NUVEM_SEM_PERMISSAO'); this.name = 'NuvemSemPermissao'; }
+export class NuvemSemPermissao {
+  name = 'NuvemSemPermissao';
+  message = 'NUVEM_SEM_PERMISSAO';
+  stack?: string;
+  constructor() {
+    this.stack = new Error('NUVEM_SEM_PERMISSAO').stack;
+  }
 }
 
 // O Firestore recusa três coisas que um Projeto real contém: nomes de campo com ponto (os ajustes
