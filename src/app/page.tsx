@@ -4705,17 +4705,40 @@ export default function EditorPage() {
 
                               {/* Área e Perímetro */}
                               {res && (
-                                <div className="grid grid-cols-2 gap-1.5">
-                                  <div className="flex flex-col items-center justify-center rounded-md bg-muted/30 py-1.5 px-1">
-                                    <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground">Área SGL</span>
-                                    <span className="text-[12px] font-bold text-foreground leading-tight">{numBR(res.areaHa, casasTela(4))}</span>
-                                    <span className="text-[8px] text-muted-foreground">ha</span>
+                                <div className="space-y-1.5">
+                                  {/* Valores Calculados pelo Sistema */}
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    <div className="flex flex-col items-center justify-center rounded-md bg-muted/30 py-1.5 px-1">
+                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground">Área (Sistema)</span>
+                                      <span className="text-[12px] font-bold text-foreground leading-tight">{numBR(res.areaHa, casasTela(4))}</span>
+                                      <span className="text-[8px] text-muted-foreground">ha</span>
+                                    </div>
+                                    <div className="flex flex-col items-center justify-center rounded-md bg-muted/30 py-1.5 px-1">
+                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground">Perímetro (Sistema)</span>
+                                      <span className="text-[12px] font-bold text-foreground leading-tight">{numBR(res.perimetro)}</span>
+                                      <span className="text-[8px] text-muted-foreground">m</span>
+                                    </div>
                                   </div>
-                                  <div className="flex flex-col items-center justify-center rounded-md bg-muted/30 py-1.5 px-1">
-                                    <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground">Perímetro</span>
-                                    <span className="text-[12px] font-bold text-foreground leading-tight">{numBR(res.perimetro)}</span>
-                                    <span className="text-[8px] text-muted-foreground">m</span>
-                                  </div>
+
+                                  {/* Valores Oficiais Conciliados com o SIGEF (se existirem) */}
+                                  {((imovel.areaSigefHa != null && imovel.areaSigefHa > 0) || (imovel.perimetroSigef != null && imovel.perimetroSigef > 0)) && (
+                                    <div className="grid grid-cols-2 gap-1.5 border-t border-dashed border-border/60 pt-1.5">
+                                      <div className={`flex flex-col items-center justify-center rounded-md py-1.5 px-1 ${imovel.usarValoresSigef ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-muted/20 opacity-70'}`}>
+                                        <span className="text-[8px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Área (SIGEF)</span>
+                                        <span className="text-[12px] font-bold text-foreground leading-tight">
+                                          {imovel.areaSigefHa ? numBR(imovel.areaSigefHa, 4) : '—'}
+                                        </span>
+                                        <span className="text-[8px] text-muted-foreground">ha</span>
+                                      </div>
+                                      <div className={`flex flex-col items-center justify-center rounded-md py-1.5 px-1 ${imovel.usarValoresSigef ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-muted/20 opacity-70'}`}>
+                                        <span className="text-[8px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Perímetro (SIGEF)</span>
+                                        <span className="text-[12px] font-bold text-foreground leading-tight">
+                                          {imovel.perimetroSigef ? numBR(imovel.perimetroSigef) : '—'}
+                                        </span>
+                                        <span className="text-[8px] text-muted-foreground">m</span>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
