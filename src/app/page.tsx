@@ -157,11 +157,14 @@ const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-M
 
 // Linguagem de cor por FUNÇÃO do botão (deixa o cabeçalho intuitivo: a cor diz o que o grupo faz).
 // O ícone ainda muda de cor pelo progresso (verde=feito, azul=andamento) por cima disso.
-const COR_IMPORT = 'bg-sky-600 hover:bg-sky-700 text-white border-transparent';       // entrada de dados
-const COR_VIZINHO = 'bg-teal-600 hover:bg-teal-700 text-white border-transparent'; // vizinho certificado (SIGEF/INCRA)
-const COR_DADOS = 'bg-violet-600 hover:bg-violet-700 text-white border-transparent'; // cadastro e IA
-const COR_MARCAR = 'bg-amber-600 hover:bg-amber-700 text-white border-transparent';    // marcar no mapa
-const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída
+// Coerência de cor: as ETAPAS de processo (importar, SIGEF, dados, marcar) ficam em tom suave,
+// distintas pela cor mas calmas; só as PEÇAS de saída usam o verde forte da marca — a cor de ação
+// principal, porque baixar as peças é o objetivo do trabalho. Assim o olho é guiado, não gritado.
+const COR_IMPORT = 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/40';       // entrada de dados
+const COR_VIZINHO = 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 border-teal-500/40'; // vizinho certificado (SIGEF/INCRA)
+const COR_DADOS = 'bg-violet-500/10 hover:bg-violet-500/20 text-violet-700 dark:text-violet-300 border-violet-500/40'; // cadastro e IA
+const COR_MARCAR = 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40';    // marcar no mapa
+const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída — cor de ação principal (verde da marca)
 const PREM_BTN = 'shadow-xs hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 font-bold border rounded-lg';
 
 type EtapaEstado = 'feito' | 'andamento' | 'pendente';
@@ -3904,7 +3907,7 @@ export default function EditorPage() {
             <span className={souMaster() ? 'text-amber-500 dark:text-amber-400' : 'text-primary'}>Souza</span>
             <span className={souMaster() ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground'}>CAD</span>
             {souMaster() && (
-              <span className="mt-0.5 rounded-full bg-amber-500/10 px-0.5 py-px text-[7px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/20 text-center animate-pulse">
+              <span className="mt-0.5 rounded-full bg-amber-500/10 px-0.5 py-px text-[7px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/20 text-center">
                 Master
               </span>
             )}
@@ -3973,7 +3976,7 @@ export default function EditorPage() {
           </a>
         )}
         {medioOuMais && (
-          <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 text-white border-transparent`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
+          <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-500/10 hover:bg-lime-500/20 text-lime-700 dark:text-lime-300 border-lime-500/40`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
         )}
        </div>
 
@@ -5590,7 +5593,7 @@ export default function EditorPage() {
                   <span className="text-xs font-bold text-foreground flex items-center gap-1">
                     3. Casar Vértices
                     {parcelasCert.length > 0 && (
-                      <span className="inline-flex size-2 rounded-full bg-emerald-500 animate-pulse" title="Vizinhos carregados" />
+                      <span className="inline-flex size-2 rounded-full bg-emerald-500" title="Vizinhos carregados" />
                     )}
                   </span>
                   <Button
@@ -5694,7 +5697,7 @@ export default function EditorPage() {
       {nuvemDisponivel && !user && (
         <div className={`no-print fixed inset-x-0 z-[1500] flex justify-center ${imovel.ficticio ? 'bottom-11' : 'bottom-2'}`}>
           <button type="button" onClick={() => definirModoEntrada('login')}
-            className="pointer-events-auto animate-pulse rounded-full border border-emerald-300/50 bg-emerald-500/15 px-4 py-1 text-sm font-semibold text-emerald-300 shadow-lg backdrop-blur transition-colors hover:bg-emerald-500/25">
+            className="pointer-events-auto rounded-full border border-emerald-300/50 bg-emerald-500/15 px-4 py-1 text-sm font-semibold text-emerald-300 shadow-lg backdrop-blur transition-colors hover:bg-emerald-500/25">
             Crie seu usuário para salvar suas configurações e gerenciar seus projetos
           </button>
         </div>
