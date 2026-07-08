@@ -10,7 +10,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, LogIn, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal, SlidersHorizontal, ChevronDown, Briefcase,
+  Settings, LogOut, LogIn, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal, SlidersHorizontal, ChevronDown, Briefcase, Maximize2, PanelLeft,
   Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -389,7 +389,9 @@ export default function EditorPage() {
   }, []);
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
   const [toolW, setToolW] = useState(270); // largura confortável pra não espremer os rótulos dos botões
-  const toolWEfetivo = telaEstreita ? 54 : toolW; // no celular em pé, barra só de ícones
+  // No celular, pode-se ocultar a barra de vez pra o mapa ocupar a tela toda (modo campo).
+  const [barraLateralOculta, setBarraLateralOculta] = useState(false);
+  const toolWEfetivo = telaEstreita ? (barraLateralOculta ? 0 : 54) : toolW;
   const toolDrag = useRef(false);
   const [centralizarSig, setCentralizarSig] = useState(0); // incrementa para enquadrar o desenho
   // largura do painel da direita (redimensionável, salva por usuário)
@@ -4318,6 +4320,14 @@ export default function EditorPage() {
             )}
           </span>
         </div>
+        {/* Só no celular: esconder/mostrar a barra de ícones pra o mapa ocupar a tela toda (modo campo). */}
+        {telaEstreita && (
+          <button type="button" onClick={() => setBarraLateralOculta((v) => !v)}
+            title={barraLateralOculta ? 'Mostrar a barra de ferramentas' : 'Ocultar a barra — mapa em tela cheia'}
+            className="flex shrink-0 items-center justify-center border-r px-2.5 text-muted-foreground hover:bg-muted/40">
+            {barraLateralOculta ? <PanelLeft className="size-4" /> : <Maximize2 className="size-4" />}
+          </button>
+        )}
         <div className="flex flex-1 items-center gap-1 overflow-x-auto px-2 py-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] [&_button_svg]:size-3">
         <input ref={fileRef} type="file" accept=".txt,.csv,.gml,.xml" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
@@ -4566,7 +4576,7 @@ export default function EditorPage() {
           const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t.toUpperCase()}</span> : null);
           return (
             <>
-              <aside style={{ width: toolWEfetivo }} className="no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5">
+              <aside style={{ width: toolWEfetivo }} className={`no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
                 {/* DADOS E AÇÕES DO PROJETO */}
                 {rotulo ? (
                   <div className="flex flex-col gap-2 text-xs">

@@ -225,6 +225,7 @@ function ControleGPS() {
   const map = useMap();
   useEffect(() => {
     let marcador: L.CircleMarker | null = null;
+    let circulo: L.Circle | null = null;
     const icone = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
     const ctrl = new L.Control({ position: 'bottomright' });
     ctrl.onAdd = () => {
@@ -242,8 +243,12 @@ function ControleGPS() {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+            const precisao = pos.coords.accuracy || 0;
             map.setView(ll, Math.max(map.getZoom(), 17));
             if (marcador) marcador.remove();
+            if (circulo) circulo.remove();
+            // Círculo azul-claro do raio de precisão (metros): mostra a incerteza da leitura de GPS.
+            if (precisao > 0) circulo = L.circle(ll, { radius: precisao, color: '#3b82f6', weight: 1, fillColor: '#3b82f6', fillOpacity: 0.12 }).addTo(map);
             marcador = L.circleMarker(ll, { radius: 7, color: '#1d4ed8', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.9 }).addTo(map);
             btn.innerHTML = icone;
           },
@@ -254,7 +259,7 @@ function ControleGPS() {
       return btn;
     };
     ctrl.addTo(map);
-    return () => { if (marcador) marcador.remove(); ctrl.remove(); };
+    return () => { if (marcador) marcador.remove(); if (circulo) circulo.remove(); ctrl.remove(); };
   }, [map]);
   return null;
 }
