@@ -5,12 +5,12 @@ import { initializeFirestore, getFirestore, type Firestore } from 'firebase/fire
 import { getAuth, type Auth } from 'firebase/auth';
 
 const cfg = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyDkIEzusmveqZ_vs0S0-U9lILz0Zx3shwA",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "souza-cad.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "souza-cad",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "souza-cad.firebasestorage.app",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "292996249771",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:292996249771:web:38058a1ba7521db11e1fee",
 };
 
 /** True quando o Firebase está configurado (variáveis presentes). */

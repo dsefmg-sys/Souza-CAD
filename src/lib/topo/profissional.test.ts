@@ -22,4 +22,12 @@ describe('rotulosProfissional', () => {
     expect(r.termo).toBe('ART');
     expect(r.termoExtenso).toContain('Anotação');
   });
+
+  it('CFTA = técnico agrícola com TRT', () => {
+    const r = rotulosProfissional({ conselho: 'CFTA' });
+    expect(r.conselho).toBe('CFTA');
+    expect(r.registro).toBe('CFTA');
+    expect(r.termo).toBe('TRT');
+    expect(r.termoExtenso).toContain('Termo de Responsabilidade');
+  });
 });

@@ -5,10 +5,10 @@ import type { TecnicoData } from './types';
 // Engenheiro (agrimensor/civil/agrônomo): registra no CREA e emite ART (Anotação de Responsabilidade
 // Técnica). Um app só serve os dois se trocar essas siglas nas peças em vez de fixar "técnico/TRT".
 
-export type Conselho = 'CFT' | 'CREA';
+export type Conselho = 'CFT' | 'CREA' | 'CFTA';
 
 export interface RotulosProfissional {
-  /** Conselho (CFT do técnico ou CREA do engenheiro). */
+  /** Conselho (CFT do técnico, CFTA do técnico agrícola ou CREA do engenheiro). */
   conselho: Conselho;
   /** Rótulo do nº de registro no conselho — sempre igual ao próprio conselho. */
   registro: Conselho;
@@ -20,8 +20,11 @@ export interface RotulosProfissional {
 
 /** Ausência de conselho = CFT (técnico), pra não quebrar projetos e cadastros já existentes. */
 export function rotulosProfissional(tec: Pick<TecnicoData, 'conselho'> | undefined | null): RotulosProfissional {
-  const eng = tec?.conselho === 'CREA';
-  return eng
-    ? { conselho: 'CREA', registro: 'CREA', termo: 'ART', termoExtenso: 'Anotação de Responsabilidade Técnica' }
-    : { conselho: 'CFT', registro: 'CFT', termo: 'TRT', termoExtenso: 'Termo de Responsabilidade Técnica' };
+  if (tec?.conselho === 'CREA') {
+    return { conselho: 'CREA', registro: 'CREA', termo: 'ART', termoExtenso: 'Anotação de Responsabilidade Técnica' };
+  }
+  if (tec?.conselho === 'CFTA') {
+    return { conselho: 'CFTA', registro: 'CFTA', termo: 'TRT', termoExtenso: 'Termo de Responsabilidade Técnica' };
+  }
+  return { conselho: 'CFT', registro: 'CFT', termo: 'TRT', termoExtenso: 'Termo de Responsabilidade Técnica' };
 }

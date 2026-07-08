@@ -19,7 +19,7 @@ interface Props {
 // (ou se cadastra como profissional autônomo). Preenche escritório + responsável técnico.
 export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }: Props) {
   const [tipo, setTipo] = useState<'empresa' | 'autonomo' | null>(null);
-  const [categoria, setCategoria] = useState<'tecnico' | 'engenheiro'>('tecnico');
+  const [categoria, setCategoria] = useState<'tecnico' | 'tecnico-agricola' | 'engenheiro'>('tecnico');
   const [nomeEmpresa, setNomeEmpresa] = useState('');
   const [nomeRt, setNomeRt] = useState('');
   const [formacao, setFormacao] = useState('');
@@ -29,9 +29,12 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
   const [telefone, setTelefone] = useState('');
 
   const eng = categoria === 'engenheiro';
-  const conselho = eng ? 'CREA' : 'CFT';
+  const agricola = categoria === 'tecnico-agricola';
+  const conselho = eng ? 'CREA' : (agricola ? 'CFTA' : 'CFT');
   const termo = eng ? 'ART' : 'TRT';
-  const formacaoPadrao = eng ? 'ENGENHEIRO AGRIMENSOR' : 'TÉCNICO EM AGRIMENSURA';
+  const formacaoPadrao = eng
+    ? 'ENGENHEIRO AGRIMENSOR'
+    : (agricola ? 'TÉCNICO EM AGROPECUÁRIA' : 'TÉCNICO EM AGRIMENSURA');
 
   function concluir() {
     // sobrescreve os padrões (que vinham preenchidos com a empresa do criador) com os dados do usuário
@@ -46,7 +49,7 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
     salvarTecnico({
       ...tec, nome: nomeRt.trim(), cft: cft.trim(), cidadeAssinatura: cidade.trim(),
       credenciamentoIncra: credenciamento.trim().toUpperCase(),
-      conselho: eng ? 'CREA' : 'CFT',
+      conselho,
       formacao: formacao.trim() || formacaoPadrao,
     });
     // aceite das condições de uso registrado aqui, discreto (a linha acima do botão avisa;
@@ -91,12 +94,15 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
             {/* categoria do responsável: define as siglas (TRT/CFT do técnico x ART/CREA do engenheiro) */}
             <div className="space-y-1">
               <Label>Você é</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setCategoria('tecnico')} className={`rounded-lg border p-2 text-left text-xs ${!eng ? 'border-primary bg-primary/10 font-semibold' : 'hover:bg-muted/50'}`}>
-                  <div className="text-sm font-semibold">Técnico</div><div className="text-muted-foreground">Registro no CFT, emite TRT</div>
+              <div className="grid grid-cols-3 gap-2">
+                <button type="button" onClick={() => setCategoria('tecnico')} className={`rounded-lg border p-2 text-left text-xs ${categoria === 'tecnico' ? 'border-primary bg-primary/10 font-semibold' : 'hover:bg-muted/50'}`}>
+                  <div className="text-xs font-semibold leading-tight">Técnico Agrimensura</div><div className="text-[10px] text-muted-foreground mt-0.5">CFT, emite TRT</div>
                 </button>
-                <button type="button" onClick={() => setCategoria('engenheiro')} className={`rounded-lg border p-2 text-left text-xs ${eng ? 'border-primary bg-primary/10 font-semibold' : 'hover:bg-muted/50'}`}>
-                  <div className="text-sm font-semibold">Engenheiro</div><div className="text-muted-foreground">Registro no CREA, emite ART</div>
+                <button type="button" onClick={() => setCategoria('tecnico-agricola')} className={`rounded-lg border p-2 text-left text-xs ${categoria === 'tecnico-agricola' ? 'border-primary bg-primary/10 font-semibold' : 'hover:bg-muted/50'}`}>
+                  <div className="text-xs font-semibold leading-tight">Técnico Agrícola</div><div className="text-[10px] text-muted-foreground mt-0.5">CFTA, emite TRT</div>
+                </button>
+                <button type="button" onClick={() => setCategoria('engenheiro')} className={`rounded-lg border p-2 text-left text-xs ${categoria === 'engenheiro' ? 'border-primary bg-primary/10 font-semibold' : 'hover:bg-muted/50'}`}>
+                  <div className="text-xs font-semibold leading-tight">Engenheiro</div><div className="text-[10px] text-muted-foreground mt-0.5">CREA, emite ART</div>
                 </button>
               </div>
             </div>

@@ -416,7 +416,7 @@ export interface TecnicoData {
   formacao: string;           // "TÉCNICO EM AGRIMENSURA" (técnico) ou "ENGENHEIRO AGRIMENSOR" (engenheiro)
   // Conselho do responsável: técnico registra no CFT e emite TRT; engenheiro registra no CREA e
   // emite ART. Ausente = CFT (compatibilidade com projetos antigos). Define as siglas nas peças.
-  conselho?: 'CFT' | 'CREA';
+  conselho?: 'CFT' | 'CREA' | 'CFTA';
   cft: string;                // "12287132600-MG" — nº de registro no conselho (CFT ou CREA)
   art: string;                // "CFT2505318024" — nº do termo de responsabilidade (TRT ou ART)
   credenciamentoIncra: string;// "COIN" — também é o prefixo dos vértices

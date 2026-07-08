@@ -243,17 +243,18 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <Label className="text-xs font-semibold">Nome Completo</Label>
                   <Input value={t.nome} onChange={(e) => changeT('nome', e.target.value)} />
                 </div>
-                {/* conselho: define as siglas das peças — técnico (CFT/TRT) x engenheiro (CREA/ART) */}
+                {/* conselho: define as siglas das peças — técnico (CFT/TRT) x engenheiro (CREA/ART) x técnico agrícola (CFTA/TRT) */}
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Conselho / categoria</Label>
-                  <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={t.conselho ?? 'CFT'} onChange={(e) => changeT('conselho', e.target.value as 'CFT' | 'CREA')}>
-                    <option value="CFT">Técnico — CFT (emite TRT)</option>
+                  <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={t.conselho ?? 'CFT'} onChange={(e) => changeT('conselho', e.target.value as 'CFT' | 'CREA' | 'CFTA')}>
+                    <option value="CFT">Técnico Agrimensura — CFT (emite TRT)</option>
+                    <option value="CFTA">Técnico Agrícola — CFTA (emite TRT)</option>
                     <option value="CREA">Engenheiro — CREA (emite ART)</option>
                   </select>
                 </div>
                 {prefs.modo === 'simples' ? (
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Registro {(t.conselho ?? 'CFT') === 'CREA' ? 'CREA' : 'CFT'}</Label>
+                    <Label className="text-xs font-semibold">Registro {t.conselho ?? 'CFT'}</Label>
                     <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
                   </div>
                 ) : (
@@ -263,7 +264,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                       <Input value={t.formacao} onChange={(e) => changeT('formacao', e.target.value)} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs font-semibold">Registro {(t.conselho ?? 'CFT') === 'CREA' ? 'CREA' : 'CFT'}</Label>
+                      <Label className="text-xs font-semibold">Registro {t.conselho ?? 'CFT'}</Label>
                       <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
                     </div>
                     <div className="space-y-1">
