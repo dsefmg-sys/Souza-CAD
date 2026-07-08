@@ -220,11 +220,17 @@ export function parseVerticesSigefGml(xmlText: string): any[] {
   while ((match = regexNode.exec(xmlText)) !== null) {
     const content = match[2];
     
-    // Helper regex para extrair valor de uma tag ignorando namespaces
+    // Helper regex para extrair valor de uma tag ignorando namespaces e limpando escapes XML
     const tagValue = (tagName: string): string => {
       const r = new RegExp(`<(?:[a-zA-Z0-9_-]+:)?${tagName}[^>]*>\\s*([\\s\\S]*?)\\s*</(?:[a-zA-Z0-9_-]+:)?${tagName}>`, 'i');
       const m = r.exec(content);
-      return m ? m[1].trim() : '';
+      const val = m ? m[1].trim() : '';
+      return val
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
     };
     
     const codigo = tagValue('codigo') || tagValue('nome') || tagValue('id');
@@ -241,9 +247,12 @@ export function parseVerticesSigefGml(xmlText: string): any[] {
     const lon = parseFloat(longitudeStr.replace(',', '.'));
     
     if (Number.isFinite(lat) && Number.isFinite(lon)) {
-      const elev = parseFloat(altitudeStr.replace(',', '.')) || 0;
-      const sigmaH = parseFloat(sigmaHStr.replace(',', '.')) || undefined;
-      const sigmaV = parseFloat(sigmaVStr.replace(',', '.')) || undefined;
+      let elev = parseFloat(altitudeStr.replace(',', '.'));
+      if (!Number.isFinite(elev)) {
+        elev = 0;
+      }
+      const sigmaH = parseFloat(sigmaHStr.replace(',', '.'));
+      const sigmaV = parseFloat(sigmaVStr.replace(',', '.'));
       
       // Heurística de tipo (M = Marco, P = Ponto, V = Virtual)
       let tipo: 'M' | 'P' | 'V' = 'P';
@@ -272,8 +281,8 @@ export function parseVerticesSigefGml(xmlText: string): any[] {
         tipo,
         metodo: metodoStr || undefined,
         limite: limiteStr || undefined,
-        sigmaH,
-        sigmaV
+        sigmaH: Number.isFinite(sigmaH) ? sigmaH : undefined,
+        sigmaV: Number.isFinite(sigmaV) ? sigmaV : undefined
       });
       idx++;
     }
