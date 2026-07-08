@@ -362,6 +362,86 @@ function FocoMap({ latLng }: { latLng: [number, number] | null }) {
 }
 
 // CURSOR DE CRUZ (CAD): com uma ferramenta ativa, o ponteiro do mapa vira a cruz "+" NATIVA do
+interface MarcadoresRotulosProps {
+  validos: Vertex[];
+  camadasVisiveis: Record<string, boolean>;
+  camadasBloqueadas: Record<string, boolean>;
+  mostrarRotulos: boolean;
+  zoom: number;
+  estiloVertice: 'sigef' | 'convencional';
+  tamNomes: number;
+  fzZoom: number;
+  dirsRotulo: [number, number][];
+  modo: string;
+  onSelecionar: (id: string) => void;
+  onMoverRotuloVertice?: (id: string, lat: number, lon: number) => void;
+}
+
+function MarcadoresRotulos({
+  validos,
+  camadasVisiveis,
+  camadasBloqueadas,
+  mostrarRotulos,
+  zoom,
+  estiloVertice,
+  tamNomes,
+  fzZoom,
+  dirsRotulo,
+  modo,
+  onSelecionar,
+  onMoverRotuloVertice,
+}: MarcadoresRotulosProps) {
+  const map = useMap();
+
+  return (
+    <>
+      {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => (
+        <Marker
+          key={`nome${v.id}`}
+          position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}
+          draggable={modo === 'navegar' && !camadasBloqueadas.divisas}
+          zIndexOffset={1000}
+          icon={iconeNomeVertice(
+            estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome),
+            Math.round(tamNomes * fzZoom),
+            v.posRotulo ? 0 : (dirsRotulo[i]?.[0] ?? 1),
+            v.posRotulo ? 0 : (dirsRotulo[i]?.[1] ?? 0),
+          )}
+          eventHandlers={{
+            click() { if (!camadasBloqueadas.divisas) onSelecionar(v.id); },
+            dragend(e) {
+              const marker = e.target as L.Marker;
+              let ll = marker.getLatLng();
+              
+              if (!v.posRotulo) {
+                const dirx = dirsRotulo[i]?.[0] ?? 1;
+                const diry = dirsRotulo[i]?.[1] ?? 0;
+                if (dirx !== 0 || diry !== 0) {
+                  const fs = Math.round(tamNomes * fzZoom) || 11;
+                  const txt = (estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome)) || '';
+                  const estW = txt.length * fs * 0.62 + 10;
+                  const estH = fs + 8;
+                  const c = 11 + fs * 0.35;
+                  const half = (Math.abs(dirx) * estW + Math.abs(diry) * estH) / 2;
+                  
+                  const ax = -dirx * (c + half);
+                  const ay = -diry * (c + half);
+                  
+                  const pt = map.latLngToContainerPoint(ll);
+                  const ptNovo = L.point(pt.x + ax, pt.y + ay);
+                  ll = map.containerPointToLatLng(ptNovo);
+                }
+              }
+              
+              onMoverRotuloVertice?.(v.id, ll.lat, ll.lng);
+            },
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
 // navegador — deixa claro que o clique vai DESENHAR/EDITAR, não navegar. Usamos a cruz nativa (e
 // não um desenho seguindo o mouse) porque o navegador a posiciona EXATAMENTE no ponteiro, sem
 // atraso e alinhada mesmo com zoom; o crosshair desenhado à mão ficava fora do lugar. Sobre um
@@ -1611,24 +1691,20 @@ export default function MapEditor(props: Props) {
       })}
 
       {/* rótulos dos vértices (caixinha branca; arrastáveis com a ferramenta mover/F5; ocultação adaptativa para evitar poluição visual) */}
-      {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => (
-        <Marker
-          key={`nome${v.id}`}
-          position={v.posRotulo ? [v.posRotulo.lat, v.posRotulo.lon] : [v.lat, v.lon]}
-          draggable={modo === 'navegar' && !camadasBloqueadas.divisas}
-          zIndexOffset={1000}
-          icon={iconeNomeVertice(
-            estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome),
-            Math.round(tamNomes * fzZoom),
-            v.posRotulo ? 0 : (dirsRotulo[i]?.[0] ?? 1),
-            v.posRotulo ? 0 : (dirsRotulo[i]?.[1] ?? 0),
-          )}
-          eventHandlers={{
-            click() { if (!camadasBloqueadas.divisas) onSelecionar(v.id); },
-            dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverRotuloVertice?.(v.id, ll.lat, ll.lng); },
-          }}
-        />
-      ))}
+      <MarcadoresRotulos
+        validos={validos}
+        camadasVisiveis={camadasVisiveis}
+        camadasBloqueadas={camadasBloqueadas}
+        mostrarRotulos={mostrarRotulos}
+        zoom={zoom}
+        estiloVertice={estiloVertice}
+        tamNomes={tamNomes}
+        fzZoom={fzZoom}
+        dirsRotulo={dirsRotulo}
+        modo={modo}
+        onSelecionar={onSelecionar}
+        onMoverRotuloVertice={onMoverRotuloVertice}
+      />
 
       {/* Régua / Medições no Mapa */}
       {modo === 'medir' && (() => {
