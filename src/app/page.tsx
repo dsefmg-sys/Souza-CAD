@@ -5224,7 +5224,7 @@ export default function EditorPage() {
         {/* Faixa sensível na borda DIREITA: encostar o mouse abre o painel de dados. Some quando o
             painel já está aberto (aí quem manda é o mouse-leave do próprio painel). */}
         {!painelAberto && !introTocando && (
-          <div className="no-print absolute right-0 top-0 bottom-0 z-[1999] w-[18px] bg-gradient-to-b from-emerald-400 via-green-400 to-emerald-500 dark:from-emerald-600 dark:via-green-500 dark:to-emerald-600 cursor-pointer border-l border-emerald-300/40 dark:border-emerald-700/40 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-400/40 hover:w-[22px] transition-all duration-200 flex items-center justify-center overflow-hidden"
+          <div className="no-print absolute right-0 top-1/2 -translate-y-1/2 z-[1999] w-[18px] h-[50%] bg-gradient-to-b from-emerald-400 via-green-400 to-emerald-500 dark:from-emerald-600 dark:via-green-500 dark:to-emerald-600 cursor-pointer border rounded-l-xl border-emerald-300/40 dark:border-emerald-700/40 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-400/40 hover:w-[22px] transition-all duration-200 flex items-center justify-center overflow-hidden"
             onMouseEnter={() => setPainelAberto(true)}
             title="Dados do projeto (encoste para abrir)" aria-hidden>
             <div className="w-[2px] h-10 rounded-full bg-white/50 dark:bg-white/30" />
@@ -5233,17 +5233,17 @@ export default function EditorPage() {
           </div>
         )}
 
-        {/* Painel suspenso de dados do projeto — ocupa toda a altura disponível do fim da página ao cabeçalho */}
+        {/* Painel suspenso de dados do projeto — ocupa 50% de altura centralizado verticalmente */}
         <div ref={painelWrap}
-          className={`no-print absolute right-0 top-0 bottom-0 z-[2000] flex w-[460px] h-full flex-col border-l bg-background shadow-2xl transition-all duration-300 ${
+          className={`no-print absolute right-0 top-1/2 z-[2000] flex w-[460px] h-[50%] flex-col border border-r-0 rounded-l-2xl bg-background shadow-2xl transition-all duration-300 ${
             painelAberto
-              ? 'translate-x-0 opacity-100 visible'
-              : 'translate-x-full opacity-0 invisible pointer-events-none'
+              ? 'translate-x-0 -translate-y-1/2 opacity-100 visible'
+              : 'translate-x-full -translate-y-1/2 opacity-0 invisible pointer-events-none'
           }`}
           onMouseEnter={() => { painelMouseDentro.current = true; }}
           onMouseLeave={() => { painelMouseDentro.current = false; if (!asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
           onBlurCapture={() => { setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 50); }}>
-          <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background">
+          <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background rounded-l-2xl">
             {/* (sem barra de fechar: o painel some sozinho quando o mouse sai dele) */}
             {/* glebas */}
             <div className="flex flex-wrap items-center gap-1.5 border-b p-1.5 bg-muted/20">
