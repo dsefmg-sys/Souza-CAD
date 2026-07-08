@@ -5456,20 +5456,24 @@ export default function EditorPage() {
               os controles da planta (situação, escala, travar folha, tema) e os players de áudio. */}
           {(vista === 'mapa' || vista === 'planta') && (
             <div
-              style={{ left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)' }}
-              className="no-print pointer-events-auto absolute z-[1160] flex items-center gap-x-1.5 overflow-x-auto rounded-2xl border border-border/80 bg-background/90 backdrop-blur-sm p-1.5 shadow-xl select-none"
+              style={telaEstreita ? undefined : { left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)' }}
+              className={`no-print pointer-events-auto z-[1160] flex items-center gap-x-1.5 overflow-x-auto border border-border/80 bg-background/95 backdrop-blur-sm p-1.5 shadow-xl select-none ${
+                telaEstreita ? 'fixed inset-x-1 bottom-1 rounded-xl' : 'absolute rounded-2xl'
+              }`}
             >
-              {/* Alça de arrasto */}
-              <div
-                className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setArrastandoArea({ startX: e.clientX, startY: e.clientY, startPosX: posArea.x, startPosY: posArea.y });
-                }}
-                title="Arraste para mover a barra"
-              >
-                <GripVertical className="size-3.5" />
-              </div>
+              {/* Alça de arrasto — no celular a barra é fixa na base, então não precisa arrastar */}
+              {!telaEstreita && (
+                <div
+                  className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setArrastandoArea({ startX: e.clientX, startY: e.clientY, startPosX: posArea.x, startPosY: posArea.y });
+                  }}
+                  title="Arraste para mover a barra"
+                >
+                  <GripVertical className="size-3.5" />
+                </div>
+              )}
 
               {/* Alternar Mapa/Planta */}
               <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}

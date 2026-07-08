@@ -219,6 +219,46 @@ function AjustarLimites({ vertices, referencias = [] }: { vertices: Vertex[]; re
   return null;
 }
 
+/** Botão de GPS "minha localização" no canto do mapa: centraliza no ponto do aparelho e marca com
+ *  um ponto azul. É o que transforma o app num auxiliar de campo — o agrimensor se vê no terreno. */
+function ControleGPS() {
+  const map = useMap();
+  useEffect(() => {
+    let marcador: L.CircleMarker | null = null;
+    const icone = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
+    const ctrl = new L.Control({ position: 'bottomright' });
+    ctrl.onAdd = () => {
+      const btn = L.DomUtil.create('button', 'leaflet-bar') as HTMLButtonElement;
+      btn.type = 'button';
+      btn.title = 'Minha localização (GPS)';
+      btn.setAttribute('aria-label', 'Minha localização (GPS)');
+      btn.style.cssText = 'width:40px;height:40px;margin-bottom:56px;display:flex;align-items:center;justify-content:center;background:#fff;color:#111;cursor:pointer;border:none;';
+      btn.innerHTML = icone;
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.on(btn, 'click', (e) => {
+        L.DomEvent.stop(e);
+        if (!navigator.geolocation) { alert('Este aparelho não oferece localização por GPS.'); return; }
+        btn.innerHTML = '…';
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+            map.setView(ll, Math.max(map.getZoom(), 17));
+            if (marcador) marcador.remove();
+            marcador = L.circleMarker(ll, { radius: 7, color: '#1d4ed8', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.9 }).addTo(map);
+            btn.innerHTML = icone;
+          },
+          () => { btn.innerHTML = icone; alert('Não consegui obter sua localização. Ative o GPS e permita o acesso ao local.'); },
+          { enableHighAccuracy: true, timeout: 12000 },
+        );
+      });
+      return btn;
+    };
+    ctrl.addTo(map);
+    return () => { if (marcador) marcador.remove(); ctrl.remove(); };
+  }, [map]);
+  return null;
+}
+
 function Centralizar({ sig, vertices }: { sig?: number; vertices: Vertex[] }) {
   const map = useMap();
   useEffect(() => {
@@ -1300,6 +1340,7 @@ export default function MapEditor(props: Props) {
       </LayersControl>
 
       <AjustarLimites vertices={validos} referencias={referencias} />
+      <ControleGPS />
       <Centralizar sig={centralizarSig} vertices={vertices} />
       <VerZoom onZoom={setZoom} />
       <CaixaSelecao ativo={modo === 'multi'} vertices={[...validos, ...verticesIgnorados]} objetos={objetos} onBoxSelect={onBoxSelect} onBoxSelectObj={onBoxSelectObj} />
