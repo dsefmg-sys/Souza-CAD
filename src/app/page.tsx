@@ -4335,7 +4335,7 @@ export default function EditorPage() {
           {perfilMenuAberto && (
             <div className="absolute right-0 top-full pt-1.5 z-[1300]">
               <div className="w-52 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
-                {entrouSemLogin && (
+                {nuvemDisponivel && !user && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); definirModoEntrada('login'); }}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-primary hover:bg-primary/10">
                     <LogIn className="size-4" /> Fazer login

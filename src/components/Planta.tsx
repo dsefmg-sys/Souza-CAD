@@ -13,6 +13,7 @@ import { rotuloPapelProprietario } from '@/lib/export/papelProprietario';
 import type { ObjetoDesenho } from '@/lib/topo/types';
 
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pencil, X, Save, Trash2 } from 'lucide-react';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
 
@@ -1828,157 +1829,138 @@ export default function Planta({
       )}
     </svg>
 
-    {modalTituloAberto && (
-      <div 
-        className="absolute inset-0 z-[4000] flex items-center justify-center bg-black/80 backdrop-blur-md p-6 animate-in fade-in duration-200"
-        onWheel={(e) => e.stopPropagation()}
-        onScroll={(e) => e.stopPropagation()}
-      >
-        <div 
-          className="flex flex-col w-[1100px] max-w-[95vw] max-h-[90vh] bg-[#0c2415] text-[#e2f1e8] rounded-2xl border border-[#12361d] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
-          style={{ fontFamily: 'sans-serif' }}
-          onWheel={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between bg-[#07170d] border-b border-[#12361d] px-6 py-4 text-white">
-            <span className="text-sm font-black uppercase tracking-wider flex items-center gap-2.5 text-amber-500">
-              <Pencil className="size-4 animate-pulse" /> Escolher Serviço (Título da Página)
+    <Dialog open={modalTituloAberto} onOpenChange={setModalTituloAberto}>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-6 bg-background border border-border shadow-2xl rounded-xl overflow-hidden">
+        <DialogHeader className="shrink-0 pb-4 border-b border-border/60">
+          <DialogTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2.5 text-primary">
+            <Pencil className="size-4" /> Escolher Serviço (Título da Página)
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Body */}
+        <div className="flex-grow overflow-y-auto pr-1 my-4 flex flex-col gap-5 min-h-0">
+          {/* Banner explicativo sobre modelos de planta e serviços */}
+          <div className="rounded-lg border border-border/80 bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground text-left">
+            <span className="font-extrabold text-foreground block mb-1">
+              Como funcionam os Modelos de Planta associados aos Serviços:
             </span>
-            <button 
-              type="button" 
-              className="text-[#87a992] hover:text-white hover:bg-white/10 rounded-full p-2 transition-colors"
-              onClick={() => setModalTituloAberto(false)}
-            >
-              <X className="size-5" />
-            </button>
+            Para cada título de serviço que você escolhe ou salva abaixo, o sistema vincula um Modelo de Planta completo. Isso significa que as configurações da folha, escala, logotipo do escritório e todos os textos personalizados das peças técnicas (como declarações de proprietário e laudos) são salvos especificamente para esse serviço. Ao selecionar o título, o sistema carrega e aplica instantaneamente todos os padrões cadastrados para aquele tipo de trabalho.
           </div>
 
-          {/* Body */}
-          <div className="flex flex-col p-6 overflow-y-auto min-h-0 gap-5">
-            {/* Banner explicativo sobre modelos de planta e serviços */}
-            <div className="rounded-xl border border-amber-500/20 bg-[#07170d]/60 p-4 text-xs leading-relaxed text-[#87a992] text-left">
-              <strong className="text-amber-400 font-bold block mb-1.5 flex items-center gap-1.5">
-                💡 Como funcionam os Modelos de Planta associados aos Serviços:
-              </strong>
-              Para cada título de serviço que você escolhe ou salva abaixo, o sistema vincula um **Modelo de Planta** completo. Isso significa que as configurações da folha, escala, logotipo do escritório e todos os textos personalizados das peças técnicas (como declarações de proprietário e laudos) são salvos especificamente para esse serviço. Ao selecionar o título, o sistema carrega e aplica instantaneamente todos os padrões cadastrados para aquele tipo de trabalho.
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
+            {/* Coluna Esquerda: Edição Livre e Modelos Salvos */}
+            <div className="space-y-4 flex flex-col min-h-0">
+              {/* Input de Edição Livre */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black uppercase text-muted-foreground text-left tracking-wider">Título Personalizado / Edição Livre</label>
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    className="flex-1 h-10 border border-border rounded-lg bg-background px-4 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary outline-none uppercase font-bold placeholder:text-muted-foreground/60"
+                    placeholder="DIGITE O TÍTULO PERSONALIZADO DO SERVIÇO..."
+                    value={tempTitulo}
+                    onChange={(e) => setTempTitulo(e.target.value.toUpperCase())}
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-10 px-4 text-xs font-bold text-foreground border-border bg-background hover:bg-muted gap-1.5 shrink-0 transition-colors"
+                    onClick={async () => {
+                      if (tempTitulo.trim()) {
+                        salvarTituloCustom(tempTitulo);
+                        await avisar({ titulo: 'Serviço salvo', mensagem: 'Título de serviço salvo nos seus modelos de uso rápido!' });
+                      }
+                    }}
+                  >
+                    <Save className="size-4" /> Salvar
+                  </Button>
+                </div>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
-              {/* Coluna Esquerda: Edição Livre e Modelos Salvos */}
-              <div className="space-y-4 flex flex-col min-h-0">
-                {/* Input de Edição Livre */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-black uppercase text-[#87a992] text-left tracking-wider">Título Personalizado / Edição Livre</label>
-                  <div className="flex gap-2">
-                    <input
-                      autoFocus
-                      type="text"
-                      className="flex-1 h-12 border border-[#12361d] rounded-lg bg-[#05140b] px-4 text-sm text-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none uppercase font-bold placeholder-[#374e40]"
-                      placeholder="DIGITE O TÍTULO PERSONALIZADO DO SERVIÇO..."
-                      value={tempTitulo}
-                      onChange={(e) => setTempTitulo(e.target.value.toUpperCase())}
-                    />
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-12 px-4 text-xs font-bold text-amber-300 border-[#12361d] bg-[#0c2415] hover:bg-[#12361d] gap-1.5 shrink-0 transition-colors"
-                      onClick={async () => {
-                        if (tempTitulo.trim()) {
-                          salvarTituloCustom(tempTitulo);
-                          await avisar({ titulo: 'Serviço salvo', mensagem: 'Título de serviço salvo nos seus modelos de uso rápido!' });
-                        }
-                      }}
-                    >
-                      <Save className="size-4" /> Salvar
-                    </Button>
+              {/* Meus Modelos Salvos */}
+              <div className="flex-grow flex flex-col min-h-[150px] text-left">
+                <span className="text-[10px] font-black uppercase text-foreground tracking-wider mb-1.5">Meus Serviços Personalizados ({titulosSalvos.length})</span>
+                {titulosSalvos.length > 0 ? (
+                  <div className="flex-grow overflow-y-auto border border-border rounded-lg p-2 bg-muted/10 space-y-1 scroll-fino">
+                    {titulosSalvos.map((t) => (
+                      <div key={t} className="group flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted text-left transition-all border border-border/30 bg-background">
+                        <button
+                          type="button"
+                          className="flex-grow text-left text-xs font-bold text-foreground"
+                          onClick={() => setTempTitulo(t)}
+                        >
+                          {t}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-destructive p-1 rounded-sm hover:bg-destructive/10 transition-colors"
+                          onClick={() => excluirTituloCustom(t)}
+                          title="Excluir este modelo"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                </div>
-
-                {/* Meus Modelos Salvos */}
-                <div className="flex-1 flex flex-col min-h-[180px] text-left">
-                  <span className="text-[11px] font-black uppercase text-amber-500 tracking-wider mb-2">Meus Serviços Personalizados ({titulosSalvos.length})</span>
-                  {titulosSalvos.length > 0 ? (
-                    <div className="flex-1 overflow-y-auto border border-[#12361d] rounded-lg p-2.5 bg-[#07170d]/50 space-y-1.5 scroll-fino">
-                      {titulosSalvos.map((t) => (
-                        <div key={t} className="group flex items-center justify-between gap-3 p-2.5 rounded-md hover:bg-[#12361d]/60 text-left transition-all border border-[#12361d]/10 bg-[#0c2415]">
-                          <button
-                            type="button"
-                            className="flex-1 text-left text-xs font-bold text-[#e2f1e8]"
-                            onClick={() => setTempTitulo(t)}
-                          >
-                            {t}
-                          </button>
-                          <button
-                            type="button"
-                            className="text-[#87a992] hover:text-red-400 p-1.5 rounded-sm hover:bg-red-500/10 transition-colors"
-                            onClick={() => excluirTituloCustom(t)}
-                            title="Excluir este modelo"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center border border-[#12361d] border-dashed rounded-lg bg-[#07170d]/20 text-xs text-muted-foreground p-4">
-                      Nenhum serviço salvo ainda. Digite um título e clique em "Salvar" para adicioná-lo.
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <div className="flex-grow flex items-center justify-center border border-border border-dashed rounded-lg bg-muted/5 text-xs text-muted-foreground p-4">
+                    Nenhum serviço salvo ainda. Digite um título e clique em "Salvar" para adicioná-lo.
+                  </div>
+                )}
               </div>
-
-              {/* Coluna Direita: Modelos Padrão */}
-              <div className="flex flex-col min-h-[300px] text-left">
-                <span className="text-[11px] font-black uppercase text-[#87a992] tracking-wider mb-2">Serviços Padrão (Modelos de Agrimensura)</span>
-                <div className="flex-grow overflow-y-auto border border-[#12361d] rounded-lg divide-y divide-[#12361d]/60 bg-[#07170d]/40 scroll-fino">
-                  {TITULOS_EDUCATIVOS.map((item) => {
-                    const sel = tempTitulo === item.titulo;
-                    return (
-                      <button
-                        key={item.titulo}
-                        type="button"
-                        className={`w-full text-left p-3.5 flex flex-col gap-1.5 hover:bg-[#12361d]/40 transition-all ${sel ? 'bg-amber-500/15 border-l-4 border-amber-500' : ''}`}
-                        onClick={() => setTempTitulo(item.titulo)}
-                      >
-                        <span className={`text-xs font-black uppercase ${sel ? 'text-amber-400' : 'text-[#e2f1e8]'}`}>
-                          {item.titulo}
-                        </span>
-                        <span className="text-[11px] text-[#87a992] leading-relaxed font-semibold">
-                          {item.desc}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
             </div>
-          </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end gap-3 bg-[#07170d] border-t border-[#12361d] px-6 py-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs border-[#12361d] bg-[#0c2415] text-[#e2f1e8] hover:bg-[#12361d] h-10 px-4 font-bold"
-              onClick={() => setModalTituloAberto(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              className="bg-amber-500 hover:bg-amber-600 text-[#05140b] font-black text-xs h-10 px-5 transition-colors"
-              onClick={() => {
-                onTextoEditar?.('carimbo.titulo', tempTitulo);
-                setModalTituloAberto(false);
-              }}
-            >
-              Confirmar Título
-            </Button>
+            {/* Coluna Direita: Modelos Padrão */}
+            <div className="flex flex-col min-h-[250px] text-left">
+              <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mb-1.5">Serviços Padrão (Modelos de Agrimensura)</span>
+              <div className="flex-grow overflow-y-auto border border-border rounded-lg divide-y divide-border bg-muted/5 scroll-fino">
+                {TITULOS_EDUCATIVOS.map((item) => {
+                  const sel = tempTitulo === item.titulo;
+                  return (
+                    <button
+                      key={item.titulo}
+                      type="button"
+                      className={`w-full text-left p-3 flex flex-col gap-1 hover:bg-muted transition-all ${sel ? 'bg-primary/10 border-l-4 border-primary' : ''}`}
+                      onClick={() => setTempTitulo(item.titulo)}
+                    >
+                      <span className={`text-xs font-black uppercase ${sel ? 'text-primary' : 'text-foreground'}`}>
+                        {item.titulo}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground leading-normal font-semibold">
+                        {item.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+
+        {/* Footer */}
+        <div className="shrink-0 flex items-center justify-end gap-3 pt-4 border-t border-border/60">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-9 px-4 font-bold"
+            onClick={() => setModalTituloAberto(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            size="sm"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs h-9 px-5 transition-colors"
+            onClick={() => {
+              onTextoEditar?.('carimbo.titulo', tempTitulo);
+              setModalTituloAberto(false);
+            }}
+          >
+            Confirmar Título
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 );
 }
