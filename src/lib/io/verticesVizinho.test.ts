@@ -72,4 +72,41 @@ describe('parseVerticesVizinho', () => {
     expect(out).toHaveLength(1);
     expect(out[0].nome).toBe('CODI-M-0001');
   });
+
+  it('detecta e parseia automaticamente o formato de CSV oficial do SIGEF', () => {
+    const csv = [
+      'ORCODE,CODIGO,METODO_POSICIONAMENTO,TIPO_VERTICE,SIGMA_X,SIGMA_Y,SIGMA_Z,LADO,INDICE,X,Y,Z,GEOMETRIA_WKT',
+      '02ce9434,COIN-M-0017,PG6,M,0.08,0.08,0.01,EXTERNO,1,42 00 03.045 W,20 35 26.152 S,898.97,POINT (-42.000846109999977 -20.590597779999995)',
+      '02ce9434,COIN-P-0055,PG6,P,0.08,0.08,0.01,EXTERNO,2,42 00 02.188 W,20 35 27.873 S,920.67,POINT (-42.000608 -20.591076)'
+    ].join('\n');
+    
+    // Passa um config qualquer, pois deve ignorá-lo e auto-detectar
+    const dummyCfg: ImportVerticesVizinhoConfig = {
+      separador: ';', decimal: '.', temCabecalho: true,
+      colunas: ['nome', 'latitude', 'longitude'],
+    };
+    
+    const out = parseVerticesVizinho(csv, dummyCfg, 23, 'S');
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({
+      nome: 'COIN-M-0017',
+      lat: -20.590597779999995,
+      lon: -42.000846109999977,
+      elevacao: 898.97,
+      sigmaX: 0.08,
+      sigmaY: 0.08,
+      sigmaZ: 0.01,
+      metodo: 'PG6'
+    });
+    expect(out[1]).toMatchObject({
+      nome: 'COIN-P-0055',
+      lat: -20.591076,
+      lon: -42.000608,
+      elevacao: 920.67,
+      sigmaX: 0.08,
+      sigmaY: 0.08,
+      sigmaZ: 0.01,
+      metodo: 'PG6'
+    });
+  });
 });

@@ -3193,6 +3193,7 @@ export default function EditorPage() {
               ...(l.elevacao != null ? { elevacao: l.elevacao } : {}),
               ...(l.sigmaX != null ? { sigmaX: l.sigmaX } : {}),
               ...(l.sigmaY != null ? { sigmaY: l.sigmaY } : {}),
+              ...(l.sigmaZ != null ? { sigmaZ: l.sigmaZ } : {}),
               ...(l.metodo ? { metodo: l.metodo } : {}),
               origem,
             };
@@ -5371,15 +5372,15 @@ export default function EditorPage() {
                 
                 <div className="my-2.5 rounded border border-cyan-500/20 bg-cyan-500/5 p-2.5 text-[10px] text-muted-foreground leading-relaxed">
                   <div className="font-semibold text-cyan-800 dark:text-cyan-400 mb-1.5 flex items-center gap-1">
-                    <Info className="size-3.5 text-cyan-600" /> Como baixar o GML no SIGEF:
+                    <Info className="size-3.5 text-cyan-600" /> Como obter dados de confrontante no SIGEF:
                   </div>
                   <ol className="list-decimal pl-3 space-y-1">
                     <li>Clique em <strong>Copiar Código</strong> abaixo;</li>
                     <li>Clique em <strong>SIGEF 🔗</strong> para abrir a pesquisa;</li>
-                    <li>No site do SIGEF, cole no campo <strong>Código do Imóvel</strong> e clique em Pesquisar;</li>
-                    <li><span className="text-amber-600 dark:text-amber-400 font-semibold">Importante:</span> Não clique no botão de nuvenzinha! Clique no <strong>nome azul do imóvel</strong> (ex: <em>Fazenda Ventania...</em>) nos resultados para abrir a página de detalhes;</li>
-                    <li>Na página de detalhes que se abre, clique no botão <strong>Exportar GML</strong> no topo;</li>
-                    <li>Volte ao app e clique no botão violeta abaixo para importar o arquivo baixado.</li>
+                    <li>No site, cole no campo <strong>Código do Imóvel</strong> e clique em Pesquisar;</li>
+                    <li><strong>Método 1 (Mais fácil - CSV):</strong> Clique no ícone da <strong>nuvenzinha azul</strong> no final da linha e selecione <strong>CSV → Vértices</strong>;</li>
+                    <li><strong>Método 2 (Completo - GML):</strong> Clique no <strong>nome azul do imóvel</strong> para abrir os detalhes e clique em <strong>Exportar GML</strong> no topo;</li>
+                    <li>Volte ao app e clique no botão violeta abaixo para importar o arquivo (GML ou CSV).</li>
                   </ol>
                 </div>
 
@@ -5402,7 +5403,7 @@ export default function EditorPage() {
                     </div>
                   )}
                   <Button size="sm" className="w-full gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium" onClick={() => verticesVizinhoRef.current?.click()}>
-                    <Upload className="size-3.5" /> Importar GML do Confrontante
+                    <Upload className="size-3.5" /> Importar GML ou CSV do Confrontante
                   </Button>
                 </div>
               </div>

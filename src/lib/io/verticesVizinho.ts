@@ -14,6 +14,7 @@ export interface VerticeVizinhoLido {
   elevacao?: number;
   sigmaX?: number;
   sigmaY?: number;
+  sigmaZ?: number;
   metodo?: string;
 }
 
@@ -27,8 +28,6 @@ function separadorRegex(sep: ImportVerticesVizinhoConfig['separador']): RegExp {
 function numero(s: string | undefined, decimal: '.' | ','): number {
   if (s == null) return NaN;
   let t = s.trim();
-  // Só trata o ponto como separador de milhar quando há VÍRGULA decimal de fato. Sem isso, uma
-  // coordenada UTM com ponto decimal (ex.: "300000.25") teria o ponto removido e viraria 30 milhões.
   if (decimal === ',' && t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
   return parseFloat(t);
 }
@@ -43,9 +42,65 @@ export function parseVerticesVizinho(
   zona: number,
   hemisferio: 'N' | 'S'
 ): VerticeVizinhoLido[] {
-  const re = separadorRegex(cfg.separador);
   const linhas = conteudo.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (!linhas.length) return [];
+
+  // 1. Auto-detecção de CSV oficial do SIGEF (como exportacao.csv de vértices)
+  const cabecalho = linhas[0].toLowerCase();
+  if (cabecalho.includes('geometria_wkt') && cabecalho.includes('codigo')) {
+    const separador = cabecalho.includes(';') ? ';' : ',';
+    const colunasArr = linhas[0].split(separador).map(c => c.trim().toLowerCase());
+    
+    const idxCod = colunasArr.indexOf('codigo');
+    const idxWkt = colunasArr.indexOf('geometria_wkt');
+    const idxZ = colunasArr.indexOf('z');
+    const idxSigX = colunasArr.indexOf('sigma_x');
+    const idxSigY = colunasArr.indexOf('sigma_y');
+    const idxSigZ = colunasArr.indexOf('sigma_z');
+    const idxMetodo = colunasArr.indexOf('metodo_posicionamento');
+
+    const result: VerticeVizinhoLido[] = [];
+    const corpolinhas = linhas.slice(1);
+    
+    for (const linha of corpolinhas) {
+      if (linha.trim() === '') continue;
+      const f = linha.split(separador).map(val => val.replace(/^["']|["']$/g, '').trim());
+      if (f.length < Math.max(idxCod, idxWkt)) continue;
+      
+      const wkt = f[idxWkt] || '';
+      const wktMatch = /POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)/i.exec(wkt);
+      if (!wktMatch) continue;
+      
+      const lon = parseFloat(wktMatch[1]);
+      const lat = parseFloat(wktMatch[2]);
+      if (!isFinite(lat) || !isFinite(lon)) continue;
+      
+      const nome = f[idxCod] || '';
+      const elevacao = idxZ >= 0 ? parseFloat(f[idxZ].replace(',', '.')) : NaN;
+      const sigmaX = idxSigX >= 0 ? parseFloat(f[idxSigX].replace(',', '.')) : NaN;
+      const sigmaY = idxSigY >= 0 ? parseFloat(f[idxSigY].replace(',', '.')) : NaN;
+      const sigmaZ = idxSigZ >= 0 ? parseFloat(f[idxSigZ].replace(',', '.')) : NaN;
+      const metodo = idxMetodo >= 0 ? f[idxMetodo] : '';
+      
+      result.push({
+        nome,
+        lat,
+        lon,
+        ...(isFinite(elevacao) ? { elevacao } : {}),
+        ...(isFinite(sigmaX) ? { sigmaX } : {}),
+        ...(isFinite(sigmaY) ? { sigmaY } : {}),
+        ...(isFinite(sigmaZ) ? { sigmaZ } : {}),
+        ...(metodo ? { metodo } : {})
+      });
+    }
+    
+    if (result.length > 0) {
+      return result;
+    }
+  }
+
+  // 2. Fallback para importador genérico configurado
+  const re = separadorRegex(cfg.separador);
   const corpo = cfg.temCabecalho ? linhas.slice(1) : linhas;
 
   const indiceDe = (campo: CampoVerticeVizinho) => cfg.colunas.indexOf(campo);
