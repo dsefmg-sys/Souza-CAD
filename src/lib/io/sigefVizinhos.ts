@@ -290,3 +290,42 @@ export function parseVerticesSigefGml(xmlText: string): any[] {
   
   return vertices;
 }
+
+/**
+ * Extrai os dados da propriedade (denominação, detentor/proprietário, código e município)
+ * de um arquivo GML/XML do SIGEF.
+ */
+export function parsePropriedadeSigefGml(xmlText: string): {
+  denominacao?: string;
+  detentor?: string;
+  codigoImovel?: string;
+  municipio?: string;
+  matricula?: string;
+} {
+  const sanitize = (val: string): string => {
+    return val
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .trim();
+  };
+
+  const tagValue = (tags: string[]): string | undefined => {
+    for (const tag of tags) {
+      const r = new RegExp(`<(?:[a-zA-Z0-9_-]+:)?${tag}[^>]*>\\s*([\\s\\S]*?)\\s*</(?:[a-zA-Z0-9_-]+:)?${tag}>`, 'i');
+      const m = r.exec(xmlText);
+      if (m && m[1].trim() !== '') return sanitize(m[1]);
+    }
+    return undefined;
+  };
+
+  return {
+    denominacao: tagValue(['nome_area', 'nomeImovel', 'denominacao', 'imovel', 'nome_imovel']),
+    detentor: tagValue(['detentor', 'proprietario', 'proprietário', 'titular', 'nome_detentor', 'nome_deten', 'proprietar', 'nome']),
+    codigoImovel: tagValue(['codigo_imovel', 'codigoImovel', 'cod_imovel', 'codigo_imo', 'codigo']),
+    municipio: tagValue(['municipio', 'codigo_municipio', 'nome_municipio', 'municipio_codigo', 'nome_munic']),
+    matricula: tagValue(['matricula', 'num_matric', 'matricula_', 'registro_matricula']),
+  };
+}

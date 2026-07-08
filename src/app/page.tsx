@@ -70,7 +70,7 @@ import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarShapefileZip, importarShapefileZip, lerShp } from '@/lib/io/shapefile';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
-import { parseParcelasSigef, parseGmlParcelas, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas, parseVerticesSigefGml } from '@/lib/io/sigefVizinhos';
+import { parseParcelasSigef, parseGmlParcelas, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas, parseVerticesSigefGml, parsePropriedadeSigefGml } from '@/lib/io/sigefVizinhos';
 import { parseVerticesVizinho } from '@/lib/io/verticesVizinho';
 import { ufsNoBbox, temaIncra, TEMAS_CONFRONTANTE, INCRA_UFS } from '@/lib/io/incraTemas';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
@@ -1434,6 +1434,7 @@ export default function EditorPage() {
       let z = fuso;
       let vs: Vertex[] = [];
       let isGmlImport = false;
+      let propsGml: any = {};
 
       const tec = tecnico ?? carregarTecnico();
       const nameLower = importPendingFile.name.toLowerCase();
@@ -1441,6 +1442,7 @@ export default function EditorPage() {
       if (nameLower.endsWith('.gml') || nameLower.endsWith('.xml')) {
         const xmlText = new TextDecoder('utf-8').decode(buf);
         const ptsGml = parseVerticesSigefGml(xmlText);
+        propsGml = parsePropriedadeSigefGml(xmlText);
         
         if (ptsGml.length >= 3) {
           isGmlImport = true;
@@ -1559,8 +1561,16 @@ export default function EditorPage() {
         if (anc) z = escolherZonaPorAncora(perim[0].leste, perim[0].norte, hemisferio, anc, fusos);
       }
 
-      // Define o município no imóvel
-      const novoImovel = { ...imovel, municipio, local: `${municipio}` };
+      // Define o município e metadados no imóvel
+      const novoImovel = {
+        ...imovel,
+        municipio: propsGml.municipio || municipio,
+        local: propsGml.municipio || municipio,
+        denominacao: propsGml.denominacao || imovel.denominacao || importPendingFile.name.replace(/\.[^.]+$/, ''),
+        proprietario: propsGml.detentor || imovel.proprietario,
+        codigoImovelIncra: propsGml.codigoImovel || imovel.codigoImovelIncra,
+        matricula: propsGml.matricula || imovel.matricula
+      };
 
       let contM = 1, contP = 1;
       if (!isGmlImport) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseParcelasSigef, parseGmlParcelas, parcelasVizinhas, confrontantesDeVizinhas, parcelasParaReferencias, parseVerticesSigefGml, type ParcelaSigef } from './sigefVizinhos';
+import { parseParcelasSigef, parseGmlParcelas, parcelasVizinhas, confrontantesDeVizinhas, parcelasParaReferencias, parseVerticesSigefGml, parsePropriedadeSigefGml, type ParcelaSigef } from './sigefVizinhos';
 
 // quadrado ~100m de lado perto de Espera Feliz (graus aproximados)
 const d = 0.001; // ~110 m em latitude
@@ -130,5 +130,23 @@ describe('sigefVizinhos', () => {
     expect(vs[1].tipo).toBe('P');
     expect(vs[1].metodo).toBe('PG1');
     expect(vs[1].limite).toBe('cerca');
+  });
+
+  it('parseia metadados da propriedade a partir de um GML/XML do SIGEF', () => {
+    const xml = `
+      <wfs:FeatureCollection>
+        <ms:nome_area>FAZENDA BELA VISTA</ms:nome_area>
+        <ms:detentor>MARIA DA SILVA</ms:detentor>
+        <ms:codigo_imovel>9501060588076</ms:codigo_imovel>
+        <ms:codigo_municipio>3124203</ms:codigo_municipio>
+        <ms:registro_matricula>12345</ms:registro_matricula>
+      </wfs:FeatureCollection>
+    `;
+    const prop = parsePropriedadeSigefGml(xml);
+    expect(prop.denominacao).toBe('FAZENDA BELA VISTA');
+    expect(prop.detentor).toBe('MARIA DA SILVA');
+    expect(prop.codigoImovel).toBe('9501060588076');
+    expect(prop.municipio).toBe('3124203');
+    expect(prop.matricula).toBe('12345');
   });
 });
