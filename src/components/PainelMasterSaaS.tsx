@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
   Users, Crown, RefreshCw, Shield, Sparkles, CreditCard, 
-  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp
+  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2
 } from 'lucide-react';
-import { listarPerfisUso, atualizarPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
+import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
 import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado } from '@/lib/store/suporte';
 
@@ -118,6 +118,20 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
     } catch (e: any) {
       console.error(e);
       flash(e.message || 'Erro ao salvar CRM.');
+    }
+  }
+
+  async function deletarCliente(uid: string, identificacao?: string) {
+    const confirmacao = window.confirm(`Tem certeza que deseja excluir permanentemente o cadastro de "${identificacao || uid}"? Esta ação não pode ser desfeita e removerá todos os dados e projetos do usuário.`);
+    if (!confirmacao) return;
+
+    try {
+      await excluirPerfilUsoPorAdmin(uid);
+      setPerfis((prev) => prev.filter((p) => p.uid !== uid));
+      flash('Cadastro excluído com sucesso!');
+    } catch (e: any) {
+      console.error(e);
+      flash(e.message || 'Erro ao excluir cadastro.');
     }
   }
 
@@ -345,6 +359,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     <th className="px-2 py-3 text-center w-28">Faturamento</th>
                     <th className="px-4 py-3 min-w-[170px]">Anotações / Obs. Contrato</th>
                     <th className="px-4 py-3 text-center w-20">Uso</th>
+                    <th className="px-4 py-3 text-center w-16">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#12361d]/30">
@@ -436,6 +451,17 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
 
                         <td className="px-4 py-2.5 text-center">
                           <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-[#6b937a] border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg"
+                            title="Excluir cadastro permanentemente"
+                            onClick={() => deletarCliente(p.uid, p.email || p.empresaNome)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
                         </td>
                       </tr>
                     );

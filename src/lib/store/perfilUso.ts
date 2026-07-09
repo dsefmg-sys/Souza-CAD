@@ -114,6 +114,19 @@ export async function atualizarPerfilUsoPorAdmin(clientUid: string, patch: Parti
   }
 }
 
+/** Exclui completamente o perfil de uso e dados do usuário pelo proprietário (master). */
+export async function excluirPerfilUsoPorAdmin(clientUid: string): Promise<void> {
+  if (!firebaseConfigurado) return;
+  try {
+    const { deleteDoc, doc } = await import('firebase/firestore');
+    await deleteDoc(doc(fdb()!, 'perfisUso', clientUid));
+    await deleteDoc(doc(fdb()!, 'users', clientUid));
+  } catch (e) {
+    console.error('Falha ao excluir perfil de uso pelo admin:', e);
+    throw new Error('Erro ao excluir dados administrativos no banco de dados.');
+  }
+}
+
 /** Obtém o perfil do usuário logado. Com fallback seguro pro cache local caso offline. */
 export async function obterPerfilUsuario(): Promise<PerfilUso | null> {
   const u = uid();
