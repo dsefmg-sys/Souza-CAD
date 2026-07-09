@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Users, Crown, RefreshCw, Shield, Sparkles, CreditCard, 
-  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send
+import {
+  Users, Crown, RefreshCw, Shield, Sparkles, CreditCard,
+  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin
 } from 'lucide-react';
 import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
+import { listarProjetosDoUsuario } from '@/lib/store/projects';
+import type { Projeto } from '@/lib/topo/types';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
 import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado } from '@/lib/store/suporte';
 import { auth } from '@/lib/firebase/client';
@@ -36,6 +38,27 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [msg, setMsg] = useState('');
   const [busca, setBusca] = useState('');
   const [configExpandido, setConfigExpandido] = useState(true);
+
+  // "Ver projetos" de um cliente: diagnóstico só-leitura (nunca abre no editor de verdade — evita
+  // qualquer risco de salvar/mexer no trabalho de outra pessoa). Ajuda a ver onde ele travou sem
+  // depender só do que o cliente descreve por mensagem.
+  const [projetosCliente, setProjetosCliente] = useState<{ uid: string; nome: string; projetos: Projeto[] } | null>(null);
+  const [carregandoProjetos, setCarregandoProjetos] = useState(false);
+  const [erroProjetos, setErroProjetos] = useState('');
+
+  async function verProjetos(uid: string, nome: string) {
+    setCarregandoProjetos(true);
+    setErroProjetos('');
+    setProjetosCliente({ uid, nome, projetos: [] });
+    try {
+      const projetos = await listarProjetosDoUsuario(uid);
+      setProjetosCliente({ uid, nome, projetos });
+    } catch (e) {
+      setErroProjetos((e as Error).message || 'Não consegui carregar os projetos deste cliente.');
+    } finally {
+      setCarregandoProjetos(false);
+    }
+  }
 
   const [selectedUids, setSelectedUids] = useState<string[]>([]);
   const [comunicadoExpandido, setComunicadoExpandido] = useState(false);
@@ -699,6 +722,15 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                           <Button
                             size="sm"
                             variant="ghost"
+                            className="h-8 w-8 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg"
+                            title="Ver os projetos deste cliente (só leitura) — pra achar onde ele travou"
+                            onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)}
+                          >
+                            <FolderOpen className="size-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             className="h-8 w-8 p-0 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg"
                             title="Excluir cadastro permanentemente"
                             onClick={() => deletarCliente(p.uid, p.email || p.empresaNome)}
@@ -715,6 +747,57 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Diagnóstico só-leitura dos projetos de um cliente: NUNCA abre no editor de verdade — só
+          mostra números (vértices, confrontantes, denominação, última alteração) pra achar rápido
+          onde a pessoa travou, sem risco de mexer no trabalho dela. */}
+      {projetosCliente && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/70 p-4" onClick={() => setProjetosCliente(null)}>
+          <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-[#1e4d2e]/60 bg-[#05140b] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-[#12361d] px-5 py-3">
+              <div>
+                <div className="text-sm font-bold text-white">Projetos de {projetosCliente.nome}</div>
+                <div className="text-[11px] text-[#87a992]">Só leitura — diagnóstico pra ver onde a pessoa travou</div>
+              </div>
+              <button type="button" onClick={() => setProjetosCliente(null)} className="rounded-lg p-1.5 text-[#87a992] hover:bg-white/5 hover:text-white">
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {carregandoProjetos && <div className="py-8 text-center text-sm text-[#87a992]">Carregando…</div>}
+              {!carregandoProjetos && erroProjetos && (
+                <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-400">{erroProjetos}</div>
+              )}
+              {!carregandoProjetos && !erroProjetos && projetosCliente.projetos.length === 0 && (
+                <div className="py-8 text-center text-sm text-[#87a992]">Este cliente ainda não tem nenhum projeto salvo na nuvem.</div>
+              )}
+              {!carregandoProjetos && !erroProjetos && projetosCliente.projetos.map((proj) => {
+                const totalVertices = proj.glebas.reduce((s, g) => s + g.vertices.length, 0);
+                const totalConfrontantes = proj.glebas.reduce((s, g) => s + g.confrontantes.length, 0);
+                return (
+                  <div key={proj.id} className="mb-2 rounded-xl border border-[#1e4d2e]/50 bg-[#07170d] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-bold text-white">{proj.nome}</div>
+                        <div className="truncate text-[11px] text-[#87a992]">{proj.imovel?.denominacao || 'Sem denominação do imóvel'}</div>
+                      </div>
+                      <span className="shrink-0 text-[10px] text-[#6b937a]">Alterado em {dataBR(proj.atualizadoEm)}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-3 text-[11px]">
+                      <span className={`flex items-center gap-1 ${totalVertices > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        <MapPin className="size-3.5" /> {totalVertices} vértice(s){totalVertices === 0 && ' — nunca importou pontos'}
+                      </span>
+                      <span className={`flex items-center gap-1 ${totalConfrontantes > 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        <Waypoints className="size-3.5" /> {totalConfrontantes} confrontante(s){totalVertices > 0 && totalConfrontantes === 0 && ' — ainda não pintou'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

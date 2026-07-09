@@ -89,6 +89,17 @@ export async function salvarProjeto(p: Projeto): Promise<DestinoSalvamento> {
   return 'local';
 }
 
+/**
+ * Lista os projetos de OUTRO usuário, pelo uid — só o master consegue (as regras do Firestore dão
+ * a ele leitura de users/{uid}/**; qualquer outra conta recebe "permission-denied"). Usada no painel
+ * administrativo pra ver, sem editar, onde um cliente está travado (projeto vazio, sem confrontantes
+ * pintados, etc.) — sem essa visão o suporte é só o que o cliente descreve por mensagem.
+ */
+export async function listarProjetosDoUsuario(uid: string): Promise<Projeto[]> {
+  const snap = await getDocs(colProjetos(uid));
+  return snap.docs.map((d) => daNuvem(d.data())).filter((p): p is Projeto => !!p && !p.excluidoEm).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+}
+
 export async function listarProjetos(): Promise<Projeto[]> {
   const uid = uidNuvem();
   if (uid) {
