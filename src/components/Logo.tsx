@@ -18,12 +18,12 @@ export function Logo({ className = 'size-8' }: { className?: string }) {
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Souza CAD" className={`rounded-md object-contain ${className}`}>
       <defs>
         <linearGradient id="scg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#0e8a56"/>
-          <stop offset="1" stop-color="#075437"/>
+          <stop offset="0" stopColor="#0e8a56"/>
+          <stop offset="1" stopColor="#075437"/>
         </linearGradient>
       </defs>
       <rect x="4" y="4" width="92" height="92" rx="22" fill="url(#scg)"/>
-      <g fill="none" stroke="#eafff2" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+      <g fill="none" stroke="#eafff2" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M50 32 L33 76"/>
         <path d="M50 32 L67 76"/>
         <path d="M41 57 L59 57"/>
