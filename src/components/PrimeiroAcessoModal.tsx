@@ -19,7 +19,7 @@ interface Props {
 // (ou se cadastra como profissional autônomo). Preenche escritório + responsável técnico.
 export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }: Props) {
   const [tipo, setTipo] = useState<'empresa' | 'autonomo' | null>(null);
-  const [categoria, setCategoria] = useState<'tecnico' | 'tecnico-agricola' | 'engenheiro'>('tecnico');
+  const [categoria, setCategoria] = useState<'tecnico' | 'tecnico-agricola' | 'engenheiro' | 'duplo'>('tecnico');
   const [nomeEmpresa, setNomeEmpresa] = useState('');
   const [cnpjEmpresa, setCnpjEmpresa] = useState('');
   const [nomeRt, setNomeRt] = useState('');
@@ -31,11 +31,14 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
 
   const eng = categoria === 'engenheiro';
   const agricola = categoria === 'tecnico-agricola';
-  const conselho = eng ? 'CREA' : (agricola ? 'CFTA' : 'CFT');
-  const termo = eng ? 'ART' : 'TRT';
-  const formacaoPadrao = eng
-    ? 'ENGENHEIRO AGRIMENSOR'
-    : (agricola ? 'TÉCNICO EM AGROPECUÁRIA' : 'TÉCNICO EM AGRIMENSURA');
+  const duplo = categoria === 'duplo';
+  const conselho = duplo ? 'CFT+CREA' : (eng ? 'CREA' : (agricola ? 'CFTA' : 'CFT'));
+  const termo = duplo ? 'TRT/ART' : (eng ? 'ART' : 'TRT');
+  const formacaoPadrao = duplo
+    ? 'TÉCNICO EM AGRIMENSURA / ENGENHEIRO AGRIMENSOR'
+    : (eng
+      ? 'ENGENHEIRO AGRIMENSOR'
+      : (agricola ? 'TÉCNICO EM AGROPECUÁRIA' : 'TÉCNICO EM AGRIMENSURA'));
 
   function concluir() {
     // sobrescreve os padrões (que vinham preenchidos com a empresa do criador) com os dados do usuário
@@ -99,7 +102,7 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
             {/* categoria do responsável: define as siglas (TRT/CFT do técnico x ART/CREA do engenheiro) */}
             <div className="space-y-1">
               <Label>Você é</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setCategoria('tecnico')} className={`rounded-lg border p-2 text-left text-xs ${categoria === 'tecnico' ? 'border-primary bg-primary/10 font-semibold' : 'hover:bg-muted/50'}`}>
                   <div className="text-xs font-semibold leading-tight">Técnico Agrimensura</div><div className="text-[10px] text-muted-foreground mt-0.5">CFT, emite TRT</div>
                 </button>
@@ -109,12 +112,18 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
                 <button type="button" onClick={() => setCategoria('engenheiro')} className={`rounded-lg border p-2 text-left text-xs ${categoria === 'engenheiro' ? 'border-primary bg-primary/10 font-semibold' : 'hover:bg-muted/50'}`}>
                   <div className="text-xs font-semibold leading-tight">Engenheiro</div><div className="text-[10px] text-muted-foreground mt-0.5">CREA, emite ART</div>
                 </button>
+                <button type="button" onClick={() => setCategoria('duplo')} className={`rounded-lg border p-2 text-left text-xs ${categoria === 'duplo' ? 'border-primary bg-primary/10 font-semibold' : 'hover:bg-muted/50'}`}>
+                  <div className="text-xs font-semibold leading-tight">Técnico + Engenheiro</div><div className="text-[10px] text-muted-foreground mt-0.5">Ambos (CFT + CREA)</div>
+                </button>
               </div>
             </div>
             <div className="space-y-1"><Label>Seu nome (responsável técnico)</Label><Input value={nomeRt} onChange={(e) => setNomeRt(e.target.value)} placeholder="Nome completo" /></div>
             <div className="space-y-1"><Label>Formação (aparece nas peças)</Label><Input value={formacao} onChange={(e) => setFormacao(e.target.value)} placeholder={formacaoPadrao} /></div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1"><Label>Registro {conselho}</Label><Input value={cft} onChange={(e) => setCft(e.target.value)} placeholder="Ex.: 12345678900-MG" /></div>
+              <div className="space-y-1">
+                <Label>Registro {duplo ? 'CFT / CREA' : conselho}</Label>
+                <Input value={cft} onChange={(e) => setCft(e.target.value)} placeholder={duplo ? "Ex.: CFT: 123-MG / CREA: 456-MG" : "Ex.: 12345678900-MG"} />
+              </div>
               <div className="space-y-1"><Label>Cidade da assinatura</Label><Input value={cidade} onChange={(e) => setCidade(e.target.value)} placeholder="Cidade-UF" /></div>
             </div>
             <p className="text-[11px] text-muted-foreground">O número do {termo} você emite e cola em cada projeto na hora de gerar as peças.</p>

@@ -5,15 +5,15 @@ import type { TecnicoData } from './types';
 // Engenheiro (agrimensor/civil/agrônomo): registra no CREA e emite ART (Anotação de Responsabilidade
 // Técnica). Um app só serve os dois se trocar essas siglas nas peças em vez de fixar "técnico/TRT".
 
-export type Conselho = 'CFT' | 'CREA' | 'CFTA';
+export type Conselho = 'CFT' | 'CREA' | 'CFTA' | 'CFT+CREA' | 'CFTA+CREA';
 
 export interface RotulosProfissional {
   /** Conselho (CFT do técnico, CFTA do técnico agrícola ou CREA do engenheiro). */
   conselho: Conselho;
-  /** Rótulo do nº de registro no conselho — sempre igual ao próprio conselho. */
-  registro: Conselho;
-  /** Sigla do termo de responsabilidade: TRT (técnico) ou ART (engenheiro). */
-  termo: 'TRT' | 'ART';
+  /** Rótulo do nº de registro no conselho — sempre igual ao próprio conselho ou combinado. */
+  registro: string;
+  /** Sigla do termo de responsabilidade: TRT (técnico), ART (engenheiro) ou combinados. */
+  termo: string;
   /** Nome por extenso do termo, pra textos de ajuda/onboarding. */
   termoExtenso: string;
 }
@@ -25,6 +25,12 @@ export function rotulosProfissional(tec: Pick<TecnicoData, 'conselho'> | undefin
   }
   if (tec?.conselho === 'CFTA') {
     return { conselho: 'CFTA', registro: 'CFTA', termo: 'TRT', termoExtenso: 'Termo de Responsabilidade Técnica' };
+  }
+  if (tec?.conselho === 'CFT+CREA') {
+    return { conselho: 'CFT+CREA', registro: 'CFT/CREA', termo: 'TRT/ART', termoExtenso: 'Termo ou Anotação de Responsabilidade Técnica' };
+  }
+  if (tec?.conselho === 'CFTA+CREA') {
+    return { conselho: 'CFTA+CREA', registro: 'CFTA/CREA', termo: 'TRT/ART', termoExtenso: 'Termo ou Anotação de Responsabilidade Técnica' };
   }
   return { conselho: 'CFT', registro: 'CFT', termo: 'TRT', termoExtenso: 'Termo de Responsabilidade Técnica' };
 }
