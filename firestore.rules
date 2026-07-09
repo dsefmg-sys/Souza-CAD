@@ -3,7 +3,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // E-mail do titular (master): vê os perfis de uso e edita a config global do app.
     function ehMaster() {
-      return request.auth != null && request.auth.token.email == 'dsefmg@gmail.com';
+      return request.auth != null && (
+        request.auth.token.email == 'dsefmg@gmail.com'
+        || request.auth.token.email.matches('(?i)dsefmg@gmail\\.com')
+      );
     }
 
     // Configuração global do app (ex.: WhatsApp de suporte): todos leem, só o master escreve.
@@ -41,17 +44,17 @@ service cloud.firestore {
     // apenas o próprio credenciado (uid gravado no documento como _uid) pode ler/escrever.
     match /credenciados/{prefix} {
       allow read: if request.auth != null
-        && (resource == null || resource.data._uid == request.auth.uid);
+        && (resource == null || resource.data._uid == request.auth.uid || ehMaster());
       // Na criação (documento ainda não existe), exige que o uid informado bata com quem escreve.
       allow write: if request.auth != null
-        && (resource == null
+        && (ehMaster() || (resource == null
             ? request.resource.data._uid == request.auth.uid
-            : resource.data._uid == request.auth.uid);
+            : resource.data._uid == request.auth.uid));
       match /{document=**} {
         allow read, write: if request.auth != null
-          && (exists(/databases/$(database)/documents/credenciados/$(prefix))
+          && (ehMaster() || (exists(/databases/$(database)/documents/credenciados/$(prefix))
               ? get(/databases/$(database)/documents/credenciados/$(prefix)).data._uid == request.auth.uid
-              : true);
+              : true));
       }
     }
   }

@@ -131,9 +131,30 @@ export async function atualizarPerfilUsoPorAdmin(clientUid: string, patch: Parti
 export async function excluirPerfilUsoPorAdmin(clientUid: string): Promise<void> {
   if (!firebaseConfigurado) return;
   try {
-    const { deleteDoc, doc, collection, getDocs } = await import('firebase/firestore');
+    const { deleteDoc, doc, collection, getDocs, getDoc } = await import('firebase/firestore');
     
-    // Lista de subcoleções do usuário a serem limpas
+    // 1. Tenta obter o credenciamentoIncra do usuário antes de deletar seu documento
+    const userDocRef = doc(fdb()!, 'users', clientUid);
+    const userSnap = await getDoc(userDocRef);
+    let prefixoCredenciado: string | null = null;
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      if (data?.tecnico?.credenciamentoIncra) {
+        prefixoCredenciado = data.tecnico.credenciamentoIncra;
+      }
+    }
+
+    // 2. Se o usuário tinha credenciamentoIncra cadastrado, limpa os pontos e o contador dele
+    if (prefixoCredenciado) {
+      const pontosColRef = collection(fdb()!, 'credenciados', prefixoCredenciado, 'pontos');
+      const pontosSnap = await getDocs(pontosColRef);
+      for (const d of pontosSnap.docs) {
+        await deleteDoc(d.ref);
+      }
+      await deleteDoc(doc(fdb()!, 'credenciados', prefixoCredenciado));
+    }
+
+    // 3. Lista de subcoleções do usuário a serem limpas
     const subcolecoes = ['projetos', 'proprietarios', 'confrontantes', 'imoveis', 'cartorios'];
     
     for (const sub of subcolecoes) {
@@ -145,13 +166,13 @@ export async function excluirPerfilUsoPorAdmin(clientUid: string): Promise<void>
     }
     
     // Deleta o documento do usuário principal (contém configurações do técnico/escritório)
-    await deleteDoc(doc(fdb()!, 'users', clientUid));
+    await deleteDoc(userDocRef);
     
     // Deleta o perfil de uso (CRM)
     await deleteDoc(doc(fdb()!, 'perfisUso', clientUid));
-  } catch (e) {
+  } catch (e: any) {
     console.error('Falha ao excluir perfil de uso pelo admin:', e);
-    throw new Error('Erro ao excluir dados administrativos no banco de dados.');
+    throw new Error(`Erro ao excluir dados administrativos no banco: ${e?.message || e}`);
   }
 }
 

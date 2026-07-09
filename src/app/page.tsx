@@ -5443,8 +5443,8 @@ export default function EditorPage() {
                         <div className="flex items-center justify-between rounded-sm bg-muted/40 px-1.5 py-0.5 text-[10px] font-bold text-foreground" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
                           <span className="truncate">Interface</span>
                           <div className="flex gap-0.5">
-                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}>A-</Button>
-                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}>A+</Button>
+                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.1).toFixed(2))))}>A-</Button>
+                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.1).toFixed(2))))}>A+</Button>
                           </div>
                         </div>
                       </div>
@@ -5457,8 +5457,8 @@ export default function EditorPage() {
                       <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
                         <span className="truncate">Interface</span>
                         <div className="flex items-center gap-0.5">
-                          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.05).toFixed(2))))}>-</Button>
-                          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.05).toFixed(2))))}>+</Button>
+                          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.1).toFixed(2))))}>-</Button>
+                          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.1).toFixed(2))))}>+</Button>
                         </div>
                       </div>
 
@@ -6983,7 +6983,9 @@ export default function EditorPage() {
 
       {notificacaoTamanho.visible && (
         <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[9999] bg-[#0a1f14]/90 text-emerald-400 font-bold border border-emerald-800/40 px-4 py-2 rounded-full text-xs shadow-lg flex items-center gap-1.5 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <Sparkles className="size-3.5 text-amber-400" />
+          {/* Percent, não Sparkles: esse ícone (amber) é usado no app pra marcar recursos de IA — aqui
+              não tem nada de IA, é só o ajuste de tamanho, então o ícone de IA confundia. */}
+          <Percent className="size-3.5 text-emerald-400" />
           {notificacaoTamanho.texto}
         </div>
       )}
