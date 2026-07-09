@@ -139,7 +139,7 @@ export default function CalculadoraModal({ open, onOpenChange, zona, hemisferio 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background border border-border shadow-2xl p-6 rounded-xl">
+      <DialogContent className="max-w-xl bg-background shadow-2xl p-6 rounded-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
             <Ruler className="size-5.5 text-emerald-500" /> Calculadora Topográfica

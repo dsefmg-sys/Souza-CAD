@@ -128,9 +128,10 @@ function iconeVertice(v: Vertex, selecionado: boolean) {
   });
 }
 
-// rótulo do vértice: caixinha branca SÓLIDA com texto preto, nítida sobre o mapa; tamanho ajustável
-// Posiciona o rótulo do vértice PRA FORA do polígono (direção dirx/diry, x direita / y baixo), a
-// uma folga que nunca cobre o ponto. Se dir=(0,0) (rótulo arrastado à mão), fica centrado no ponto.
+// rótulo do vértice: texto BRANCO sem fundo, com halo escuro ao redor pra continuar legível em
+// qualquer trecho da imagem de satélite (claro ou escuro) — mais limpo que a caixinha branca sólida
+// de antes. Posiciona o rótulo do vértice PRA FORA do polígono (direção dirx/diry, x direita / y
+// baixo), a uma folga que nunca cobre o ponto. Se dir=(0,0) (rótulo arrastado à mão), fica centrado.
 function iconeNomeVertice(texto: string, tam: number, dirx = 0, diry = 0) {
   const fs = tam && tam > 0 ? tam : 11;
   const txt = (texto || '').replace(/</g, '&lt;');
@@ -143,9 +144,10 @@ function iconeNomeVertice(texto: string, tam: number, dirx = 0, diry = 0) {
     ax = estW / 2 - dirx * (c + half);
     ay = estH / 2 - diry * (c + half);
   }
+  const halo = '-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000,1px 1px 2px #000,0 0 4px #000';
   return L.divIcon({
     className: 'vertice-nome',
-    html: `<div style="font-size:${fs}px;font-weight:700;color:#000;background:#fff;border:1.5px solid #333;border-radius:3px;padding:0 4px;white-space:nowrap;box-shadow:0 0 2px rgba(0,0,0,.5);width:max-content;display:inline-block">${txt}</div>`,
+    html: `<div style="font-size:${fs}px;font-weight:700;color:#fff;text-shadow:${halo};white-space:nowrap;width:max-content;display:inline-block">${txt}</div>`,
     iconSize: [1, 1], iconAnchor: [ax, ay],
   });
 }
@@ -1771,7 +1773,7 @@ export default function MapEditor(props: Props) {
           <Polyline
             key={`guia${v.id}`}
             positions={[[v.lat, v.lon], [v.posRotulo.lat, v.posRotulo.lon]]}
-            pathOptions={{ color: '#64748b', weight: 1.2, dashArray: '4 4', interactive: false }}
+            pathOptions={{ color: '#ffffff', weight: 2, opacity: 0.95, dashArray: '4 4', interactive: false }}
           />
         );
       })}

@@ -30,11 +30,17 @@ export async function GET(req: Request) {
 
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(25000), headers: { Accept: 'application/xml' } });
-    if (!r.ok) return NextResponse.json({ erro: `INCRA respondeu ${r.status}.` }, { status: 502 });
+    if (!r.ok) {
+      console.error(`[vizinhos-sigef] INCRA respondeu ${r.status} para tema=${tema} bbox=${bbox}`);
+      return NextResponse.json({ erro: `INCRA respondeu ${r.status}.` }, { status: 502 });
+    }
     const gml = await r.text();
     const parcelas = parseGmlParcelas(gml);
     return NextResponse.json({ parcelas }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
+  } catch (e) {
+    // Sem isso, uma falha de rede/timeout vira silenciosamente "nenhuma parcela encontrada" pro
+    // usuário, indistinguível de "realmente não há nada ali" — o log é o que permite diferenciar.
+    console.error(`[vizinhos-sigef] Falha ao consultar o INCRA (tema=${tema} bbox=${bbox}):`, e);
     return NextResponse.json({ erro: 'Não consegui consultar o INCRA agora.' }, { status: 502 });
   }
 }

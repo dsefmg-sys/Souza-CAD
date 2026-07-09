@@ -39,8 +39,8 @@ const PASSOS_BASE: Passo[] = [
   },
   {
     icone: Upload,
-    titulo: 'Importação Inteligente do TXT',
-    texto: 'Utilize o botão TXT no topo para importar as coordenadas obtidas pelo seu receptor GNSS. O Souza CAD lê e desenha automaticamente a poligonal do imóvel. Se o seu equipamento exportar as colunas (Leste, Norte, Altitude, Código, etc.) em uma ordem diferente, você pode redefinir o mapeamento de colunas em Configurações, e o app lembrará para sempre.',
+    titulo: 'Importação Inteligente de Pontos',
+    texto: 'Utilize o botão PONTOS no topo para enviar as coordenadas obtidas pelo seu receptor GNSS. O Souza CAD lê e desenha automaticamente a poligonal do imóvel. Se o seu equipamento exportar as colunas (Leste, Norte, Altitude, Código, etc.) em uma ordem diferente, você pode redefinir o mapeamento de colunas em Configurações, e o app lembrará para sempre.',
   },
   {
     icone: Search,
@@ -98,7 +98,7 @@ const PASSOS_AVANCADOS: Passo[] = [
   },
   {
     icone: Upload,
-    titulo: 'Mapeador de Colunas do TXT',
+    titulo: 'Mapeador de Colunas do Arquivo de Pontos',
     texto: 'Seu receptor GNSS exporta arquivos com colunas fora do padrão (ex: Altitude antes do Nome, ou delimitado por ponto e vírgula)? Nas Configurações, você pode ajustar a ordem das colunas e o caractere de separação. O app salva essa configuração no seu navegador e aplica automaticamente em todas as próximas importações.',
   },
   {

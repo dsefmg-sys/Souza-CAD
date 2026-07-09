@@ -33,7 +33,7 @@ export default function HistoriaModal({ open, onOpenChange }: { open: boolean; o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 bg-background border border-border shadow-2xl rounded-xl overflow-hidden">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 bg-background shadow-2xl rounded-xl overflow-hidden">
         <DialogHeader className="shrink-0 pb-4 border-b border-border/60 flex flex-row items-center gap-3">
           <Logo className="size-9 rounded-lg" />
           <div className="text-left">

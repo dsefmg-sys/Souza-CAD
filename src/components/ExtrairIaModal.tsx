@@ -146,7 +146,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col p-6 rounded-xl border border-border bg-background shadow-2xl">
+      <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col p-6 rounded-xl bg-background shadow-2xl">
         <DialogHeader className="border-b pb-3">
           <DialogTitle className="flex items-center gap-2.5 text-lg font-bold text-foreground">
             <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-600 dark:text-violet-400">

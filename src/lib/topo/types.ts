@@ -428,6 +428,17 @@ export interface TecnicoData {
   contadorVirtual?: number;   // semente do próximo número p/ COIN-V
   zonaBase?: number;          // fuso UTM principal de trabalho (padrão 23 — Espera Feliz)
   fusosPermitidos?: number[]; // fusos liberados para auto-detecção (ex.: [22,23,24,25])
+  // Formações/registros ADICIONAIS, além da principal acima — ex.: o técnico também é engenheiro,
+  // ou tem CFTA além do CFT. Na hora de emitir o TRT/ART (TrtModal), o profissional escolhe qual
+  // credencial citar naquela peça específica; as demais peças (memorial, planta etc.) continuam
+  // usando a formação principal, como sempre.
+  registrosExtras?: RegistroProfissionalExtra[];
+}
+
+export interface RegistroProfissionalExtra {
+  formacao: string;                       // "ENGENHEIRO AGRÔNOMO"
+  conselho: 'CFT' | 'CFTA' | 'CREA';
+  registro: string;                       // nº de registro nesse conselho
 }
 
 export interface ResultadoCalculo {

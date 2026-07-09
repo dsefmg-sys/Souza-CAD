@@ -12,7 +12,7 @@ import { sincronizarPerfil, obterPerfilUsuario } from '@/lib/store/perfilUso';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { TecnicoData, EscritorioData } from '@/lib/topo/types';
+import type { TecnicoData, EscritorioData, RegistroProfissionalExtra } from '@/lib/topo/types';
 import {
   carregarTecnico,
   salvarTecnico,
@@ -134,6 +134,19 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     flash('Salvo automaticamente');
   };
 
+  // Formações/registros ADICIONAIS do técnico (além da principal) — ex.: também é engenheiro.
+  const addRegistroExtra = () => {
+    changeT('registrosExtras', [...(t.registrosExtras ?? []), { formacao: '', conselho: 'CREA', registro: '' }]);
+  };
+  const changeRegistroExtra = (i: number, patch: Partial<RegistroProfissionalExtra>) => {
+    const lista = [...(t.registrosExtras ?? [])];
+    lista[i] = { ...lista[i], ...patch };
+    changeT('registrosExtras', lista);
+  };
+  const removeRegistroExtra = (i: number) => {
+    changeT('registrosExtras', (t.registrosExtras ?? []).filter((_, idx) => idx !== i));
+  };
+
   const changeEsc = (k: keyof EscritorioData, val: EscritorioData[keyof EscritorioData]) => {
     const updated = { ...esc, [k]: val };
     setEsc(updated);
@@ -244,7 +257,9 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col bg-background/95 backdrop-blur-md border border-border/80 shadow-2xl p-6 rounded-lg text-foreground">
+      {/* h-[92vh] (não max-h): a janela sempre ocupa o mesmo tamanho, do maior conteúdo possível,
+          então trocar de aba não redimensiona a janela — só o conteúdo interno rola. */}
+      <DialogContent className="max-w-5xl h-[92vh] flex flex-col bg-background/95 backdrop-blur-md shadow-2xl p-6 rounded-lg text-foreground">
         <DialogHeader className="border-b pb-3">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
@@ -316,6 +331,38 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold">Cidade da Assinatura (peças técnicas)</Label>
                       <Input value={t.cidadeAssinatura} onChange={(e) => changeT('cidadeAssinatura', e.target.value)} />
+                    </div>
+
+                    {/* Formações/registros adicionais: quem tem mais de uma formação (ex.: técnico e
+                        também engenheiro) cadastra aqui. Na hora de emitir o TRT/ART, escolhe qual
+                        credencial usar naquela peça. */}
+                    <div className="space-y-1.5 rounded-sm border p-2.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold">Outras formações / registros</Label>
+                        <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={addRegistroExtra}>
+                          <Plus className="size-3.5" /> Adicionar
+                        </Button>
+                      </div>
+                      <p className="text-[11px] leading-tight text-muted-foreground">
+                        Tem mais de uma formação, técnica ou superior? Cadastre aqui — ao emitir o TRT/ART você escolhe qual credencial citar naquela peça.
+                      </p>
+                      {(t.registrosExtras ?? []).map((r, i) => (
+                        <div key={i} className="flex items-center gap-1.5 rounded-sm border bg-muted/20 p-1.5">
+                          <select className="h-8 shrink-0 rounded-sm border bg-background px-1.5 text-xs"
+                            value={r.conselho} onChange={(e) => changeRegistroExtra(i, { conselho: e.target.value as RegistroProfissionalExtra['conselho'] })}>
+                            <option value="CFT">CFT (Técnico)</option>
+                            <option value="CFTA">CFTA (Téc. Agrícola)</option>
+                            <option value="CREA">CREA (Engenheiro)</option>
+                          </select>
+                          <Input className="h-8 text-xs" placeholder="Formação (ex.: Engenheiro Agrônomo)"
+                            value={r.formacao} onChange={(e) => changeRegistroExtra(i, { formacao: e.target.value })} />
+                          <Input className="h-8 w-28 shrink-0 text-xs" placeholder="Nº registro"
+                            value={r.registro} onChange={(e) => changeRegistroExtra(i, { registro: e.target.value })} />
+                          <Button size="sm" variant="ghost" className="h-8 w-8 shrink-0 p-0 text-destructive" onClick={() => removeRegistroExtra(i)} title="Remover">
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   </>
                 )}
@@ -748,7 +795,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               <div className="border rounded-sm p-4 bg-muted/20 flex flex-col justify-between space-y-4">
                 <div className="space-y-2">
                   <h3 className="font-semibold text-sm flex items-center gap-1.5">
-                    <FileCog className="size-4" /> Layout do Arquivo TXT (Colunas)
+                    <FileCog className="size-4" /> Layout do Arquivo de Pontos (Colunas)
                   </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     Personalize o posicionamento de cada coluna no arquivo de pontos (ex. Nome, Leste, Norte, Altitude, Precisões). O sistema lerá seus relatórios GNSS seguindo esse mapeamento.

@@ -1831,7 +1831,7 @@ export default function Planta({
     </svg>
 
     <Dialog open={modalTituloAberto} onOpenChange={setModalTituloAberto}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-6 bg-background border border-border shadow-2xl rounded-xl overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-6 bg-background shadow-2xl rounded-xl overflow-hidden">
         <DialogHeader className="shrink-0 pb-4 border-b border-border/60">
           <DialogTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2.5 text-primary">
             <Pencil className="size-4" /> Escolher Serviço (Título da Página)

@@ -36,11 +36,11 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
   },
   {
     id: 'campo-desenho',
-    titulo: 'Do campo ao desenho (TXT e fuso UTM)',
+    titulo: 'Do campo ao desenho (Pontos e fuso UTM)',
     iniciante:
       'O receptor GNSS entrega um arquivo de texto com os pontos medidos em coordenadas UTM: um par de números Leste e Norte pra cada ponto. Só que o mesmo par de números existe em várias regiões do planeta — o que diferencia é o FUSO, uma faixa vertical do globo. O app descobre o fuso certo comparando os pontos com cidades conhecidas da sua região de trabalho, e você confirma na prévia antes de importar. Se o desenho aparecer longe do lugar certo no mapa, o fuso está errado: troque na prévia.',
     experiente:
-      'Import TXT com mapeamento de colunas configurável (Configurações, aba Importação). Detecção de fuso por âncora regional: a mesma dupla E/N é geometricamente válida em qualquer fuso, então a zona só se resolve com referência externa — o app testa os fusos permitidos e fica com o que cai mais perto de uma âncora conhecida (capitais + cidades da sua região). Restrinja os fusos permitidos em Configurações à sua área de atuação pra detecção nunca hesitar. Âncora nenhuma resolve trabalho fora da região cadastrada: nesse caso confirme o fuso manualmente na prévia.',
+      'Importação de Pontos com mapeamento de colunas configurável (Configurações, aba Importação). Detecção de fuso por âncora regional: a mesma dupla E/N é geometricamente válida em qualquer fuso, então a zona só se resolve com referência externa — o app testa os fusos permitidos e fica com o que cai mais perto de uma âncora conhecida (capitais + cidades da sua região). Restrinja os fusos permitidos em Configurações à sua área de atuação pra detecção nunca hesitar. Âncora nenhuma resolve trabalho fora da região cadastrada: nesse caso confirme o fuso manualmente na prévia.',
   },
   {
     id: 'vizinhos',

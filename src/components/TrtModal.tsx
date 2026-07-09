@@ -20,14 +20,22 @@ interface Props {
 
 export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, perimetro, onChangeImovel }: Props) {
   const [copiado, setCopiado] = useState<string | null>(null);
-  const rot = rotulosProfissional(tecnico);
+  // Quando o profissional tem mais de uma formação/registro cadastrado (Configurações → Pessoal),
+  // ele escolhe aqui qual credencial está citando NESTA peça — a principal ou uma das extras.
+  // As demais peças (memorial, planta etc.) continuam sempre usando a formação principal.
+  const extras = tecnico?.registrosExtras ?? [];
+  const [credencialIdx, setCredencialIdx] = useState(-1); // -1 = formação principal do técnico
+  const credencial = credencialIdx >= 0 && extras[credencialIdx]
+    ? extras[credencialIdx]
+    : { formacao: tecnico?.formacao ?? '', conselho: tecnico?.conselho ?? 'CFT', registro: tecnico?.cft ?? '' };
+  const rot = rotulosProfissional({ conselho: credencial.conselho });
   // Onde emitir o termo: TRT do técnico via SINCETI; ART do engenheiro via CREA-MG (portal SITAC).
   const linkEmitir = rot.termo === 'ART' ? 'https://servicos-crea-mg.sitac.com.br/index.php' : 'https://servicos.sinceti.net.br/';
 
   const linhas: [string, string][] = [
     ['Responsável técnico', tecnico?.nome ?? ''],
-    ['Título profissional', tecnico?.formacao ?? ''],
-    [rot.registro, tecnico?.cft ?? ''],
+    ['Título profissional', credencial.formacao || ''],
+    [rot.registro, credencial.registro || ''],
     ['Credenciamento INCRA', tecnico?.credenciamentoIncra ?? ''],
     ['Atividade técnica', 'Georreferenciamento de imóvel rural — levantamento topográfico georreferenciado (SIGEF/INCRA)'],
     ['Proprietário / contratante', imovel.proprietario],
@@ -66,6 +74,20 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
           <DialogTitle>Dados para o {rot.termo}</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">Confira e copie os campos para preencher a {rot.termoExtenso} ({rot.termo}) no conselho.</p>
+        {/* Só aparece pra quem tem mais de uma formação cadastrada (Configurações → Pessoal) —
+            escolhe qual credencial está citando NESTA peça. */}
+        {extras.length > 0 && (
+          <div className="flex items-center gap-2 rounded-sm border bg-muted/20 p-2">
+            <label className="shrink-0 text-xs font-semibold text-muted-foreground">Emitir como</label>
+            <select className="h-8 flex-1 rounded-sm border bg-background px-2 text-sm"
+              value={credencialIdx} onChange={(e) => setCredencialIdx(Number(e.target.value))}>
+              <option value={-1}>{tecnico?.formacao || 'Formação principal'} — {tecnico?.conselho ?? 'CFT'}{tecnico?.cft ? ` (${tecnico.cft})` : ''}</option>
+              {extras.map((r, i) => (
+                <option key={i} value={i}>{r.formacao || r.conselho} — {r.conselho}{r.registro ? ` (${r.registro})` : ''}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-sm border p-3 bg-muted/20 overflow-y-auto">
           {linhas.map(([k, v]) => (
             <div key={k} className="flex items-center justify-between gap-2 p-2 border rounded-sm bg-background text-sm">

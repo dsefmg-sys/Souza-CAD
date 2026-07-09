@@ -24,7 +24,7 @@ export default function RelatorioSobreposicaoModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-2xl bg-background border shadow-2xl p-0 rounded-lg text-foreground flex flex-col max-h-[85vh] overflow-hidden">
+      <DialogContent className="max-w-2xl bg-background shadow-2xl p-0 rounded-lg text-foreground flex flex-col max-h-[85vh] overflow-hidden">
         {/* Header */}
         <DialogHeader className="flex flex-row items-center gap-3 border-b px-6 py-4 bg-muted/30">
           <ShieldCheck className="size-6 text-indigo-500 shrink-0" />

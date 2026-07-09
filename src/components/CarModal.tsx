@@ -60,7 +60,7 @@ export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onE
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-6 bg-background border border-border shadow-2xl rounded-xl">
+      <DialogContent className="max-w-5xl max-h-[92vh] flex flex-col p-6 bg-background shadow-2xl rounded-xl">
         <DialogHeader className="shrink-0 pb-2 border-b border-border/60">
           <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
             <Leaf className="size-5.5 text-emerald-500" /> CAR — Cadastro Ambiental Rural

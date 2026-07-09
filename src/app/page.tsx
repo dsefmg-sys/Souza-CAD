@@ -328,10 +328,20 @@ export default function EditorPage() {
   const [selMulti, setSelMulti] = useState<Set<string>>(new Set()); // vértices marcados no modo "triângulo"
   const [objSelMulti, setObjSelMulti] = useState<Set<string>>(new Set()); // OBJETOS marcados na mesma caixa de seleção (linhas, textos, símbolos, cotas, retângulos, arcos)
   const [mostrarRotulos, setMostrarRotulos] = useState(true);
-  const [tamNomes, setTamNomes] = useState(11); // tamanho da fonte dos nomes dos vértices no mapa
+  // Nascem já com o valor salvo (lazy init), não com o padrão seguido de troca — senão a troca
+  // pós-montagem disparava a notificação de tamanho sozinha ao abrir o app.
+  const [tamNomes, setTamNomes] = useState(() => {
+    if (typeof window === 'undefined') return 11;
+    try { const n = Number(localStorage.getItem('metrica.tamNomes')); if (n >= 7 && n <= 22) return n; } catch { /* ignore */ }
+    return 11;
+  }); // tamanho da fonte dos nomes dos vértices no mapa
   const [simboloSel, setSimboloSel] = useState('arvore'); // elemento cartográfico ativo (modo 'simbolo')
   const [elementosAberto, setElementosAberto] = useState(false); // popover do seletor de elementos
-  const [escalaInterface, setEscalaInterface] = useState(1); // acessibilidade: escala das letras da interface
+  const [escalaInterface, setEscalaInterface] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    try { const s = carregarPreferencias().escalaFonte; if (s >= 0.8 && s <= 1.6) return s; } catch { /* ignore */ }
+    return 1;
+  }); // acessibilidade: escala das letras da interface
   const [notificacaoTamanho, setNotificacaoTamanho] = useState<{ texto: string; visible: boolean }>({ texto: '', visible: false });
   const [tamanhoTimer, setTamanhoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const escalaMontadaRef = useRef(false);
@@ -410,6 +420,9 @@ export default function EditorPage() {
   // então o mapa ocupa a tela toda; o botão de expandir no cabeçalho revela ela quando precisar.
   const [barraLateralOculta, setBarraLateralOculta] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const toolWEfetivo = telaEstreita ? (barraLateralOculta ? 0 : 54) : toolW;
+  // Barra flutuante dos áudios (Introdução/Tutorial), separada da principal: abre por padrão toda
+  // vez que o app é aberto; o usuário pode fechar se não quiser ouvir.
+  const [barraAudiosAberta, setBarraAudiosAberta] = useState(true);
 
   // Onde o mapa ABRE num projeto vazio: a última localização em que o próprio cliente trabalhou
   // (guardada abaixo). Sem histórico, cai no centro do país — não em Espera Feliz, que é só a minha
@@ -812,9 +825,7 @@ export default function EditorPage() {
     const esc = carregarEscritorio(); const tec = carregarTecnico();
     sincronizarPerfil({ ultimoAcessoEm: Date.now(), empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {});
     try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 480) setToolW(w); } catch { /* ignore */ }
-    try { const n = Number(localStorage.getItem('metrica.tamNomes')); if (n >= 7 && n <= 22) setTamNomes(n); } catch { /* ignore */ }
-    // tamanho do texto da interface: fonte única = preferência (Configurações › Comportamento › Aparência)
-    try { const s = carregarPreferencias().escalaFonte; if (s >= 0.8 && s <= 1.6) setEscalaInterface(s); } catch { /* ignore */ }
+    // tamNomes e escalaInterface já nascem com o valor salvo (lazy init do useState, acima).
     try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680) setAsideW(w); } catch { /* ignore */ }
     // começa com uma gleba
     const g = glebaDe(1, [], [], {}, 'Parcela 1');
@@ -3401,16 +3412,27 @@ export default function EditorPage() {
       const ufs = ufsNoBbox(minLon, minLat, maxLon, maxLat);
       const ufsAlvo = ufs.length ? ufs : INCRA_UFS.slice();
       const todas: import('@/lib/io/sigefVizinhos').ParcelaSigef[] = [];
+      let falhas = 0;
+      const totalConsultas = ufsAlvo.length * TEMAS_CONFRONTANTE.length;
       for (const uf of ufsAlvo) {
         for (const base of TEMAS_CONFRONTANTE) {
+          const t = temaIncra(base, uf);
           try {
-            const r = await fetch(`/api/vizinhos-sigef?tema=${temaIncra(base, uf)}&bbox=${encodeURIComponent(bbox)}`);
+            const r = await fetch(`/api/vizinhos-sigef?tema=${t}&bbox=${encodeURIComponent(bbox)}`);
             const j = await r.json();
             if (Array.isArray(j.parcelas)) todas.push(...j.parcelas);
-          } catch { /* tenta o próximo tema/UF */ }
+            else { falhas++; console.error(`[SIGEF] resposta sem parcelas para tema=${t}:`, j); }
+          } catch (e) { falhas++; console.error(`[SIGEF] falha ao consultar tema=${t}:`, e); }
         }
       }
-      if (!todas.length) { aviso('Nenhuma parcela certificada na região (ou INCRA indisponível). Tente o import manual.'); return; }
+      if (!todas.length) {
+        // Diferencia "consultamos tudo e não há nada" de "as consultas falharam" — sem isso a
+        // mesma frase genérica cobria os dois casos e escondia problema de rede/INCRA fora do ar.
+        aviso(falhas > 0
+          ? `${falhas} de ${totalConsultas} consultas ao INCRA falharam, e as demais não trouxeram parcelas. Tente de novo em instantes, ou use o import manual.`
+          : `Nenhuma parcela certificada encontrada nesta região (a busca automática hoje cobre MG, ES e RJ). Tente o import manual.`);
+        return;
+      }
       const meuAnel = vertices.map((v) => ({ lat: v.lat, lon: v.lon }));
       const vizinhas = parcelasVizinhas(meuAnel, todas, 15);
       if (!vizinhas.length) { aviso(`${todas.length} parcela(s) na região, mas nenhuma encostando no imóvel.`); return; }
@@ -3436,7 +3458,8 @@ export default function EditorPage() {
       setSnapAtivo(true);
       setSigefStatus('enviado');
       aviso(`${vizinhas.length} vizinho(s) certificado(s) encontrado(s) e desenhado(s). Use "pintar confrontante" para marcar os lados.`);
-    } catch {
+    } catch (e) {
+      console.error('[SIGEF] falha inesperada em importarVizinhosAuto:', e);
       aviso('Não consegui consultar o INCRA agora. Use o import manual (arquivo GeoJSON).');
     } finally { setProcessando(false); }
   }
@@ -4433,10 +4456,10 @@ export default function EditorPage() {
         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
         {!telaEstreita && (
           <>
-            <Etapa st={etapas.txt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
+            <Etapa st={etapas.txt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}><Upload /> PONTOS</Button></Etapa>
             <Etapa st={etapas.sigef}>
               <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
-                SIGEF
+                <Download /> SIGEF
               </Button>
             </Etapa>
             <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
@@ -4448,11 +4471,11 @@ export default function EditorPage() {
         {!telaEstreita && (
           <Etapa st={etapas.dados}>
             <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''}`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
-              DADOS
+              <Upload /> DADOS
             </Button>
           </Etapa>
         )}
-        <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}>CADASTROS</Button>
+        <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Database /> CADASTROS</Button>
         <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) — são ações de DESENHO, então no
@@ -4505,7 +4528,7 @@ export default function EditorPage() {
           </div>
         ) : (
           <>
-            <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>{tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
+            <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}><Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
             <Etapa st={etapas.memorial}>
               <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
             </Etapa>
@@ -4521,11 +4544,11 @@ export default function EditorPage() {
             )}
             {medioOuMais && (
               <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
-                <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-emerald-800 hover:bg-emerald-900 text-white border-transparent`} title="Acessar o SIGEF para certificação eletrônica do imóvel">CERT</Button>
+                <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-emerald-800 hover:bg-emerald-900 text-white border-transparent`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
               </a>
             )}
             {medioOuMais && (
-              <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
+              <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf /> CAR</Button>
             )}
           </>
         )}
@@ -4585,127 +4608,8 @@ export default function EditorPage() {
 
       <div className="relative flex min-h-0 flex-1">
         {/* Faixa de status/controles — sobreposta (não empurra o mapa/planta); some sozinha */}
-        {vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante') && (
-          <div className="no-print pointer-events-none absolute left-1/2 top-4 z-[1200] flex max-w-[90%] -translate-x-1/2 justify-center animate-in slide-in-from-top duration-200">
-            <div className="pointer-events-auto flex items-center gap-3.5 rounded-full border border-amber-500/40 bg-zinc-950/95 px-4 py-2 text-xs shadow-2xl backdrop-blur-md text-white">
-              
-              {/* Badge Indicador de Modo */}
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                modo === 'divisa' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-              }`}>
-                {modo === 'divisa' ? 'Pintar Divisas' : 'Pintar Confro.'}
-              </span>
-
-              {modo === 'divisa' && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className="relative inline-flex">
-                      <button 
-                        type="button" 
-                        className="flex h-8 items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 hover:bg-zinc-800 hover:border-zinc-700 transition-colors" 
-                        title="Ajustar as cores das divisas (salvo nas plantas)" 
-                        onClick={() => setCorPickerAberto((v) => !v)}
-                      >
-                        <span className="inline-block h-1 w-5 rounded-full" style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }} />
-                        <Palette className="size-3.5 text-zinc-400" />
-                      </button>
-                      
-                      {corPickerAberto && (
-                        <div className="absolute left-0 top-10 z-[1300] w-56 rounded-xl border border-zinc-800 bg-zinc-950 p-3 shadow-2xl text-left" data-cor-bump={corBump}>
-                          <div className="mb-2 text-[9px] font-black uppercase text-zinc-500 tracking-wider">Cores das Divisas</div>
-                          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scroll-fino">
-                            {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
-                              <label key={tipo} className="flex items-center justify-between gap-3 text-[11px] text-zinc-300">
-                                <span>{REPRES_LABEL[tipo] || tipo}</span>
-                                <input 
-                                  type="color" 
-                                  value={cor || '#9ca3af'} 
-                                  className="h-6 w-8 cursor-pointer rounded border border-zinc-800 bg-transparent p-0"
-                                  onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }} 
-                                />
-                              </label>
-                            ))}
-                          </div>
-                          <Button 
-                            type="button" 
-                            size="sm"
-                            className="mt-3 w-full h-8 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold border border-zinc-800 text-[10px] rounded-lg" 
-                            onClick={() => setCorPickerAberto(false)}
-                          >
-                            Fechar
-                          </Button>
-                        </div>
-                      )}
-                    </span>
-
-                    <select 
-                      className="h-8 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-100 px-2.5 text-xs font-semibold outline-none focus:border-amber-500/50" 
-                      value={tipoDivisaPincel} 
-                      onChange={(e) => setTipoDivisaPincel(e.target.value)} 
-                      title="Tipo de divisa a pintar"
-                    >
-                      {REPRESENTACOES.map((r) => (
-                        <option key={r} value={r} className="bg-zinc-950 text-zinc-100">
-                          {REPRES_LABEL[r] || r}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </>
-              )}
-
-              {modo === 'confrontante' && (
-                <>
-                  <div className="flex items-center gap-2">
-                    {confrontantePincelId && (
-                      <span 
-                        className="inline-block h-3 w-3 rounded-full shrink-0 border border-white/20" 
-                        style={{ backgroundColor: corPorConfrontante(confrontantePincelId) }} 
-                        title="Cor deste confrontante no mapa" 
-                      />
-                    )}
-                    
-                    <select 
-                      className="h-8 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-100 px-2.5 text-xs font-semibold outline-none focus:border-emerald-500/50 max-w-44" 
-                      value={confrontantePincelId} 
-                      onChange={(e) => setConfrontantePincelId(e.target.value)} 
-                      title="Confrontante a pintar"
-                    >
-                      <option value="" className="bg-zinc-950 text-zinc-400">— Escolher confrontante —</option>
-                      {confrontantes.map((c) => (
-                        <option key={c.id} value={c.id} className="bg-zinc-950 text-zinc-100">
-                          {c.nome || '(sem nome)'}
-                        </option>
-                      ))}
-                    </select>
-
-                    <Button 
-                      size="sm" 
-                      className="h-8 px-2.5 text-[10px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white gap-1 rounded-lg border-none" 
-                      onClick={novoConfrontantePincel} 
-                      title="Novo confrontante"
-                    >
-                      <Plus className="size-3.5" /> Novo
-                    </Button>
-                  </div>
-                </>
-              )}
-
-              <div className="w-px h-4 bg-zinc-800" />
-
-              {/* Botão de Fechar / Sair do Modo */}
-              <button 
-                type="button" 
-                className="text-zinc-400 hover:text-white rounded-lg p-1 hover:bg-white/10 transition-colors" 
-                onClick={() => setModo('navegar')} 
-                title="Sair do modo de pintura"
-              >
-                <X className="size-4" />
-              </button>
-
-            </div>
-          </div>
-        )}
+        {/* O painel de Pintar Divisas/Confrontantes foi para a BARRA FLUTUANTE ÚNICA, ao lado do
+            botão Mapa/Planta (ver mais abaixo) — não é mais uma barra separada no topo. */}
         {/* Área principal: mapa ou planta */}
         {(() => {
           const rotulo = toolWEfetivo >= 104;
@@ -5631,9 +5535,81 @@ export default function EditorPage() {
                 <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
               </button>
 
+              {/* Pintar Divisas/Confrontantes — ao lado do botão Mapa/Planta, dentro da mesma barra
+                  (antes era uma barra separada no topo do mapa). */}
+              {vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante') && (
+                <>
+                  <div className="h-4 w-px bg-border" />
+                  <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wider ${
+                    modo === 'divisa' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                  }`}>
+                    {modo === 'divisa' ? 'Divisas' : 'Confro.'}
+                  </span>
 
+                  {modo === 'divisa' && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="relative inline-flex">
+                        <button type="button"
+                          className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2 hover:bg-muted transition-colors"
+                          title="Ajustar as cores das divisas (salvo nas plantas)"
+                          onClick={() => setCorPickerAberto((v) => !v)}>
+                          <span className="inline-block h-1 w-4 rounded-full" style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }} />
+                          <Palette className="size-3.5 text-muted-foreground" />
+                        </button>
+                        {corPickerAberto && (
+                          <div className="absolute left-0 top-9 z-[1300] w-56 rounded-xl border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-left" data-cor-bump={corBump}>
+                            <div className="mb-2 text-[9px] font-black uppercase text-muted-foreground tracking-wider">Cores das Divisas</div>
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scroll-fino">
+                              {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
+                                <label key={tipo} className="flex items-center justify-between gap-3 text-[11px] text-foreground">
+                                  <span>{REPRES_LABEL[tipo] || tipo}</span>
+                                  <input type="color" value={cor || '#9ca3af'}
+                                    className="h-6 w-8 cursor-pointer rounded border bg-transparent p-0"
+                                    onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }} />
+                                </label>
+                              ))}
+                            </div>
+                            <Button type="button" size="sm" variant="outline" className="mt-3 w-full h-8 text-[10px]" onClick={() => setCorPickerAberto(false)}>
+                              Fechar
+                            </Button>
+                          </div>
+                        )}
+                      </span>
+                      <select className="h-7 rounded-full border border-border bg-background/95 px-2 text-[10px] font-semibold outline-none"
+                        value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
+                        {REPRESENTACOES.map((r) => (
+                          <option key={r} value={r} className="bg-background text-foreground">{REPRES_LABEL[r] || r}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
+                  {modo === 'confrontante' && (
+                    <div className="flex items-center gap-1.5">
+                      {confrontantePincelId && (
+                        <span className="inline-block h-3 w-3 shrink-0 rounded-full border border-border"
+                          style={{ backgroundColor: corPorConfrontante(confrontantePincelId) }} title="Cor deste confrontante no mapa" />
+                      )}
+                      <select className="h-7 max-w-32 rounded-full border border-border bg-background/95 px-2 text-[10px] font-semibold outline-none"
+                        value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
+                        <option value="" className="bg-background text-muted-foreground">— Escolher —</option>
+                        {confrontantes.map((c) => (
+                          <option key={c.id} value={c.id} className="bg-background text-foreground">{c.nome || '(sem nome)'}</option>
+                        ))}
+                      </select>
+                      <Button size="sm" className="h-7 gap-1 rounded-full bg-emerald-600 px-2 text-[9px] font-black uppercase text-white hover:bg-emerald-700"
+                        onClick={novoConfrontantePincel} title="Novo confrontante">
+                        <Plus className="size-3.5" /> Novo
+                      </Button>
+                    </div>
+                  )}
 
+                  <button type="button" className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    onClick={() => setModo('navegar')} title="Sair do modo de pintura">
+                    <X className="size-3.5" />
+                  </button>
+                </>
+              )}
               {glebas.length > 1 && (
                 <>
                   <div className="h-4 w-px bg-border" />
@@ -5692,16 +5668,23 @@ export default function EditorPage() {
                 </>
               )}
 
-              {/* Players de áudio (some durante o vídeo de abertura) */}
-              {!introTocando && (
-                <>
-                  <div className="h-4 w-px bg-border" />
-                  <div className="flex items-center gap-1">
-                    <IntroAudioPill />
-                    <TutorialAudioPill />
-                  </div>
-                </>
-              )}
+            </div>
+          )}
+
+          {/* Segunda barra flutuante: áudios de Introdução e Tutorial, na parte INFERIOR da tela
+              (a barra principal, com Mapa/Planta etc., fica na parte de cima). Abre por padrão ao
+              abrir o app; tem botão pra fechar, já que nem todo mundo quer ouvir toda vez. */}
+          {(vista === 'mapa' || vista === 'planta') && !telaEstreita && !introTocando && barraAudiosAberta && (
+            <div className="no-print pointer-events-auto fixed inset-x-0 bottom-3 z-[1160] flex justify-center">
+              <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 p-1.5 shadow-xl backdrop-blur-sm">
+                <IntroAudioPill />
+                <TutorialAudioPill />
+                <button type="button" onClick={() => setBarraAudiosAberta(false)}
+                  className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  title="Fechar">
+                  <X className="size-3.5" />
+                </button>
+              </div>
             </div>
           )}
 
@@ -5903,8 +5886,8 @@ export default function EditorPage() {
             telaEstreita
               // Celular: folha de aplicativo que SOBE de baixo e cobre a tela abaixo do cabeçalho.
               ? `fixed inset-x-0 bottom-0 top-11 rounded-t-2xl border-t ${painelAberto ? 'translate-y-0 opacity-100 visible' : 'translate-y-full opacity-0 invisible pointer-events-none'}`
-              // Desktop: gaveta que desliza da direita (inalterado).
-              : `absolute right-0 top-0 bottom-0 h-full w-[min(460px,100vw)] border-l ${painelAberto ? 'translate-x-0 opacity-100 visible' : 'translate-x-full opacity-0 invisible pointer-events-none'}`
+              // Desktop: gaveta que desliza da direita — 320px (30% mais estreita que os 460px de antes).
+              : `absolute right-0 top-0 bottom-0 h-full w-[min(320px,100vw)] border-l ${painelAberto ? 'translate-x-0 opacity-100 visible' : 'translate-x-full opacity-0 invisible pointer-events-none'}`
           }`}
           onMouseEnter={() => { painelMouseDentro.current = true; }}
           onMouseLeave={() => { painelMouseDentro.current = false; if (!telaEstreita && !asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
@@ -6983,9 +6966,6 @@ export default function EditorPage() {
 
       {notificacaoTamanho.visible && (
         <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[9999] bg-[#0a1f14]/90 text-emerald-400 font-bold border border-emerald-800/40 px-4 py-2 rounded-full text-xs shadow-lg flex items-center gap-1.5 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200">
-          {/* Percent, não Sparkles: esse ícone (amber) é usado no app pra marcar recursos de IA — aqui
-              não tem nada de IA, é só o ajuste de tamanho, então o ícone de IA confundia. */}
-          <Percent className="size-3.5 text-emerald-400" />
           {notificacaoTamanho.texto}
         </div>
       )}

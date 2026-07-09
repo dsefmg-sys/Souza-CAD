@@ -98,7 +98,7 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-6 bg-background border border-border shadow-2xl rounded-xl">
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-6 bg-background shadow-2xl rounded-xl">
         <DialogHeader className="shrink-0 pb-2 border-b border-border/60">
           <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
             <FileWarning className="size-5.5 text-amber-500 animate-pulse" /> Errata para o Cartório

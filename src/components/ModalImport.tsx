@@ -75,9 +75,9 @@ export default function ModalImport({ isOpen, onClose, onConfirm }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-md bg-background/95 backdrop-blur-md border border-border shadow-2xl p-6 rounded-lg text-foreground">
+      <DialogContent className="max-w-md bg-background/95 backdrop-blur-md shadow-2xl p-6 rounded-lg text-foreground">
         <DialogHeader className="border-b pb-2">
-          <DialogTitle className="text-lg font-bold">Importar Arquivo TXT</DialogTitle>
+          <DialogTitle className="text-lg font-bold">Importar Pontos</DialogTitle>
           <p className="text-xs text-muted-foreground">
             Defina as opções geográficas e o número de parcelas para processar as coordenadas corretamente.
           </p>
