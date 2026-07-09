@@ -27,10 +27,23 @@ export interface PerfilUso {
   vencimentoDia?: number;
   atrasadoDesde?: number | null;
   observacoesAdmin?: string;
+  workspaceUid?: string;
 }
 
 const CACHE = 'metrica.perfilUso';
 const KEY_TERMOS = 'metrica.termosAceitos'; // guarda a versão aceita localmente
+
+export function workspaceUidAtual(): string | null {
+  if (!firebaseConfigurado) return null;
+  const currentUid = auth()?.currentUser?.uid ?? null;
+  if (!currentUid) return null;
+  try {
+    const cached = JSON.parse(localStorage.getItem(CACHE) || '{}');
+    return cached.workspaceUid || currentUid;
+  } catch {
+    return currentUid;
+  }
+}
 
 function uid(): string | null {
   return firebaseConfigurado ? (auth()?.currentUser?.uid ?? null) : null;

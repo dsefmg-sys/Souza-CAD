@@ -22,9 +22,19 @@ service cloud.firestore {
 
     // Cada usuário só lê/escreve os próprios dados (projetos, cadastros, banco de pontos).
     match /users/{uid} {
-      allow read, write: if request.auth != null && (request.auth.uid == uid || ehMaster());
+      allow read, write: if request.auth != null && (
+        request.auth.uid == uid 
+        || ehMaster() 
+        || (exists(/databases/$(database)/documents/perfisUso/$(request.auth.uid)) 
+            && get(/databases/$(database)/documents/perfisUso/$(request.auth.uid)).data.workspaceUid == uid)
+      );
       match /{document=**} {
-        allow read, write: if request.auth != null && (request.auth.uid == uid || ehMaster());
+        allow read, write: if request.auth != null && (
+          request.auth.uid == uid 
+          || ehMaster() 
+          || (exists(/databases/$(database)/documents/perfisUso/$(request.auth.uid)) 
+              && get(/databases/$(database)/documents/perfisUso/$(request.auth.uid)).data.workspaceUid == uid)
+        );
       }
     }
     // Dados compartilhados do credenciado (contadores e pontos):

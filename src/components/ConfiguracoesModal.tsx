@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music, Shield, Crown } from 'lucide-react';
 import ModelosDocsModal from './ModelosDocsModal';
 import PontosBancoModal from './PontosBancoModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
 import { TERMOS, TERMOS_VERSAO, TERMOS_TITULAR } from '@/lib/legal/termos';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { auth, firebaseConfigurado } from '@/lib/firebase/client';
+import { sincronizarPerfil, obterPerfilUsuario } from '@/lib/store/perfilUso';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,7 +36,7 @@ import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import ImportVerticesVizinhoConfigModal from '@/components/ImportVerticesVizinhoConfigModal';
 
 // Pessoal = só do usuário (assinatura técnica). Global = da empresa (todos usam o mesmo).
-type AbaConfig = 'pessoal' | 'comportamento' | 'escritorio' | 'numeracao' | 'modelos' | 'padroes';
+type AbaConfig = 'pessoal' | 'comportamento' | 'escritorio' | 'numeracao' | 'modelos' | 'padroes' | 'equipe';
 
 interface Props {
   open: boolean;
@@ -65,6 +67,28 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [audioIntroNome, setAudioIntroNome] = useState<string>('introducao.mp3 (padrão)');
   const [geminiKey, setGeminiKey] = useState('');
+  const [codigoInput, setCodigoInput] = useState('');
+  const [workspaceUid, setWorkspaceUid] = useState('');
+
+  async function salvarWorkspace() {
+    const cleanCode = codigoInput.trim();
+    const myUid = auth()?.currentUser?.uid;
+    if (!myUid) {
+      flash('Erro: Usuário não autenticado.');
+      return;
+    }
+    const novoUid = (cleanCode && cleanCode !== myUid) ? cleanCode : myUid;
+    try {
+      await sincronizarPerfil({ workspaceUid: (cleanCode && cleanCode !== myUid) ? cleanCode : undefined });
+      setWorkspaceUid(novoUid);
+      flash('Workspace atualizado com sucesso!');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (e) {
+      flash('Erro ao salvar workspace.');
+    }
+  }
 
   useEffect(() => {
     if (open) {
@@ -79,6 +103,12 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
         carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
         carregarGeminiApiKey().then(setGeminiKey).catch(() => {});
       }
+      obterPerfilUsuario().then((p) => {
+        if (p) {
+          setWorkspaceUid(p.workspaceUid || p.uid);
+          setCodigoInput(p.workspaceUid || '');
+        }
+      }).catch(() => {});
     }
   }, [open]);
 
@@ -230,6 +260,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 <Tb a="numeracao" rotulo="Numeração e Fuso" />
                 <Tb a="modelos" rotulo="Importação e Modelos" />
                 <Tb a="padroes" rotulo="Padrões & Backup" />
+                <Tb a="equipe" rotulo="Ajudantes / Equipe" />
               </div>
             </div>
           </div>
@@ -857,6 +888,77 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     ))}
                   </div>
                 </details>
+              </div>
+            </div>
+          )}
+
+          {aba === 'equipe' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <div className="space-y-2 rounded-sm border p-3">
+                  <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <Shield className="size-3.5" /> Vincular a outro Workspace
+                  </div>
+                  <p className="text-[11px] leading-tight text-muted-foreground animate-pulse">
+                    Se você é ajudante ou outro técnico da mesma empresa, insira o Código de Workspace do proprietário abaixo para compartilhar os mesmos projetos e configurações na nuvem.
+                  </p>
+                  <div className="space-y-2 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Código do Workspace (UID do proprietário)</Label>
+                      <Input
+                        placeholder="Ex.: AIzaSyDkIEzu..."
+                        value={codigoInput}
+                        onChange={(e) => setCodigoInput(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={salvarWorkspace} className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">
+                        Vincular Workspace
+                      </Button>
+                      {workspaceUid !== (auth()?.currentUser?.uid || '') && (
+                        <Button size="sm" variant="outline" onClick={() => { setCodigoInput(''); setTimeout(salvarWorkspace, 0); }} className="text-destructive hover:bg-destructive/10">
+                          Desvincular
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 border-t md:border-t-0 md:border-l md:pl-4 pt-3 md:pt-0">
+                <div className="space-y-2 rounded-sm border p-3 bg-amber-500/5 border-amber-500/20">
+                  <div className="text-xs font-bold uppercase tracking-wide text-amber-500 flex items-center gap-1.5">
+                    <Crown className="size-3.5" /> Compartilhar meu Workspace
+                  </div>
+                  <p className="text-[11px] leading-tight text-amber-600/90 leading-snug">
+                    Se você é o proprietário do escritório ou profissional autônomo, envie este código aos seus auxiliares para que eles trabalhem junto com você.
+                  </p>
+                  <div className="space-y-2 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Seu Código de Workspace</Label>
+                      <div className="flex gap-1">
+                        <Input
+                          readOnly
+                          value={auth()?.currentUser?.uid || 'Não autenticado'}
+                          className="font-mono text-xs select-all bg-background/50"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            if (auth()?.currentUser?.uid) {
+                              navigator.clipboard.writeText(auth()!.currentUser!.uid);
+                              flash('Código copiado!');
+                            }
+                          }}
+                          className="shrink-0"
+                        >
+                          Copiar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

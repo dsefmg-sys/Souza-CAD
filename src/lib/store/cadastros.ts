@@ -2,13 +2,13 @@ import type { ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad } from '.
 import { db, novoId } from './db';
 import { collection, doc, getDoc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
+import { workspaceUidAtual } from './perfilUso';
 
 type Store = 'proprietarios' | 'confrontantes' | 'imoveis' | 'cartorios';
 
 // Logado + Firebase configurado → cadastros no Firestore (users/{uid}/{store}); senão local.
 function uidNuvem(): string | null {
-  if (!firebaseConfigurado) return null;
-  return auth()?.currentUser?.uid ?? null;
+  return workspaceUidAtual();
 }
 
 async function listar<T>(store: Store): Promise<T[]> {

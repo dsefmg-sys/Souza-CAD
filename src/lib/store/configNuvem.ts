@@ -2,6 +2,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
 import { carregarTecnico, carregarEscritorio, salvarTecnico, salvarEscritorio, TECNICO_PADRAO, ESCRITORIO_PADRAO } from './settings';
 import type { TecnicoData, EscritorioData } from '../topo/types';
+import { workspaceUidAtual } from './perfilUso';
 
 // Cadastro do RESPONSÁVEL TÉCNICO e do ESCRITÓRIO por CONTA (multi-empresa). Antes ficava só no
 // navegador (localStorage) — o que vazava dados entre usuários no mesmo computador e não seguia a
@@ -12,8 +13,7 @@ const KEY_SETUP = 'metrica.setupFeito';
 const KEY_DONO = 'metrica.configUid'; // de qual usuário é o cadastro que está no cache local
 
 function uidAtual(): string | null {
-  if (!firebaseConfigurado) return null;
-  return auth()?.currentUser?.uid ?? null;
+  return workspaceUidAtual();
 }
 
 function donoLocal(): string | null {

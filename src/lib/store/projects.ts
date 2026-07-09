@@ -3,12 +3,12 @@ import { migrarProjeto } from '../topo/glebas';
 import { db, novoId } from './db';
 import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, type CollectionReference } from 'firebase/firestore';
 import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
+import { workspaceUidAtual } from './perfilUso';
 
 // Quando há Firebase configurado E usuário logado, os projetos vão para o Firestore
 // (users/{uid}/projetos). Senão, ficam no IndexedDB local (offline / sem login).
 function uidNuvem(): string | null {
-  if (!firebaseConfigurado) return null;
-  return auth()?.currentUser?.uid ?? null;
+  return workspaceUidAtual();
 }
 function colProjetos(uid: string): CollectionReference {
   return collection(fdb()!, 'users', uid, 'projetos');
