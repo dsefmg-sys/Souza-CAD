@@ -6,10 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Users, Crown, RefreshCw, Shield, Sparkles, CreditCard,
-  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin
+  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin, Copy
 } from 'lucide-react';
 import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
-import { listarProjetosDoUsuario } from '@/lib/store/projects';
+import { listarProjetosDoUsuario, salvarProjeto, novoId } from '@/lib/store/projects';
 import type { Projeto } from '@/lib/topo/types';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
 import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado } from '@/lib/store/suporte';
@@ -45,6 +45,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [projetosCliente, setProjetosCliente] = useState<{ uid: string; nome: string; projetos: Projeto[] } | null>(null);
   const [carregandoProjetos, setCarregandoProjetos] = useState(false);
   const [erroProjetos, setErroProjetos] = useState('');
+  const [copiandoId, setCopiandoId] = useState<string | null>(null);
 
   async function verProjetos(uid: string, nome: string) {
     setCarregandoProjetos(true);
@@ -57,6 +58,25 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       setErroProjetos((e as Error).message || 'Não consegui carregar os projetos deste cliente.');
     } finally {
       setCarregandoProjetos(false);
+    }
+  }
+
+  // Copia o projeto do CLIENTE (só leitura) para o SEU PRÓPRIO gestor de projetos — nunca escreve
+  // nada na conta do cliente, só lê (já permitido pelas regras do master) e grava na sua conta
+  // (sempre permitido, é a sua própria conta). Ganha um id novo pra não colidir com nada seu.
+  async function copiarProjeto(proj: Projeto) {
+    if (!window.confirm(`Copiar "${proj.nome}" para o seu gestor de projetos? Isso NÃO altera nada no cadastro do cliente — cria uma cópia independente na sua conta.`)) return;
+    setCopiandoId(proj.id);
+    try {
+      const agora = Date.now();
+      const copia: Projeto = { ...proj, id: novoId(), nome: `${proj.nome} (cópia)`, criadoEm: agora, atualizadoEm: agora };
+      delete (copia as { excluidoEm?: number }).excluidoEm;
+      await salvarProjeto(copia);
+      flash(`"${proj.nome}" copiado para o seu gestor de projetos!`);
+    } catch (e) {
+      alert((e as Error).message || 'Não consegui copiar este projeto.');
+    } finally {
+      setCopiandoId(null);
     }
   }
 
@@ -748,9 +768,11 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
         </div>
       </div>
 
-      {/* Diagnóstico só-leitura dos projetos de um cliente: NUNCA abre no editor de verdade — só
-          mostra números (vértices, confrontantes, denominação, última alteração) pra achar rápido
-          onde a pessoa travou, sem risco de mexer no trabalho dela. */}
+      {/* Diagnóstico dos projetos de um cliente: NUNCA abre nem edita o projeto DELE — só mostra
+          números (vértices, confrontantes, denominação, última alteração) pra achar rápido onde a
+          pessoa travou. A única ação possível é "Copiar para meus projetos", que LÊ o projeto do
+          cliente (a regra do Firestore já dá essa leitura ao master) e GRAVA uma cópia independente
+          na própria conta do master — nunca escreve nada na conta do cliente. */}
       {projetosCliente && (
         <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/70 p-4" onClick={() => setProjetosCliente(null)}>
           <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-[#1e4d2e]/60 bg-[#05140b] shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -790,6 +812,18 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                       <span className={`flex items-center gap-1 ${totalConfrontantes > 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
                         <Waypoints className="size-3.5" /> {totalConfrontantes} confrontante(s){totalVertices > 0 && totalConfrontantes === 0 && ' — ainda não pintou'}
                       </span>
+                    </div>
+                    <div className="mt-2 flex justify-end border-t border-[#12361d]/40 pt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 border-[#1e4d2e] bg-[#0c2415] px-2.5 text-[11px] font-semibold text-emerald-300 hover:bg-[#12361d]"
+                        disabled={copiandoId === proj.id}
+                        title="Cria uma cópia independente deste projeto no SEU gestor de projetos — não altera nada na conta do cliente"
+                        onClick={() => copiarProjeto(proj)}
+                      >
+                        <Copy className="size-3.5" /> {copiandoId === proj.id ? 'Copiando…' : 'Copiar para meus projetos'}
+                      </Button>
                     </div>
                   </div>
                 );
