@@ -332,6 +332,20 @@ export default function EditorPage() {
   const [simboloSel, setSimboloSel] = useState('arvore'); // elemento cartográfico ativo (modo 'simbolo')
   const [elementosAberto, setElementosAberto] = useState(false); // popover do seletor de elementos
   const [escalaInterface, setEscalaInterface] = useState(1); // acessibilidade: escala das letras da interface
+  const [notificacaoTamanho, setNotificacaoTamanho] = useState<{ texto: string; visible: boolean }>({ texto: '', visible: false });
+  const [tamanhoTimer, setTamanhoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const escalaMontadaRef = useRef(false);
+  const tamNomesMontadoRef = useRef(false);
+
+  const mostrarNotificacaoTamanho = (texto: string) => {
+    setNotificacaoTamanho({ texto, visible: true });
+    setTamanhoTimer((prevTimer) => {
+      if (prevTimer) clearTimeout(prevTimer);
+      return setTimeout(() => {
+        setNotificacaoTamanho((prev) => ({ ...prev, visible: false }));
+      }, 1500);
+    });
+  };
   const [snapAtivo, setSnapAtivo] = useState(false);
   const [segmentoSelecionado, setSegmentoSelecionado] = useState<SegmentoSnap | null>(null);
   const [offsetDistancia, setOffsetDistancia] = useState<number>(5);
@@ -978,11 +992,35 @@ export default function EditorPage() {
 
   // salva posição/altura da barra de ferramentas
   useEffect(() => { try { localStorage.setItem('metrica.toolW', String(toolW)); } catch { /* ignore */ } }, [toolW]);
-  useEffect(() => { try { localStorage.setItem('metrica.tamNomes', String(tamNomes)); } catch { /* ignore */ } }, [tamNomes]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('metrica.tamNomes', String(tamNomes));
+    } catch { /* ignore */ }
+    if (!tamNomesMontadoRef.current) {
+      tamNomesMontadoRef.current = true;
+      return;
+    }
+    const pct = Math.round((tamNomes / 11) * 100);
+    mostrarNotificacaoTamanho(`Tamanho dos Rótulos: ${pct}% ${pct === 100 ? '(Padrão)' : ''}`);
+  }, [tamNomes]);
+
   // acessibilidade: escala das letras da interface (afeta o app inteiro; textos em rem crescem)
   useEffect(() => {
     document.documentElement.style.fontSize = `${(16 * escalaInterface).toFixed(1)}px`;
+    try {
+      const p = carregarPreferencias();
+      if (p.escalaFonte !== escalaInterface) {
+        salvarPreferencias({ ...p, escalaFonte: escalaInterface });
+      }
+    } catch { /* ignore */ }
+    if (!escalaMontadaRef.current) {
+      escalaMontadaRef.current = true;
+      return;
+    }
+    const pct = Math.round(escalaInterface * 100);
+    mostrarNotificacaoTamanho(`Tamanho da Interface: ${pct}% ${pct === 100 ? '(Padrão)' : ''}`);
   }, [escalaInterface]);
+
   // as Configurações mudam o tamanho do texto pela preferência e avisam por evento; mantém em sincronia
   useEffect(() => {
     const h = (e: Event) => { const v = (e as CustomEvent<number>).detail; if (typeof v === 'number') setEscalaInterface(v); };
@@ -6934,6 +6972,13 @@ export default function EditorPage() {
       </Dialog>
 
       <IntroVideo />
+
+      {notificacaoTamanho.visible && (
+        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[9999] bg-[#0a1f14]/90 text-emerald-400 font-bold border border-emerald-800/40 px-4 py-2 rounded-full text-xs shadow-lg flex items-center gap-1.5 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <Sparkles className="size-3.5 text-amber-400" />
+          {notificacaoTamanho.texto}
+        </div>
+      )}
 
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
