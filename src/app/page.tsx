@@ -390,8 +390,9 @@ export default function EditorPage() {
   }, []);
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
   const [toolW, setToolW] = useState(270); // largura confortável pra não espremer os rótulos dos botões
-  // No celular, pode-se ocultar a barra de vez pra o mapa ocupar a tela toda (modo campo).
-  const [barraLateralOculta, setBarraLateralOculta] = useState(false);
+  // No celular a barra de ferramentas nasce OCULTA — no mobile ela quase não serve (não se desenha),
+  // então o mapa ocupa a tela toda; o botão de expandir no cabeçalho revela ela quando precisar.
+  const [barraLateralOculta, setBarraLateralOculta] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const toolWEfetivo = telaEstreita ? (barraLateralOculta ? 0 : 54) : toolW;
 
   // Onde o mapa ABRE num projeto vazio: a última localização em que o próprio cliente trabalhou
@@ -5673,7 +5674,7 @@ export default function EditorPage() {
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
-                conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={tamNomes}
+                conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={telaEstreita ? Math.min(tamNomes, 8) : tamNomes}
                 verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
                 onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
                 onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })}
