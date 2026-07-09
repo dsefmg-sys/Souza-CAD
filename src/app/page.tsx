@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
+import { confirmar, avisar, perguntar, escolher } from '@/lib/ui/dialogos';
 import { Input } from '@/components/ui/input';
 import ModalSpreadsheet from '@/components/ModalSpreadsheet';
 import { Logo, FundoRedeMarca } from '@/components/Logo';
@@ -67,6 +67,7 @@ import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
 import { montarVertices, reordenar, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
 import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, dividirPorAreaAlvo, mapearAtributosGlebaDividida } from '@/lib/topo/glebas';
+import { areaPoligonoEN, areaSobreposicaoEstimada } from '@/lib/topo/confrontacaoCheck';
 import { calcular } from '@/lib/topo/calcular';
 import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo, convergenciaMeridiana } from '@/lib/topo/coords';
 import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
@@ -1724,7 +1725,38 @@ export default function EditorPage() {
     }
   }
 
-  function concluirImportacao(gerarPoligono: boolean, zonaEscolhida: number | undefined, selecao?: ImportSelecao) {
+  // Procura, entre os projetos JÁ SALVOS do usuário, algum cujo polígono coincida (quase) com o
+  // polígono recém-importado — sinal de que esse mesmo imóvel já foi cadastrado antes. Usa a mesma
+  // técnica de área por amostragem em grade do relatório de sobreposição (confrontacaoCheck), em vez
+  // de comparar vértice a vértice, pelo mesmo motivo: dois levantamentos do mesmo imóvel raramente
+  // têm as coordenadas idênticas. Exige alta sobreposição nos DOIS sentidos (não só um imóvel grande
+  // "engolindo" um pedaço pequeno de outro) pra evitar alarme falso.
+  async function encontrarProjetoParecido(vsNovo: Vertex[], projetoAtualId: string | null): Promise<{ projeto: Projeto; gleba: Gleba } | null> {
+    if (vsNovo.length < 3) return null;
+    const areaNovo = areaPoligonoEN(vsNovo);
+    if (areaNovo <= 0) return null;
+    const LIMIAR_PCT = 80;
+    let todos: Projeto[] = [];
+    try { todos = await listarProjetos(); } catch { return null; }
+    for (const p of todos) {
+      if (projetoAtualId && p.id === projetoAtualId) continue;
+      for (const g of p.glebas ?? []) {
+        const vsExistente = (g.vertices ?? []).filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte));
+        if (vsExistente.length < 3) continue;
+        const areaExistente = areaPoligonoEN(vsExistente);
+        if (areaExistente <= 0) continue;
+        const sobreposta = areaSobreposicaoEstimada(vsNovo, vsExistente);
+        const pctDoNovo = (sobreposta / areaNovo) * 100;
+        const pctDoExistente = (sobreposta / areaExistente) * 100;
+        if (pctDoNovo >= LIMIAR_PCT && pctDoExistente >= LIMIAR_PCT) {
+          return { projeto: p, gleba: g };
+        }
+      }
+    }
+    return null;
+  }
+
+  async function concluirImportacao(gerarPoligono: boolean, zonaEscolhida: number | undefined, selecao?: ImportSelecao) {
     if (!previewData) return;
     const { vs: vs0, numGlebas, municipio, z: z0, novoImovel, contM, contP, prefixo } = previewData;
     // se o usuário corrigiu o fuso na prévia, reprojeta os vértices (E/N iguais, lat/lon novos)
@@ -1743,6 +1775,29 @@ export default function EditorPage() {
     const ignorados = gerarPoligono ? importados.filter((p) => !p.poligono).map((p) => p.v) : importados.map((p) => p.v);
     // renumera o anel na ordem final (M/P sequenciais a partir do contador do banco)
     const vs = previewData.isGmlImport ? anel : recodificar(anel, prefixo || 'VER', contM, contP);
+
+    if (gerarPoligono && vs.length >= 3) {
+      const achado = await encontrarProjetoParecido(vs, projetoId);
+      if (achado) {
+        const escolha = await escolher({
+          titulo: 'Este imóvel já parece estar cadastrado',
+          mensagem: `Já existe um projeto chamado "${achado.projeto.nome}" com vértices praticamente iguais aos deste arquivo. O que você quer fazer?`,
+          opcoes: [
+            { chave: 'continuar', label: 'Continuar com a importação mesmo assim', variant: 'outline' },
+            { chave: 'abrir', label: `Abrir "${achado.projeto.nome}"`, variant: 'default' },
+          ],
+          cancelLabel: 'Cancelar',
+        });
+        if (!escolha) return; // cancelou: mantém a prévia aberta, não aplica nada
+        if (escolha === 'abrir') {
+          setPreviewData(null);
+          setImportPendingFile(null);
+          await abrir(achado.projeto.id);
+          return;
+        }
+        // 'continuar': segue o fluxo normal de importação abaixo
+      }
+    }
 
     setImovel(novoImovel);
     setZona(z);
@@ -6480,7 +6535,7 @@ export default function EditorPage() {
             
             {menuContexto.tipo === 'texto' && (
               <div className="flex flex-col gap-0.5">
-                <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { const m = menuContexto; setMenuContexto(null); editarTextoPlanta(m.id!, m.atual!); }}>Editar texto…</button>
+                <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={async () => { const m = menuContexto; setMenuContexto(null); const t = await perguntar({ titulo: 'Editar texto', valorInicial: m.atual! }); if (t != null) editarTextoPlanta(m.id!, t); }}>Editar texto…</button>
                 <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { negrito: !(plantaConfig.textos?.[menuContexto.id!]?.negrito) })}>Negrito (liga/desliga)</button>
                 <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { escala: Math.min(3, +(escTextoAtual(menuContexto.id!) + 0.1).toFixed(2)) })}>Aumentar este texto</button>
                 <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { escala: Math.max(0.4, +(escTextoAtual(menuContexto.id!) - 0.1).toFixed(2)) })}>Diminuir este texto</button>

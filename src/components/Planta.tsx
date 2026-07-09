@@ -988,9 +988,9 @@ export default function Planta({
 
         return (
           <g key={`pc_cert_${idx}`}>
-            <polygon points={ptsSvg} fill="#94a3b8" fillOpacity={0.015} stroke="#94a3b8" strokeOpacity={0.35} strokeWidth={0.5} strokeDasharray="2 3" />
+            <polygon points={ptsSvg} fill="#0284c7" fillOpacity={0.045} stroke="#0284c7" strokeWidth={0.7} strokeDasharray="3 3" />
             {cx >= DRAW.x0 && cx <= DRAW.x1 && cy >= DRAW.y0 && cy <= DRAW.y1 && (
-              <text x={cx} y={cy} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#94a3b8" fillOpacity={0.45}>{label}</text>
+              <text x={cx} y={cy} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#0369a1" fillOpacity={0.7}>{label}</text>
             )}
           </g>
         );
