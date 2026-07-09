@@ -42,8 +42,8 @@ export async function POST(req: Request) {
         'Content-Disposition': `attachment; filename="requerimento.docx"`,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Erro na geração de requerimento:', err);
-    return NextResponse.json({ erro: err?.message || 'Erro ao gerar requerimento no servidor.' }, { status: 500 });
+    return NextResponse.json({ erro: (err as Error)?.message || 'Erro ao gerar requerimento no servidor.' }, { status: 500 });
   }
 }

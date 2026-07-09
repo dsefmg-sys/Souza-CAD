@@ -18,8 +18,8 @@ export async function POST(req: Request) {
         'Content-Disposition': `attachment; filename="desenho.dxf"`,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Erro na geração de DXF:', err);
-    return NextResponse.json({ erro: err?.message || 'Erro ao gerar arquivo DXF no servidor.' }, { status: 500 });
+    return NextResponse.json({ erro: (err as Error)?.message || 'Erro ao gerar arquivo DXF no servidor.' }, { status: 500 });
   }
 }

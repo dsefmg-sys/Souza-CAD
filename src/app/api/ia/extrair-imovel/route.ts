@@ -103,7 +103,8 @@ export async function POST(req: Request) {
     'cpfConjugeProprietario, municipio, comarca, areaAnteriorHa. Não invente dados que não estejam no documento.';
 
   try {
-    const parts: any[] = [{ text: instrucao }];
+    type ParteGemini = { text: string } | { inlineData: { mimeType: string; data: string } };
+    const parts: ParteGemini[] = [{ text: instrucao }];
     
     if (arquivo) {
       const cleanData = arquivo.data.includes(';base64,') 

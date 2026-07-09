@@ -170,9 +170,9 @@ export async function excluirPerfilUsoPorAdmin(clientUid: string): Promise<void>
     
     // Deleta o perfil de uso (CRM)
     await deleteDoc(doc(fdb()!, 'perfisUso', clientUid));
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Falha ao excluir perfil de uso pelo admin:', e);
-    throw new Error(`Erro ao excluir dados administrativos no banco: ${e?.message || e}`);
+    throw new Error(`Erro ao excluir dados administrativos no banco: ${(e as Error)?.message || e}`);
   }
 }
 

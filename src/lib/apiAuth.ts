@@ -23,7 +23,7 @@ export async function verifySession(req: Request): Promise<Session | null> {
     const email = decoded.email;
     const admin =
       decoded.admin === true ||
-      (decoded as any).role === 'admin' ||
+      (decoded as unknown as { role?: string }).role === 'admin' ||
       (email || '').toLowerCase() === OWNER_EMAIL;
     return {
       uid: decoded.uid,

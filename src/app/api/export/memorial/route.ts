@@ -42,8 +42,8 @@ export async function POST(req: Request) {
         'Content-Disposition': `attachment; filename="memorial.docx"`,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Erro na geração de memorial:', err);
-    return NextResponse.json({ erro: err?.message || 'Erro ao gerar memorial descritivo no servidor.' }, { status: 500 });
+    return NextResponse.json({ erro: (err as Error)?.message || 'Erro ao gerar memorial descritivo no servidor.' }, { status: 500 });
   }
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Eye, Copy, Check, Download } from 'lucide-react';
-import type { ImovelData, TecnicoData, Confrontante, Vertex } from '@/lib/topo/types';
+import type { ImovelData, TecnicoData, Confrontante, Vertex, PessoaQualificada } from '@/lib/topo/types';
 import { calcular } from '@/lib/topo/calcular';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { rotulosProfissional } from '@/lib/topo/profissional';
@@ -24,8 +24,8 @@ interface Props {
   hemisferio: 'N' | 'S';
   modo: 'normal' | 'servidao';
   dataExtenso: string;
-  requerente?: any;
-  transmitente?: any;
+  requerente?: PessoaQualificada;
+  transmitente?: PessoaQualificada;
   onBaixar?: () => void;
 }
 

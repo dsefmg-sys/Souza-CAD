@@ -57,7 +57,7 @@ import Map3DViewer from '@/components/Map3DViewer';
 import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte, RawPoint } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, CAR_TEMAS, COR_CURVA_NIVEL, COR_CURVA_AUTO } from '@/lib/topo/objetos';
 import { gerarCurvasDeNivel, intervaloSugerido, pontoNoPoligono, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { estimarAltitudes } from '@/lib/topo/altitudes';
@@ -759,7 +759,10 @@ export default function EditorPage() {
   function fecharTutorial(o: boolean) { setTutorialAberto(o); if (!o) marcarTutorialVisto(); }
   const [infoAberto, setInfoAberto] = useState(false);
   const [pontosAberto, setPontosAberto] = useState(false);
-  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [previewData, setPreviewData] = useState<{
+    perim: unknown; vs: Vertex[]; numGlebas: number; municipio: string; fuso: unknown; z: number;
+    novoImovel: ImovelData; contM: number; contP: number; prefixo: string; isGmlImport: boolean;
+  } | null>(null);
   const [situacaoVersSnapshot, setSituacaoVersSnapshot] = useState<string>('');
   const snapshotDesenho = useMemo(() => {
     return montarSnapshotDesenho(sincronizarGlebas());
@@ -1564,11 +1567,13 @@ export default function EditorPage() {
     setProcessando(true);
     try {
       const buf = await importPendingFile.arrayBuffer();
-      let perim: any[] = [];
+      // Formato heterogêneo: GML/KML só populam leste/norte + alguns metadados opcionais; o ramo TXT
+      // usa RawPoint completo (que também satisfaz este tipo, já que só exige leste/norte).
+      let perim: { leste: number; norte: number; altitude?: number; id?: string; nome?: string; tipo?: 'M' | 'P' | 'V'; metodo?: string; limite?: string; sigmaH?: number; sigmaV?: number; codigoSigef?: string }[] = [];
       let z = fuso;
       let vs: Vertex[] = [];
       let isGmlImport = false;
-      let propsGml: any = {};
+      let propsGml: ReturnType<typeof parsePropriedadeSigefGml> = {};
 
       const tec = tecnico ?? carregarTecnico();
       const nameLower = importPendingFile.name.toLowerCase();
@@ -1587,7 +1592,7 @@ export default function EditorPage() {
           if (!z) {
             z = Math.floor((ptsGml[0].lon + 180) / 6) + 1;
           }
-          perim = ptsGml.map((p) => {
+          const perimGml = ptsGml.map((p) => {
             const utm = geoParaUtm(p.lat, p.lon, z, hemisferio);
             return {
               leste: utm.leste,
@@ -1603,8 +1608,9 @@ export default function EditorPage() {
               codigoSigef: p.codigoSigef
             };
           });
-          
-          vs = perim.map((p, idx) => {
+          perim = perimGml;
+
+          vs = perimGml.map((p, idx) => {
             const { lat, lon } = utmParaGeo(p.leste, p.norte, z, hemisferio);
             return {
               id: `v_${Date.now().toString(36)}_${idx}`,
@@ -1715,7 +1721,7 @@ export default function EditorPage() {
         const cont = await lerContadores(tec.credenciamentoIncra, tec).catch(() => semente(tec.credenciamentoIncra, tec));
         contM = cont.M;
         contP = cont.P;
-        const vs0 = montarVertices(perim, z, hemisferio, { credenciamentoIncra: tec.credenciamentoIncra, contadorMarco: cont.M, contadorPonto: cont.P });
+        const vs0 = montarVertices(perim as unknown as RawPoint[], z, hemisferio, { credenciamentoIncra: tec.credenciamentoIncra, contadorMarco: cont.M, contadorPonto: cont.P });
         vs = recodificar(iniciarDoNorteHorario(vs0), tec.credenciamentoIncra, cont.M, cont.P);
       }
 
@@ -3027,7 +3033,7 @@ export default function EditorPage() {
       const prefixo = modo === 'servidao' ? 'Memorial de servidao' : 'Memorial';
       saveAs(blob, `${prefixo} - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`);
       setBaixou((b) => ({ ...b, memorial: true }));
-    } catch (e: any) { aviso(e.message || 'Erro ao gerar o memorial.'); }
+    } catch (e: unknown) { aviso((e as Error).message || 'Erro ao gerar o memorial.'); }
   }
 
   async function exportarOds() {
@@ -3136,7 +3142,7 @@ export default function EditorPage() {
         saveAs(blob, `SIGEF - ${imovel.denominacao || nomeProjeto || 'imovel'}.ods`);
       }
       setBaixou((b) => ({ ...b, ods: true }));
-    } catch (e: any) { aviso(e.message || 'Erro ao gerar a planilha.'); }
+    } catch (e: unknown) { aviso((e as Error).message || 'Erro ao gerar a planilha.'); }
     finally { setProcessando(false); }
   }
 
@@ -3851,7 +3857,7 @@ export default function EditorPage() {
       const blob = await response.blob();
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
       saveAs(blob, `${imovel.denominacao || nomeProjeto || 'desenho'}${sufixo}.dxf`);
-    } catch (e: any) { aviso(e.message || 'Erro ao exportar DXF.'); }
+    } catch (e: unknown) { aviso((e as Error).message || 'Erro ao exportar DXF.'); }
   }
 
   // Baixa o polígono de uma parcela certificada (importada do SIGEF) como DXF.
@@ -3879,7 +3885,7 @@ export default function EditorPage() {
       const nome = (pc.info.titulo || 'parcela-sigef').replace(/[^\w.-]+/g, '_');
       saveAs(blob, `${nome}.dxf`);
       aviso('DXF da parcela certificada baixado.');
-    } catch (e: any) { aviso(e.message || 'Erro ao exportar DXF da parcela.'); }
+    } catch (e: unknown) { aviso((e as Error).message || 'Erro ao exportar DXF da parcela.'); }
   }
 
   // Baixa o polígono de uma parcela certificada como Shapefile (.zip com shp/shx/dbf/prj).
@@ -4060,7 +4066,7 @@ export default function EditorPage() {
     setTransmitente(d.transmitente);
     setTipoAto(d.tipoAto || 'venda');
     setPartesAdicionais(d.partesAdicionais || []);
-    setCorrecoes((d as any).correcoes || []);
+    setCorrecoes(d.correcoes || []);
     setPlantaConfig(d.plantaConfig ?? {});
     setGlebas(d.glebas);
     carregarGleba(d.glebas.find((g) => g.id === d.glebaAtivaId) ?? d.glebas[0]);
@@ -4073,7 +4079,7 @@ export default function EditorPage() {
     setReferencias(referenciasDeParcelasCert(pc, d.zona, d.hemisferio));
     setVerticesVizinho(d.verticesVizinho ?? []);
     setVerticesIgnorados(d.verticesIgnorados ?? []);
-    setGradeAltimetrica((d as any).gradeAltimetrica ?? (d as any).ga ?? []);
+    setGradeAltimetrica(d.gradeAltimetrica ?? (d as unknown as { ga?: typeof d.gradeAltimetrica }).ga ?? []);
     return true;
   }
 
@@ -4210,8 +4216,8 @@ export default function EditorPage() {
     setNomeProjetoManual(true);
     setZona(p.zonaUtm); setHemisferio(p.hemisferio);
     setRequerente(p.requerente); setTransmitente(p.transmitente);
-    setTipoAto((p as any).tipoAto || 'venda');
-    setPartesAdicionais((p as any).partesAdicionais || []);
+    setTipoAto(p.tipoAto || 'venda');
+    setPartesAdicionais(p.partesAdicionais || []);
     setPlantaConfig(p.plantaConfig ?? {});
     setGlebas(p.glebas);
     carregarGleba(p.glebas[0]);
@@ -4223,7 +4229,7 @@ export default function EditorPage() {
     setReferencias(referenciasDeParcelasCert(pc, p.zonaUtm, p.hemisferio));
     setVerticesVizinho(p.verticesVizinho ?? []);
     setVerticesIgnorados(p.verticesIgnorados ?? []);
-    setGradeAltimetrica(p.gradeAltimetrica ?? (p as any).ga ?? []);
+    setGradeAltimetrica(p.gradeAltimetrica ?? (p as unknown as { ga?: typeof p.gradeAltimetrica }).ga ?? []);
     acabouDeSalvar.current = true; setSalvarLaranja(false); setSalvoOk(true); // recém-carregado = "salvo"
     // Fecha o painel e sai da aba "Projetos salvos" pra o mapa do projeto recém-aberto ficar visível
     // na hora — sem isso, o clique parecia não fazer nada (o painel continuava mostrando a mesma
@@ -4305,7 +4311,7 @@ export default function EditorPage() {
         setParcelasCert(pc);
         setReferencias(referenciasDeParcelasCert(pc, proj.zonaUtm, proj.hemisferio));
         setVerticesVizinho(proj.verticesVizinho ?? []);
-        setGradeAltimetrica(proj.gradeAltimetrica ?? (proj as any).ga ?? []);
+        setGradeAltimetrica(proj.gradeAltimetrica ?? (proj as unknown as { ga?: typeof proj.gradeAltimetrica }).ga ?? []);
         acabouDeSalvar.current = true;
         setSalvarLaranja(false);
         setSalvoOk(true);
@@ -6438,7 +6444,7 @@ export default function EditorPage() {
                 O SIGEF recalcula a área (SGL) e o perímetro usando as próprias fórmulas geodésicas e projeções oficiais — por isso o valor dele SEMPRE difere um pouco (alguns m²) do valor calculado por qualquer software de topografia, incluindo este. Essa diferença é normal e não indica erro no seu levantamento.
               </p>
               <p className="text-[11px] text-muted-foreground leading-snug">
-                Por segurança jurídica, o recomendado é <strong>sempre usar a área e o perímetro oficiais do SIGEF</strong> nas peças técnicas finais (memorial, planta, requerimento), não os calculados aqui. Pra isso: baixe a planilha SIGEF (.ods), envie pro site do SIGEF pra gerar o rascunho oficial, e depois cole os valores que ele devolver na aba <strong>'Imóvel'</strong>, seção <strong>'Reconciliação com o SIGEF'</strong>.
+                Por segurança jurídica, o recomendado é <strong>sempre usar a área e o perímetro oficiais do SIGEF</strong> nas peças técnicas finais (memorial, planta, requerimento), não os calculados aqui. Pra isso: baixe a planilha SIGEF (.ods), envie pro site do SIGEF pra gerar o rascunho oficial, e depois cole os valores que ele devolver na janela <strong>&quot;Conferir&quot;</strong>, seção <strong>&quot;Reconciliação com o SIGEF&quot;</strong>.
               </p>
               <div className="flex flex-wrap gap-2 mt-1">
                 <Button
@@ -6986,7 +6992,7 @@ export default function EditorPage() {
           </DialogHeader>
           <div className="space-y-3 py-2 text-sm text-muted-foreground leading-relaxed">
             <p>
-              A área oficial (SGL) ou o perímetro oficial do SIGEF ainda não foram preenchidos no botão <strong>'CONFERIR'</strong> do cabeçalho (Reconciliação com o SIGEF).
+              A área oficial (SGL) ou o perímetro oficial do SIGEF ainda não foram preenchidos no botão <strong>&quot;CONFERIR&quot;</strong> do cabeçalho (Reconciliação com o SIGEF).
             </p>
             <p>
               O recomendado é conciliar antes de gerar as peças oficiais para que elas correspondam perfeitamente aos valores oficiais.

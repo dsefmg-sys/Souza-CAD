@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, paymentId });
     }
     return NextResponse.json({ success: false, status: payment.status });
-  } catch (e: any) {
-    console.error('[mp/verify] erro ao verificar pagamento:', e?.message || e);
+  } catch (e: unknown) {
+    console.error('[mp/verify] erro ao verificar pagamento:', (e as Error)?.message || e);
     return NextResponse.json({ error: 'Erro ao processar verificação de pagamento.' }, { status: 500 });
   }
 }

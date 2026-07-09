@@ -53,7 +53,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
 
   if (!isOpen) return null;
 
-  const handleChange = (id: string, field: keyof Vertex, value: any) => {
+  const handleChange = (id: string, field: keyof Vertex, value: Vertex[keyof Vertex]) => {
     setLocalVertices((curr) =>
       curr.map((v) => {
         if (v.id === id) {

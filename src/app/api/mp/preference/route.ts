@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: any;
+  let body: { amount?: number } = {};
   try {
     body = await req.json();
   } catch {
@@ -64,10 +64,10 @@ export async function POST(req: NextRequest) {
       init_point: result.init_point,
       sandbox_init_point: result.sandbox_init_point,
     });
-  } catch (e: any) {
-    console.error('[mp/preference] erro ao criar preferência:', e?.message || e);
+  } catch (e: unknown) {
+    console.error('[mp/preference] erro ao criar preferência:', (e as Error)?.message || e);
     return NextResponse.json(
-      { error: 'Falha ao criar preferência de pagamento.', detail: e?.message },
+      { error: 'Falha ao criar preferência de pagamento.', detail: (e as Error)?.message },
       { status: 502 }
     );
   }

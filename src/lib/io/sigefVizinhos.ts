@@ -228,8 +228,22 @@ function achaTag(trecho: string, ...nomes: string[]): string {
  * (Método 2 do SIGEF) pode ter várias centenas de vértices; a versão anterior, com essa referência
  * cruzada recompilada a cada nó, travava a aba em arquivos grandes — corte simples é sempre linear.
  */
-export function parseVerticesSigefGml(xmlText: string): any[] {
-  const vertices: any[] = [];
+export interface VerticeSigefGml {
+  lat: number;
+  lon: number;
+  altitude: number;
+  id: string;
+  nome: string;
+  codigoSigef?: string;
+  tipo: 'M' | 'P' | 'V';
+  metodo?: string;
+  limite?: string;
+  sigmaH?: number;
+  sigmaV?: number;
+}
+
+export function parseVerticesSigefGml(xmlText: string): VerticeSigefGml[] {
+  const vertices: VerticeSigefGml[] = [];
 
   // Alguns exportadores embrulham cada <geo:Vértice> (com acento — a tag de verdade) dentro de um
   // container <sigef:vertice> (sem acento, plural/genérico) — por isso tenta primeiro achar a tag
@@ -299,7 +313,7 @@ export function parseVerticesSigefGml(xmlText: string): any[] {
   // Anexa a contagem total de nós encontrados (inclusive os descartados) como propriedade extra do
   // array — não quebra quem usa `vertices` como array normal (.length, [i], .map...), só permite
   // detectar perda silenciosa comparando `.length` com `.totalNos`.
-  (vertices as any).totalNos = totalNos;
+  (vertices as unknown as { totalNos: number }).totalNos = totalNos;
   return vertices;
 }
 

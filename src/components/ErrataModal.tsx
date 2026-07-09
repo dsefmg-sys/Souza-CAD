@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { ImovelData, TecnicoData, Confrontante, CorrecaoErrata } from '@/lib/topo/types';
+import type { ImovelData, TecnicoData, Confrontante, CorrecaoErrata, NaturezaCorrecao } from '@/lib/topo/types';
 import { gerarErrataDocx } from '@/lib/export/errata';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { carregarPadroes } from '@/lib/store/padroes';
@@ -46,12 +46,12 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
   const setCorrecoes = onChangeCorrecoes;
 
   // Atalhos de "onde" mais comuns, no formato dos modelos ("Confrontante X" + "Matrícula nº ...").
-  const sugestoes: { rotulo: string; onde: string; constava: string; natureza: any }[] = [
+  const sugestoes: { rotulo: string; onde: string; constava: string; natureza: NaturezaCorrecao }[] = [
     { rotulo: 'Matrícula', onde: 'Matrícula do imóvel', constava: imovel.matricula ? `Matrícula nº ${imovel.matricula}` : '', natureza: 'imovel' },
     { rotulo: 'Denominação', onde: 'Denominação do imóvel', constava: imovel.denominacao || '', natureza: 'imovel' },
     { rotulo: 'Proprietário', onde: 'Nome do proprietário', constava: imovel.proprietario || '', natureza: 'pessoais' },
     ...confrontantes.filter((c) => c.nome).map((c) => ({
-      rotulo: `Confront. ${c.nome}`, onde: `Confrontante ${c.nome}`, constava: c.matricula ? `Matrícula nº ${c.matricula}` : '', natureza: 'confrontantes',
+      rotulo: `Confront. ${c.nome}`, onde: `Confrontante ${c.nome}`, constava: c.matricula ? `Matrícula nº ${c.matricula}` : '', natureza: 'confrontantes' as NaturezaCorrecao,
     })),
   ];
 
@@ -90,9 +90,9 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
       saveAs(blob, `Errata - ${imovel.denominacao || 'imovel'}.docx`);
       setMsg('Errata gerada.');
       onBaixar?.();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setMsg(e.message || 'Erro ao gerar errata.');
+      setMsg((e as Error).message || 'Erro ao gerar errata.');
     }
   }
 
@@ -151,7 +151,7 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] leading-none">Natureza</Label>
                       <select
                         value={c.natureza || 'outros'}
-                        onChange={(e) => setCor(i, { natureza: e.target.value as any })}
+                        onChange={(e) => setCor(i, { natureza: e.target.value as NaturezaCorrecao })}
                         className="flex h-10 w-full rounded-lg border border-border/80 bg-[#05140b] dark:bg-[#05140b] px-3 py-0 text-sm text-foreground focus:border-emerald-500 focus:outline-none"
                       >
                         <option value="imovel">Dados Imóvel</option>

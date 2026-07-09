@@ -321,7 +321,7 @@ export default function EstudioModal({ open, onOpenChange }: { open: boolean; on
               <input className="h-8 w-64 rounded-sm border bg-background px-2 text-sm" placeholder="Buscar ícone (ex.: casa, sol, raio, seta)" value={busca}
                 onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') buscarElementos(); }} />
               <Button size="sm" variant="outline" disabled={buscando} onClick={buscarElementos}><Search className="size-4" /> {buscando ? 'Buscando…' : 'Buscar'}</Button>
-              <span className="text-muted-foreground">Ícones gratuitos. Fotos de banco de imagem já estão no botão "Fotos" ao lado.</span>
+              <span className="text-muted-foreground">Ícones gratuitos. Fotos de banco de imagem já estão no botão &quot;Fotos&quot; ao lado.</span>
             </div>
             {resultados.length > 0 && (
               <div className="grid max-h-28 grid-flow-col grid-rows-2 gap-1 overflow-x-auto rounded-sm border bg-muted/20 p-1.5">

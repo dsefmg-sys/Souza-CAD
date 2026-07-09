@@ -1906,7 +1906,7 @@ export default function Planta({
                   </div>
                 ) : (
                   <div className="flex-grow flex items-center justify-center border border-border border-dashed rounded-lg bg-muted/5 text-xs text-muted-foreground p-4">
-                    Nenhum serviço salvo ainda. Digite um título e clique em "Salvar" para adicioná-lo.
+                    Nenhum serviço salvo ainda. Digite um título e clique em &quot;Salvar&quot; para adicioná-lo.
                   </div>
                 )}
               </div>

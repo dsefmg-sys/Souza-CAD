@@ -178,9 +178,9 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       }
 
       alert(resData.mensagem || 'E-mails enviados com sucesso!');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(`Falha ao disparar e-mails: ${err.message}`);
+      alert(`Falha ao disparar e-mails: ${(err as Error).message}`);
     } finally {
       setEnviandoEmails(false);
     }
@@ -249,9 +249,9 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       await atualizarPerfilUsoPorAdmin(clientUid, patch);
       setPerfis((prev) => prev.map((p) => p.uid === clientUid ? { ...p, ...patch } : p));
       flash('Dados do cliente salvos!');
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      flash(e.message || 'Erro ao salvar CRM.');
+      flash((e as Error).message || 'Erro ao salvar CRM.');
     }
   }
 
@@ -263,9 +263,9 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       await excluirPerfilUsoPorAdmin(uid);
       setPerfis((prev) => prev.filter((p) => p.uid !== uid));
       flash('Cadastro excluído com sucesso!');
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      flash(e.message || 'Erro ao excluir cadastro.');
+      flash((e as Error).message || 'Erro ao excluir cadastro.');
     }
   }
 
@@ -741,8 +741,8 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                           <select
                             value={status}
                             onChange={(e) => {
-                              const newStatus = e.target.value as any;
-                              const patch: any = { statusPagamento: newStatus };
+                              const newStatus = e.target.value as 'pago' | 'atrasado' | 'isento';
+                              const patch: Partial<PerfilUso> = { statusPagamento: newStatus };
                               if (newStatus === 'atrasado') {
                                 patch.atrasadoDesde = Date.now();
                               } else {

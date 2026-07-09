@@ -316,7 +316,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 {/* conselho: define as siglas das peças — técnico (CFT/TRT) x engenheiro (CREA/ART) x técnico agrícola (CFTA/TRT) */}
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Conselho / categoria</Label>
-                  <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={t.conselho ?? 'CFT'} onChange={(e) => changeT('conselho', e.target.value as any)}>
+                  <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={t.conselho ?? 'CFT'} onChange={(e) => changeT('conselho', e.target.value as 'CFT' | 'CREA' | 'CFTA' | 'CFT+CREA' | 'CFTA+CREA')}>
                     <option value="CFT">Técnico Agrimensura — CFT (emite TRT)</option>
                     <option value="CFTA">Técnico Agrícola — CFTA (emite TRT)</option>
                     <option value="CREA">Engenheiro — CREA (emite ART)</option>

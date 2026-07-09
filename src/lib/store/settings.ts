@@ -264,7 +264,7 @@ export async function carregarTemaUsuario(uid: string): Promise<'claro' | 'escur
   try {
     const s = await getDoc(doc(d, 'users', uid));
     if (s.exists()) {
-      return (s.data() as any).tema ?? null;
+      return (s.data() as { tema?: 'claro' | 'escuro' }).tema ?? null;
     }
   } catch {
     // ignore

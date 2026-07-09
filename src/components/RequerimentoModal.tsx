@@ -170,9 +170,9 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
       saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);
       onBaixar?.();
       setMsg('Requerimento gerado.');
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setMsg(e.message || 'Erro ao gerar requerimento.');
+      setMsg((e as Error).message || 'Erro ao gerar requerimento.');
     }
   }
 

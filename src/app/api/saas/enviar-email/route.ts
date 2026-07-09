@@ -85,8 +85,8 @@ export async function POST(req: Request) {
         ? `Sucesso: ${enviadoCount} e-mails enviados via SMTP.`
         : `Simulação: ${enviadoCount} e-mails registrados no log do servidor (SMTP não configurado).`
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Erro no envio de e-mails:', err);
-    return NextResponse.json({ error: err.message || 'Erro interno.' }, { status: 500 });
+    return NextResponse.json({ error: (err as Error).message || 'Erro interno.' }, { status: 500 });
   }
 }

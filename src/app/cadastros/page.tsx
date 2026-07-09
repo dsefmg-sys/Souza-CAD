@@ -804,7 +804,7 @@ function GlobalSearch({
           imoveisFiltrados.length === 0 &&
           cartoriosFiltrados.length === 0 && (
             <div className="text-center py-12 text-sm text-muted-foreground">
-              Nenhum registro encontrado para "{busca}".
+              Nenhum registro encontrado para &quot;{busca}&quot;.
             </div>
           )}
       </div>

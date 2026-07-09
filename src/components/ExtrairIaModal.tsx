@@ -116,7 +116,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
       });
       
       const rawText = await r.text();
-      let j: any;
+      let j: { erro?: string; dados?: Record<string, string> };
       try {
         j = JSON.parse(rawText);
       } catch {
