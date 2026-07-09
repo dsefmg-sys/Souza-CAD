@@ -4638,18 +4638,34 @@ export default function EditorPage() {
             <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}><Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
             <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
             <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}><CheckCircle2 /> CONFERIR</Button>
-            <Etapa st={etapas.memorial}>
-              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
-            </Etapa>
-            {projetoTemServidao && (
-              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
-            )}
-            <Etapa st={etapas.planta}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
-            <Etapa st={etapas.req}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
-            <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Cartas de anuência dos confrontantes (.docx) — baixe todas num só documento ou uma por vez" onClick={() => setAnuenciaAberta(true)}><Download /> ANUENCIA</Button>
-            {medioOuMais && (
-              <Etapa st={etapas.errata}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><Download /> ERRATA</Button></Etapa>
-            )}
+            {/* Memorial, planta, requerimento, anuência e errata: reunidos num menu PEÇAS, pra não
+                disputar espaço no cabeçalho com um botão solto pra cada um (mesmo espírito do menu
+                PEÇAS que já existe no celular). */}
+            <div className="relative shrink-0">
+              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={() => setPecasMenuAberto((v) => !v)}>
+                <Download /> PEÇAS <ChevronDown className="size-3" />
+              </Button>
+              {pecasMenuAberto && (
+                <>
+                  <div className="fixed inset-0 z-[1290]" onClick={() => setPecasMenuAberto(false)} />
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-[1300] w-60 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
+                    {([
+                      ['Memorial descritivo (.docx)', () => exportarMemorial('normal')],
+                      ...(projetoTemServidao ? [['Memorial de servidão (.docx)', () => exportarMemorial('servidao')] as [string, () => void]] : []),
+                      ['Planta A3 (PDF)', () => exportarPlanta()],
+                      ['Requerimento ao cartório (.docx)', () => setReqAberto(true)],
+                      ['Cartas de anuência (.docx)', () => setAnuenciaAberta(true)],
+                      ...(medioOuMais ? [['Errata perimetral (.docx)', () => setErrataAberto(true)] as [string, () => void]] : []),
+                    ] as [string, () => void][]).map(([rot, acao]) => (
+                      <button key={rot} type="button" onClick={() => { setPecasMenuAberto(false); acao(); }}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-muted">
+                        <Download className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> {rot}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             {medioOuMais && (
               <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
                 <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-emerald-800 hover:bg-emerald-900 text-white border-transparent`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
