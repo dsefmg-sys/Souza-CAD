@@ -1,0 +1,23 @@
+# Configurações do Firebase App Hosting
+version: v1beta1
+
+env:
+  # Servidor SMTP do Gmail
+  - variable: SMTP_HOST
+    value: "smtp.gmail.com"
+  
+  # Porta segura (SSL)
+  - variable: SMTP_PORT
+    value: "465"
+  
+  # Conta remetente
+  - variable: SMTP_USER
+    value: "souzagestaofundiaria@gmail.com"
+  
+  # Formato de exibição do remetente
+  - variable: SMTP_FROM
+    value: "Souza CAD <souzagestaofundiaria@gmail.com>"
+
+  # Referência ao segredo que você está criando no painel (Secret Manager)
+  - variable: SMTP_PASS
+    secret: SMTP_PASS_SECRET
