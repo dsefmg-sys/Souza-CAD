@@ -26,9 +26,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
 
-  // Login OBRIGATÓRIO quando há nuvem configurada, a menos que o usuário tenha optado por
-  // entrar sem login. Sem Firebase (ambiente sem variáveis), segue local.
-  if (!disponivel || user || modo === 'semLogin') return <>{children}</>;
+  // Login OBRIGATÓRIO quando há nuvem configurada. Sem Firebase (ambiente sem variáveis), segue local.
+  if (!disponivel || user) return <>{children}</>;
   if (carregando) {
     // Tela de carregamento NEUTRA (preta), sem a arte estática — assim nenhuma imagem aparece antes
     // do vídeo de abertura, que também começa no preto. A transição fica limpa: preto → vídeo.
@@ -44,7 +43,15 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     try { await fn(); } catch (e) { setErro(traduzErroAuth((e as Error).message)); } finally { setOcupado(false); }
   }
 
-  // TELA 1 — BOAS-VINDAS (verde). Mensagem de apresentação + dois caminhos de entrada.
+  async function validarEFazer(fn: () => Promise<void>) {
+    if (!email.trim() || !senha.trim()) {
+      setErro('Por favor, preencha o e-mail e a senha.');
+      return;
+    }
+    await fazer(fn);
+  }
+
+  // TELA 1 — BOAS-VINDAS (verde). Mensagem de apresentação + caminho de entrada.
   if (modo === 'boasVindas') {
     return (
       <div className="relative flex h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-800 via-green-700 to-emerald-900 p-4">
@@ -63,13 +70,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
               onClick={() => { setErro(''); definirModoEntrada('login'); }}
             >
               <LogIn /> Iniciar
-            </Button>
-            <Button
-              className="w-full bg-emerald-400/90 text-emerald-950 hover:bg-emerald-300"
-              disabled={ocupado}
-              onClick={() => definirModoEntrada('semLogin')}
-            >
-              Iniciar sem login
             </Button>
           </div>
         </div>
@@ -93,8 +93,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           <div className="space-y-1"><Label>E-mail</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
           <div className="space-y-1"><Label>Senha</Label><Input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} /></div>
           <div className="flex gap-2">
-            <Button size="sm" variant="secondary" className="flex-1" disabled={ocupado} onClick={() => fazer(() => entrarEmail(email, senha))}>Entrar</Button>
-            <Button size="sm" variant="outline" className="flex-1" disabled={ocupado} onClick={() => fazer(() => cadastrarEmail(email, senha))}>Criar conta</Button>
+            <Button size="sm" variant="secondary" className="flex-1" disabled={ocupado} onClick={() => validarEFazer(() => entrarEmail(email.trim(), senha))}>Entrar</Button>
+            <Button size="sm" variant="outline" className="flex-1" disabled={ocupado} onClick={() => validarEFazer(() => cadastrarEmail(email.trim(), senha))}>Criar conta</Button>
           </div>
         </div>
         {erro && <p className="text-xs text-destructive">{erro}</p>}

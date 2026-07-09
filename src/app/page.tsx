@@ -5851,10 +5851,12 @@ export default function EditorPage() {
 
         {/* Painel suspenso de dados do projeto — ocupa toda a altura disponível do fim da página ao cabeçalho */}
         <div ref={painelWrap}
-          className={`no-print absolute right-0 top-0 bottom-0 z-[2000] flex w-[min(460px,100vw)] h-full flex-col border-l bg-background shadow-2xl transition-all duration-300 ${
-            painelAberto
-              ? 'translate-x-0 opacity-100 visible'
-              : 'translate-x-full opacity-0 invisible pointer-events-none'
+          className={`no-print z-[2000] flex flex-col bg-background shadow-2xl transition-all duration-300 ${
+            telaEstreita
+              // Celular: folha de aplicativo que SOBE de baixo e cobre a tela abaixo do cabeçalho.
+              ? `fixed inset-x-0 bottom-0 top-11 rounded-t-2xl border-t ${painelAberto ? 'translate-y-0 opacity-100 visible' : 'translate-y-full opacity-0 invisible pointer-events-none'}`
+              // Desktop: gaveta que desliza da direita (inalterado).
+              : `absolute right-0 top-0 bottom-0 h-full w-[min(460px,100vw)] border-l ${painelAberto ? 'translate-x-0 opacity-100 visible' : 'translate-x-full opacity-0 invisible pointer-events-none'}`
           }`}
           onMouseEnter={() => { painelMouseDentro.current = true; }}
           onMouseLeave={() => { painelMouseDentro.current = false; if (!telaEstreita && !asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
