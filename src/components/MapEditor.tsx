@@ -128,6 +128,39 @@ function iconeVertice(v: Vertex, selecionado: boolean) {
   });
 }
 
+// Estimativa do tamanho (px) da caixa do nome do vértice — compartilhada entre o ícone do rótulo
+// (posiciona a âncora) e a linha-guia (acha o canto da caixa mais perto do vértice). Mesma conta
+// dos dois lugares, pra nunca desalinhar.
+function estimarCaixaRotulo(texto: string, tam: number): { w: number; h: number } {
+  const fs = tam && tam > 0 ? tam : 11;
+  const w = (texto || '').length * fs * 0.62 + 10;
+  const h = fs + 8;
+  return { w, h };
+}
+
+// Ponta da linha-guia: em vez de ir até o CENTRO da caixa do rótulo, vai até o CANTO da caixa mais
+// perto do vértice — como uma linha de chamada de CAD, que encosta na borda do texto em vez de
+// atravessá-lo. O cálculo é em pixels (map.project/unproject), que independe do pan do mapa — só
+// depende do zoom — porque a caixa do rótulo tem tamanho fixo em pixels, não em metros.
+function pontoGuiaMaisPerto(map: L.Map, vertice: [number, number], centroRotulo: [number, number], estW: number, estH: number, zoom: number): [number, number] {
+  const pVertice = map.project(L.latLng(vertice), zoom);
+  const pCentro = map.project(L.latLng(centroRotulo), zoom);
+  const halfW = estW / 2, halfH = estH / 2;
+  const cantos = [
+    L.point(pCentro.x - halfW, pCentro.y - halfH),
+    L.point(pCentro.x + halfW, pCentro.y - halfH),
+    L.point(pCentro.x - halfW, pCentro.y + halfH),
+    L.point(pCentro.x + halfW, pCentro.y + halfH),
+  ];
+  let melhor = cantos[0], melhorD = Infinity;
+  for (const c of cantos) {
+    const d = c.distanceTo(pVertice);
+    if (d < melhorD) { melhorD = d; melhor = c; }
+  }
+  const ll = map.unproject(melhor, zoom);
+  return [ll.lat, ll.lng];
+}
+
 // rótulo do vértice: texto BRANCO sem fundo, com halo escuro ao redor pra continuar legível em
 // qualquer trecho da imagem de satélite (claro ou escuro) — mais limpo que a caixinha branca sólida
 // de antes. Posiciona o rótulo do vértice PRA FORA do polígono (direção dirx/diry, x direita / y
@@ -135,8 +168,7 @@ function iconeVertice(v: Vertex, selecionado: boolean) {
 function iconeNomeVertice(texto: string, tam: number, dirx = 0, diry = 0) {
   const fs = tam && tam > 0 ? tam : 11;
   const txt = (texto || '').replace(/</g, '&lt;');
-  const estW = txt.length * fs * 0.62 + 10;
-  const estH = fs + 8;
+  const { w: estW, h: estH } = estimarCaixaRotulo(texto, tam);
   let ax = estW / 2, ay = estH / 2; // padrão: centrado (rótulo manual)
   if (dirx !== 0 || diry !== 0) {
     const c = 11 + fs * 0.35; // folga além do símbolo do vértice
@@ -180,16 +212,19 @@ const iconeRotulo = (r: RotuloMapa, fator = 1) => {
   });
 };
 
-// rótulo central da gleba: dados-chave (denominação, proprietário, matrícula, área) no meio do polígono.
-// Não captura clique (pointer-events:none) para não atrapalhar a edição embaixo dele.
+// rótulo central da gleba: dados-chave (denominação, proprietário, matrícula, área) no meio do
+// polígono. Texto branco sem fundo, com halo escuro pra legibilidade — mesmo tratamento do nome do
+// vértice, pra ficar consistente e limpo no modo mapa. Não captura clique (pointer-events:none) para
+// não atrapalhar a edição embaixo dele.
 const iconeCentro = (linhas: string[], fator = 1, arrastavel = false) => {
   const corpo = linhas.map((l, i) => `<div style="font-weight:${i === 0 ? 700 : 600};font-size:${Math.round((i === 0 ? 13 : 11) * fator)}px">${(l || '').replace(/</g, '&lt;')}</div>`).join('');
-  // caixa branca sólida e centrada no ponto (legível sobre o satélite). Quando arrastável (modo
-  // navegar), captura o clique e mostra o cursor de mover; senão, deixa o clique passar pro mapa.
+  // Quando arrastável (modo navegar), captura o clique e mostra o cursor de mover; senão, deixa o
+  // clique passar pro mapa.
   const eventos = arrastavel ? 'pointer-events:auto;cursor:move' : 'pointer-events:none';
+  const halo = '-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000,1px 1px 2px #000,0 0 4px #000';
   return L.divIcon({
     className: 'gleba-centro',
-    html: `<div style="transform:translate(-50%,-50%);display:inline-block;${eventos};color:#000;background:#fff;border:1.5px solid #222;border-radius:5px;padding:3px 9px;text-align:center;line-height:1.3;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.5);width:max-content">${corpo}</div>`,
+    html: `<div style="transform:translate(-50%,-50%);display:inline-block;${eventos};color:#fff;text-shadow:${halo};text-align:center;line-height:1.3;white-space:nowrap;width:max-content">${corpo}</div>`,
     iconSize: [1, 1], iconAnchor: [0, 0],
   });
 };
@@ -447,6 +482,23 @@ function MarcadoresRotulos({
 
   return (
     <>
+      {/* Linhas-guia dos rótulos movidos manualmente: a ponta encosta no CANTO da caixa do rótulo
+          mais perto do vértice (não no centro), como uma linha de chamada de CAD. Desenhada ANTES
+          dos marcadores pra ficar por baixo do texto. */}
+      {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => {
+        if (!v.posRotulo) return null;
+        const texto = estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome);
+        const { w, h } = estimarCaixaRotulo(texto, Math.round(tamNomes * fzZoom));
+        const ponta = pontoGuiaMaisPerto(map, [v.lat, v.lon], [v.posRotulo.lat, v.posRotulo.lon], w, h, zoom);
+        return (
+          <Polyline
+            key={`guia${v.id}`}
+            positions={[[v.lat, v.lon], ponta]}
+            pathOptions={{ color: '#ffffff', weight: 2, opacity: 0.95, dashArray: '4 4', interactive: false }}
+          />
+        );
+      })}
+
       {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => (
         <Marker
           key={`nome${v.id}`}
@@ -1766,19 +1818,9 @@ export default function MapEditor(props: Props) {
           }} />
       ))}
 
-      {/* Linhas-guia dos rótulos dos vértices que foram movidos manualmente para evitar confusão */}
-      {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v) => {
-        if (!v.posRotulo) return null;
-        return (
-          <Polyline
-            key={`guia${v.id}`}
-            positions={[[v.lat, v.lon], [v.posRotulo.lat, v.posRotulo.lon]]}
-            pathOptions={{ color: '#ffffff', weight: 2, opacity: 0.95, dashArray: '4 4', interactive: false }}
-          />
-        );
-      })}
-
-      {/* rótulos dos vértices (caixinha branca; arrastáveis com a ferramenta mover/F5; ocultação adaptativa para evitar poluição visual) */}
+      {/* rótulos dos vértices (texto branco; arrastáveis com a ferramenta mover/F5; ocultação adaptativa
+          para evitar poluição visual). A linha-guia até o rótulo movido manualmente também é
+          desenhada aqui dentro, porque precisa do map/estiloVertice/tamNomes/fzZoom deste componente. */}
       <MarcadoresRotulos
         validos={validos}
         camadasVisiveis={camadasVisiveis}

@@ -4287,6 +4287,7 @@ export default function EditorPage() {
       imovel.matricula ? `Matrícula nº ${imovel.matricula}` : '',
       imovel.proprietario ? `Prop.: ${imovel.proprietario}` : '',
       ef ? `Área: ${numBR(ef.areaHa, 4)} ha` : '',
+      ef ? `Perímetro: ${numBR(ef.perimetro)} m` : '',
     ].filter(Boolean);
     const p = plantaConfig.centroInfoPos;
     return { linhas, lat: p?.lat, lon: p?.lon };
