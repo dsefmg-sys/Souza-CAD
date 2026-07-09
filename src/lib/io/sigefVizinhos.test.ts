@@ -176,4 +176,33 @@ describe('sigefVizinhos', () => {
     expect(prop.municipio).toBe('3124203');
     expect(prop.matricula).toBe('12345');
   });
+
+  // Trava a correção do bug que travava a aba: um GML completo (Método 2 do SIGEF) com centenas de
+  // vértices tinha que terminar em milissegundos, não travar o navegador por conta de referência
+  // cruzada com varredura sem limite. Se essa regra voltar a existir, este teste fica lento/expira.
+  it('processa um GML com 500 vértices rapidamente, sem travar (regressão do bug de trava na aba)', () => {
+    let xml = '<wfs:FeatureCollection>\n';
+    for (let i = 1; i <= 500; i++) {
+      xml += `  <sigef:vertice>
+    <geo:Vértice>
+      <geo:codigo>COIN-${i % 3 === 0 ? 'M' : 'P'}-${String(i).padStart(4, '0')}</geo:codigo>
+      <geo:latitude>-20.${600000 + i}</geo:latitude>
+      <geo:longitude>-41.${900000 + i}</geo:longitude>
+      <geo:altitude>${800 + (i % 50)}.${i % 100}</geo:altitude>
+      <geo:tipo>${i % 3 === 0 ? 'M' : 'P'}</geo:tipo>
+      <geo:metodo>PG2</geo:metodo>
+      <geo:limite>cerca</geo:limite>
+    </geo:Vértice>
+  </sigef:vertice>\n`;
+    }
+    xml += '</wfs:FeatureCollection>';
+
+    const inicio = Date.now();
+    const vs = parseVerticesSigefGml(xml);
+    const duracaoMs = Date.now() - inicio;
+
+    expect(vs.length).toBe(500);
+    expect((vs as unknown as { totalNos: number }).totalNos).toBe(500);
+    expect(duracaoMs).toBeLessThan(1000); // a versão com o bug levaria segundos a minutos, não < 1s
+  });
 });

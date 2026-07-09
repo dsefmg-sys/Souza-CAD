@@ -205,52 +205,55 @@ export function confrontantesDeVizinhas(parcelas: ParcelaSigef[]): Confrontante[
   }));
 }
 
+// Busca uma tag (ignorando namespace e maiúsculas) dentro de um TRECHO de texto já isolado, com uma
+// varredura de conteúdo LIMITADA ("não passa de um `<`") — sem referência cruzada, sem "varra até
+// achar a tag de fechamento em qualquer lugar do resto do documento". É esse limite que evita o
+// travamento: o pior caso é sempre proporcional ao tamanho do TRECHO, nunca do arquivo inteiro.
+function achaTag(trecho: string, ...nomes: string[]): string {
+  for (const nome of nomes) {
+    const m = new RegExp(`<(?:[a-zA-Z0-9_-]+:)?${nome}\\b[^>]*>\\s*([^<]*)`, 'i').exec(trecho);
+    const val = m ? m[1].trim() : '';
+    if (val) return val.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  }
+  return '';
+}
+
 /**
  * Lê um GML/XML de certificação do SIGEF contendo os vértices com atributos completos
  * (código do vértice, coordenadas de latitude/longitude, altitude, tipo, método e limite).
+ *
+ * Divide o texto em blocos por ocorrência de tag de ABERTURA de vértice (mesmo truque seguro que
+ * `parseGmlParcelas` já usava com `.split('<gml:featureMember>')`) — em vez de caçar, com referência
+ * cruzada, a tag de FECHAMENTO específica em qualquer lugar do resto do documento. Um GML completo
+ * (Método 2 do SIGEF) pode ter várias centenas de vértices; a versão anterior, com essa referência
+ * cruzada recompilada a cada nó, travava a aba em arquivos grandes — corte simples é sempre linear.
  */
 export function parseVerticesSigefGml(xmlText: string): any[] {
   const vertices: any[] = [];
-  // Conta quantos nós <Vértice> existem no XML, mesmo os que falharem no parse — dá pra quem chama
-  // perceber se algum vértice foi DESCARTADO em silêncio (ex.: tag de lat/lon num formato não previsto
-  // pela heurística), comparando `vertices.length` com `vertices.totalNos` no retorno.
-  let totalNos = 0;
 
-  // Encontra as tags de vértices (<Vértice>, <vertice>, <geo:Vértice>, etc.)
-  const regexNode = /<(?:[a-zA-Z0-9_-]+:)?(Vértice|vertice)[^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?\1>/gi;
+  // Alguns exportadores embrulham cada <geo:Vértice> (com acento — a tag de verdade) dentro de um
+  // container <sigef:vertice> (sem acento, plural/genérico) — por isso tenta primeiro achar a tag
+  // COM acento; só cai pra sem acento se o arquivo não tiver nenhuma (senão contaria a mesma tag em
+  // dobro, uma vez pelo container e outra pela tag de dentro).
+  const comAcento = xmlText.split(/<(?:[a-zA-Z0-9_-]+:)?Vértice\b[^>]*>/i).slice(1);
+  const blocos = comAcento.length ? comAcento : xmlText.split(/<(?:[a-zA-Z0-9_-]+:)?vertice\b[^>]*>/i).slice(1);
+  const totalNos = blocos.length;
 
-  let match;
   let idx = 1;
-  while ((match = regexNode.exec(xmlText)) !== null) {
-    totalNos++;
-    const content = match[2];
-    
-    // Helper regex para extrair valor de uma tag ignorando namespaces e limpando escapes XML
-    const tagValue = (tagName: string): string => {
-      const r = new RegExp(`<(?:[a-zA-Z0-9_-]+:)?${tagName}[^>]*>\\s*([\\s\\S]*?)\\s*</(?:[a-zA-Z0-9_-]+:)?${tagName}>`, 'i');
-      const m = r.exec(content);
-      const val = m ? m[1].trim() : '';
-      return val
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&apos;/g, "'")
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>');
-    };
-    
-    const codigo = tagValue('codigo') || tagValue('nome') || tagValue('id');
-    const latitudeStr = tagValue('latitude') || tagValue('lat');
-    const longitudeStr = tagValue('longitude') || tagValue('lon') || tagValue('long');
-    const altitudeStr = tagValue('altitude') || tagValue('elevacao') || tagValue('alt') || tagValue('h');
-    const tipoStr = tagValue('tipo');
-    const metodoStr = tagValue('metodo') || tagValue('metodo_posicionamento');
-    const limiteStr = tagValue('limite') || tagValue('tipo_limite');
-    const sigmaHStr = tagValue('sigma') || tagValue('sigmaH') || tagValue('longitudeSigma') || tagValue('latitudeSigma');
-    const sigmaVStr = tagValue('sigmaV') || tagValue('altitudeSigma');
-    
+  for (const bloco of blocos) {
+    const codigo = achaTag(bloco, 'codigo', 'nome', 'id');
+    const latitudeStr = achaTag(bloco, 'latitude', 'lat');
+    const longitudeStr = achaTag(bloco, 'longitude', 'lon', 'long');
+    const altitudeStr = achaTag(bloco, 'altitude', 'elevacao', 'alt', 'h');
+    const tipoStr = achaTag(bloco, 'tipo');
+    const metodoStr = achaTag(bloco, 'metodo', 'metodo_posicionamento');
+    const limiteStr = achaTag(bloco, 'limite', 'tipo_limite');
+    const sigmaHStr = achaTag(bloco, 'sigma', 'sigmaH', 'longitudeSigma', 'latitudeSigma');
+    const sigmaVStr = achaTag(bloco, 'sigmaV', 'altitudeSigma');
+
     const lat = parseFloat(latitudeStr.replace(',', '.'));
     const lon = parseFloat(longitudeStr.replace(',', '.'));
-    
+
     if (Number.isFinite(lat) && Number.isFinite(lon)) {
       let elev = parseFloat(altitudeStr.replace(',', '.'));
       if (!Number.isFinite(elev)) {
@@ -258,7 +261,7 @@ export function parseVerticesSigefGml(xmlText: string): any[] {
       }
       const sigmaH = parseFloat(sigmaHStr.replace(',', '.'));
       const sigmaV = parseFloat(sigmaVStr.replace(',', '.'));
-      
+
       // Heurística de tipo (M = Marco, P = Ponto, V = Virtual)
       let tipo: 'M' | 'P' | 'V' = 'P';
       const upperTipo = tipoStr.toUpperCase();
@@ -275,7 +278,7 @@ export function parseVerticesSigefGml(xmlText: string): any[] {
         else if (parts.includes('V')) tipo = 'V';
         else if (parts.includes('P')) tipo = 'P';
       }
-      
+
       vertices.push({
         lat,
         lon,
@@ -292,7 +295,7 @@ export function parseVerticesSigefGml(xmlText: string): any[] {
       idx++;
     }
   }
-  
+
   // Anexa a contagem total de nós encontrados (inclusive os descartados) como propriedade extra do
   // array — não quebra quem usa `vertices` como array normal (.length, [i], .map...), só permite
   // detectar perda silenciosa comparando `.length` com `.totalNos`.
@@ -311,30 +314,13 @@ export function parsePropriedadeSigefGml(xmlText: string): {
   municipio?: string;
   matricula?: string;
 } {
-  const sanitize = (val: string): string => {
-    return val
-      .replace(/&amp;/g, '&')
-      .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'")
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .trim();
-  };
-
-  const tagValue = (tags: string[]): string | undefined => {
-    for (const tag of tags) {
-      const r = new RegExp(`<(?:[a-zA-Z0-9_-]+:)?${tag}[^>]*>\\s*([\\s\\S]*?)\\s*</(?:[a-zA-Z0-9_-]+:)?${tag}>`, 'i');
-      const m = r.exec(xmlText);
-      if (m && m[1].trim() !== '') return sanitize(m[1]);
-    }
-    return undefined;
-  };
+  const tagValue = (...tags: string[]): string | undefined => achaTag(xmlText, ...tags) || undefined;
 
   return {
-    denominacao: tagValue(['nome_area', 'nomeImovel', 'denominacao', 'imovel', 'nome_imovel']),
-    detentor: tagValue(['detentor', 'proprietario', 'proprietário', 'titular', 'nome_detentor', 'nome_deten', 'proprietar', 'nome']),
-    codigoImovel: tagValue(['codigo_imovel', 'codigoImovel', 'cod_imovel', 'codigo_imo', 'codigo']),
-    municipio: tagValue(['municipio', 'codigo_municipio', 'nome_municipio', 'municipio_codigo', 'nome_munic']),
-    matricula: tagValue(['matricula', 'num_matric', 'matricula_', 'registro_matricula']),
+    denominacao: tagValue('nome_area', 'nomeImovel', 'denominacao', 'imovel', 'nome_imovel'),
+    detentor: tagValue('detentor', 'proprietario', 'proprietário', 'titular', 'nome_detentor', 'nome_deten', 'proprietar', 'nome'),
+    codigoImovel: tagValue('codigo_imovel', 'codigoImovel', 'cod_imovel', 'codigo_imo', 'codigo'),
+    municipio: tagValue('municipio', 'codigo_municipio', 'nome_municipio', 'municipio_codigo', 'nome_munic'),
+    matricula: tagValue('matricula', 'num_matric', 'matricula_', 'registro_matricula'),
   };
 }

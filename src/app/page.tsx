@@ -3252,55 +3252,32 @@ export default function EditorPage() {
   // por isso não dá pra automatizar). Compara cada vértice do arquivo com os do NOSSO perímetro
   // por proximidade; os que baterem ADOTAM o código oficial do vizinho (e ficam marcados como já
   // registrados, para o sistema nunca reescrever nem tentar registrar esse código de novo).
+  // Só CSV/TXT — o GML foi removido daqui (o parser regex de GML por nó travava a aba em arquivos
+  // grandes; a importação da PROPRIEDADE do usuário via GML continua existindo em processarImportacao,
+  // agora com o parser reescrito de forma segura). CSV é o método mais fácil mesmo, então simplificar
+  // pra só ele reduz a instrução na tela sem perder nada que valesse a pena manter.
   async function importarVerticesVizinho(file: File) {
     const TOL_M = 2; // mesma tolerância usada no snap de vértice
     try {
       const texto = await file.text();
       const cfg = carregarImportVerticesVizinho();
       const origem = file.name.replace(/\.[^.]+$/, '');
-      const nameLower = file.name.toLowerCase();
-      
-      let lidos: VerticeVizinho[] = [];
-      let verticesDescartadosVizinho = 0; // vértices do GML que não puderam ser lidos (formato não reconhecido)
-      if (nameLower.endsWith('.gml') || nameLower.endsWith('.xml')) {
-        const ptsGml = parseVerticesSigefGml(texto);
-        const totalNosVizinho = (ptsGml as unknown as { totalNos?: number }).totalNos ?? ptsGml.length;
-        if (totalNosVizinho > ptsGml.length) {
-          verticesDescartadosVizinho = totalNosVizinho - ptsGml.length;
-        }
-        lidos = ptsGml.map((p) => {
-          const u = geoParaUtm(p.lat, p.lon, zona, hemisferio);
+
+      const lidos: VerticeVizinho[] = parseVerticesVizinho(texto, cfg, zona, hemisferio)
+        .filter((l) => l.nome)
+        .map((l) => {
+          const u = geoParaUtm(l.lat, l.lon, zona, hemisferio);
           return {
-            nome: p.nome,
-            lat: p.lat,
-            lon: p.lon,
-            leste: u.leste,
-            norte: u.norte,
-            elevacao: p.altitude,
-            sigmaX: p.sigmaH,
-            sigmaY: p.sigmaH,
-            sigmaZ: p.sigmaV,
-            metodo: p.metodo,
-            origem
+            nome: l.nome, lat: l.lat, lon: l.lon, leste: u.leste, norte: u.norte,
+            ...(l.elevacao != null ? { elevacao: l.elevacao } : {}),
+            ...(l.sigmaX != null ? { sigmaX: l.sigmaX } : {}),
+            ...(l.sigmaY != null ? { sigmaY: l.sigmaY } : {}),
+            ...(l.sigmaZ != null ? { sigmaZ: l.sigmaZ } : {}),
+            ...(l.metodo ? { metodo: l.metodo } : {}),
+            origem,
           };
         });
-      } else {
-        lidos = parseVerticesVizinho(texto, cfg, zona, hemisferio)
-          .filter((l) => l.nome)
-          .map((l) => {
-            const u = geoParaUtm(l.lat, l.lon, zona, hemisferio);
-            return {
-              nome: l.nome, lat: l.lat, lon: l.lon, leste: u.leste, norte: u.norte,
-              ...(l.elevacao != null ? { elevacao: l.elevacao } : {}),
-              ...(l.sigmaX != null ? { sigmaX: l.sigmaX } : {}),
-              ...(l.sigmaY != null ? { sigmaY: l.sigmaY } : {}),
-              ...(l.sigmaZ != null ? { sigmaZ: l.sigmaZ } : {}),
-              ...(l.metodo ? { metodo: l.metodo } : {}),
-              origem,
-            };
-          });
-      }
-      if (!lidos.length) { aviso('Nenhum vértice com nome/código reconhecido neste arquivo. Confira o mapeamento de colunas em Configurações → Importação e Modelos.'); return; }
+      if (!lidos.length) { aviso('Nenhum vértice com nome/código reconhecido neste arquivo CSV. Confira o mapeamento de colunas em Configurações → Importação e Modelos.'); return; }
 
       // GUARDA os vértices do vizinho no projeto (dedupe por nome + coordenada ~1 cm), para desenhar
       // na planta e servir de encaixe — mesmo os que estão perto mas não encostam no nosso perímetro.
@@ -3349,11 +3326,8 @@ export default function EditorPage() {
       if (guardados) partes.push(`${guardados} vértice(s) do vizinho guardado(s) para a planta`);
       if (adotados) partes.push(`${adotados} do seu perímetro adotaram o código oficial`);
       const resumo = partes.length ? `${partes.join('; ')}.` : 'Esses vértices do vizinho já estavam guardados.';
-      const alertaDescarte = verticesDescartadosVizinho
-        ? ` Atenção: ${verticesDescartadosVizinho} vértice(s) do arquivo tinham formato de coordenada não reconhecido e ficaram de fora.`
-        : '';
-      aviso(resumo + alertaDescarte);
-    } catch { aviso('Não consegui ler o arquivo de vértices do vizinho.'); }
+      aviso(resumo);
+    } catch { aviso('Não consegui ler o arquivo CSV de vértices do vizinho.'); }
   }
 
   async function importarVizinhosCertificados(file: File) {
@@ -4441,7 +4415,7 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarShapefileRef(f); e.currentTarget.value = ''; }} />
         <input ref={vizinhosRef} type="file" accept=".geojson,.json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
-         <input ref={verticesVizinhoRef} type="file" accept=".txt,.csv,.gml,.xml,text/plain" className="hidden"
+         <input ref={verticesVizinhoRef} type="file" accept=".txt,.csv,text/plain" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVerticesVizinho(f); e.currentTarget.value = ''; }} />
         <input ref={jsonBackupRef} type="file" accept=".json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarProjetoJson(f); e.currentTarget.value = ''; }} />
@@ -5790,9 +5764,8 @@ export default function EditorPage() {
                     <li>Clique em <strong>Copiar Código</strong> abaixo;</li>
                     <li>Clique em <strong>SIGEF 🔗</strong> para abrir a pesquisa;</li>
                     <li>No site, cole no campo <strong>Código do Imóvel</strong> e clique em Pesquisar;</li>
-                    <li><strong>Método 1 (Mais fácil - CSV):</strong> Clique no ícone da <strong>nuvenzinha azul</strong> no final da linha e selecione <strong>CSV → Vértices</strong>;</li>
-                    <li><strong>Método 2 (Completo - GML):</strong> Clique no <strong>nome azul do imóvel</strong> para abrir os detalhes e clique em <strong>Exportar GML</strong> no topo;</li>
-                    <li>Volte ao app e clique no botão violeta abaixo para importar o arquivo (GML ou CSV).</li>
+                    <li>Clique no ícone da <strong>nuvenzinha azul</strong> no final da linha e selecione <strong>CSV → Vértices</strong>;</li>
+                    <li>Volte ao app e clique no botão violeta abaixo para importar o arquivo CSV.</li>
                   </ol>
                 </div>
 
@@ -5815,7 +5788,7 @@ export default function EditorPage() {
                     </div>
                   )}
                   <Button size="sm" className="w-full gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium" onClick={() => verticesVizinhoRef.current?.click()}>
-                    <Upload className="size-3.5" /> Importar GML ou CSV do Confrontante
+                    <Upload className="size-3.5" /> Importar CSV do Confrontante
                   </Button>
                 </div>
               </div>
