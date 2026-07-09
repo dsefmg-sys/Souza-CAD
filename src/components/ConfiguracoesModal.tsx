@@ -237,7 +237,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     flash('Modelo SIGEF atualizado.');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   async function restaurarModeloSigef() {
     if (!(await confirmar({ titulo: 'Restaurar planilha SIGEF', mensagem: 'Voltar a usar o modelo de planilha SIGEF embutido do sistema?', okLabel: 'Restaurar' }))) return;
     await limparModeloSigef();

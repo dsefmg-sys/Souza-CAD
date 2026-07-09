@@ -20,7 +20,7 @@ export function azimuteDMS(deg: number): string {
   let a = deg % 360;
   if (a < 0) a += 360;
   let d = Math.floor(a);
-  let rest = (a - d) * 60;
+  const rest = (a - d) * 60;
   let m = Math.floor(rest);
   let s = Math.round((rest - m) * 60);
   if (s >= 60) { s -= 60; m += 1; }

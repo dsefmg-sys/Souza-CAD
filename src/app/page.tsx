@@ -4397,7 +4397,7 @@ export default function EditorPage() {
     ].filter(Boolean);
     const p = plantaConfig.centroInfoPos;
     return { linhas, lat: p?.lat, lon: p?.lon };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [vertices.length, res, imovel, glebaAtivaNome, glebas.length, plantaConfig.centroInfoPos]);
 
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;

@@ -40,7 +40,7 @@ export default function DocumentosProjeto({
     try { setArquivos(await listarArquivosPorDono(projetoId, dono, confrontanteId)); } catch { setArquivos([]); }
     finally { setCarregando(false); }
   }
-  useEffect(() => { recarregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [projetoId, dono, confrontanteId]);
+  useEffect(() => { recarregar();   }, [projetoId, dono, confrontanteId]);
 
   async function subir(files: FileList | null) {
     if (!files || !projetoId) return;

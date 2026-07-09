@@ -123,7 +123,7 @@ export function lerDxfDocumento(conteudo: string): DxfDocumento {
   const doc: DxfDocumento = { entidades: novoEnt(), inserts: [], blocos: {} };
 
   let secao: 'NONE' | 'ENTITIES' | 'BLOCKS' = 'NONE';
-  let descarte = novoEnt();
+  const descarte = novoEnt();
   let alvoEnt: DxfEntidades = doc.entidades;
   let alvoIns: InsertRef[] = doc.inserts;
   let blocoAtual: BlocoDef | null = null;

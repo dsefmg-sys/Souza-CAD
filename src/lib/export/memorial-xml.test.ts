@@ -22,7 +22,7 @@ describe('memorial: document.xml sem caractere inválido de XML', () => {
     const zip = await JSZip.loadAsync(Buffer.from(await blob.arrayBuffer()));
     const xml = await zip.file('word/document.xml')!.async('string');
 
-    // eslint-disable-next-line no-control-regex
+     
     const proibido = xml.match(/[\x00-\x08\x0B\x0C\x0E-\x1F￾￿]/);
     expect(proibido, proibido ? `caractere proibido U+${proibido[0].charCodeAt(0).toString(16)}` : '').toBeNull();
 

@@ -302,7 +302,7 @@ export async function gerarSigefOdsSeparadas(templateBytes: ArrayBuffer | Uint8A
   const usados = new Set<string>();
   for (const g of glebas) {
     const bytes = await montarOds(templateBytes, (xml) => montarContentXmlGlebas(xml, imovel, tecnico, [g]));
-    let nome = `SIGEF - ${(imovel.denominacao || 'imovel')} - ${g.denominacao}`.replace(/[\\/:*?"<>|]/g, '_');
+    const nome = `SIGEF - ${(imovel.denominacao || 'imovel')} - ${g.denominacao}`.replace(/[\\/:*?"<>|]/g, '_');
     let n = nome; let k = 2; while (usados.has(n)) n = `${nome} (${k++})`;
     usados.add(n);
     zipOut.file(`${n}.ods`, bytes);

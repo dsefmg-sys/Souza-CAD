@@ -25,7 +25,7 @@ export function sanitizarTexto(texto: string | undefined | null): string {
   }
   // 2) tira controles ASCII (menos \n e \t), zero-width, marcas bidi e BOM
   return limpo
-    // eslint-disable-next-line no-control-regex
+     
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/[​-‏‪-‮⁠﻿]/g, '')
     .trim();

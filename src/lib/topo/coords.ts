@@ -114,7 +114,7 @@ export function grausParaDMS(
   let a = Math.abs(deg);
   let d = Math.floor(a); a = (a - d) * 60;
   let m = Math.floor(a); a = (a - m) * 60;
-  let s = a;
+  const s = a;
   // carry de arredondamento dos segundos
   let sStr = s.toFixed(casas);
   if (parseFloat(sStr) >= 60) { sStr = (0).toFixed(casas); m += 1; }

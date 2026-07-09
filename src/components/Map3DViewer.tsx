@@ -132,7 +132,7 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
     let minZ = Infinity, maxZ = -Infinity;
     for (const p of pts) { if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z; }
     return { pts, tris, minZ, maxZ };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [pontos3D, vertices]);
 
   const temSuperficie = superficie.tris.length > 0;
