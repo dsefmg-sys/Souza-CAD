@@ -48,6 +48,9 @@ interface Props {
   rotulos?: RotuloMapa[];
   centroGleba?: { linhas: string[]; lat?: number; lon?: number } | null;
   onMoverCentro?: (lat: number, lon: number) => void;
+  /** Onde o mapa abre quando não há vértices (projeto vazio): última localização do cliente. */
+  centroPadrao?: [number, number] | null;
+  zoomPadrao?: number;
   mostrarDivisaConf?: boolean;
   onAjustarDivisaConf?: (id: string, az: number, len: number) => void;
   estiloVertice?: 'sigef' | 'convencional';
@@ -1119,7 +1122,7 @@ function TrimExtendController({
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [],
-    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
+    objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, centroPadrao = null, zoomPadrao = 13, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
     conflitos = [],
@@ -1299,7 +1302,7 @@ export default function MapEditor(props: Props) {
 
     return segs;
   }, [validos, outrasGlebas, referencias, objetos, zona, hemisferio]);
-  const centro = useMemo<[number, number]>(() => (validos.length ? [validos[0].lat, validos[0].lon] : ESPERA_FELIZ), [validos]);
+  const centro = useMemo<[number, number]>(() => (validos.length ? [validos[0].lat, validos[0].lon] : (centroPadrao ?? ESPERA_FELIZ)), [validos, centroPadrao]);
   const anel = validos.map((v) => [v.lat, v.lon] as [number, number]);
   const centroideGleba = useMemo<[number, number] | null>(() => {
     if (validos.length < 3) return null;
@@ -1330,7 +1333,7 @@ export default function MapEditor(props: Props) {
   // maxZoom 24: além do nível nativo das imagens (20) o satélite é só ampliado — fica borrado,
   // mas permite posicionar vértice com muito mais precisão (pedido do dono, 05/07/2026)
   return (
-    <MapContainer center={centro} zoom={validos.length ? 16 : 13} maxZoom={28} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
+    <MapContainer center={centro} zoom={validos.length ? 16 : zoomPadrao} maxZoom={28} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
       <CursorMapa ativo={modo !== 'navegar' && !bloqueado} />
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Híbrido (Google)">

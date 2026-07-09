@@ -393,6 +393,23 @@ export default function EditorPage() {
   // No celular, pode-se ocultar a barra de vez pra o mapa ocupar a tela toda (modo campo).
   const [barraLateralOculta, setBarraLateralOculta] = useState(false);
   const toolWEfetivo = telaEstreita ? (barraLateralOculta ? 0 : 54) : toolW;
+
+  // Onde o mapa ABRE num projeto vazio: a última localização em que o próprio cliente trabalhou
+  // (guardada abaixo). Sem histórico, cai no centro do país — não em Espera Feliz, que é só a minha
+  // região; só eu (master) começo por lá. Assim outras empresas abrem perto de onde trabalham.
+  const [entradaMapa] = useState<{ centro: [number, number]; zoom: number }>(() => {
+    if (typeof window === 'undefined') return { centro: [-15.78, -47.93], zoom: 4 };
+    try {
+      const s = localStorage.getItem('metrica:ultimoCentroMapa');
+      if (s) { const p = JSON.parse(s); if (Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1])) return { centro: [p[0], p[1]], zoom: 13 }; }
+    } catch { /* ignore */ }
+    return souMaster() ? { centro: [-20.6506, -41.9094], zoom: 13 } : { centro: [-15.78, -47.93], zoom: 4 };
+  });
+  // Sempre que houver vértices válidos, memoriza a região do cliente para a próxima abertura.
+  useEffect(() => {
+    const v = vertices.find((x) => Number.isFinite(x.lat) && Number.isFinite(x.lon) && (x.lat !== 0 || x.lon !== 0));
+    if (v) { try { localStorage.setItem('metrica:ultimoCentroMapa', JSON.stringify([v.lat, v.lon])); } catch { /* ignore */ } }
+  }, [vertices]);
   const toolDrag = useRef(false);
   const [centralizarSig, setCentralizarSig] = useState(0); // incrementa para enquadrar o desenho
   // largura do painel da direita (redimensionável, salva por usuário)
@@ -5641,6 +5658,7 @@ export default function EditorPage() {
             />
           ) : vista === 'mapa' ? (
                <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
+                 centroPadrao={entradaMapa.centro} zoomPadrao={entradaMapa.zoom}
                  onAtivar3D={modo3dAtivado ? () => setVista('3d') : undefined}
                 confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
                 zona={zona} hemisferio={hemisferio} orto={orto} snapAtivo={snapAtivo} segmentoSelecionado={segmentoSelecionado} onSegmentoSelecionado={setSegmentoSelecionado} offsetDistancia={offsetDistancia} onConfirmarParalela={confirmarParalela} copiarPontoBase={copiarPontoBase} onConfirmarCopiaBase={confirmarCopiaBase} onConfirmarCopiaDestino={confirmarCopiaDestino} onDividirSegmento={dividirSegmento} linhaLimite={linhaLimite} onLinhaLimite={setLinhaLimite} onConfirmarTrim={confirmarTrim} onConfirmarExtend={confirmarExtend} camadasVisiveis={camadasVisiveis} camadasBloqueadas={camadasBloqueadas} estilosCamadas={estilosCamadas}
