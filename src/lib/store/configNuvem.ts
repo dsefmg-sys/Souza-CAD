@@ -72,5 +72,9 @@ export async function empurrarConfigParaNuvem(): Promise<void> {
 export function limparConfigLocalNaSaida(): void {
   salvarTecnico(TECNICO_PADRAO);
   salvarEscritorio(ESCRITORIO_PADRAO);
-  try { localStorage.removeItem(KEY_SETUP); localStorage.removeItem(KEY_DONO); } catch { /* ignore */ }
+  try {
+    localStorage.removeItem(KEY_SETUP);
+    localStorage.removeItem(KEY_DONO);
+    localStorage.removeItem('metrica.preferencias');
+  } catch { /* ignore */ }
 }

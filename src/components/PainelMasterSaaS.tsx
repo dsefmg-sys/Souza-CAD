@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
   Users, Crown, RefreshCw, Shield, Sparkles, CreditCard, 
-  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2
+  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send
 } from 'lucide-react';
 import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
 import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado } from '@/lib/store/suporte';
+import { auth } from '@/lib/firebase/client';
 
 function dataBR(ms?: number): string {
   if (!ms) return '—';
@@ -36,6 +37,21 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [busca, setBusca] = useState('');
   const [configExpandido, setConfigExpandido] = useState(true);
 
+  const [selectedUids, setSelectedUids] = useState<string[]>([]);
+  const [comunicadoExpandido, setComunicadoExpandido] = useState(false);
+  const [emailAssunto, setEmailAssunto] = useState('Complete seu cadastro no Souza CAD');
+  const [emailTexto, setEmailTexto] = useState('Olá,\n\nNotamos que o seu cadastro no Souza CAD está incompleto. Preencher os dados básicos do seu escritório e do técnico responsável é essencial para gerar as peças técnicas sem erros.\n\nPor favor, acesse o sistema pelo botão abaixo e conclua a configuração do seu perfil.');
+  const [emailImagemUrl, setEmailImagemUrl] = useState('');
+  const [emailBotaoTexto, setEmailBotaoTexto] = useState('Acessar Souza CAD');
+  const [emailBotaoLink, setEmailBotaoLink] = useState('');
+  const [enviandoEmails, setEnviandoEmails] = useState(false);
+
+  const selectedEmails = useMemo(() => {
+    return perfis
+      .filter((p) => selectedUids.includes(p.uid) && p.email)
+      .map((p) => p.email) as string[];
+  }, [perfis, selectedUids]);
+
   async function recarregar() {
     setCarregando(true);
     try {
@@ -43,12 +59,72 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       setCfg(await carregarConfigAssinatura());
       setZap(await carregarWhatsappSuporte());
       setGeminiKey(await carregarGeminiApiKey());
-      setAppUrl(await carregarAppUrl());
+      const url = await carregarAppUrl();
+      setAppUrl(url);
+      if (!emailBotaoLink) {
+        setEmailBotaoLink(url || (typeof window !== 'undefined' ? window.location.origin : ''));
+      }
       setModo3d(await carregarModo3dAtivado());
     } catch (e) {
       console.error(e);
     } finally {
       setCarregando(false);
+    }
+  }
+
+  async function enviarComunicado() {
+    const destinatarios = selectedEmails.length > 0 
+      ? selectedEmails 
+      : perfis.filter((p) => p.email).map((p) => p.email) as string[];
+
+    if (destinatarios.length === 0) {
+      alert('Nenhum e-mail de destino disponível.');
+      return;
+    }
+
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja enviar este comunicado para ${destinatarios.length} destinatário(s)?`
+    );
+    if (!confirmacao) return;
+
+    setEnviandoEmails(true);
+    try {
+      const token = await auth()?.currentUser?.getIdToken();
+      if (!token) throw new Error('Não autenticado.');
+
+      const mensagemHtml = gerarCorpoEmailHtml({
+        assunto: emailAssunto,
+        texto: emailTexto,
+        imagemUrl: emailImagemUrl || undefined,
+        botaoTexto: emailBotaoTexto,
+        botaoLink: emailBotaoLink,
+        whatsappSupport: zap
+      });
+
+      const response = await fetch('/api/saas/enviar-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          emails: destinatarios,
+          assunto: emailAssunto,
+          mensagemHtml
+        })
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.error || 'Erro no envio.');
+      }
+
+      alert(resData.mensagem || 'E-mails enviados com sucesso!');
+    } catch (err: any) {
+      console.error(err);
+      alert(`Falha ao disparar e-mails: ${err.message}`);
+    } finally {
+      setEnviandoEmails(false);
     }
   }
 
@@ -314,6 +390,145 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
           )}
         </div>
 
+        {/* ─── Painel de E-mail / Comunicado ─── */}
+        <div className="rounded-xl border border-[#12361d]/60 bg-[#091b10]/40 shadow-lg backdrop-blur-sm overflow-hidden">
+          <button type="button" onClick={() => setComunicadoExpandido((v) => !v)}
+            className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#0c2415]/40 transition-colors">
+            <h2 className="text-sm font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+              <Mail className="size-4" /> Disparar Comunicado / E-mail ({selectedEmails.length > 0 ? `${selectedEmails.length} selecionado(s)` : 'Todos os clientes'})
+            </h2>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-[#6b937a]">
+                {comunicadoExpandido ? 'Recolher painel' : 'Expandir painel de e-mail'}
+              </span>
+              {comunicadoExpandido ? <ChevronUp className="size-4 text-[#87a992]" /> : <ChevronDown className="size-4 text-[#87a992]" />}
+            </div>
+          </button>
+
+          {comunicadoExpandido && (
+            <div className="p-5 border-t border-[#12361d]/40 bg-[#06140b]/60">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Form Compositor (Esquerda) */}
+                <div className="space-y-4">
+                  <div className="text-xs font-bold uppercase tracking-wide text-[#87a992]">Editor do Comunicado</div>
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-[#87a992]">Assunto do E-mail</Label>
+                    <Input
+                      value={emailAssunto}
+                      onChange={(e) => setEmailAssunto(e.target.value)}
+                      className="bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-emerald-500 text-white placeholder:text-[#374e40]"
+                      placeholder="Assunto da mensagem"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-[#87a992]">Mensagem (Texto com quebras de linha)</Label>
+                    <textarea
+                      value={emailTexto}
+                      onChange={(e) => setEmailTexto(e.target.value)}
+                      rows={6}
+                      className="w-full rounded-lg border border-[#1e4d2e]/60 bg-[#07170d] p-3 text-sm text-white placeholder:text-[#374e40] focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 resize-y font-sans"
+                      placeholder="Olá, escreva aqui a mensagem..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold text-[#87a992]">Texto do Botão de Acesso</Label>
+                      <Input
+                        value={emailBotaoTexto}
+                        onChange={(e) => setEmailBotaoTexto(e.target.value)}
+                        className="bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-emerald-500 text-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold text-[#87a992]">Link do Botão de Acesso</Label>
+                      <Input
+                        value={emailBotaoLink}
+                        onChange={(e) => setEmailBotaoLink(e.target.value)}
+                        className="bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-emerald-500 text-white placeholder:text-[#374e40]"
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-[#87a992]">URL de Imagem no E-mail (Opcional)</Label>
+                    <Input
+                      value={emailImagemUrl}
+                      onChange={(e) => setEmailImagemUrl(e.target.value)}
+                      className="bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-emerald-500 text-white placeholder:text-[#374e40]"
+                      placeholder="https://exemplo.com/imagem.png"
+                    />
+                  </div>
+
+                  <div className="p-3 bg-[#081f11] rounded-lg border border-emerald-800/30 text-xs text-[#87a992] space-y-1">
+                    <div className="font-bold text-white">Destinatários Selecionados:</div>
+                    <div>
+                      {selectedEmails.length > 0 
+                        ? `${selectedEmails.length} e-mail(s) marcados na tabela abaixo.` 
+                        : `Nenhum e-mail marcado. O disparo será feito para TODOS os ${perfis.filter(p => p.email).length} clientes do CRM.`}
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={enviarComunicado}
+                    disabled={enviandoEmails || (selectedEmails.length === 0 && perfis.length === 0)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold gap-2 shadow-lg shadow-emerald-500/20"
+                  >
+                    <Send className="size-4" /> {enviandoEmails ? 'Disparando...' : 'Disparar Comunicado'}
+                  </Button>
+                </div>
+
+                {/* Real-time HTML Preview (Direita) */}
+                <div className="space-y-4 flex flex-col">
+                  <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center justify-between">
+                    <span>Prévia Visual (Como o cliente receberá)</span>
+                    <span className="text-[10px] text-emerald-400 bg-emerald-950/30 border border-emerald-800/30 px-2 py-0.5 rounded">Identidade Oficial</span>
+                  </div>
+                  
+                  <div className="flex-1 border border-[#12361d] rounded-lg overflow-hidden bg-white max-h-[460px] overflow-y-auto">
+                    <div className="p-4 bg-[#f4f7f5] text-left">
+                      <div className="max-w-[480px] mx-auto bg-white rounded-lg shadow-sm border border-zinc-200 overflow-hidden text-zinc-800" style={{ fontFamily: 'sans-serif' }}>
+                        <div className="bg-[#0a1f14] p-4 text-center">
+                          <h1 className="text-white text-base font-extrabold tracking-wider" style={{ margin: 0 }}>
+                            <span className="text-emerald-400">SOUZA</span> <span className="text-zinc-400">CAD</span>
+                          </h1>
+                          <p className="text-[9px] text-emerald-400 uppercase tracking-widest font-bold" style={{ margin: '2px 0 0 0' }}>Tecnologia no Campo</p>
+                        </div>
+                        <div className="p-5">
+                          <h2 className="text-sm font-bold text-zinc-900 mb-3" style={{ margin: '0 0 12px 0' }}>{emailAssunto}</h2>
+                          <div className="text-xs text-zinc-600 leading-relaxed whitespace-pre-line" style={{ margin: '0 0 16px 0' }}>
+                            {emailTexto}
+                          </div>
+                          {emailImagemUrl && (
+                            <div className="my-4 text-center" style={{ margin: '16px 0' }}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={emailImagemUrl} alt="Preview" className="max-w-full rounded border border-zinc-200" style={{ maxHeight: '180px', objectFit: 'contain' }} />
+                            </div>
+                          )}
+                          <div className="text-center mt-5" style={{ margin: '20px 0 10px 0' }}>
+                            <span className="inline-block bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded shadow-sm text-center" style={{ textDecoration: 'none' }}>
+                              {emailBotaoTexto}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="bg-[#fafafa] p-3 text-center border-t border-zinc-150 text-[10px] text-zinc-400">
+                          <p style={{ margin: 0 }}>Souza CAD © 2026. Todos os direitos reservados.</p>
+                          {zap && <p style={{ margin: '4px 0 0 0' }}>Suporte WhatsApp: <span className="text-emerald-500 font-bold">{zap}</span></p>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* ─── Tabela CRM e Faturamento ─── */}
         <div className="flex-1 border border-[#12361d]/60 rounded-xl bg-[#091b10]/30 shadow-lg overflow-hidden flex flex-col">
           <div className="bg-[#091b10]/80 px-5 py-3 border-b border-[#12361d]/40 flex shrink-0 justify-between items-center gap-4">
@@ -351,6 +566,20 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="sticky top-0 bg-[#07170d] text-[#87a992] text-[10px] uppercase font-bold tracking-wider border-b border-[#12361d] z-10">
                   <tr>
+                    <th className="px-4 py-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={perfisFiltrados.length > 0 && selectedUids.length === perfisFiltrados.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedUids(perfisFiltrados.map((p) => p.uid));
+                          } else {
+                            setSelectedUids([]);
+                          }
+                        }}
+                        className="rounded-sm text-[#05140b] focus:ring-emerald-500 size-4 mt-0.5 border-[#12361d] accent-emerald-500 cursor-pointer"
+                      />
+                    </th>
                     <th className="px-4 py-3 min-w-[140px]">Cliente / RT</th>
                     <th className="px-4 py-3">E-mail</th>
                     <th className="px-2 py-3 text-center w-16">Projetos</th>
@@ -368,6 +597,20 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     const status = p.statusPagamento || 'atrasado';
                     return (
                       <tr key={p.uid} className="hover:bg-[#0c2415]/40 transition-colors">
+                        <td className="px-4 py-2.5 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedUids.includes(p.uid)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedUids((prev) => [...prev, p.uid]);
+                              } else {
+                                setSelectedUids((prev) => prev.filter((id) => id !== p.uid));
+                              }
+                            }}
+                            className="rounded-sm text-[#05140b] focus:ring-emerald-500 size-4 mt-0.5 border-[#12361d] accent-emerald-500 cursor-pointer"
+                          />
+                        </td>
                         <td className="px-4 py-2.5">
                           <div className="font-bold text-white leading-tight text-[13px]">{p.empresaNome || 'Sem Empresa'}</div>
                           <div className="text-[10px] text-[#87a992] mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
@@ -474,4 +717,65 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       </div>
     </div>
   );
+}
+
+/** Gera o corpo do e-mail em HTML responsivo com identidade oficial do Souza CAD */
+function gerarCorpoEmailHtml({ assunto, texto, imagemUrl, botaoTexto, botaoLink, whatsappSupport }: {
+  assunto: string;
+  texto: string;
+  imagemUrl?: string;
+  botaoTexto: string;
+  botaoLink: string;
+  whatsappSupport?: string;
+}) {
+  const formatado = texto.replace(/\n/g, '<br/>');
+  const imgTag = imagemUrl ? `<div style="text-align: center; margin: 20px 0;"><img src="${imagemUrl}" alt="Comunicado" style="max-width: 100%; max-height: 350px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: inline-block;" /></div>` : '';
+  const supportFooter = whatsappSupport ? `<p style="margin: 4px 0 0 0; font-size: 11px; color: #a1a1aa;">Dúvidas? Fale conosco pelo WhatsApp: <a href="https://wa.me/${whatsappSupport.replace(/\D/g, '')}" style="color: #10b981; text-decoration: none; font-weight: bold;">${whatsappSupport}</a></p>` : '';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${assunto}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f7f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f7f5; padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+          <tr style="background-color: #0a1f14; text-align: center;">
+            <td align="center" style="padding: 25px 20px; background-color: #0a1f14;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 800; tracking-wide: 0.1em; text-transform: uppercase;">
+                <span style="color: #10b981;">SOUZA</span> <span style="color: #a1a1aa;">CAD</span>
+              </h1>
+              <p style="margin: 4px 0 0 0; font-size: 11px; color: #10b981; text-transform: uppercase; letter-spacing: 0.2em; font-weight: 700;">Tecnologia no Campo</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px; text-align: left; background-color: #ffffff;">
+              <h2 style="margin: 0 0 20px 0; color: #0f2d1e; font-size: 18px; font-weight: 700;">${assunto}</h2>
+              <div style="color: #3f3f46; font-size: 14px; line-height: 1.6; font-weight: 400;">
+                ${formatado}
+              </div>
+              ${imgTag}
+              <div style="text-align: center; margin: 35px 0 10px 0;">
+                <a href="${botaoLink}" target="_blank" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(16,185,129,0.3); text-align: center; text-transform: uppercase;">
+                  ${botaoTexto}
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr style="background-color: #fafafa; border-top: 1px solid #f4f4f5; text-align: center;">
+            <td align="center" style="padding: 20px; background-color: #fafafa; border-top: 1px solid #f4f4f5;">
+              <p style="margin: 0 0 8px 0; font-size: 11px; color: #71717a;">Souza CAD © 2026. Todos os direitos reservados.</p>
+              ${supportFooter}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 }

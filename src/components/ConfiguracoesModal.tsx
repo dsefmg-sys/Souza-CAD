@@ -47,7 +47,15 @@ interface Props {
 
 export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange, abaInicial }: Props) {
   const [aba, setAba] = useState<AbaConfig>('pessoal');
-  useEffect(() => { if (open && abaInicial) setAba(abaInicial); }, [open, abaInicial]);
+  useEffect(() => {
+    if (open) {
+      if (abaInicial) setAba(abaInicial);
+      const mode = carregarPreferencias().modo;
+      if (mode === 'simples' && (aba === 'numeracao' || aba === 'modelos')) {
+        setAba('pessoal');
+      }
+    }
+  }, [open, abaInicial]);
   const [t, setT] = useState<TecnicoData>(TECNICO_PADRAO);
   const [esc, setEsc] = useState<EscritorioData>(ESCRITORIO_PADRAO);
   const [msg, setMsg] = useState('');
@@ -222,12 +230,17 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     r.readAsDataURL(file);
   }
 
-  const Tb = ({ a, rotulo }: { a: AbaConfig; rotulo: string }) => (
-    <button onClick={() => setAba(a)}
-      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${aba === a ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/50'}`}>
-      {rotulo}
-    </button>
-  );
+  const Tb = ({ a, rotulo }: { a: AbaConfig; rotulo: string }) => {
+    if (prefs.modo === 'simples' && (a === 'numeracao' || a === 'modelos')) {
+      return null;
+    }
+    return (
+      <button onClick={() => setAba(a)}
+        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${aba === a ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/50'}`}>
+        {rotulo}
+      </button>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
