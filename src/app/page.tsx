@@ -4395,12 +4395,15 @@ export default function EditorPage() {
           </>
         )}
 
-        {/* 2) Dados do projeto atual */}
-        <Etapa st={etapas.dados}>
-          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''}`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
-            DADOS
-          </Button>
-        </Etapa>
+        {/* 2) Dados do projeto atual — no celular é redundante: PROJETOS abre o MESMO painel e as
+            abas (Imóvel, Vértices…) levam aos dados. Fica só no desktop. */}
+        {!telaEstreita && (
+          <Etapa st={etapas.dados}>
+            <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''}`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
+              DADOS
+            </Button>
+          </Etapa>
+        )}
         <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}>CADASTROS</Button>
         <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
@@ -6114,16 +6117,16 @@ export default function EditorPage() {
                 <SecaoTitulo>Projetos salvos</SecaoTitulo>
                 {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
                 {projetos.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between rounded-sm border p-2 text-xs">
-                    <div>
-                      <div className="font-medium">{p.nome}</div>
-                      <div className="text-muted-foreground">{contarVertices(p)} vértices{(p.glebas?.length ?? 0) > 1 ? ` · ${p.glebas!.length} glebas` : ''}</div>
+                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/40">
+                    {/* Cartão inteiro é o toque que ABRE o projeto (jeito mobile); renomear/excluir ao lado. */}
+                    <button type="button" className="flex min-w-0 flex-1 flex-col items-start text-left" onClick={() => abrir(p.id)} title="Abrir este projeto">
+                      <div className="w-full truncate text-sm font-semibold">{p.nome}</div>
+                      <div className="text-xs text-muted-foreground">{contarVertices(p)} vértices{(p.glebas?.length ?? 0) > 1 ? ` · ${p.glebas!.length} glebas` : ''}</div>
                       {p.atualizadoEm ? <div className="text-[10px] text-muted-foreground">Salvo em {new Date(p.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div> : null}
-                    </div>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="outline" onClick={() => abrir(p.id)} title="Abrir"><FolderOpen /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => renomear(p)} title="Renomear"><Pencil /></Button>
-                      <Button size="sm" variant="ghost" onClick={() => remover(p.id)} title="Excluir"><Trash2 /></Button>
+                    </button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button size="sm" variant="ghost" className="size-9 p-0" onClick={() => renomear(p)} title="Renomear"><Pencil className="size-4" /></Button>
+                      <Button size="sm" variant="ghost" className="size-9 p-0 text-destructive" onClick={() => remover(p.id)} title="Excluir"><Trash2 className="size-4" /></Button>
                     </div>
                   </div>
                 ))}
