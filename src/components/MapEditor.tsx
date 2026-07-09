@@ -73,6 +73,8 @@ interface Props {
   onCancelDesenho?: () => void;
   onAtivar3D?: () => void;
   tamNomes?: number;
+  /** Tamanho ajustável (A-/A+) do texto central da gleba (denominação/área/perímetro no meio do polígono). */
+  tamCentro?: number;
   verticesIgnorados?: Vertex[];
   onIgnorarVertice?: (id: string) => void;
   onConsiderarVertice?: (id: string) => void;
@@ -215,13 +217,15 @@ const iconeRotulo = (r: RotuloMapa, fator = 1) => {
 // rótulo central da gleba: dados-chave (denominação, proprietário, matrícula, área) no meio do
 // polígono. Texto branco sem fundo, com halo escuro pra legibilidade — mesmo tratamento do nome do
 // vértice, pra ficar consistente e limpo no modo mapa. Não captura clique (pointer-events:none) para
-// não atrapalhar a edição embaixo dele.
-const iconeCentro = (linhas: string[], fator = 1, arrastavel = false) => {
-  const corpo = linhas.map((l, i) => `<div style="font-weight:${i === 0 ? 700 : 600};font-size:${Math.round((i === 0 ? 13 : 11) * fator)}px">${(l || '').replace(/</g, '&lt;')}</div>`).join('');
+// não atrapalhar a edição embaixo dele. `tamBase` é o tamanho ajustável pelo usuário (botão A-/A+ no
+// rodapé); o halo aqui é mais suave que o do nome do vértice — em textos grandes (título + 2-3 linhas)
+// o halo forte de 4 camadas 100% opacas ficava com cara de "sombra preta" pesada demais.
+const iconeCentro = (linhas: string[], tamBase = 13, fator = 1, arrastavel = false) => {
+  const corpo = linhas.map((l, i) => `<div style="font-weight:${i === 0 ? 700 : 600};font-size:${Math.round((i === 0 ? tamBase : Math.max(8, tamBase - 2)) * fator)}px">${(l || '').replace(/</g, '&lt;')}</div>`).join('');
   // Quando arrastável (modo navegar), captura o clique e mostra o cursor de mover; senão, deixa o
   // clique passar pro mapa.
   const eventos = arrastavel ? 'pointer-events:auto;cursor:move' : 'pointer-events:none';
-  const halo = '-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000,1px 1px 2px #000,0 0 4px #000';
+  const halo = '-1px -1px 1.5px rgba(0,0,0,.65),1px -1px 1.5px rgba(0,0,0,.65),-1px 1px 1.5px rgba(0,0,0,.65),1px 1px 1.5px rgba(0,0,0,.65),0 0 3px rgba(0,0,0,.5)';
   return L.divIcon({
     className: 'gleba-centro',
     html: `<div style="transform:translate(-50%,-50%);display:inline-block;${eventos};color:#fff;text-shadow:${halo};text-align:center;line-height:1.3;white-space:nowrap;width:max-content">${corpo}</div>`,
@@ -1184,6 +1188,7 @@ export default function MapEditor(props: Props) {
     onCancelDesenho,
     onAtivar3D,
     tamNomes = 11,
+    tamCentro = 12,
     verticesIgnorados = [],
     onIgnorarVertice, onConsiderarVertice, onDblClickVertice,
     realceId = null,
@@ -1726,7 +1731,7 @@ export default function MapEditor(props: Props) {
         const arrastavel = modo === 'navegar' && !!onMoverCentro;
         return (
           <Marker position={pos} draggable={arrastavel} interactive={arrastavel}
-            icon={iconeCentro(centroGleba.linhas, fzZoom, arrastavel)}
+            icon={iconeCentro(centroGleba.linhas, tamCentro, fzZoom, arrastavel)}
             eventHandlers={arrastavel ? { dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverCentro?.(ll.lat, ll.lng); } } : undefined} />
         );
       })()}

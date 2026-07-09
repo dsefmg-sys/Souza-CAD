@@ -335,6 +335,11 @@ export default function EditorPage() {
     try { const n = Number(localStorage.getItem('metrica.tamNomes')); if (n >= 7 && n <= 22) return n; } catch { /* ignore */ }
     return 11;
   }); // tamanho da fonte dos nomes dos vértices no mapa
+  const [tamCentro, setTamCentro] = useState(() => {
+    if (typeof window === 'undefined') return 12;
+    try { const n = Number(localStorage.getItem('metrica.tamCentro')); if (n >= 7 && n <= 22) return n; } catch { /* ignore */ }
+    return 12;
+  }); // tamanho da fonte do texto central da gleba (denominação/área/perímetro) no mapa
   const [simboloSel, setSimboloSel] = useState('arvore'); // elemento cartográfico ativo (modo 'simbolo')
   const [elementosAberto, setElementosAberto] = useState(false); // popover do seletor de elementos
   const [escalaInterface, setEscalaInterface] = useState(() => {
@@ -346,6 +351,7 @@ export default function EditorPage() {
   const [tamanhoTimer, setTamanhoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const escalaMontadaRef = useRef(false);
   const tamNomesMontadoRef = useRef(false);
+  const tamCentroMontadoRef = useRef(false);
 
   const mostrarNotificacaoTamanho = (texto: string) => {
     setNotificacaoTamanho({ texto, visible: true });
@@ -1017,6 +1023,19 @@ export default function EditorPage() {
     const pct = Math.round(Math.round((tamNomes / 11) * 100) / 10) * 10;
     mostrarNotificacaoTamanho(`Tamanho dos Rótulos: ${pct}% ${pct === 100 ? '(Padrão)' : ''}`);
   }, [tamNomes]);
+
+  // tamanho do texto central da gleba (denominação/área/perímetro), independente do dos rótulos
+  useEffect(() => {
+    try {
+      localStorage.setItem('metrica.tamCentro', String(tamCentro));
+    } catch { /* ignore */ }
+    if (!tamCentroMontadoRef.current) {
+      tamCentroMontadoRef.current = true;
+      return;
+    }
+    const pct = Math.round(Math.round((tamCentro / 12) * 100) / 10) * 10;
+    mostrarNotificacaoTamanho(`Tamanho do Texto Central: ${pct}% ${pct === 100 ? '(Padrão)' : ''}`);
+  }, [tamCentro]);
 
   // acessibilidade: escala das letras da interface (afeta o app inteiro; textos em rem crescem)
   useEffect(() => {
@@ -5319,6 +5338,13 @@ export default function EditorPage() {
                             <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}>A+</Button>
                           </div>
                         </div>
+                        <div className="flex items-center justify-between rounded-sm bg-muted/40 px-1.5 py-0.5 text-[10px] font-bold text-foreground" title="Tamanho do texto central da gleba (denominação/área/perímetro no meio do polígono)">
+                          <span className="truncate">Texto Central</span>
+                          <div className="flex gap-0.5">
+                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setTamCentro((n) => Math.max(7, n - 1))}>A-</Button>
+                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setTamCentro((n) => Math.min(22, n + 1))}>A+</Button>
+                          </div>
+                        </div>
                         <div className="flex items-center justify-between rounded-sm bg-muted/40 px-1.5 py-0.5 text-[10px] font-bold text-foreground" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
                           <span className="truncate">Interface</span>
                           <div className="flex gap-0.5">
@@ -5692,7 +5718,7 @@ export default function EditorPage() {
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
-                conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={telaEstreita ? Math.min(tamNomes, 8) : tamNomes}
+                conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={telaEstreita ? Math.min(tamNomes, 8) : tamNomes} tamCentro={telaEstreita ? Math.min(tamCentro, 9) : tamCentro}
                 verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
                 onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
                 onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })}
