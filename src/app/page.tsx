@@ -4347,14 +4347,26 @@ export default function EditorPage() {
         <input ref={jsonBackupRef} type="file" accept=".json" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarProjetoJson(f); e.currentTarget.value = ''; }} />
 
-        {/* 1) Importar e checar vizinhos */}
-        <Etapa st={etapas.txt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
-        <Etapa st={etapas.sigef}>
-          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
-            SIGEF
+        {/* No celular, abrir projeto é a primeira coisa no campo: atalho PROJETOS logo no começo,
+            que abre a lista de projetos salvos. */}
+        {telaEstreita && (
+          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Abrir um projeto salvo" onClick={() => { setPainelAberto(true); setAba('projetos'); }}>
+            <Database /> PROJETOS
           </Button>
-        </Etapa>
-        <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
+        )}
+
+        {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
+        {!telaEstreita && (
+          <>
+            <Etapa st={etapas.txt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Importar pontos de um arquivo TXT (oferece salvar o anterior)" onClick={iniciarImportTxt}><Upload /> TXT</Button></Etapa>
+            <Etapa st={etapas.sigef}>
+              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
+                SIGEF
+              </Button>
+            </Etapa>
+            <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
+          </>
+        )}
 
         {/* 2) Dados do projeto atual */}
         <Etapa st={etapas.dados}>
@@ -5338,8 +5350,8 @@ export default function EditorPage() {
 
                 {/* RODAPÉ FIXO: ajuste de texto + sistema (calculadora, tema, config, sair) */}
                 <div className="mt-auto flex flex-col gap-1.5 border-t pt-1.5 px-1">
-                  {/* Tamanho dos textos: no mapa mexe nos nomes dos vértices; na planta, 4 escopos separados */}
-                  {vista === 'mapa' ? (
+                  {/* Ajuste de tamanhos: só no desktop; no celular é raro em campo e polui o rodapé. */}
+                  {!telaEstreita && (vista === 'mapa' ? (
                     <div className="flex flex-col gap-1 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
                       <span className="text-[10px] font-bold uppercase text-foreground px-1 mb-0.5">Ajuste de Tamanhos</span>
                       <div className="grid grid-cols-2 gap-1">
@@ -5452,7 +5464,7 @@ export default function EditorPage() {
                         );
                       })()}
                     </div>
-                  )}
+                  ))}
                   {/* ferramentas e sistema: duas linhas de botões rotulados (não mais ícones espremidos) */}
                   <div className="grid grid-cols-4 gap-1">
                     {([
