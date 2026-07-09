@@ -5790,6 +5790,14 @@ export default function EditorPage() {
                   <Button size="sm" className="w-full gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium" onClick={() => verticesVizinhoRef.current?.click()}>
                     <Upload className="size-3.5" /> Importar CSV do Confrontante
                   </Button>
+                  {/* Logo abaixo de importar, pra agilizar: depois de trazer as coordenadas do
+                      confrontante, casar os vértices é o próximo passo natural — sem precisar abrir
+                      o menu SIGEF pra achar esse botão. */}
+                  <Button size="sm" variant="outline" className="w-full gap-1.5 font-bold border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                    disabled={vertices.length < 3} onClick={() => void casarVerticesCertificados()}
+                    title="Adota a coordenada oficial do INCRA nos pontos de divisa em comum">
+                    <Check className="size-3.5" /> Casar Vértices
+                  </Button>
                 </div>
               </div>
             </div>
@@ -6277,36 +6285,14 @@ export default function EditorPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground flex items-center gap-1">
-                    3. Casar Vértices
-                    {parcelasCert.length > 0 && (
-                      <span className="inline-flex size-2 rounded-full bg-emerald-500" title="Vizinhos carregados" />
-                    )}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 font-bold border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                    disabled={vertices.length < 3}
-                    onClick={() => {
-                      setSigefMenuAberto(false);
-                      void casarVerticesCertificados();
-                    }}
-                  >
-                    Casar Vértices
-                  </Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-snug">
-                  Adota a coordenada oficial exata do INCRA nos pontos de divisa comuns (tolerância de até 0,5m para parcelas do SIGEF ou 2m para arquivos), aplicando os códigos oficiais aos seus vértices.
-                </p>
-              </div>
+              {/* "Casar Vértices" mudou de lugar: agora fica logo abaixo de "Importar CSV do
+                  Confrontante", no painel da parcela selecionada no mapa — mais ágil, sem precisar
+                  abrir este menu só pra isso. */}
 
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-foreground">
-                    4. Gerar Vértices Virtuais (V)
+                    3. Gerar Vértices Virtuais (V)
                   </span>
                   <Button
                     size="sm"
