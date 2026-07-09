@@ -1,4 +1,5 @@
 import { CORES_DIVISA, REPRESENTACOES, hidratarCoresDivisa } from '../topo/sigefVocab';
+import { carregarTiposDivisaCustom } from './tiposDivisaCustom';
 
 // Cores das divisas por projetista. Cada agrimensor pode preferir cores diferentes nas suas
 // plantas — então as trocas ficam salvas (localStorage; migra pro perfil da empresa no
@@ -31,8 +32,10 @@ export function resetarCoresDivisa(): void {
   hidratarCoresDivisa({});
 }
 
-/** Cor efetiva atual (override do usuário ou padrão) de cada tipo, pra montar a UI de ajuste. */
+/** Cor efetiva atual (override do usuário ou padrão) de cada tipo, pra montar a UI de ajuste.
+ *  Inclui os tipos oficiais (REPRESENTACOES) e os cadastrados pelo próprio projetista. */
 export function coresEfetivas(): { tipo: string; cor: string }[] {
   const ov = carregarCoresDivisa();
-  return REPRESENTACOES.map((tipo) => ({ tipo, cor: ov[tipo] ?? CORES_DIVISA[tipo] ?? '' }));
+  const todos: string[] = [...REPRESENTACOES, ...carregarTiposDivisaCustom().map((t) => t.chave)];
+  return todos.map((tipo) => ({ tipo, cor: ov[tipo] ?? CORES_DIVISA[tipo] ?? '' }));
 }

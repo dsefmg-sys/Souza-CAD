@@ -99,6 +99,7 @@ import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/st
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
+import { carregarTiposDivisaCustom, salvarTipoDivisaCustom, type TipoDivisaCustom } from '@/lib/store/tiposDivisaCustom';
 import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, type PerfilUso } from '@/lib/store/perfilUso';
 import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
@@ -399,12 +400,23 @@ export default function EditorPage() {
   }, [modo]);
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
+  const [tiposDivisaCustom, setTiposDivisaCustom] = useState<TipoDivisaCustom[]>([]); // tipos de divisa cadastrados pelo projetista
   const [corPickerAberto, setCorPickerAberto] = useState(false); // painel de ajuste rápido das cores de divisa
   const [corBump, setCorBump] = useState(0); // força re-render após trocar uma cor (cores vivem em módulo)
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
   const [avisoReconciliarAberto, setAvisoReconciliarAberto] = useState(false);
   const [avisoReconciliarResolve, setAvisoReconciliarResolve] = useState<((v: 'exportar' | 'voltar' | 'conciliar') => void) | null>(null);
   const iconeCab = (chave: string, icone: React.ReactNode) => (prefs.iconesCabecalhoOcultos.includes(chave) ? null : icone);
+  // Tipos de divisa pra escolher: os oficiais (REPRESENTACOES) + os que o projetista cadastrou.
+  const opcoesDivisaTipo: string[] = [...REPRESENTACOES, ...tiposDivisaCustom.map((t) => t.chave)];
+  const rotuloDivisaTipo = (tipo: string) => REPRES_LABEL[tipo] || tiposDivisaCustom.find((t) => t.chave === tipo)?.label || tipo;
+  async function novoTipoDivisaPincel() {
+    const label = await perguntar({ titulo: 'Novo tipo de divisa', mensagem: 'Nome do tipo de divisa (ex.: "Cerca de arame farpado"):' });
+    if (!label || !label.trim()) return;
+    const novo = salvarTipoDivisaCustom(label);
+    setTiposDivisaCustom(carregarTiposDivisaCustom());
+    setTipoDivisaPincel(novo.chave);
+  }
   const [setupOk, setSetupOk] = useState(true); // primeiro acesso: cadastro de empresa/autônomo
   const [planilhaConfAberta, setPlanilhaConfAberta] = useState(false); // conferência da planilha SIGEF
 
@@ -823,6 +835,7 @@ export default function EditorPage() {
     setTema(t);
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
     iniciarCoresDivisa(); // aplica as cores de divisa personalizadas do projetista
+    setTiposDivisaCustom(carregarTiposDivisaCustom());
     setPrefs(carregarPreferencias()); // preferências de interface (ícones do cabeçalho etc.)
     // condições de uso: o aceite é registrado discretamente no primeiro acesso (PrimeiroAcessoModal);
     // o texto mora em Ajustes → Sobre o sistema — sem tela bloqueando (decisão do dono, 05/07/2026)
@@ -5657,11 +5670,11 @@ export default function EditorPage() {
                             <div className="mb-2 text-[9px] font-black uppercase text-muted-foreground tracking-wider">Cores das Divisas</div>
                             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scroll-fino">
                               {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
-                                <label key={tipo} className="flex items-center justify-between gap-3 text-[11px] text-foreground">
-                                  <span>{REPRES_LABEL[tipo] || tipo}</span>
+                                <label key={tipo} className="flex items-center gap-2 text-[11px] text-foreground">
                                   <input type="color" value={cor || '#9ca3af'}
-                                    className="h-6 w-8 cursor-pointer rounded border bg-transparent p-0"
+                                    className="h-6 w-8 shrink-0 cursor-pointer rounded border bg-transparent p-0"
                                     onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }} />
+                                  <span className="truncate">{rotuloDivisaTipo(tipo)}</span>
                                 </label>
                               ))}
                             </div>
@@ -5671,12 +5684,16 @@ export default function EditorPage() {
                           </div>
                         )}
                       </span>
-                      <select className="h-7 rounded-full border border-border bg-background/95 px-2 text-[10px] font-semibold outline-none"
+                      <select className="h-7 max-w-[220px] rounded-full border border-border bg-background/95 px-2 text-[10px] font-semibold outline-none"
                         value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
-                        {REPRESENTACOES.map((r) => (
-                          <option key={r} value={r} className="bg-background text-foreground">{REPRES_LABEL[r] || r}</option>
+                        {opcoesDivisaTipo.map((r) => (
+                          <option key={r} value={r} className="bg-background text-foreground">{rotuloDivisaTipo(r)}</option>
                         ))}
                       </select>
+                      <button type="button" className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        onClick={novoTipoDivisaPincel} title="Cadastrar novo tipo de divisa">
+                        <Plus className="size-3.5" />
+                      </button>
                     </div>
                   )}
 
@@ -5686,14 +5703,20 @@ export default function EditorPage() {
                         <span className="inline-block h-3 w-3 shrink-0 rounded-full border border-border"
                           style={{ backgroundColor: corPorConfrontante(confrontantePincelId) }} title="Cor deste confrontante no mapa" />
                       )}
-                      <select className="h-7 max-w-32 rounded-full border border-border bg-background/95 px-2 text-[10px] font-semibold outline-none"
+                      <select className="h-7 max-w-[220px] rounded-full border border-border bg-background/95 px-2 text-[10px] font-semibold outline-none"
                         value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
                         <option value="" className="bg-background text-muted-foreground">— Escolher —</option>
                         {confrontantes.map((c) => (
-                          <option key={c.id} value={c.id} className="bg-background text-foreground">{c.nome || '(sem nome)'}</option>
+                          <option key={c.id} value={c.id} className="bg-background" style={{ color: corPorConfrontante(c.id) }}>{c.nome || '(sem nome)'}</option>
                         ))}
                       </select>
-                      <Button size="sm" className="h-7 gap-1 rounded-full bg-emerald-600 px-2 text-[9px] font-black uppercase text-white hover:bg-emerald-700"
+                      {confrontantePincelId && (
+                        <button type="button" className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => excluirConfrontante(confrontantePincelId)} title="Excluir este confrontante do projeto">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                      <Button size="sm" className="h-7 shrink-0 gap-1 rounded-full bg-emerald-600 px-2 text-[9px] font-black uppercase text-white hover:bg-emerald-700"
                         onClick={novoConfrontantePincel} title="Novo confrontante">
                         <Plus className="size-3.5" /> Novo
                       </Button>
@@ -6184,7 +6207,7 @@ export default function EditorPage() {
                             </button>
                           </div>
                           <div className="flex flex-col gap-0.5">
-                            <MiniSelect label="Repres." value={v.representacao || 'linha-ideal'} options={REPRESENTACOES as readonly string[]} onChange={(val) => editarVertice(v.id, { representacao: val })} />
+                            <MiniSelect label="Repres." value={v.representacao || 'linha-ideal'} options={opcoesDivisaTipo} onChange={(val) => editarVertice(v.id, { representacao: val })} />
                             <button type="button" className="text-[8px] text-primary hover:underline text-left mt-0.5" onClick={() => editarVariosVertices({ representacao: v.representacao || 'linha-ideal' })}>
                               {selMulti.size > 0 ? `Aplicar à sel. (${selMulti.size})` : 'Aplicar a todos'}
                             </button>
@@ -6520,7 +6543,7 @@ export default function EditorPage() {
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
       <Dialog open={conferirAberto} onOpenChange={setConferirAberto}>
-        <DialogContent className="max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
               <CheckCircle2 className="size-5" /> Conferir Projeto
@@ -6661,7 +6684,7 @@ export default function EditorPage() {
                   value={menuContexto.vertice.representacao || 'linha-ideal'}
                   onChange={(e) => { definirDivisaLado(menuContexto.vertice!.id, e.target.value); setMenuContexto(null); }}
                 >
-                  {REPRESENTACOES.map((r) => <option key={r} value={r}>{REPRES_LABEL[r] || r}</option>)}
+                  {opcoesDivisaTipo.map((r) => <option key={r} value={r}>{rotuloDivisaTipo(r)}</option>)}
                 </select>
 
                 <div className="border-t my-1" />
@@ -7508,61 +7531,63 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
   const num = (v: number | undefined) => (v == null ? '' : String(v));
   return (
     <div className="space-y-3">
-      <Card className="border-blue-500/20 bg-blue-500/5">
-        <CardHeader className="pb-1.5 pt-2">
-          <CardTitle className="text-[11px] text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5">
-            <Info className="size-4 text-blue-500" />
-            Limites Legais de Precisão (INCRA)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pb-2 text-[10px] text-muted-foreground space-y-1">
-          <p>Para aprovação no SIGEF, os vértices devem atender aos limites de desvio padrão (sigma):</p>
-          <ul className="list-disc pl-4 space-y-0.5">
-            <li><b>Limites Artificiais (LA):</b> 0.10 m (muros, cercas, marcos)</li>
-            <li><b>Limites Naturais (LN):</b> 3.00 m (rios, córregos, serras)</li>
-            <li><b>Limites Inacessíveis (LV):</b> 7.50 m (grotas, encostas)</li>
-            <li><b>Vertical (Sigma Z):</b> máximo de 0.30 m recomendado para LA</li>
-          </ul>
-          <NotaLegal chave="divisaLimite" />
-        </CardContent>
-      </Card>
-
-      {conflitos.length > 0 && (
-        <Card className="border-pink-500/20 bg-pink-500/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-pink-700 dark:text-pink-300 font-bold flex items-center gap-1.5">
-              <AlertTriangle className="size-4 text-pink-500" />
-              Conflitos de Divisa (SIGEF)
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Card className="border-blue-500/20 bg-blue-500/5">
+          <CardHeader className="pb-1.5 pt-2">
+            <CardTitle className="text-[11px] text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5">
+              <Info className="size-4 text-blue-500" />
+              Limites Legais de Precisão (INCRA)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1.5">
-            <p className="text-[10px] text-muted-foreground mb-1">
-              Detectados desvios em relação aos confrontantes certificados importados. Clique para focar no mapa.
-            </p>
-            {conflitos.map((c, i) => {
-              const label = c.tipo === 'sobreposicao' ? 'Sobreposição' : 'Vão';
-              const corLabel = c.tipo === 'sobreposicao' ? 'text-pink-600 dark:text-pink-400 font-semibold' : 'text-cyan-600 dark:text-cyan-400 font-semibold';
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => onIrParaConflito(c.pontoConflito.lat, c.pontoConflito.lon)}
-                  className="w-full text-left flex items-center justify-between text-[11px] rounded-sm border border-border bg-background p-1.5 hover:bg-accent transition-colors"
-                >
-                  <span>
-                    Lado {c.ladoIdx + 1} ({vertices[c.ladoIdx]?.codigoSigef || c.ladoIdx + 1} → {vertices[(c.ladoIdx + 1) % vertices.length]?.codigoSigef || c.ladoIdx + 2}): <span className={corLabel}>{label}</span>
-                  </span>
-                  <span className="font-mono text-muted-foreground text-[10px]">
-                    {numBR(c.distancia)} m
-                  </span>
-                </button>
-              );
-            })}
+          <CardContent className="pb-2 text-[10px] text-muted-foreground space-y-1">
+            <p>Para aprovação no SIGEF, os vértices devem atender aos limites de desvio padrão (sigma):</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              <li><b>Limites Artificiais (LA):</b> 0.10 m (muros, cercas, marcos)</li>
+              <li><b>Limites Naturais (LN):</b> 3.00 m (rios, córregos, serras)</li>
+              <li><b>Limites Inacessíveis (LV):</b> 7.50 m (grotas, encostas)</li>
+              <li><b>Vertical (Sigma Z):</b> máximo de 0.30 m recomendado para LA</li>
+            </ul>
+            <NotaLegal chave="divisaLimite" />
           </CardContent>
         </Card>
-      )}
 
-      <div className="space-y-1">
+        {conflitos.length > 0 && (
+          <Card className="border-pink-500/20 bg-pink-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs text-pink-700 dark:text-pink-300 font-bold flex items-center gap-1.5">
+                <AlertTriangle className="size-4 text-pink-500" />
+                Conflitos de Divisa (SIGEF)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              <p className="text-[10px] text-muted-foreground mb-1">
+                Detectados desvios em relação aos confrontantes certificados importados. Clique para focar no mapa.
+              </p>
+              {conflitos.map((c, i) => {
+                const label = c.tipo === 'sobreposicao' ? 'Sobreposição' : 'Vão';
+                const corLabel = c.tipo === 'sobreposicao' ? 'text-pink-600 dark:text-pink-400 font-semibold' : 'text-cyan-600 dark:text-cyan-400 font-semibold';
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => onIrParaConflito(c.pontoConflito.lat, c.pontoConflito.lon)}
+                    className="w-full text-left flex items-center justify-between text-[11px] rounded-sm border border-border bg-background p-1.5 hover:bg-accent transition-colors"
+                  >
+                    <span>
+                      Lado {c.ladoIdx + 1} ({vertices[c.ladoIdx]?.codigoSigef || c.ladoIdx + 1} → {vertices[(c.ladoIdx + 1) % vertices.length]?.codigoSigef || c.ladoIdx + 2}): <span className={corLabel}>{label}</span>
+                    </span>
+                    <span className="font-mono text-muted-foreground text-[10px]">
+                      {numBR(c.distancia)} m
+                    </span>
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {problemas.map((p, i) => (
           <div key={i} className="flex items-start gap-2 rounded-sm border p-2 text-xs">
             <span className="mt-0.5 [&_svg]:size-4"><Icone n={p.nivel} /></span>

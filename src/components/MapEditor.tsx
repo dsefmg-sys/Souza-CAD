@@ -1729,8 +1729,14 @@ export default function MapEditor(props: Props) {
           ? [centroGleba.lat as number, centroGleba.lon as number] : centroideGleba;
         if (!pos) return null;
         const arrastavel = modo === 'navegar' && !!onMoverCentro;
+        // NUNCA passar `interactive={arrastavel}` aqui: o Leaflet só lê a opção `interactive` na
+        // CRIAÇÃO do marcador (Marker._initInteraction) e o react-leaflet não a atualiza depois —
+        // se o marcador nascesse com `interactive:false` (ex.: primeiro clique fora do modo
+        // navegar), o arraste ficava travado pra sempre, mesmo o `draggable` virando true depois.
+        // `draggable` sozinho já é reativo (react-leaflet chama dragging.enable/disable a cada
+        // troca), e o CSS pointer-events dentro de iconeCentro já bloqueia clique fora do modo navegar.
         return (
-          <Marker position={pos} draggable={arrastavel} interactive={arrastavel}
+          <Marker position={pos} draggable={arrastavel}
             icon={iconeCentro(centroGleba.linhas, tamCentro, fzZoom, arrastavel)}
             eventHandlers={arrastavel ? { dragend(e) { const ll = (e.target as L.Marker).getLatLng(); onMoverCentro?.(ll.lat, ll.lng); } } : undefined} />
         );
