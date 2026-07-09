@@ -21,3 +21,8 @@ env:
   # Referência ao segredo que você está criando no painel (Secret Manager)
   - variable: SMTP_PASS
     secret: SMTP_PASS_SECRET
+
+  # Credencial do Firebase Admin (autoriza o servidor a disparar e-mail e confirmar pagamentos do
+  # Mercado Pago) — guardada no Secret Manager, nunca em texto puro neste arquivo.
+  - variable: FIREBASE_SERVICE_ACCOUNT
+    secret: FIREBASE_SERVICE_ACCOUNT
