@@ -336,6 +336,12 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                 {msg}
               </span>
             )}
+            <label className="flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-emerald-600/25 bg-emerald-600/5 px-2.5 hover:bg-emerald-600/10 transition-colors"
+              title="Modo 3D (relevo): mostra o botão de visualização 3D do terreno para os clientes. Desligado por padrão enquanto amadurece. Os clientes precisam recarregar o app para a mudança valer.">
+              <input type="checkbox" className="rounded-sm text-[#05140b] focus:ring-emerald-500 size-3.5 border-[#12361d] accent-emerald-500"
+                checked={modo3d} onChange={(e) => alterarModo3d(e.target.checked)} />
+              <span className="text-xs font-bold text-emerald-300 whitespace-nowrap">Modo 3D</span>
+            </label>
             <Button size="sm" variant="outline" className="h-9 gap-1.5 border-[#1e4d2e] bg-[#0c2415] hover:bg-[#12361d] text-[#e2f1e8] font-semibold" onClick={recarregar} disabled={carregando}>
               <RefreshCw className={`size-4 ${carregando ? 'animate-spin' : ''}`} /> Atualizar
             </Button>
@@ -428,21 +434,6 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                   </label>
                 </div>
 
-                {/* Modo 3D (recurso opcional) */}
-                <div className="flex items-start">
-                  <label className="flex items-start gap-3 rounded-xl border border-emerald-600/25 bg-emerald-600/5 p-4 cursor-pointer hover:bg-emerald-600/10 transition-colors w-full h-full">
-                    <input
-                      type="checkbox"
-                      className="rounded-sm text-[#05140b] focus:ring-emerald-500 size-4 mt-0.5 border-[#12361d] accent-emerald-500"
-                      checked={modo3d}
-                      onChange={(e) => alterarModo3d(e.target.checked)}
-                    />
-                    <div className="space-y-1">
-                      <span className="text-sm font-bold text-emerald-300">Modo 3D (relevo)</span>
-                      <p className="text-[11px] text-[#87a992] leading-snug">Mostra o botão de visualização 3D do terreno para os clientes. Desligado por padrão enquanto amadurece. Os clientes precisam recarregar o app para a mudança valer.</p>
-                    </div>
-                  </label>
-                </div>
               </div>
 
               {/* Servidor de e-mail (SMTP): credenciais pra disparar comunicados de verdade — sem
