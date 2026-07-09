@@ -250,6 +250,7 @@ export default function EditorPage() {
   const modoEntrada = useModoEntrada();
   const entrouSemLogin = nuvemDisponivel && !user && modoEntrada === 'semLogin';
   const [perfilMenuAberto, setPerfilMenuAberto] = useState(false);
+  const [pecasMenuAberto, setPecasMenuAberto] = useState(false); // no celular, as peças ficam num menu só
   const [perfil, setPerfil] = useState<PerfilUso | null>(null);
   const [configAssinatura, setConfigAssinatura] = useState<ConfigAssinatura | null>(null);
   const [avisoPagamentoAberto, setAvisoPagamentoAberto] = useState(false);
@@ -4369,29 +4370,69 @@ export default function EditorPage() {
         <Etapa st={etapas.divisas}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>DIVISAS</Button></Etapa>
         <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
-        {/* 5) Peças */}
-        <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>{tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
-        <Etapa st={etapas.memorial}>
-          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
-        </Etapa>
-        {projetoTemServidao && (
-          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
-        )}
-        <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
-        <Etapa st={etapas.planta}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
-        <Etapa st={etapas.req}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
-        <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Cartas de anuência dos confrontantes (.docx) — baixe todas num só documento ou uma por vez" onClick={() => setAnuenciaAberta(true)}><Download /> ANUENCIA</Button>
-        {medioOuMais && (
-          <Etapa st={etapas.errata}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><Download /> ERRATA</Button></Etapa>
-        )}
-
-        {medioOuMais && (
-          <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
-            <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-emerald-800 hover:bg-emerald-900 text-white border-transparent`} title="Acessar o SIGEF para certificação eletrônica do imóvel">CERT</Button>
-          </a>
-        )}
-        {medioOuMais && (
-          <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
+        {/* 5) Peças — no celular ficam TODAS num único botão PEÇAS (menu de download), pra encurtar
+            o cabeçalho e deixar as peças fáceis de achar; no desktop seguem como botões soltos. */}
+        {telaEstreita ? (
+          <div className="relative shrink-0">
+            <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title="Peças técnicas: baixar memorial, planilha, planta, requerimento e mais" onClick={() => setPecasMenuAberto((v) => !v)}>
+              <Download /> PEÇAS <ChevronDown className="size-3" />
+            </Button>
+            {pecasMenuAberto && (
+              <>
+                <div className="fixed inset-0 z-[1290]" onClick={() => setPecasMenuAberto(false)} />
+                <div className="absolute right-0 top-[calc(100%+4px)] z-[1300] w-60 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
+                  {([
+                    [`${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} — responsabilidade técnica`, () => setTrtAberto(true)],
+                    ['Memorial descritivo (.docx)', () => exportarMemorial('normal')],
+                    ...(projetoTemServidao ? [['Memorial de servidão (.docx)', () => exportarMemorial('servidao')] as [string, () => void]] : []),
+                    ['Planilha SIGEF (.ods)', () => setPlanilhaConfAberta(true)],
+                    ['Planta A3 (PDF)', () => exportarPlanta()],
+                    ['Requerimento ao cartório (.docx)', () => setReqAberto(true)],
+                    ['Cartas de anuência (.docx)', () => setAnuenciaAberta(true)],
+                    ...(medioOuMais ? [['Errata perimetral (.docx)', () => setErrataAberto(true)] as [string, () => void]] : []),
+                    ...(medioOuMais ? [['CAR — Cadastro Ambiental Rural', () => setCarAberto(true)] as [string, () => void]] : []),
+                  ] as [string, () => void][]).map(([rot, acao]) => (
+                    <button key={rot} type="button" onClick={() => { setPecasMenuAberto(false); acao(); }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-muted">
+                      <Download className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> {rot}
+                    </button>
+                  ))}
+                  {medioOuMais && (
+                    <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer"
+                      onClick={() => setPecasMenuAberto(false)}
+                      className="flex w-full items-center gap-2 rounded-lg border-t px-3 py-2.5 text-left text-sm hover:bg-muted">
+                      <LogIn className="size-4 shrink-0 text-emerald-700 dark:text-emerald-400" /> Acessar o SIGEF (certificar)
+                    </a>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <>
+            <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>{tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
+            <Etapa st={etapas.memorial}>
+              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
+            </Etapa>
+            {projetoTemServidao && (
+              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
+            )}
+            <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
+            <Etapa st={etapas.planta}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
+            <Etapa st={etapas.req}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
+            <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Cartas de anuência dos confrontantes (.docx) — baixe todas num só documento ou uma por vez" onClick={() => setAnuenciaAberta(true)}><Download /> ANUENCIA</Button>
+            {medioOuMais && (
+              <Etapa st={etapas.errata}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Gerar Errata perimetral (.docx)" onClick={() => setErrataAberto(true)}><Download /> ERRATA</Button></Etapa>
+            )}
+            {medioOuMais && (
+              <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
+                <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-emerald-800 hover:bg-emerald-900 text-white border-transparent`} title="Acessar o SIGEF para certificação eletrônica do imóvel">CERT</Button>
+              </a>
+            )}
+            {medioOuMais && (
+              <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>CAR</Button>
+            )}
+          </>
         )}
        </div>
 
