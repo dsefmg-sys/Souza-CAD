@@ -5461,121 +5461,34 @@ export default function EditorPage() {
                     <div className="flex flex-col gap-1 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
                       <span className="text-[10px] font-bold uppercase text-foreground px-1 mb-0.5">Ajuste de Tamanhos</span>
                       <div className="grid grid-cols-2 gap-1">
-                        <div className="flex items-center justify-between rounded-sm bg-muted/40 px-1.5 py-0.5 text-[10px] font-bold text-foreground" title="Tamanho dos nomes/códigos que aparecem nos vértices">
-                          <span className="truncate">Rótulos</span>
-                          <div className="flex gap-0.5">
-                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setTamNomes((n) => Math.max(7, n - 1))}>A-</Button>
-                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setTamNomes((n) => Math.min(22, n + 1))}>A+</Button>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between rounded-sm bg-muted/40 px-1.5 py-0.5 text-[10px] font-bold text-foreground" title="Tamanho do texto central da gleba (denominação/área/perímetro no meio do polígono)">
-                          <span className="truncate">Texto Central</span>
-                          <div className="flex gap-0.5">
-                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setTamCentro((n) => Math.max(7, n - 1))}>A-</Button>
-                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setTamCentro((n) => Math.min(22, n + 1))}>A+</Button>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between rounded-sm bg-muted/40 px-1.5 py-0.5 text-[10px] font-bold text-foreground" title="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos">
-                          <span className="truncate">Interface</span>
-                          <div className="flex gap-0.5">
-                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.1).toFixed(2))))}>A-</Button>
-                            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.1).toFixed(2))))}>A+</Button>
-                          </div>
-                        </div>
+                        <AjusteTamanho label="Rótulos" titulo="Tamanho dos nomes/códigos que aparecem nos vértices"
+                          onDec={() => setTamNomes((n) => Math.max(7, n - 1))} onInc={() => setTamNomes((n) => Math.min(22, n + 1))} />
+                        <AjusteTamanho label="Texto Central" titulo="Tamanho do texto central da gleba (denominação/área/perímetro no meio do polígono)"
+                          onDec={() => setTamCentro((n) => Math.max(7, n - 1))} onInc={() => setTamCentro((n) => Math.min(22, n + 1))} />
+                        <AjusteTamanho label="Interface" titulo="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos"
+                          onDec={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.1).toFixed(2))))} onInc={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.1).toFixed(2))))} />
                       </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-3 gap-x-1 gap-y-1 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
                       <span className="text-[10px] font-bold uppercase text-foreground col-span-3 px-1 mb-0.5">Ajuste de Tamanhos</span>
                       
-                      {/* Interface */}
-                      <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
-                        <span className="truncate">Interface</span>
-                        <div className="flex items-center gap-0.5">
-                          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.1).toFixed(2))))}>-</Button>
-                          <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.1).toFixed(2))))}>+</Button>
-                        </div>
-                      </div>
+                      <AjusteTamanho label="Interface" titulo="Tamanho das letras da interface"
+                        onDec={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.1).toFixed(2))))} onInc={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.1).toFixed(2))))} />
 
-                      {/* Tabelas (roteiro perimétrico, quadro de áreas, coordenadas) */}
-                      {(() => {
-                        const r = { rot: 'Tabelas', campo: 'escalaTabelas' as const, base: 1 };
-                        const passo = 0.05, min = 0.4, max = 3;
-                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
+                      {([
+                        ['Tabelas', 'escalaTabelas', 1, 0.05, 0.4, 3, 'Tamanho só das tabelas: roteiro perimétrico, quadro de áreas e de coordenadas'],
+                        ['Rótulos', 'fonteRotulos', 10, 0.5, 5, 20, undefined],
+                        ['Símbolos', 'escalaVertices', 1, 0.05, 0.4, 3, undefined],
+                        ['Declarações', 'escalaDeclaracoes', 1, 0.05, 0.4, 3, undefined],
+                        ['Confront.', 'escalaConfront', 1, 0.05, 0.4, 3, undefined],
+                      ] as [string, keyof PlantaConfig, number, number, number, number, string | undefined][]).map(([rot, campo, base, passo, min, max, titulo]) => {
+                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[campo] as number | undefined) ?? base; return { ...c, [campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
                         return (
-                          <div className="flex items-center justify-between text-[10px] font-bold text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm" title="Tamanho só das tabelas: roteiro perimétrico, quadro de áreas e de coordenadas">
-                            <span className="truncate">Tabelas</span>
-                            <div className="flex items-center gap-0.5">
-                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
-                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
-                            </div>
-                          </div>
+                          <AjusteTamanho key={campo} label={rot} titulo={titulo} negrito={rot === 'Tabelas'}
+                            onDec={() => aj(-passo)} onInc={() => aj(passo)} />
                         );
-                      })()}
-
-                      {/* Rótulos */}
-                      {(() => {
-                        const r = { rot: 'Rótulos', campo: 'fonteRotulos' as const, base: 10 };
-                        const passo = 0.5, min = 5, max = 20;
-                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
-                        return (
-                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
-                            <span className="truncate">Rótulos</span>
-                            <div className="flex items-center gap-0.5">
-                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
-                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Símbolos */}
-                      {(() => {
-                        const r = { rot: 'Símbolos', campo: 'escalaVertices' as const, base: 1 };
-                        const passo = 0.05, min = 0.4, max = 3;
-                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
-                        return (
-                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
-                            <span className="truncate">Símbolos</span>
-                            <div className="flex items-center gap-0.5">
-                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
-                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Declarações */}
-                      {(() => {
-                        const r = { rot: 'Declarações', campo: 'escalaDeclaracoes' as const, base: 1 };
-                        const passo = 0.05, min = 0.4, max = 3;
-                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
-                        return (
-                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
-                            <span className="truncate">Declarações</span>
-                            <div className="flex items-center gap-0.5">
-                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
-                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Confrontantes */}
-                      {(() => {
-                        const r = { rot: 'Confront.', campo: 'escalaConfront' as const, base: 1 };
-                        const passo = 0.05, min = 0.4, max = 3;
-                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[r.campo] as number | undefined) ?? r.base; return { ...c, [r.campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
-                        return (
-                          <div className="flex items-center justify-between text-[10px] font-medium text-foreground bg-muted/30 px-1.5 py-0.5 rounded-sm">
-                            <span className="truncate">Confront.</span>
-                            <div className="flex items-center gap-0.5">
-                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(-passo)}>-</Button>
-                              <Button size="sm" variant="ghost" className="h-5 w-5 p-0 font-extrabold hover:bg-muted text-[10px]" onClick={() => aj(passo)}>+</Button>
-                            </div>
-                          </div>
-                        );
-                      })()}
+                      })}
                     </div>
                   ))}
                   {/* ferramentas e sistema: rotulados. No celular vira UMA coluna (senão viram ícones
@@ -7232,6 +7145,23 @@ function MiniSelect({ label, value, options, onChange }: { label: string; value:
       <select className="h-7 w-full rounded-sm border border-input bg-background px-1 text-xs" value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
+    </div>
+  );
+}
+
+// Linha de "Ajuste de Tamanhos" (rótulo + par -/+ compacto). Antes cada -/+ era um botão quadrado de
+// 20px com espaço entre os dois; num cartão estreito isso sobrava pouco espaço pro rótulo e cortava
+// o texto (ex.: "Texto Central" virava "Texto C..."). Agora os dois ficam colados num único bloco
+// fino, com só uma linha divisória entre eles — libera bastante largura pro nome sem perder o toque.
+function AjusteTamanho({ label, titulo, negrito = true, onDec, onInc }: { label: string; titulo?: string; negrito?: boolean; onDec: () => void; onInc: () => void }) {
+  return (
+    <div className={`flex items-center justify-between gap-1 rounded-sm bg-muted/30 px-1.5 py-0.5 text-[10px] text-foreground ${negrito ? 'font-bold' : 'font-medium'}`} title={titulo}>
+      <span className="truncate">{label}</span>
+      <div className="flex h-5 shrink-0 overflow-hidden rounded-sm border border-border/70">
+        <button type="button" className="flex w-3.5 items-center justify-center font-extrabold hover:bg-muted" onClick={onDec}>−</button>
+        <div className="w-px bg-border/70" />
+        <button type="button" className="flex w-3.5 items-center justify-center font-extrabold hover:bg-muted" onClick={onInc}>+</button>
+      </div>
     </div>
   );
 }
