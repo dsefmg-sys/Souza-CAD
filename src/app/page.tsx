@@ -1000,7 +1000,10 @@ export default function EditorPage() {
       tamNomesMontadoRef.current = true;
       return;
     }
-    const pct = Math.round((tamNomes / 11) * 100);
+    // Arredonda pra múltiplo de 10 na notificação — o passo real é de 1px (não bate exato em 10 em
+    // 10%), mas mostrar sempre um número redondo (80%, 90%, 100%...) fica mais profissional que
+    // um número quebrado tipo 109%.
+    const pct = Math.round(Math.round((tamNomes / 11) * 100) / 10) * 10;
     mostrarNotificacaoTamanho(`Tamanho dos Rótulos: ${pct}% ${pct === 100 ? '(Padrão)' : ''}`);
   }, [tamNomes]);
 
@@ -1017,7 +1020,8 @@ export default function EditorPage() {
       escalaMontadaRef.current = true;
       return;
     }
-    const pct = Math.round(escalaInterface * 100);
+    // Passo real já é de 10% (0.1); arredonda por segurança contra imprecisão de ponto flutuante.
+    const pct = Math.round(escalaInterface * 100 / 10) * 10;
     mostrarNotificacaoTamanho(`Tamanho da Interface: ${pct}% ${pct === 100 ? '(Padrão)' : ''}`);
   }, [escalaInterface]);
 
@@ -1110,6 +1114,10 @@ export default function EditorPage() {
   // atalhos remapeados em ordem crescente
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      // Se qualquer modal/diálogo estiver aberto (ex.: banco de pontos, ajustes, etc.), ignora os atalhos.
+      if (typeof document !== 'undefined' && document.querySelector('[role="dialog"], [role="alertdialog"], .radix-portal')) {
+        return;
+      }
       // Ctrl+S / Cmd+S: salva o projeto e impede o "salvar página" do navegador. Vale até com o
       // foco num campo de texto — por isso vem ANTES do filtro de campos abaixo.
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') {
