@@ -6060,17 +6060,17 @@ export default function EditorPage() {
                 {g.denominacao}
               </button>
             ))}
-            <Button size="sm" variant="ghost" disabled={processando} onClick={novaGleba} title="Nova gleba"><Plus /></Button>
-            <Button size="sm" variant="ghost" onClick={async () => { const n = await perguntar({ titulo: 'Renomear gleba', mensagem: 'Nome da gleba:', valorInicial: glebaAtivaNome }); if (n) renomearGlebaAtiva(n); }} title="Renomear gleba"><Pencil /></Button>
-            {glebas.length > 1 && <Button size="sm" variant="ghost" disabled={processando} onClick={() => removerGleba(glebaAtivaId)} title="Remover gleba"><Trash2 /></Button>}
-            <Button size="sm" variant="outline" className="ml-auto gap-1 text-[11px]" onClick={() => setConsultarAberto(true)} title="Consultar cadastros antigos e inserir no projeto atual">
+            <Button size="sm" className="bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 text-white" disabled={processando} onClick={novaGleba} title="Nova gleba"><Plus /></Button>
+            <Button size="sm" className="bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 text-white" onClick={async () => { const n = await perguntar({ titulo: 'Renomear gleba', mensagem: 'Nome da gleba:', valorInicial: glebaAtivaNome }); if (n) renomearGlebaAtiva(n); }} title="Renomear gleba"><Pencil /></Button>
+            {glebas.length > 1 && <Button size="sm" variant="destructive" disabled={processando} onClick={() => removerGleba(glebaAtivaId)} title="Remover gleba"><Trash2 /></Button>}
+            <Button size="sm" className={`ml-auto gap-1 text-[11px] ${COR_DADOS}`} onClick={() => setConsultarAberto(true)} title="Consultar cadastros antigos e inserir no projeto atual">
               <Database className="size-3.5" /> Banco de Dados
             </Button>
           </div>
           {/* resumo movido para o painel flutuante (canto sup. esquerdo do mapa/planta) */}
 
-          {/* abas — ícone em cima, título em MAIÚSCULAS embaixo; a ativa ganha cor e traço inferior */}
-          <div className="flex border-b bg-muted/20">
+          {/* abas — ícone em cima, título em MAIÚSCULAS embaixo; a ativa vira um botão de cor sólida */}
+          <div className="flex gap-1 border-b bg-muted/20 p-1">
             {([
               ['imovel', 'IMÓVEL', <BookUser key="i" className="size-4" />],
               ['vertices', 'VÉRTICES', <Waypoints key="i" className="size-4" />],
@@ -6079,7 +6079,7 @@ export default function EditorPage() {
               ['projetos', 'PROJETOS', <Database key="i" className="size-4" />],
             ] as [Aba, string, React.ReactNode][]).map(([a, rot, icone]) => (
               <button key={a} onClick={() => setAba(a)} title={rot}
-                className={`flex flex-1 flex-col items-center gap-0.5 border-b-2 px-1 py-1.5 text-[9px] font-bold uppercase tracking-wide transition-colors ${aba === a ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground'}`}>
+                className={`flex flex-1 flex-col items-center gap-0.5 rounded-sm px-1 py-1.5 text-[9px] font-bold uppercase tracking-wide transition-colors ${aba === a ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-muted'}`}>
                 {icone}
                 <span className="leading-none">{rot}</span>
               </button>
