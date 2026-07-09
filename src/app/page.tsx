@@ -4582,7 +4582,6 @@ export default function EditorPage() {
             </Button>
           </Etapa>
         )}
-        <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}><Database /> CADASTROS</Button>
         <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
         {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) — são ações de DESENHO, então no
@@ -6048,6 +6047,9 @@ export default function EditorPage() {
             <Button size="sm" variant="ghost" disabled={processando} onClick={novaGleba} title="Nova gleba"><Plus /></Button>
             <Button size="sm" variant="ghost" onClick={async () => { const n = await perguntar({ titulo: 'Renomear gleba', mensagem: 'Nome da gleba:', valorInicial: glebaAtivaNome }); if (n) renomearGlebaAtiva(n); }} title="Renomear gleba"><Pencil /></Button>
             {glebas.length > 1 && <Button size="sm" variant="ghost" disabled={processando} onClick={() => removerGleba(glebaAtivaId)} title="Remover gleba"><Trash2 /></Button>}
+            <Button size="sm" variant="outline" className="ml-auto gap-1 text-[11px]" onClick={() => setConsultarAberto(true)} title="Consultar cadastros antigos e inserir no projeto atual">
+              <Database className="size-3.5" /> Banco de Dados
+            </Button>
           </div>
           {/* resumo movido para o painel flutuante (canto sup. esquerdo do mapa/planta) */}
 
