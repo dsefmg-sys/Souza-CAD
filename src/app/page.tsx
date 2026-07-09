@@ -4365,10 +4365,15 @@ export default function EditorPage() {
         <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Consultar cadastros antigos e inserir no projeto atual" onClick={() => setConsultarAberto(true)}>CADASTROS</Button>
         <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
-        {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) */}
-        <Etapa st={etapas.confro}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>CONFRO</Button></Etapa>
-        <Etapa st={etapas.divisas}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>DIVISAS</Button></Etapa>
-        <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
+        {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) — são ações de DESENHO, então no
+            celular ficam escondidas: mobile é pra consultar, preencher e baixar, não pra desenhar. */}
+        {!telaEstreita && (
+          <>
+            <Etapa st={etapas.confro}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>CONFRO</Button></Etapa>
+            <Etapa st={etapas.divisas}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>DIVISAS</Button></Etapa>
+            <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
+          </>
+        )}
 
         {/* 5) Peças — no celular ficam TODAS num único botão PEÇAS (menu de download), pra encurtar
             o cabeçalho e deixar as peças fáceis de achar; no desktop seguem como botões soltos. */}
