@@ -4347,6 +4347,15 @@ export default function EditorPage() {
             {barraLateralOculta ? <PanelLeft className="size-4" /> : <Maximize2 className="size-4" />}
           </button>
         )}
+        {/* Só no celular: alternar Mapa/Planta (a barra flutuante que trazia isso foi extinta no mobile). */}
+        {telaEstreita && (
+          <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
+            title="Alternar entre mapa e planta"
+            className="flex shrink-0 items-center gap-1 border-r px-2.5 text-[10px] font-bold text-primary hover:bg-muted/40">
+            {vista === 'mapa' ? <Printer className="size-4" /> : <MapIcon className="size-4" />}
+            <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
+          </button>
+        )}
         <div className="flex flex-1 items-center gap-1 overflow-x-auto px-2 py-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] [&_button_svg]:size-3">
         <input ref={fileRef} type="file" accept=".txt,.csv,.gml,.xml" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
@@ -5539,10 +5548,10 @@ export default function EditorPage() {
             <PainelMasterSaaS onVoltarDesenhar={() => setModoMaster('editar')} />
           ) : (
             <>
-              {/* BARRA FLUTUANTE ÚNICA — arrastável. Reúne tudo que ficava espalhado em várias barras:
-              alternar Mapa/Planta, a chave Fácil/Médio/Completo, área e perímetro, seletor de glebas,
-              os controles da planta (situação, escala, travar folha, tema) e os players de áudio. */}
-          {(vista === 'mapa' || vista === 'planta') && (
+              {/* BARRA FLUTUANTE ÚNICA (só desktop) — alternar Mapa/Planta, chave de modo, área e
+              perímetro, glebas, controles da planta e áudios. NO CELULAR ela é extinta: o alternar
+              Mapa/Planta vai pro cabeçalho, área/glebas ficam no painel de Dados, e os áudios saem. */}
+          {(vista === 'mapa' || vista === 'planta') && !telaEstreita && (
             <div
               style={telaEstreita ? undefined : { left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)' }}
               className={`no-print pointer-events-auto z-[1160] flex items-center gap-x-1.5 overflow-x-auto border border-border/80 bg-background/95 backdrop-blur-sm p-1.5 shadow-xl select-none ${
@@ -6382,32 +6391,18 @@ export default function EditorPage() {
       {/* Entrou sem login: aviso pra criar a conta e salvar configurações/projetos. Fica um pouco
           acima do banner de dados fictícios para não sobrepor. */}
       {nuvemDisponivel && !user && !avisoCriarContaFechado && (
-        <div className={`no-print fixed inset-x-0 z-[1500] flex justify-center ${(msg || imovel.ficticio) ? 'bottom-9' : 'bottom-2'}`}>
-          <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-amber-400/40 bg-background/95 px-3 py-2 shadow-2xl backdrop-blur-md max-w-[95vw]">
-            {/* Ícone */}
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-400/15">
-              <LogIn className="size-3.5 text-amber-400" />
-            </div>
-            {/* Texto principal */}
-            <div className="flex flex-col leading-tight">
-              <span className="text-[11px] font-bold text-foreground">Você está sem login</span>
-              <span className="text-[10px] text-muted-foreground">Projetos, configurações e suporte não serão salvos na nuvem.</span>
-            </div>
-            {/* Separador */}
-            <div className="hidden sm:block h-6 w-px bg-border mx-1" />
-            {/* Pílulas de benefício */}
-            <div className="hidden sm:flex items-center gap-1.5">
-              {['☁️ Nuvem', '💻 Multi-dispositivo', '📞 Suporte'].map((b) => (
-                <span key={b} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">{b}</span>
-              ))}
-            </div>
-            {/* Botão de ação */}
+        <div className={`no-print fixed inset-x-0 z-[1500] flex justify-center px-2 ${(msg || imovel.ficticio) ? 'bottom-9' : 'bottom-2'}`}>
+          {/* Aviso enxuto: um pill fino de uma linha, sem card grosso nem pílulas de marketing. */}
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-amber-400/30 bg-background/95 py-1 pl-2.5 pr-1.5 shadow-lg backdrop-blur-md max-w-full">
+            <LogIn className="size-3.5 shrink-0 text-amber-500" />
+            <span className="truncate text-[11px] font-medium text-foreground">
+              Sem login <span className="text-muted-foreground">— nada é salvo na nuvem</span>
+            </span>
             <button type="button"
               onClick={() => { setAvisoCriarContaFechado(false); definirModoEntrada('login'); }}
-              className="ml-1 shrink-0 rounded-full bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground hover:opacity-90 transition-opacity">
-              Fazer login
+              className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground hover:opacity-90 transition-opacity">
+              Entrar
             </button>
-            {/* Fechar temporariamente */}
             <button type="button"
               onClick={() => setAvisoCriarContaFechado(true)}
               className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted transition-colors"
@@ -7013,9 +7008,9 @@ export default function EditorPage() {
 
       {/* Barra de Notificação/Alerta unificada na parte inferior */}
       {(msg || imovel.ficticio) && (
-        <div 
+        <div
           className="no-print fixed bottom-0 right-0 z-[2000] flex h-7 items-center justify-center bg-slate-900 text-white text-[11px] font-semibold border-t border-slate-800 shadow-lg animate-in slide-in-from-bottom duration-200"
-          style={{ left: toolW }}
+          style={{ left: toolWEfetivo }}
         >
           {msg ? (
             <div className="flex items-center gap-1.5 text-amber-400">
