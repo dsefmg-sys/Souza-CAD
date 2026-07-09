@@ -7,6 +7,9 @@ interface Props {
   fallback?: ReactNode;
   /** chame para tentar recarregar o trecho que falhou */
   onReset?: () => void;
+  /** avisa o pai que algo quebrou aqui dentro — útil pra logar de verdade (antes o erro sumia sem
+   *  rastro nenhum) e, se quiser, tentar de novo sozinho (ex.: falha passageira de rede). */
+  onError?: (erro: unknown) => void;
 }
 interface State { erro: boolean }
 
@@ -28,6 +31,13 @@ ErrorBoundary.prototype.constructor = ErrorBoundary;
 // getDerivedStateFromError estático
 (ErrorBoundary as any).getDerivedStateFromError = function (): State {
   return { erro: true };
+};
+
+// componentDidCatch: antes o erro era só engolido (sem log nenhum) — impossível saber depois se
+// foi falha de rede baixando o chunk, erro de inicialização do Leaflet, ou outra coisa.
+ErrorBoundary.prototype.componentDidCatch = function (this: any, erro: unknown) {
+  console.error('ErrorBoundary capturou uma falha:', erro);
+  this.props.onError?.(erro);
 };
 
 // Método reset no prototype

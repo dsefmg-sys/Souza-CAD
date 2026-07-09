@@ -41,7 +41,7 @@ export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
   const nomeUpper = (tecnico.nome || '').toUpperCase();
   const denom = imovel.denominacao || '—';
   const area = `${numBR(areaHa, 4)} ha`;
-  const local = imovel.local || '';
+  const local = imovel.local || imovel.municipio || '';
   const c: Paragraph[] = [];
 
   // Cabeçalho

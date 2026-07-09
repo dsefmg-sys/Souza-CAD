@@ -249,7 +249,7 @@ function linhasCabecalho(imovel: ImovelData, areaHa: number, perimetro: number):
     linha(imovel.regimeTerra === 'posse' ? 'Situação jurídica:' : 'Matrícula:', imovel.regimeTerra === 'posse' && !imovel.matricula ? 'Posse' : `${imovel.matricula}${idMunicipal}`),
     linha(imovel.regimeTerra === 'posse' ? 'Possuidor(a):' : 'Proprietário(a):', imovel.proprietario),
     linha(labelArea, valArea),
-    linha('Local:', imovel.local),
+    linha('Local:', imovel.local || imovel.municipio),
     linha('Perímetro (m):', `${numBR(perimetro)} m`),
   ];
 }

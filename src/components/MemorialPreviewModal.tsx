@@ -192,7 +192,7 @@ export default function MemorialPreviewModal({
               <div><strong>Matrícula:</strong> {imovel.matricula || '—'} (CNS: {imovel.cns || '—'})</div>
               <div><strong>Proprietário(a):</strong> {imovel.proprietario || '—'}</div>
               <div><strong>Área SGL (ha):</strong> {numBR(ef.areaHa, 4)} ha</div>
-              <div><strong>Local:</strong> {imovel.local || '—'}</div>
+              <div><strong>Local:</strong> {imovel.local || imovel.municipio || '—'}</div>
               <div><strong>Perímetro (m):</strong> {numBR(ef.perimetro)} m</div>
             </div>
 

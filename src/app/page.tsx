@@ -154,7 +154,7 @@ function gerarTituloAutomatico(im: ImovelData): string {
   return partes.join(' — ');
 }
 
-type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'planta' | 'conferencia' | 'projetos';
+type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'planta' | 'projetos';
 
 // tons médios e suaves (funcionam no tema claro e escuro via opacidade)
 // municípios mais atendidos (atalho na importação; cada um ancora o fuso 23/24)
@@ -404,7 +404,6 @@ export default function EditorPage() {
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
   const [avisoReconciliarAberto, setAvisoReconciliarAberto] = useState(false);
   const [avisoReconciliarResolve, setAvisoReconciliarResolve] = useState<((v: 'exportar' | 'voltar' | 'conciliar') => void) | null>(null);
-  const [explicacaoReconciliarAberta, setExplicacaoReconciliarAberta] = useState(false);
   const iconeCab = (chave: string, icone: React.ReactNode) => (prefs.iconesCabecalhoOcultos.includes(chave) ? null : icone);
   const [setupOk, setSetupOk] = useState(true); // primeiro acesso: cadastro de empresa/autônomo
   const [planilhaConfAberta, setPlanilhaConfAberta] = useState(false); // conferência da planilha SIGEF
@@ -494,6 +493,7 @@ export default function EditorPage() {
   const [anuenciaAberta, setAnuenciaAberta] = useState(false);
   const [modalSobreposicaoAberto, setModalSobreposicaoAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
+  const [conferirAberto, setConferirAberto] = useState(false);
   const [calcAberta, setCalcAberta] = useState(false);
   const [vvAberto, setVvAberto] = useState(false);
   const [vvBase, setVvBase] = useState<{ leste: number; norte: number; elevacao?: number } | null>(null);
@@ -1770,11 +1770,20 @@ export default function EditorPage() {
     const z = (zonaEscolhida && zonaEscolhida !== z0) ? zonaEscolhida : z0;
     const vsRepro: Vertex[] = z !== z0 ? reprojetar(vs0, z, hemisferio) : vs0;
 
-    // aplica a seleção da prévia: ordem (arrastar), importar (traz?) e noPoligono (perímetro passa?)
+    // aplica a seleção da prévia: ordem (arrastar), importar (traz?), noPoligono (perímetro passa?)
+    // e nomes (editados já na prévia — sobrescreve o nome bruto do arquivo antes de recodificar)
     const ordem = selecao?.ordem ?? vsRepro.map((_, i) => i);
     const importar = selecao?.importar ?? vsRepro.map(() => true);
     const noPoligono = selecao?.noPoligono ?? vsRepro.map(() => true);
-    const importados = ordem.filter((i) => importar[i]).map((i) => ({ v: vsRepro[i], poligono: noPoligono[i] !== false }));
+    const nomes = selecao?.nomes;
+    const importados = ordem.filter((i) => importar[i]).map((i) => {
+      // grava nos dois campos: "nome" (referência interna) e "codigoCampo" (o que a lista de
+      // vértices mostra como legenda embaixo do código SIGEF oficial — senão o nome editado na
+      // prévia nunca aparece em lugar nenhum depois de importado).
+      const nomeEditado = nomes?.[i]?.trim();
+      const v = nomeEditado ? { ...vsRepro[i], nome: nomeEditado, codigoCampo: nomeEditado } : vsRepro[i];
+      return { v, poligono: noPoligono[i] !== false };
+    });
     // "Só vértices" (gerarPoligono=false): NENHUM ponto forma o perímetro — todos entram como
     // pontos soltos (verticesIgnorados) e o anel fica vazio, então nenhum polígono é desenhado.
     // "Gerar polígono": anel = importados marcados "no polígono"; ignorados = os fora do polígono.
@@ -1788,10 +1797,10 @@ export default function EditorPage() {
       if (achado) {
         const escolha = await escolher({
           titulo: 'Este imóvel já parece estar cadastrado',
-          mensagem: `Já existe um projeto chamado "${achado.projeto.nome}" com vértices praticamente iguais aos deste arquivo. O que você quer fazer?`,
+          mensagem: `Já existe um projeto chamado "${achado.projeto.nome}" com vértices praticamente iguais aos deste arquivo.`,
           opcoes: [
-            { chave: 'continuar', label: 'Continuar com a importação mesmo assim', variant: 'outline' },
-            { chave: 'abrir', label: `Abrir "${achado.projeto.nome}"`, variant: 'default' },
+            { chave: 'abrir', label: 'Abrir o projeto existente', variant: 'default' },
+            { chave: 'continuar', label: 'Continuar com esta importação mesmo assim', variant: 'outline' },
           ],
           cancelLabel: 'Cancelar',
         });
@@ -2900,6 +2909,25 @@ export default function EditorPage() {
     setModo('confrontante');
   }
 
+  // Apaga um confrontante criado por engano. Se ele já estava pintado em algum trecho da divisa,
+  // avisa quantos lados ficam sem confrontante (não apaga o vértice/divisa, só desfaz a pintura).
+  async function excluirConfrontante(id: string) {
+    const alvo = confrontantes.find((c) => c.id === id);
+    const nome = alvo?.nome?.trim() || 'este confrontante';
+    const ladosAfetados = Object.values(confrontantePorLado).filter((cid) => cid === id).length;
+    const aviso2 = ladosAfetados > 0
+      ? ` Ele está pintado em ${ladosAfetados} lado(s) da divisa — essas divisas voltam a ficar sem confrontante definido.`
+      : '';
+    if (!(await confirmarApagar(`Excluir "${nome}" deste projeto?${aviso2}`))) return;
+    snap();
+    setConfrontantes((cs) => cs.filter((c) => c.id !== id));
+    setConfrontantePorLado((m) => {
+      const novo = { ...m };
+      for (const k of Object.keys(novo)) { if (novo[Number(k)] === id) delete novo[Number(k)]; }
+      return novo;
+    });
+    if (confrontantePincelId === id) setConfrontantePincelId('');
+  }
 
   // ---------- exportações ----------
   // Garante que todos os vértices tenham código SIGEF antes de exportar (peça sem código é
@@ -2922,9 +2950,7 @@ export default function EditorPage() {
         if (opcao === 'exportar') {
           return true;
         } else if (opcao === 'conciliar') {
-          setExplicacaoReconciliarAberta(true);
-          setPainelAberto(true);
-          setAba('imovel');
+          setConferirAberto(true);
           return false;
         } else {
           return false;
@@ -4561,9 +4587,10 @@ export default function EditorPage() {
                 <div className="absolute right-0 top-[calc(100%+4px)] z-[1300] w-60 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
                   {([
                     [`${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} — responsabilidade técnica`, () => setTrtAberto(true)],
+                    ['Planilha SIGEF (.ods)', () => setPlanilhaConfAberta(true)],
+                    ['Conferir projeto (limites, conflitos, SIGEF)', () => setConferirAberto(true)],
                     ['Memorial descritivo (.docx)', () => exportarMemorial('normal')],
                     ...(projetoTemServidao ? [['Memorial de servidão (.docx)', () => exportarMemorial('servidao')] as [string, () => void]] : []),
-                    ['Planilha SIGEF (.ods)', () => setPlanilhaConfAberta(true)],
                     ['Planta A3 (PDF)', () => exportarPlanta()],
                     ['Requerimento ao cartório (.docx)', () => setReqAberto(true)],
                     ['Cartas de anuência (.docx)', () => setAnuenciaAberta(true)],
@@ -4589,13 +4616,14 @@ export default function EditorPage() {
         ) : (
           <>
             <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}><Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
+            <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
+            <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}><CheckCircle2 /> CONFERIR</Button>
             <Etapa st={etapas.memorial}>
               <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo (.docx)" onClick={() => exportarMemorial('normal')}><Download /> MEM</Button>
             </Etapa>
             {projetoTemServidao && (
               <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o memorial descritivo de SERVIDÃO / faixa de domínio (.docx) — descreve a faixa desenhada como área de servidão" onClick={() => exportarMemorial('servidao')}><Download /> SERV</Button>
             )}
-            <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
             <Etapa st={etapas.planta}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar a planta em PDF (A3)" onClick={exportarPlanta}><Download /> PLANTA</Button></Etapa>
             <Etapa st={etapas.req}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Baixar o requerimento ao cartório (.docx)" onClick={() => setReqAberto(true)}><Download /> REQ</Button></Etapa>
             <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Cartas de anuência dos confrontantes (.docx) — baixe todas num só documento ou uma por vez" onClick={() => setAnuenciaAberta(true)}><Download /> ANUENCIA</Button>
@@ -5999,7 +6027,6 @@ export default function EditorPage() {
               ['vertices', 'VÉRTICES', <Waypoints key="i" className="size-4" />],
               ['confrontantes', 'CONFRONT.', <Users key="i" className="size-4" />],
               ['planta', 'PLANTA', <MapIcon key="i" className="size-4" />],
-              ['conferencia', 'CONFERIR', <CheckCircle2 key="i" className="size-4" />],
               ['projetos', 'PROJETOS', <Database key="i" className="size-4" />],
             ] as [Aba, string, React.ReactNode][]).map(([a, rot, icone]) => (
               <button key={a} onClick={() => setAba(a)} title={rot}
@@ -6190,7 +6217,7 @@ export default function EditorPage() {
               </div>
             )}
             {aba === 'confrontantes' && (
-              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} projetoId={projetoId} onExtrairConfrontante={extrairDocumentoConfrontante} />
+              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} onExcluir={excluirConfrontante} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} projetoId={projetoId} onExtrairConfrontante={extrairDocumentoConfrontante} />
             )}
             {aba === 'planta' && (
               <PainelPlanta config={plantaConfig} onChange={atualizarPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} numGlebas={glebas.length}
@@ -6200,9 +6227,6 @@ export default function EditorPage() {
                   salvarPlantaPadrao(plantaConfig);
                   aviso(`Modelo de planta salvo para o tipo de trabalho: "${tit}".`);
                 }} />
-            )}
-            {aba === 'conferencia' && (
-              <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} onChange={setImovel} conflitos={conflitos} onIrParaConflito={(lat, lon) => setFocoLatLng([lat, lon])} />
             )}
             {aba === 'projetos' && (
               <div className="space-y-2">
@@ -6459,8 +6483,7 @@ export default function EditorPage() {
                   className="h-8 font-bold"
                   onClick={() => {
                     setSigefMenuAberto(false);
-                    setPainelAberto(true);
-                    setAba('imovel');
+                    setConferirAberto(true);
                   }}
                 >
                   <Check className="size-3.5" /> Já tenho os valores oficiais
@@ -6496,6 +6519,17 @@ export default function EditorPage() {
       />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
+      <Dialog open={conferirAberto} onOpenChange={setConferirAberto}>
+        <DialogContent className="max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+              <CheckCircle2 className="size-5" /> Conferir Projeto
+            </DialogTitle>
+          </DialogHeader>
+          <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} onChange={setImovel} conflitos={conflitos}
+            onIrParaConflito={(lat, lon) => { setConferirAberto(false); setVista('mapa'); setFocoLatLng([lat, lon]); }} />
+        </DialogContent>
+      </Dialog>
       <MemorialPreviewModal
         open={prevMemorialAberto}
         onOpenChange={setPrevMemorialAberto}
@@ -6977,7 +7011,7 @@ export default function EditorPage() {
           </DialogHeader>
           <div className="space-y-3 py-2 text-sm text-muted-foreground leading-relaxed">
             <p>
-              A área oficial (SGL) ou o perímetro oficial do SIGEF ainda não foram preenchidos na aba <strong>'Imóvel'</strong> (Reconciliação com o SIGEF).
+              A área oficial (SGL) ou o perímetro oficial do SIGEF ainda não foram preenchidos no botão <strong>'CONFERIR'</strong> do cabeçalho (Reconciliação com o SIGEF).
             </p>
             <p>
               O recomendado é conciliar antes de gerar as peças oficiais para que elas correspondam perfeitamente aos valores oficiais.
@@ -6994,7 +7028,7 @@ export default function EditorPage() {
               Voltar
             </Button>
             <Button variant="outline" size="sm" className="border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:text-emerald-400"
-              title="Entenda a reconciliação com o SIGEF, abra a aba 'Imóvel' e preencha os valores oficiais."
+              title="Abre a janela Conferir para preencher os valores oficiais do SIGEF."
               onClick={() => {
                 if (avisoReconciliarResolve) {
                   avisoReconciliarResolve('conciliar');
@@ -7012,44 +7046,6 @@ export default function EditorPage() {
               setAvisoReconciliarAberto(false);
             }}>
               Exportar mesmo assim
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={explicacaoReconciliarAberta} onOpenChange={setExplicacaoReconciliarAberta}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Como funciona a Reconciliação com o SIGEF?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-1 text-xs text-muted-foreground leading-relaxed">
-            <p>
-              O SIGEF calcula a área no plano local (SGL) utilizando fórmulas geodésicas específicas e projeções que podem causar pequenas divergências (de alguns metros quadrados) em relação aos valores puramente calculados no sistema.
-            </p>
-            <p className="font-semibold text-foreground">
-              Para que as peças finais batam 100% com o SIGEF:
-            </p>
-            <ol className="list-decimal pl-4 space-y-1.5">
-              <li>
-                Envie a planilha ou os dados para gerar o rascunho oficial no site do <strong>SIGEF</strong>.
-              </li>
-              <li>
-                No rascunho gerado pelo SIGEF, copie os valores exatos de <strong>Área SGL oficial (ha)</strong> e <strong>Perímetro oficial (m)</strong>.
-              </li>
-              <li>
-                No painel à direita deste aplicativo, abra a aba <strong>'Imóvel'</strong> e localize a seção <strong>'Reconciliação com o SIGEF'</strong>.
-              </li>
-              <li>
-                Cole esses valores oficiais nos campos correspondentes e certifique-se de que a opção <strong>'Usar os valores do SIGEF nas peças finais'</strong> está marcada.
-              </li>
-            </ol>
-            <p>
-              As peças oficiais geradas (memorial descritivo, planta, etc.) passarão a usar estes valores, garantindo concordância jurídica total.
-            </p>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <Button size="sm" onClick={() => setExplicacaoReconciliarAberta(false)}>
-              Entendi
             </Button>
           </div>
         </DialogContent>
@@ -7449,7 +7445,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
           ))}
         </div>
       </div>
-      <Campo label="Local (memorial)" value={imovel.local} onChange={onLocal} placeholder="Córrego ..., Cidade-UF" />
+      <Campo label="Local (memorial) — opcional, padrão é o município" value={imovel.local} onChange={onLocal} placeholder={imovel.municipio || 'Córrego ..., Cidade-UF'} />
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2">
           <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fuso UTM</Label>
@@ -7603,8 +7599,9 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
   );
 }
 
-function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico, projetoId, onExtrairConfrontante }: {
+function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico, projetoId, onExtrairConfrontante, onExcluir }: {
   confrontantes: Confrontante[]; onChange: (c: Confrontante[]) => void;
+  onExcluir: (id: string) => void;
   mapa: Record<number, string>; lados: Lado[];
   sugConf: ConfrontanteCad[]; onSalvarCadastro: (c: Confrontante) => void;
   imovel: ImovelData; tecnico: TecnicoData | null;
@@ -7680,9 +7677,12 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
                   <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id) }} title="Cor deste confrontante no mapa" />
                   {idxs.length} lado(s){lados.length ? `: ${idxs.map((i) => lados[i]?.de.codigoSigef).filter(Boolean).join(', ')}` : ''}
                 </span>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <button className="text-[10px] text-primary hover:underline" onClick={() => exportarAnuenciaConfrontante(c)}>gerar carta (.docx)</button>
                   <button className="text-[10px] text-primary hover:underline" onClick={() => onSalvarCadastro(c)}>salvar no cadastro</button>
+                  <button className="text-muted-foreground/70 transition-colors hover:text-destructive" title="Excluir este confrontante do projeto" onClick={() => onExcluir(c.id)}>
+                    <Trash2 className="size-3.5" />
+                  </button>
                 </div>
               </div>
               <div className="space-y-1">

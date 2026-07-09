@@ -55,11 +55,15 @@ export default function DialogosHost() {
         )}
 
         {estado.modo === 'choice' ? (
-          <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-            <Button variant="outline" size="sm" onClick={() => responder(null)}>{estado.cancelLabel}</Button>
+          <div className="mt-1 flex flex-col gap-2">
             {estado.opcoes.map((op) => (
-              <Button key={op.chave} size="sm" variant={op.variant ?? 'default'} onClick={() => responder(op.chave)}>{op.label}</Button>
+              <Button key={op.chave} variant={op.variant ?? 'default'} className="h-10 w-full justify-center text-sm" onClick={() => responder(op.chave)}>
+                {op.label}
+              </Button>
             ))}
+            <Button variant="ghost" size="sm" className="mt-1 w-full text-muted-foreground" onClick={() => responder(null)}>
+              {estado.cancelLabel}
+            </Button>
           </div>
         ) : (
           <div className="mt-2 flex justify-end gap-2">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ export interface SelecaoImport {
   ordem: number[];        // índices originais, na ordem de exibição
   importar: boolean[];    // por índice original: traz o vértice?
   noPoligono: boolean[];  // por índice original: o perímetro passa por ele?
+  nomes: string[];        // por índice original: nome do vértice (editável já na prévia)
 }
 
 interface PontoPrev { nome: string; leste: number; norte: number }
@@ -63,8 +64,13 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
   const [ordem, setOrdem] = useState<number[]>([]);
   const [importar, setImportar] = useState<boolean[]>([]);
   const [noPoligono, setNoPoligono] = useState<boolean[]>([]);
+  const [nomes, setNomes] = useState<string[]>([]);
   const [destaque, setDestaque] = useState<number | null>(null);
   const [arrastando, setArrastando] = useState<number | null>(null);
+  // satélite: se falhar (chunk de rede, remount rápido do Leaflet...), tenta sozinho UMA vez antes
+  // de deixar o botão manual — a maioria das falhas aqui é passageira e some no 2º carregamento.
+  const [satRetryKey, setSatRetryKey] = useState(0);
+  const satAutoRetryFeito = useRef(false);
 
   // (re)inicializa tudo ao abrir
   useEffect(() => {
@@ -73,7 +79,10 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
     setOrdem(pontos.map((_, i) => i));
     setImportar(pontos.map(() => true));
     setNoPoligono(pontos.map(() => true));
+    setNomes(pontos.map((p) => p.nome || ''));
     setDestaque(null);
+    setSatRetryKey(0);
+    satAutoRetryFeito.current = false;
   }, [open, zona, n]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // converte UTM -> lat/lon com o fuso ESCOLHIDO (recalcula ao trocar o fuso)
@@ -90,7 +99,7 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
   // useEffect reiniciar os arrays) — só usa índices que existem em `ll`/`pontos`.
   const importadosNaOrdem = ordem.filter((i) => i < n && ll[i] && pontos[i] && importar[i]);
   const poligono = importadosNaOrdem.filter((i) => noPoligono[i]).map((i) => ll[i]);
-  const marcadores = importadosNaOrdem.map((i) => ({ lat: ll[i][0], lon: ll[i][1], ativo: i === destaque, noPoligono: noPoligono[i], rotulo: pontos[i].nome }));
+  const marcadores = importadosNaOrdem.map((i) => ({ lat: ll[i][0], lon: ll[i][1], ativo: i === destaque, noPoligono: noPoligono[i], rotulo: nomes[i] || pontos[i].nome }));
   const destaqueLL = destaque != null && ll[destaque] ? ll[destaque] : null;
 
   const qtdImportar = importar.filter(Boolean).length;
@@ -122,7 +131,7 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
           </DialogTitle>
           <p className="text-xs text-muted-foreground">
             Desmarque <strong>Importar</strong> para não trazer um ponto. Desmarque <strong>No polígono</strong> para trazer o vértice mas o perímetro passar direto por ele.
-            Arraste pela alça para reordenar. Clique numa linha para destacá-la no satélite.
+            Arraste pela alça para reordenar. Clique no nome pra editar. Clique no resto da linha para destacá-la no satélite.
           </p>
         </DialogHeader>
 
@@ -171,9 +180,16 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
                   <div className="flex justify-center">
                     <input type="checkbox" className="size-4 accent-emerald-600" checked={importar[i]} onClick={(e) => e.stopPropagation()} onChange={(e) => setImportar((a) => a.map((v, k) => (k === i ? e.target.checked : v)))} />
                   </div>
-                  <span className="truncate font-semibold">
-                    <span className="mr-1.5 text-[10px] font-normal text-muted-foreground">{pos + 1}.</span>
-                    {pontos[i].nome || `Ponto ${i + 1}`}
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="shrink-0 text-[10px] font-normal text-muted-foreground">{pos + 1}.</span>
+                    <input
+                      type="text"
+                      value={nomes[i] ?? ''}
+                      placeholder={`Ponto ${i + 1}`}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setNomes((a) => a.map((v, k) => (k === i ? e.target.value : v)))}
+                      className="w-full min-w-0 truncate rounded-sm border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                    />
                   </span>
                   <div className="flex justify-center">
                     <input type="checkbox" className="size-4 accent-blue-600" checked={noPoligono[i]} disabled={!importar[i]} onClick={(e) => e.stopPropagation()} onChange={(e) => setNoPoligono((a) => a.map((v, k) => (k === i ? e.target.checked : v)))} />
@@ -187,13 +203,27 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
           <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border">
             <div className="flex items-center gap-1.5 border-b bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground"><Satellite className="size-3.5" /> Localização no satélite (fuso {zonaSel}{hemisferio})</div>
             <div className="min-h-0 flex-1">
-              <ErrorBoundary fallback={
-                <div className="flex h-full flex-col items-center justify-center gap-1 p-4 text-center text-sm text-muted-foreground">
-                  <Satellite className="size-6 opacity-50" />
-                  <span>Não deu para abrir o satélite agora.</span>
-                  <span className="text-xs">A lista de pontos ao lado funciona normalmente — pode importar mesmo assim.</span>
-                </div>
-              }>
+              <ErrorBoundary
+                key={satRetryKey}
+                onError={() => {
+                  // uma tentativa automática (falha aqui costuma ser passageira: chunk de rede ou
+                  // remount rápido do Leaflet); se falhar de novo, aí sim deixa pro botão manual.
+                  if (!satAutoRetryFeito.current) {
+                    satAutoRetryFeito.current = true;
+                    setTimeout(() => setSatRetryKey((k) => k + 1), 1200);
+                  }
+                }}
+                fallback={
+                  <div className="flex h-full flex-col items-center justify-center gap-1.5 p-4 text-center text-sm text-muted-foreground">
+                    <Satellite className="size-6 opacity-50" />
+                    <span>Não deu para abrir o satélite agora.</span>
+                    <span className="text-xs">A lista de pontos ao lado funciona normalmente — pode importar mesmo assim.</span>
+                    <button type="button" className="mt-1 rounded-sm border px-3 py-1 text-xs font-semibold hover:bg-muted" onClick={() => setSatRetryKey((k) => k + 1)}>
+                      Tentar de novo
+                    </button>
+                  </div>
+                }
+              >
                 <PreviaSatelite poligono={poligono} marcadores={marcadores} destaque={destaqueLL} />
               </ErrorBoundary>
             </div>
@@ -203,10 +233,10 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
         <footer className="flex flex-col items-center justify-between gap-3 border-t pt-3 sm:flex-row">
           <span className="text-[10px] text-muted-foreground">ESC para cancelar</span>
           <div className="flex w-full items-stretch gap-2 sm:w-auto sm:items-center">
-            <Button type="button" variant="outline" className="font-semibold" onClick={() => { onConfirm(false, zonaSel, { ordem, importar, noPoligono }); onOpenChange(false); }}>
+            <Button type="button" variant="outline" className="font-semibold" onClick={() => { onConfirm(false, zonaSel, { ordem, importar, noPoligono, nomes }); onOpenChange(false); }}>
               Importar só vértices (sem perímetro)
             </Button>
-            <Button type="button" className="gap-1.5 bg-emerald-600 font-bold text-white hover:bg-emerald-700" onClick={() => { onConfirm(true, zonaSel, { ordem, importar, noPoligono }); onOpenChange(false); }}>
+            <Button type="button" className="gap-1.5 bg-emerald-600 font-bold text-white hover:bg-emerald-700" onClick={() => { onConfirm(true, zonaSel, { ordem, importar, noPoligono, nomes }); onOpenChange(false); }}>
               <Check className="size-4" /> Gerar perímetro automático
             </Button>
           </div>
