@@ -5482,8 +5482,9 @@ export default function EditorPage() {
                       })()}
                     </div>
                   ))}
-                  {/* ferramentas e sistema: duas linhas de botões rotulados (não mais ícones espremidos) */}
-                  <div className="grid grid-cols-4 gap-1">
+                  {/* ferramentas e sistema: rotulados. No celular vira UMA coluna (senão viram ícones
+                      espremidos e ilegíveis no strip estreito); no desktop, grade de 4. */}
+                  <div className={`grid gap-1 ${telaEstreita ? 'grid-cols-1' : 'grid-cols-4'}`}>
                     {([
                       // 5º item = cor do ícone por categoria (ferramentas=índigo, sistema=neutro, master=âmbar, sair=vermelho)
                       // Ferramentas extras (índigo): só aparecem no modo Completo — não fazem parte do caminho essencial.
@@ -5505,7 +5506,8 @@ export default function EditorPage() {
                         className={`h-11 min-w-0 flex-col gap-0.5 overflow-hidden p-0.5 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:${cor} [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
                         title={dica} onClick={acao}>
                         <span className={cor}>{icone}</span>
-                        <span className="w-full truncate text-center text-[10px] font-semibold leading-none">{rotuloBtn}</span>
+                        {/* No celular, só o ícone (o rótulo truncava feio no strip estreito); a dica no title explica. */}
+                        <span className={`w-full truncate text-center text-[10px] font-semibold leading-none ${telaEstreita ? 'hidden' : ''}`}>{rotuloBtn}</span>
                       </Button>
                     ))}
                   </div>
@@ -5822,8 +5824,9 @@ export default function EditorPage() {
         </main>
 
         {/* Faixa sensível na borda DIREITA: encostar o mouse abre o painel de dados. Some quando o
-            painel já está aberto (aí quem manda é o mouse-leave do próprio painel). */}
-        {!painelAberto && !introTocando && (
+            painel já está aberto. No celular NÃO aparece: não há mouse pra "encostar", e a faixa
+            verde só polui a tela — lá o painel abre pelos botões PROJETOS/DADOS. */}
+        {!painelAberto && !introTocando && !telaEstreita && (
           <div className="no-print absolute right-0 top-1/2 -translate-y-1/2 z-[1999] w-[18px] h-[50%] bg-gradient-to-b from-emerald-400 via-green-400 to-emerald-500 dark:from-emerald-600 dark:via-green-500 dark:to-emerald-600 cursor-pointer border rounded-l-xl border-emerald-300/40 dark:border-emerald-700/40 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-400/40 hover:w-[22px] transition-all duration-200 flex items-center justify-center overflow-hidden"
             onMouseEnter={() => setPainelAberto(true)}
             title="Dados do projeto (encoste para abrir)" aria-hidden>
