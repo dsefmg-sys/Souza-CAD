@@ -12,7 +12,9 @@
 const bp = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 export function Logo({ className = 'size-8' }: { className?: string }) {
-  return <img src={`${bp}/marca/icone.png`} alt="Souza CAD" className={`rounded-md object-contain ${className}`} />;
+  // Ícone SIMPLES em SVG (compasso): nítido em qualquer tamanho, inclusive minúsculo no cabeçalho e
+  // no favicon. A arte detalhada (icone.png) ficava um borrão quando pequena.
+  return <img src={`${bp}/marca/icone.svg`} alt="Souza CAD" className={`rounded-md object-contain ${className}`} />;
 }
 
 export function LogoHorizontal({ className = 'h-10' }: { className?: string }) {
