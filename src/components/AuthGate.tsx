@@ -40,7 +40,14 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   async function fazer(fn: () => Promise<void>) {
     setErro(''); setOcupado(true);
-    try { await fn(); } catch (e) { setErro(traduzErroAuth((e as Error).message)); } finally { setOcupado(false); }
+    try {
+      await fn();
+    } catch (e) {
+      console.error('Erro de autenticação:', e);
+      setErro(traduzErroAuth((e as Error).message || String(e)));
+    } finally {
+      setOcupado(false);
+    }
   }
 
   async function validarEFazer(fn: () => Promise<void>) {

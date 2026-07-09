@@ -33,8 +33,16 @@ export function Logo({ className = 'size-8' }: { className?: string }) {
   );
 }
 
-export function LogoHorizontal({ className = 'h-10' }: { className?: string }) {
-  return <img src={`${bp}/marca/logo-horizontal.png`} alt="Souza CAD" className={`w-auto object-contain ${className}`} />;
+export function LogoHorizontal({ className = '' }: { className?: string }) {
+  return (
+    <div className={`flex items-center justify-center gap-2 select-none ${className}`}>
+      <Logo className="size-9 shrink-0" />
+      <div className="flex flex-col text-left leading-none uppercase font-black">
+        <span className="text-[17px] tracking-wider text-emerald-500 font-extrabold">SOUZA</span>
+        <span className="text-[13px] tracking-[0.2em] text-muted-foreground font-bold mt-0.5">CAD</span>
+      </div>
+    </div>
+  );
 }
 
 /**
