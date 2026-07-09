@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import {
-  Upload, FileText, Map as MapIcon, Printer, Plus, Trash2,
+  Upload, FileText, Map as MapIcon, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
@@ -99,7 +99,7 @@ import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/st
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
-import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, type PerfilUso } from '@/lib/store/perfilUso';
+import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, type PerfilUso } from '@/lib/store/perfilUso';
 import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster, carregarModo3dAtivado } from '@/lib/store/suporte';
@@ -264,7 +264,7 @@ export default function EditorPage() {
   // espelho de zoom/pan pra calcular o zoom-no-cursor sem atualizador aninhado (que o React roda 2x em dev)
   const vistaPlantaRef = useRef({ z: 1, x: 0, y: 0 });
   const [editarPlanta, setEditarPlanta] = useState(true); // planta abre já no modo edição
-  const [folhaTravada, setFolhaTravada] = useState(true); // por padrão, reposicionamento da moldura travado
+  const [folhaTravada, setFolhaTravada] = useState(false); // por padrão, destravada (dá pra reposicionar a moldura já na primeira vez que abre a planta)
   const [menuContexto, setMenuContexto] = useState<{
     tipo: 'texto' | 'vertice' | 'divisa' | 'mapa' | 'objeto';
     x: number;
@@ -897,13 +897,20 @@ export default function EditorPage() {
         }).catch(() => setPagamentoVerificando(false));
       }
 
-      // Cadastro do RT/escritório é POR CONTA (multi-empresa): puxa da nuvem, atualiza a tela e
-      // decide se ainda precisa do primeiro acesso. Se a conta for nova, o cache local é resetado
-      // (em branco), então um usuário nunca herda o cadastro de outro no mesmo navegador.
-      puxarConfigDaNuvem().then((configurado) => {
-        setTecnico(carregarTecnico());
-        setEscritorio(carregarEscritorio());
-        setSetupOk(souMaster() || configurado);
+      // Antes de decidir se precisa do primeiro acesso: se alguém convidou este e-mail pra
+      // empresa dele (Configurações → Ajudantes/Equipe), aceita automaticamente e já pula direto
+      // pro workspace dessa empresa — sem isso, um convidado cairia na tela de "criar empresa
+      // nova" achando que precisa se cadastrar do zero.
+      aceitarConviteSePendente().then((empresaConvite) => {
+        if (empresaConvite) aviso(`Você foi vinculado automaticamente à empresa "${empresaConvite}".`);
+        // Cadastro do RT/escritório é POR CONTA (multi-empresa): puxa da nuvem, atualiza a tela e
+        // decide se ainda precisa do primeiro acesso. Se a conta for nova, o cache local é resetado
+        // (em branco), então um usuário nunca herda o cadastro de outro no mesmo navegador.
+        puxarConfigDaNuvem().then((configurado) => {
+          setTecnico(carregarTecnico());
+          setEscritorio(carregarEscritorio());
+          setSetupOk(souMaster() || configurado);
+        }).catch(() => {});
       }).catch(() => {});
 
       // Sincroniza dados locais (salvos enquanto offline/sem permissão) com a nuvem
@@ -2443,11 +2450,14 @@ export default function EditorPage() {
         if (nb.length >= 2) { snap(); setObjetos((os) => [...os, novaCota(nb[0], nb[1])]); return []; }
         return nb;
       });
-    } else if (modo === 'linha') {
-      // linha = traço reto de 2 pontos (fecha sozinho no 2º clique)
+    } else if (modo === 'linha' || modo === 'tracejado') {
+      // linha = traço reto de 2 pontos (fecha sozinho no 2º clique). Tracejado é IDÊNTICO à linha —
+      // mesmo fluxo, mesma cor/espessura padrão — só troca o estilo do traço pra tracejado. Antes
+      // ficava agrupado com a ferramenta "medir" (que nunca cria objeto, só mede na tela), por isso
+      // os pontos ficavam acumulando no buffer sem nunca virar uma linha de verdade.
       setDesenhoBuffer((buf) => {
         const nb = [...buf, p];
-        if (nb.length >= 2) { snap(); setObjetos((os) => [...os, novaPolilinha(nb)]); return []; }
+        if (nb.length >= 2) { snap(); setObjetos((os) => [...os, novaPolilinha(nb, modo === 'tracejado' ? { tracejado: true } : {})]); return []; }
         return nb;
       });
     } else if (modo === 'polilinha') {
@@ -2488,8 +2498,8 @@ export default function EditorPage() {
         }
       }
       setDesenhoBuffer((buf) => [...buf, p]);
-    } else if (modo === 'tracejado' || modo === 'medir') {
-      // tracejado/medir = adiciona pontos ao buffer de desenho
+    } else if (modo === 'medir') {
+      // medir = só mostra distância/azimute ao vivo na tela; nunca cria objeto
       setDesenhoBuffer((buf) => [...buf, p]);
     } else if (modo === 'retangulo') {
       // retângulo = 2 cliques nos cantos OPOSTOS; fecha sozinho no 2º clique (reto no plano UTM)
@@ -2566,10 +2576,6 @@ export default function EditorPage() {
     setDistDigitada(''); // azimute costuma ser reaproveitado; distância muda a cada lance
   }
 
-  function finalizarLinha() {
-    if (desenhoBuffer.length >= 2) { snap(); setObjetos((os) => [...os, novaPolilinha(desenhoBuffer, modo === 'tracejado' ? { tracejado: true, cor: '#334155' } : {})]); }
-    setDesenhoBuffer([]);
-  }
   function confirmarParalela(pontos: [PontoLL, PontoLL]) {
     snap();
     const nova = novaPolilinha(pontos, { cor: '#2563eb', espessura: 1.5 });
@@ -4178,6 +4184,11 @@ export default function EditorPage() {
     setVerticesIgnorados(p.verticesIgnorados ?? []);
     setGradeAltimetrica(p.gradeAltimetrica ?? (p as any).ga ?? []);
     acabouDeSalvar.current = true; setSalvarLaranja(false); setSalvoOk(true); // recém-carregado = "salvo"
+    // Fecha o painel e sai da aba "Projetos salvos" pra o mapa do projeto recém-aberto ficar visível
+    // na hora — sem isso, o clique parecia não fazer nada (o painel continuava mostrando a mesma
+    // lista, só um aviso discreto passava na tela).
+    setAba('vertices');
+    setPainelAberto(false);
     aviso(`Projeto carregado (${p.glebas.length} gleba(s)).`);
   }
   async function remover(id: string) {
@@ -4472,7 +4483,7 @@ export default function EditorPage() {
           <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
             title="Alternar entre mapa e planta"
             className="flex shrink-0 items-center gap-1 border-r px-2.5 text-[10px] font-bold text-primary hover:bg-muted/40">
-            {vista === 'mapa' ? <Printer className="size-4" /> : <MapIcon className="size-4" />}
+            {vista === 'mapa' ? <Eye className="size-4" /> : <MapIcon className="size-4" />}
             <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
           </button>
         )}
@@ -5587,8 +5598,9 @@ export default function EditorPage() {
               <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
                 title="Alternar entre mapa e planta (Esc)"
                 className="flex h-7 items-center gap-1 rounded-full border border-primary/50 bg-background/95 px-2.5 text-[10px] font-bold text-primary hover:bg-muted transition-colors">
-                {vista === 'mapa' ? <Printer className="size-3.5" /> : <MapIcon className="size-3.5" />}
+                {vista === 'mapa' ? <Eye className="size-3.5" /> : <MapIcon className="size-3.5" />}
                 <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
+                <span className="rounded-sm border border-primary/40 px-1 font-mono text-[8px] font-semibold opacity-70">ESC</span>
               </button>
 
               {/* Pintar Divisas/Confrontantes — ao lado do botão Mapa/Planta, dentro da mesma barra
@@ -5705,13 +5717,13 @@ export default function EditorPage() {
 
 
 
-                  {/* Travar / soltar folha */}
+                  {/* Travar / destravar folha */}
                   <button type="button"
                     onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
-                    title={folhaTravada ? 'Moldura travada — clique para soltar e arrastar a prancha' : 'Moldura solta — clique para travar o layout da folha'}
-                    className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-[10px] font-bold transition-colors ${folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted' : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'}`}>
+                    title={folhaTravada ? 'Moldura travada — clique para destravar e arrastar a prancha' : 'Moldura destravada — clique para travar o layout da folha'}
+                    className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-[10px] font-bold transition-colors ${folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted' : 'border-amber-500 bg-background/95 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'}`}>
                     {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
-                    <span>{folhaTravada ? 'TRAVADA' : 'SOLTA'}</span>
+                    <span>{folhaTravada ? 'TRAVADA' : 'DESTRAVADA'}</span>
                   </button>
 
                   {/* Tema da prancha */}
@@ -6305,6 +6317,7 @@ export default function EditorPage() {
               O principal objetivo deste módulo é obter e importar os vértices e polígonos confrontantes oficiais do INCRA para casar com o seu projeto, garantindo conformidade jurídica, e nomes e dados corretos de confrontações.
             </p>
 
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Confrontantes e Vértices Oficiais</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
@@ -6396,7 +6409,7 @@ export default function EditorPage() {
               {parcelasCert.length > 0 && (
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground">5. Relatório de Sobreposição</span>
+                    <span className="text-xs font-bold text-foreground">4. Relatório de Sobreposição</span>
                     <Button
                       size="sm"
                       variant="outline"
@@ -6414,6 +6427,45 @@ export default function EditorPage() {
                   </p>
                 </div>
               )}
+            </div>
+
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground border-t pt-3">Conciliar Medidas (Área e Perímetro)</span>
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Ruler className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="text-xs font-bold text-foreground">Por que a área do SIGEF nunca bate 100% com a calculada aqui?</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                O SIGEF recalcula a área (SGL) e o perímetro usando as próprias fórmulas geodésicas e projeções oficiais — por isso o valor dele SEMPRE difere um pouco (alguns m²) do valor calculado por qualquer software de topografia, incluindo este. Essa diferença é normal e não indica erro no seu levantamento.
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Por segurança jurídica, o recomendado é <strong>sempre usar a área e o perímetro oficiais do SIGEF</strong> nas peças técnicas finais (memorial, planta, requerimento), não os calculados aqui. Pra isso: baixe a planilha SIGEF (.ods), envie pro site do SIGEF pra gerar o rascunho oficial, e depois cole os valores que ele devolver na aba <strong>'Imóvel'</strong>, seção <strong>'Reconciliação com o SIGEF'</strong>.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 font-bold border-amber-600 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20"
+                  onClick={() => {
+                    setSigefMenuAberto(false);
+                    setPlanilhaConfAberta(true);
+                  }}
+                >
+                  <Download className="size-3.5" /> Baixar Planilha SIGEF (.ods)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 font-bold"
+                  onClick={() => {
+                    setSigefMenuAberto(false);
+                    setPainelAberto(true);
+                    setAba('imovel');
+                  }}
+                >
+                  <Check className="size-3.5" /> Já tenho os valores oficiais
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
@@ -7724,7 +7776,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
   );
   return (
     <div className="space-y-3">
-      <Button size="sm" variant="outline" className="w-full" onClick={onVerPlanta}><Printer /> Ver / atualizar planta</Button>
+      <Button size="sm" variant="outline" className="w-full" onClick={onVerPlanta}><Eye /> Ver / atualizar planta</Button>
       <p className="text-[10px] text-muted-foreground">Tudo aqui é opcional: em branco usa o padrão. O layout A3 e o carimbo continuam padronizados.</p>
       <div className="space-y-1">
         <div className="flex items-center justify-between">

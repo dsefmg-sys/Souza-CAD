@@ -89,6 +89,38 @@ export async function salvarAppUrl(url: string): Promise<void> {
   }
 }
 
+// Credenciais de SMTP pra disparo de e-mail do painel administrativo (comunicados aos clientes do
+// SaaS): guardadas num doc SEPARADO (config/emailSmtp), não no config/app geral — porque config/app
+// é lido por QUALQUER usuário autenticado (ver firestore.rules), e uma senha de e-mail não pode
+// ficar exposta assim. config/emailSmtp só o master lê/escreve. Sem cache local: são credenciais
+// sensíveis, mais seguro reler da nuvem toda vez que o painel abre do que deixar salvo no navegador.
+export interface ConfigSmtp {
+  host?: string;
+  port?: string;
+  user?: string;
+  pass?: string;
+  from?: string;
+}
+
+export async function carregarConfigSmtp(): Promise<ConfigSmtp> {
+  if (!firebaseConfigurado) return {};
+  try {
+    const s = await getDoc(doc(fdb()!, 'config', 'emailSmtp'));
+    return s.exists() ? (s.data() as ConfigSmtp) : {};
+  } catch { return {}; }
+}
+
+export async function salvarConfigSmtp(cfg: ConfigSmtp): Promise<void> {
+  if (!firebaseConfigurado) return;
+  await setDoc(doc(fdb()!, 'config', 'emailSmtp'), {
+    host: (cfg.host || '').trim(),
+    port: (cfg.port || '').trim(),
+    user: (cfg.user || '').trim(),
+    pass: (cfg.pass || '').trim(),
+    from: (cfg.from || '').trim(),
+  });
+}
+
 // Modo 3D (visualização de relevo): recurso opcional que o MASTER liga/desliga pra todos os clientes.
 // Padrão DESLIGADO — enquanto amadurece, não aparece o botão de 3D pra ninguém a menos que o master ative.
 const CACHE_MODO3D = 'metrica.modo3dAtivado';

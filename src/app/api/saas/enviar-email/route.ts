@@ -1,6 +1,29 @@
 import { NextResponse } from 'next/server';
 import { verifySession } from '@/lib/apiAuth';
+import { getAdminApp } from '@/lib/firebaseAdmin';
+import { getFirestore } from 'firebase-admin/firestore';
 import nodemailer from 'nodemailer';
+
+interface ConfigSmtp { host?: string; port?: string; user?: string; pass?: string; from?: string }
+
+// Preferência: credenciais coladas pelo dono no painel administrativo (config/emailSmtp — só o
+// master lê/escreve esse documento, ver firestore.rules). Isso existe pra ele não depender de ir
+// na Vercel toda vez que troca a senha do app do Gmail. Se não houver nada salvo ali, cai nas
+// variáveis de ambiente (uso local/alternativo).
+async function obterConfigSmtp(): Promise<ConfigSmtp> {
+  try {
+    const snap = await getFirestore(getAdminApp()).collection('config').doc('emailSmtp').get();
+    const d = snap.exists ? (snap.data() as ConfigSmtp) : {};
+    if (d?.host && d?.user && d?.pass) return d;
+  } catch { /* ignore — cai pro env abaixo */ }
+  return {
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.SMTP_FROM,
+  };
+}
 
 export async function POST(req: Request) {
   const session = await verifySession(req);
@@ -14,11 +37,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nenhum e-mail especificado.' }, { status: 400 });
     }
 
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = process.env.SMTP_PORT;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-    const smtpFrom = process.env.SMTP_FROM || 'Souza CAD <no-reply@souzacad.com>';
+    const cfg = await obterConfigSmtp();
+    const smtpHost = cfg.host;
+    const smtpPort = cfg.port || '465';
+    const smtpUser = cfg.user;
+    const smtpPass = cfg.pass;
+    const smtpFrom = cfg.from || (smtpUser ? `Souza CAD <${smtpUser}>` : 'Souza CAD <no-reply@souzacad.com>');
 
     let enviadoCount = 0;
     let configurado = false;

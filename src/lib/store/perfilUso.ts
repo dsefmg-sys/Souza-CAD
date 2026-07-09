@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
 import { TERMOS_VERSAO } from '../legal/termos';
 
@@ -173,6 +173,73 @@ export async function excluirPerfilUsoPorAdmin(clientUid: string): Promise<void>
   } catch (e: any) {
     console.error('Falha ao excluir perfil de uso pelo admin:', e);
     throw new Error(`Erro ao excluir dados administrativos no banco: ${e?.message || e}`);
+  }
+}
+
+// ---- Convites por e-mail (vincular ajudante a uma empresa) ----
+// Substitui o antigo "cole o UID de qualquer um pra entrar": aqui só quem foi convidado PELO
+// e-mail exato consegue se vincular, e o dono nunca precisa expor um código secreto permanente.
+// Guardado em `convites/{email}` (id = e-mail normalizado) — permite ao convidado consultar
+// diretamente pelo próprio e-mail (get por id), sem precisar de uma query/lista mais complexa.
+
+export interface ConvitePendente {
+  email: string;
+  empresaUid: string;
+  empresaNome: string;
+  criadoEm: number;
+}
+
+function normalizarEmail(e: string): string {
+  return (e || '').trim().toLowerCase();
+}
+
+/** Convida alguém (pelo e-mail) a entrar no SEU workspace. Só o dono da empresa chama isso, no
+ *  menu de ajustes. A pessoa convidada entra automaticamente ao logar com esse e-mail exato
+ *  (ver `aceitarConviteSePendente`) — não precisa de código nenhum. */
+export async function criarConvite(emailConvidado: string, empresaNome: string): Promise<void> {
+  const meuUid = uid();
+  if (!meuUid || !firebaseConfigurado) throw new Error('Faça login para convidar alguém.');
+  const alvo = normalizarEmail(emailConvidado);
+  if (!alvo || !alvo.includes('@')) throw new Error('Informe um e-mail válido.');
+  if (alvo === normalizarEmail(email())) throw new Error('Esse é o seu próprio e-mail.');
+  await setDoc(doc(fdb()!, 'convites', alvo), {
+    email: alvo, empresaUid: meuUid, empresaNome: empresaNome || 'Sua empresa', criadoEm: Date.now(),
+  } as ConvitePendente);
+}
+
+/** Lista os convites que EU enviei e que ainda não foram aceitos. */
+export async function listarConvitesEnviados(): Promise<ConvitePendente[]> {
+  const meuUid = uid();
+  if (!meuUid || !firebaseConfigurado) return [];
+  try {
+    const snap = await getDocs(query(collection(fdb()!, 'convites'), where('empresaUid', '==', meuUid)));
+    return snap.docs.map((d) => d.data() as ConvitePendente).sort((a, b) => b.criadoEm - a.criadoEm);
+  } catch { return []; }
+}
+
+/** Cancela um convite ainda não aceito. */
+export async function cancelarConvite(emailConvidado: string): Promise<void> {
+  if (!firebaseConfigurado) return;
+  try { await deleteDoc(doc(fdb()!, 'convites', normalizarEmail(emailConvidado))); } catch { /* ignore */ }
+}
+
+/**
+ * Chamada logo após o login: se existir um convite pendente pro e-mail desta conta, aceita
+ * automaticamente (vincula o workspace ao dono que convidou) e consome o convite. Devolve o
+ * nome da empresa vinculada, ou null se não havia convite (o caminho normal, na maioria dos logins).
+ */
+export async function aceitarConviteSePendente(): Promise<string | null> {
+  const meuEmail = normalizarEmail(email());
+  if (!meuEmail || !firebaseConfigurado) return null;
+  try {
+    const s = await getDoc(doc(fdb()!, 'convites', meuEmail));
+    if (!s.exists()) return null;
+    const c = s.data() as ConvitePendente;
+    await sincronizarPerfil({ workspaceUid: c.empresaUid });
+    await deleteDoc(doc(fdb()!, 'convites', meuEmail));
+    return c.empresaNome || null;
+  } catch {
+    return null;
   }
 }
 

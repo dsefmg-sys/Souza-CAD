@@ -12,7 +12,7 @@ import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, 
 import { listarProjetosDoUsuario, salvarProjeto, novoId } from '@/lib/store/projects';
 import type { Projeto } from '@/lib/topo/types';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
-import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado } from '@/lib/store/suporte';
+import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, type ConfigSmtp } from '@/lib/store/suporte';
 import { auth } from '@/lib/firebase/client';
 
 function dataBR(ms?: number): string {
@@ -34,6 +34,8 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [geminiKey, setGeminiKey] = useState('');
   const [appUrl, setAppUrl] = useState('');
   const [modo3d, setModo3d] = useState(false);
+  const [smtp, setSmtp] = useState<ConfigSmtp>({});
+  const [salvandoSmtp, setSalvandoSmtp] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [msg, setMsg] = useState('');
   const [busca, setBusca] = useState('');
@@ -108,10 +110,23 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
         setEmailBotaoLink(url || (typeof window !== 'undefined' ? window.location.origin : ''));
       }
       setModo3d(await carregarModo3dAtivado());
+      setSmtp(await carregarConfigSmtp());
     } catch (e) {
       console.error(e);
     } finally {
       setCarregando(false);
+    }
+  }
+
+  async function salvarSmtpConfig() {
+    setSalvandoSmtp(true);
+    try {
+      await salvarConfigSmtp(smtp);
+      flash('Credenciais de e-mail salvas!');
+    } catch {
+      flash('Erro ao salvar as credenciais de e-mail.');
+    } finally {
+      setSalvandoSmtp(false);
     }
   }
 
@@ -428,6 +443,43 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     </div>
                   </label>
                 </div>
+              </div>
+
+              {/* Servidor de e-mail (SMTP): credenciais pra disparar comunicados de verdade — sem
+                  isso preenchido, o painel abaixo só SIMULA o envio (fica no log do servidor). */}
+              <div className="mt-5 rounded-xl border border-indigo-500/25 bg-indigo-500/5 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="size-4 text-indigo-400" />
+                  <span className="text-xs font-bold uppercase tracking-wide text-indigo-300">Servidor de E-mail (SMTP) — pra disparar comunicados de verdade</span>
+                </div>
+                <p className="text-[11px] text-[#87a992] leading-snug">
+                  Cole aqui as informações da conta de e-mail que vai disparar os comunicados. Pra Gmail: o host é <code className="text-indigo-300">smtp.gmail.com</code>, a porta é <code className="text-indigo-300">465</code>, o usuário é o próprio endereço de e-mail, e a senha precisa ser uma &quot;senha de app&quot; gerada nas configurações de segurança da conta Google (a senha normal não funciona). Enquanto isso não estiver preenchido, o disparo fica só simulado.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-bold text-[#87a992]">Servidor (host)</Label>
+                    <Input placeholder="smtp.gmail.com" value={smtp.host ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, host: e.target.value }))} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-indigo-500 text-white placeholder:text-[#374e40]" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-bold text-[#87a992]">Porta</Label>
+                    <Input placeholder="465" value={smtp.port ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, port: e.target.value }))} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-indigo-500 text-white placeholder:text-[#374e40]" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-bold text-[#87a992]">E-mail remetente</Label>
+                    <Input placeholder="souzagestaofundiaria@gmail.com" value={smtp.user ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, user: e.target.value }))} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-indigo-500 text-white placeholder:text-[#374e40]" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-bold text-[#87a992]">Senha de app</Label>
+                    <Input type="password" placeholder="•••• •••• •••• ••••" value={smtp.pass ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, pass: e.target.value }))} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-indigo-500 text-white placeholder:text-[#374e40]" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-bold text-[#87a992]">Nome de exibição (opcional)</Label>
+                    <Input placeholder="Souza CAD <souzagestaofundiaria@gmail.com>" value={smtp.from ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, from: e.target.value }))} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-indigo-500 text-white placeholder:text-[#374e40]" />
+                  </div>
+                </div>
+                <Button size="sm" onClick={salvarSmtpConfig} disabled={salvandoSmtp} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-10 px-4">
+                  {salvandoSmtp ? 'Salvando...' : 'Salvar Credenciais de E-mail'}
+                </Button>
               </div>
             </div>
           )}

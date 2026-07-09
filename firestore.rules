@@ -14,6 +14,14 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if ehMaster();
     }
+    // Credenciais de SMTP pra disparo de e-mail (senha de app do Gmail etc.): documento SEPARADO
+    // do config/{doc} geral acima — aqui só o master lê e escreve, nunca os clientes (o config/{doc}
+    // geral é de leitura livre pra qualquer autenticado, o que serviria bem pra WhatsApp/URL do app,
+    // mas jamais pra uma senha de e-mail). Esta regra, por ser mais específica, tem prioridade sobre
+    // a genérica de cima só para este documento.
+    match /config/emailSmtp {
+      allow read, write: if ehMaster();
+    }
 
     // Perfil de uso por conta: cada usuário escreve/lê o seu; o master lê E escreve todos (o painel
     // administrativo edita faturamento/CRM de qualquer cliente — sem o master no write, dava
@@ -21,6 +29,25 @@ service cloud.firestore {
     match /perfisUso/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || ehMaster());
       allow write: if request.auth != null && (request.auth.uid == uid || ehMaster());
+    }
+
+    // Convites de workspace (vincular ajudante a uma empresa pelo e-mail exato): id do documento
+    // é o e-mail normalizado do convidado. Só o dono da empresa cria (com o próprio uid como
+    // empresaUid); só o convidado (pelo próprio e-mail) ou o dono conseguem ler/apagar — ninguém
+    // mais enxerga ou adivinha convite de outra empresa.
+    match /convites/{email} {
+      allow read: if request.auth != null && (
+        (request.auth.token.email != null && request.auth.token.email.lower() == email)
+        || (resource != null && resource.data.empresaUid == request.auth.uid)
+        || ehMaster()
+      );
+      allow create: if request.auth != null && request.resource.data.empresaUid == request.auth.uid;
+      allow delete: if request.auth != null && (
+        resource.data.empresaUid == request.auth.uid
+        || (request.auth.token.email != null && request.auth.token.email.lower() == email)
+        || ehMaster()
+      );
+      allow update: if false;
     }
 
     // Cada usuário só lê/escreve os próprios dados (projetos, cadastros, banco de pontos).

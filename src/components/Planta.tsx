@@ -1472,7 +1472,7 @@ export default function Planta({
           const ey = cl(arrastando ? (dragTemp.baseY ?? 0) + dragTemp.dy : vy - Math.cos(a) * len, DRAW.y0, DRAW.y1);
           return (
             <g key={`dc${v.id}`}>
-              <line x1={vx} y1={vy} x2={ex} y2={ey} stroke="#475569" strokeWidth={0.6} strokeDasharray="4 3" />
+              <line x1={vx} y1={vy} x2={ex} y2={ey} stroke="#475569" strokeWidth={1.5} strokeDasharray="6 4" />
               {editavel && (
                 <circle cx={ex} cy={ey} r={7} fill="transparent" style={{ cursor: 'move' }}
                   onPointerDown={(e) => {
