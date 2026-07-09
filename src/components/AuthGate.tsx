@@ -87,7 +87,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           <LogoHorizontal className="mx-auto h-12" />
           <p className="text-xs text-muted-foreground">Entre para acessar seus projetos e cadastros na nuvem.</p>
         </div>
-        <Button className="w-full" disabled={ocupado} onClick={() => fazer(entrarGoogle)}><LogIn /> Entrar com Google</Button>
+        <Button className="w-full" disabled={ocupado} onClick={() => fazer(entrarGoogle)}><LogIn /> Cadastrar / Entrar com Google</Button>
         <div className="text-center text-xs text-muted-foreground">ou com e-mail</div>
         <div className="space-y-2">
           <div className="space-y-1"><Label>E-mail</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>

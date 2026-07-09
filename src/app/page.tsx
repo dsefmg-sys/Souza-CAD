@@ -4517,10 +4517,10 @@ export default function EditorPage() {
                     <ShieldCheck className="size-4 text-amber-500" /> Gerir SaaS
                   </button>
                 )}
-                {nuvemDisponivel && user && (
-                  <button type="button" onClick={() => { setPerfilMenuAberto(false); limparConfigLocalNaSaida(); sair(); }}
+                {nuvemDisponivel && (
+                  <button type="button" onClick={() => { setPerfilMenuAberto(false); limparConfigLocalNaSaida(); sair(); definirModoEntrada('boasVindas'); }}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-500/10 dark:text-red-400">
-                    <LogOut className="size-4" /> Sair
+                    <LogOut className="size-4" /> {user ? 'Sair' : 'Voltar ao Início'}
                   </button>
                 )}
               </div>
@@ -5513,7 +5513,7 @@ export default function EditorPage() {
                       ...(!ocultarCobranca || souMaster() ? [['Planos', souMaster() ? 'Cobrança do app: planos, preços e nível de cada cliente (admin)' : 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400']] : []),
 
                       ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400']] : []),
-                      ...(nuvemDisponivel && user ? [['Sair', `Sair (${user.email ?? ''})`, <LogOut key="i" className="size-4" />, () => { limparConfigLocalNaSaida(); sair(); }, 'text-red-600 dark:text-red-400']] : []),
+                      ...(nuvemDisponivel ? [['Sair', user ? `Sair (${user.email ?? ''})` : 'Voltar ao Início', <LogOut key="i" className="size-4" />, () => { limparConfigLocalNaSaida(); sair(); definirModoEntrada('boasVindas'); }, 'text-red-600 dark:text-red-400']] : []),
                     ] as [string, string, React.ReactNode, () => void, string][]).map(([rotuloBtn, dica, icone, acao, cor]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline"
                         className={`h-11 min-w-0 flex-col gap-0.5 overflow-hidden p-0.5 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:${cor} [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
