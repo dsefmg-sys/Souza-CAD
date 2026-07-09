@@ -118,9 +118,24 @@ export async function atualizarPerfilUsoPorAdmin(clientUid: string, patch: Parti
 export async function excluirPerfilUsoPorAdmin(clientUid: string): Promise<void> {
   if (!firebaseConfigurado) return;
   try {
-    const { deleteDoc, doc } = await import('firebase/firestore');
-    await deleteDoc(doc(fdb()!, 'perfisUso', clientUid));
+    const { deleteDoc, doc, collection, getDocs } = await import('firebase/firestore');
+    
+    // Lista de subcoleções do usuário a serem limpas
+    const subcolecoes = ['projetos', 'proprietarios', 'confrontantes', 'imoveis', 'cartorios'];
+    
+    for (const sub of subcolecoes) {
+      const colRef = collection(fdb()!, 'users', clientUid, sub);
+      const snap = await getDocs(colRef);
+      for (const d of snap.docs) {
+        await deleteDoc(d.ref);
+      }
+    }
+    
+    // Deleta o documento do usuário principal (contém configurações do técnico/escritório)
     await deleteDoc(doc(fdb()!, 'users', clientUid));
+    
+    // Deleta o perfil de uso (CRM)
+    await deleteDoc(doc(fdb()!, 'perfisUso', clientUid));
   } catch (e) {
     console.error('Falha ao excluir perfil de uso pelo admin:', e);
     throw new Error('Erro ao excluir dados administrativos no banco de dados.');

@@ -21,6 +21,7 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
   const [tipo, setTipo] = useState<'empresa' | 'autonomo' | null>(null);
   const [categoria, setCategoria] = useState<'tecnico' | 'tecnico-agricola' | 'engenheiro'>('tecnico');
   const [nomeEmpresa, setNomeEmpresa] = useState('');
+  const [cnpjEmpresa, setCnpjEmpresa] = useState('');
   const [nomeRt, setNomeRt] = useState('');
   const [formacao, setFormacao] = useState('');
   const [cft, setCft] = useState('');
@@ -42,7 +43,8 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
     salvarEscritorio({
       ...esc,
       nome: tipo === 'empresa' ? nomeEmpresa.trim() : nomeRt.trim(),
-      cnpj: '', endereco: '', telefone: telefone.trim(),
+      cnpj: tipo === 'empresa' ? cnpjEmpresa.trim() : '',
+      endereco: '', telefone: telefone.trim(),
       ramo: 'Agrimensura e Georreferenciamento', logoDataUrl: undefined,
     });
     const tec = carregarTecnico();
@@ -89,7 +91,10 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
         ) : (
           <div className="space-y-3">
             {tipo === 'empresa' && (
-              <div className="space-y-1"><Label>Nome da empresa</Label><Input value={nomeEmpresa} onChange={(e) => setNomeEmpresa(e.target.value)} placeholder="Ex.: Agrimensura Silva Ltda" /></div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="space-y-1"><Label>Nome da empresa</Label><Input value={nomeEmpresa} onChange={(e) => setNomeEmpresa(e.target.value)} placeholder="Ex.: Agrimensura Silva Ltda" /></div>
+                <div className="space-y-1"><Label>CNPJ da empresa</Label><Input value={cnpjEmpresa} onChange={(e) => setCnpjEmpresa(e.target.value)} placeholder="00.000.000/0000-00" /></div>
+              </div>
             )}
             {/* categoria do responsável: define as siglas (TRT/CFT do técnico x ART/CREA do engenheiro) */}
             <div className="space-y-1">

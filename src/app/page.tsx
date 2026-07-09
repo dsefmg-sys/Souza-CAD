@@ -250,6 +250,8 @@ export default function EditorPage() {
   const modoEntrada = useModoEntrada();
   const entrouSemLogin = nuvemDisponivel && !user && modoEntrada === 'semLogin';
   const [perfilMenuAberto, setPerfilMenuAberto] = useState(false);
+  const [avatarQuebrado, setAvatarQuebrado] = useState(false);
+  useEffect(() => { setAvatarQuebrado(false); }, [user]);
   const [pecasMenuAberto, setPecasMenuAberto] = useState(false); // no celular, as peças ficam num menu só
   const [perfil, setPerfil] = useState<PerfilUso | null>(null);
   const [configAssinatura, setConfigAssinatura] = useState<ConfigAssinatura | null>(null);
@@ -4489,9 +4491,9 @@ export default function EditorPage() {
           onMouseLeave={() => setPerfilMenuAberto(false)}>
           <button type="button" onClick={() => setPerfilMenuAberto((v) => !v)} title="Sua conta"
             className="rounded-full transition-transform hover:scale-105">
-            {user?.photoURL ? (
+            {user?.photoURL && !avatarQuebrado ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.photoURL} alt="Perfil" className="size-7 rounded-full border border-border object-cover" />
+              <img src={user.photoURL} alt="Perfil" className="size-7 rounded-full border border-border object-cover" onError={() => setAvatarQuebrado(true)} />
             ) : (
               <span className="flex size-7 items-center justify-center rounded-full border border-border bg-primary/15 text-[11px] font-bold text-primary">
                 {(user?.displayName || user?.email || 'V').slice(0, 1).toUpperCase()}
@@ -6935,7 +6937,7 @@ export default function EditorPage() {
 
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
-      <PrimeiroAcessoModal open={!setupOk && !entrouSemLogin} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } setTecnico(carregarTecnico()); setEscritorio(carregarEscritorio()); setSetupOk(true); empurrarConfigParaNuvem().catch(() => {}); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
+      <PrimeiroAcessoModal open={!setupOk && !entrouSemLogin} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } const tec = carregarTecnico(); const esc = carregarEscritorio(); setTecnico(tec); setEscritorio(esc); setSetupOk(true); empurrarConfigParaNuvem().catch(() => {}); sincronizarPerfil({ empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {}); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
 
       <ProjetoInfoModal
         open={infoAberto}
