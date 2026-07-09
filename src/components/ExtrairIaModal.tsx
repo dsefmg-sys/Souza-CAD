@@ -14,8 +14,10 @@ import { auth } from '@/lib/firebase/client';
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  /** Aplica os dados extraídos ao destino escolhido: 'imovel', 'novo' (novo confrontante) ou o id de um confrontante. */
-  onAplicar: (parcial: Partial<ImovelData>, destino: string) => void;
+  /** Aplica os dados extraídos ao destino escolhido: 'imovel', 'novo' (novo confrontante) ou o id de um confrontante.
+   *  `arquivo` vem preenchido só quando o usuário acabou de subir um arquivo NOVO nesta tela (não quando a
+   *  extração partiu de um documento já anexado) — o chamador decide se/como anexar ao projeto. */
+  onAplicar: (parcial: Partial<ImovelData>, destino: string, arquivo?: File) => void;
   /** Documento já anexado que a IA deve ler (parte da extração a partir de um arquivo guardado). */
   arquivoInicial?: { data: string; mimeType: string; nome: string } | null;
   /** Confrontantes existentes, para o roteamento "a quem pertence" depois da leitura. */
@@ -40,6 +42,10 @@ const CAMPOS: { chave: string; rotulo: string }[] = [
 export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoInicial, confrontantes = [], destinoInicial }: Props) {
   const [texto, setTexto] = useState('');
   const [arquivo, setArquivo] = useState<{ data: string; mimeType: string; nome: string } | null>(null);
+  // Guarda o File BRUTO só quando o usuário sobe um arquivo novo aqui na tela (não quando a
+  // extração parte de um documento já anexado) — é o que permite anexar ao projeto depois de
+  // aplicar, sem duplicar um anexo que já existia.
+  const [arquivoFile, setArquivoFile] = useState<File | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [campos, setCampos] = useState<Record<string, string> | null>(null);
@@ -48,8 +54,9 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
   const [dragOver, setDragOver] = useState(false);
 
   // Ao abrir vindo de um documento anexado, já carrega o arquivo e limpa o resultado anterior.
+  // `arquivoFile` fica de fora de propósito: esse arquivo já existe no projeto, não é upload novo.
   useEffect(() => {
-    if (open && arquivoInicial) { setArquivo(arquivoInicial); setCampos(null); setErro(''); setTexto(''); }
+    if (open && arquivoInicial) { setArquivo(arquivoInicial); setArquivoFile(null); setCampos(null); setErro(''); setTexto(''); }
   }, [open, arquivoInicial]);
   // Ao abrir, o destino começa no que foi pedido (imóvel, ou o confrontante de onde partiu o documento).
   useEffect(() => {
@@ -75,6 +82,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
         mimeType: file.type,
         nome: file.name
       });
+      setArquivoFile(file);
     };
     reader.readAsDataURL(file);
   };
@@ -139,9 +147,9 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
     for (const [k, v] of Object.entries(resto)) if (v.trim()) (parcial as Record<string, string>)[k] = v.trim();
     const areaNum = parseFloat((areaAnteriorHa || '').replace(',', '.'));
     if (Number.isFinite(areaNum) && areaNum > 0) parcial.areaAnterior = areaNum;
-    onAplicar(parcial, destino);
+    onAplicar(parcial, destino, arquivoFile ?? undefined);
     onOpenChange(false);
-    setTexto(''); setArquivo(null); setCampos(null);
+    setTexto(''); setArquivo(null); setArquivoFile(null); setCampos(null);
   }
 
   return (
@@ -200,7 +208,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
                   variant="ghost"
                   title="Remover o arquivo anexado"
                   className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => setArquivo(null)}
+                  onClick={() => { setArquivo(null); setArquivoFile(null); }}
                 >
                   <Trash2 className="size-4" />
                 </Button>

@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { listarProjetos } from './projects';
 import { listarArquivos } from './arquivosProjeto';
+import type { Projeto } from '../topo/types';
 
 /**
  * Gera um zip com TODOS os projetos salvos (dados em `projetos.json`) e todos os arquivos
@@ -71,6 +72,49 @@ export async function exportarBackupZip(): Promise<void> {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `backup-souza-cad-${dataParaArquivo()}.zip`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function nomeArquivoSeguro(s: string): string {
+  return (s || 'projeto').replace(/[\\/:*?"<>|]+/g, '-').trim();
+}
+
+/**
+ * Gera um zip de UM projeto só: os dados dele (`projeto.json` — imóvel, glebas, vértices,
+ * confrontantes, tudo) e todos os arquivos anexados (espelhos, PDFs, fotos…). É o mesmo
+ * conteúdo do backup completo, só que recortado pra um projeto — pra mandar pra outro
+ * escritório, guardar à parte, ou levar de uma máquina pra outra sem carregar tudo junto.
+ */
+export async function gerarBackupZipDeProjeto(projeto: Projeto): Promise<Blob> {
+  const zip = new JSZip();
+  zip.file('projeto.json', JSON.stringify(projeto, null, 2));
+
+  const arquivos = await listarArquivos(projeto.id).catch(() => []);
+  if (arquivos.length) {
+    const pasta = zip.folder('arquivos');
+    if (pasta) {
+      const metadados = arquivos.map((a) => ({
+        id: a.id, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho, criadoEm: a.criadoEm,
+        rotulo: a.rotulo, dono: a.dono, confrontanteId: a.confrontanteId, tipoDoc: a.tipoDoc,
+      }));
+      pasta.file('_metadados.json', JSON.stringify(metadados, null, 2));
+      for (const a of arquivos) {
+        // prefixa com o id pra nunca colidir nome de arquivo dentro da mesma pasta
+        pasta.file(`${a.id}_${a.nome}`, a.blob);
+      }
+    }
+  }
+
+  return zip.generateAsync({ type: 'blob' });
+}
+
+/** Gera o zip de um projeto e inicia o download no navegador. */
+export async function exportarProjetoZip(projeto: Projeto): Promise<void> {
+  const blob = await gerarBackupZipDeProjeto(projeto);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${nomeArquivoSeguro(projeto.nome)} - ${dataParaArquivo()}.zip`;
   a.click();
   URL.revokeObjectURL(a.href);
 }

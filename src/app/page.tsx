@@ -21,7 +21,7 @@ import ModalSpreadsheet from '@/components/ModalSpreadsheet';
 import { Logo, FundoRedeMarca } from '@/components/Logo';
 import DocumentosProjeto from '@/components/DocumentosProjeto';
 import NotaLegal from '@/components/NotaLegal';
-import type { ArquivoProjeto } from '@/lib/store/arquivosProjeto';
+import { salvarArquivo, type ArquivoProjeto } from '@/lib/store/arquivosProjeto';
 import ModalImport from '@/components/ModalImport';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -95,6 +95,7 @@ import { useAuth, sair } from '@/lib/firebase/auth';
 import { definirModoEntrada, useModoEntrada } from '@/lib/store/loginSkip';
 import { puxarConfigDaNuvem, empurrarConfigParaNuvem, limparConfigLocalNaSaida } from '@/lib/store/configNuvem';
 import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
+import { exportarProjetoZip } from '@/lib/store/backup';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
@@ -777,6 +778,7 @@ export default function EditorPage() {
   }, [user]);
   const [plantaConfig, setPlantaConfig] = useState<PlantaConfig>({});
   const [projetos, setProjetos] = useState<Projeto[]>([]);
+  const [exportandoProjetoId, setExportandoProjetoId] = useState<string | null>(null);
   const [sugProp, setSugProp] = useState<ProprietarioCad[]>([]);
   const [sugConf, setSugConf] = useState<ConfrontanteCad[]>([]);
   const [sugCns, setSugCns] = useState<string[]>([]);
@@ -4241,6 +4243,12 @@ export default function EditorPage() {
     if (p.id === projetoId) setNomeProjeto(novo);
     atualizarLista();
   }
+  async function exportarProjetoDaLista(p: Projeto) {
+    setExportandoProjetoId(p.id);
+    try { await exportarProjetoZip(migrarProjeto(p)); }
+    catch (e) { await avisar({ titulo: 'Exportar projeto', mensagem: 'Não consegui exportar este projeto: ' + ((e as Error).message || 'erro') }); }
+    finally { setExportandoProjetoId(null); }
+  }
 
   function exportarProjetoAtualJson() {
     try {
@@ -6280,6 +6288,9 @@ export default function EditorPage() {
                       {p.atualizadoEm ? <div className="text-[10px] text-muted-foreground">Salvo em {new Date(p.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div> : null}
                     </button>
                     <div className="flex shrink-0 items-center gap-1">
+                      <Button size="sm" variant="ghost" className="size-9 p-0" disabled={exportandoProjetoId === p.id} onClick={() => exportarProjetoDaLista(p)} title="Exportar (dados + arquivos anexados) em .zip">
+                        <Download className={`size-4 ${exportandoProjetoId === p.id ? 'animate-pulse' : ''}`} />
+                      </Button>
                       <Button size="sm" variant="ghost" className="size-9 p-0" onClick={() => renomear(p)} title="Renomear"><Pencil className="size-4" /></Button>
                       <Button size="sm" variant="ghost" className="size-9 p-0 text-destructive" onClick={() => remover(p.id)} title="Excluir"><Trash2 className="size-4" /></Button>
                     </div>
@@ -6325,7 +6336,7 @@ export default function EditorPage() {
       <ExtrairIaModal open={iaAberta} onOpenChange={(o) => { setIaAberta(o); if (!o) { setIaArquivoInicial(null); setIaConfrontanteId(null); } }} arquivoInicial={iaArquivoInicial}
         confrontantes={confrontantes.map((c) => ({ id: c.id, nome: c.nome }))}
         destinoInicial={iaConfrontanteId ?? 'imovel'}
-        onAplicar={(parcial, destino) => {
+        onAplicar={(parcial, destino, arquivo) => {
           // Mapeia os campos de "pessoa" do imóvel para os de um confrontante (reaproveitado nos dois casos).
           const p = parcial as Record<string, string>;
           const patchConf = (): Partial<Confrontante> => {
@@ -6338,15 +6349,25 @@ export default function EditorPage() {
             if (p.cns) patch.cns = p.cns;
             return patch;
           };
+          // Anexa o arquivo que a IA acabou de ler ao projeto — antes ele só existia na memória do
+          // navegador durante a extração e sumia depois; agora fica salvo junto, no dono certo.
+          const anexar = (dono: 'imovel' | 'confrontante', confrontanteId?: string) => {
+            if (arquivo && projetoId) {
+              salvarArquivo(projetoId, arquivo, { dono, confrontanteId, tipoDoc: 'ia-extracao' }).catch(() => {});
+            }
+          };
           if (destino === 'imovel') {
             setImovel((im) => ({ ...im, ...parcial }));
+            anexar('imovel');
             aviso('Dados da IA aplicados ao imóvel — confira antes de gerar as peças.');
           } else if (destino === 'novo') {
             const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
             setConfrontantes((cs) => [...cs, { id, nome: '', cpf: '', matricula: '', cns: '', ...patchConf() }]);
+            anexar('confrontante', id);
             aviso('Confrontante criado a partir do documento — pinte as divisas dele no mapa.');
           } else {
             setConfrontantes((cs) => cs.map((c) => (c.id === destino ? { ...c, ...patchConf() } : c)));
+            anexar('confrontante', destino);
             aviso('Dados da IA aplicados ao confrontante — confira antes de gerar as peças.');
           }
         }} />

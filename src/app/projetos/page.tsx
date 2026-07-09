@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Search, FolderOpen, Trash2, CheckCircle2, AlertTriangle, DownloadCloud, RotateCcw, XCircle } from 'lucide-react';
+import { ArrowLeft, Search, FolderOpen, Trash2, CheckCircle2, AlertTriangle, DownloadCloud, RotateCcw, XCircle, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Projeto } from '@/lib/topo/types';
@@ -10,7 +10,7 @@ import { listarProjetos, excluirProjeto, listarLixeira, restaurarProjeto, exclui
 import { migrarProjeto } from '@/lib/topo/glebas';
 import { conferirProjetoGlebas } from '@/lib/topo/conferenciaExportacao';
 import { carregarTecnico } from '@/lib/store/settings';
-import { exportarBackupZip } from '@/lib/store/backup';
+import { exportarBackupZip, exportarProjetoZip } from '@/lib/store/backup';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
 
 type FiltroStatus = 'todos' | 'prontos' | 'incompletos';
@@ -25,6 +25,7 @@ export default function ProjetosPage() {
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroStatus>('todos');
   const [gerandoBackup, setGerandoBackup] = useState(false);
+  const [exportandoId, setExportandoId] = useState<string | null>(null);
   const DIAS_LIXEIRA = 30;
 
   async function baixarBackup() {
@@ -32,6 +33,13 @@ export default function ProjetosPage() {
     try { await exportarBackupZip(); }
     catch (e) { await avisar({ titulo: 'Backup', mensagem: 'Não consegui gerar o backup: ' + ((e as Error).message || 'erro') }); }
     finally { setGerandoBackup(false); }
+  }
+
+  async function exportarProjeto(p: Projeto) {
+    setExportandoId(p.id);
+    try { await exportarProjetoZip(migrarProjeto(p)); }
+    catch (e) { await avisar({ titulo: 'Exportar projeto', mensagem: 'Não consegui exportar este projeto: ' + ((e as Error).message || 'erro') }); }
+    finally { setExportandoId(null); }
   }
 
   const carregarTudo = async () => {
@@ -206,6 +214,9 @@ export default function ProjetosPage() {
                     <FolderOpen className="size-3.5" /> Abrir
                   </Button>
                 </Link>
+                <Button size="sm" variant="outline" className="h-8 w-8 p-0" disabled={exportandoId === p.id} title="Exportar este projeto (dados + arquivos anexados) em .zip" aria-label={`Exportar o projeto ${p.nome}`} onClick={() => exportarProjeto(p)}>
+                  <Download className={`size-3.5 ${exportandoId === p.id ? 'animate-pulse' : ''}`} />
+                </Button>
                 <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Excluir" aria-label={`Excluir o projeto ${p.nome}`} onClick={() => remover(p.id, p.nome)}>
                   <Trash2 className="size-3.5 text-destructive" />
                 </Button>
