@@ -1,7 +1,7 @@
 import { getAuth } from 'firebase-admin/auth';
 import { getAdminApp } from './firebaseAdmin';
 
-const OWNER_EMAIL = 'dsefmg@gmail.com';
+export const OWNER_EMAIL = 'dsefmg@gmail.com';
 
 export interface Session {
   uid: string;

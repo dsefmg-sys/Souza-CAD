@@ -929,7 +929,9 @@ export default function EditorPage() {
         // Cadastro do RT/escritório é POR CONTA (multi-empresa): puxa da nuvem, atualiza a tela e
         // decide se ainda precisa do primeiro acesso. Se a conta for nova, o cache local é resetado
         // (em branco), então um usuário nunca herda o cadastro de outro no mesmo navegador.
-        puxarConfigDaNuvem().then((configurado) => {
+        // `forcar=true` quando um convite ACABOU de ser aceito agora: garante que os dados de quem
+        // convidou substituem qualquer cadastro próprio que o convidado já tivesse feito antes.
+        puxarConfigDaNuvem(!!empresaConvite).then((configurado) => {
           setTecnico(carregarTecnico());
           setEscritorio(carregarEscritorio());
           setSetupOk(souMaster() || configurado);
