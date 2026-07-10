@@ -111,7 +111,10 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   const [localPartesAdicionais, setLocalPartesAdicionais] = useState<PessoaQualificada[]>(partesAdicionais);
   const [msg, setMsg] = useState('');
   const [mostrarDicas, setMostrarDicas] = useState(true);
-  const permiteVariasPartes = localTipoAto === 'doacao' || localTipoAto === 'unificacao';
+  // Partes adicionais = mais de uma pessoa do lado do REQUERENTE (ex.: casal de compradores que não
+  // são cônjuges, herdeiros comprando juntos, mais de um donatário, coproprietários no remembramento).
+  const permiteVariasPartes = localTipoAto === 'venda' || localTipoAto === 'doacao' || localTipoAto === 'unificacao';
+  const rotuloParteAdicional = localTipoAto === 'venda' ? 'comprador' : localTipoAto === 'doacao' ? 'donatário' : 'coproprietário';
 
   useEffect(() => { setMostrarDicas(carregarPreferencias().mostrarDicasEducativas); }, []);
 
@@ -270,7 +273,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           {permiteVariasPartes && (
             <div className="space-y-3 rounded-lg border border-dashed p-3 bg-muted/5">
               <div className="flex items-center justify-between border-b pb-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Partes adicionais (mais de um donatário/coproprietário)</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Partes adicionais (mais de um {rotuloParteAdicional})</span>
                 <Button type="button" size="sm" variant="outline" onClick={addParte} className="h-7 text-xs"><UserPlus className="size-3 mr-1" /> Adicionar parte</Button>
               </div>
               {localPartesAdicionais.map((p, i) => (

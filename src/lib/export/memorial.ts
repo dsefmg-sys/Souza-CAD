@@ -273,6 +273,9 @@ export interface MemorialInput {
   dataExtenso?: string; // ex.: "Sábado, 20 de Dezembro de 2025"
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
+  /** Mais de um comprador/donatário/coproprietário do lado do REQUERENTE (ex.: casal que não são
+   *  cônjuges, herdeiros comprando juntos) — cada um sai com sua própria linha de assinatura. */
+  partesAdicionais?: PessoaQualificada[];
   zonaUtm?: number;
   /** 'servidao' gera o memorial descritivo de área de servidão/faixa de domínio (título e abertura próprios). */
   modo?: 'normal' | 'servidao';
@@ -280,7 +283,7 @@ export interface MemorialInput {
 
 export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob> {
   const input = sanitizarProfundo(inputBruto);
-  const { res, imovel, tecnico, confrontantes, confrontantePorLado, requerente, transmitente, zonaUtm } = input;
+  const { res, imovel, tecnico, confrontantes, confrontantePorLado, requerente, transmitente, partesAdicionais, zonaUtm } = input;
   // Defesa final: nunca gerar memorial com lacuna de código de vértice.
   const semCodigo = res.vertices.filter((v) => !v.codigoSigef).length;
   if (semCodigo > 0) throw new Error(`${semCodigo} vértice(s) sem código. Renumere os vértices antes de gerar o memorial.`);
@@ -397,23 +400,34 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     assinaturaComConjuge(linhas, parte.conjugeNome, parte.conjugeCpf).forEach((c) => children.push(c));
   }
 
-  // Bloco comprador (se houver)
-  if (imovel.comprador) {
+  // Bloco comprador (se houver) — mais os compradores/donatários/coproprietários ADICIONAIS
+  // (partesAdicionais, ex.: casal que não são cônjuges, herdeiros comprando juntos), cada um com
+  // sua própria assinatura, no mesmo espírito do loop de proprietariosAdicionais acima.
+  const partesCompradorValidas = (partesAdicionais ?? []).filter((p) => p.nome?.trim());
+  if (imovel.comprador || partesCompradorValidas.length > 0) {
     children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'COMPRADORES', bold: true, size: 24 })] }));
     children.push(p(mod('declProprietario')));
-    
-    const compLinhas = [
-      `Nome: ${imovel.comprador}`,
-      `CPF: ${imovel.cpfComprador || '—'}`,
-    ];
-    if (requerente?.rg) {
-      compLinhas.push(`RG: ${requerente.rg}`);
+
+    if (imovel.comprador) {
+      const compLinhas = [
+        `Nome: ${imovel.comprador}`,
+        `CPF: ${imovel.cpfComprador || '—'}`,
+      ];
+      if (requerente?.rg) {
+        compLinhas.push(`RG: ${requerente.rg}`);
+      }
+
+      const conjugeCompNome = requerente?.conjugeNome || undefined;
+      const conjugeCompCpf = requerente?.conjugeCpf || undefined;
+
+      assinaturaComConjuge(compLinhas, conjugeCompNome, conjugeCompCpf).forEach((c) => children.push(c));
     }
 
-    const conjugeCompNome = requerente?.conjugeNome || undefined;
-    const conjugeCompCpf = requerente?.conjugeCpf || undefined;
-
-    assinaturaComConjuge(compLinhas, conjugeCompNome, conjugeCompCpf).forEach((c) => children.push(c));
+    for (const parte of partesCompradorValidas) {
+      const linhas = [`Nome: ${parte.nome}`, `CPF: ${parte.cpf || '—'}`];
+      if (parte.rg) linhas.push(`RG: ${parte.rg}`);
+      assinaturaComConjuge(linhas, parte.conjugeNome, parte.conjugeCpf).forEach((c) => children.push(c));
+    }
   }
 
   // Bloco confrontantes (respeita posseiro/espólio e cônjuge)

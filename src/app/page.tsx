@@ -994,7 +994,17 @@ export default function EditorPage() {
     if (rascunhoRestaurado.current || !temaCarregadoDaNuvem) return;
     rascunhoRestaurado.current = true;
     try {
-      if (new URLSearchParams(window.location.search).get('projetoId')) return; // abrindo projeto específico
+      // Veio da tela "Projetos" (link ?projetoId=X, botão Abrir) — abre ESSE projeto específico em
+      // vez do rascunho automático. Limpa o parâmetro depois, pra um F5 não tentar abrir de novo.
+      const idDaUrl = new URLSearchParams(window.location.search).get('projetoId');
+      if (idDaUrl) {
+        abrir(idDaUrl).finally(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('projetoId');
+          window.history.replaceState({}, '', url.toString());
+        });
+        return;
+      }
       const raw = localStorage.getItem(rascunhoKey());
       if (raw && aplicarRascunho(JSON.parse(raw))) aviso('Trabalho anterior restaurado automaticamente.');
     } catch { /* ignore */ }
@@ -2447,10 +2457,15 @@ export default function EditorPage() {
   }
   // ponta de linha/polilinha/cota: SEMPRE encaixa no vértice mais próximo (mesmo com o imã
   // desligado) e com tolerância maior, para a extremidade poder ficar exatamente sobre um vértice.
+  // Tolerância era 10/12 m e foi reduzida pra 3/4 m (relato do dono, 10/07/2026): num levantamento
+  // com pontos importados PRÓXIMOS entre si (poucos metros), clicar num ponto às vezes "roubava" o
+  // clique pro vizinho — a tolerância antiga era generosa demais e o snap sempre pega o vértice mais
+  // perto do clique reconvertido, não necessariamente o que o dedo/mouse mirou. 3/4 m ainda cobre um
+  // clique impreciso, mas reduz bastante a chance de pular pro ponto errado quando há vizinhos perto.
   function pontoDesenho(lat: number, lon: number): PontoLL {
     let { leste, norte } = geoParaUtm(lat, lon, zona, hemisferio);
     const s = snapUtm(leste, norte, alvosSnap(), {
-      tolVerticeM: snapAtivo ? 12 : 10,
+      tolVerticeM: snapAtivo ? 4 : 3,
       segmentos: snapAtivo ? segmentosSnap() : [],
       pontoOrigem: (snapAtivo && desenhoBuffer.length > 0) ? { leste: desenhoBuffer[desenhoBuffer.length - 1].leste, norte: desenhoBuffer[desenhoBuffer.length - 1].norte } : null
     });
@@ -3024,6 +3039,7 @@ export default function EditorPage() {
           dataExtenso: dataPorExtenso(),
           requerente,
           transmitente,
+          partesAdicionais,
           zonaUtm: zona,
           modo
         })
@@ -3268,7 +3284,8 @@ export default function EditorPage() {
           confrontantePorLado,
           dataExtenso: dataPorExtenso(),
           requerente,
-          transmitente
+          transmitente,
+          partesAdicionais
         })
       });
       if (!resMemorial.ok) throw new Error('Falha ao gerar memorial no servidor.');

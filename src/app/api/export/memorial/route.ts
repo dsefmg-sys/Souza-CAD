@@ -16,6 +16,7 @@ export async function POST(req: Request) {
       dataExtenso,
       requerente,
       transmitente,
+      partesAdicionais,
       zonaUtm,
       modo
     } = body;
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
       dataExtenso,
       requerente,
       transmitente,
+      partesAdicionais,
       zonaUtm,
       modo
     });

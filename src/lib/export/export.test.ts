@@ -176,6 +176,24 @@ describe('memorial', () => {
     const blob = await gerarMemorialDocx({ res, imovel: imovelMulti, tecnico, confrontantes, confrontantePorLado });
     expect((await blob.arrayBuffer()).byteLength).toBeGreaterThan(2000);
   });
+
+  it('memorial com vários compradores (partesAdicionais) gera .docx sem erro', async () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    const imovelComComprador: ImovelData = { ...imovel, comprador: 'Primeiro Comprador', cpfComprador: '111.111.111-11' };
+    const partesAdicionais: PessoaQualificada[] = [
+      { ...PESSOA_VAZIA, nome: 'Segundo Comprador', cpf: '222.222.222-22' },
+      { ...PESSOA_VAZIA, nome: 'Terceiro Comprador', cpf: '333.333.333-33', conjugeNome: 'Cônjuge do Terceiro', conjugeCpf: '444.444.444-44' },
+    ];
+    const blob = await gerarMemorialDocx({ res, imovel: imovelComComprador, tecnico, confrontantes, confrontantePorLado, partesAdicionais });
+    expect((await blob.arrayBuffer()).byteLength).toBeGreaterThan(2000);
+  });
+
+  it('memorial com compradores adicionais MAS sem imovel.comprador ainda assim imprime a seção COMPRADORES', async () => {
+    const { res, confrontantes, confrontantePorLado } = preparar();
+    const partesAdicionais: PessoaQualificada[] = [{ ...PESSOA_VAZIA, nome: 'Único Comprador Extra', cpf: '555.555.555-55' }];
+    const blob = await gerarMemorialDocx({ res, imovel, tecnico, confrontantes, confrontantePorLado, partesAdicionais });
+    expect((await blob.arrayBuffer()).byteLength).toBeGreaterThan(2000);
+  });
 });
 
 describe('requerimento', () => {

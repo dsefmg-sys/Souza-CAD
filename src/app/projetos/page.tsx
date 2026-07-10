@@ -2,16 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Search, FolderOpen, Trash2, CheckCircle2, AlertTriangle, DownloadCloud, RotateCcw, XCircle, Download } from 'lucide-react';
+import { ArrowLeft, Search, FolderOpen, Trash2, CheckCircle2, AlertTriangle, DownloadCloud, RotateCcw, XCircle, Download, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Projeto } from '@/lib/topo/types';
-import { listarProjetos, excluirProjeto, listarLixeira, restaurarProjeto, excluirDefinitivo, purgarLixeiraAntiga } from '@/lib/store/projects';
+import { listarProjetos, excluirProjeto, listarLixeira, restaurarProjeto, excluirDefinitivo, purgarLixeiraAntiga, salvarProjeto } from '@/lib/store/projects';
 import { migrarProjeto } from '@/lib/topo/glebas';
 import { conferirProjetoGlebas } from '@/lib/topo/conferenciaExportacao';
 import { carregarTecnico } from '@/lib/store/settings';
 import { exportarBackupZip, exportarProjetoZip } from '@/lib/store/backup';
-import { confirmar, avisar } from '@/lib/ui/dialogos';
+import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
 
 type FiltroStatus = 'todos' | 'prontos' | 'incompletos';
 
@@ -33,6 +33,13 @@ export default function ProjetosPage() {
     try { await exportarBackupZip(); }
     catch (e) { await avisar({ titulo: 'Backup', mensagem: 'Não consegui gerar o backup: ' + ((e as Error).message || 'erro') }); }
     finally { setGerandoBackup(false); }
+  }
+
+  async function renomear(p: Projeto) {
+    const novo = await perguntar({ titulo: 'Renomear projeto', mensagem: 'Novo nome do projeto:', valorInicial: p.nome });
+    if (!novo || novo === p.nome) return;
+    await salvarProjeto({ ...p, nome: novo });
+    carregarTudo();
   }
 
   async function exportarProjeto(p: Projeto) {
@@ -214,6 +221,9 @@ export default function ProjetosPage() {
                     <FolderOpen className="size-3.5" /> Abrir
                   </Button>
                 </Link>
+                <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="Renomear" aria-label={`Renomear o projeto ${p.nome}`} onClick={() => renomear(p)}>
+                  <Pencil className="size-3.5" />
+                </Button>
                 <Button size="sm" variant="outline" className="h-8 w-8 p-0" disabled={exportandoId === p.id} title="Exportar este projeto (dados + arquivos anexados) em .zip" aria-label={`Exportar o projeto ${p.nome}`} onClick={() => exportarProjeto(p)}>
                   <Download className={`size-3.5 ${exportandoId === p.id ? 'animate-pulse' : ''}`} />
                 </Button>
