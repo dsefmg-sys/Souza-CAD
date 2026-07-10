@@ -64,9 +64,13 @@ service cloud.firestore {
         || empresaId == request.auth.uid
         || (resource != null && resource.data.membros[request.auth.uid] != null)
       );
-      // Só o dono cria a própria empresa (id do doc == seu uid).
-      allow create: if request.auth != null && empresaId == request.auth.uid
-        && request.resource.data.donoUid == request.auth.uid;
+      // Só o dono cria a própria empresa (id do doc == seu uid) — ou o master, que também pode
+      // criar/editar direto pelo painel administrativo (ex.: setar cobrança antes do dono nunca ter
+      // logado depois desta etapa existir).
+      allow create: if request.auth != null && (
+        ehMaster()
+        || (empresaId == request.auth.uid && request.resource.data.donoUid == request.auth.uid)
+      );
       allow update: if request.auth != null && (
         ehMaster()
         // admin da empresa (dono ou promovido) edita qualquer campo.

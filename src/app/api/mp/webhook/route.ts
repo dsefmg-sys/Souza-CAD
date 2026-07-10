@@ -14,11 +14,11 @@ export const runtime = 'nodejs';
 // webhook é a fonte de verdade que garante consistência; o retorno pelo navegador é só o atalho de
 // UX que já mostra "pago" na hora pro cliente, sem esperar a notificação chegar.
 
-// Isolado de propósito: hoje resolve pra `perfisUso/{uid}` (pagamento por pessoa). Quando a Etapa 2
-// (empresas com cobrança por empresa) existir, só esta função muda pra resolver `empresaId` — o
-// resto da rota (validar assinatura, buscar o pagamento, idempotência) não precisa mudar.
-function resolverAlvoCobranca(externalReference: string): { tipo: 'uid'; id: string } {
-  return { tipo: 'uid', id: externalReference };
+// Etapa 2b: cobrança é por EMPRESA, não por pessoa. `empresaId` == uid do dono (mesma decisão de
+// modelo da Etapa 2a) — como mp/preference ainda envia `session.uid` como external_reference, e só
+// o dono pode gerar cobrança (checado em mp/preference), isso já resolve certo sem mudar mais nada.
+function resolverAlvoCobranca(externalReference: string): { tipo: 'empresa'; id: string } {
+  return { tipo: 'empresa', id: externalReference };
 }
 
 export async function POST(req: NextRequest) {
@@ -80,19 +80,24 @@ export async function POST(req: NextRequest) {
     const paymentIdStr = String(payment.id);
 
     // Trava de idempotência: o Mercado Pago pode reenviar a mesma notificação mais de uma vez.
-    const registroRef = db.doc(`perfisUso/${alvo.id}/pagamentosMP/${paymentIdStr}`);
+    const registroRef = db.doc(`empresas/${alvo.id}/pagamentosMP/${paymentIdStr}`);
     const jaRegistrado = await registroRef.get();
     if (jaRegistrado.exists) {
       return NextResponse.json({ ok: true, ja_processado: true });
     }
 
     const agora = Date.now();
-    await db.doc(`perfisUso/${alvo.id}`).set({
-      statusPagamento: 'pago',
+    const statusPago = {
+      statusPagamento: 'pago' as const,
       atrasadoDesde: null,
       ultimoPagamentoId: paymentIdStr,
       ultimoPagamentoEm: agora,
-    }, { merge: true });
+    };
+    await db.doc(`empresas/${alvo.id}`).set(statusPago, { merge: true });
+    // Grava também em perfisUso/{uid} (mesmo uid — empresaId == uid do dono) como rede de segurança
+    // durante a transição pra cobrança por empresa: qualquer leitura antiga que ainda não migrou
+    // continua vendo o pagamento. Pode ser removido quando a Etapa 2b estiver validada em produção.
+    await db.doc(`perfisUso/${alvo.id}`).set(statusPago, { merge: true });
 
     await registroRef.set({
       paymentId: paymentIdStr,

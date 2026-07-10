@@ -102,7 +102,7 @@ import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
 import { carregarTiposDivisaCustom, salvarTipoDivisaCustom, type TipoDivisaCustom } from '@/lib/store/tiposDivisaCustom';
 import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, type PerfilUso } from '@/lib/store/perfilUso';
-import { garantirEmpresaDoWorkspace } from '@/lib/store/empresas';
+import { garantirEmpresaDoWorkspace, minhaEmpresa, type Empresa } from '@/lib/store/empresas';
 import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist, carregarVideosTutorial, type VideoTutorial } from '@/lib/store/suporte';
@@ -258,6 +258,10 @@ export default function EditorPage() {
   useEffect(() => { setAvatarQuebrado(false); }, [user]);
   const [pecasMenuAberto, setPecasMenuAberto] = useState(false); // no celular, as peças ficam num menu só
   const [perfil, setPerfil] = useState<PerfilUso | null>(null);
+  // Cobrança é POR EMPRESA (Etapa 2b do SaaS multi-empresa) — quando existe, manda no bloqueio de
+  // faturamento; sem ela ainda (empresa recém-criada, doc ainda propagando), cai pro `perfil`
+  // individual como antes, pra nunca bloquear ninguém à toa durante a transição.
+  const [empresaAtual, setEmpresaAtual] = useState<Empresa | null>(null);
   const [configAssinatura, setConfigAssinatura] = useState<ConfigAssinatura | null>(null);
   const [avisoPagamentoAberto, setAvisoPagamentoAberto] = useState(false);
   const [pagamentoVerificando, setPagamentoVerificando] = useState(false);
@@ -939,7 +943,8 @@ export default function EditorPage() {
         }).catch(() => {});
         // Garante o documento da empresa (Etapa 2 do SaaS): só cria se quem logou for o DONO do
         // workspace (não faz nada pra convidado/auxiliar — a empresa deles já deveria existir).
-        garantirEmpresaDoWorkspace().catch(() => {});
+        // Só DEPOIS de garantir é que busca — assim o dono já vê a própria empresa na 1ª visita.
+        garantirEmpresaDoWorkspace().then(() => minhaEmpresa()).then(setEmpresaAtual).catch(() => {});
       }).catch(() => {});
 
       // Sincroniza dados locais (salvos enquanto offline/sem permissão) com a nuvem
@@ -4440,11 +4445,15 @@ export default function EditorPage() {
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
 
   const { bloqueadoPorFaturamento, diasAtrasoRestantes } = useMemo(() => {
-    if (!perfil || perfil.statusPagamento !== 'atrasado' || souMaster() || configAssinatura?.ocultarCobranca) {
+    // Empresa manda quando já existe (cobrança compartilhada por todo mundo dela); sem empresa
+    // carregada ainda, cai pro perfil individual — mesmo comportamento de antes da Etapa 2b.
+    const status = empresaAtual?.statusPagamento ?? perfil?.statusPagamento;
+    const atrasadoDesdeBase = empresaAtual?.atrasadoDesde ?? perfil?.atrasadoDesde;
+    if (!status || status !== 'atrasado' || souMaster() || configAssinatura?.ocultarCobranca) {
       return { bloqueadoPorFaturamento: false, diasAtrasoRestantes: 7 };
     }
     const agora = Date.now();
-    const atrasadoDesde = perfil.atrasadoDesde || agora;
+    const atrasadoDesde = atrasadoDesdeBase || agora;
     const diffMs = agora - atrasadoDesde;
     const diasDecorridos = Math.floor(diffMs / (24 * 60 * 60 * 1000));
     const diasRestantes = Math.max(0, 7 - diasDecorridos);
@@ -4452,7 +4461,7 @@ export default function EditorPage() {
       bloqueadoPorFaturamento: diasRestantes <= 0,
       diasAtrasoRestantes: diasRestantes,
     };
-  }, [perfil, configAssinatura]);
+  }, [perfil, empresaAtual, configAssinatura]);
 
   async function iniciarPagamentoMercadoPago() {
     if (!user) return;

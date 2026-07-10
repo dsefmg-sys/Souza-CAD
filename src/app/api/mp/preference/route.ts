@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Preference } from 'mercadopago';
+import { getFirestore } from 'firebase-admin/firestore';
 import { verifySession } from '@/lib/apiAuth';
 import { getMercadoPagoClient } from '@/lib/mercadopago';
+import { getAdminApp } from '@/lib/firebaseAdmin';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +18,16 @@ export async function POST(req: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
   }
+
+  // Cobrança é POR EMPRESA (Etapa 2b): só o DONO gera pagamento — um colaborador/auxiliar vinculado
+  // a outra conta (workspaceUid apontando pra fora) não pode pagar em nome de outra empresa.
+  try {
+    const perfilSnap = await getFirestore(getAdminApp()).collection('perfisUso').doc(session.uid).get();
+    const workspaceUid = perfilSnap.exists ? (perfilSnap.data()?.workspaceUid as string | undefined) : undefined;
+    if (workspaceUid && workspaceUid !== session.uid) {
+      return NextResponse.json({ error: 'Só o responsável pela empresa pode gerar a cobrança. Peça pra ele assinar.' }, { status: 403 });
+    }
+  } catch { /* falha ao checar não deve travar quem realmente pode pagar — segue */ }
 
   const client = getMercadoPagoClient();
   if (!client) {

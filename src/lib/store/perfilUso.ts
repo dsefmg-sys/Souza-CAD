@@ -116,11 +116,24 @@ export async function termosAceitosNuvem(): Promise<boolean> {
   } catch { return false; }
 }
 
+const CAMPOS_COBRANCA_EMPRESA = ['statusPagamento', 'atrasadoDesde', 'mensalidade', 'vencimentoDia', 'observacoesAdmin'] as const;
+
 /** Atualiza dados de faturamento/CRM de um cliente pelo proprietário. */
 export async function atualizarPerfilUsoPorAdmin(clientUid: string, patch: Partial<PerfilUso>): Promise<void> {
   if (!firebaseConfigurado) return;
   try {
     await setDoc(doc(fdb()!, 'perfisUso', clientUid), patch, { merge: true });
+
+    // Campos de cobrança também espelham na EMPRESA (Etapa 2b) — quem manda no bloqueio agora é a
+    // empresa; sem isso, editar aqui não refletiria pra quem já está lendo o status por lá.
+    const patchCobranca: Record<string, unknown> = {};
+    for (const k of CAMPOS_COBRANCA_EMPRESA) if (k in patch) patchCobranca[k] = (patch as Record<string, unknown>)[k];
+    if (Object.keys(patchCobranca).length === 0) return;
+
+    const perfilSnap = await getDoc(doc(fdb()!, 'perfisUso', clientUid));
+    const workspaceUid = perfilSnap.exists() ? (perfilSnap.data() as PerfilUso).workspaceUid : undefined;
+    const empresaId = workspaceUid || clientUid;
+    await setDoc(doc(fdb()!, 'empresas', empresaId), patchCobranca, { merge: true });
   } catch (e) {
     console.error('Falha ao atualizar perfil de uso pelo admin:', e);
     throw new Error('Erro ao salvar dados administrativos no banco de dados.');
