@@ -89,6 +89,29 @@ export async function salvarAppUrl(url: string): Promise<void> {
   }
 }
 
+const CACHE_YOUTUBE = 'metrica.youtubePlaylistUrl';
+
+/** Link da playlist de vídeos-tutorial no YouTube, configurado pelo master. Vazio = botão some. */
+export async function carregarYoutubePlaylist(): Promise<string> {
+  if (firebaseConfigurado) {
+    try {
+      const s = await getDoc(doc(fdb()!, 'config', 'app'));
+      const url = (s.exists() ? String(s.data()?.youtubePlaylistUrl ?? '') : '');
+      try { localStorage.setItem(CACHE_YOUTUBE, url); } catch { /* ignore */ }
+      return url;
+    } catch { /* offline/regras — cai pro cache */ }
+  }
+  try { return localStorage.getItem(CACHE_YOUTUBE) ?? ''; } catch { return ''; }
+}
+
+export async function salvarYoutubePlaylist(url: string): Promise<void> {
+  const cleanUrl = url.trim();
+  try { localStorage.setItem(CACHE_YOUTUBE, cleanUrl); } catch { /* ignore */ }
+  if (firebaseConfigurado) {
+    await setDoc(doc(fdb()!, 'config', 'app'), { youtubePlaylistUrl: cleanUrl }, { merge: true });
+  }
+}
+
 // Credenciais de SMTP pra disparo de e-mail do painel administrativo (comunicados aos clientes do
 // SaaS): guardadas num doc SEPARADO (config/emailSmtp), não no config/app geral — porque config/app
 // é lido por QUALQUER usuário autenticado (ver firestore.rules), e uma senha de e-mail não pode

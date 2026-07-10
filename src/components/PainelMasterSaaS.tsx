@@ -12,7 +12,7 @@ import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, 
 import { listarProjetosDoUsuario, salvarProjeto, novoId } from '@/lib/store/projects';
 import type { Projeto } from '@/lib/topo/types';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
-import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, type ConfigSmtp } from '@/lib/store/suporte';
+import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, carregarYoutubePlaylist, salvarYoutubePlaylist, type ConfigSmtp } from '@/lib/store/suporte';
 import { auth } from '@/lib/firebase/client';
 
 function dataBR(ms?: number): string {
@@ -33,6 +33,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [zap, setZap] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
   const [appUrl, setAppUrl] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [modo3d, setModo3d] = useState(false);
   const [smtp, setSmtp] = useState<ConfigSmtp>({});
   const [salvandoSmtp, setSalvandoSmtp] = useState(false);
@@ -111,6 +112,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       }
       setModo3d(await carregarModo3dAtivado());
       setSmtp(await carregarConfigSmtp());
+      setYoutubeUrl(await carregarYoutubePlaylist());
     } catch (e) {
       console.error(e);
     } finally {
@@ -240,6 +242,15 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       flash('Link do App salvo!');
     } catch {
       flash('Erro ao salvar Link do App.');
+    }
+  }
+
+  async function salvarYoutubeUrlConfig() {
+    try {
+      await salvarYoutubePlaylist(youtubeUrl);
+      flash('Link da playlist salvo!');
+    } catch {
+      flash('Erro ao salvar o link da playlist.');
     }
   }
 
@@ -416,6 +427,16 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     <Button size="sm" onClick={salvarAppUrlConfig} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-10 px-4">Salvar</Button>
                   </div>
                   <p className="text-[10px] text-[#6b937a]">Link base usado nas peças e compartilhamento.</p>
+                </div>
+
+                {/* Playlist de vídeos no YouTube */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-[#87a992]">Playlist de vídeos-tutorial (YouTube)</Label>
+                  <div className="flex gap-2">
+                    <Input placeholder="https://www.youtube.com/playlist?list=..." value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
+                    <Button size="sm" onClick={salvarYoutubeUrlConfig} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-10 px-4">Salvar</Button>
+                  </div>
+                  <p className="text-[10px] text-[#6b937a]">Botão &quot;Vídeos&quot; do app abre esse link numa aba nova. Vazio = botão some.</p>
                 </div>
 
                 {/* Ocultar cobrança */}

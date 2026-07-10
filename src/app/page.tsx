@@ -11,7 +11,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
   Settings, LogOut, LogIn, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal, SlidersHorizontal, ChevronDown, Briefcase, Maximize2, PanelLeft,
-  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink,
+  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -104,7 +104,7 @@ import { carregarTiposDivisaCustom, salvarTipoDivisaCustom, type TipoDivisaCusto
 import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, type PerfilUso } from '@/lib/store/perfilUso';
 import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
-import { souMaster, carregarModo3dAtivado } from '@/lib/store/suporte';
+import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist } from '@/lib/store/suporte';
 import { carregarConfigAssinatura, type ConfigAssinatura } from '@/lib/store/assinatura';
 
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
@@ -498,6 +498,8 @@ export default function EditorPage() {
   // enquanto amadurece, o botão de 3D só aparece se o master ativar em config/app.
   const [modo3dAtivado, setModo3dAtivado] = useState(false);
   useEffect(() => { carregarModo3dAtivado().then(setModo3dAtivado).catch(() => {}); }, []);
+  const [videosUrl, setVideosUrl] = useState('');
+  useEffect(() => { carregarYoutubePlaylist().then(setVideosUrl).catch(() => {}); }, []);
   const [aba, setAba] = useState<Aba>('imovel');
   const [projetoId, setProjetoId] = useState<string | null>(null);
   const [nomeProjeto, setNomeProjeto] = useState('');
@@ -5744,6 +5746,24 @@ export default function EditorPage() {
                   className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   title="Tutorial em texto: passo a passo e temas de ajuda">
                   <HelpCircle className="size-3" /> Guia
+                </button>
+                {videosUrl && (
+                  <button type="button" onClick={() => window.open(videosUrl, '_blank', 'noopener,noreferrer')}
+                    className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
+                    title="Abre a playlist de vídeos-tutorial no YouTube (aba nova)">
+                    <Youtube className="size-3" /> Vídeos
+                  </button>
+                )}
+                <div className="mx-0.5 h-4 w-px bg-border" />
+                <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
+                  title={completo
+                    ? 'Modo Completo: todas as ferramentas. Clique para o Fácil.'
+                    : medio
+                      ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
+                      : 'Modo Fácil: só o essencial. Clique para o Médio.'}
+                  className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                  {completo ? <Briefcase className="size-3 text-sky-500" /> : medio ? <PencilRuler className="size-3 text-emerald-500" /> : <GraduationCap className="size-3 text-amber-500" />}
+                  {completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}
                 </button>
                 <button type="button" onClick={() => setBarraAudiosAberta(false)}
                   className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
