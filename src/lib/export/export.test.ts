@@ -210,6 +210,31 @@ describe('requerimento', () => {
     mkdirSync(OUT, { recursive: true });
     writeFileSync(resolve(OUT, 'requerimento_out.docx'), buf);
   });
+
+  it('venda com múltiplos compradores (partesAdicionais): todos aparecem qualificados e assinando', async () => {
+    const { res } = preparar();
+    const requerente: PessoaQualificada = { ...PESSOA_VAZIA, nome: 'Primeiro Comprador', cpf: '111.111.111-11' };
+    const transmitente: PessoaQualificada = { ...PESSOA_VAZIA, nome: imovel.proprietario, cpf: imovel.cpfProprietario };
+    const partesAdicionais: PessoaQualificada[] = [
+      { ...PESSOA_VAZIA, nome: 'Segundo Comprador', cpf: '222.222.222-22' },
+      { ...PESSOA_VAZIA, nome: 'Terceiro Comprador', cpf: '333.333.333-33' },
+    ];
+    const blob = await gerarRequerimentoDocx({
+      imovel, tecnico, requerente, transmitente, partesAdicionais,
+      tipoAto: 'venda', areaRealHa: res.areaHa, dataExtenso: '17 de março de 2026',
+    });
+    const buf = Buffer.from(await blob.arrayBuffer());
+    const zip = await JSZip.loadAsync(buf);
+    const xml = await zip.file('word/document.xml')!.async('string');
+    const texto = xml.replace(/<[^>]+>/g, ' ');
+    // os dois compradores extras aparecem qualificados (nome + CPF) e assinando, não só o principal
+    expect(texto).toContain('Segundo Comprador');
+    expect(texto).toContain('222.222.222-22');
+    expect(texto).toContain('Terceiro Comprador');
+    expect(texto).toContain('333.333.333-33');
+    expect(texto).toContain('PARTE ADICIONAL 1');
+    expect(texto).toContain('PARTE ADICIONAL 2');
+  });
 });
 
 describe('sigef ods', () => {
