@@ -8,7 +8,7 @@ import { zerarBancoPontos } from '@/lib/store/registro';
 import { TERMOS, TERMOS_VERSAO, TERMOS_TITULAR } from '@/lib/legal/termos';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { auth, firebaseConfigurado } from '@/lib/firebase/client';
-import { sincronizarPerfil, obterPerfilUsuario, criarConvite, listarConvitesEnviados, cancelarConvite, type ConvitePendente } from '@/lib/store/perfilUso';
+import { sincronizarPerfil, obterPerfilUsuario, criarConvite, listarConvitesEnviados, cancelarConvite, listarMembrosDoWorkspace, excluirMinhaConta, type ConvitePendente, type PerfilUso } from '@/lib/store/perfilUso';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -78,6 +78,8 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const [workspaceUid, setWorkspaceUid] = useState('');
   const [emailConviteInput, setEmailConviteInput] = useState('');
   const [convitesEnviados, setConvitesEnviados] = useState<ConvitePendente[]>([]);
+  const [membrosWorkspace, setMembrosWorkspace] = useState<PerfilUso[]>([]);
+  const [apagandoConta, setApagandoConta] = useState(false);
 
   async function desvincular() {
     const myUid = auth()?.currentUser?.uid;
@@ -144,8 +146,25 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
         }
       }).catch(() => {});
       listarConvitesEnviados().then(setConvitesEnviados).catch(() => {});
+      listarMembrosDoWorkspace().then(setMembrosWorkspace).catch(() => {});
     }
   }, [open]);
+
+  async function apagarMinhaConta() {
+    const aviso = membrosWorkspace.length > 0
+      ? `Você tem ${membrosWorkspace.length} colaborador(es) vinculado(s) ao seu workspace. Apagar sua conta apaga TODOS os projetos e cadastros dela — os colaboradores perdem o acesso a esses dados junto. Isso não pode ser desfeito. Quer mesmo apagar?`
+      : 'Isso apaga sua conta e TODOS os seus projetos e cadastros salvos na nuvem, sem volta. Quer mesmo apagar?';
+    if (!(await confirmar({ titulo: 'Apagar minha conta', mensagem: aviso, okLabel: 'Apagar minha conta', perigo: true }))) return;
+    setApagandoConta(true);
+    try {
+      await excluirMinhaConta();
+      flash('Conta apagada.');
+      window.location.reload();
+    } catch (e) {
+      flash((e as Error).message || 'Erro ao apagar a conta.');
+      setApagandoConta(false);
+    }
+  }
 
   const flash = (m: string) => {
     setMsg(m);
@@ -1020,6 +1039,17 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                       ))}
                     </div>
                   )}
+                  {membrosWorkspace.length > 0 && (
+                    <div className="space-y-1.5 pt-2 mt-1 border-t border-amber-500/20">
+                      <div className="text-[10px] font-bold uppercase text-muted-foreground">Já fazem parte da equipe</div>
+                      {membrosWorkspace.map((m) => (
+                        <div key={m.uid} className="flex items-center justify-between gap-2 rounded-sm bg-emerald-500/10 px-2 py-1 text-xs">
+                          <span className="truncate">{m.email}</span>
+                          <span className="shrink-0 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Ativo</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1038,6 +1068,18 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                       Desvincular
                     </Button>
                   )}
+                </div>
+
+                <div className="space-y-2 rounded-sm border border-destructive/30 bg-destructive/5 p-3">
+                  <div className="text-xs font-bold uppercase tracking-wide text-destructive flex items-center gap-1.5">
+                    <Trash2 className="size-3.5" /> Apagar minha conta
+                  </div>
+                  <p className="text-[11px] leading-tight text-muted-foreground">
+                    Apaga sua conta e todos os seus projetos e cadastros salvos na nuvem. Não pode ser desfeito.
+                  </p>
+                  <Button size="sm" variant="outline" disabled={apagandoConta} onClick={apagarMinhaConta} className="text-destructive border-destructive/40 hover:bg-destructive/10">
+                    {apagandoConta ? 'Apagando…' : 'Apagar minha conta'}
+                  </Button>
                 </div>
               </div>
             </div>

@@ -127,52 +127,95 @@ export async function atualizarPerfilUsoPorAdmin(clientUid: string, patch: Parti
   }
 }
 
+/** Apaga tudo que pertence a `uid`: projetos, cadastros, o credenciamento INCRA (se houver) e o
+ *  perfil de uso. Compartilhada entre a exclusão pelo admin e a autoexclusão — sempre escopada a UM
+ *  uid só, nunca ao workspace de outra pessoa (mesmo um convidado só tem essa árvore própria,
+ *  normalmente vazia, já que o trabalho dele fica em `users/{workspaceUid}` de quem convidou). */
+async function apagarDadosDoUsuario(uid: string): Promise<void> {
+  const { deleteDoc, doc, collection, getDocs, getDoc } = await import('firebase/firestore');
+
+  // 1. Tenta obter o credenciamentoIncra do usuário antes de deletar seu documento
+  const userDocRef = doc(fdb()!, 'users', uid);
+  const userSnap = await getDoc(userDocRef);
+  let prefixoCredenciado: string | null = null;
+  if (userSnap.exists()) {
+    const data = userSnap.data();
+    if (data?.tecnico?.credenciamentoIncra) {
+      prefixoCredenciado = data.tecnico.credenciamentoIncra;
+    }
+  }
+
+  // 2. Se o usuário tinha credenciamentoIncra cadastrado, limpa os pontos e o contador dele
+  if (prefixoCredenciado) {
+    const pontosColRef = collection(fdb()!, 'credenciados', prefixoCredenciado, 'pontos');
+    const pontosSnap = await getDocs(pontosColRef);
+    for (const d of pontosSnap.docs) {
+      await deleteDoc(d.ref);
+    }
+    await deleteDoc(doc(fdb()!, 'credenciados', prefixoCredenciado));
+  }
+
+  // 3. Lista de subcoleções do usuário a serem limpas
+  const subcolecoes = ['projetos', 'proprietarios', 'confrontantes', 'imoveis', 'cartorios'];
+
+  for (const sub of subcolecoes) {
+    const colRef = collection(fdb()!, 'users', uid, sub);
+    const snap = await getDocs(colRef);
+    for (const d of snap.docs) {
+      await deleteDoc(d.ref);
+    }
+  }
+
+  // Deleta o documento do usuário principal (contém configurações do técnico/escritório)
+  await deleteDoc(userDocRef);
+
+  // Deleta o perfil de uso (CRM)
+  await deleteDoc(doc(fdb()!, 'perfisUso', uid));
+}
+
 /** Exclui completamente o perfil de uso e dados do usuário pelo proprietário (master). */
 export async function excluirPerfilUsoPorAdmin(clientUid: string): Promise<void> {
   if (!firebaseConfigurado) return;
   try {
-    const { deleteDoc, doc, collection, getDocs, getDoc } = await import('firebase/firestore');
-    
-    // 1. Tenta obter o credenciamentoIncra do usuário antes de deletar seu documento
-    const userDocRef = doc(fdb()!, 'users', clientUid);
-    const userSnap = await getDoc(userDocRef);
-    let prefixoCredenciado: string | null = null;
-    if (userSnap.exists()) {
-      const data = userSnap.data();
-      if (data?.tecnico?.credenciamentoIncra) {
-        prefixoCredenciado = data.tecnico.credenciamentoIncra;
-      }
-    }
-
-    // 2. Se o usuário tinha credenciamentoIncra cadastrado, limpa os pontos e o contador dele
-    if (prefixoCredenciado) {
-      const pontosColRef = collection(fdb()!, 'credenciados', prefixoCredenciado, 'pontos');
-      const pontosSnap = await getDocs(pontosColRef);
-      for (const d of pontosSnap.docs) {
-        await deleteDoc(d.ref);
-      }
-      await deleteDoc(doc(fdb()!, 'credenciados', prefixoCredenciado));
-    }
-
-    // 3. Lista de subcoleções do usuário a serem limpas
-    const subcolecoes = ['projetos', 'proprietarios', 'confrontantes', 'imoveis', 'cartorios'];
-    
-    for (const sub of subcolecoes) {
-      const colRef = collection(fdb()!, 'users', clientUid, sub);
-      const snap = await getDocs(colRef);
-      for (const d of snap.docs) {
-        await deleteDoc(d.ref);
-      }
-    }
-    
-    // Deleta o documento do usuário principal (contém configurações do técnico/escritório)
-    await deleteDoc(userDocRef);
-    
-    // Deleta o perfil de uso (CRM)
-    await deleteDoc(doc(fdb()!, 'perfisUso', clientUid));
+    await apagarDadosDoUsuario(clientUid);
   } catch (e: unknown) {
     console.error('Falha ao excluir perfil de uso pelo admin:', e);
     throw new Error(`Erro ao excluir dados administrativos no banco: ${(e as Error)?.message || e}`);
+  }
+}
+
+/** Autoexclusão: o próprio usuário logado apaga a conta e todos os dados dele (projetos, cadastros,
+ *  banco de pontos, perfil). Depois apaga a conta de LOGIN também (Firebase Auth) — se a sessão for
+ *  antiga, o Firebase pede login recente antes de deixar apagar (erro `auth/requires-recent-login`),
+ *  então quem chama deve orientar a pessoa a sair e entrar de novo antes de tentar outra vez. */
+export async function excluirMinhaConta(): Promise<void> {
+  if (!firebaseConfigurado) throw new Error('Sem nuvem configurada — nada para apagar.');
+  const usuario = auth()?.currentUser;
+  if (!usuario) throw new Error('Você precisa estar logado para apagar a conta.');
+  try {
+    await apagarDadosDoUsuario(usuario.uid);
+    const { deleteUser } = await import('firebase/auth');
+    await deleteUser(usuario);
+  } catch (e: unknown) {
+    const err = e as { code?: string; message?: string };
+    if (err?.code === 'auth/requires-recent-login') {
+      throw new Error('Por segurança, o Firebase exige um login recente para apagar a conta. Saia e entre de novo, depois tente novamente.');
+    }
+    console.error('Falha ao apagar a própria conta:', e);
+    throw new Error(`Erro ao apagar a conta: ${err?.message || e}`);
+  }
+}
+
+/** Lista os membros já vinculados ao MEU workspace (convite já aceito) — cada um com o próprio
+ *  perfil de uso, `workspaceUid` apontando pro meu uid. Não inclui eu mesmo(a). */
+export async function listarMembrosDoWorkspace(): Promise<PerfilUso[]> {
+  const meuUid = uid();
+  if (!meuUid || !firebaseConfigurado) return [];
+  try {
+    const snap = await getDocs(query(collection(fdb()!, 'perfisUso'), where('workspaceUid', '==', meuUid)));
+    return snap.docs.map((d) => d.data() as PerfilUso);
+  } catch {
+    return [];
   }
 }
 

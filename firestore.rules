@@ -25,9 +25,15 @@ service cloud.firestore {
 
     // Perfil de uso por conta: cada usuário escreve/lê o seu; o master lê E escreve todos (o painel
     // administrativo edita faturamento/CRM de qualquer cliente — sem o master no write, dava
-    // "Erro ao salvar dados administrativos").
+    // "Erro ao salvar dados administrativos"). O dono de um workspace também LÊ (só leitura) o
+    // perfil de quem já aceitou o convite dele (resource.data.workspaceUid == meu uid) — é o que
+    // permite a tela "Equipe" mostrar quem já está vinculado, não só quem ainda não aceitou.
     match /perfisUso/{uid} {
-      allow read: if request.auth != null && (request.auth.uid == uid || ehMaster());
+      allow read: if request.auth != null && (
+        request.auth.uid == uid
+        || ehMaster()
+        || (resource != null && resource.data.workspaceUid == request.auth.uid)
+      );
       allow write: if request.auth != null && (request.auth.uid == uid || ehMaster());
     }
 
