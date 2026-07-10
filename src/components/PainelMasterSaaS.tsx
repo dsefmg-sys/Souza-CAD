@@ -766,6 +766,64 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                   {perfisFiltrados.map((p) => {
                     const ativo = (agora - (p.ultimoAcessoEm ?? p.ultimoProjetoEm ?? 0)) < DIAS_ATIVO;
                     const status = p.statusPagamento || 'atrasado';
+                    // Etapa 2b: cobrança é da EMPRESA. Quem é membro (vinculado a outra conta) não
+                    // edita faturamento próprio aqui — segue o status de quem ele ajuda. Editar só
+                    // faz sentido na linha do DONO (workspaceUid vazio ou apontando pra si mesmo).
+                    const souMembro = !!p.workspaceUid && p.workspaceUid !== p.uid;
+                    const dono = souMembro ? perfis.find((x) => x.uid === p.workspaceUid) : null;
+                    if (souMembro) {
+                      return (
+                        <tr key={p.uid} className="hover:bg-[#0c2415]/40 transition-colors">
+                          <td className="px-4 py-2.5 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedUids.includes(p.uid)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUids((prev) => [...prev, p.uid]);
+                                  setComunicadoExpandido(true);
+                                } else {
+                                  setSelectedUids((prev) => prev.filter((id) => id !== p.uid));
+                                }
+                              }}
+                              className="rounded-sm text-[#05140b] focus:ring-emerald-500 size-4 mt-0.5 border-[#12361d] accent-emerald-500 cursor-pointer"
+                            />
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="font-bold text-white leading-tight text-[13px]">{p.empresaNome || 'Sem Empresa'}</div>
+                            <div className="text-[10px] text-[#87a992] mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
+                          </td>
+                          <td className="px-4 py-2.5 text-[#87a992] select-all text-[11px]">{p.email || '—'}</td>
+                          <td className="px-2 py-2.5 text-center font-bold text-emerald-400 text-[13px]">{p.totalProjetos ?? 0}</td>
+                          <td colSpan={4} className="px-4 py-2.5 text-center text-[11px] text-[#6b937a] italic">
+                            Membro — cobrança segue a empresa de {dono?.empresaNome || dono?.email || 'outra conta'}
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-[#6b937a] border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-center">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg"
+                              title="Ver os projetos deste cliente (só leitura) — pra achar onde ele travou"
+                              onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)}
+                            >
+                              <FolderOpen className="size-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg"
+                              title="Excluir cadastro permanentemente"
+                              onClick={() => deletarCliente(p.uid, p.email || p.empresaNome)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    }
                     return (
                       <tr key={p.uid} className="hover:bg-[#0c2415]/40 transition-colors">
                         <td className="px-4 py-2.5 w-10 text-center">
