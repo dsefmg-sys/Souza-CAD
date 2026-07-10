@@ -79,7 +79,7 @@ export default function ModalImport({ isOpen, onClose, onConfirm }: Props) {
         <DialogHeader className="border-b pb-2">
           <DialogTitle className="text-lg font-bold">Importar Pontos</DialogTitle>
           <p className="text-xs text-muted-foreground">
-            Defina as opções geográficas e o número de parcelas para processar as coordenadas corretamente.
+            Diga onde fica o imóvel e quantas parcelas o arquivo tem, pra converter as coordenadas certinho.
           </p>
         </DialogHeader>
 
@@ -131,7 +131,7 @@ export default function ModalImport({ isOpen, onClose, onConfirm }: Props) {
 
           <div className="p-2.5 rounded-sm bg-muted/40 text-[11px] leading-tight text-muted-foreground border flex items-start gap-1.5">
             <Info className="size-4 text-primary shrink-0 mt-0.5" />
-            <span>A seleção do município ajuda a refinar a detecção automática do fuso UTM base para a conversão correta de coordenadas planorretangulares.</span>
+            <span>O município escolhido ajuda o sistema a acertar sozinho o fuso certo (a &quot;faixa&quot; usada pra converter as coordenadas do arquivo). Não sabe ao certo qual é o fuso? Pode deixar como está — dá pra conferir e corrigir na próxima tela, antes de confirmar a importação.</span>
           </div>
 
           <footer className="flex items-center justify-between border-t pt-4 mt-2">
