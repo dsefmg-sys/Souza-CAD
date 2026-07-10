@@ -35,7 +35,7 @@ function escolherZoom(spanLon: number, alvoPx: number): number {
   return 8;
 }
 
-export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number; padding?: number; aspecto?: number } = {}): Promise<string | null> {
+export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number; padding?: number; aspecto?: number; orcamentoChars?: number } = {}): Promise<string | null> {
   const rings = aneis.filter((a) => a.length >= 3);
   const pts = rings.flat();
   if (typeof document === 'undefined' || pts.length < 3) return null;
@@ -86,7 +86,11 @@ export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number
     }
   }
   await Promise.all(cargas);
-  if (carregados === 0) return null; // nenhum tile de satélite carregou (rede/CORS)
+  // Exige a MAIORIA dos tiles (não só "pelo menos 1") — com rede instável/CORS parcial, é comum
+  // só uma fração pequena carregar; antes disso já "passava" e salvava uma imagem quase toda no
+  // fundo cinza-claro de preenchimento (ctx.fillStyle acima), sem avisar ninguém. Isso é o que o
+  // dono via como "só um fundo claro" (10/07/2026) — o app achava que tinha dado certo.
+  if (carregados < nTiles * 0.6) return null;
 
   // contorno de cada gleba em BRANCO com linha forte (halo escuro + leve preenchimento) e os
   // vértices marcados — mostra ao cartório, com nitidez, onde o imóvel está.
@@ -106,6 +110,17 @@ export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number
     });
   });
 
-  try { return canvas.toDataURL('image/jpeg', 0.9); }
-  catch { return null; } // canvas tainted (CORS) — sai sem situação
+  // Reduz a qualidade JPEG progressivamente até caber no orçamento (padrão 700.000 caracteres —
+  // o mesmo limite que page.tsx usava pra decidir se salvava no projeto). Antes, uma imagem grande
+  // demais era gerada normalmente e só DEPOIS descartada em silêncio na hora de salvar (o dono via
+  // a situação bonita na hora, mas ela sumia — virava "Situação Indisponível" — ao reabrir o
+  // projeto). Gerar já dentro do orçamento evita esse descarte silencioso.
+  const orcamentoChars = opts.orcamentoChars ?? 700_000;
+  try {
+    for (const qualidade of [0.9, 0.75, 0.6, 0.45, 0.3]) {
+      const url = canvas.toDataURL('image/jpeg', qualidade);
+      if (url.length <= orcamentoChars) return url;
+    }
+    return null; // nem na qualidade mínima coube — melhor sem situação do que salvar truncada
+  } catch { return null; } // canvas tainted (CORS) — sai sem situação
 }

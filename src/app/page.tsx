@@ -3816,12 +3816,15 @@ export default function EditorPage() {
       ...gs.filter((g) => g.vertices.length >= 3).map((g) => g.vertices.map((v) => ({ lat: v.lat, lon: v.lon }))),
       ...objetos.filter((o) => o.tipo === 'polilinha' && o.preenchido && o.pontos.length >= 3).map((o) => o.pontos.map((p) => ({ lat: p.lat, lon: p.lon }))),
     ];
+    // gerarSituacao já garante que a imagem cabe no documento da nuvem (reduz a qualidade sozinha
+    // até caber, ou desiste) — antes essa checagem de tamanho era feita SÓ aqui, e uma imagem grande
+    // demais era gerada, mostrada na tela e depois descartada em silêncio ao salvar: a situação
+    // parecia boa na hora, mas sumia (virava "Situação Indisponível") ao reabrir o projeto.
     const url = await gerarSituacao(aneis);
     if (url) {
       setSituacaoUrl(url);
       setSituacaoVersSnapshot(snapshotDesenho);
-      // guarda no projeto pra não precisar recapturar ao reabrir (limite: cabe no doc da nuvem)
-      setPlantaConfig((c) => ({ ...c, situacaoDataUrl: url.length < 700_000 ? url : undefined }));
+      setPlantaConfig((c) => ({ ...c, situacaoDataUrl: url }));
       aviso('Planta de situação atualizada.');
     } else {
       // NÃO apaga a situação anterior quando a rebusca falha (antes zerava e a imagem sumia)
