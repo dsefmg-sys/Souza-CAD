@@ -58,7 +58,7 @@ import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte, RawPoint } from '@/lib/topo/types';
-import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, CAR_TEMAS, COR_CURVA_NIVEL, COR_CURVA_AUTO } from '@/lib/topo/objetos';
+import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, comprimentoPolilinha, distanciaCota, CAR_TEMAS, COR_CURVA_NIVEL, COR_CURVA_AUTO } from '@/lib/topo/objetos';
 import { gerarCurvasDeNivel, intervaloSugerido, pontoNoPoligono, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { estimarAltitudes } from '@/lib/topo/altitudes';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
@@ -6810,6 +6810,11 @@ export default function EditorPage() {
                   const o = objetos.find((x) => x.id === menuContexto.id);
                   return (
                     <div className="space-y-2 p-1 text-[11px]">
+                      {o && (
+                        <div className="rounded-sm bg-muted/40 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                          Comprimento: {distanciaCota(o).toFixed(2)} m
+                        </div>
+                      )}
                       <div>
                         <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Cor da cota</div>
                         <div className="grid grid-cols-5 gap-1.5">
@@ -6838,6 +6843,10 @@ export default function EditorPage() {
                   if (!o) return null;
                   return (
                     <div className="space-y-2 p-1 text-[11px] max-h-[350px] overflow-y-auto">
+                      <div className="rounded-sm bg-muted/40 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                        <div>Comprimento: {comprimentoPolilinha(o).toFixed(2)} m</div>
+                        {o.preenchido && o.pontos.length >= 3 && <div>Área: {areaPoligonoObjeto(o).toFixed(4)} ha</div>}
+                      </div>
                       {/* Cor da linha */}
                       <div>
                         <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Cor da Linha</div>
