@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { gerarAnuenciaDocumento, gerarAnuenciaLoteDocumento, type AnuenciaInput } from '@/lib/export/anuencia';
+import { confrontanteAssina } from '@/lib/export/confrontanteTexto';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import type { Confrontante, ImovelData, TecnicoData, Lado } from '@/lib/topo/types';
@@ -35,6 +36,8 @@ export default function AnuenciaModal({
 }) {
   const [ocupado, setOcupado] = useState(false);
   const [incluirVertices, setIncluirVertices] = useState(false);
+  // Bem público (estrada, rio...) não tem quem assine — nem entra na lista de cartas.
+  const confrontantesAssinam = confrontantes.filter(confrontanteAssina);
 
   const ladosDe = (id: string) => Object.entries(mapa).filter(([, cid]) => cid === id).map(([i]) => Number(i));
   const compartilhadosDe = (c: Confrontante) => ladosDe(c.id).map((i) => lados[i]).filter(Boolean);
@@ -61,10 +64,10 @@ export default function AnuenciaModal({
 
   async function baixarTodas() {
     if (!tecnico) { await avisar({ titulo: 'Responsável técnico', mensagem: 'Configure o responsável técnico primeiro nas configurações.' }); return; }
-    if (!confrontantes.length) return;
+    if (!confrontantesAssinam.length) return;
     setOcupado(true);
     try {
-      const doc = gerarAnuenciaLoteDocumento(confrontantes.map(inputDe));
+      const doc = gerarAnuenciaLoteDocumento(confrontantesAssinam.map(inputDe));
       const blob = await compatibilizarWord2007(await Packer.toBlob(doc));
       saveAs(blob, `Cartas de Anuencia - ${imovel.denominacao?.trim() || 'Imovel'}.docx`);
     } catch {
@@ -90,10 +93,11 @@ export default function AnuenciaModal({
           </div>
         )}
 
-        {confrontantes.length === 0 ? (
+        {confrontantesAssinam.length === 0 ? (
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Não há confrontantes neste projeto. Crie os confrontantes ou pinte os trechos de divisa no mapa
-            e volte aqui para gerar as cartas de anuência.
+            Não há confrontantes que precisem assinar neste projeto (bem público não conta — não tem
+            quem assine). Crie os confrontantes ou pinte os trechos de divisa no mapa e volte aqui
+            para gerar as cartas de anuência.
           </p>
         ) : (
           <>
@@ -124,7 +128,7 @@ export default function AnuenciaModal({
 
             {/* Uma carta por confrontante */}
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
-              {confrontantes.map((c) => {
+              {confrontantesAssinam.map((c) => {
                 const n = compartilhadosDe(c).length;
                 return (
                   <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border p-2.5">

@@ -10,7 +10,7 @@ import { calcular } from '../topo/calcular';
 import { detectarZona } from '../topo/coords';
 import type { ImovelData, TecnicoData } from '../topo/types';
 import { montarContentXml, montarContentXmlGlebas } from './sigefOds';
-import { construirNarrativa, construirNarrativaSegmentos, descreverConfrontante, gerarMemorialDocx } from './memorial';
+import { construirNarrativa, construirNarrativaSegmentos, descreverConfrontante, confrontanteAssina, gerarMemorialDocx } from './memorial';
 import type { Confrontante } from '../topo/types';
 import { gerarRequerimentoDocx } from './requerimento';
 import type { PessoaQualificada } from '../topo/types';
@@ -152,6 +152,32 @@ describe('memorial', () => {
     const t = descreverConfrontante(c);
     expect(t).toContain('na condição de usufrutuário(a)');
     expect(t).toContain('nu-proprietário(a) Nu Dono');
+  });
+
+  it('bem público: descrição é só o nome, sem CPF/matrícula, e não assina', () => {
+    const c: Confrontante = { id: 'pub', nome: 'Estrada Municipal', cpf: '', matricula: '', cns: '', condicao: 'publico' };
+    expect(descreverConfrontante(c)).toBe('Estrada Municipal');
+    expect(confrontanteAssina(c)).toBe(false);
+    // confrontante normal (sem condicao='publico') continua assinando
+    const normal: Confrontante = { id: 'n', nome: 'Fulano', cpf: '111', matricula: '222', cns: '' };
+    expect(confrontanteAssina(normal)).toBe(true);
+  });
+
+  it('memorial com confrontante bem público (estrada): sai descrito na narrativa, mas SEM bloco de assinatura', async () => {
+    const { res } = preparar();
+    const confrontantesComEstrada: Confrontante[] = [
+      { id: 'pub', nome: 'Estrada Municipal', cpf: '', matricula: '', cns: '', condicao: 'publico' },
+    ];
+    const confrontantePorLadoEstrada: Record<number, string> = { 0: 'pub' };
+    const blob = await gerarMemorialDocx({ res, imovel, tecnico, confrontantes: confrontantesComEstrada, confrontantePorLado: confrontantePorLadoEstrada });
+    const buf = Buffer.from(await blob.arrayBuffer());
+    const zip = await JSZip.loadAsync(buf);
+    const xml = await zip.file('word/document.xml')!.async('string');
+    const texto = xml.replace(/<[^>]+>/g, ' ');
+    // o nome aparece (narrado no trecho da divisa), mas não como "Nome: Estrada Municipal" nem CPF —
+    // esse é o padrão de linha que só o bloco de assinatura gera.
+    expect(texto).toContain('Estrada Municipal');
+    expect(texto).not.toContain('Nome: Estrada Municipal');
   });
 
   it('memorial com cônjuge e espólio gera .docx sem erro', async () => {

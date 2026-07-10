@@ -99,6 +99,8 @@ const DRAW = { x0: 95, y0: 26, x1: W - CARW - 26, y1: H - STRIP - 26 };
 function rotuloConfrontanteLinhas(c: Confrontante): string[] {
   const cond = c.condicao ?? 'proprietario';
   const linhas: string[] = [];
+  // Bem público (estrada, rio...): só o nome — sem CPF/matrícula/cônjuge, não é pessoa.
+  if (cond === 'publico') return [c.nome];
   if (cond === 'espolio') {
     linhas.push(/esp[óo]lio/i.test(c.nome) ? c.nome : `Espólio de ${c.nome}`);
     if (c.inventarianteNome) linhas.push(`Inventariante: ${c.inventarianteNome}`);
@@ -1418,12 +1420,15 @@ export default function Planta({
         const matLine = principalAll.find((l) => /^Matr[íi]cula/i.test(l)) ?? null;
         const principalSemMat = principalAll.filter((l) => l !== matLine);
 
+        // Bem público (estrada, rio...) não assina — sem titular pra colher assinatura, então a
+        // caixa vira só o nome, sem linha de firma nenhuma.
+        const semAssinatura = c.condicao === 'publico';
         const half = Math.max(86, fz * 9);
         const boxW = half * 2 + 16;
         const lineH = fz + 3;
         const signRoom = Math.max(40, fz * 4); // espaço acima de cada linha para a firma; cresce com a fonte pra nunca sobrepor texto vizinho
         const nText = (matLine ? 1 : 0) + principalSemMat.length + conjLines.length;
-        const nSig = temConjLinhas ? 2 : 1;
+        const nSig = semAssinatura ? 0 : (temConjLinhas ? 2 : 1);
         const boxH = nText * lineH + nSig * (signRoom + 6) + 14;
 
         const isDragging = dragTemp && dragTemp.kind === 'rotConf' && dragTemp.id === c.id;
@@ -1435,7 +1440,7 @@ export default function Planta({
         const placed: { kind: 'text' | 'sig'; t?: string; y: number }[] = [];
         let cur = top + 7;
         if (matLine) { cur += lineH; placed.push({ kind: 'text', t: matLine, y: cur - 2 }); }
-        cur += signRoom; placed.push({ kind: 'sig', y: cur }); cur += 6;
+        if (!semAssinatura) { cur += signRoom; placed.push({ kind: 'sig', y: cur }); cur += 6; }
         principalSemMat.forEach((t) => { cur += lineH; placed.push({ kind: 'text', t, y: cur - 2 }); });
         if (temConjLinhas) {
           cur += signRoom; placed.push({ kind: 'sig', y: cur }); cur += 6;

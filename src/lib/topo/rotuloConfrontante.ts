@@ -10,6 +10,9 @@ export function linhasRotuloConfrontante(c: Confrontante): string[] {
   const cond = c.condicao ?? 'proprietario';
   const linhas: string[] = [];
 
+  // Bem público (estrada, rio...): só o nome — sem CPF/matrícula/cônjuge, porque não é pessoa.
+  if (cond === 'publico') return [c.nome];
+
   if (cond === 'espolio') {
     linhas.push(/esp[óo]lio/i.test(c.nome) ? c.nome : `Espólio de ${c.nome}`);
     if (c.inventarianteNome) linhas.push(`Inventariante: ${c.inventarianteNome}`);

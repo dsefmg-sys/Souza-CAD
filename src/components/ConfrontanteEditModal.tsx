@@ -53,25 +53,30 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
                 <option value="proprietario">Proprietário(a)</option>
                 <option value="posseiro">Possuidor(a) / posseiro</option>
                 <option value="espolio">Espólio</option>
+                <option value="publico">Bem público (estrada, rio... não assina)</option>
               </select>
             </label>
-            <Campo label="Nome" value={c.nome} onChange={(v) => set({ nome: v })} ph="Nome do confrontante" />
-            <div className="grid grid-cols-2 gap-2">
-              <Campo label="CPF/CNPJ" value={c.cpf} onChange={(v) => set({ cpf: v })} aviso={avisoDoc(c.cpf)} />
-              {cond !== 'posseiro' && <Campo label="Matrícula" value={c.matricula} onChange={(v) => set({ matricula: v })} />}
-            </div>
-            {cond === 'espolio' ? (
-              <div className="grid grid-cols-2 gap-2">
-                <Campo label="Inventariante" value={c.inventarianteNome ?? ''} onChange={(v) => set({ inventarianteNome: v })} />
-                <Campo label="CPF do inventariante" value={c.inventarianteCpf ?? ''} onChange={(v) => set({ inventarianteCpf: v })} aviso={avisoDoc(c.inventarianteCpf ?? '')} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <Campo label="Cônjuge" value={c.conjugeNome ?? ''} onChange={(v) => set({ conjugeNome: v })} />
-                <Campo label="CPF do cônjuge" value={c.conjugeCpf ?? ''} onChange={(v) => set({ conjugeCpf: v })} aviso={avisoDoc(c.conjugeCpf ?? '')} />
-              </div>
+            <Campo label="Nome" value={c.nome} onChange={(v) => set({ nome: v })} ph={cond === 'publico' ? 'Ex.: Estrada Municipal, Rio das Pedras' : 'Nome do confrontante'} />
+            {cond !== 'publico' && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <Campo label="CPF/CNPJ" value={c.cpf} onChange={(v) => set({ cpf: v })} aviso={avisoDoc(c.cpf)} />
+                  {cond !== 'posseiro' && <Campo label="Matrícula" value={c.matricula} onChange={(v) => set({ matricula: v })} />}
+                </div>
+                {cond === 'espolio' ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Campo label="Inventariante" value={c.inventarianteNome ?? ''} onChange={(v) => set({ inventarianteNome: v })} />
+                    <Campo label="CPF do inventariante" value={c.inventarianteCpf ?? ''} onChange={(v) => set({ inventarianteCpf: v })} aviso={avisoDoc(c.inventarianteCpf ?? '')} />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Campo label="Cônjuge" value={c.conjugeNome ?? ''} onChange={(v) => set({ conjugeNome: v })} />
+                    <Campo label="CPF do cônjuge" value={c.conjugeCpf ?? ''} onChange={(v) => set({ conjugeCpf: v })} aviso={avisoDoc(c.conjugeCpf ?? '')} />
+                  </div>
+                )}
+                <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set({ cns: v })} />
+              </>
             )}
-            <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set({ cns: v })} />
           </div>
 
           {/* prévia do rótulo */}
@@ -83,7 +88,7 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
                 {linhas.map((l, i) => <div key={i} className="leading-snug">{l}</div>)}
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground">A linha de cima é o espaço da assinatura do anuente.</p>
+            <p className="text-[10px] text-muted-foreground">{cond === 'publico' ? 'Bem público não assina — sem espaço de firma.' : 'A linha de cima é o espaço da assinatura do anuente.'}</p>
           </div>
         </div>
 

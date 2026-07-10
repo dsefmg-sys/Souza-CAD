@@ -14,9 +14,17 @@ export function nomeConfrontante(c: Confrontante): string {
   return c.nome;
 }
 
+/** Confrontante PESSOA física/jurídica que precisa assinar anuência, ou bem público (estrada, rio...)
+ *  sem titular pra assinar nada? Fonte ÚNICA usada pelo memorial, pela planta e pela anuência, pra
+ *  não reimplementar essa checagem em 3 lugares divergentes. */
+export function confrontanteAssina(c: Confrontante | undefined): boolean {
+  return !!c?.nome && c.condicao !== 'publico';
+}
+
 /** Descrição do confrontante como aparece no memorial e na planilha SIGEF. */
 export function descreverConfrontante(c: Confrontante | undefined): string {
   if (!c) return 'confrontante não informado';
+  if (c.condicao === 'publico') return c.nome;
   if (c.descricaoExtra && c.descricaoExtra.trim()) return c.descricaoExtra.trim();
   const cond = c.condicao ?? 'proprietario';
   const partes: string[] = [];

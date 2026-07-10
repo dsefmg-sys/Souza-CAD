@@ -7779,15 +7779,28 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
   const addConfrontante = () =>
     onChange([...confrontantes, { id: `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`, nome: '', cpf: '', matricula: '', cns: '', condicao: 'proprietario' }]);
 
+  // Atalho pra bem público (estrada, rio...): já nasce com condicao='publico' (nunca assina) e um
+  // nome padrão que o usuário pode ajustar (ex.: trocar "Rio" por "Rio das Pedras").
+  const addConfrontanteEspecial = (nomePadrao: string) =>
+    onChange([...confrontantes, { id: `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`, nome: nomePadrao, cpf: '', matricula: '', cns: '', condicao: 'publico' }]);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
           Confrontantes{confrontantes.length ? ` (${confrontantes.length})` : ''}
         </span>
-        <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={addConfrontante}>
-          <Plus className="size-3.5" /> Adicionar
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" title="Estrada, rua, avenida... bem público, não assina" onClick={() => addConfrontanteEspecial('Estrada Municipal')}>
+            <Plus className="size-3.5" /> Estrada
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" title="Rio, córrego, ribeirão... bem público, não assina" onClick={() => addConfrontanteEspecial('Rio')}>
+            <Plus className="size-3.5" /> Rio
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={addConfrontante}>
+            <Plus className="size-3.5" /> Adicionar
+          </Button>
+        </div>
       </div>
       {confrontantes.length === 0 && (
         <p className="text-xs text-muted-foreground leading-relaxed">
@@ -7808,7 +7821,9 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
                   {idxs.length} lado(s){lados.length ? `: ${idxs.map((i) => lados[i]?.de.codigoSigef).filter(Boolean).join(', ')}` : ''}
                 </span>
                 <div className="flex items-center gap-2">
-                  <button className="text-[10px] text-primary hover:underline" onClick={() => exportarAnuenciaConfrontante(c)}>gerar carta (.docx)</button>
+                  {c.condicao !== 'publico' && (
+                    <button className="text-[10px] text-primary hover:underline" onClick={() => exportarAnuenciaConfrontante(c)}>gerar carta (.docx)</button>
+                  )}
                   <button className="text-[10px] text-primary hover:underline" onClick={() => onSalvarCadastro(c)}>salvar no cadastro</button>
                   <button className="text-muted-foreground/70 transition-colors hover:text-destructive" title="Excluir este confrontante do projeto" onClick={() => onExcluir(c.id)}>
                     <Trash2 className="size-3.5" />
@@ -7837,6 +7852,7 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
                   <option value="usufrutuario">Usufrutuário (assina com nu-proprietário)</option>
                   <option value="posseiro">Posseiro (sem matrícula)</option>
                   <option value="espolio">Espólio (assina inventariante)</option>
+                  <option value="publico">Bem público (estrada, rio... não assina)</option>
                 </select>
                 {(c.condicao ?? 'proprietario') !== 'proprietario' && (
                   <NotaLegal chave={

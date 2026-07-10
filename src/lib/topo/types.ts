@@ -154,8 +154,11 @@ export interface ProprietarioCad extends Partial<PessoaQualificada> {
  * - espolio: imóvel de pessoa falecida, assinado pelo inventariante
  * - condomino: coproprietário do imóvel vizinho (a anuência de um supre os demais, §10 art. 213 LRP)
  * - usufrutuario: usufrutuário do imóvel; assina junto com o nu-proprietário (se informado)
+ * - publico: bem público sem titular (estrada municipal/estadual, rio, ferrovia...) — não é pessoa,
+ *   então NUNCA entra com linha de assinatura na planta, no memorial nem nas cartas de anuência
+ *   (não tem quem assine). CPF/matrícula ficam sempre vazios pra este tipo.
  */
-export type CondicaoConfrontante = 'proprietario' | 'posseiro' | 'espolio' | 'condomino' | 'usufrutuario';
+export type CondicaoConfrontante = 'proprietario' | 'posseiro' | 'espolio' | 'condomino' | 'usufrutuario' | 'publico';
 
 export interface ConfrontanteCad {
   id: string;

@@ -18,8 +18,8 @@ function coordTexto(v: Vertex): string {
 
 // Descrição do confrontante: vive em confrontanteTexto.ts, compartilhada com a planilha SIGEF
 // pra memorial e planilha nunca mais divergirem. Re-exportada aqui pra manter os imports antigos.
-import { descreverConfrontante, nomeConfrontante } from './confrontanteTexto';
-export { descreverConfrontante, nomeConfrontante };
+import { descreverConfrontante, nomeConfrontante, confrontanteAssina } from './confrontanteTexto';
+export { descreverConfrontante, nomeConfrontante, confrontanteAssina };
 
 export function rumoDMS(azimuteGraus: number): string {
   let ang = azimuteGraus % 360;
@@ -434,7 +434,8 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: 'CONFRONTANTES', bold: true, size: 24 })] }));
   children.push(p(mod('declConfrontantes')));
   confrontantes.forEach((c) => {
-    if (!c.nome) return;
+    // Bem público (estrada, rio...) não assina — sem titular pra colher assinatura.
+    if (!confrontanteAssina(c)) return;
     blocoAssinaturaConfrontante(c).forEach((x) => children.push(x));
   });
 
