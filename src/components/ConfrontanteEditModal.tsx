@@ -51,6 +51,8 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
               <span className="font-semibold text-muted-foreground">Condição</span>
               <select className="h-8 rounded-sm border bg-background px-2 text-sm" value={cond} onChange={(e) => set({ condicao: e.target.value as CondicaoConfrontante })}>
                 <option value="proprietario">Proprietário(a)</option>
+                <option value="condomino">Condômino / coproprietário</option>
+                <option value="usufrutuario">Usufrutuário (assina com nu-proprietário)</option>
                 <option value="posseiro">Possuidor(a) / posseiro</option>
                 <option value="espolio">Espólio</option>
                 <option value="publico">Bem público (estrada, rio... não assina)</option>
@@ -63,6 +65,12 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
                   <Campo label="CPF/CNPJ" value={c.cpf} onChange={(v) => set({ cpf: v })} aviso={avisoDoc(c.cpf)} />
                   {cond !== 'posseiro' && <Campo label="Matrícula" value={c.matricula} onChange={(v) => set({ matricula: v })} />}
                 </div>
+                {cond === 'usufrutuario' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Campo label="Nu-proprietário (assina junto)" value={c.nuProprietarioNome ?? ''} onChange={(v) => set({ nuProprietarioNome: v })} />
+                    <Campo label="CPF do nu-proprietário" value={c.nuProprietarioCpf ?? ''} onChange={(v) => set({ nuProprietarioCpf: v })} aviso={avisoDoc(c.nuProprietarioCpf ?? '')} />
+                  </div>
+                )}
                 {cond === 'espolio' ? (
                   <div className="grid grid-cols-2 gap-2">
                     <Campo label="Inventariante" value={c.inventarianteNome ?? ''} onChange={(v) => set({ inventarianteNome: v })} />
