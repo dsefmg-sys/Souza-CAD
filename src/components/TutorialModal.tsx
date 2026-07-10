@@ -11,6 +11,7 @@ import {
 import { carregarWhatsappSuporte, linkWhatsapp } from '@/lib/store/suporte';
 import { TEMAS_AJUDA } from '@/lib/ajuda/temas';
 import { carregarPreferencias, salvarModo, salvarNivelExperiencia } from '@/lib/store/preferencias';
+import { prepararTextoParaFala, dividirEmFrases, melhorVozPt } from '@/lib/ajuda/voz';
 
 interface Props {
   open: boolean;
@@ -127,8 +128,12 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   const [tipoAudio, setTipoAudio] = useState<'tts' | 'gravado'>('tts');
   const [erroAudio, setErroAudio] = useState('');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Identifica a "rodada" de fala atual: incrementado sempre que a fala é interrompida ou trocada,
+  // pra descartar callbacks (onend/onvoiceschanged) de uma fala antiga que já não vale mais.
+  const audioSessaoRef = useRef(0);
 
   function pararAudio() {
+    audioSessaoRef.current += 1;
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
@@ -142,31 +147,60 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     setErroAudio('');
   }
 
-  function falarTexto(texto: string) {
+  // Espera a lista de vozes do navegador carregar (na primeira vez que a tela abre, ela costuma vir
+  // vazia — pegar a voz antes disso faz o navegador cair na voz padrão, geralmente a mais robótica).
+  function obterVozesPt(): Promise<SpeechSynthesisVoice[]> {
+    return new Promise((resolve) => {
+      const filtrar = () => window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('pt'));
+      const prontas = filtrar();
+      if (prontas.length) { resolve(prontas); return; }
+      const timeout = setTimeout(() => resolve(filtrar()), 600);
+      window.speechSynthesis.onvoiceschanged = () => {
+        clearTimeout(timeout);
+        resolve(filtrar());
+      };
+    });
+  }
+
+  async function falarTexto(texto: string) {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
 
-    const cleanText = texto.replace(/[*_#`[\]()]/g, '');
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'pt-BR';
+    const frases = dividirEmFrases(prepararTextoParaFala(texto));
+    audioSessaoRef.current += 1;
+    const sessao = audioSessaoRef.current;
 
-    const voices = window.speechSynthesis.getVoices();
-    const ptVoice = voices.find((v) => v.lang.startsWith('pt'));
-    if (ptVoice) utterance.voice = ptVoice;
+    const voz = melhorVozPt(await obterVozesPt());
+    if (sessao !== audioSessaoRef.current) return; // usuário trocou de passo/parou enquanto as vozes carregavam
 
-    utterance.onend = () => {
-      setFalando(false);
-      setPausado(false);
-    };
-    utterance.onerror = () => {
-      setFalando(false);
-      setPausado(false);
-    };
-
+    setTipoAudio('tts');
     setFalando(true);
     setPausado(false);
-    setTipoAudio('tts');
-    window.speechSynthesis.speak(utterance);
+
+    const falarFrase = (indice: number) => {
+      if (sessao !== audioSessaoRef.current) return;
+      if (indice >= frases.length) {
+        setFalando(false);
+        setPausado(false);
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(frases[indice]);
+      utterance.lang = voz?.lang || 'pt-BR';
+      if (voz) utterance.voice = voz;
+      utterance.rate = 0.97;
+      utterance.pitch = 1;
+
+      utterance.onend = () => falarFrase(indice + 1);
+      utterance.onerror = (e) => {
+        // "canceled"/"interrupted" acontecem sempre que a gente mesmo chama cancel() — não é falha real.
+        if (e.error === 'canceled' || e.error === 'interrupted') return;
+        console.warn('Erro na síntese de voz:', e.error);
+        falarFrase(indice + 1);
+      };
+      window.speechSynthesis.speak(utterance);
+    };
+
+    falarFrase(0);
   }
 
   function alternarAudio(texto: string, audioUrl?: string) {
