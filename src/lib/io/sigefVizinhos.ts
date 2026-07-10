@@ -268,7 +268,11 @@ export function parseVerticesSigefGml(xmlText: string): VerticeSigefGml[] {
     const lat = parseFloat(latitudeStr.replace(',', '.'));
     const lon = parseFloat(longitudeStr.replace(',', '.'));
 
-    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    // Guarda de faixa: `parseFloat` lê só o prefixo numérico da string, então uma tag com formato
+    // inesperado (typo, corrupção de copy-paste) pode gerar um número finito mas ABSURDO. Descarta
+    // igual ao caso "não conseguiu ler" — entra na diferença entre `.length` e `.totalNos` que quem
+    // chama já usa pra avisar de perda.
+    if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
       let elev = parseFloat(altitudeStr.replace(',', '.'));
       if (!Number.isFinite(elev)) {
         elev = 0;

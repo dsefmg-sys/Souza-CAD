@@ -159,6 +159,30 @@ describe('sigefVizinhos', () => {
     expect((vs as unknown as { totalNos: number }).totalNos).toBe(2);
   });
 
+  it('NAO perde em silencio um vertice com coordenada FORA DA FAIXA valida (-90/90, -180/180) — totalNos denuncia o descarte', () => {
+    const gmlText = `
+      <sigef:vertice>
+        <geo:Vértice>
+          <geo:codigo>COIN-M-0017</geo:codigo>
+          <geo:latitude>-20.672012</geo:latitude>
+          <geo:longitude>-41.947413</geo:longitude>
+        </geo:Vértice>
+      </sigef:vertice>
+      <sigef:vertice>
+        <geo:Vértice>
+          <geo:codigo>COIN-P-0128</geo:codigo>
+          <geo:latitude>-2067.2012</geo:latitude>
+          <geo:longitude>-41.945012</geo:longitude>
+        </geo:Vértice>
+      </sigef:vertice>
+    `;
+    const vs = parseVerticesSigefGml(gmlText);
+    // o 2º vértice tem latitude absurda (fora de -90/90) — é descartado, não vira coordenada errada
+    expect(vs.length).toBe(1);
+    expect(vs[0].id).toBe('COIN-M-0017');
+    expect((vs as unknown as { totalNos: number }).totalNos).toBe(2);
+  });
+
   it('parseia metadados da propriedade a partir de um GML/XML do SIGEF', () => {
     const xml = `
       <wfs:FeatureCollection>
