@@ -27,12 +27,6 @@ env:
   - variable: FIREBASE_SERVICE_ACCOUNT
     secret: FIREBASE_SERVICE_ACCOUNT
 
-  # Access Token do Mercado Pago (cria a cobrança e confirma pagamentos por id). Já estava
-  # configurado antes, mas só no console do Secret Manager — declarado aqui agora pra não depender
-  # de alguém lembrar de uma configuração feita fora do código.
-  - variable: MP_ACCESS_TOKEN
-    secret: MP_ACCESS_TOKEN
-
   # Segredo de assinatura do webhook do Mercado Pago (painel do MP: Suas integrações > aplicação >
   # Webhooks) — confirma que a notificação de pagamento veio mesmo do Mercado Pago, não de alguém
   # forjando a URL.
