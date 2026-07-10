@@ -659,6 +659,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedUids(perfisFiltrados.map((p) => p.uid));
+                            setComunicadoExpandido(true);
                           } else {
                             setSelectedUids([]);
                           }
@@ -690,6 +691,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                             onChange={(e) => {
                               if (e.target.checked) {
                                 setSelectedUids((prev) => [...prev, p.uid]);
+                                setComunicadoExpandido(true);
                               } else {
                                 setSelectedUids((prev) => prev.filter((id) => id !== p.uid));
                               }

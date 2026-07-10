@@ -82,6 +82,7 @@ interface Props {
   onContextMenuVertice?: (v: Vertex, x: number, y: number) => void;
   onContextMenuDivisa?: (v: Vertex, idx: number, x: number, y: number) => void;
   onDblClickVertice?: (v: Vertex, x: number, y: number) => void;
+  onDblClickDivisa?: (v: Vertex, idx: number, x: number, y: number) => void;
   onContextMenuMapa?: (lat: number, lon: number, x: number, y: number) => void;
   confrontantes?: Confrontante[];
   confrontantePorLado?: Record<number, string>;
@@ -1190,7 +1191,7 @@ export default function MapEditor(props: Props) {
     tamNomes = 11,
     tamCentro = 12,
     verticesIgnorados = [],
-    onIgnorarVertice, onConsiderarVertice, onDblClickVertice,
+    onIgnorarVertice, onConsiderarVertice, onDblClickVertice, onDblClickDivisa, onContextMenuDivisa,
     realceId = null,
     confrontantes = [],
     confrontantePorLado = {},
@@ -1477,6 +1478,35 @@ export default function MapEditor(props: Props) {
           <Polyline positions={anel} pathOptions={{ color: estilosCamadas.divisas?.cor ?? '#facc15', weight: estilosCamadas.divisas?.espessura ?? 2 }} />
         ) : null
       )}
+
+      {/* Área de duplo clique/menu por SEGMENTO (invisível, mais larga que a linha visível) — ao
+          contrário das duas camadas de apoio abaixo, cobre TODOS os lados, inclusive "linha-ideal"
+          (que elas pulam de propósito por não terem cor própria pra desenhar). */}
+      {camadasVisiveis.divisas !== false && (onDblClickDivisa || onContextMenuDivisa) && validos.length >= 2 && validos.map((v, i) => {
+        const prox = validos[(i + 1) % validos.length];
+        if (!prox || (validos.length < 3 && i === validos.length - 1)) return null;
+        const idxOriginal = vertices.findIndex((x) => x.id === v.id);
+        if (idxOriginal === -1) return null;
+        const a: [number, number] = [v.lat, v.lon];
+        const b: [number, number] = [prox.lat, prox.lon];
+        return (
+          <Polyline
+            key={`hit-div-${v.id}`}
+            positions={[a, b]}
+            pathOptions={{ color: '#000', opacity: 0, weight: 16 }}
+            eventHandlers={{
+              dblclick(e) {
+                L.DomEvent.stopPropagation(e);
+                onDblClickDivisa?.(v, idxOriginal, e.originalEvent.clientX, e.originalEvent.clientY);
+              },
+              contextmenu(e) {
+                L.DomEvent.stopPropagation(e);
+                onContextMenuDivisa?.(v, idxOriginal, e.originalEvent.clientX, e.originalEvent.clientY);
+              },
+            }}
+          />
+        );
+      })}
 
       {/* cor de apoio das divisas — deslocada pra FORA do polígono, deixando o traçado livre
           pra cor do confrontante (que fica sobre a linha) não se sobreporem */}

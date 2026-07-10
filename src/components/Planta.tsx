@@ -53,6 +53,7 @@ interface Props {
   onSelecObjeto?: (id: string | null) => void;
   onContextMenuObjeto?: (id: string, tipo: string, x: number, y: number) => void; // clique direito num objeto desenhado: abre o menu de edição
   onDblClickVertice?: (v: Vertex, x: number, y: number) => void; // duplo clique num vértice: abre o painel de ajuste rápido
+  onDblClickDivisa?: (v: Vertex, idx: number, x: number, y: number) => void; // duplo clique num segmento/divisa: abre o painel de ajuste rápido do lado
   onAntesEditar?: () => void; // dispara UMA foto pro desfazer no começo de cada arraste/edição da planta
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
@@ -246,7 +247,7 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
-  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
+  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
@@ -1033,6 +1034,19 @@ export default function Planta({
           </g>
         </>
       )}
+
+      {/* ---------- ÁREA DE DUPLO CLIQUE POR SEGMENTO (invisível, mais larga) ----------
+          Ao contrário da barra de apoio abaixo, cobre TODOS os lados (inclusive linha-ideal,
+          que não tem cor própria pra desenhar e por isso é pulada ali). */}
+      {editavel && onDblClickDivisa && vertices.map((v, i) => {
+        const a = anel[i], b = anel[(i + 1) % anel.length];
+        if (!a || !b) return null;
+        return (
+          <line key={`hit-div-${v.id}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+            stroke="transparent" strokeWidth={14} style={{ cursor: 'pointer' }}
+            onDoubleClick={(e) => { e.stopPropagation(); onDblClickDivisa(v, i, e.clientX, e.clientY); }} />
+        );
+      })}
 
       {/* ---------- LINHAS DE APOIO DAS DIVISAS ---------- */}
       {vertices.map((v, i) => {

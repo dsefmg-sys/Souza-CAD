@@ -5782,6 +5782,7 @@ export default function EditorPage() {
                 verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
                 onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
                 onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })}
+                onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
                 onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
                 onContextMenuMapa={(lat, lon, x, y) => {
                   // Com ferramenta ativa, botão direito LARGA a ferramenta (praxe de CAD) em vez
@@ -5914,7 +5915,7 @@ export default function EditorPage() {
                       resumoGlebas={resumoGlebas} verticesVizinho={verticesVizinho} parcelasCert={parcelasCert}
                       editavel={editarPlanta && !telaEstreita} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
-                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onAntesEditar={snap}
+                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
                       onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}
                       onExcluirObjeto={excluirObjetoPorId}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
@@ -6589,6 +6590,48 @@ export default function EditorPage() {
                 <div>E {vAtual.leste.toFixed(3)}</div>
                 <div>N {vAtual.norte.toFixed(3)}</div>
               </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* PAINEL DE AJUSTE RÁPIDO (duplo clique numa divisa/segmento) */}
+      {painelElem && painelElem.tipo === 'divisa' && painelElem.vertice && painelElem.verticeIdx != null && (() => {
+        const idx = painelElem.verticeIdx;
+        const vAtual = vertices.find((x) => x.id === painelElem.vertice!.id) ?? painelElem.vertice!;
+        const lado = lados[idx];
+        return (
+          <>
+            <div className="fixed inset-0 z-[1190]" onClick={() => setPainelElem(null)} onContextMenu={(e) => { e.preventDefault(); setPainelElem(null); }} />
+            <div className="fixed z-[1200] w-60 rounded-md border bg-background p-2 text-sm shadow-xl"
+              style={{ left: Math.min(painelElem.x, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 250), top: Math.min(painelElem.y, (typeof window !== 'undefined' ? window.innerHeight : 9999) - 240) }}>
+              <div className="mb-1.5 flex items-center justify-between border-b pb-1">
+                <span className="text-[11px] font-bold">Divisa {vAtual.nome || vAtual.codigoSigef}</span>
+                <button className="flex size-5 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" onClick={() => setPainelElem(null)}><X className="size-3.5" /></button>
+              </div>
+              {lado && (
+                <div className="mb-1.5 rounded-sm bg-muted/40 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                  <div>Comprimento: {lado.distancia.toFixed(2)} m</div>
+                  <div>Azimute: {lado.azimute.toFixed(2)}°</div>
+                </div>
+              )}
+              <label className="mb-1.5 flex items-center justify-between gap-2 text-[11px]">
+                <span className="font-semibold text-muted-foreground">Tipo</span>
+                <select className="h-7 w-32 rounded-sm border bg-background px-1 text-[11px]"
+                  value={vAtual.representacao || 'linha-ideal'}
+                  onChange={(e) => definirDivisaLado(vAtual.id, e.target.value)}>
+                  {opcoesDivisaTipo.map((r) => <option key={r} value={r}>{rotuloDivisaTipo(r)}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="font-semibold text-muted-foreground">Confrontante</span>
+                <select className="h-7 w-32 rounded-sm border bg-background px-1 text-[11px]"
+                  value={confrontantePorLado[idx] || ''}
+                  onChange={(e) => definirConfrontanteLado(idx, e.target.value)}>
+                  <option value="">—</option>
+                  {confrontantes.map((c) => <option key={c.id} value={c.id}>{c.nome || '(sem nome)'}</option>)}
+                </select>
+              </label>
             </div>
           </>
         );
