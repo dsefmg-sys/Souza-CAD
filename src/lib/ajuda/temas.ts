@@ -54,9 +54,9 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     id: 'confrontantes',
     titulo: 'Confrontantes e divisas',
     iniciante:
-      'Confrontante é quem faz divisa com o imóvel: pessoa, espólio, posseiro ou até um órgão público. Cada trecho do perímetro precisa de um confrontante atribuído — o memorial narra "confrontando com fulano" trecho a trecho, e o cartório exige isso completo. No app, use o pincel de confrontante no mapa: escolha o nome e clique nos vértices do trecho. Cada confrontante ganha uma cor, e a legenda no canto do mapa mostra quem é quem. O tipo de divisa (cerca, estrada, córrego...) também é pintado, com cor própria desenhada por fora do traçado.',
+      'Confrontante é quem faz divisa com o imóvel: pessoa, espólio, posseiro ou até um órgão público. Cada trecho do perímetro precisa de um confrontante atribuído — o memorial narra "confrontando com fulano" trecho a trecho, e o cartório exige isso completo. No app, use o pincel de confrontante no mapa: escolha o nome e clique nos vértices do trecho. Cada confrontante ganha uma cor, e a legenda no canto do mapa mostra quem é quem. O tipo de divisa (cerca, estrada, córrego...) também é pintado, com cor própria desenhada por fora do traçado. Atalho rápido: dê DUPLO CLIQUE num vértice para editar altitude/tipo na hora, ou num trecho da divisa para ver comprimento, azimute, tipo e confrontante daquele lado, sem abrir menu nenhum — funciona no mapa e na planta.',
     experiente:
-      'Pincel em dois cliques (do vértice inicial ao final, caminho todo). Condições especiais mudam a peça: posseiro sai sem matrícula e como "possuidor(a)"; espólio exige inventariante (sem ele a assinatura sai em branco — a conferência trava). Cônjuge de confrontante entra na planta com espaço de assinatura próprio. Divisas com representação por vértice (cerca/estrada/córrego/rio/açude/muro/vala) alimentam o memorial ("segue por cerca...") e a planilha SIGEF (tipo de limite por vértice).',
+      'Pincel em dois cliques (do vértice inicial ao final, caminho todo). Condições especiais mudam a peça: posseiro sai sem matrícula e como "possuidor(a)"; espólio exige inventariante (sem ele a assinatura sai em branco — a conferência trava). Cônjuge de confrontante entra na planta com espaço de assinatura próprio. Divisas com representação por vértice (cerca/estrada/córrego/rio/açude/muro/vala) alimentam o memorial ("segue por cerca...") e a planilha SIGEF (tipo de limite por vértice). Duplo clique num vértice ou num segmento abre o painel de ajuste rápido (altitude/tipo M-P-V no vértice; comprimento/azimute/tipo de divisa/confrontante no segmento) — mais rápido que o menu de botão direito pra edições pontuais.',
   },
   {
     id: 'area-sgl',
@@ -97,6 +97,22 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
       'O TRT é o Termo de Responsabilidade Técnica: o documento do seu conselho profissional dizendo que VOCÊ responde tecnicamente por aquele serviço. Cada projeto tem o seu número de TRT, emitido pra aquele trabalho específico — não existe um número padrão reaproveitável. No app, registre o número na tela de TRT do projeto; o memorial e as demais peças passam a citar esse número automaticamente.',
     experiente:
       'imovel.numeroTrt é por projeto (o campo "TRT padrão" foi removido das configurações de propósito). O memorial prioriza o número do projeto e só cai no cadastro do técnico como reserva de compatibilidade. A conferência de exportação acusa TRT ausente antes de gerar peça oficial.',
+  },
+  {
+    id: 'car',
+    titulo: 'CAR — Cadastro Ambiental Rural',
+    iniciante:
+      'O CAR é o cadastro que registra a situação ambiental do imóvel rural perante o Código Florestal: quanto de Reserva Legal ele precisa ter, quanto de Área de Preservação Permanente (APP — margem de rio, entorno de nascente, etc.) existe, e quanto já é vegetação nativa ou uso consolidado (lavoura, pasto). O botão CAR (visível no modo Médio ou Completo) faz essa conta pra você: escolha o bioma da região e o app calcula o percentual de reserva legal exigido e as faixas de APP conforme o tamanho dos rios e nascentes do Código Florestal. Se você já pintou essas áreas como camadas no mapa (achuras de APP, Reserva Legal, Vegetação, Uso Consolidado), o botão já traz os valores medidos automaticamente.',
+    experiente:
+      'CarModal usa o motor puro `lib/car/car.ts` (resumirCar): percentual de reserva legal por bioma (demais regiões 20%, Amazônia Legal 80%/35%/20% conforme floresta/cerrado/campos), faixas de APP por largura de curso d’água e raio de nascente (APP_NASCENTE_M), e APP de lago. Se o polígono tiver objetos com `carTema` (app/reservaLegal/vegetacao/usoConsolidado) desenhados e preenchidos no mapa, as áreas medidas alimentam o formulário sozinhas ao abrir. Exportação de shapefile por camada (onExportarShapefiles) e importação de shapefile existente (onImportarShapefile) já disponíveis; o modo CAR completo (desenhar e exportar direto pro SICAR) está em construção.',
+  },
+  {
+    id: 'dxf-editor',
+    titulo: 'Editor de DXF isolado',
+    iniciante:
+      'Além do editor do projeto de agrimensura, o Souza CAD tem um editor de DXF avulso — pra abrir e mexer em QUALQUER desenho técnico (por exemplo, um projeto elétrico ou hidráulico de terceiros), sem misturar com o seu projeto de imóvel. O botão fica no rodapé, com o ícone de régua e lápis. Dentro dele você abre um arquivo DXF, vê linhas, círculos, arcos e textos, arrasta pra mover, apaga, adiciona linha e texto novo, organiza por camadas (cada camada pode ter sua própria cor, ficar oculta ou travada contra edição) e no final baixa o DXF editado.',
+    experiente:
+      'DxfEditorModal: leitor `dxf.ts` (LINE/LWPOLYLINE/CIRCLE/ARC/TEXT/POINT), pan/zoom/enquadrar, seleção com mover/apagar, desenho de linha e texto, exportação em DXF R12. Camadas com cor por camada, visibilidade e trava individual (ring de destaque na camada ativa). Blocos (INSERT) ainda não são desenhados — se o DXF usar símbolos por bloco, eles não aparecem hoje. Ferramenta separada de propósito: não compartilha estado com o projeto de agrimensura em edição.',
   },
   {
     id: 'financeiro',

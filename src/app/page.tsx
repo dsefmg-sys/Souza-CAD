@@ -5740,6 +5740,11 @@ export default function EditorPage() {
               <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 p-1.5 shadow-xl backdrop-blur-sm">
                 <IntroAudioPill />
                 <TutorialAudioPill />
+                <button type="button" onClick={() => setTutorialAberto(true)}
+                  className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  title="Tutorial em texto: passo a passo e temas de ajuda">
+                  <HelpCircle className="size-3" /> Guia
+                </button>
                 <button type="button" onClick={() => setBarraAudiosAberta(false)}
                   className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   title="Fechar">
