@@ -102,6 +102,7 @@ import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
 import { carregarTiposDivisaCustom, salvarTipoDivisaCustom, type TipoDivisaCustom } from '@/lib/store/tiposDivisaCustom';
 import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, type PerfilUso } from '@/lib/store/perfilUso';
+import { garantirEmpresaDoWorkspace } from '@/lib/store/empresas';
 import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist, carregarVideosTutorial, type VideoTutorial } from '@/lib/store/suporte';
@@ -936,6 +937,9 @@ export default function EditorPage() {
           setEscritorio(carregarEscritorio());
           setSetupOk(souMaster() || configurado);
         }).catch(() => {});
+        // Garante o documento da empresa (Etapa 2 do SaaS): só cria se quem logou for o DONO do
+        // workspace (não faz nada pra convidado/auxiliar — a empresa deles já deveria existir).
+        garantirEmpresaDoWorkspace().catch(() => {});
       }).catch(() => {});
 
       // Sincroniza dados locais (salvos enquanto offline/sem permissão) com a nuvem

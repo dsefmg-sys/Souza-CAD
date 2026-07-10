@@ -279,6 +279,9 @@ export async function aceitarConviteSePendente(): Promise<string | null> {
     if (!s.exists()) return null;
     const c = s.data() as ConvitePendente;
     await sincronizarPerfil({ workspaceUid: c.empresaUid });
+    // Import dinâmico pra evitar ciclo estático (empresas.ts importa workspaceUidAtual daqui).
+    const { entrarComoMembro } = await import('./empresas');
+    await entrarComoMembro(c.empresaUid);
     await deleteDoc(doc(fdb()!, 'convites', meuEmail));
     return c.empresaNome || null;
   } catch {

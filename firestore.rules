@@ -56,6 +56,33 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // Empresa (Etapa 2 do SaaS multi-empresa): id do documento == uid do dono que a criou. Cobrança
+    // é POR EMPRESA (compartilhada por todo mundo em `membros`), não mais por pessoa solta.
+    match /empresas/{empresaId} {
+      allow read: if request.auth != null && (
+        ehMaster()
+        || empresaId == request.auth.uid
+        || (resource != null && resource.data.membros[request.auth.uid] != null)
+      );
+      // Só o dono cria a própria empresa (id do doc == seu uid).
+      allow create: if request.auth != null && empresaId == request.auth.uid
+        && request.resource.data.donoUid == request.auth.uid;
+      allow update: if request.auth != null && (
+        ehMaster()
+        // admin da empresa (dono ou promovido) edita qualquer campo.
+        || resource.data.membros[request.auth.uid] == 'admin'
+        // qualquer autenticado pode se ADICIONAR como 'membro' — só a própria chave em `membros`,
+        // nunca 'admin' nem qualquer outro campo. É o que deixa o convidado/auxiliar se registrar
+        // sem precisar de permissão de escrita geral no documento.
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membros'])
+          && request.resource.data.membros[request.auth.uid] == 'membro'
+          && request.resource.data.membros.diff(resource.data.membros).affectedKeys().hasOnly([request.auth.uid])
+        )
+      );
+      allow delete: if ehMaster();
+    }
+
     // Cada usuário só lê/escreve os próprios dados (projetos, cadastros, banco de pontos).
     match /users/{uid} {
       allow read, write: if request.auth != null && (

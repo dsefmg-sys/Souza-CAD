@@ -93,6 +93,8 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
         return;
       }
       await sincronizarPerfil({ workspaceUid: data.uid });
+      const { entrarComoMembro } = await import('@/lib/store/empresas');
+      await entrarComoMembro(data.uid);
       await puxarConfigDaNuvem(true);
       aceitarTermos().catch(() => {});
       onConcluir();
