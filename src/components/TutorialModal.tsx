@@ -125,6 +125,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   const [falando, setFalando] = useState(false);
   const [pausado, setPausado] = useState(false);
   const [tipoAudio, setTipoAudio] = useState<'tts' | 'gravado'>('tts');
+  const [erroAudio, setErroAudio] = useState('');
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   function pararAudio() {
@@ -138,6 +139,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     }
     setFalando(false);
     setPausado(false);
+    setErroAudio('');
   }
 
   function falarTexto(texto: string) {
@@ -187,11 +189,25 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
         setPausado(true);
       }
     } else {
+      setErroAudio('');
       if (audioUrl) {
         setTipoAudio('gravado');
         const audio = new Audio(audioUrl);
         audioRef.current = audio;
-        
+
+        const usarFallback = (motivo: string, erro: unknown) => {
+          console.warn(motivo, erro);
+          audioRef.current = null;
+          if (texto.trim()) {
+            setTipoAudio('tts');
+            falarTexto(texto);
+          } else {
+            setFalando(false);
+            setPausado(false);
+            setErroAudio('Não consegui tocar este áudio agora. Tente de novo em instantes.');
+          }
+        };
+
         audio.addEventListener('ended', () => {
           setFalando(false);
           setPausado(false);
@@ -199,19 +215,14 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
         });
 
         audio.addEventListener('error', () => {
-          console.warn('Erro ao carregar o arquivo gravado. Usando síntese de voz.');
-          audioRef.current = null;
-          setTipoAudio('tts');
-          falarTexto(texto);
+          usarFallback('Erro ao carregar o arquivo gravado.', undefined);
         });
 
         audio.play().then(() => {
           setFalando(true);
           setPausado(false);
         }).catch((e) => {
-          console.error('Falha ao rodar áudio gravado:', e);
-          setTipoAudio('tts');
-          falarTexto(texto);
+          usarFallback('Falha ao rodar áudio gravado:', e);
         });
       } else {
         setTipoAudio('tts');
@@ -336,24 +347,29 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             <DialogHeader className="sr-only"><DialogTitle>Central de ajuda</DialogTitle></DialogHeader>
             {seletorNivel}
 
-            <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/20">
-              <div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-primary"><Play className="size-4 text-emerald-500 fill-emerald-500" /> Audioguia Completo (MP3)</div>
-                <p className="mt-0.5 text-xs text-muted-foreground">Ouça a narração em áudio gravado sobre o Souza CAD.</p>
+            <div className="rounded-lg border p-3 bg-muted/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary"><Play className="size-4 text-emerald-500 fill-emerald-500" /> Audioguia Completo (MP3)</div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Ouça a narração em áudio gravado sobre o Souza CAD.</p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => alternarAudio('', '/tutorial.mp3')}
+                  className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors hover:bg-muted"
+                >
+                  {falando && tipoAudio === 'gravado' && !pausado ? (
+                    <><Pause className="size-3 text-amber-500 fill-amber-500" /> Pausar</>
+                  ) : (
+                    <><Play className="size-3 text-emerald-500 fill-emerald-500" /> Ouvir</>
+                  )}
+                </Button>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => alternarAudio('', '/tutorial.mp3')}
-                className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors hover:bg-muted"
-              >
-                {falando && tipoAudio === 'gravado' && !pausado ? (
-                  <><Pause className="size-3 text-amber-500 fill-amber-500" /> Pausar</>
-                ) : (
-                  <><Play className="size-3 text-emerald-500 fill-emerald-500" /> Ouvir</>
-                )}
-              </Button>
+              {erroAudio && (
+                <p className="mt-2 text-xs font-medium text-red-500">{erroAudio}</p>
+              )}
             </div>
 
             <button type="button" onClick={() => { setPasso(0); setTela('passos'); }}
