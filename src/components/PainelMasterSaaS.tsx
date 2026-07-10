@@ -6,13 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Users, Crown, RefreshCw, Shield, Sparkles, CreditCard,
-  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin, Copy
+  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin, Copy, Plus, Youtube
 } from 'lucide-react';
 import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
 import { listarProjetosDoUsuario, salvarProjeto, novoId } from '@/lib/store/projects';
 import type { Projeto } from '@/lib/topo/types';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
-import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, carregarYoutubePlaylist, salvarYoutubePlaylist, type ConfigSmtp } from '@/lib/store/suporte';
+import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, carregarYoutubePlaylist, salvarYoutubePlaylist, carregarVideosTutorial, salvarVideosTutorial, type ConfigSmtp, type VideoTutorial } from '@/lib/store/suporte';
 import { auth } from '@/lib/firebase/client';
 
 function dataBR(ms?: number): string {
@@ -34,6 +34,10 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [geminiKey, setGeminiKey] = useState('');
   const [appUrl, setAppUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [videos, setVideos] = useState<VideoTutorial[]>([]);
+  const [novoVideoTitulo, setNovoVideoTitulo] = useState('');
+  const [novoVideoUrl, setNovoVideoUrl] = useState('');
+  const [formNovoVideoAberto, setFormNovoVideoAberto] = useState(false);
   const [modo3d, setModo3d] = useState(false);
   const [smtp, setSmtp] = useState<ConfigSmtp>({});
   const [salvandoSmtp, setSalvandoSmtp] = useState(false);
@@ -113,6 +117,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       setModo3d(await carregarModo3dAtivado());
       setSmtp(await carregarConfigSmtp());
       setYoutubeUrl(await carregarYoutubePlaylist());
+      setVideos(await carregarVideosTutorial());
     } catch (e) {
       console.error(e);
     } finally {
@@ -251,6 +256,29 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       flash('Link da playlist salvo!');
     } catch {
       flash('Erro ao salvar o link da playlist.');
+    }
+  }
+
+  async function adicionarVideo() {
+    if (!novoVideoTitulo.trim() || !novoVideoUrl.trim()) { flash('Preencha o título e o link do vídeo.'); return; }
+    const novaLista = [...videos, { titulo: novoVideoTitulo.trim(), url: novoVideoUrl.trim() }];
+    try {
+      await salvarVideosTutorial(novaLista);
+      setVideos(novaLista);
+      setNovoVideoTitulo(''); setNovoVideoUrl(''); setFormNovoVideoAberto(false);
+      flash('Vídeo adicionado!');
+    } catch {
+      flash('Erro ao salvar o vídeo.');
+    }
+  }
+
+  async function removerVideo(idx: number) {
+    const novaLista = videos.filter((_, i) => i !== idx);
+    try {
+      await salvarVideosTutorial(novaLista);
+      setVideos(novaLista);
+    } catch {
+      flash('Erro ao remover o vídeo.');
     }
   }
 
@@ -436,7 +464,42 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     <Input placeholder="https://www.youtube.com/playlist?list=..." value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
                     <Button size="sm" onClick={salvarYoutubeUrlConfig} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-10 px-4">Salvar</Button>
                   </div>
-                  <p className="text-[10px] text-[#6b937a]">Botão &quot;Vídeos&quot; do app abre esse link numa aba nova. Vazio = botão some.</p>
+                  <p className="text-[10px] text-[#6b937a]">Link do botão &quot;Curso completo&quot;, dentro da lista de vídeos do app (abre a playlist inteira).</p>
+                </div>
+
+                {/* Vídeos por tema */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-[#87a992]">Vídeos tutoriais por tema</Label>
+                    <Button size="sm" variant="outline" onClick={() => setFormNovoVideoAberto((v) => !v)} className="h-8 gap-1 border-[#1e4d2e]/60 text-emerald-400 hover:bg-[#0c2415]">
+                      <Plus className="size-3.5" /> Adicionar vídeo tutorial
+                    </Button>
+                  </div>
+                  {formNovoVideoAberto && (
+                    <div className="space-y-2 rounded-lg border border-[#1e4d2e]/60 bg-[#07170d] p-3">
+                      <Input placeholder="Título (ex.: Como importar pontos do GNSS)" value={novoVideoTitulo} onChange={(e) => setNovoVideoTitulo(e.target.value)} className="h-9 text-sm bg-[#05140b] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
+                      <Input placeholder="https://www.youtube.com/watch?v=..." value={novoVideoUrl} onChange={(e) => setNovoVideoUrl(e.target.value)} className="h-9 text-sm bg-[#05140b] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => { setFormNovoVideoAberto(false); setNovoVideoTitulo(''); setNovoVideoUrl(''); }} className="text-[#87a992] hover:bg-[#0c2415]">Cancelar</Button>
+                        <Button size="sm" onClick={adicionarVideo} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold">Salvar vídeo</Button>
+                      </div>
+                    </div>
+                  )}
+                  {videos.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {videos.map((v, i) => (
+                        <div key={i} className="flex items-center gap-2 rounded-lg border border-[#1e4d2e]/60 bg-[#07170d] px-3 py-2">
+                          <Youtube className="size-4 shrink-0 text-red-500" />
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white" title={v.titulo}>{v.titulo}</span>
+                          <button type="button" onClick={() => removerVideo(i)} title="Remover este vídeo" className="rounded-sm p-1 text-[#87a992] hover:bg-[#12361d] hover:text-red-400 transition-colors">
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-[#6b937a]">Nenhum vídeo cadastrado ainda — o botão &quot;Vídeos&quot; do app só aparece quando houver ao menos 1 vídeo ou a playlist acima preenchida.</p>
+                  )}
                 </div>
 
                 {/* Ocultar cobrança */}

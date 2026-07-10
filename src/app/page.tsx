@@ -104,7 +104,7 @@ import { carregarTiposDivisaCustom, salvarTipoDivisaCustom, type TipoDivisaCusto
 import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, type PerfilUso } from '@/lib/store/perfilUso';
 import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
-import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist } from '@/lib/store/suporte';
+import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist, carregarVideosTutorial, type VideoTutorial } from '@/lib/store/suporte';
 import { carregarConfigAssinatura, type ConfigAssinatura } from '@/lib/store/assinatura';
 
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
@@ -500,6 +500,9 @@ export default function EditorPage() {
   useEffect(() => { carregarModo3dAtivado().then(setModo3dAtivado).catch(() => {}); }, []);
   const [videosUrl, setVideosUrl] = useState('');
   useEffect(() => { carregarYoutubePlaylist().then(setVideosUrl).catch(() => {}); }, []);
+  const [videosTutorial, setVideosTutorial] = useState<VideoTutorial[]>([]);
+  useEffect(() => { carregarVideosTutorial().then(setVideosTutorial).catch(() => {}); }, []);
+  const [videosListaAberta, setVideosListaAberta] = useState(false);
   const [aba, setAba] = useState<Aba>('imovel');
   const [projetoId, setProjetoId] = useState<string | null>(null);
   const [nomeProjeto, setNomeProjeto] = useState('');
@@ -5747,10 +5750,10 @@ export default function EditorPage() {
                   title="Tutorial em texto: passo a passo e temas de ajuda">
                   <HelpCircle className="size-3" /> Guia
                 </button>
-                {videosUrl && (
-                  <button type="button" onClick={() => window.open(videosUrl, '_blank', 'noopener,noreferrer')}
+                {(videosUrl || videosTutorial.length > 0) && (
+                  <button type="button" onClick={() => setVideosListaAberta(true)}
                     className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
-                    title="Abre a playlist de vídeos-tutorial no YouTube (aba nova)">
+                    title="Vídeos tutoriais por tema, ou o curso completo em playlist">
                     <Youtube className="size-3" /> Vídeos
                   </button>
                 )}
@@ -7118,6 +7121,37 @@ export default function EditorPage() {
       )}
 
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
+
+      {videosListaAberta && (
+        <>
+          <div className="fixed inset-0 z-[1290] bg-black/40" onClick={() => setVideosListaAberta(false)} />
+          <div className="fixed inset-0 z-[1300] flex items-center justify-center p-4" onClick={() => setVideosListaAberta(false)}>
+            <div className="w-full max-w-sm rounded-lg border bg-background p-3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-2 flex items-center justify-between border-b pb-2">
+                <span className="flex items-center gap-1.5 text-sm font-bold"><Youtube className="size-4 text-red-500" /> Vídeos tutoriais</span>
+                <button className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" onClick={() => setVideosListaAberta(false)}><X className="size-4" /></button>
+              </div>
+              <div className="max-h-[60vh] space-y-1.5 overflow-y-auto">
+                {videosUrl && (
+                  <button type="button" onClick={() => window.open(videosUrl, '_blank', 'noopener,noreferrer')}
+                    className="flex w-full items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-left text-sm font-bold text-primary hover:bg-primary/10 transition-colors">
+                    <Youtube className="size-4 shrink-0" /> Curso completo (playlist)
+                  </button>
+                )}
+                {videosTutorial.map((v, i) => (
+                  <button key={i} type="button" onClick={() => window.open(v.url, '_blank', 'noopener,noreferrer')}
+                    className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm font-semibold hover:bg-muted transition-colors">
+                    <Youtube className="size-4 shrink-0 text-red-500" /> {v.titulo}
+                  </button>
+                ))}
+                {!videosUrl && videosTutorial.length === 0 && (
+                  <p className="p-2 text-center text-xs text-muted-foreground">Nenhum vídeo cadastrado ainda.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
       <PrimeiroAcessoModal open={!setupOk && !entrouSemLogin} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } const tec = carregarTecnico(); const esc = carregarEscritorio(); setTecnico(tec); setEscritorio(esc); setSetupOk(true); empurrarConfigParaNuvem().catch(() => {}); sincronizarPerfil({ empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {}); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
 

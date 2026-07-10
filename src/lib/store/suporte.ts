@@ -112,6 +112,35 @@ export async function salvarYoutubePlaylist(url: string): Promise<void> {
   }
 }
 
+export interface VideoTutorial {
+  titulo: string;
+  url: string;
+}
+
+const CACHE_VIDEOS = 'metrica.videosTutorial';
+
+/** Lista de vídeos-tutorial (um por tema), cadastrados pelo master. Vazio = botão "Vídeos" some. */
+export async function carregarVideosTutorial(): Promise<VideoTutorial[]> {
+  if (firebaseConfigurado) {
+    try {
+      const s = await getDoc(doc(fdb()!, 'config', 'app'));
+      const lista = s.exists() ? s.data()?.videosTutorial : undefined;
+      const vids = Array.isArray(lista) ? (lista as VideoTutorial[]) : [];
+      try { localStorage.setItem(CACHE_VIDEOS, JSON.stringify(vids)); } catch { /* ignore */ }
+      return vids;
+    } catch { /* offline/regras — cai pro cache */ }
+  }
+  try { return JSON.parse(localStorage.getItem(CACHE_VIDEOS) ?? '[]'); } catch { return []; }
+}
+
+export async function salvarVideosTutorial(videos: VideoTutorial[]): Promise<void> {
+  const limpos = videos.map((v) => ({ titulo: v.titulo.trim(), url: v.url.trim() })).filter((v) => v.titulo && v.url);
+  try { localStorage.setItem(CACHE_VIDEOS, JSON.stringify(limpos)); } catch { /* ignore */ }
+  if (firebaseConfigurado) {
+    await setDoc(doc(fdb()!, 'config', 'app'), { videosTutorial: limpos }, { merge: true });
+  }
+}
+
 // Credenciais de SMTP pra disparo de e-mail do painel administrativo (comunicados aos clientes do
 // SaaS): guardadas num doc SEPARADO (config/emailSmtp), não no config/app geral — porque config/app
 // é lido por QUALQUER usuário autenticado (ver firestore.rules), e uma senha de e-mail não pode
