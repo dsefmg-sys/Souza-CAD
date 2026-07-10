@@ -93,11 +93,27 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   }
 
   async function enviarConvite() {
+    const paraEmail = emailConviteInput;
     try {
-      await criarConvite(emailConviteInput, esc.nome);
+      await criarConvite(paraEmail, esc.nome);
       setEmailConviteInput('');
-      flash('Convite enviado! A pessoa entra automaticamente ao criar a conta com esse e-mail.');
       listarConvitesEnviados().then(setConvitesEnviados).catch(() => {});
+      // O convite já funciona sem isso (a pessoa entra sozinha ao logar com esse e-mail) — o
+      // e-mail é só o aviso pra ela saber que precisa entrar. Por isso não trava o fluxo se falhar.
+      try {
+        const token = await auth()?.currentUser?.getIdToken();
+        const r = await fetch('/api/convite/enviar-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ paraEmail, empresaNome: esc.nome }),
+        });
+        const data = await r.json();
+        flash(data.enviado
+          ? 'Convite salvo e e-mail enviado! A pessoa entra automaticamente ao logar com esse e-mail.'
+          : 'Convite salvo, mas não consegui mandar o e-mail (avise a pessoa por outro meio pra ela entrar com esse e-mail).');
+      } catch {
+        flash('Convite salvo, mas não consegui mandar o e-mail (avise a pessoa por outro meio pra ela entrar com esse e-mail).');
+      }
     } catch (e) {
       flash((e as Error).message || 'Erro ao enviar convite.');
     }

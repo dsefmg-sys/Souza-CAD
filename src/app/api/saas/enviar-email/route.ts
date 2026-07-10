@@ -1,29 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifySession } from '@/lib/apiAuth';
-import { getAdminApp } from '@/lib/firebaseAdmin';
-import { getFirestore } from 'firebase-admin/firestore';
 import nodemailer from 'nodemailer';
-
-interface ConfigSmtp { host?: string; port?: string; user?: string; pass?: string; from?: string }
-
-// Preferência: credenciais coladas pelo dono no painel administrativo (config/emailSmtp — só o
-// master lê/escreve esse documento, ver firestore.rules). Isso existe pra ele não depender de ir
-// na Vercel toda vez que troca a senha do app do Gmail. Se não houver nada salvo ali, cai nas
-// variáveis de ambiente (uso local/alternativo).
-async function obterConfigSmtp(): Promise<ConfigSmtp> {
-  try {
-    const snap = await getFirestore(getAdminApp()).collection('config').doc('emailSmtp').get();
-    const d = snap.exists ? (snap.data() as ConfigSmtp) : {};
-    if (d?.host && d?.user && d?.pass) return d;
-  } catch { /* ignore — cai pro env abaixo */ }
-  return {
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-    from: process.env.SMTP_FROM,
-  };
-}
+import { obterConfigSmtp } from '@/lib/server/emailSmtp';
 
 export async function POST(req: Request) {
   const session = await verifySession(req);
