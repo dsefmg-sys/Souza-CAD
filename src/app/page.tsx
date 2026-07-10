@@ -6281,19 +6281,23 @@ export default function EditorPage() {
                 <SecaoTitulo>Projetos salvos</SecaoTitulo>
                 {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
                 {projetos.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/40">
-                    {/* Cartão inteiro é o toque que ABRE o projeto (jeito mobile); renomear/excluir ao lado. */}
-                    <button type="button" className="flex min-w-0 flex-1 flex-col items-start text-left" onClick={() => abrir(p.id)} title="Abrir este projeto">
+                  <div key={p.id} className="space-y-1.5 rounded-lg border p-3 transition-colors hover:bg-muted/40">
+                    {/* Título/dados numa linha própria — nunca disputa espaço com os botões, então
+                        nunca fica cortado por eles, mesmo com a barra lateral estreita. */}
+                    <div className="min-w-0">
                       <div className="w-full truncate text-sm font-semibold">{p.nome}</div>
                       <div className="text-xs text-muted-foreground">{contarVertices(p)} vértices{(p.glebas?.length ?? 0) > 1 ? ` · ${p.glebas!.length} glebas` : ''}</div>
                       {p.atualizadoEm ? <div className="text-[10px] text-muted-foreground">Salvo em {new Date(p.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div> : null}
-                    </button>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button size="sm" variant="ghost" className="size-9 p-0" disabled={exportandoProjetoId === p.id} onClick={() => exportarProjetoDaLista(p)} title="Exportar (dados + arquivos anexados) em .zip">
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Button size="sm" variant="outline" className="h-8 gap-1 text-[11px]" onClick={() => abrir(p.id)} title="Abrir este projeto">
+                        <FolderOpen className="size-3.5" /> Abrir
+                      </Button>
+                      <Button size="sm" variant="ghost" className="size-8 p-0" disabled={exportandoProjetoId === p.id} onClick={() => exportarProjetoDaLista(p)} title="Exportar (dados + arquivos anexados) em .zip">
                         <Download className={`size-4 ${exportandoProjetoId === p.id ? 'animate-pulse' : ''}`} />
                       </Button>
-                      <Button size="sm" variant="ghost" className="size-9 p-0" onClick={() => renomear(p)} title="Renomear"><Pencil className="size-4" /></Button>
-                      <Button size="sm" variant="ghost" className="size-9 p-0 text-destructive" onClick={() => remover(p.id)} title="Excluir"><Trash2 className="size-4" /></Button>
+                      <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => renomear(p)} title="Renomear"><Pencil className="size-4" /></Button>
+                      <Button size="sm" variant="ghost" className="size-8 p-0 text-destructive" onClick={() => remover(p.id)} title="Excluir"><Trash2 className="size-4" /></Button>
                     </div>
                   </div>
                 ))}
