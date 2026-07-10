@@ -417,18 +417,18 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
             <span className="font-semibold">Nova entidade vai para:</span>
             {camadas.map((c) => (
               <div key={c.nome} className={`flex items-center gap-1 rounded-sm border px-1.5 py-1 ${c.nome === camadaAtual ? 'ring-2 ring-primary' : ''}`}>
-                <button onClick={() => setCamadaAtual(c.nome)} title="Usar esta camada para novos desenhos" className="font-medium">{c.nome}</button>
+                <button onClick={() => setCamadaAtual(c.nome)} title="Usar esta camada para novos desenhos" className="rounded-sm px-1 font-medium hover:bg-muted hover:text-primary transition-colors">{c.nome}</button>
                 <input type="color" value={c.cor} title="Cor da camada"
                   onChange={(ev) => setCamadas((cs) => cs.map((x) => (x.nome === c.nome ? { ...x, cor: ev.target.value } : x)))}
                   className="size-5 cursor-pointer rounded-sm border-0 p-0" />
-                <button onClick={() => setCamadas((cs) => cs.map((x) => (x.nome === c.nome ? { ...x, visivel: !x.visivel } : x)))} title={c.visivel ? 'Ocultar camada' : 'Mostrar camada'}>
+                <button onClick={() => setCamadas((cs) => cs.map((x) => (x.nome === c.nome ? { ...x, visivel: !x.visivel } : x)))} title={c.visivel ? 'Ocultar camada' : 'Mostrar camada'} className="rounded-sm p-0.5 hover:bg-muted transition-colors">
                   {c.visivel ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5 text-muted-foreground" />}
                 </button>
-                <button onClick={() => setCamadas((cs) => cs.map((x) => (x.nome === c.nome ? { ...x, travada: !x.travada } : x)))} title={c.travada ? 'Destravar (voltar a poder editar)' : 'Travar (impede editar/apagar)'}>
+                <button onClick={() => setCamadas((cs) => cs.map((x) => (x.nome === c.nome ? { ...x, travada: !x.travada } : x)))} title={c.travada ? 'Destravar (voltar a poder editar)' : 'Travar (impede editar/apagar)'} className="rounded-sm p-0.5 hover:bg-muted transition-colors">
                   {c.travada ? <Lock className="size-3.5 text-amber-600" /> : <LockOpen className="size-3.5" />}
                 </button>
                 {c.nome !== '0' && (
-                  <button onClick={() => removerCamada(c.nome)} title="Remover camada (entidades voltam para a '0')"><X className="size-3.5" /></button>
+                  <button onClick={() => removerCamada(c.nome)} title="Remover camada (entidades voltam para a '0')" className="rounded-sm p-0.5 text-destructive hover:bg-destructive/10 transition-colors"><X className="size-3.5" /></button>
                 )}
               </div>
             ))}
