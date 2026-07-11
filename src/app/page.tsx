@@ -953,7 +953,7 @@ export default function EditorPage() {
           const atrasadoDesde = p.atrasadoDesde || agora;
           const diffMs = agora - atrasadoDesde;
           const diasDecorridos = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-          const diasRestantes = Math.max(0, 7 - diasDecorridos);
+          const diasRestantes = Math.max(0, 15 - diasDecorridos);
           if (diasRestantes > 0) {
             setAvisoPagamentoAberto(true);
           }
@@ -4700,6 +4700,13 @@ export default function EditorPage() {
         <div className="bg-red-950/90 border-b border-red-500/20 px-4 py-2.5 text-center text-xs text-red-200 flex items-center justify-center gap-2 backdrop-blur-sm z-[9999]">
           <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 animate-pulse" />
           <span>O faturamento deste workspace está suspenso. Seu acesso está em **modo de apenas leitura e exportação**. Alterações não serão salvas.</span>
+        </div>
+      )}
+      {perfil?.statusPagamento === 'atrasado' && !bloqueadoPorFaturamento && (
+        <div className="bg-amber-950/90 border-b border-amber-500/20 px-4 py-2.5 text-center text-xs text-amber-200 flex items-center justify-center gap-2 backdrop-blur-sm z-[9999]">
+          <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 animate-pulse" />
+          <span>Atenção: Constatamos uma pendência financeira em sua conta. Restam **{diasAtrasoRestantes} {diasAtrasoRestantes === 1 ? 'dia' : 'dias'}** de tolerância antes do bloqueio de alterações.</span>
+          <button onClick={iniciarPagamentoMercadoPago} className="underline font-bold text-amber-300 hover:text-amber-100 ml-2">Pagar Agora</button>
         </div>
       )}
       {/* Inputs de arquivo ocultos: SEMPRE montados (fora do cabeçalho), senão sumiriam junto com o

@@ -179,12 +179,12 @@ export function verificarBloqueioFaturamento(params: {
 }): BloqueioFaturamentoResult {
   const { statusPagamento, atrasadoDesde, souMaster: isMaster, ocultarCobranca, agora = Date.now() } = params;
   if (!statusPagamento || statusPagamento !== 'atrasado' || isMaster || ocultarCobranca) {
-    return { bloqueadoPorFaturamento: false, diasAtrasoRestantes: 7 };
+    return { bloqueadoPorFaturamento: false, diasAtrasoRestantes: 15 };
   }
   const base = atrasadoDesde || agora;
   const diffMs = agora - base;
   const diasDecorridos = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-  const diasRestantes = Math.max(0, 7 - diasDecorridos);
+  const diasRestantes = Math.max(0, 15 - diasDecorridos);
   return {
     bloqueadoPorFaturamento: diasRestantes <= 0,
     diasAtrasoRestantes: diasRestantes,

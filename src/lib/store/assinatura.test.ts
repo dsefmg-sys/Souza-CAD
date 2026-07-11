@@ -37,7 +37,7 @@ describe('Assinatura SaaS e Faturamento', () => {
         agora,
       });
       expect(res.bloqueadoPorFaturamento).toBe(false);
-      expect(res.diasAtrasoRestantes).toBe(7);
+      expect(res.diasAtrasoRestantes).toBe(15);
     });
 
     it('não bloqueia se o usuário for o master administrativo', () => {
@@ -49,7 +49,7 @@ describe('Assinatura SaaS e Faturamento', () => {
         agora,
       });
       expect(res.bloqueadoPorFaturamento).toBe(false);
-      expect(res.diasAtrasoRestantes).toBe(7);
+      expect(res.diasAtrasoRestantes).toBe(15);
     });
 
     it('não bloqueia se a cobrança estiver configurada como oculta', () => {
@@ -61,10 +61,10 @@ describe('Assinatura SaaS e Faturamento', () => {
         agora,
       });
       expect(res.bloqueadoPorFaturamento).toBe(false);
-      expect(res.diasAtrasoRestantes).toBe(7);
+      expect(res.diasAtrasoRestantes).toBe(15);
     });
 
-    it('não bloqueia mas reduz dias restantes quando dentro do limite de 7 dias', () => {
+    it('não bloqueia mas reduz dias restantes quando dentro do limite de 15 dias', () => {
       const res = verificarBloqueioFaturamento({
         statusPagamento: 'atrasado',
         atrasadoDesde: agora - 3 * umDiaMs,
@@ -73,13 +73,13 @@ describe('Assinatura SaaS e Faturamento', () => {
         agora,
       });
       expect(res.bloqueadoPorFaturamento).toBe(false);
-      expect(res.diasAtrasoRestantes).toBe(4); // 7 - 3 = 4
+      expect(res.diasAtrasoRestantes).toBe(12); // 15 - 3 = 12
     });
 
-    it('bloqueia completamente quando atraso ultrapassa 7 dias', () => {
+    it('bloqueia completamente quando atraso ultrapassa 15 dias', () => {
       const res = verificarBloqueioFaturamento({
         statusPagamento: 'atrasado',
-        atrasadoDesde: agora - 8 * umDiaMs,
+        atrasadoDesde: agora - 16 * umDiaMs,
         souMaster: false,
         ocultarCobranca: false,
         agora,
