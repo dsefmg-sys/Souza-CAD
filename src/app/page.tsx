@@ -9,8 +9,8 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, Maximize2, PanelLeft,
-  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube,
+  Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft,
+  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Compass,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -106,7 +106,7 @@ import { garantirEmpresaDoWorkspace, minhaEmpresa, type Empresa } from '@/lib/st
 import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist, carregarVideosTutorial, type VideoTutorial } from '@/lib/store/suporte';
-import { carregarConfigAssinatura, type ConfigAssinatura } from '@/lib/store/assinatura';
+import { carregarConfigAssinatura, verificarBloqueioFaturamento, type ConfigAssinatura } from '@/lib/store/assinatura';
 
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
 import PlanilhaConferenciaModal from '@/components/PlanilhaConferenciaModal';
@@ -255,6 +255,7 @@ export default function EditorPage() {
   const [avatarQuebrado, setAvatarQuebrado] = useState(false);
   useEffect(() => { setAvatarQuebrado(false); }, [user]);
   const [pecasMenuAberto, setPecasMenuAberto] = useState(false); // no celular, as peças ficam num menu só
+  const [pecasSheetAberto, setPecasSheetAberto] = useState(false); // janela de escolher peça no mobile (abre pela MobileHome)
   const [perfil, setPerfil] = useState<PerfilUso | null>(null);
   // Cobrança é POR EMPRESA (Etapa 2b do SaaS multi-empresa) — quando existe, manda no bloqueio de
   // faturamento; sem ela ainda (empresa recém-criada, doc ainda propagando), cai pro `perfil`
@@ -443,7 +444,9 @@ export default function EditorPage() {
   const [toolW, setToolW] = useState(270); // largura confortável pra não espremer os rótulos dos botões
   // No celular a barra de ferramentas nasce OCULTA — no mobile ela quase não serve (não se desenha),
   // então o mapa ocupa a tela toda; o botão de expandir no cabeçalho revela ela quando precisar.
-  const [barraLateralOculta, setBarraLateralOculta] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  // No celular a barra de ferramentas nasce oculta (largura 0). Como o mobile é só consulta/escritório
+  // (não se desenha), não há mais botão pra revelá-la — o toggle saiu junto com o cabeçalho mobile.
+  const [barraLateralOculta] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const toolWEfetivo = telaEstreita ? (barraLateralOculta ? 0 : 54) : toolW;
   // Barra flutuante dos áudios (Introdução/Tutorial), separada da principal: abre por padrão toda
   // vez que o app é aberto; o usuário pode fechar se não quiser ouvir.
@@ -4442,22 +4445,14 @@ export default function EditorPage() {
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
 
   const { bloqueadoPorFaturamento, diasAtrasoRestantes } = useMemo(() => {
-    // Empresa manda quando já existe (cobrança compartilhada por todo mundo dela); sem empresa
-    // carregada ainda, cai pro perfil individual — mesmo comportamento de antes da Etapa 2b.
     const status = empresaAtual?.statusPagamento ?? perfil?.statusPagamento;
     const atrasadoDesdeBase = empresaAtual?.atrasadoDesde ?? perfil?.atrasadoDesde;
-    if (!status || status !== 'atrasado' || souMaster() || configAssinatura?.ocultarCobranca) {
-      return { bloqueadoPorFaturamento: false, diasAtrasoRestantes: 7 };
-    }
-    const agora = Date.now();
-    const atrasadoDesde = atrasadoDesdeBase || agora;
-    const diffMs = agora - atrasadoDesde;
-    const diasDecorridos = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-    const diasRestantes = Math.max(0, 7 - diasDecorridos);
-    return {
-      bloqueadoPorFaturamento: diasRestantes <= 0,
-      diasAtrasoRestantes: diasRestantes,
-    };
+    return verificarBloqueioFaturamento({
+      statusPagamento: status,
+      atrasadoDesde: atrasadoDesdeBase,
+      souMaster: souMaster(),
+      ocultarCobranca: !!configAssinatura?.ocultarCobranca,
+    });
   }, [perfil, empresaAtual, configAssinatura]);
 
   async function iniciarPagamentoMercadoPago() {
@@ -4541,10 +4536,47 @@ export default function EditorPage() {
     );
   }
 
+  // Lista única de peças técnicas [rótulo, ação] — reaproveitada pelo menu PEÇAS e pela janela de
+  // peças do celular (MobileHome), pra não duplicar a lógica de quem gera/abre cada peça.
+  const itensPecas: [string, () => void][] = [
+    [`${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} — responsabilidade técnica`, () => setTrtAberto(true)],
+    ['Planilha SIGEF (.ods)', () => setPlanilhaConfAberta(true)],
+    ['Conferir projeto (limites, conflitos, SIGEF)', () => setConferirAberto(true)],
+    ['Memorial descritivo (.docx)', () => exportarMemorial('normal')],
+    ...(projetoTemServidao ? [['Memorial de servidão (.docx)', () => exportarMemorial('servidao')] as [string, () => void]] : []),
+    ['Planta A3 (PDF)', () => exportarPlanta()],
+    ['Requerimento ao cartório (.docx)', () => setReqAberto(true)],
+    ['Cartas de anuência (.docx)', () => setAnuenciaAberta(true)],
+    ...(medioOuMais ? [['Errata perimetral (.docx)', () => setErrataAberto(true)] as [string, () => void]] : []),
+    ...(medioOuMais ? [['CAR — Cadastro Ambiental Rural', () => setCarAberto(true)] as [string, () => void]] : []),
+  ];
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
+      {/* Inputs de arquivo ocultos: SEMPRE montados (fora do cabeçalho), senão sumiriam junto com o
+          header no celular e quebrariam "Novo projeto"/importação, que disparam fileRef.click(). */}
+      <div className="hidden">
+        <input ref={fileRef} type="file" accept=".txt,.csv,.gml,.xml"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
+        <input ref={dxfRef} type="file" accept=".dxf"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarDxfArquivo(f); e.currentTarget.value = ''; }} />
+        <input ref={kmlRef} type="file" accept=".kml"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
+        <input ref={geojsonRef} type="file" accept=".geojson,.json"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarReferenciaGeoJson(f); e.currentTarget.value = ''; }} />
+        <input ref={shapefileRef} type="file" accept=".zip,.shp"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarShapefileRef(f); e.currentTarget.value = ''; }} />
+        <input ref={vizinhosRef} type="file" accept=".geojson,.json"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
+        <input ref={verticesVizinhoRef} type="file" accept=".txt,.csv,text/plain"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVerticesVizinho(f); e.currentTarget.value = ''; }} />
+        <input ref={jsonBackupRef} type="file" accept=".json"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarProjetoJson(f); e.currentTarget.value = ''; }} />
+      </div>
       {/* Topo */}
-      {/* Cabeçalho = FLUXO DO TRABALHO (esquerda → direita) + conta fixa à direita */}
+      {/* Cabeçalho = FLUXO DO TRABALHO (desktop). No celular ele NÃO existe na tela inicial (a
+          MobileHome, centralizada, já basta) — no mapa aparece só a barrinha fina logo abaixo. */}
+      {!telaEstreita && (
       <header className="no-print flex items-stretch border-b">
         <div className="flex shrink-0 items-center gap-1.5 border-r pl-2 pr-2.5 cursor-pointer hover:bg-muted/30 select-none transition-colors"
           onClick={() => setHistoriaAberta(true)}
@@ -4560,58 +4592,7 @@ export default function EditorPage() {
             )}
           </span>
         </div>
-        {/* Só no celular: esconder/mostrar a barra de ícones pra o mapa ocupar a tela toda (modo campo). */}
-        {telaEstreita && (
-          <button type="button" onClick={() => setBarraLateralOculta((v) => !v)}
-            title={barraLateralOculta ? 'Mostrar a barra de ferramentas' : 'Ocultar a barra — mapa em tela cheia'}
-            className="flex shrink-0 items-center justify-center border-r px-2.5 text-muted-foreground hover:bg-muted/40">
-            {barraLateralOculta ? <PanelLeft className="size-4" /> : <Maximize2 className="size-4" />}
-          </button>
-        )}
-        {/* Só no celular, e só quando está "espiando" o mapa: voltar pra home de escritório. */}
-        {telaEstreita && mobileTela === 'mapa' && (
-          <button type="button" onClick={() => setMobileTela('home')}
-            title="Voltar pra tela inicial"
-            className="flex shrink-0 items-center gap-1 border-r px-2.5 text-[10px] font-bold text-muted-foreground hover:bg-muted/40">
-            <PanelLeft className="size-4" />
-            <span>INÍCIO</span>
-          </button>
-        )}
-        {/* Só no celular, e só quando está "espiando" o mapa: alternar Mapa/Planta (a barra
-            flutuante que trazia isso foi extinta no mobile). Some na home — lá não faz sentido. */}
-        {telaEstreita && mobileTela === 'mapa' && (
-          <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
-            title="Alternar entre mapa e planta"
-            className="flex shrink-0 items-center gap-1 border-r px-2.5 text-[10px] font-bold text-primary hover:bg-muted/40">
-            {vista === 'mapa' ? <Eye className="size-4" /> : <MapIcon className="size-4" />}
-            <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
-          </button>
-        )}
         <div className="flex flex-1 items-center gap-1 overflow-x-auto px-2 py-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] [&_button_svg]:size-3">
-        <input ref={fileRef} type="file" accept=".txt,.csv,.gml,.xml" className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
-        <input ref={dxfRef} type="file" accept=".dxf" className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarDxfArquivo(f); e.currentTarget.value = ''; }} />
-        <input ref={kmlRef} type="file" accept=".kml" className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarArquivo(f); e.currentTarget.value = ''; }} />
-        <input ref={geojsonRef} type="file" accept=".geojson,.json" className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarReferenciaGeoJson(f); e.currentTarget.value = ''; }} />
-        <input ref={shapefileRef} type="file" accept=".zip,.shp" className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarShapefileRef(f); e.currentTarget.value = ''; }} />
-        <input ref={vizinhosRef} type="file" accept=".geojson,.json" className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
-         <input ref={verticesVizinhoRef} type="file" accept=".txt,.csv,text/plain" className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVerticesVizinho(f); e.currentTarget.value = ''; }} />
-        <input ref={jsonBackupRef} type="file" accept=".json" className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) importarProjetoJson(f); e.currentTarget.value = ''; }} />
-
-        {/* No celular, abrir projeto é a primeira coisa no campo: atalho PROJETOS logo no começo,
-            que abre a lista de projetos salvos. */}
-        {telaEstreita && (
-          <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS}`} title="Abrir um projeto salvo" onClick={() => { setPainelAberto(true); setAba('projetos'); }}>
-            <Database /> PROJETOS
-          </Button>
-        )}
 
         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
         {!telaEstreita && (
@@ -4647,46 +4628,9 @@ export default function EditorPage() {
           </>
         )}
 
-        {/* 5) Peças — no celular ficam TODAS num único botão PEÇAS (menu de download), pra encurtar
-            o cabeçalho e deixar as peças fáceis de achar; no desktop seguem como botões soltos. */}
-        {telaEstreita ? (
-          <div className="relative shrink-0">
-            <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title="Peças técnicas: baixar memorial, planilha, planta, requerimento e mais" onClick={() => setPecasMenuAberto((v) => !v)}>
-              <Download /> PEÇAS <ChevronDown className="size-3" />
-            </Button>
-            {pecasMenuAberto && (
-              <>
-                <div className="fixed inset-0 z-[1290]" onClick={() => setPecasMenuAberto(false)} />
-                <div className="absolute right-0 top-[calc(100%+4px)] z-[1300] w-60 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
-                  {([
-                    [`${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} — responsabilidade técnica`, () => setTrtAberto(true)],
-                    ['Planilha SIGEF (.ods)', () => setPlanilhaConfAberta(true)],
-                    ['Conferir projeto (limites, conflitos, SIGEF)', () => setConferirAberto(true)],
-                    ['Memorial descritivo (.docx)', () => exportarMemorial('normal')],
-                    ...(projetoTemServidao ? [['Memorial de servidão (.docx)', () => exportarMemorial('servidao')] as [string, () => void]] : []),
-                    ['Planta A3 (PDF)', () => exportarPlanta()],
-                    ['Requerimento ao cartório (.docx)', () => setReqAberto(true)],
-                    ['Cartas de anuência (.docx)', () => setAnuenciaAberta(true)],
-                    ...(medioOuMais ? [['Errata perimetral (.docx)', () => setErrataAberto(true)] as [string, () => void]] : []),
-                    ...(medioOuMais ? [['CAR — Cadastro Ambiental Rural', () => setCarAberto(true)] as [string, () => void]] : []),
-                  ] as [string, () => void][]).map(([rot, acao]) => (
-                    <button key={rot} type="button" onClick={() => { setPecasMenuAberto(false); acao(); }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-muted">
-                      <Download className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> {rot}
-                    </button>
-                  ))}
-                  {medioOuMais && (
-                    <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer"
-                      onClick={() => setPecasMenuAberto(false)}
-                      className="flex w-full items-center gap-2 rounded-lg border-t px-3 py-2.5 text-left text-sm hover:bg-muted">
-                      <LogIn className="size-4 shrink-0 text-emerald-700 dark:text-emerald-400" /> Acessar o SIGEF (certificar)
-                    </a>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
+        {/* 5) Peças (só desktop; no celular a lista vai pra janela aberta pela MobileHome): ART/TRT,
+            ODS e Conferir soltos, e memorial/planta/requerimento/anuência/errata num menu PEÇAS. */}
+        {(
           <>
             <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}><Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
             <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
@@ -4780,6 +4724,25 @@ export default function EditorPage() {
        {/* A CHAVE do app saiu do topo (atrapalhava a leitura dos botões) e virou uma barrinha
            FLUTUANTE na lateral direita — ver logo abaixo do <header>. */}
       </header>
+      )}
+
+      {/* Barrinha fina do celular: só aparece quando se está espiando o mapa/planta. Volta pra tela
+          inicial (Início) e alterna Mapa/Planta. A tela inicial nunca tem cabeçalho. */}
+      {telaEstreita && mobileTela === 'mapa' && (
+        <header className="no-print flex items-stretch border-b">
+          <button type="button" onClick={() => setMobileTela('home')}
+            title="Voltar pra tela inicial"
+            className="flex shrink-0 items-center gap-1 border-r px-3 py-1.5 text-[11px] font-bold text-muted-foreground hover:bg-muted/40">
+            <PanelLeft className="size-4" /> INÍCIO
+          </button>
+          <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
+            title="Alternar entre mapa e planta"
+            className="flex shrink-0 items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-muted/40">
+            {vista === 'mapa' ? <Eye className="size-4" /> : <MapIcon className="size-4" />}
+            {vista === 'mapa' ? 'PLANTA' : 'MAPA'}
+          </button>
+        </header>
+      )}
 
       {/* No modo MAPA e PLANTA a chave Fácil/Completo agora fica integrada nas respectivas barras flutuantes. */}
 
@@ -4908,17 +4871,22 @@ export default function EditorPage() {
                       )}
                       {vista === 'mapa' ? (
                         <>
-                          {/* Grade de 3 colunas: Desfazer + Refazer + Mover */}
+                          {/* Grade de 3 colunas: [Desfazer+Refazer] + Mover + Orto */}
                           <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none mb-1">
-                            <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer (Ctrl+Z)">
-                              <Undo2 /> <span>Desfazer</span>
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={refazer} title="Refazer (Ctrl+Y)">
-                              <Redo2 /> <span>Refazer</span>
-                            </Button>
+                            <div className="flex gap-0.5 w-full">
+                              <Button size="sm" variant="outline" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
+                                <Undo2 className="size-3.5" />
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-8 flex-1 px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
+                                <Redo2 className="size-3.5" />
+                              </Button>
+                            </div>
                             <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className={`relative ${modo === 'navegar' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
                               <MousePointer2 /> <span>Mover</span>
                               <Atalho k="F2" />
+                            </Button>
+                            <Button size="sm" variant={orto !== 'off' ? 'default' : 'outline'} className={`relative ${orto !== 'off' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
+                              <Compass /> <span>{orto === 'off' ? 'Orto Off' : orto === '90' ? 'Orto 90°' : 'Polar 15°'}</span>
                             </Button>
                           </div>
                           {/* Grade de 3 colunas: Travar + Ímã + Rótulos */}
@@ -4939,15 +4907,20 @@ export default function EditorPage() {
                         </>
                       ) : (
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                          <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer (Ctrl+Z)">
-                            <Undo2 /> <span>Desfazer</span>
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={refazer} title="Refazer (Ctrl+Y)">
-                            <Redo2 /> <span>Refazer</span>
-                          </Button>
+                          <div className="flex gap-0.5 w-full">
+                            <Button size="sm" variant="outline" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
+                              <Undo2 className="size-3.5" />
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-8 flex-1 px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
+                              <Redo2 className="size-3.5" />
+                            </Button>
+                          </div>
                           <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className={`relative ${modo === 'navegar' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}`} title="Mover/editar: arrastar textos, rótulos e a folha (F1)" onClick={() => setModo('navegar')}>
                             <MousePointer2 /> <span>Mover</span>
                             <Atalho k="F1" />
+                          </Button>
+                          <Button size="sm" variant={orto !== 'off' ? 'default' : 'outline'} className={`relative ${orto !== 'off' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
+                            <Compass /> <span>{orto === 'off' ? 'Orto Off' : orto === '90' ? 'Orto 90°' : 'Polar 15°'}</span>
                           </Button>
                         </div>
                       )}
@@ -5600,10 +5573,20 @@ export default function EditorPage() {
           ) : telaEstreita && mobileTela === 'home' ? (
             <MobileHome
               nomeProjeto={nomeProjeto}
+              tema={tema}
               onAbrirProjetos={() => { setPainelAberto(true); setAba('projetos'); }}
               onNovoProjeto={criarNovoProjeto}
               onImportarIa={() => { setIaArquivoInicial(null); setIaAberta(true); }}
               onCompletarDados={() => { setPainelAberto(true); setAba('imovel'); }}
+              onBaixarPecas={() => setPecasSheetAberto(true)}
+              onAlternarTema={() => setTema((t) => (t === 'claro' ? 'escuro' : 'claro'))}
+              onSair={async () => {
+                if (!nuvemDisponivel) return;
+                const ok = await confirmar({ titulo: 'Sair da conta', mensagem: user ? 'Deseja sair da sua conta?' : 'Voltar à tela inicial?', okLabel: user ? 'Sair' : 'Voltar' });
+                if (!ok) return;
+                limparConfigLocalNaSaida(); sair(); definirModoEntrada('boasVindas');
+              }}
+              podeSair={nuvemDisponivel}
               onVerMapa={() => setMobileTela('mapa')}
             />
           ) : (
@@ -6569,6 +6552,31 @@ export default function EditorPage() {
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} correcoes={correcoes} onChangeCorrecoes={setCorrecoes} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
       <AnuenciaModal open={anuenciaAberta} onOpenChange={setAnuenciaAberta} confrontantes={confrontantes} lados={lados} mapa={confrontantePorLado} imovel={imovel} tecnico={tecnico} />
       <HistoriaModal open={historiaAberta} onOpenChange={setHistoriaAberta} />
+
+      {/* Janela de peças do celular: aberta pela MobileHome. Lista a MESMA `itensPecas` do menu de
+          peças — cada botão executa a ação (baixa direto ou abre o modal da peça) e fecha a janela. */}
+      <Dialog open={pecasSheetAberto} onOpenChange={setPecasSheetAberto}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base"><Download className="size-5 text-emerald-600 dark:text-emerald-400" /> Baixar peças técnicas</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-1.5">
+            {itensPecas.map(([rot, acao]) => (
+              <button key={rot} type="button" onClick={() => { setPecasSheetAberto(false); acao(); }}
+                className="flex w-full items-center gap-2.5 rounded-lg border bg-background/60 px-3 py-3 text-left text-sm font-medium hover:bg-muted/50 active:scale-[0.99] transition-transform">
+                <Download className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> {rot}
+              </button>
+            ))}
+            {medioOuMais && (
+              <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer"
+                onClick={() => setPecasSheetAberto(false)}
+                className="flex w-full items-center gap-2.5 rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-3 py-3 text-left text-sm font-semibold text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400">
+                <LogIn className="size-4 shrink-0" /> Acessar o SIGEF (certificar)
+              </a>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}

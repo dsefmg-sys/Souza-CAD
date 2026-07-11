@@ -81,6 +81,33 @@ export function detectarFusoPorRegiao(
 }
 
 /**
+ * Formata um nome de município "Cidade-UF", capitalizando corretamente cada palavra
+ * e mantendo as partículas de ligação ("de", "da", "do", etc.) em minúsculas.
+ */
+export function formatarNome(s: string): string {
+  const lastHyphen = s.lastIndexOf('-');
+  if (lastHyphen === -1) return s;
+  const cidadeRaw = s.slice(0, lastHyphen);
+  const ufRaw = s.slice(lastHyphen + 1);
+
+  const cidade = cidadeRaw
+    .split(' ')
+    .map((word) => {
+      if (word.length <= 3 && /^(de|do|da|dos|das|e)$/i.test(word)) return word.toLowerCase();
+      if (word.includes('-')) {
+        return word.split('-').map(w => {
+          if (w.length <= 3 && /^(de|do|da|dos|das|e)$/i.test(w)) return w.toLowerCase();
+          return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        }).join('-');
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+
+  return `${cidade}-${ufRaw.toUpperCase()}`;
+}
+
+/**
  * Extrai a UF (sigla de 2 letras) do campo de município, que é gravado no formato "Cidade-UF"
  * (ex.: "Cuiabá-MT" → "MT"). Devolve em maiúsculas, ou null quando não há sufixo de UF. Serve para
  * ligar/desligar recursos por estado (ex.: padrão INTERMAT só quando o imóvel é de Mato Grosso).

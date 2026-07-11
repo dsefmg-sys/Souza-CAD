@@ -19,7 +19,7 @@ export const COR_CURVA_AUTO = 'auto';
  * Cor e espessura vêm da engrenagem de ajustes; sem opções, cai no padrão de carta topográfica. */
 export function novaCurvaNivel(pontos: PontoLL[], nivel: number, mestra: boolean, opts: { cor?: string; espessura?: number } = {}): ObjetoDesenho {
   return {
-    id: novoObjetoId(), tipo: 'polilinha', pontos, curvaNivel: nivel,
+    id: novoObjetoId(), tipo: 'polilinha', pontos, curvaNivel: nivel, curvaMestra: mestra,
     cor: opts.cor ?? COR_CURVA_NIVEL, espessura: opts.espessura ?? (mestra ? 1.2 : 0.5),
   };
 }

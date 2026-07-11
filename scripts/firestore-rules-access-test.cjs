@@ -111,6 +111,8 @@ async function main() {
     await assertFails(getDoc(doc(ownerBDb, 'credenciados/cred1')));
     await assertFails(getDoc(doc(ownerADb, 'credenciados/semDono')));
     await assertSucceeds(getDoc(doc(masterDb, 'credenciados/semDono')));
+    // Caso de novo cadastro (documento não existe e resource == null)
+    await assertSucceeds(getDoc(doc(ownerADb, 'credenciados/naoExistente')));
 
     console.log('Firestore rules access tests passed (Metrica).');
   } finally {

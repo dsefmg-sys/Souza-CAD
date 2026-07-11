@@ -7,33 +7,13 @@ import { Input } from './ui/input';
 import { Check, Info } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-import { MUNICIPIOS } from '@/lib/topo/municipios';
+import { MUNICIPIOS, formatarNome } from '@/lib/topo/municipios';
 import { zonaPorLongitude } from '@/lib/topo/coords';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (data: { numGlebas: number; municipio: string; fuso: number }) => void;
-}
-
-function formatarNome(s: string): string {
-  const lastHyphen = s.lastIndexOf('-');
-  if (lastHyphen === -1) return s;
-  const cidadeRaw = s.slice(0, lastHyphen);
-  const ufRaw = s.slice(lastHyphen + 1);
-
-  const cidade = cidadeRaw
-    .split(' ')
-    .map((word) => {
-      if (word.length <= 2 && /^(de|do|da|dos|das|e)$/i.test(word)) return word.toLowerCase();
-      if (word.includes('-')) {
-        return word.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('-');
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    })
-    .join(' ');
-
-  return `${cidade}-${ufRaw.toUpperCase()}`;
 }
 
 const MUNICIPIOS_PADRAO = Object.entries(MUNICIPIOS).map(([key, value]) => {

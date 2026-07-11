@@ -1385,6 +1385,10 @@ export default function Planta({
           const borderCor = isMultiSelected ? '#f59e0b' : ((o.curvaNivel != null && (o.cor == null || o.cor === 'auto')) ? '#9ca3af' : (o.cor ?? '#2563eb'));
           const esp = (o.espessura ?? 1.2) + (isMultiSelected ? 1.2 : 0);
 
+          const isMestra = o.curvaNivel != null && o.curvaMestra;
+          const ptMid = isMestra ? sp[Math.floor(sp.length / 2)] : null;
+
+          let el;
           if (o.preenchido && sp.length >= 3) {
             let fillVal = o.corPreenchimento ?? borderCor;
             let fillOp = 0.4;
@@ -1392,14 +1396,39 @@ export default function Planta({
               fillVal = `url(#pat-${o.id})`;
               fillOp = 0.95;
             }
-            return (
+            el = (
               <polygon key={o.id} {...ctx} onClick={handlePlantaObjClick} points={pp} fill={fillVal} fillOpacity={fillOp} stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
             );
           } else {
-            return (
+            el = (
               <polyline key={o.id} {...ctx} onClick={handlePlantaObjClick} points={pp} fill="none" stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
             );
           }
+
+          if (isMestra && ptMid) {
+            return (
+              <g key={o.id}>
+                {el}
+                <text
+                  x={ptMid.x}
+                  y={ptMid.y}
+                  fontSize={7}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill={borderCor}
+                  paintOrder="stroke"
+                  stroke="#ffffff"
+                  strokeWidth={2.5}
+                  strokeLinejoin="round"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {Math.round(o.curvaNivel!)}
+                </text>
+              </g>
+            );
+          }
+          return el;
         }
         return null;
       })}
@@ -1846,6 +1875,25 @@ export default function Planta({
           <text x={DRAW.x0 + 12} y={DRAW.y0 + 18.5} fontSize={10} fill="#fff">{multiSel.size} selecionado(s) — arraste p/ mover juntos · Esc limpa</text>
         </g>
       )}
+      {editavel && boxStart && boxEnd && (() => {
+        const x = Math.min(boxStart.x, boxEnd.x);
+        const y = Math.min(boxStart.y, boxEnd.y);
+        const w = Math.abs(boxStart.x - boxEnd.x);
+        const h = Math.abs(boxStart.y - boxEnd.y);
+        return (
+          <rect
+            x={x}
+            y={y}
+            width={w}
+            height={h}
+            fill="rgba(59, 130, 246, 0.15)"
+            stroke="#3b82f6"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+            style={{ pointerEvents: 'none' }}
+          />
+        );
+      })()}
     </svg>
 
     <Dialog open={modalTituloAberto} onOpenChange={setModalTituloAberto}>

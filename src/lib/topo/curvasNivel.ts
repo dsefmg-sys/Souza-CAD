@@ -212,14 +212,26 @@ export function gerarCurvasDeNivel(pontos: Ponto3D[], opcoes: OpcoesCurvas): Cur
   const pts = pontos.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
   if (pts.length < 3 || !(intervalo > 0)) return [];
 
-  const tris = triangularDelaunay(pts);
+  // Deduplicação espacial por coordenadas planas (com tolerância de 1mm = 0.001)
+  const dedup: Ponto3D[] = [];
+  for (const p of pts) {
+    const duplicate = dedup.some(
+      (d) => Math.hypot(d.x - p.x, d.y - p.y) < 0.001
+    );
+    if (!duplicate) {
+      dedup.push(p);
+    }
+  }
+  if (dedup.length < 3) return [];
+
+  const tris = triangularDelaunay(dedup);
   if (!tris.length) return [];
 
   const poly = opcoes.poligono;
   const segsPorNivel = new Map<number, [Ponto2D, Ponto2D][]>();
 
   for (const t of tris) {
-    const A = pts[t[0]], B = pts[t[1]], C = pts[t[2]];
+    const A = dedup[t[0]], B = dedup[t[1]], C = dedup[t[2]];
     // recorte ao polígono: só triângulos com centro dentro da área levantada
     if (poly && poly.length >= 3) {
       const cx = (A.x + B.x + C.x) / 3, cy = (A.y + B.y + C.y) / 3;

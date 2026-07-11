@@ -229,4 +229,36 @@ describe('sigefVizinhos', () => {
     expect((vs as unknown as { totalNos: number }).totalNos).toBe(500);
     expect(duracaoMs).toBeLessThan(1000); // a versão com o bug levaria segundos a minutos, não < 1s
   });
+
+  it('sanitiza e limpa escapes XML completos em campos de metadados extraídos', () => {
+    const xml = `
+      <gml:featureMember>
+        <ms:codigo_imovel>123456</ms:codigo_imovel>
+        <ms:nome_area>S&iacute;tio &quot;Barro &amp; &lt;Agua&gt;&quot; &apos;Feliz&apos;</ms:nome_area>
+        <ms:codigo_municipio>3124808</ms:codigo_municipio>
+        <ms:registro_matricula>9876</ms:registro_matricula>
+        <gml:outerBoundaryIs>
+          <gml:LinearRing>
+            <gml:coordinates>-41.91,-20.65 -41.90,-20.65 -41.90,-20.64 -41.91,-20.64 -41.91,-20.65</gml:coordinates>
+          </gml:LinearRing>
+        </gml:outerBoundaryIs>
+      </gml:featureMember>
+    `;
+    const parcelas = parseGmlParcelas(xml);
+    expect(parcelas.length).toBe(1);
+    expect(parcelas[0].denominacao).toBe('S&iacute;tio "Barro & <Agua>" \'Feliz\'');
+
+    const xmlProp = `
+      <wfs:FeatureCollection>
+        <ms:nome_area>S&iacute;tio &quot;Barro &amp; &lt;Agua&gt;&quot; &apos;Feliz&apos;</ms:nome_area>
+        <ms:detentor>Fulano &amp; Cia</ms:detentor>
+        <ms:codigo_imovel>123456</ms:codigo_imovel>
+        <ms:codigo_municipio>3124808</ms:codigo_municipio>
+        <ms:registro_matricula>9876</ms:registro_matricula>
+      </wfs:FeatureCollection>
+    `;
+    const prop = parsePropriedadeSigefGml(xmlProp);
+    expect(prop.denominacao).toBe('S&iacute;tio "Barro & <Agua>" \'Feliz\'');
+    expect(prop.detentor).toBe('Fulano & Cia');
+  });
 });

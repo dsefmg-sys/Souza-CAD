@@ -160,3 +160,33 @@ export function atribuicaoDe(cfg: ConfigAssinatura, email: string | null | undef
   // Sempre retorna o nível de fundador (20%) para quem está testando o app
   return { plano: planosAtivos[0] ?? null, nivelPct: 20 };
 }
+
+export interface BloqueioFaturamentoResult {
+  bloqueadoPorFaturamento: boolean;
+  diasAtrasoRestantes: number;
+}
+
+/**
+ * Verifica se a conta deve ser bloqueada por faturamento atrasado
+ * e quantos dias de tolerância restam (de um total de 7 dias).
+ */
+export function verificarBloqueioFaturamento(params: {
+  statusPagamento: string | null | undefined;
+  atrasadoDesde: number | null | undefined;
+  souMaster: boolean;
+  ocultarCobranca: boolean;
+  agora?: number;
+}): BloqueioFaturamentoResult {
+  const { statusPagamento, atrasadoDesde, souMaster: isMaster, ocultarCobranca, agora = Date.now() } = params;
+  if (!statusPagamento || statusPagamento !== 'atrasado' || isMaster || ocultarCobranca) {
+    return { bloqueadoPorFaturamento: false, diasAtrasoRestantes: 7 };
+  }
+  const base = atrasadoDesde || agora;
+  const diffMs = agora - base;
+  const diasDecorridos = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  const diasRestantes = Math.max(0, 7 - diasDecorridos);
+  return {
+    bloqueadoPorFaturamento: diasRestantes <= 0,
+    diasAtrasoRestantes: diasRestantes,
+  };
+}

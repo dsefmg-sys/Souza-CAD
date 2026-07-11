@@ -242,6 +242,7 @@ export interface ObjetoDesenho {
   simbolo?: string;           // elemento cartográfico (arvore, arbusto, casa, poste, pedra)
   carTema?: 'app' | 'reservaLegal' | 'vegetacao' | 'usoConsolidado'; // camada ambiental (CAR) do polígono
   curvaNivel?: number;        // quando é uma CURVA DE NÍVEL gerada: a altitude (m) desta curva
+  curvaMestra?: boolean;      // verdadeiro se for uma curva mestra (grossa)
 }
 
 /** Um lado da poligonal (vértice i → vértice i+1). */

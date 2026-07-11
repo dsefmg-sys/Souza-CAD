@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ancoraMunicipio, detectarFusoPorRegiao } from './municipios';
+import { ancoraMunicipio, detectarFusoPorRegiao, ufDoMunicipio, formatarNome } from './municipios';
 import { geoParaUtm } from './coords';
 
 const FUSOS_BRASIL = [18, 19, 20, 21, 22, 23, 24, 25];
@@ -27,3 +27,22 @@ describe('cobertura nacional das âncoras (capitais dos estados)', () => {
     expect(detectarFusoPorRegiao(leste, norte, 'S', FUSOS_BRASIL).zona).toBe(19);
   });
 });
+
+describe('formatação e divisão de nomes de municípios', () => {
+  it('separa e formata nome Cidade-UF corretamente, preservando partículas em minúsculo', () => {
+    expect(formatarNome('são paulo-sp')).toBe('São Paulo-SP');
+    expect(formatarNome('são sebastião do paraíso-mg')).toBe('São Sebastião do Paraíso-MG');
+    expect(formatarNome('santa rita de caldas-mg')).toBe('Santa Rita de Caldas-MG');
+    expect(formatarNome('alto caparaó-mg')).toBe('Alto Caparaó-MG');
+    
+    // Testing hyphenated city names containing particles
+    expect(formatarNome('são-josé-do-rio-preto-sp')).toBe('São-José-do-Rio-Preto-SP');
+    expect(formatarNome('estrela-do-indaiá-mg')).toBe('Estrela-do-Indaiá-MG');
+
+    // Extracting UF using lastIndexOf-based logic
+    expect(ufDoMunicipio('São Paulo-SP')).toBe('SP');
+    expect(ufDoMunicipio('São Sebastião do Paraíso-MG')).toBe('MG');
+    expect(ufDoMunicipio('Sem hifen')).toBe(null);
+  });
+});
+

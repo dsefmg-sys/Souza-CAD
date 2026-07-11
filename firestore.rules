@@ -9,9 +9,9 @@ service cloud.firestore {
       );
     }
 
-    // Configuração global do app (ex.: WhatsApp de suporte): todos leem, só o master escreve.
+    // Configuração global do app (ex.: WhatsApp de suporte): todos leem (exceto emailSmtp), só o master escreve.
     match /config/{doc} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (doc != 'emailSmtp' || ehMaster());
       allow write: if ehMaster();
     }
     // Credenciais de SMTP pra disparo de e-mail (senha de app do Gmail etc.): documento SEPARADO

@@ -1,11 +1,16 @@
-import { FolderOpen, FilePlus2, Sparkles, BookUser, Map as MapIcon } from 'lucide-react';
+import { FolderOpen, FilePlus2, Sparkles, BookUser, Download, Map as MapIcon, Sun, Moon, LogOut } from 'lucide-react';
 
 interface Props {
   nomeProjeto: string;
+  tema: 'claro' | 'escuro';
   onAbrirProjetos: () => void;
   onNovoProjeto: () => void;
   onImportarIa: () => void;
   onCompletarDados: () => void;
+  onBaixarPecas: () => void;
+  onAlternarTema: () => void;
+  onSair: () => void;
+  podeSair: boolean;
   onVerMapa: () => void;
 }
 
@@ -13,7 +18,8 @@ interface Props {
 // tarefas de escritório que fazem sentido no celular. O mapa continua a um toque de distância
 // (onVerMapa), só não é mais a tela padrão em telas estreitas.
 export default function MobileHome({
-  nomeProjeto, onAbrirProjetos, onNovoProjeto, onImportarIa, onCompletarDados, onVerMapa,
+  nomeProjeto, tema, onAbrirProjetos, onNovoProjeto, onImportarIa, onCompletarDados,
+  onBaixarPecas, onAlternarTema, onSair, podeSair, onVerMapa,
 }: Props) {
   const botoes = [
     {
@@ -31,6 +37,10 @@ export default function MobileHome({
     {
       icone: BookUser, titulo: 'Completar dados', cor: 'text-amber-600 dark:text-amber-400',
       desc: 'Proprietário, imóvel e confrontantes.', onClick: onCompletarDados,
+    },
+    {
+      icone: Download, titulo: 'Baixar peças técnicas', cor: 'text-emerald-600 dark:text-emerald-400',
+      desc: 'Memorial, planilha SIGEF, planta, requerimento e mais.', onClick: onBaixarPecas,
     },
   ];
 
@@ -56,10 +66,26 @@ export default function MobileHome({
         ))}
       </div>
 
-      <button type="button" onClick={onVerMapa}
-        className="mt-2 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-        <MapIcon className="size-3.5" /> Ver mapa
-      </button>
+      {/* Rodapé: ações leves (ver mapa, tema) e sair. Sair fica separado à direita pra não competir. */}
+      <div className="flex w-full max-w-sm items-center justify-between gap-2 pt-1">
+        <div className="flex items-center gap-1.5">
+          <button type="button" onClick={onVerMapa}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <MapIcon className="size-3.5" /> Ver mapa
+          </button>
+          <button type="button" onClick={onAlternarTema}
+            title={tema === 'claro' ? 'Mudar para tema escuro' : 'Mudar para tema claro'}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            {tema === 'claro' ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />} Tema
+          </button>
+        </div>
+        {podeSair && (
+          <button type="button" onClick={onSair}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/10 dark:text-red-400 transition-colors">
+            <LogOut className="size-3.5" /> Sair
+          </button>
+        )}
+      </div>
     </div>
   );
 }

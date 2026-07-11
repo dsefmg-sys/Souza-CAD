@@ -1662,8 +1662,15 @@ export default function MapEditor(props: Props) {
           return (
             <Fragment key={o.id}>
               {o.curvaNivel != null
-                // Curva de nível: só DESENHO, não é editável (nada de selecionar/arrastar pontos).
-                ? <Polyline positions={pos} pathOptions={comum} interactive={false} />
+                ? (
+                  <Polyline positions={pos} pathOptions={comum} interactive={false}>
+                    {o.curvaMestra && (
+                      <Tooltip permanent direction="center" className="!bg-background/90 !border-border/40 !text-[8.5px] !font-black !text-foreground !shadow-md !rounded-sm !px-1 !py-0.5 !opacity-100 !pointer-events-none">
+                        <span>{Math.round(o.curvaNivel)}m</span>
+                      </Tooltip>
+                    )}
+                  </Polyline>
+                )
                 : fechado
                 ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor, fillOpacity }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
                 : (
