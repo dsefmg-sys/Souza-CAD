@@ -5620,7 +5620,7 @@ export default function EditorPage() {
               {/* Alternar Mapa/Planta */}
               <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
                 title="Alternar entre mapa e planta (Esc)"
-                className="flex h-7 items-center gap-1 rounded-full border border-primary/50 bg-background/95 px-2.5 text-[10px] font-bold text-primary hover:bg-muted transition-colors">
+                className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-background/95 px-2.5 text-[10px] font-bold text-primary hover:bg-muted transition-colors">
                 {vista === 'mapa' ? <Eye className="size-3.5" /> : <MapIcon className="size-3.5" />}
                 <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
                 <span className="rounded-sm border border-primary/40 px-1 font-mono text-[8px] font-semibold opacity-70">ESC</span>
@@ -5754,7 +5754,7 @@ export default function EditorPage() {
                   <button type="button"
                     onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
                     title={folhaTravada ? 'Moldura travada — clique para destravar e arrastar a prancha' : 'Moldura destravada — clique para travar o layout da folha'}
-                    className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-[10px] font-bold transition-colors ${folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted' : 'border-amber-500 bg-background/95 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'}`}>
+                    className={`flex h-7 items-center gap-1 rounded-full border-2 px-2.5 text-[10px] font-bold transition-colors ${folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted' : 'border-amber-500 bg-background/95 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'}`}>
                     {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
                     <span>{folhaTravada ? 'TRAVADA' : 'DESTRAVADA'}</span>
                   </button>
@@ -5762,7 +5762,7 @@ export default function EditorPage() {
                   {/* Tema da prancha */}
                   <button type="button" onClick={() => setPlantaDark((v) => !v)}
                     title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
-                    className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2.5 text-[10px] font-bold text-foreground hover:bg-muted transition-colors">
+                    className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-background/95 px-2.5 text-[10px] font-bold text-foreground hover:bg-muted transition-colors">
                     {plantaDark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
                     <span>{plantaDark ? 'ESCURA' : 'CLARA'}</span>
                   </button>
