@@ -1925,7 +1925,8 @@ export default function EditorPage() {
     const anel = gerarPoligono ? importados.filter((p) => p.poligono).map((p) => p.v) : [];
     const ignorados = gerarPoligono ? importados.filter((p) => !p.poligono).map((p) => p.v) : importados.map((p) => p.v);
     // renumera o anel na ordem final (M/P sequenciais a partir do contador do banco)
-    const vs = previewData.isGmlImport ? anel : recodificar(anel, prefixo || 'VER', contM, contP);
+    let vs = previewData.isGmlImport ? anel : recodificar(anel, prefixo || 'VER', contM, contP);
+    let finalIgnorados = ignorados;
 
     if (gerarPoligono && vs.length >= 3) {
       const achado = await encontrarProjetoParecido(vs, projetoId);
@@ -1950,6 +1951,37 @@ export default function EditorPage() {
       }
     }
 
+    // Identifica e estima altitudes ausentes/zeradas por interpolação (IDW/baricêntrica)
+    const semAlt = [...vs, ...finalIgnorados].filter((v) => !v.elevacao || v.elevacao === 0);
+    const comAlt = [...vs, ...finalIgnorados].filter((v) => v.elevacao && v.elevacao !== 0);
+    if (semAlt.length > 0) {
+      if (comAlt.length > 0) {
+        const querEstimar = await confirmar({
+          titulo: 'Altitudes Ausentes',
+          mensagem: `Identificamos ${semAlt.length} pontos sem altitude (ou com cota zero). Deseja que o sistema estime a altitude desses pontos com base nos ${comAlt.length} pontos conhecidos por interpolação espacial?`,
+          okLabel: 'Sim, interpolar',
+          cancelLabel: 'Não, manter zero',
+        });
+        if (querEstimar) {
+          const conhecidos = comAlt.map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao || 0 }));
+          const alvos = semAlt.map((v) => ({ x: v.leste, y: v.norte }));
+          const estimadas = estimarAltitudes(conhecidos, alvos);
+          const estimadasMap = new Map(semAlt.map((v, idx) => [v.id, estimadas[idx]]));
+          const aplicarEstimativas = (v: Vertex) => {
+            const est = estimadasMap.get(v.id);
+            return est !== undefined && est !== null ? { ...v, elevacao: Number(est.toFixed(3)) } : v;
+          };
+          vs = vs.map(aplicarEstimativas);
+          finalIgnorados = finalIgnorados.map(aplicarEstimativas);
+        }
+      } else {
+        await avisar({
+          titulo: 'Altitudes Ausentes',
+          mensagem: `Identificamos ${semAlt.length} pontos sem altitude. Nenhum ponto do arquivo possui cota de altitude válida para servir de base para a estimativa.`
+        });
+      }
+    }
+
     setImovel(novoImovel);
     setZona(z);
 
@@ -1966,7 +1998,7 @@ export default function EditorPage() {
     setGlebas(gs);
     carregarGleba(gs[0]);
     // carregarGleba zera os ignorados; reaplica os que o usuário tirou do polígono
-    setVerticesIgnorados(ignorados); // sempre substitui: importar TXT começa projeto novo (sem sobras do anterior)
+    setVerticesIgnorados(finalIgnorados); // sempre substitui: importar TXT começa projeto novo (sem sobras do anterior)
 
     if (!nomeProjeto || !nomeProjetoManual) {
       const auto = gerarTituloAutomatico(novoImovel);
