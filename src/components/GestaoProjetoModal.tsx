@@ -68,7 +68,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[1200px] max-h-[95vh] flex flex-col p-6">
+      <DialogContent className="w-[95vw] max-w-[1200px] max-h-[95vh] flex flex-col p-3 sm:p-6">
         <DialogHeader className="border-b pb-3">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold"><Wallet className="size-5" /> Gestão do Projeto</DialogTitle>
         </DialogHeader>

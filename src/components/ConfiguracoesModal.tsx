@@ -305,7 +305,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* h-[92vh] (não max-h): a janela sempre ocupa o mesmo tamanho, do maior conteúdo possível,
           então trocar de aba não redimensiona a janela — só o conteúdo interno rola. */}
-      <DialogContent className="max-w-5xl h-[92vh] flex flex-col bg-background/95 backdrop-blur-md shadow-2xl p-6 rounded-lg text-foreground">
+      <DialogContent className="max-w-5xl h-[92vh] flex flex-col bg-background/95 backdrop-blur-md shadow-2xl p-3 sm:p-6 rounded-lg text-foreground">
         <DialogHeader className="border-b pb-3">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
