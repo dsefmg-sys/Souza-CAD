@@ -114,6 +114,12 @@ async function main() {
     // Caso de novo cadastro (documento não existe e resource == null)
     await assertSucceeds(getDoc(doc(ownerADb, 'credenciados/naoExistente')));
 
+    // Restrição de atualização de workspaceUid (anti-escalação de privilégios)
+    await assertFails(setDoc(doc(helperADb, 'perfisUso/helperA'), { workspaceUid: 'ownerB' }, { merge: true })); // helperA não tem convite para ownerB
+    await assertSucceeds(setDoc(doc(newHelperDb, 'perfisUso/newHelper'), { workspaceUid: 'ownerA' }, { merge: true })); // newHelper tem convite para ownerA
+    await assertSucceeds(setDoc(doc(helperADb, 'perfisUso/helperA'), { workspaceUid: 'helperA' }, { merge: true })); // voltar a si mesmo é permitido
+    await assertSucceeds(setDoc(doc(helperADb, 'perfisUso/helperA'), { rtNome: 'Nome Modificado' }, { merge: true })); // alterar outros campos sem mudar workspaceUid é permitido
+
     console.log('Firestore rules access tests passed (Metrica).');
   } finally {
     await testEnv.cleanup();

@@ -36,7 +36,31 @@ service cloud.firestore {
         // a regra com erro de avaliação em vez de simplesmente não bater.
         || (resource != null && resource.data.get('workspaceUid', null) == request.auth.uid)
       );
-      allow write: if request.auth != null && (request.auth.uid == uid || ehMaster());
+      // O próprio usuário (ou master) cria/deleta o perfil.
+      allow create: if request.auth != null && (request.auth.uid == uid || ehMaster());
+      allow delete: if request.auth != null && (request.auth.uid == uid || ehMaster());
+      // Na atualização (update), o usuário só altera o workspaceUid se estiver voltando para
+      // si mesmo (autônomo) ou se houver um convite válido ativo apontando para essa empresa.
+      // Isso impede que um usuário force um workspaceUid de terceiros para espionar seus dados.
+      allow update: if request.auth != null && (
+        ehMaster()
+        || (
+          request.auth.uid == uid
+          && (
+            // Não alterou o campo workspaceUid (ou não existia antes e não foi fornecido)
+            request.resource.data.get('workspaceUid', null) == resource.data.get('workspaceUid', null)
+            // Ou está voltando a usar o próprio workspace (autônomo)
+            || request.resource.data.get('workspaceUid', null) == request.auth.uid
+            || request.resource.data.get('workspaceUid', null) == null
+            // Ou existe um convite pendente para o seu e-mail apontando para esse workspace
+            || (
+              request.auth.token.get('email', null) != null
+              && exists(/databases/$(database)/documents/convites/$(request.auth.token.get('email', 'no-email')))
+              && get(/databases/$(database)/documents/convites/$(request.auth.token.get('email', 'no-email'))).data.empresaUid == request.resource.data.workspaceUid
+            )
+          )
+        )
+      );
     }
 
     // Convites de workspace (vincular ajudante a uma empresa pelo e-mail exato): id do documento
