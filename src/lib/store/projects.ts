@@ -97,7 +97,19 @@ export async function salvarProjeto(p: Projeto): Promise<DestinoSalvamento> {
  * pintados, etc.) — sem essa visão o suporte é só o que o cliente descreve por mensagem.
  */
 export async function listarProjetosDoUsuario(uid: string): Promise<Projeto[]> {
-  const snap = await getDocs(colProjetos(uid));
+  let targetUid = uid;
+  try {
+    const perfilSnap = await getDoc(doc(fdb()!, 'perfisUso', uid));
+    if (perfilSnap.exists()) {
+      const data = perfilSnap.data();
+      if (data && data.workspaceUid) {
+        targetUid = data.workspaceUid;
+      }
+    }
+  } catch (e) {
+    console.error('Falha ao obter workspaceUid do perfil:', e);
+  }
+  const snap = await getDocs(colProjetos(targetUid));
   return snap.docs.map((d) => daNuvem(d.data())).filter((p): p is Projeto => !!p && !p.excluidoEm).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
 }
 
@@ -158,7 +170,7 @@ export async function excluirDefinitivo(id: string): Promise<void> {
 }
 
 /** Limpa da lixeira o que já passou do prazo (padrão 30 dias). */
-export async function purgarLixeiraAntiga(dias = 30): Promise<void> {
+export async function purgarLixeiraAntiga(dias = 90): Promise<void> {
   const limite = Date.now() - dias * 24 * 60 * 60 * 1000;
   const lixo = await listarLixeira();
   for (const p of lixo) {

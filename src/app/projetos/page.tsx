@@ -26,7 +26,7 @@ export default function ProjetosPage() {
   const [filtro, setFiltro] = useState<FiltroStatus>('todos');
   const [gerandoBackup, setGerandoBackup] = useState(false);
   const [exportandoId, setExportandoId] = useState<string | null>(null);
-  const DIAS_LIXEIRA = 30;
+  const DIAS_LIXEIRA = 90;
 
   async function baixarBackup() {
     setGerandoBackup(true);
