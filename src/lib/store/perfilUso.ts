@@ -232,6 +232,15 @@ export async function listarMembrosDoWorkspace(): Promise<PerfilUso[]> {
   }
 }
 
+/** Desvincula um membro de equipe removendo o workspaceUid do perfil dele. */
+export async function removerMembroDoWorkspace(membroUid: string): Promise<void> {
+  if (!firebaseConfigurado) return;
+  const meuUid = uid();
+  if (!meuUid) throw new Error('Não autorizado.');
+  const ref = doc(fdb()!, 'perfisUso', membroUid);
+  await setDoc(ref, { workspaceUid: null }, { merge: true });
+}
+
 // ---- Convites por e-mail (vincular ajudante a uma empresa) ----
 // Substitui o antigo "cole o UID de qualquer um pra entrar": aqui só quem foi convidado PELO
 // e-mail exato consegue se vincular, e o dono nunca precisa expor um código secreto permanente.

@@ -8,7 +8,7 @@ import { zerarBancoPontos } from '@/lib/store/registro';
 import { TERMOS, TERMOS_VERSAO, TERMOS_TITULAR } from '@/lib/legal/termos';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { auth } from '@/lib/firebase/client';
-import { sincronizarPerfil, obterPerfilUsuario, criarConvite, listarConvitesEnviados, cancelarConvite, listarMembrosDoWorkspace, excluirMinhaConta, listarSolicitacoesRecebidas, aprovarSolicitacao, recusarSolicitacao, type ConvitePendente, type PerfilUso, type SolicitacaoVinculo } from '@/lib/store/perfilUso';
+import { sincronizarPerfil, obterPerfilUsuario, criarConvite, listarConvitesEnviados, cancelarConvite, listarMembrosDoWorkspace, removerMembroDoWorkspace, excluirMinhaConta, listarSolicitacoesRecebidas, aprovarSolicitacao, recusarSolicitacao, type ConvitePendente, type PerfilUso, type SolicitacaoVinculo } from '@/lib/store/perfilUso';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -145,6 +145,22 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     await recusarSolicitacao(solicitanteEmail);
     setSolicitacoesRecebidas((ss) => ss.filter((s) => s.solicitanteEmail !== solicitanteEmail));
     flash('Pedido recusado.');
+  }
+
+  async function removerMembroUI(m: PerfilUso) {
+    if (!(await confirmar({
+      titulo: 'Remover membro da equipe',
+      mensagem: `Tem certeza que deseja remover ${m.email} deste workspace? O acesso dele aos projetos será revogado imediatamente.`,
+      okLabel: 'Remover',
+      perigo: true
+    }))) return;
+    try {
+      await removerMembroDoWorkspace(m.uid);
+      setMembrosWorkspace((membros) => membros.filter((x) => x.uid !== m.uid));
+      flash('Membro removido com sucesso.');
+    } catch (e) {
+      flash('Erro ao remover membro: ' + ((e as Error).message || 'erro'));
+    }
   }
 
   useEffect(() => {
@@ -1140,12 +1156,22 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   {membrosWorkspace.length > 0 && (
                     <div className="space-y-1.5 pt-2 mt-1 border-t border-amber-500/20">
                       <div className="text-[10px] font-bold uppercase text-muted-foreground">Já fazem parte da equipe</div>
-                      {membrosWorkspace.map((m) => (
-                        <div key={m.uid} className="flex items-center justify-between gap-2 rounded-sm bg-emerald-500/10 px-2 py-1 text-xs">
-                          <span className="truncate">{m.email}</span>
-                          <span className="shrink-0 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Ativo</span>
-                        </div>
-                      ))}
+                      {membrosWorkspace.map((m) => {
+                        const souDono = workspaceUid === (auth()?.currentUser?.uid || '');
+                        return (
+                          <div key={m.uid} className="flex items-center justify-between gap-2 rounded-sm bg-emerald-500/10 px-2 py-1 text-xs">
+                            <span className="truncate">{m.email}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Ativo</span>
+                              {souDono && (
+                                <Button size="sm" variant="ghost" className="h-6 px-2 text-destructive hover:bg-destructive/10" onClick={() => removerMembroUI(m)}>
+                                  Remover
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
