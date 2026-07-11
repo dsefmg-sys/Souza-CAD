@@ -27,6 +27,12 @@ export async function cadastrarEmail(email: string, senha: string): Promise<void
 export async function sair(): Promise<void> {
   const a = auth();
   if (a) await fbSignOut(a);
+  try {
+    localStorage.removeItem('metrica.perfilUso');
+    localStorage.removeItem('metrica.tecnico');
+    localStorage.removeItem('metrica.escritorio');
+    localStorage.removeItem('metrica.termosAceitos');
+  } catch { /* ignore */ }
 }
 
 /** Traduz os erros mais comuns do Firebase Auth em dicas acionáveis. */
