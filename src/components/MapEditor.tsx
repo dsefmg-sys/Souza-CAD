@@ -16,6 +16,7 @@ import { geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { aplicarOrto, type ModoOrto } from '@/lib/topo/orto';
 import { snapUtm, type SegmentoSnap, type AlvoSnap, type SnapResult } from '@/lib/topo/snap';
 import { intersecaoRetasUtm } from '@/lib/topo/editing';
+import { avisar } from '@/lib/ui/dialogos';
 
 export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir' | 'paralela' | 'dividir' | 'trim' | 'extend' | 'retangulo' | 'arco' | 'copiar_base' | 'copiar_destino';
 
@@ -283,7 +284,7 @@ function ControleGPS() {
       L.DomEvent.disableClickPropagation(btn);
       L.DomEvent.on(btn, 'click', (e) => {
         L.DomEvent.stop(e);
-        if (!navigator.geolocation) { alert('Este aparelho não oferece localização por GPS.'); return; }
+        if (!navigator.geolocation) { avisar({ titulo: 'Localização', mensagem: 'Este aparelho não oferece localização por GPS.' }); return; }
         btn.innerHTML = '…';
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -297,7 +298,7 @@ function ControleGPS() {
             marcador = L.circleMarker(ll, { radius: 7, color: '#1d4ed8', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.9 }).addTo(map);
             btn.innerHTML = icone;
           },
-          () => { btn.innerHTML = icone; alert('Não consegui obter sua localização. Ative o GPS e permita o acesso ao local.'); },
+          () => { btn.innerHTML = icone; avisar({ titulo: 'Localização', mensagem: 'Não consegui obter sua localização. Ative o GPS e permita o acesso ao local.' }); },
           { enableHighAccuracy: true, timeout: 12000 },
         );
       });

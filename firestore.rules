@@ -32,7 +32,9 @@ service cloud.firestore {
       allow read: if request.auth != null && (
         request.auth.uid == uid
         || ehMaster()
-        || (resource != null && resource.data.workspaceUid == request.auth.uid)
+        // .get(campo, padrão): perfil sem workspaceUid (comum, é opcional) não pode travar
+        // a regra com erro de avaliação em vez de simplesmente não bater.
+        || (resource != null && resource.data.get('workspaceUid', null) == request.auth.uid)
       );
       allow write: if request.auth != null && (request.auth.uid == uid || ehMaster());
     }
@@ -44,12 +46,12 @@ service cloud.firestore {
     match /convites/{email} {
       allow read: if request.auth != null && (
         (request.auth.token.email != null && request.auth.token.email.lower() == email)
-        || (resource != null && resource.data.empresaUid == request.auth.uid)
+        || (resource != null && resource.data.get('empresaUid', null) == request.auth.uid)
         || ehMaster()
       );
       allow create: if request.auth != null && request.resource.data.empresaUid == request.auth.uid;
       allow delete: if request.auth != null && (
-        resource.data.empresaUid == request.auth.uid
+        resource.data.get('empresaUid', null) == request.auth.uid
         || (request.auth.token.email != null && request.auth.token.email.lower() == email)
         || ehMaster()
       );
@@ -62,7 +64,9 @@ service cloud.firestore {
       allow read: if request.auth != null && (
         ehMaster()
         || empresaId == request.auth.uid
-        || (resource != null && resource.data.membros[request.auth.uid] != null)
+        // .get(campo, padrão) nos dois níveis: nem todo doc tem `membros`, e nem todo `membros`
+        // tem a MINHA chave — acesso direto (colchete) trava com erro em vez de negar limpo.
+        || (resource != null && resource.data.get('membros', {}).get(request.auth.uid, null) != null)
       );
       // Só o dono cria a própria empresa (id do doc == seu uid) — ou o master, que também pode
       // criar/editar direto pelo painel administrativo (ex.: setar cobrança antes do dono nunca ter
@@ -74,14 +78,14 @@ service cloud.firestore {
       allow update: if request.auth != null && (
         ehMaster()
         // admin da empresa (dono ou promovido) edita qualquer campo.
-        || resource.data.membros[request.auth.uid] == 'admin'
+        || resource.data.get('membros', {}).get(request.auth.uid, null) == 'admin'
         // qualquer autenticado pode se ADICIONAR como 'membro' — só a própria chave em `membros`,
         // nunca 'admin' nem qualquer outro campo. É o que deixa o convidado/auxiliar se registrar
         // sem precisar de permissão de escrita geral no documento.
         || (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membros'])
-          && request.resource.data.membros[request.auth.uid] == 'membro'
-          && request.resource.data.membros.diff(resource.data.membros).affectedKeys().hasOnly([request.auth.uid])
+          && request.resource.data.membros.get(request.auth.uid, null) == 'membro'
+          && request.resource.data.membros.diff(resource.data.get('membros', {})).affectedKeys().hasOnly([request.auth.uid])
         )
       );
       allow delete: if ehMaster();
@@ -93,14 +97,14 @@ service cloud.firestore {
         request.auth.uid == uid 
         || ehMaster() 
         || (exists(/databases/$(database)/documents/perfisUso/$(request.auth.uid)) 
-            && get(/databases/$(database)/documents/perfisUso/$(request.auth.uid)).data.workspaceUid == uid)
+            && get(/databases/$(database)/documents/perfisUso/$(request.auth.uid)).data.get('workspaceUid', null) == uid)
       );
       match /{document=**} {
         allow read, write: if request.auth != null && (
           request.auth.uid == uid 
           || ehMaster() 
           || (exists(/databases/$(database)/documents/perfisUso/$(request.auth.uid)) 
-              && get(/databases/$(database)/documents/perfisUso/$(request.auth.uid)).data.workspaceUid == uid)
+              && get(/databases/$(database)/documents/perfisUso/$(request.auth.uid)).data.get('workspaceUid', null) == uid)
         );
       }
     }
@@ -108,16 +112,16 @@ service cloud.firestore {
     // apenas o próprio credenciado (uid gravado no documento como _uid) pode ler/escrever.
     match /credenciados/{prefix} {
       allow read: if request.auth != null
-        && (resource == null || resource.data._uid == request.auth.uid || ehMaster());
+        && (resource == null || resource.data.get('_uid', null) == request.auth.uid || ehMaster());
       // Na criação (documento ainda não existe), exige que o uid informado bata com quem escreve.
       allow write: if request.auth != null
         && (ehMaster() || (resource == null
             ? request.resource.data._uid == request.auth.uid
-            : resource.data._uid == request.auth.uid));
+            : resource.data.get('_uid', null) == request.auth.uid));
       match /{document=**} {
         allow read, write: if request.auth != null
           && (ehMaster() || (exists(/databases/$(database)/documents/credenciados/$(prefix))
-              ? get(/databases/$(database)/documents/credenciados/$(prefix)).data._uid == request.auth.uid
+              ? get(/databases/$(database)/documents/credenciados/$(prefix)).data.get('_uid', null) == request.auth.uid
               : true));
       }
     }

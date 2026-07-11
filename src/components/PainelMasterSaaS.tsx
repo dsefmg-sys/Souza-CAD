@@ -14,6 +14,7 @@ import type { Projeto } from '@/lib/topo/types';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
 import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, carregarYoutubePlaylist, salvarYoutubePlaylist, carregarVideosTutorial, salvarVideosTutorial, type ConfigSmtp, type VideoTutorial } from '@/lib/store/suporte';
 import { auth } from '@/lib/firebase/client';
+import { confirmar, avisar } from '@/lib/ui/dialogos';
 
 function dataBR(ms?: number): string {
   if (!ms) return '—';
@@ -72,7 +73,8 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   // nada na conta do cliente, só lê (já permitido pelas regras do master) e grava na sua conta
   // (sempre permitido, é a sua própria conta). Ganha um id novo pra não colidir com nada seu.
   async function copiarProjeto(proj: Projeto) {
-    if (!window.confirm(`Copiar "${proj.nome}" para o seu gestor de projetos? Isso NÃO altera nada no cadastro do cliente — cria uma cópia independente na sua conta.`)) return;
+    const ok = await confirmar({ titulo: 'Copiar projeto', mensagem: `Copiar "${proj.nome}" para o seu gestor de projetos? Isso NÃO altera nada no cadastro do cliente — cria uma cópia independente na sua conta.` });
+    if (!ok) return;
     setCopiandoId(proj.id);
     try {
       const agora = Date.now();
@@ -81,7 +83,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       await salvarProjeto(copia);
       flash(`"${proj.nome}" copiado para o seu gestor de projetos!`);
     } catch (e) {
-      alert((e as Error).message || 'Não consegui copiar este projeto.');
+      await avisar({ titulo: 'Copiar projeto', mensagem: (e as Error).message || 'Não consegui copiar este projeto.' });
     } finally {
       setCopiandoId(null);
     }
@@ -143,13 +145,14 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       : perfis.filter((p) => p.email).map((p) => p.email) as string[];
 
     if (destinatarios.length === 0) {
-      alert('Nenhum e-mail de destino disponível.');
+      await avisar({ titulo: 'Comunicado', mensagem: 'Nenhum e-mail de destino disponível.' });
       return;
     }
 
-    const confirmacao = window.confirm(
-      `Tem certeza que deseja enviar este comunicado para ${destinatarios.length} destinatário(s)?`
-    );
+    const confirmacao = await confirmar({
+      titulo: 'Enviar comunicado',
+      mensagem: `Tem certeza que deseja enviar este comunicado para ${destinatarios.length} destinatário(s)?`,
+    });
     if (!confirmacao) return;
 
     setEnviandoEmails(true);
@@ -184,10 +187,10 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
         throw new Error(resData.error || 'Erro no envio.');
       }
 
-      alert(resData.mensagem || 'E-mails enviados com sucesso!');
+      await avisar({ titulo: 'Comunicado', mensagem: resData.mensagem || 'E-mails enviados com sucesso!' });
     } catch (err: unknown) {
       console.error(err);
-      alert(`Falha ao disparar e-mails: ${(err as Error).message}`);
+      await avisar({ titulo: 'Comunicado', mensagem: `Falha ao disparar e-mails: ${(err as Error).message}` });
     } finally {
       setEnviandoEmails(false);
     }
@@ -295,7 +298,11 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   }
 
   async function deletarCliente(uid: string, identificacao?: string) {
-    const confirmacao = window.confirm(`Tem certeza que deseja excluir permanentemente o cadastro de "${identificacao || uid}"? Esta ação não pode ser desfeita e removerá todos os dados e projetos do usuário.`);
+    const confirmacao = await confirmar({
+      titulo: 'Excluir cadastro',
+      mensagem: `Tem certeza que deseja excluir permanentemente o cadastro de "${identificacao || uid}"? Esta ação não pode ser desfeita e removerá todos os dados e projetos do usuário.`,
+      perigo: true,
+    });
     if (!confirmacao) return;
 
     try {

@@ -4476,11 +4476,11 @@ export default function EditorPage() {
       if (data.init_point) {
         window.location.href = data.init_point;
       } else {
-        alert(data.error || 'Não foi possível gerar a cobrança no momento.');
+        await avisar({ titulo: 'Pagamento', mensagem: data.error || 'Não foi possível gerar a cobrança no momento.' });
       }
     } catch (e) {
       console.error(e);
-      alert('Erro de conexão ao processar pagamento.');
+      await avisar({ titulo: 'Pagamento', mensagem: 'Erro de conexão ao processar pagamento.' });
     }
   }
 
