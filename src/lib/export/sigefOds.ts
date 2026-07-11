@@ -122,12 +122,6 @@ function setDenominacaoParcela(tabela: string, denominacao: string, parcela: str
   return out;
 }
 
-/** Substitui as linhas de vértice da aba perimetro_1 (caso de gleba única). */
-function injetarPerimetro(xml: string, linhas: string[]): string {
-  const { antes, tabela, depois } = fatiarTabela(xml, 'perimetro_1');
-  return antes + preencherPerimetroEm(tabela, linhas) + depois;
-}
-
 /** Substitui o N-ésimo <text:p> de uma linha por novo texto. */
 function setTextoP(rowStr: string, indice: number, novo: string): string {
   let i = -1;

@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
+import { db as fdb } from '../firebase/client';
 import { carregarTecnico, carregarEscritorio, salvarTecnico, salvarEscritorio, TECNICO_PADRAO, ESCRITORIO_PADRAO } from './settings';
 import type { TecnicoData, EscritorioData } from '../topo/types';
 import { workspaceUidAtual } from './perfilUso';

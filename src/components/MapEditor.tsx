@@ -1880,7 +1880,6 @@ export default function MapEditor(props: Props) {
       {/* Régua / Medições no Mapa */}
       {modo === 'medir' && (() => {
         const segmentOverlays = [];
-        let distanciaTotal = 0;
 
         for (let i = 0; i < desenhoAtual.length - 1; i++) {
           const ptA = desenhoAtual[i];
@@ -1891,8 +1890,6 @@ export default function MapEditor(props: Props) {
           const utmB = geoParaUtm(ptB[0], ptB[1], zona, hemisferio);
           const distSeg = distancia({ e: utmA.leste, n: utmA.norte }, { e: utmB.leste, n: utmB.norte });
           const azSeg = azimute({ e: utmA.leste, n: utmA.norte }, { e: utmB.leste, n: utmB.norte });
-
-          distanciaTotal += distSeg;
 
           segmentOverlays.push(
             <Marker key={`ruler-seg-${i}`} position={mid} interactive={false}

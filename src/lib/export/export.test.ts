@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import JSZip from 'jszip';
-import { Packer } from 'docx';
 import { parseTxt, pontosDePerimetro } from '../topo/parseTxt';
 import { montarVertices } from '../topo/vertices';
 import { montarConfrontantes } from '../topo/confrontantes';

@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ImovelData, TecnicoData, Confrontante, CorrecaoErrata, NaturezaCorrecao } from '@/lib/topo/types';
-import { gerarErrataDocx } from '@/lib/export/errata';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { carregarPadroes } from '@/lib/store/padroes';
 

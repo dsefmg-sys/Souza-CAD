@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad, CorrecaoErrata } from '@/lib/topo/types';
-import { gerarRequerimentoDocx, type TipoAtoRequerimento } from '@/lib/export/requerimento';
+import type { TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { numBR } from '@/lib/topo/geometry';
 import { carregarPreferencias } from '@/lib/store/preferencias';

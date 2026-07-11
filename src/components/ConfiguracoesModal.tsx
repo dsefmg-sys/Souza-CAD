@@ -7,7 +7,7 @@ import PontosBancoModal from './PontosBancoModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
 import { TERMOS, TERMOS_VERSAO, TERMOS_TITULAR } from '@/lib/legal/termos';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { auth, firebaseConfigurado } from '@/lib/firebase/client';
+import { auth } from '@/lib/firebase/client';
 import { sincronizarPerfil, obterPerfilUsuario, criarConvite, listarConvitesEnviados, cancelarConvite, listarMembrosDoWorkspace, excluirMinhaConta, type ConvitePendente, type PerfilUso } from '@/lib/store/perfilUso';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

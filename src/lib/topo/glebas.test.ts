@@ -95,7 +95,7 @@ describe('glebas', () => {
     const confA = { 0: 'c_sul_A', 1: 'c_divisa', 2: 'c_norte_A', 3: 'c_oeste_A' };
     const confB = { 0: 'c_sul_B', 1: 'c_leste_B', 2: 'c_norte_B', 3: 'c_divisa' };
 
-    const { vertices, confrontantePorLado } = unirGlebas(va, vb, confA, confB);
+    const { vertices } = unirGlebas(va, vb, confA, confB);
 
     expect(vertices).toHaveLength(6);
     // Verifica que o ponto da divisa comum foi contornado exteriormente:

@@ -14,7 +14,7 @@ import type { ObjetoDesenho } from '@/lib/topo/types';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pencil, X, Save, Trash2 } from 'lucide-react';
+import { Pencil, Save, Trash2 } from 'lucide-react';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
 
 interface Props {
@@ -245,7 +245,7 @@ function intervaloGrade(extent: number): number {
 
 export default function Planta({
   vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado,
-  zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], verticesVizinho = [], parcelasCert = [], resumoGlebas = [], objetos = [], config = {},
+  zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], parcelasCert = [], resumoGlebas = [], objetos = [], config = {},
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
@@ -290,7 +290,6 @@ export default function Planta({
     }
     if (id) onTextoStartEdit?.();
   };
-  const [guiaAlinhamento, setGuiaAlinhamento] = useState<{ x?: number; y?: number } | null>(null);
   const [boxStart, setBoxStart] = useState<{ x: number; y: number } | null>(null);
   const [boxEnd, setBoxEnd] = useState<{ x: number; y: number } | null>(null);
 
@@ -304,7 +303,7 @@ export default function Planta({
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('metrica:titulos-salvos');
       if (saved) {
-        try { setTitulosSalvos(JSON.parse(saved)); } catch (e) { /* ignore */ }
+        try { setTitulosSalvos(JSON.parse(saved)); } catch { /* ignore */ }
       }
     }
   }, []);
@@ -1995,7 +1994,7 @@ function FaixaInferior(props: {
   situacaoSel?: boolean; onSituacaoClick?: () => void; onRemoverSituacao?: () => void;
   situacaoStale?: boolean; onAtualizarSituacao?: () => void;
 }) {
-  const { imovel, ef, zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao } = props;
+  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -2546,7 +2545,6 @@ function CarimboA3(props: {
             Duplo clique edita direto na planta (ou escolha um modelo no painel de Planta). */}
         {(() => {
           const idT = 'carimbo.titulo';
-          const editando = ed?.editandoId === idT;
           const duas = tituloLinhas.length > 1;
           return (
             <g

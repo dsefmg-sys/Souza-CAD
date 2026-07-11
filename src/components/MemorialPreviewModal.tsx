@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Eye, Copy, Check, Download } from 'lucide-react';
@@ -38,7 +38,6 @@ export default function MemorialPreviewModal({
   imovel,
   tecnico,
   zona,
-  hemisferio,
   modo,
   dataExtenso,
   requerente,
@@ -130,7 +129,7 @@ export default function MemorialPreviewModal({
 
     try {
       await navigator.clipboard.writeText(texto);
-    } catch (e) {
+    } catch {
       // Fallback
     }
   };

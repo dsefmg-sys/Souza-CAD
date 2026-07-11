@@ -49,7 +49,7 @@ interface Map3DViewerProps {
   onVoltar2D: () => void;
 }
 
-export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCota = 0, onCompletarAltitudes, zona, hemisferio, imovel, onVoltar2D }: Map3DViewerProps) {
+export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCota = 0, onCompletarAltitudes, imovel, onVoltar2D }: Map3DViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Câmera em REFS (não em state): o laço de desenho lê direto a cada quadro, então girar/arrastar/zoom
   // e a rotação automática são suaves e NÃO disparam re-render do React a cada frame.

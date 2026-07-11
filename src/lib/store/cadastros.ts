@@ -1,7 +1,7 @@
 import type { ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad } from '../topo/types';
 import { db, novoId } from './db';
 import { collection, doc, getDoc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
-import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
+import { db as fdb } from '../firebase/client';
 import { workspaceUidAtual } from './perfilUso';
 
 type Store = 'proprietarios' | 'confrontantes' | 'imoveis' | 'cartorios';

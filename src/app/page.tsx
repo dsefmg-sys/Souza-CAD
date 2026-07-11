@@ -2,15 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { saveAs } from 'file-saver';
-import { jsPDF } from 'jspdf';
 import {
   Upload, FileText, Map as MapIcon, Plus, Trash2,
-  RotateCcw, Flag, Save, FolderOpen, MousePointer2, Crosshair,
-  CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Layers,
+  RotateCcw, Flag, Save, FolderOpen, MousePointer2,
+  CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
-  Settings, LogOut, LogIn, Table, FileWarning, Target, Search, Check, X, Ruler, ChevronRight, Move, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, BarChart3, Crown, FlaskConical, Package, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, GripHorizontal, SlidersHorizontal, ChevronDown, Briefcase, Maximize2, PanelLeft,
+  Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, Maximize2, PanelLeft,
   Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -67,11 +65,11 @@ import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
 import { montarVertices, reordenar, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
-import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, dividirPorAreaAlvo, mapearAtributosGlebaDividida } from '@/lib/topo/glebas';
+import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, dividirPorAreaAlvo } from '@/lib/topo/glebas';
 import { areaPoligonoEN, areaSobreposicaoEstimada } from '@/lib/topo/confrontacaoCheck';
 import { calcular } from '@/lib/topo/calcular';
-import { detectarZona, escolherZonaPorAncora, geoParaUtm, utmParaGeo, convergenciaMeridiana } from '@/lib/topo/coords';
-import { exportarDxf as gerarDxf, importarDxf, anelDeDxf } from '@/lib/io/dxf';
+import { escolherZonaPorAncora, geoParaUtm, utmParaGeo, convergenciaMeridiana } from '@/lib/topo/coords';
+import { importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarShapefileZip, importarShapefileZip, lerShp } from '@/lib/io/shapefile';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
@@ -104,7 +102,7 @@ import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/
 import { carregarTiposDivisaCustom, salvarTipoDivisaCustom, type TipoDivisaCustom } from '@/lib/store/tiposDivisaCustom';
 import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, type PerfilUso } from '@/lib/store/perfilUso';
 import { garantirEmpresaDoWorkspace, minhaEmpresa, type Empresa } from '@/lib/store/empresas';
-import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, LIMITE_MODO_FIXO_MS, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
+import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist, carregarVideosTutorial, type VideoTutorial } from '@/lib/store/suporte';
 import { carregarConfigAssinatura, type ConfigAssinatura } from '@/lib/store/assinatura';
@@ -112,13 +110,11 @@ import { carregarConfigAssinatura, type ConfigAssinatura } from '@/lib/store/ass
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
 import PlanilhaConferenciaModal from '@/components/PlanilhaConferenciaModal';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
-import { gerarMemorialDocx } from '@/lib/export/memorial';
-import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
 import { exportarKML } from '@/lib/export/kml';
 import RelatorioSobreposicaoModal from '@/components/RelatorioSobreposicaoModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import JSZip from 'jszip';
-import { gerarRequerimentoDocx, type TipoAtoRequerimento } from '@/lib/export/requerimento';
+import { type TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 
 const MapEditor = dynamic(() => import('@/components/MapEditor'), {
@@ -271,7 +267,7 @@ export default function EditorPage() {
   const [plantaPan, setPlantaPan] = useState({ x: 0, y: 0 });
   // espelho de zoom/pan pra calcular o zoom-no-cursor sem atualizador aninhado (que o React roda 2x em dev)
   const vistaPlantaRef = useRef({ z: 1, x: 0, y: 0 });
-  const [editarPlanta, setEditarPlanta] = useState(true); // planta abre já no modo edição
+  const [editarPlanta] = useState(true); // planta abre já no modo edição
   const [folhaTravada, setFolhaTravada] = useState(false); // por padrão, destravada (dá pra reposicionar a moldura já na primeira vez que abre a planta)
   const [menuContexto, setMenuContexto] = useState<{
     tipo: 'texto' | 'vertice' | 'divisa' | 'mapa' | 'objeto';
@@ -350,14 +346,14 @@ export default function EditorPage() {
     return 12;
   }); // tamanho da fonte do texto central da gleba (denominação/área/perímetro) no mapa
   const [simboloSel, setSimboloSel] = useState('arvore'); // elemento cartográfico ativo (modo 'simbolo')
-  const [elementosAberto, setElementosAberto] = useState(false); // popover do seletor de elementos
+  const [, setElementosAberto] = useState(false); // popover do seletor de elementos
   const [escalaInterface, setEscalaInterface] = useState(() => {
     if (typeof window === 'undefined') return 1;
     try { const s = carregarPreferencias().escalaFonte; if (s >= 0.8 && s <= 1.6) return s; } catch { /* ignore */ }
     return 1;
   }); // acessibilidade: escala das letras da interface
   const [notificacaoTamanho, setNotificacaoTamanho] = useState<{ texto: string; visible: boolean }>({ texto: '', visible: false });
-  const [tamanhoTimer, setTamanhoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [, setTamanhoTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const escalaMontadaRef = useRef(false);
   const tamNomesMontadoRef = useRef(false);
   const tamCentroMontadoRef = useRef(false);
@@ -410,10 +406,9 @@ export default function EditorPage() {
   const [tiposDivisaCustom, setTiposDivisaCustom] = useState<TipoDivisaCustom[]>([]); // tipos de divisa cadastrados pelo projetista
   const [corPickerAberto, setCorPickerAberto] = useState(false); // painel de ajuste rápido das cores de divisa
   const [corBump, setCorBump] = useState(0); // força re-render após trocar uma cor (cores vivem em módulo)
-  const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
+  const [, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
   const [avisoReconciliarAberto, setAvisoReconciliarAberto] = useState(false);
   const [avisoReconciliarResolve, setAvisoReconciliarResolve] = useState<((v: 'exportar' | 'voltar' | 'conciliar') => void) | null>(null);
-  const iconeCab = (chave: string, icone: React.ReactNode) => (prefs.iconesCabecalhoOcultos.includes(chave) ? null : icone);
   // Tipos de divisa pra escolher: os oficiais (REPRESENTACOES) + os que o projetista cadastrou.
   const opcoesDivisaTipo: string[] = [...REPRESENTACOES, ...tiposDivisaCustom.map((t) => t.chave)];
   const rotuloDivisaTipo = (tipo: string) => REPRES_LABEL[tipo] || tiposDivisaCustom.find((t) => t.chave === tipo)?.label || tipo;
@@ -539,7 +534,7 @@ export default function EditorPage() {
           if (typeof p.x === 'number' && typeof p.y === 'number') {
             return p;
           }
-        } catch (_) {}
+        } catch {}
       }
     }
     return { x: 80, y: 12 };
@@ -585,7 +580,7 @@ export default function EditorPage() {
           if (typeof p.x === 'number' && typeof p.y === 'number') {
             return p;
           }
-        } catch (_) {}
+        } catch {}
       }
     }
     return { x: 100, y: 56 };
@@ -630,7 +625,7 @@ export default function EditorPage() {
           if (typeof p.x === 'number' && typeof p.y === 'number') {
             return p;
           }
-        } catch (_) {}
+        } catch {}
       }
     }
     return { x: 300, y: 680 };
@@ -680,20 +675,18 @@ export default function EditorPage() {
   }, []);
 
   const [plantaDark, setPlantaDark] = useState(true); // modo escuro só da folha A3 (conforto noturno)
-  const direcaoAtalhos = (typeof window !== 'undefined' && posAtalhos.x < 140 && posAtalhos.y > window.innerHeight * 0.25 && posAtalhos.y < window.innerHeight * 0.75) ? 'vertical' : 'horizontal';
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean; errata?: boolean }>({});
   const [salvoOk, setSalvoOk] = useState(false);
-  const [salvoNuvem, setSalvoNuvem] = useState(false); // verde só quando gravou no banco (nuvem); amarelo se só local
+  const [, setSalvoNuvem] = useState(false); // verde só quando gravou no banco (nuvem); amarelo se só local
   const [salvarLaranja, setSalvarLaranja] = useState(false); // disquete laranja: há mudança não salva há >1s
   const ultimoSalvoSig = useRef<string>('');
   const acabouDeSalvar = useRef(false);
   const [errataAberto, setErrataAberto] = useState(false);
   const [sigefMenuAberto, setSigefMenuAberto] = useState(false);
   const [prevMemorialAberto, setPrevMemorialAberto] = useState(false);
-  const [prevMemorialModo, setPrevMemorialModo] = useState<'normal' | 'servidao'>('normal');
-  const [camadasPopoverAberta, setCamadasPopoverAberta] = useState(false);
+  const [prevMemorialModo] = useState<'normal' | 'servidao'>('normal');
   const [importTxtConfigAberto, setImportTxtConfigAberto] = useState(false);
 
   const projetoTemServidao = useMemo(() => {
@@ -735,7 +728,7 @@ export default function EditorPage() {
   // A CHAVE do app: 'simples' (tela enxuta, ideal pra aprender) x 'completo' (tudo à mostra).
   // Novo usuário começa no simples. Fica salvo nas preferências e vale no app inteiro.
   const [modoApp, setModoApp] = useState<'simples' | 'medio' | 'completo'>('simples');
-  const [tempoCompletoMs, setTempoCompletoMs] = useState(0);
+  const [, setTempoCompletoMs] = useState(0);
   const [introTocando, setIntroTocando] = useState(() => {
     if (typeof window === 'undefined') return false;
     // Espelha a lógica do IntroVideo: se a abertura JÁ tocou nesta sessão (ex.: rodou na tela de
@@ -758,7 +751,6 @@ export default function EditorPage() {
   // o Médio já entrega — usar `medio` sozinho as esconderia no Completo. `completo` fica reservado
   // só pro que é avançado de verdade.
   const medioOuMais = modoApp !== 'simples';
-  const rotuloModo = completo ? 'COMPL.' : medio ? 'MÉDIO' : 'FÁCIL';
   // Enquanto está no Completo, acumula tempo de uso (resolução de 1 min). Passou de 5 h, a chave
   // do topo some pra deixar a tela limpa — voltar ao Simples fica só nas Configurações.
   useEffect(() => {
@@ -1477,9 +1469,6 @@ export default function EditorPage() {
   const escTextoAtual = (id: string) => plantaConfig.textos?.[id]?.escala ?? 1;
 
   // redimensionar o painel da direita
-  function asideDown(e: ReactPointerEvent) { asideDrag.current = true; try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* ignore */ } }
-  function asideMove(e: ReactPointerEvent) { if (asideDrag.current) setAsideW(Math.min(680, Math.max(300, window.innerWidth - e.clientX))); }
-  function asideUp(e: ReactPointerEvent) { asideDrag.current = false; try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ } }
 
   // ---------- glebas ----------
   // Devolve a lista completa de glebas com a ativa atualizada a partir do estado de trabalho.
@@ -4800,7 +4789,6 @@ export default function EditorPage() {
         {/* Área principal: mapa ou planta */}
         {(() => {
           const rotulo = toolWEfetivo >= 104;
-          const L = (t: string) => (rotulo ? <span className="truncate text-xs">{t.toUpperCase()}</span> : null);
           return (
             <>
               <aside style={{ width: toolWEfetivo }} className={`no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
@@ -7817,7 +7805,7 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
       const blobBruto = await Packer.toBlob(doc);
       const blob = await compatibilizarWord2007(blobBruto);
       saveAs(blob, `Carta de Anuencia - ${c.nome || 'Confrontante'}.docx`);
-    } catch (err) {
+    } catch {
       await avisar({ titulo: 'Carta de Anuência', mensagem: 'Erro ao gerar a Carta de Anuência.' });
     }
   };
@@ -8147,7 +8135,6 @@ function distPontoSegmento(px: number, py: number, ax: number, ay: number, bx: n
 }
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-const DIAS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 function dataPorExtenso(d = new Date()): string {
   return `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 }

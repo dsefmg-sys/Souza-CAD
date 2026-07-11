@@ -59,7 +59,6 @@ export default function CadastrosPage() {
   const [confsList, setConfsList] = useState<ConfrontanteCad[]>([]);
   const [imoveisList, setImoveisList] = useState<ImovelCad[]>([]);
   const [cartoriosList, setCartoriosList] = useState<CartorioCad[]>([]);
-  const [sugCns, setSugCns] = useState<string[]>([]);
 
   // Presets para edição vindos da busca global
   const [presetProp, setPresetProp] = useState<ProprietarioCad | null>(null);
@@ -77,7 +76,6 @@ export default function CadastrosPage() {
       setConfsList(c);
       setImoveisList(i);
       setCartoriosList(ca);
-      setSugCns(ca.map((x) => x.cns).filter(Boolean));
     } catch (e) {
       console.error('Erro ao carregar cadastros:', e);
     }

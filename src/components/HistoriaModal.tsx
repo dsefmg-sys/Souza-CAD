@@ -26,7 +26,7 @@ export default function HistoriaModal({ open, onOpenChange }: { open: boolean; o
       await navigator.clipboard.writeText(mensagemCompartilhar);
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
-    } catch (e) {
+    } catch {
       // fallback silencioso
     }
   };
