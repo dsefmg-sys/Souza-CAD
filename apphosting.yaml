@@ -32,3 +32,9 @@ env:
   # forjando a URL.
   - variable: MP_WEBHOOK_SECRET
     secret: MP_WEBHOOK_SECRET
+
+  # Access Token de produção do Mercado Pago (painel do MP: Suas integrações > aplicação >
+  # Credenciais de produção) — autoriza o servidor a criar cobranças e consultar pagamentos de
+  # verdade (não o de teste).
+  - variable: MP_ACCESS_TOKEN
+    secret: MP_ACCESS_TOKEN
