@@ -3721,7 +3721,33 @@ export default function EditorPage() {
   // recorta ao polígono do imóvel e aplica os ajustes da engrenagem (cor, espessura, mestra a cada N).
   async function gerarCurvasNivel() {
     const pts3d = pontos3dCurvas();
-    if (pts3d.length < 4) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Preciso de pelo menos 4 pontos com altitude. Importe também os pontos internos do levantamento (não só o perímetro).' }); return; }
+    if (pts3d.length < 4) {
+      await avisar({
+        titulo: 'Curvas de nível',
+        mensagem: 'Preciso de pelo menos 4 pontos com altitude a mais de 1 mm de distância. Importe também os pontos internos do levantamento (não só o perímetro).'
+      });
+      return;
+    }
+
+    // Verifica se todos os pontos estão alinhados em linha reta (colineares)
+    let colinear = true;
+    const p1 = pts3d[0], p2 = pts3d[1];
+    for (let i = 2; i < pts3d.length; i++) {
+      const p = pts3d[i];
+      const area = Math.abs(p1.x * (p2.y - p.y) + p2.x * (p.y - p1.y) + p.x * (p1.y - p2.y));
+      if (area > 1e-4) {
+        colinear = false;
+        break;
+      }
+    }
+    if (colinear) {
+      await avisar({
+        titulo: 'Curvas de nível',
+        mensagem: 'Os pontos informados estão alinhados em linha reta. São necessários pontos distribuídos em área para traçar curvas de nível.'
+      });
+      return;
+    }
+
     const zs = pts3d.map((p) => p.z);
     if (Math.max(...zs) - Math.min(...zs) < 0.01) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Os pontos não têm variação de altitude — não há relevo para desenhar curvas.' }); return; }
     if (!(intervaloCurva > 0)) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Escolha um intervalo maior que zero (ex.: 1 m ou 5 m).' }); return; }

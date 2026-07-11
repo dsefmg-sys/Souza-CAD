@@ -49,7 +49,7 @@ describe('Settings Store', () => {
     });
 
     it('salva e carrega a configuração com sucesso', () => {
-      const custom = { ...IMPORT_TXT_PADRAO, separador: ',', decimal: ',' as const };
+      const custom = { ...IMPORT_TXT_PADRAO, separador: ',' as const, decimal: ',' as const };
       salvarImportTxt(custom);
       expect(carregarImportTxt()).toEqual(custom);
     });
