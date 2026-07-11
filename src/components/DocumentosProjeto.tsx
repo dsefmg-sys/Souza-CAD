@@ -50,7 +50,11 @@ export default function DocumentosProjeto({
         await avisar({ titulo: 'Arquivo muito grande', mensagem: `O arquivo "${f.name}" excede o limite de ${limiteMb} MB. Reduza o tamanho ou otimize o documento.` });
         continue;
       }
-      await salvarArquivo(projetoId, f, { dono, confrontanteId, tipoDoc });
+      try {
+        await salvarArquivo(projetoId, f, { dono, confrontanteId, tipoDoc });
+      } catch (e) {
+        await avisar({ titulo: 'Arquivo não permitido', mensagem: (e as Error).message });
+      }
     }
     recarregar();
   }

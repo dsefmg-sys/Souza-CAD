@@ -20,6 +20,14 @@ export interface MetaArquivo {
 
 /** Anexa um arquivo ao projeto (guardado localmente no navegador). */
 export async function salvarArquivo(projetoId: string, file: File, meta: MetaArquivo = {}): Promise<ArquivoProjeto> {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const extensoesPermitidas = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'];
+  const mimePermitidos = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+
+  if (!extensoesPermitidas.includes(ext) || !mimePermitidos.includes(file.type)) {
+    throw new Error('Tipo de arquivo não permitido! Use apenas imagens (PNG, JPEG, GIF, WebP) ou PDF.');
+  }
+
   const d = await db();
   const rec: ArquivoProjeto = {
     id: novoId('arq'), projetoId, nome: file.name, tipo: file.type || 'application/octet-stream',
