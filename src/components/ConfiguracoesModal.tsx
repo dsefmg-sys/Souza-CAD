@@ -304,6 +304,10 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   }
 
   function lerLogo(file: File) {
+    if (file.size > 500 * 1024) {
+      flash('Logotipo muito grande! Limite de 500 KB para evitar lentidão.');
+      return;
+    }
     const r = new FileReader();
     r.onload = () => {
       changeEsc('logoDataUrl', String(r.result));

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Upload, Download, Trash2, Eye, FileText, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { listarArquivosPorDono, salvarArquivo, excluirArquivo, type ArquivoProjeto } from '@/lib/store/arquivosProjeto';
-import { confirmar } from '@/lib/ui/dialogos';
+import { confirmar, avisar } from '@/lib/ui/dialogos';
 
 /**
  * Centro de documentos de um DONO (o imóvel/proprietário, ou um confrontante específico). Anexa,
@@ -44,7 +44,14 @@ export default function DocumentosProjeto({
 
   async function subir(files: FileList | null) {
     if (!files || !projetoId) return;
-    for (const f of Array.from(files)) await salvarArquivo(projetoId, f, { dono, confrontanteId, tipoDoc });
+    const limiteMb = 15;
+    for (const f of Array.from(files)) {
+      if (f.size > limiteMb * 1024 * 1024) {
+        await avisar({ titulo: 'Arquivo muito grande', mensagem: `O arquivo "${f.name}" excede o limite de ${limiteMb} MB. Reduza o tamanho ou otimize o documento.` });
+        continue;
+      }
+      await salvarArquivo(projetoId, f, { dono, confrontanteId, tipoDoc });
+    }
     recarregar();
   }
   function baixar(a: ArquivoProjeto) {

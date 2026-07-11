@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 // Simular objeto window e localStorage para rodar no ambiente de teste do Node
 const storage: Record<string, string> = {};
