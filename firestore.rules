@@ -57,9 +57,9 @@ service cloud.firestore {
             request.resource.data.get('workspaceUid', null) == request.auth.uid
             || request.resource.data.get('workspaceUid', null) == null
             || (
-              request.auth.token.get('email', null) != null
-              && exists(/databases/$(database)/documents/convites/$(request.auth.token.get('email', 'no-email')))
-              && get(/databases/$(database)/documents/convites/$(request.auth.token.get('email', 'no-email'))).data.empresaUid == request.resource.data.workspaceUid
+              request.auth.token.email != null
+              && exists(/databases/$(database)/documents/convites/$(request.auth.token.email))
+              && get(/databases/$(database)/documents/convites/$(request.auth.token.email)).data.get('empresaUid', null) == request.resource.data.get('workspaceUid', null)
             )
           )
         )
@@ -80,9 +80,9 @@ service cloud.firestore {
             || request.resource.data.get('workspaceUid', null) == null
             // Ou existe um convite pendente para o seu e-mail apontando para esse workspace
             || (
-              request.auth.token.get('email', null) != null
-              && exists(/databases/$(database)/documents/convites/$(request.auth.token.get('email', 'no-email')))
-              && get(/databases/$(database)/documents/convites/$(request.auth.token.get('email', 'no-email'))).data.empresaUid == request.resource.data.workspaceUid
+              request.auth.token.email != null
+              && exists(/databases/$(database)/documents/convites/$(request.auth.token.email))
+              && get(/databases/$(database)/documents/convites/$(request.auth.token.email)).data.get('empresaUid', null) == request.resource.data.get('workspaceUid', null)
             )
           )
         )
@@ -119,7 +119,7 @@ service cloud.firestore {
         ehMaster()
         || (request.auth.token.email != null && request.auth.token.email.lower() == email)
         || (resource != null && request.auth.token.email != null
-            && resource.data.get('alvoEmail', null) == request.auth.token.email.lower())
+            && string(resource.data.get('alvoEmail', '')).lower() == request.auth.token.email.lower())
       );
       // Só cria o pedido em nome de si mesmo (id == seu e-mail, solicitanteUid == seu uid).
       allow create: if request.auth != null
@@ -131,7 +131,7 @@ service cloud.firestore {
         ehMaster()
         || (request.auth.token.email != null && request.auth.token.email.lower() == email)
         || (resource != null && request.auth.token.email != null
-            && resource.data.get('alvoEmail', null) == request.auth.token.email.lower())
+            && string(resource.data.get('alvoEmail', '')).lower() == request.auth.token.email.lower())
       );
       allow update: if false;
     }

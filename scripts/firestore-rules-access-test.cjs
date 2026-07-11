@@ -39,6 +39,7 @@ async function main() {
       await setDoc(doc(db, 'empresas/ownerB'), { donoUid: 'ownerB', membros: { ownerB: 'admin' } });
 
       await setDoc(doc(db, 'convites/ajudante@x.com'), { empresaUid: 'ownerA' });
+      await setDoc(doc(db, 'convites/ajudante2@x.com'), { empresaUid: 'ownerA' });
 
       await setDoc(doc(db, 'users/ownerA'), { nome: 'Owner A' });
       await setDoc(doc(db, 'users/ownerB'), { nome: 'Owner B' });
@@ -56,6 +57,7 @@ async function main() {
     const ownerBDb = testEnv.authenticatedContext('ownerB', { email: 'ownerB@x.com' }).firestore();
     const helperADb = testEnv.authenticatedContext('helperA', { email: 'helperA@x.com' }).firestore();
     const newHelperDb = testEnv.authenticatedContext('newHelper', { email: 'ajudante@x.com' }).firestore();
+    const newHelper2Db = testEnv.authenticatedContext('newHelper2', { email: 'ajudante2@x.com' }).firestore();
 
     // ---- config: qualquer autenticado lê; só o master escreve ----
     await assertSucceeds(getDoc(doc(ownerADb, 'config/app')));
@@ -115,22 +117,35 @@ async function main() {
     await assertSucceeds(getDoc(doc(ownerADb, 'credenciados/naoExistente')));
 
     // Restrição de atualização de workspaceUid (anti-escalação de privilégios)
+    console.log("Testing: helperA sets workspaceUid:ownerB (should fail)...");
     await assertFails(setDoc(doc(helperADb, 'perfisUso/helperA'), { workspaceUid: 'ownerB' }, { merge: true })); // helperA não tem convite para ownerB
-    await assertSucceeds(setDoc(doc(newHelperDb, 'perfisUso/newHelper'), { workspaceUid: 'ownerA' }, { merge: true })); // newHelper tem convite para ownerA
+    
+    console.log("Testing: newHelper2 sets workspaceUid:ownerA (should succeed)...");
+    await assertSucceeds(setDoc(doc(newHelper2Db, 'perfisUso/newHelper2'), { workspaceUid: 'ownerA' }, { merge: true })); // newHelper2 tem convite para ownerA
+    
+    console.log("Testing: helperA sets workspaceUid:helperA (should succeed)...");
     await assertSucceeds(setDoc(doc(helperADb, 'perfisUso/helperA'), { workspaceUid: 'helperA' }, { merge: true })); // voltar a si mesmo é permitido
+    
+    console.log("Testing: helperA sets rtNome (should succeed)...");
     await assertSucceeds(setDoc(doc(helperADb, 'perfisUso/helperA'), { rtNome: 'Nome Modificado' }, { merge: true })); // alterar outros campos sem mudar workspaceUid é permitido
 
     // Anti-escalação NA CRIAÇÃO (o furo que existia): uma conta nova, SEM convite, não pode nascer
     // já apontando o workspaceUid pra vítima. Antes a regra de create só checava o uid e deixava
     // passar — dando leitura/escrita nos dados da vítima via users/{uid}.
     const atacanteDb = testEnv.authenticatedContext('atacante', { email: 'atacante@x.com' }).firestore();
+    
+    console.log("Testing: atacante creates profile with workspaceUid:ownerA (should fail)...");
     await assertFails(setDoc(doc(atacanteDb, 'perfisUso/atacante'), { email: 'atacante@x.com', workspaceUid: 'ownerA' })); // sem convite: criação negada
+    
+    console.log("Testing: atacante creates profile without workspaceUid (should succeed)...");
     await assertSucceeds(setDoc(doc(atacanteDb, 'perfisUso/atacante'), { email: 'atacante@x.com' })); // criar o próprio perfil (sem vínculo) segue permitido
+    
+    console.log("Testing: atacante reads users/ownerA (should fail)...");
     await assertFails(getDoc(doc(atacanteDb, 'users/ownerA'))); // e, sem vínculo válido, não enxerga os dados da vítima
 
     // Solicitação de vínculo: o auxiliar só registra pedido em nome próprio; o dono-alvo lê, terceiros não.
-    await assertSucceeds(setDoc(doc(atacanteDb, 'solicitacoesVinculo/atacante@x.com'), { solicitanteUid: 'atacante', solicitanteEmail: 'atacante@x.com', alvoEmail: 'ownerA@x.com', criadoEm: 1 }));
-    await assertFails(setDoc(doc(atacanteDb, 'solicitacoesVinculo/outro@x.com'), { solicitanteUid: 'atacante', solicitanteEmail: 'atacante@x.com', alvoEmail: 'ownerA@x.com', criadoEm: 1 })); // id tem que ser o próprio e-mail
+    await assertSucceeds(setDoc(doc(atacanteDb, 'solicitacoesVinculo/atacante@x.com'), { solicitanteUid: 'atacante', solicitanteEmail: 'atacante@x.com', alvoEmail: 'ownera@x.com', criadoEm: 1 }));
+    await assertFails(setDoc(doc(atacanteDb, 'solicitacoesVinculo/outro@x.com'), { solicitanteUid: 'atacante', solicitanteEmail: 'atacante@x.com', alvoEmail: 'ownera@x.com', criadoEm: 1 })); // id tem que ser o próprio e-mail
     await assertSucceeds(getDoc(doc(ownerADb, 'solicitacoesVinculo/atacante@x.com'))); // o RT-alvo vê o pedido endereçado a ele
     await assertFails(getDoc(doc(ownerBDb, 'solicitacoesVinculo/atacante@x.com'))); // quem não é o alvo não vê
 
@@ -141,6 +156,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error(error.stack || error);
   process.exit(1);
 });
