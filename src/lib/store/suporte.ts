@@ -42,26 +42,29 @@ export function linkWhatsapp(numero: string): string | null {
   return `https://wa.me/${dig.startsWith('55') ? dig : `55${dig}`}`;
 }
 
-const CACHE_GEMINI = 'metrica.geminiApiKey';
-
+// Chave da IA (Gemini): mora em config/segredos, que só o master lê/escreve (ver firestore.rules).
+// Antes ficava em config/app, que é lido por QUALQUER usuário logado — então a chave crua vazava
+// pra qualquer cliente, que podia gastar a cota por fora do app. Sem cache local: é credencial
+// sensível, então relemos da nuvem em vez de deixar salva no navegador. O servidor (rota da IA) lê
+// pelo Admin SDK, que passa por cima das regras.
 export async function carregarGeminiApiKey(): Promise<string> {
-  if (firebaseConfigurado) {
-    try {
-      const s = await getDoc(doc(fdb()!, 'config', 'app'));
-      const key = (s.exists() ? String(s.data()?.geminiApiKey ?? '') : '');
-      try { localStorage.setItem(CACHE_GEMINI, key); } catch { /* ignore */ }
-      return key;
-    } catch { /* fallback to cache */ }
-  }
-  try { return localStorage.getItem(CACHE_GEMINI) ?? ''; } catch { return ''; }
+  if (!firebaseConfigurado) return '';
+  try {
+    const s = await getDoc(doc(fdb()!, 'config', 'segredos'));
+    return s.exists() ? String(s.data()?.geminiApiKey ?? '') : '';
+  } catch { return ''; }
 }
 
 export async function salvarGeminiApiKey(key: string): Promise<void> {
   const cleanKey = key.trim();
-  try { localStorage.setItem(CACHE_GEMINI, cleanKey); } catch { /* ignore */ }
-  if (firebaseConfigurado) {
-    await setDoc(doc(fdb()!, 'config', 'app'), { geminiApiKey: cleanKey }, { merge: true });
-  }
+  if (!firebaseConfigurado) return;
+  await setDoc(doc(fdb()!, 'config', 'segredos'), { geminiApiKey: cleanKey }, { merge: true });
+  // Higiene: se a chave tiver ficado no doc aberto (config/app) de versões antigas, apaga de lá
+  // pra estancar o vazamento antigo assim que o master salvar de novo.
+  try {
+    const { deleteField } = await import('firebase/firestore');
+    await setDoc(doc(fdb()!, 'config', 'app'), { geminiApiKey: deleteField() }, { merge: true });
+  } catch { /* ignore — não é crítico */ }
 }
 
 const CACHE_APP_URL = 'metrica.appUrl';

@@ -302,6 +302,74 @@ export async function aceitarConviteSePendente(): Promise<string | null> {
   }
 }
 
+// ---- Solicitações de vínculo (Auxiliar PEDE pra entrar; o dono APROVA) ----
+// Substitui o antigo autovínculo instantâneo por e-mail, que era inseguro: qualquer um digitava o
+// e-mail de um RT e caía dentro dos dados dele sem aprovação nenhuma. Agora o auxiliar só registra
+// um pedido em `solicitacoesVinculo/{seuEmail}`; quem decide quem entra é o dono da empresa, que ao
+// aprovar cria um convite comum (a única via que o Firestore aceita pra ligar o workspaceUid).
+
+export interface SolicitacaoVinculo {
+  solicitanteUid: string;
+  solicitanteEmail: string;
+  alvoEmail: string;
+  criadoEm: number;
+}
+
+/** Auxiliar registra um pedido pra entrar no workspace do RT/empresa (pelo e-mail do RT). */
+export async function criarSolicitacaoVinculo(alvoEmail: string): Promise<void> {
+  const u = uid();
+  const meuEmail = normalizarEmail(email());
+  if (!u || !meuEmail || !firebaseConfigurado) throw new Error('Faça login para pedir vínculo.');
+  const alvo = normalizarEmail(alvoEmail);
+  if (!alvo || !alvo.includes('@')) throw new Error('Informe um e-mail válido.');
+  if (alvo === meuEmail) throw new Error('Esse é o seu próprio e-mail.');
+  await setDoc(doc(fdb()!, 'solicitacoesVinculo', meuEmail), {
+    solicitanteUid: u, solicitanteEmail: meuEmail, alvoEmail: alvo, criadoEm: Date.now(),
+  } as SolicitacaoVinculo);
+}
+
+/** O pedido pendente que EU (auxiliar) enviei, se houver — pra mostrar "aguardando aprovação". */
+export async function minhaSolicitacaoPendente(): Promise<SolicitacaoVinculo | null> {
+  const meuEmail = normalizarEmail(email());
+  if (!meuEmail || !firebaseConfigurado) return null;
+  try {
+    const s = await getDoc(doc(fdb()!, 'solicitacoesVinculo', meuEmail));
+    return s.exists() ? (s.data() as SolicitacaoVinculo) : null;
+  } catch { return null; }
+}
+
+/** Cancela o meu próprio pedido de vínculo ainda não aprovado. */
+export async function cancelarMinhaSolicitacao(): Promise<void> {
+  const meuEmail = normalizarEmail(email());
+  if (!meuEmail || !firebaseConfigurado) return;
+  try { await deleteDoc(doc(fdb()!, 'solicitacoesVinculo', meuEmail)); } catch { /* ignore */ }
+}
+
+/** Pedidos de vínculo endereçados a MIM (dono/RT) e ainda não decididos. */
+export async function listarSolicitacoesRecebidas(): Promise<SolicitacaoVinculo[]> {
+  const meuEmail = normalizarEmail(email());
+  if (!meuEmail || !firebaseConfigurado) return [];
+  try {
+    const snap = await getDocs(query(collection(fdb()!, 'solicitacoesVinculo'), where('alvoEmail', '==', meuEmail)));
+    return snap.docs.map((d) => d.data() as SolicitacaoVinculo).sort((a, b) => b.criadoEm - a.criadoEm);
+  } catch { return []; }
+}
+
+/** Aprova o pedido de um auxiliar: cria o convite (que libera o vínculo ao ele logar) e consome o
+ *  pedido. É a ponte segura — o auxiliar nunca escreve o próprio workspaceUid; ele só entra depois
+ *  que este convite, criado pelo dono, passa a existir. */
+export async function aprovarSolicitacao(solicitanteEmail: string, empresaNome: string): Promise<void> {
+  if (!firebaseConfigurado) return;
+  await criarConvite(solicitanteEmail, empresaNome);
+  try { await deleteDoc(doc(fdb()!, 'solicitacoesVinculo', normalizarEmail(solicitanteEmail))); } catch { /* ignore */ }
+}
+
+/** Recusa (apaga) o pedido de um auxiliar sem criar convite. */
+export async function recusarSolicitacao(solicitanteEmail: string): Promise<void> {
+  if (!firebaseConfigurado) return;
+  try { await deleteDoc(doc(fdb()!, 'solicitacoesVinculo', normalizarEmail(solicitanteEmail))); } catch { /* ignore */ }
+}
+
 /** Obtém o perfil do usuário logado. Com fallback seguro pro cache local caso offline. */
 export async function obterPerfilUsuario(): Promise<PerfilUso | null> {
   const u = uid();

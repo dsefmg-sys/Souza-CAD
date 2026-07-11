@@ -247,22 +247,19 @@ function montarSnapshotDesenho(glebasArr: { vertices: Vertex[]; objetos?: Objeto
   });
 }
 
-function hexToHslValues(hex: string): string {
+// Converte a cor da marca (hex) para HSL numérico. Devolve null se o hex não for válido.
+function hexParaHsl(hex: string): { h: number; s: number; l: number } | null {
   hex = (hex || '').trim().replace(/^#/, '');
   if (hex.length === 3) {
     hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
   }
-  if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {
-    return '142 71% 30%'; // fallback para verde padrão
-  }
+  if (!/^[0-9A-Fa-f]{6}$/.test(hex)) return null;
   const r = parseInt(hex.substring(0, 2), 16) / 255;
   const g = parseInt(hex.substring(2, 4), 16) / 255;
   const b = parseInt(hex.substring(4, 6), 16) / 255;
-
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
   let h = 0, s = 0;
   const l = (max + min) / 2;
-
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
@@ -273,27 +270,25 @@ function hexToHslValues(hex: string): string {
     }
     h /= 6;
   }
-
-  h = Math.round(h * 360);
-  s = Math.round(s * 100);
-  const lRound = Math.round(l * 100);
-
-  return `${h} ${s}% ${lRound}%`;
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
-function isLightColor(hex: string): boolean {
-  hex = (hex || '').trim().replace(/^#/, '');
-  if (hex.length === 3) {
-    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-  }
-  if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {
-    return false; // fallback
-  }
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness > 155;
+// Ajusta a cor da marca pra ficar LEGÍVEL como cor de acento na interface, respeitando o tema. O
+// problema que isto resolve: a cor da empresa vira `--primary`, usada tanto como texto colorido
+// quanto como fundo de botão. Sem ajuste, uma cor clara (branco, amarelo) some no tema claro, e uma
+// cor escura (preto) some no tema escuro. Aqui a luminosidade é presa numa faixa que sempre lê: no
+// tema claro fica média-escura; no escuro, média-clara. Preto/branco puros deixam de quebrar a
+// leitura — viram um tom visível em vez de sumir. Devolve também o `foreground`, a cor do texto pra
+// quando ESSA cor é fundo de botão (texto escuro sobre cor clara, branco sobre cor escura).
+function corMarcaLegivel(hex: string, isDark: boolean): { valor: string; foreground: string } | null {
+  const hsl = hexParaHsl(hex);
+  if (!hsl) return null;
+  const { h, s } = hsl;
+  // faixa de luminosidade legível por tema (em %). No claro, escura o bastante pra ler no branco;
+  // no escuro, clara o bastante pra ler no preto.
+  const l = isDark ? Math.min(80, Math.max(55, hsl.l)) : Math.min(46, Math.max(22, hsl.l));
+  const foreground = l >= 60 ? '0 0% 12%' : '0 0% 100%';
+  return { valor: `${h} ${s}% ${l}%`, foreground };
 }
 
 export default function EditorPage() {
@@ -304,6 +299,22 @@ export default function EditorPage() {
   const [avatarQuebrado, setAvatarQuebrado] = useState(false);
   useEffect(() => { setAvatarQuebrado(false); }, [user]);
   const [pecasMenuAberto, setPecasMenuAberto] = useState(false); // no celular, as peças ficam num menu só
+  // O botão PEÇAS mora dentro da barra de ferramentas, que tem overflow-x-auto — e overflow numa
+  // direção corta a outra também. Um menu absoluto abrindo pra baixo era cortado (parecia "não
+  // funcionar"). Solução: abrir o menu com posição FIXA, ancorado na posição do botão, escapando do
+  // corte. `pecasBtnRef` mede o botão; `pecasMenuPos` guarda onde ancorar.
+  const pecasBtnRef = useRef<HTMLDivElement>(null);
+  const [pecasMenuPos, setPecasMenuPos] = useState<{ top: number; right: number } | null>(null);
+  function alternarMenuPecas() {
+    setPecasMenuAberto((v) => {
+      const abrindo = !v;
+      if (abrindo && pecasBtnRef.current) {
+        const r = pecasBtnRef.current.getBoundingClientRect();
+        setPecasMenuPos({ top: r.bottom + 4, right: Math.max(4, window.innerWidth - r.right) });
+      }
+      return abrindo;
+    });
+  }
   const [pecasSheetAberto, setPecasSheetAberto] = useState(false); // janela de escolher peça no mobile (abre pela MobileHome)
   const [perfil, setPerfil] = useState<PerfilUso | null>(null);
   // Cobrança é POR EMPRESA (Etapa 2b do SaaS multi-empresa) — quando existe, manda no bloqueio de
@@ -343,32 +354,8 @@ export default function EditorPage() {
   const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
-  useEffect(() => {
-    if (typeof window !== 'undefined' && escritorio?.corPrimaria) {
-      const root = document.documentElement;
-      const hslVal = hexToHslValues(escritorio.corPrimaria);
-      root.style.setProperty('--primary', hslVal);
-      root.style.setProperty('--ring', hslVal);
-      const isLight = isLightColor(escritorio.corPrimaria);
-      root.style.setProperty('--primary-foreground', isLight ? '0 0% 9%' : '0 0% 100%');
-    } else if (typeof window !== 'undefined') {
-      const root = document.documentElement;
-      root.style.removeProperty('--primary');
-      root.style.removeProperty('--ring');
-      root.style.removeProperty('--primary-foreground');
-    }
-    if (typeof window !== 'undefined' && escritorio?.corSecundaria) {
-      const root = document.documentElement;
-      const hslValSec = hexToHslValues(escritorio.corSecundaria);
-      root.style.setProperty('--secondary', hslValSec);
-      const isLightSec = isLightColor(escritorio.corSecundaria);
-      root.style.setProperty('--secondary-foreground', isLightSec ? '0 0% 9%' : '0 0% 100%');
-    } else if (typeof window !== 'undefined') {
-      const root = document.documentElement;
-      root.style.removeProperty('--secondary');
-      root.style.removeProperty('--secondary-foreground');
-    }
-  }, [escritorio?.corPrimaria, escritorio?.corSecundaria]);
+  // A aplicação das cores da marca fica MAIS ABAIXO (junto do efeito de tema), porque precisa saber
+  // se o tema é claro ou escuro pra ajustar o brilho da cor e não sumir. Ver corMarcaLegivel.
   const [vertices, setVertices] = useState<Vertex[]>([]);
   const [verticesIgnorados, setVerticesIgnorados] = useState<Vertex[]>([]); // fora do anel (ferramenta ignorar/considerar)
   const [gradeAltimetrica, setGradeAltimetrica] = useState<{ lat: number; lon: number; leste: number; norte: number; elevacao: number }[]>([]);
@@ -1075,6 +1062,34 @@ export default function EditorPage() {
       salvarTemaUsuario(user.uid, tema);
     }
   }, [tema, user, temaCarregadoDaNuvem]);
+
+  // Aplica as cores da marca (empresa) na interface, SEMPRE ajustando o brilho pro tema atual, pra
+  // cor nenhuma sumir (cor clara no tema claro, escura no escuro, preto/branco puros). Depende de
+  // `tema` também: ao trocar claro/escuro, recalcula o brilho legível. Não toca em documentos/planta
+  // — as peças exportadas não usam a cor da marca, então não há risco de branco em papel branco.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+    const isDark = tema === 'escuro';
+    const prim = escritorio?.corPrimaria ? corMarcaLegivel(escritorio.corPrimaria, isDark) : null;
+    if (prim) {
+      root.style.setProperty('--primary', prim.valor);
+      root.style.setProperty('--ring', prim.valor);
+      root.style.setProperty('--primary-foreground', prim.foreground);
+    } else {
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--ring');
+      root.style.removeProperty('--primary-foreground');
+    }
+    const sec = escritorio?.corSecundaria ? corMarcaLegivel(escritorio.corSecundaria, isDark) : null;
+    if (sec) {
+      root.style.setProperty('--secondary', sec.valor);
+      root.style.setProperty('--secondary-foreground', sec.foreground);
+    } else {
+      root.style.removeProperty('--secondary');
+      root.style.removeProperty('--secondary-foreground');
+    }
+  }, [escritorio?.corPrimaria, escritorio?.corSecundaria, tema]);
 
   // restaura o rascunho UMA vez, quando a autenticação já resolveu (para usar a chave do usuário certo)
   useEffect(() => {
@@ -4713,14 +4728,14 @@ export default function EditorPage() {
             {/* Memorial, planta, requerimento, anuência e errata: reunidos num menu PEÇAS, pra não
                 disputar espaço no cabeçalho com um botão solto pra cada um (mesmo espírito do menu
                 PEÇAS que já existe no celular). */}
-            <div className="relative shrink-0">
-              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={() => setPecasMenuAberto((v) => !v)}>
+            <div ref={pecasBtnRef} className="relative shrink-0">
+              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
                 <Download /> PEÇAS <ChevronDown className="size-3" />
               </Button>
-              {pecasMenuAberto && (
+              {pecasMenuAberto && pecasMenuPos && (
                 <>
                   <div className="fixed inset-0 z-[1290]" onClick={() => setPecasMenuAberto(false)} />
-                  <div className="absolute right-0 top-[calc(100%+4px)] z-[1300] w-60 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
+                  <div style={{ position: 'fixed', top: pecasMenuPos.top, right: pecasMenuPos.right }} className="z-[1300] w-60 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
                     {([
                       ['Memorial descritivo (.docx)', () => exportarMemorial('normal')],
                       ...(projetoTemServidao ? [['Memorial de servidão (.docx)', () => exportarMemorial('servidao')] as [string, () => void]] : []),
@@ -5691,12 +5706,15 @@ export default function EditorPage() {
               )}
 
               {/* Alternar Mapa/Planta */}
+              {/* Botão cheio na cor da marca: texto e ícone em `primary-foreground` (branco quando a
+                  marca é escura, o caso normal; vira escuro só se a marca for clara demais, pra não
+                  sumir). Atalho ESC em dourado. */}
               <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
                 title="Alternar entre mapa e planta (Esc)"
-                className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-background/95 px-2.5 text-[10px] font-bold text-primary hover:bg-muted transition-colors">
+                className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-primary px-2.5 text-[10px] font-bold text-primary-foreground shadow-sm hover:brightness-110 transition">
                 {vista === 'mapa' ? <Eye className="size-3.5" /> : <MapIcon className="size-3.5" />}
                 <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
-                <span className="rounded-sm border border-primary/40 px-1 font-mono text-[8px] font-semibold opacity-70">ESC</span>
+                <span className="rounded-sm bg-black/20 px-1 font-mono text-[8px] font-semibold text-amber-300">ESC</span>
               </button>
 
               {/* Pintar Divisas/Confrontantes — ao lado do botão Mapa/Planta, dentro da mesma barra
@@ -7414,13 +7432,16 @@ function MiniSelect({ label, value, options, onChange }: { label: string; value:
 // o texto (ex.: "Texto Central" virava "Texto C..."). Agora os dois ficam colados num único bloco
 // fino, com só uma linha divisória entre eles — libera bastante largura pro nome sem perder o toque.
 function AjusteTamanho({ label, titulo, negrito = true, onDec, onInc }: { label: string; titulo?: string; negrito?: boolean; onDec: () => void; onInc: () => void }) {
+  // Rótulo EM CIMA, botões −/+ embaixo ocupando a largura toda. Antes era tudo na mesma linha, então
+  // rótulos longos ("Texto Central", "Declarações") cortavam e os botões ficavam espremidos. Agora o
+  // rótulo tem a célula inteira pra ele e os botões respiram.
   return (
-    <div className={`flex items-center justify-between gap-1 rounded-sm bg-muted/30 px-1.5 py-0.5 text-[10px] text-foreground ${negrito ? 'font-bold' : 'font-medium'}`} title={titulo}>
-      <span className="truncate">{label}</span>
-      <div className="flex h-5 shrink-0 overflow-hidden rounded-sm border border-border/70">
-        <button type="button" className="flex w-3.5 items-center justify-center font-extrabold hover:bg-muted" onClick={onDec}>−</button>
+    <div className={`flex flex-col gap-0.5 rounded-sm bg-muted/30 px-1 py-0.5 text-[10px] text-foreground ${negrito ? 'font-bold' : 'font-medium'}`} title={titulo}>
+      <span className="truncate text-center leading-tight">{label}</span>
+      <div className="flex h-5 overflow-hidden rounded-sm border border-border/70">
+        <button type="button" aria-label={`Diminuir ${label}`} className="flex flex-1 items-center justify-center text-xs font-extrabold leading-none hover:bg-muted" onClick={onDec}>−</button>
         <div className="w-px bg-border/70" />
-        <button type="button" className="flex w-3.5 items-center justify-center font-extrabold hover:bg-muted" onClick={onInc}>+</button>
+        <button type="button" aria-label={`Aumentar ${label}`} className="flex flex-1 items-center justify-center text-xs font-extrabold leading-none hover:bg-muted" onClick={onInc}>+</button>
       </div>
     </div>
   );

@@ -21,13 +21,20 @@ export async function POST(req: NextRequest) {
 
   // Cobrança é POR EMPRESA (Etapa 2b): só o DONO gera pagamento — um colaborador/auxiliar vinculado
   // a outra conta (workspaceUid apontando pra fora) não pode pagar em nome de outra empresa.
+  // Aproveita a mesma leitura do perfil pra pegar o VALOR autoritativo (mensalidade definida pelo
+  // master), em vez de confiar no valor que o navegador manda — senão dava pra pagar R$1 e sair
+  // marcado como em dia.
+  let mensalidadeServidor: number | undefined;
   try {
     const perfilSnap = await getFirestore(getAdminApp()).collection('perfisUso').doc(session.uid).get();
-    const workspaceUid = perfilSnap.exists ? (perfilSnap.data()?.workspaceUid as string | undefined) : undefined;
+    const perfilData = perfilSnap.exists ? perfilSnap.data() : undefined;
+    const workspaceUid = perfilData?.workspaceUid as string | undefined;
     if (workspaceUid && workspaceUid !== session.uid) {
       return NextResponse.json({ error: 'Só o responsável pela empresa pode gerar a cobrança. Peça pra ele assinar.' }, { status: 403 });
     }
-  } catch { /* falha ao checar não deve travar quem realmente pode pagar — segue */ }
+    const m = Number(perfilData?.mensalidade);
+    if (Number.isFinite(m) && m > 0) mensalidadeServidor = m;
+  } catch { /* falha ao checar não deve travar quem realmente pode pagar — segue com o padrão */ }
 
   const client = getMercadoPagoClient();
   if (!client) {
@@ -37,14 +44,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { amount?: number } = {};
-  try {
-    body = await req.json();
-  } catch {
-    body = {};
-  }
-
-  const amount = Number(body.amount) || 129; // fallback para o valor do plano Autônomo se não informado
+  // O valor NÃO vem mais do corpo da requisição (o navegador podia adulterar): usa a mensalidade
+  // lida do banco e, na falta dela, o valor do plano Autônomo. Ignora qualquer `amount` do cliente.
+  const amount = mensalidadeServidor ?? 129;
   const origin = reqOrigin(req);
 
   try {

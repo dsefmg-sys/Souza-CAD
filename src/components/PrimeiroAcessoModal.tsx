@@ -7,9 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building2, User, UserPlus, LogOut } from 'lucide-react';
 import { carregarEscritorio, salvarEscritorio, carregarTecnico, salvarTecnico } from '@/lib/store/settings';
-import { aceitarTermos, sincronizarPerfil } from '@/lib/store/perfilUso';
-import { puxarConfigDaNuvem } from '@/lib/store/configNuvem';
-import { auth } from '@/lib/firebase/client';
+import { aceitarTermos, criarSolicitacaoVinculo } from '@/lib/store/perfilUso';
 
 interface Props {
   open: boolean;
@@ -24,6 +22,7 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
   const [emailVinculo, setEmailVinculo] = useState('');
   const [vinculando, setVinculando] = useState(false);
   const [erroVinculo, setErroVinculo] = useState('');
+  const [solicitacaoEnviada, setSolicitacaoEnviada] = useState(false);
   const [categoria, setCategoria] = useState<'tecnico' | 'tecnico-agricola' | 'engenheiro' | 'duplo'>('tecnico');
   const [nomeEmpresa, setNomeEmpresa] = useState('');
   const [cnpjEmpresa, setCnpjEmpresa] = useState('');
@@ -72,34 +71,21 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
     ? nomeEmpresa.trim() && nomeRt.trim()
     : !!nomeRt.trim();
 
-  // Auxiliar: NUNCA preenche o próprio RT/escritório — herda tudo de quem ele ajuda, assim que o
-  // vínculo liga. Diferente de "Empresa"/"Autônomo" (que preenchem o cadastro na hora), aqui só o
-  // e-mail entra; puxarConfigDaNuvem(forcar=true) traz os dados certos direto da nuvem do vinculado.
-  async function vincularAuxiliar() {
+  // Auxiliar: NUNCA se liga sozinho na conta de outro (isso era um furo — bastava saber o e-mail do
+  // RT pra cair dentro dos dados dele). Agora ele só REGISTRA um pedido; o dono da empresa aprova na
+  // tela de Equipe e, com isso, o auxiliar entra vinculado no próximo login. Ele não preenche RT nem
+  // escritório: quando o vínculo liga, herda tudo de quem aprovou.
+  async function pedirVinculo() {
     const emailAlvo = emailVinculo.trim();
     if (!emailAlvo) return;
     setErroVinculo('');
     setVinculando(true);
     try {
-      const token = await auth()?.currentUser?.getIdToken();
-      const r = await fetch('/api/vinculo/por-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ emailAlvo }),
-      });
-      const data = await r.json();
-      if (!r.ok) {
-        setErroVinculo(data.error || 'Não consegui vincular esse e-mail.');
-        return;
-      }
-      await sincronizarPerfil({ workspaceUid: data.uid });
-      const { entrarComoMembro } = await import('@/lib/store/empresas');
-      await entrarComoMembro(data.uid);
-      await puxarConfigDaNuvem(true);
+      await criarSolicitacaoVinculo(emailAlvo);
       aceitarTermos().catch(() => {});
-      onConcluir();
-    } catch {
-      setErroVinculo('Erro ao vincular. Confira sua conexão e tente de novo.');
+      setSolicitacaoEnviada(true);
+    } catch (e) {
+      setErroVinculo((e as Error)?.message || 'Erro ao enviar o pedido. Confira sua conexão e tente de novo.');
     } finally {
       setVinculando(false);
     }
@@ -134,21 +120,37 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
             </button>
           </div>
         ) : tipo === 'auxiliar' ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Informe o e-mail de login do RT ou da empresa que você ajuda. Assim que o e-mail bater com uma conta existente, você já entra vinculado a ela — mesmos projetos, mesmos dados do responsável técnico. Não precisa preencher nada de RT aqui; isso vem de lá.
-            </p>
-            <div className="space-y-1">
-              <Label>E-mail do RT ou da empresa</Label>
-              <Input value={emailVinculo} onChange={(e) => setEmailVinculo(e.target.value)} placeholder="nome@exemplo.com" type="email" />
+          solicitacaoEnviada ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1.5">
+                <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Pedido enviado</div>
+                <p className="text-xs text-muted-foreground leading-snug">
+                  Pedimos pra <strong>{emailVinculo.trim()}</strong> te liberar. Quando essa pessoa aprovar (na tela de Equipe dela), você entra vinculado automaticamente no próximo login — mesmos projetos e dados do responsável técnico. Avise-a que o pedido está lá esperando.
+                </p>
+              </div>
+              {onVoltarLogin && (
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={onVoltarLogin}>Sair e aguardar aprovação</Button>
+                </div>
+              )}
             </div>
-            {erroVinculo && <p className="text-xs text-destructive">{erroVinculo}</p>}
-            <p className="text-[10px] text-muted-foreground/80">Ao concluir, você concorda com as condições de uso do sistema — o texto completo fica em Ajustes, na seção “Sobre o sistema”.</p>
-            <div className="flex justify-between">
-              <Button variant="ghost" size="sm" onClick={() => { setTipo(null); setErroVinculo(''); }}>Voltar</Button>
-              <Button size="sm" disabled={!emailVinculo.trim() || vinculando} onClick={vincularAuxiliar}>{vinculando ? 'Vinculando…' : 'Vincular e entrar'}</Button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Informe o e-mail de login do RT ou da empresa que você ajuda. Vamos registrar um pedido de acesso — quem recebe é o dono da conta, que aprova na tela de Equipe. Assim que ele liberar, você entra vinculado no próximo login, com os mesmos projetos e dados do responsável técnico. Ninguém entra na conta de outra pessoa sem essa aprovação.
+              </p>
+              <div className="space-y-1">
+                <Label>E-mail do RT ou da empresa</Label>
+                <Input value={emailVinculo} onChange={(e) => setEmailVinculo(e.target.value)} placeholder="nome@exemplo.com" type="email" />
+              </div>
+              {erroVinculo && <p className="text-xs text-destructive">{erroVinculo}</p>}
+              <p className="text-[10px] text-muted-foreground/80">Ao pedir acesso, você concorda com as condições de uso do sistema — o texto completo fica em Ajustes, na seção “Sobre o sistema”.</p>
+              <div className="flex justify-between">
+                <Button variant="ghost" size="sm" onClick={() => { setTipo(null); setErroVinculo(''); }}>Voltar</Button>
+                <Button size="sm" disabled={!emailVinculo.trim() || vinculando} onClick={pedirVinculo}>{vinculando ? 'Enviando…' : 'Pedir acesso'}</Button>
+              </div>
             </div>
-          </div>
+          )
         ) : (
           <div className="space-y-3">
             {tipo === 'empresa' && (

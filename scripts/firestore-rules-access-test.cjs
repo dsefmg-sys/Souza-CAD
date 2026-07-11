@@ -120,6 +120,20 @@ async function main() {
     await assertSucceeds(setDoc(doc(helperADb, 'perfisUso/helperA'), { workspaceUid: 'helperA' }, { merge: true })); // voltar a si mesmo é permitido
     await assertSucceeds(setDoc(doc(helperADb, 'perfisUso/helperA'), { rtNome: 'Nome Modificado' }, { merge: true })); // alterar outros campos sem mudar workspaceUid é permitido
 
+    // Anti-escalação NA CRIAÇÃO (o furo que existia): uma conta nova, SEM convite, não pode nascer
+    // já apontando o workspaceUid pra vítima. Antes a regra de create só checava o uid e deixava
+    // passar — dando leitura/escrita nos dados da vítima via users/{uid}.
+    const atacanteDb = testEnv.authenticatedContext('atacante', { email: 'atacante@x.com' }).firestore();
+    await assertFails(setDoc(doc(atacanteDb, 'perfisUso/atacante'), { email: 'atacante@x.com', workspaceUid: 'ownerA' })); // sem convite: criação negada
+    await assertSucceeds(setDoc(doc(atacanteDb, 'perfisUso/atacante'), { email: 'atacante@x.com' })); // criar o próprio perfil (sem vínculo) segue permitido
+    await assertFails(getDoc(doc(atacanteDb, 'users/ownerA'))); // e, sem vínculo válido, não enxerga os dados da vítima
+
+    // Solicitação de vínculo: o auxiliar só registra pedido em nome próprio; o dono-alvo lê, terceiros não.
+    await assertSucceeds(setDoc(doc(atacanteDb, 'solicitacoesVinculo/atacante@x.com'), { solicitanteUid: 'atacante', solicitanteEmail: 'atacante@x.com', alvoEmail: 'ownerA@x.com', criadoEm: 1 }));
+    await assertFails(setDoc(doc(atacanteDb, 'solicitacoesVinculo/outro@x.com'), { solicitanteUid: 'atacante', solicitanteEmail: 'atacante@x.com', alvoEmail: 'ownerA@x.com', criadoEm: 1 })); // id tem que ser o próprio e-mail
+    await assertSucceeds(getDoc(doc(ownerADb, 'solicitacoesVinculo/atacante@x.com'))); // o RT-alvo vê o pedido endereçado a ele
+    await assertFails(getDoc(doc(ownerBDb, 'solicitacoesVinculo/atacante@x.com'))); // quem não é o alvo não vê
+
     console.log('Firestore rules access tests passed (Metrica).');
   } finally {
     await testEnv.cleanup();

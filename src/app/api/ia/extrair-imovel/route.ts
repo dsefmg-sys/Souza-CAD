@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { getFirestore } from 'firebase-admin/firestore';
 import { checarLimiteIA } from '@/lib/ia/rateLimit';
 import { firebaseApiKeyServidor, tokenDoHeader, verificarTokenFirebase } from '@/lib/ia/verificarLogin';
+import { getAdminApp } from '@/lib/firebaseAdmin';
 
 // Extrai dados do IMÓVEL/PROPRIETÁRIO de um texto ou documento (PDF/imagem) usando o Gemini.
 // Roda NO SERVIDOR: a chave (GOOGLE_GENAI_API_KEY) nunca vai para o navegador.
@@ -12,7 +14,7 @@ let cachedKey: string | null = null;
 let lastFetched = 0;
 const CACHE_KEY_MS = 60_000 * 10; // 10 min
 
-async function obterGeminiApiKey(idToken?: string): Promise<string | null> {
+async function obterGeminiApiKey(): Promise<string | null> {
   const envKey = process.env.GOOGLE_GENAI_API_KEY;
   if (envKey) return envKey;
 
@@ -21,34 +23,29 @@ async function obterGeminiApiKey(idToken?: string): Promise<string | null> {
     return cachedKey;
   }
 
-  const projId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  if (!projId) return null;
-
+  // Fallback: chave colada pelo master no painel. Lida pelo Admin SDK (passa por cima das regras),
+  // de config/segredos — documento fechado, que só o master lê. Antes isto vinha de config/app via
+  // REST com o token do usuário, mas config/app é de leitura livre: a chave ficava exposta a
+  // qualquer cliente logado. Mantemos a leitura de config/app só como retaguarda de migração.
   try {
-    const url = `https://firestore.googleapis.com/v1/projects/${projId}/databases/(default)/documents/config/app`;
-    const headers: Record<string, string> = {};
-    if (idToken) {
-      headers['Authorization'] = `Bearer ${idToken}`;
-    }
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
-    if (res.ok) {
-      const data = await res.json();
-      const dbKey = data?.fields?.geminiApiKey?.stringValue;
-      if (dbKey) {
-        cachedKey = dbKey;
-        lastFetched = agora;
-        return dbKey;
-      }
+    const db = getFirestore(getAdminApp());
+    const seg = await db.collection('config').doc('segredos').get();
+    const dbKey = (seg.exists ? (seg.data()?.geminiApiKey as string | undefined) : undefined)
+      || (await db.collection('config').doc('app').get().then((s) => (s.exists ? (s.data()?.geminiApiKey as string | undefined) : undefined)).catch(() => undefined));
+    if (dbKey) {
+      cachedKey = dbKey;
+      lastFetched = agora;
+      return dbKey;
     }
   } catch (e) {
-    console.error('Erro ao obter geminiApiKey do Firestore REST:', e);
+    console.error('Erro ao obter geminiApiKey (Admin SDK):', e);
   }
   return null;
 }
 
 export async function POST(req: Request) {
   const authToken = tokenDoHeader(req);
-  const key = await obterGeminiApiKey(authToken);
+  const key = await obterGeminiApiKey();
   if (!key) return NextResponse.json({ erro: 'IA não configurada no servidor (falta chave do Gemini).' }, { status: 503 });
 
   // LOGIN OBRIGATÓRIO: quando o Firebase está configurado, só usuário logado gasta a cota da IA.

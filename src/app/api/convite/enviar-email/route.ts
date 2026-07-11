@@ -8,6 +8,17 @@ export const runtime = 'nodejs';
 
 const APP_URL_PADRAO = 'https://souzacad--souza-cad.us-east4.hosted.app/';
 
+// Escapa texto antes de colar no HTML do e-mail: nome da empresa e remetente vêm de dado do
+// usuário, então sem isso dava pra injetar marcação no e-mail que sai pra outra pessoa.
+function escaparHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Ao contrário de /api/saas/enviar-email (só o master, pra comunicados em massa), esta rota é pra
 // QUALQUER usuário logado avisar por e-mail alguém que ele acabou de convidar pro seu workspace
 // (ConfiguracoesModal, aba Equipe) — o convite em si (o registro que faz a pessoa entrar sozinha
@@ -39,12 +50,14 @@ export async function POST(req: Request) {
     if (url) appUrl = url;
   } catch { /* fica no padrão */ }
 
-  const remetenteNome = session.email || 'Um colega';
+  const remetenteNome = escaparHtml(session.email || 'Um colega');
+  const empresaNomeHtml = escaparHtml(empresaNome);
+  const paraEmailHtml = escaparHtml(paraEmail);
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1f2937;">
       <h2 style="color: #0a1f14;">Você foi convidado para o Souza CAD</h2>
-      <p><strong>${remetenteNome}</strong> convidou você para colaborar em <strong>${empresaNome}</strong> no Souza CAD.</p>
-      <p>Para entrar automaticamente no espaço de trabalho dessa empresa, acesse o link abaixo e faça login (ou crie sua conta) usando exatamente este e-mail: <strong>${paraEmail}</strong>.</p>
+      <p><strong>${remetenteNome}</strong> convidou você para colaborar em <strong>${empresaNomeHtml}</strong> no Souza CAD.</p>
+      <p>Para entrar automaticamente no espaço de trabalho dessa empresa, acesse o link abaixo e faça login (ou crie sua conta) usando exatamente este e-mail: <strong>${paraEmailHtml}</strong>.</p>
       <p style="margin: 24px 0;">
         <a href="${appUrl}" style="background: #059669; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: bold;">Acessar o Souza CAD</a>
       </p>
@@ -53,7 +66,7 @@ export async function POST(req: Request) {
   `;
 
   try {
-    const { enviado } = await enviarEmailSmtp({ to: paraEmail, subject: `${remetenteNome} convidou você para o Souza CAD`, html });
+    const { enviado } = await enviarEmailSmtp({ to: paraEmail, subject: `${session.email || 'Um colega'} convidou você para o Souza CAD`, html });
     return NextResponse.json({ success: true, enviado });
   } catch (e: unknown) {
     console.error('[convite/enviar-email] erro ao enviar:', (e as Error)?.message || e);

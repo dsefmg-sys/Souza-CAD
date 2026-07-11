@@ -22,6 +22,14 @@ service cloud.firestore {
     match /config/emailSmtp {
       allow read, write: if ehMaster();
     }
+    // Segredos do servidor colados pelo master no painel (ex.: chave da IA/Gemini). MESMO motivo do
+    // emailSmtp: o config/{doc} geral é de leitura livre pra qualquer autenticado, o que serve pra
+    // WhatsApp/URL, mas JAMAIS pra uma chave de API — qualquer cliente logado leria a chave crua e
+    // torraria a cota por fora do app. Aqui só o master lê/escreve; o servidor lê pelo Admin SDK,
+    // que passa por cima das regras.
+    match /config/segredos {
+      allow read, write: if ehMaster();
+    }
 
     // Perfil de uso por conta: cada usuário escreve/lê o seu; o master lê E escreve todos (o painel
     // administrativo edita faturamento/CRM de qualquer cliente — sem o master no write, dava
@@ -36,8 +44,26 @@ service cloud.firestore {
         // a regra com erro de avaliação em vez de simplesmente não bater.
         || (resource != null && resource.data.get('workspaceUid', null) == request.auth.uid)
       );
-      // O próprio usuário (ou master) cria/deleta o perfil.
-      allow create: if request.auth != null && (request.auth.uid == uid || ehMaster());
+      // Na CRIAÇÃO, o mesmo cuidado do update: o perfil só nasce com um workspaceUid de terceiro
+      // se houver convite válido pra ele. Sem isso, a proteção do update era furada — bastava um
+      // perfil novo (conta recém-criada) ou apagar o próprio e recriar apontando pra vítima, e a
+      // regra de create antiga (que só checava o uid) deixava passar, dando leitura/escrita nos
+      // dados de qualquer um via users/{uid}. Agora create e update guardam o campo do mesmo jeito.
+      allow create: if request.auth != null && (
+        ehMaster()
+        || (
+          request.auth.uid == uid
+          && (
+            request.resource.data.get('workspaceUid', null) == request.auth.uid
+            || request.resource.data.get('workspaceUid', null) == null
+            || (
+              request.auth.token.get('email', null) != null
+              && exists(/databases/$(database)/documents/convites/$(request.auth.token.get('email', 'no-email')))
+              && get(/databases/$(database)/documents/convites/$(request.auth.token.get('email', 'no-email'))).data.empresaUid == request.resource.data.workspaceUid
+            )
+          )
+        )
+      );
       allow delete: if request.auth != null && (request.auth.uid == uid || ehMaster());
       // Na atualização (update), o usuário só altera o workspaceUid se estiver voltando para
       // si mesmo (autônomo) ou se houver um convite válido ativo apontando para essa empresa.
@@ -78,6 +104,34 @@ service cloud.firestore {
         resource.data.get('empresaUid', null) == request.auth.uid
         || (request.auth.token.email != null && request.auth.token.email.lower() == email)
         || ehMaster()
+      );
+      allow update: if false;
+    }
+
+    // Solicitação de vínculo (Auxiliar pedindo pra entrar numa empresa): id do documento é o e-mail
+    // normalizado de quem PEDE. Substitui o antigo autovínculo instantâneo, que era inseguro —
+    // qualquer um digitava o e-mail de um RT e caía dentro dos dados dele sem aprovação. Agora o
+    // auxiliar só REGISTRA um pedido; quem entra de fato é decidido pelo dono da empresa, que ao
+    // aprovar cria um convite (a única via que libera o workspaceUid, ver regras acima). O dono lê
+    // os pedidos endereçados ao PRÓPRIO e-mail (alvoEmail); o solicitante lê/cancela o seu.
+    match /solicitacoesVinculo/{email} {
+      allow read: if request.auth != null && (
+        ehMaster()
+        || (request.auth.token.email != null && request.auth.token.email.lower() == email)
+        || (resource != null && request.auth.token.email != null
+            && resource.data.get('alvoEmail', null) == request.auth.token.email.lower())
+      );
+      // Só cria o pedido em nome de si mesmo (id == seu e-mail, solicitanteUid == seu uid).
+      allow create: if request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() == email
+        && request.resource.data.solicitanteUid == request.auth.uid;
+      // Apaga: o próprio solicitante (cancelar) ou o dono-alvo (ao aprovar/recusar).
+      allow delete: if request.auth != null && (
+        ehMaster()
+        || (request.auth.token.email != null && request.auth.token.email.lower() == email)
+        || (resource != null && request.auth.token.email != null
+            && resource.data.get('alvoEmail', null) == request.auth.token.email.lower())
       );
       allow update: if false;
     }

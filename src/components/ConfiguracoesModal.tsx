@@ -8,7 +8,7 @@ import { zerarBancoPontos } from '@/lib/store/registro';
 import { TERMOS, TERMOS_VERSAO, TERMOS_TITULAR } from '@/lib/legal/termos';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { auth } from '@/lib/firebase/client';
-import { sincronizarPerfil, obterPerfilUsuario, criarConvite, listarConvitesEnviados, cancelarConvite, listarMembrosDoWorkspace, excluirMinhaConta, type ConvitePendente, type PerfilUso } from '@/lib/store/perfilUso';
+import { sincronizarPerfil, obterPerfilUsuario, criarConvite, listarConvitesEnviados, cancelarConvite, listarMembrosDoWorkspace, excluirMinhaConta, listarSolicitacoesRecebidas, aprovarSolicitacao, recusarSolicitacao, type ConvitePendente, type PerfilUso, type SolicitacaoVinculo } from '@/lib/store/perfilUso';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,6 +27,7 @@ import {
   definirNumeroReciboSeq,
 } from '@/lib/store/settings';
 import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey } from '@/lib/store/suporte';
+import { minhaEmpresa, type Empresa } from '@/lib/store/empresas';
 import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes, salvarPadroes, PADROES_PADRAO, type PadroesProjeto } from '@/lib/store/padroes';
 import { carregarPrecos, salvarPrecos, type PrecoServico } from '@/lib/store/precos';
@@ -79,6 +80,8 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const [emailConviteInput, setEmailConviteInput] = useState('');
   const [convitesEnviados, setConvitesEnviados] = useState<ConvitePendente[]>([]);
   const [membrosWorkspace, setMembrosWorkspace] = useState<PerfilUso[]>([]);
+  const [empresaVinculo, setEmpresaVinculo] = useState<Empresa | null>(null); // empresa/RT a que estou vinculado (quando sou auxiliar)
+  const [solicitacoesRecebidas, setSolicitacoesRecebidas] = useState<SolicitacaoVinculo[]>([]);
   const [apagandoConta, setApagandoConta] = useState(false);
 
   async function desvincular() {
@@ -127,6 +130,23 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     flash('Convite cancelado.');
   }
 
+  async function aprovarSolicitacaoUI(sol: SolicitacaoVinculo) {
+    try {
+      await aprovarSolicitacao(sol.solicitanteEmail, esc.nome);
+      setSolicitacoesRecebidas((ss) => ss.filter((s) => s.solicitanteEmail !== sol.solicitanteEmail));
+      listarConvitesEnviados().then(setConvitesEnviados).catch(() => {});
+      flash('Pedido aprovado! A pessoa entra vinculada ao logar de novo com esse e-mail.');
+    } catch (e) {
+      flash((e as Error).message || 'Erro ao aprovar o pedido.');
+    }
+  }
+
+  async function recusarSolicitacaoUI(solicitanteEmail: string) {
+    await recusarSolicitacao(solicitanteEmail);
+    setSolicitacoesRecebidas((ss) => ss.filter((s) => s.solicitanteEmail !== solicitanteEmail));
+    flash('Pedido recusado.');
+  }
+
   useEffect(() => {
     if (open) {
       setT(carregarTecnico());
@@ -147,6 +167,8 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
       }).catch(() => {});
       listarConvitesEnviados().then(setConvitesEnviados).catch(() => {});
       listarMembrosDoWorkspace().then(setMembrosWorkspace).catch(() => {});
+      listarSolicitacoesRecebidas().then(setSolicitacoesRecebidas).catch(() => {});
+      minhaEmpresa().then(setEmpresaVinculo).catch(() => {});
     }
   }, [open]);
 
@@ -289,12 +311,12 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     r.readAsDataURL(file);
   }
 
-  const Tb = ({ a, rotulo }: { a: AbaConfig; rotulo: string }) => {
+  const Tb = ({ a, rotulo, titulo }: { a: AbaConfig; rotulo: string; titulo?: string }) => {
     if (prefs.modo === 'simples' && (a === 'numeracao' || a === 'modelos')) {
       return null;
     }
     return (
-      <button onClick={() => setAba(a)}
+      <button onClick={() => setAba(a)} title={titulo}
         className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${aba === a ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/50'}`}>
         {rotulo}
       </button>
@@ -321,25 +343,25 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               pessoal (do técnico) e o que é global (da empresa) */}
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-8">
             <div>
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Empresa</div>
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600" title="Configurações compartilhadas por toda a equipe da empresa">Empresa</div>
               <div className="flex flex-wrap gap-2">
-                <Tb a="escritorio" rotulo="Dados da Empresa" />
-                <Tb a="equipe" rotulo="Ajudantes / Equipe" />
+                <Tb a="escritorio" rotulo="Dados da Empresa" titulo="Identificação, contato, endereço, logotipo e cores da marca — usados nas peças e no cabeçalho dos documentos" />
+                <Tb a="equipe" rotulo="Ajudantes / Equipe" titulo="Convidar colaboradores, aprovar pedidos de acesso e ver a qual empresa você está vinculado" />
               </div>
             </div>
             <div>
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Pessoais</div>
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600" title="Configurações só da sua conta, não afetam a equipe">Pessoais</div>
               <div className="flex flex-wrap gap-2">
-                <Tb a="pessoal" rotulo="Responsável Técnico" />
-                <Tb a="comportamento" rotulo="Comportamento" />
+                <Tb a="pessoal" rotulo="Responsável Técnico" titulo="Seu nome, formação, conselho (CFT/CREA) e registros — o que assina as peças técnicas" />
+                <Tb a="comportamento" rotulo="Comportamento" titulo="Como o app se comporta: modo simples/completo, tema, tamanhos e preferências de uso" />
               </div>
             </div>
             <div>
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Workspace</div>
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600" title="Configurações técnicas do espaço de trabalho, compartilhadas pela equipe">Workspace</div>
               <div className="flex flex-wrap gap-2">
-                <Tb a="numeracao" rotulo="Numeração e Fuso" />
-                <Tb a="modelos" rotulo="Importação e Modelos" />
-                <Tb a="padroes" rotulo="Padrões & Backup" />
+                <Tb a="numeracao" rotulo="Numeração e Fuso" titulo="Numeração automática dos vértices, fuso e hemisfério padrão do georreferenciamento" />
+                <Tb a="modelos" rotulo="Importação e Modelos" titulo="Modelos de documentos e regras de importação do TXT e dos vértices dos vizinhos" />
+                <Tb a="padroes" rotulo="Padrões & Backup" titulo="Valores padrão de novos projetos, backup das configurações e informações do sistema" />
               </div>
             </div>
           </div>
@@ -697,12 +719,18 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
           )}
 
           {aba === 'escritorio' && (
+            <div className="space-y-3">
+            <p className="text-[11px] leading-snug text-muted-foreground">
+              Esta é a configuração completa da empresa. Tudo o que você preencher aqui vale para toda a equipe e aparece no cabeçalho e no carimbo das peças técnicas (memorial, planta, requerimento). Só o que você quiser precisa ser preenchido — o resto pode ficar em branco.
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/90 border-b pb-1">Identificação</div>
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Razão Social / Nome do Escritório</Label>
-                  <Input value={esc.nome} onChange={(e) => changeEsc('nome', e.target.value)} />
+                  <Input value={esc.nome} onChange={(e) => changeEsc('nome', e.target.value)} placeholder="Ex.: Souza Gestão Fundiária Ltda" title="Nome oficial da empresa (ou seu nome, se você é autônomo). Aparece no cabeçalho das peças." />
                 </div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/90 border-b pb-1 pt-1">Marca (cores da interface)</div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold">Cor Primária (Tema)</Label>
@@ -739,16 +767,22 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     </div>
                   </div>
                 </div>
+                <p className="text-[10px] leading-snug text-muted-foreground">
+                  Estas cores pintam só a interface do app (botões, destaques), nunca as peças técnicas
+                  impressas — a planta e os documentos não mudam de cor. Se você escolher uma cor muito
+                  clara ou muito escura (branco, preto, amarelo), o app ajusta o brilho dela sozinho pra
+                  não sumir no tema claro nem no escuro. Ainda assim, prefira uma cor de contraste médio.
+                </p>
                 {prefs.modo === 'simples' ? (
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">CNPJ / CPF</Label>
-                        <Input value={esc.cnpj} onChange={(e) => changeEsc('cnpj', e.target.value)} />
+                        <Input value={esc.cnpj} onChange={(e) => changeEsc('cnpj', e.target.value)} placeholder="00.000.000/0001-00 ou CPF" title="CNPJ da empresa (ou seu CPF, se autônomo). Entra no cabeçalho e no requerimento." />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">WhatsApp / Contato</Label>
-                        <Input value={esc.telefone} onChange={(e) => changeEsc('telefone', e.target.value)} />
+                        <Input value={esc.telefone} onChange={(e) => changeEsc('telefone', e.target.value)} placeholder="(00) 90000-0000" title="Telefone/WhatsApp de contato da empresa" />
                       </div>
                     </div>
                     <div className="space-y-1">
@@ -765,17 +799,17 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">Ramo de Atuação</Label>
-                        <Input value={esc.ramo} onChange={(e) => changeEsc('ramo', e.target.value)} />
+                        <Input value={esc.ramo} onChange={(e) => changeEsc('ramo', e.target.value)} placeholder="Agrimensura e Georreferenciamento" title="Área de atuação, como aparece no cabeçalho das peças" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">CNPJ / CPF</Label>
-                        <Input value={esc.cnpj} onChange={(e) => changeEsc('cnpj', e.target.value)} />
+                        <Input value={esc.cnpj} onChange={(e) => changeEsc('cnpj', e.target.value)} placeholder="00.000.000/0001-00 ou CPF" title="CNPJ da empresa (ou seu CPF, se autônomo). Entra no cabeçalho e no requerimento." />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">WhatsApp / Contato</Label>
-                        <Input value={esc.telefone} onChange={(e) => changeEsc('telefone', e.target.value)} />
+                        <Input value={esc.telefone} onChange={(e) => changeEsc('telefone', e.target.value)} placeholder="(00) 90000-0000" title="Telefone/WhatsApp de contato da empresa" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -874,6 +908,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   O logotipo será desenhado automaticamente no quadro de convenções e carimbo de assinaturas nas pranchas impressas e exportações em PDF.
                 </div>
               </div>
+            </div>
             </div>
           )}
 
@@ -1048,8 +1083,8 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <div className="text-xs font-bold uppercase tracking-wide text-amber-500 flex items-center gap-1.5">
                     <Crown className="size-3.5" /> Convidar Colaborador
                   </div>
-                  <p className="text-[11px] leading-tight text-amber-600/90 leading-snug">
-                    Digite o e-mail de quem vai trabalhar com você. Assim que essa pessoa criar a conta (ou entrar) com esse e-mail exato, ela já cai automaticamente no seu workspace — mesmos projetos, mesmas configurações. Sem código pra copiar e colar, sem ninguém de fora conseguir entrar sem ser convidado.
+                  <p className="text-[11px] leading-snug text-amber-600/90">
+                    Digite o e-mail de quem vai trabalhar com você. Ao entrar no app com esse e-mail exato, a pessoa cai direto no seu espaço de trabalho — mesmos projetos e configurações. Sem código pra copiar; e ninguém entra sem ser convidado por você (ou sem você aprovar o pedido dela aqui embaixo).
                   </p>
                   <div className="space-y-2 pt-1">
                     <div className="space-y-1">
@@ -1061,12 +1096,30 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                           value={emailConviteInput}
                           onChange={(e) => setEmailConviteInput(e.target.value)}
                         />
-                        <Button size="sm" onClick={enviarConvite} className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">
+                        <Button size="sm" onClick={enviarConvite} title="Convidar este e-mail para a sua equipe e avisá-lo por e-mail" className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">
                           Convidar
                         </Button>
                       </div>
                     </div>
                   </div>
+                  {solicitacoesRecebidas.length > 0 && (
+                    <div className="space-y-1.5 pt-2 mt-1 border-t border-amber-500/20">
+                      <div className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">Pedidos de acesso — precisam da sua aprovação</div>
+                      {solicitacoesRecebidas.map((s) => (
+                        <div key={s.solicitanteEmail} className="flex items-center justify-between gap-2 rounded-sm bg-emerald-500/10 px-2 py-1 text-xs">
+                          <span className="truncate" title={s.solicitanteEmail}>{s.solicitanteEmail}</span>
+                          <div className="flex shrink-0 gap-1">
+                            <Button size="sm" className="h-6 px-2 bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => aprovarSolicitacaoUI(s)}>
+                              Aprovar
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-destructive hover:bg-destructive/10" onClick={() => recusarSolicitacaoUI(s.solicitanteEmail)}>
+                              Recusar
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {convitesEnviados.length > 0 && (
                     <div className="space-y-1.5 pt-2 mt-1 border-t border-amber-500/20">
                       <div className="text-[10px] font-bold uppercase text-muted-foreground">Aguardando aceite</div>
@@ -1099,15 +1152,30 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
                     <Shield className="size-3.5" /> Meu Vínculo
                   </div>
-                  <p className="text-[11px] leading-tight text-muted-foreground">
-                    {workspaceUid === (auth()?.currentUser?.uid || '')
-                      ? 'Você está no seu próprio workspace — nenhum vínculo ativo.'
-                      : 'Você foi convidado e está vinculado ao workspace de outra pessoa. Se quiser voltar a trabalhar sozinho, desvincule abaixo.'}
-                  </p>
-                  {workspaceUid !== (auth()?.currentUser?.uid || '') && (
-                    <Button size="sm" variant="outline" onClick={desvincular} className="text-destructive hover:bg-destructive/10">
-                      Desvincular
-                    </Button>
+                  {workspaceUid === (auth()?.currentUser?.uid || '') ? (
+                    <p className="text-[11px] leading-tight text-muted-foreground">
+                      Você está no seu próprio workspace — nenhum vínculo ativo. Os projetos e dados são só seus.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-[11px] leading-tight text-muted-foreground">
+                        Você é auxiliar e está trabalhando dentro do espaço de outra conta — os projetos, o banco de pontos e as configurações são os dela.
+                      </p>
+                      <div className="rounded-sm bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5">
+                        <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Vinculado a</div>
+                        <div className="text-sm font-semibold text-foreground truncate" title={empresaVinculo?.nome || esc.nome}>
+                          {empresaVinculo?.nome || esc.nome || 'Empresa vinculada'}
+                        </div>
+                        {t.nome && (
+                          <div className="text-[11px] text-muted-foreground truncate" title={t.nome}>
+                            Responsável técnico: {t.nome}
+                          </div>
+                        )}
+                      </div>
+                      <Button size="sm" variant="outline" onClick={desvincular} title="Sair da empresa e voltar a trabalhar sozinho, no seu próprio espaço" className="text-destructive hover:bg-destructive/10">
+                        Desvincular e trabalhar sozinho
+                      </Button>
+                    </>
                   )}
                 </div>
 
