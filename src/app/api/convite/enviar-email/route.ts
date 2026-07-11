@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { verifySession } from '@/lib/apiAuth';
 import { getAdminApp } from '@/lib/firebaseAdmin';
 import { enviarEmailSmtp } from '@/lib/server/emailSmtp';
+import { checarLimiteIA } from '@/lib/ia/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -30,6 +31,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
   }
 
+  const ip = req.headers.get('x-forwarded-for') || session.uid || '127.0.0.1';
+  const rateLimitKey = `convite_email:${ip}`;
+  const limitCheck = checarLimiteIA(rateLimitKey, { porMinuto: 3, porDia: 20 });
+  if (!limitCheck.ok) {
+    return NextResponse.json(
+      { error: `Muitos e-mails enviados. Por favor, aguarde antes de tentar de novo.` },
+      { status: 429 }
+    );
+  }
+
   let body: { paraEmail?: string; empresaNome?: string } = {};
   try {
     body = await req.json();
@@ -39,8 +50,9 @@ export async function POST(req: Request) {
 
   const paraEmail = (body.paraEmail || '').trim();
   const empresaNome = (body.empresaNome || 'a empresa').trim();
-  if (!paraEmail || !paraEmail.includes('@')) {
-    return NextResponse.json({ error: 'E-mail do convidado inválido.' }, { status: 400 });
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!paraEmail || !emailRegex.test(paraEmail)) {
+    return NextResponse.json({ error: 'E-mail do convidado com formato inválido.' }, { status: 400 });
   }
 
   let appUrl = APP_URL_PADRAO;
