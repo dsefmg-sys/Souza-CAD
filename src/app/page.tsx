@@ -248,9 +248,12 @@ function montarSnapshotDesenho(glebasArr: { vertices: Vertex[]; objetos?: Objeto
 }
 
 function hexToHslValues(hex: string): string {
-  hex = hex.replace(/^#/, '');
+  hex = (hex || '').trim().replace(/^#/, '');
   if (hex.length === 3) {
     hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {
+    return '142 71% 30%'; // fallback para verde padrão
   }
   const r = parseInt(hex.substring(0, 2), 16) / 255;
   const g = parseInt(hex.substring(2, 4), 16) / 255;
@@ -279,9 +282,12 @@ function hexToHslValues(hex: string): string {
 }
 
 function isLightColor(hex: string): boolean {
-  hex = hex.replace(/^#/, '');
+  hex = (hex || '').trim().replace(/^#/, '');
   if (hex.length === 3) {
     hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {
+    return false; // fallback
   }
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
