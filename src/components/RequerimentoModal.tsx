@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { FileSignature, UserPlus, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { confirmar } from '@/lib/ui/dialogos';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -140,6 +141,24 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  async function handleCloseRequest() {
+    const mudouReq = JSON.stringify(req) !== JSON.stringify(requerente ?? PESSOA_VAZIA);
+    const mudouTrans = JSON.stringify(trans) !== JSON.stringify(transmitente ?? transVazio(imovel));
+    const mudouPartes = JSON.stringify(localPartesAdicionais) !== JSON.stringify(partesAdicionais ?? []);
+    const mudouTipo = localTipoAto !== tipoAto;
+
+    if (mudouReq || mudouTrans || mudouPartes || mudouTipo) {
+      const ok = await confirmar({
+        titulo: 'Fechar formulário',
+        mensagem: 'Você preencheu dados no requerimento. Deseja realmente fechar e perder as informações digitadas?',
+        okLabel: 'Descartar e fechar',
+        perigo: true,
+      });
+      if (!ok) return;
+    }
+    onOpenChange(false);
+  }
+
   async function gerar() {
     if (!tecnico) { setMsg('Configure o técnico primeiro.'); return; }
     if (!req.nome?.trim() || !trans.nome?.trim()) { setMsg('Preencha o nome do requerente e do transmitente.'); return; }
@@ -179,22 +198,15 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     }
   }
 
-  function handleOpenChange(o: boolean) {
-    if (!o) {
-      onChangePessoas(req, trans, localTipoAto, localPartesAdicionais);
-    }
-    onOpenChange(o);
-  }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] flex flex-col p-6">
+    <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
+      <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] flex flex-col p-6" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="shrink-0">
           <DialogTitle>Requerimento ao cartório (retificação de área)</DialogTitle>
         </DialogHeader>
         <datalist id="lista-pessoas">{sugProp.map((p) => <option key={p.id} value={p.nome} />)}</datalist>
 
-        {/* Área Central */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-1 my-2">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
             {/* Coluna 1: Tipo de Ato e Dados do Imóvel */}

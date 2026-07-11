@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { FileWarning, Plus, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { confirmar } from '@/lib/ui/dialogos';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,6 +59,24 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
     setCorrecoes((cs) => cs.map((c, k) => (k === i ? { ...c, ...patch } : c)));
   }
   function addCor(base?: Partial<CorrecaoErrata>) { setCorrecoes((cs) => [...cs, { onde: '', constava: '', passa: '', natureza: 'imovel', ...base }]); }
+  async function handleCloseRequest() {
+    const mudouRT = acrescimoRT.trim() !== '';
+    const mudouCorrecoes = (correcoes || []).some(
+      (c) => c.onde.trim() !== '' || c.constava.trim() !== '' || c.passa.trim() !== ''
+    ) || (correcoes && correcoes.length > 1);
+
+    if (mudouRT || mudouCorrecoes) {
+      const ok = await confirmar({
+        titulo: 'Fechar errata',
+        mensagem: 'Você preencheu dados na errata. Deseja realmente fechar e perder as informações digitadas?',
+        okLabel: 'Descartar e fechar',
+        perigo: true,
+      });
+      if (!ok) return;
+    }
+    onOpenChange(false);
+  }
+
   function rmCor(i: number) { setCorrecoes((cs) => cs.filter((_, k) => k !== i)); }
 
   async function gerar() {
@@ -96,8 +115,8 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-6 bg-background shadow-2xl rounded-xl">
+    <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
+      <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col bg-[#05140b] border border-[#1e4d2e]/60 text-white rounded-2xl p-4 md:p-6 shadow-2xl" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="shrink-0 pb-2 border-b border-border/60">
           <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
             <FileWarning className="size-5.5 text-amber-500 animate-pulse" /> Errata para o Cartório
