@@ -4086,6 +4086,13 @@ export default function EditorPage() {
 
   // ---------- projetos ----------
   async function salvar() {
+    if (readonlyPorFaturamento) {
+      await avisar({
+        titulo: 'Modo Leitura e Exportação',
+        mensagem: 'O faturamento deste workspace está suspenso. Você está em modo de apenas leitura e exportação. Não é possível salvar alterações.'
+      });
+      return;
+    }
     if (processando) return;
     setProcessando(true);
     try {
@@ -4391,10 +4398,24 @@ export default function EditorPage() {
     aviso(`Projeto carregado (${p.glebas.length} gleba(s)).`);
   }
   async function remover(id: string) {
+    if (readonlyPorFaturamento) {
+      await avisar({
+        titulo: 'Acesso Restrito',
+        mensagem: 'O faturamento deste workspace está suspenso. Não é possível remover projetos.'
+      });
+      return;
+    }
     if (!(await confirmarApagar('Deseja realmente apagar este imóvel? Esta ação não pode ser desfeita.'))) return;
     await excluirProjeto(id); atualizarLista();
   }
   async function renomear(p: Projeto) {
+    if (readonlyPorFaturamento) {
+      await avisar({
+        titulo: 'Acesso Restrito',
+        mensagem: 'O faturamento deste workspace está suspenso. Não é possível renomear projetos.'
+      });
+      return;
+    }
     const novo = await perguntar({ titulo: 'Renomear projeto', mensagem: 'Novo nome do projeto:', valorInicial: p.nome });
     if (!novo || novo === p.nome) return;
     await salvarProjeto({ ...p, nome: novo });
@@ -4571,6 +4592,12 @@ export default function EditorPage() {
     });
   }, [perfil, empresaAtual, configAssinatura]);
 
+  const readonlyPorFaturamento = useMemo(() => {
+    if (!bloqueadoPorFaturamento) return false;
+    const isOwner = !perfil?.workspaceUid || perfil.workspaceUid === user?.uid;
+    return !isOwner;
+  }, [bloqueadoPorFaturamento, perfil, user]);
+
   async function iniciarPagamentoMercadoPago() {
     if (!user) return;
     try {
@@ -4606,7 +4633,7 @@ export default function EditorPage() {
     );
   }
 
-  if (bloqueadoPorFaturamento) {
+  if (bloqueadoPorFaturamento && !readonlyPorFaturamento) {
     return (
       <div className="relative flex h-screen items-center justify-center p-4 bg-[#020804]">
         <FundoRedeMarca />
@@ -4669,6 +4696,12 @@ export default function EditorPage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
+      {readonlyPorFaturamento && (
+        <div className="bg-red-950/90 border-b border-red-500/20 px-4 py-2.5 text-center text-xs text-red-200 flex items-center justify-center gap-2 backdrop-blur-sm z-[9999]">
+          <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 animate-pulse" />
+          <span>O faturamento deste workspace está suspenso. Seu acesso está em **modo de apenas leitura e exportação**. Alterações não serão salvas.</span>
+        </div>
+      )}
       {/* Inputs de arquivo ocultos: SEMPRE montados (fora do cabeçalho), senão sumiriam junto com o
           header no celular e quebrariam "Novo projeto"/importação, que disparam fileRef.click(). */}
       <div className="hidden">
