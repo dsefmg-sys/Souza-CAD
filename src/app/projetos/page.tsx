@@ -123,58 +123,62 @@ export default function ProjetosPage() {
   const totalPronto = linhas.filter((l) => l.pronto).length;
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
-      <div className="mb-4 flex items-center justify-between gap-2">
+    <div className="mx-auto max-w-4xl p-4 md:p-6">
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-2">
-          <Link href="/"><Button variant="ghost" size="sm"><ArrowLeft /> Voltar</Button></Link>
-          <h1 className="text-xl font-semibold">Projetos</h1>
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="h-9 px-3">
+              <ArrowLeft className="size-4" /> Voltar
+            </Button>
+          </Link>
+          <h1 className="text-xl font-bold tracking-tight">Projetos</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">{linhas.length} projeto(s) · {totalPronto} pronto(s) para exportar</span>
-          <Button size="sm" variant={verLixeira ? 'default' : 'outline'} className="gap-1" onClick={() => setVerLixeira((v) => !v)} title="Projetos excluídos (restauráveis por um prazo)">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="hidden sm:inline text-xs text-muted-foreground">{linhas.length} projeto(s) · {totalPronto} pronto(s) para exportar</span>
+          <Button size="sm" variant={verLixeira ? 'default' : 'outline'} className="h-9 gap-1.5 px-3 text-xs" onClick={() => setVerLixeira((v) => !v)} title="Projetos excluídos (restauráveis por um prazo)">
             <Trash2 className="size-4" /> Lixeira{lixeira.length ? ` (${lixeira.length})` : ''}
           </Button>
-          <Button size="sm" variant="outline" className="gap-1" disabled={gerandoBackup || linhas.length === 0} onClick={baixarBackup} title="Baixa um zip com todos os projetos e arquivos anexados">
+          <Button size="sm" variant="outline" className="h-9 gap-1.5 px-3 text-xs" disabled={gerandoBackup || linhas.length === 0} onClick={baixarBackup} title="Baixa um zip com todos os projetos e arquivos anexados">
             <DownloadCloud className="size-4" /> {gerandoBackup ? 'Gerando…' : 'Backup completo'}
           </Button>
         </div>
       </div>
 
       {!verLixeira && (
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[240px] flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input type="search" autoFocus placeholder="Buscar por nome, proprietário, matrícula, município… (ignora acentos)"
-            className="pl-8" value={busca} onChange={(e) => setBusca(e.target.value)} />
+        <div className="mb-4 flex flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input type="search" placeholder="Buscar por nome, proprietário, matrícula, município…"
+              className="pl-9 h-10 text-sm" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          </div>
+          <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            {(['todos', 'prontos', 'incompletos'] as FiltroStatus[]).map((f) => (
+              <Button key={f} size="sm" variant={filtro === f ? 'default' : 'outline'} onClick={() => setFiltro(f)} className="capitalize h-10 px-4 sm:h-9 sm:px-3 text-xs">
+                {f}
+              </Button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-1">
-          {(['todos', 'prontos', 'incompletos'] as FiltroStatus[]).map((f) => (
-            <Button key={f} size="sm" variant={filtro === f ? 'default' : 'outline'} onClick={() => setFiltro(f)} className="capitalize">
-              {f}
-            </Button>
-          ))}
-        </div>
-      </div>
       )}
 
       {verLixeira ? (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {lixeira.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">A lixeira está vazia. Projetos excluídos ficam aqui por {DIAS_LIXEIRA} dias antes da limpeza definitiva.</div>
           ) : (
             lixeira.map((p) => (
-              <div key={p.id} className="flex flex-col gap-2 rounded-md border border-dashed bg-card p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <div key={p.id} className="flex flex-col gap-3 rounded-md border border-dashed bg-card p-3.5 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{p.nome}</div>
+                  <div className="truncate font-semibold text-base sm:text-sm">{p.nome}</div>
                   <div className="truncate text-xs text-muted-foreground">{p.imovel.proprietario || 'Sem proprietário'} · {p.imovel.municipio || 'Sem município'}</div>
-                  <div className="text-[10px] text-amber-600 dark:text-amber-400">Excluído em {new Date(p.excluidoEm ?? 0).toLocaleDateString('pt-BR')} · restaura por mais {diasRestantes(p.excluidoEm)} dia(s)</div>
+                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">Excluído em {new Date(p.excluidoEm ?? 0).toLocaleDateString('pt-BR')} · restaura por mais {diasRestantes(p.excluidoEm)} dia(s)</div>
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-1">
-                  <Button size="sm" variant="outline" className="h-8 gap-1" title="Restaurar este projeto" onClick={() => restaurar(p.id)}>
-                    <RotateCcw className="size-3.5" /> Restaurar
+                <div className="flex shrink-0 items-center gap-2 sm:gap-1.5">
+                  <Button size="sm" variant="outline" className="h-10 sm:h-8 px-4 sm:px-3 gap-1.5 text-xs" title="Restaurar este projeto" onClick={() => restaurar(p.id)}>
+                    <RotateCcw className="size-4 sm:size-3.5" /> Restaurar
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Apagar de vez" aria-label={`Apagar de vez o projeto ${p.nome}`} onClick={() => apagarDeVez(p.id, p.nome)}>
-                    <XCircle className="size-3.5 text-destructive" />
+                  <Button size="sm" variant="ghost" className="h-10 w-10 sm:h-8 sm:w-8 p-0" title="Apagar de vez" aria-label={`Apagar de vez o projeto ${p.nome}`} onClick={() => apagarDeVez(p.id, p.nome)}>
+                    <XCircle className="size-4 sm:size-3.5 text-destructive" />
                   </Button>
                 </div>
               </div>
@@ -182,59 +186,59 @@ export default function ProjetosPage() {
           )}
         </div>
       ) : (
-      <div className="space-y-1.5">
-        {carregando ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">Carregando…</div>
-        ) : filtradas.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            {projetos.length === 0 ? 'Nenhum projeto salvo ainda.' : 'Nenhum projeto encontrado para essa busca/filtro.'}
-          </div>
-        ) : (
-          filtradas.map(({ projeto: p, vertices, pronto }) => (
-            <div key={p.id} className="flex flex-col gap-2 rounded-md border bg-card p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="truncate font-medium">{p.nome}</span>
-                  {pronto ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 className="size-3" /> Pronto
-                    </span>
-                  ) : (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                      <AlertTriangle className="size-3" /> Incompleto
-                    </span>
-                  )}
-                </div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {p.imovel.proprietario || 'Sem proprietário'} · {p.imovel.municipio || 'Sem município'} · {vertices.length} vértice(s)
-                  {p.glebas.length > 1 ? ` · ${p.glebas.length} glebas` : ''}
-                </div>
-                {p.atualizadoEm ? (
-                  <div className="text-[10px] text-muted-foreground">
-                    Atualizado em {new Date(p.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
-                  </div>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-1">
-                <Link href={`/?projetoId=${p.id}`}>
-                  <Button size="sm" variant="outline" className="h-8 gap-1" title="Abrir este projeto no editor">
-                    <FolderOpen className="size-3.5" /> Abrir
-                  </Button>
-                </Link>
-                <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="Renomear" aria-label={`Renomear o projeto ${p.nome}`} onClick={() => renomear(p)}>
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button size="sm" variant="outline" className="h-8 w-8 p-0" disabled={exportandoId === p.id} title="Exportar este projeto (dados + arquivos anexados) em .zip" aria-label={`Exportar o projeto ${p.nome}`} onClick={() => exportarProjeto(p)}>
-                  <Download className={`size-3.5 ${exportandoId === p.id ? 'animate-pulse' : ''}`} />
-                </Button>
-                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Excluir" aria-label={`Excluir o projeto ${p.nome}`} onClick={() => remover(p.id, p.nome)}>
-                  <Trash2 className="size-3.5 text-destructive" />
-                </Button>
-              </div>
+        <div className="space-y-2">
+          {carregando ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">Carregando…</div>
+          ) : filtradas.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              {projetos.length === 0 ? 'Nenhum projeto salvo ainda.' : 'Nenhum projeto encontrado para essa busca/filtro.'}
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            filtradas.map(({ projeto: p, vertices, pronto }) => (
+              <div key={p.id} className="flex flex-col gap-3 rounded-md border bg-card p-3.5 text-sm sm:flex-row sm:items-center sm:justify-between shadow-sm hover:shadow-md transition-shadow">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="truncate font-semibold text-base sm:text-sm">{p.nome}</span>
+                    {pronto ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="size-3" /> Pronto
+                      </span>
+                    ) : (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                        <AlertTriangle className="size-3" /> Incompleto
+                      </span>
+                    )}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground mt-0.5">
+                    {p.imovel.proprietario || 'Sem proprietário'} · {p.imovel.municipio || 'Sem município'} · {vertices.length} vértice(s)
+                    {p.glebas.length > 1 ? ` · ${p.glebas.length} glebas` : ''}
+                  </div>
+                  {p.atualizadoEm ? (
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      Atualizado em {new Date(p.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 items-center gap-2 sm:gap-1.5 justify-end mt-2 sm:mt-0">
+                  <Link href={`/?projetoId=${p.id}`}>
+                    <Button size="sm" variant="outline" className="h-10 sm:h-8 px-4 sm:px-3 gap-1.5 text-xs" title="Abrir este projeto no editor">
+                      <FolderOpen className="size-4 sm:size-3.5" /> Abrir
+                    </Button>
+                  </Link>
+                  <Button size="sm" variant="outline" className="h-10 w-10 sm:h-8 sm:w-8 p-0" title="Renomear" aria-label={`Renomear o projeto ${p.nome}`} onClick={() => renomear(p)}>
+                    <Pencil className="size-4 sm:size-3.5" />
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-10 w-10 sm:h-8 sm:w-8 p-0" disabled={exportandoId === p.id} title="Exportar este projeto (dados + arquivos anexados) em .zip" aria-label={`Exportar o projeto ${p.nome}`} onClick={() => exportarProjeto(p)}>
+                    <Download className={`size-4 sm:size-3.5 ${exportandoId === p.id ? 'animate-pulse' : ''}`} />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-10 w-10 sm:h-8 sm:w-8 p-0" title="Excluir" aria-label={`Excluir o projeto ${p.nome}`} onClick={() => remover(p.id, p.nome)}>
+                    <Trash2 className="size-4 sm:size-3.5 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       )}
     </div>
   );
