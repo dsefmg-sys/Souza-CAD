@@ -38,3 +38,8 @@ env:
   # verdade (não o de teste).
   - variable: MP_ACCESS_TOKEN
     secret: MP_ACCESS_TOKEN
+
+  # Chave da API do Gemini (Google AI Studio) — autoriza o servidor a extrair dados de documentos
+  # (rota /api/ia/extrair-imovel). Sem ela, o botão "Importar documento (IA)" responde indisponível.
+  - variable: GOOGLE_GENAI_API_KEY
+    secret: GOOGLE_GENAI_API_KEY
