@@ -9,7 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:firestore-rules": "firebase emulators:exec --only firestore \"node scripts/firestore-rules-access-test.cjs\""
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
@@ -44,6 +45,7 @@
   },
   "devDependencies": {
     "@breezystack/lamejs": "^1.2.7",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@eslint/eslintrc": "^3.3.5",
     "@types/file-saver": "^2.0.7",
     "@types/leaflet": "^1.9.21",

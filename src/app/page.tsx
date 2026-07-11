@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { saveAs } from 'file-saver';
 import {
   Upload, FileText, Map as MapIcon, Plus, Trash2,
@@ -6292,6 +6293,12 @@ export default function EditorPage() {
                 <div className="flex items-center gap-2 rounded-sm border bg-muted/40 p-2 text-[11px] text-muted-foreground">
                   <Database className="size-3.5" /> {totalPontos} ponto(s) no banco do credenciado (nunca reusados).
                 </div>
+                {/* Link pra tela cheia de projetos: só ela tem lixeira (recuperar projeto apagado) e
+                    backup completo em .zip de tudo — não duplicamos essas duas coisas aqui. */}
+                <Link href="/projetos"
+                  className="flex items-center gap-2 rounded-sm border bg-muted/40 p-2 text-[11px] font-semibold text-primary hover:bg-muted/70">
+                  <FolderOpen className="size-3.5" /> Ver todos os projetos, lixeira e backup completo
+                </Link>
                 <SecaoTitulo>Projetos salvos</SecaoTitulo>
                 {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
                 {projetos.map((p) => (
