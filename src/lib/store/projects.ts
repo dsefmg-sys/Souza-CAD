@@ -4,6 +4,7 @@ import { db, novoId } from './db';
 import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, type CollectionReference } from 'firebase/firestore';
 import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
 import { workspaceUidAtual } from './perfilUso';
+import { sanitizarProfundo } from '../export/sanitizar';
 
 // Quando há Firebase configurado E usuário logado, os projetos vão para o Firestore
 // (users/{uid}/projetos). Senão, ficam no IndexedDB local (offline / sem login).
@@ -62,7 +63,7 @@ function daNuvem(raw: Record<string, unknown>): Projeto | null {
 export type DestinoSalvamento = 'nuvem' | 'local';
 
 export async function salvarProjeto(p: Projeto): Promise<DestinoSalvamento> {
-  const reg = { ...p, atualizadoEm: Date.now() };
+  const reg = sanitizarProfundo({ ...p, atualizadoEm: Date.now() });
   const uid = uidNuvem();
   if (uid) {
     try {
@@ -128,13 +129,14 @@ export async function listarLixeira(): Promise<Projeto[]> {
 
 /** Escreve o projeto no destino atual (nuvem ou local) SEM mexer em atualizadoEm — uso interno da lixeira. */
 async function escreverProjeto(p: Projeto): Promise<void> {
+  const clean = sanitizarProfundo(p);
   const uid = uidNuvem();
   if (uid) {
-    try { await setDoc(doc(colProjetos(uid), p.id), paraNuvem(p)); return; }
-    catch { try { const d = await db(); await d.put('projetos', { ...p, _uidLocal: marcaLocal() }); } catch { /* ignore */ } return; }
+    try { await setDoc(doc(colProjetos(uid), p.id), paraNuvem(clean)); return; }
+    catch { try { const d = await db(); await d.put('projetos', { ...clean, _uidLocal: marcaLocal() }); } catch { /* ignore */ } return; }
   }
   const d = await db();
-  await d.put('projetos', { ...p, _uidLocal: marcaLocal() });
+  await d.put('projetos', { ...clean, _uidLocal: marcaLocal() });
 }
 
 /** Restaura um projeto da lixeira (volta a aparecer na lista). */
@@ -198,7 +200,7 @@ export async function sincronizarProjetosLocalParaNuvem(): Promise<void> {
       if (!cloudP || p.atualizadoEm > cloudP.atualizadoEm) {
         const { _uidLocal, ...limpo } = p; // marca é só de armazenamento local — não vai pra nuvem
         void _uidLocal;
-        await setDoc(doc(colProjetos(uid), p.id), paraNuvem(limpo as Projeto));
+        await setDoc(doc(colProjetos(uid), p.id), paraNuvem(sanitizarProfundo(limpo as Projeto)));
       }
       await d.delete('projetos', p.id);
     }
