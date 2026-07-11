@@ -5781,7 +5781,7 @@ export default function EditorPage() {
                 <IntroAudioPill />
                 <TutorialAudioPill />
                 <button type="button" onClick={() => setTutorialAberto(true)}
-                  className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  className="flex h-6 items-center gap-1 rounded-full border border-amber-500/60 bg-amber-500/10 px-2.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
                   title="Tutorial em texto: passo a passo e temas de ajuda">
                   <HelpCircle className="size-3" /> Guia
                 </button>

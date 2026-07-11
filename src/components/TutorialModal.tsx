@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef, type ComponentType } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
-  Upload, Search, UserCheck, BookUser, Users, Brush, FileText, Save,
   ChevronLeft, ChevronRight, CircleCheck, MessageCircle, GraduationCap,
-  ToggleRight, PenTool, Ruler, Leaf, Sparkles, Play, Pause, Square, type LucideProps,
+  Sparkles, Play, Pause, Square, BookUser,
 } from 'lucide-react';
 import { carregarWhatsappSuporte, linkWhatsapp } from '@/lib/store/suporte';
 import { TEMAS_AJUDA } from '@/lib/ajuda/temas';
+import { PASSOS_BASE, PASSOS_AVANCADOS } from '@/lib/ajuda/passos';
 import { carregarPreferencias, salvarModo, salvarNivelExperiencia } from '@/lib/store/preferencias';
 import { prepararTextoParaFala, dividirEmFrases, melhorVozPt } from '@/lib/ajuda/voz';
 
@@ -18,96 +18,6 @@ interface Props {
   onOpenChange: (o: boolean) => void;
 }
 
-interface Passo {
-  icone: ComponentType<LucideProps>;
-  titulo: string;
-  texto: string;
-  audioUrl?: string;
-}
-
-// PASSOS BÁSICOS — o caminho essencial de um projeto, na ordem em que a tela conduz.
-const PASSOS_BASE: Passo[] = [
-  {
-    icone: ToggleRight,
-    titulo: 'A chave Simples e Completo',
-    texto: 'No canto de cima, à direita, você escolhe se prefere usar o modo Simples ou Completo. No Simples, a tela exibe apenas o caminho essencial de um georreferenciamento para que você se acostume com o app sem se perder em botões extras. No Completo, todas as ferramentas avançadas e opcionais aparecem. Mude de modo a qualquer momento sem perder seu progresso. Após cerca de 5 horas acumuladas no Completo, a chave se recolhe automaticamente e pode ser reativada nas Configurações.',
-    audioUrl: '/introducao.mp3',
-  },
-  {
-    icone: Users,
-    titulo: 'Otimização Horizontal Full HD',
-    texto: 'Todo o Souza CAD foi projetado para tirar o máximo proveito de telas Full HD na horizontal. As colunas de dados, formulários de proprietários e painéis de desenho ficam lado a lado e são largas. Isso elimina rolagens verticais longas e desnecessárias, permitindo que você visualize e edite tudo de forma muito mais dinâmica e rápida.',
-  },
-  {
-    icone: Upload,
-    titulo: 'Importação Inteligente de Pontos',
-    texto: 'Utilize o botão PONTOS no topo para enviar as coordenadas obtidas pelo seu receptor GNSS. O Souza CAD lê e desenha automaticamente a poligonal do imóvel. Se o seu equipamento exportar as colunas (Leste, Norte, Altitude, Código, etc.) em uma ordem diferente, você pode redefinir o mapeamento de colunas em Configurações, e o app lembrará para sempre.',
-  },
-  {
-    icone: Search,
-    titulo: 'SIGEF & Confrontantes Certificados',
-    texto: 'O botão SIGEF procura automaticamente no acervo do INCRA os imóveis já certificados que fazem divisa com o seu projeto, desenhando-os como referência. Depois de baixados, esse mesmo botão se transforma no botão de ANÁLISE, permitindo verificar sobreposição de divisas ou erros geométricos.',
-  },
-  {
-    icone: BookUser,
-    titulo: 'Dados Completos e Atos do Requerimento',
-    texto: 'O botão DADOS gerencia as informações do proprietário, imóvel, confrontantes e cartório. É o coração do memorial e do requerimento. Ao redigir o Requerimento de Retificação de Área, escolha o tipo de ato (venda, doação, usucapião, desmembramento ou unificação) e o app ajustará a fundamentação legal e as partes (adquirinte, transmitente ou partes adicionais). A comarca destinatária é preenchida automaticamente com base no padrão da empresa configurado em Ajustes.',
-  },
-  {
-    icone: Brush,
-    titulo: 'Pintura de Confrontações e Linhas',
-    texto: 'Com o perímetro pronto, utilize os pincéis CONFRO e DIVISAS para pintar cada lado do imóvel. Você define quem confronta com cada trecho e qual é o tipo de linha (cerca, córrego, muro, etc.). A legenda é gerada automaticamente no canto do mapa e as cores ajudam na identificação rápida.',
-  },
-  {
-    icone: FileText,
-    titulo: 'Geração de Peças e Download Único',
-    texto: 'Baixe todas as peças finais prontas no padrão do SIGEF e de cartórios: MEM (memorial descritivo em Word editável), ODS (planilha oficial do SIGEF), PLANTA (projeto A3 em PDF) e REQ (requerimento de retificação ao cartório). O botão TRT permite inserir a responsabilidade técnica que constará nos cabeçalhos.',
-  },
-  {
-    icone: Save,
-    titulo: 'Passo 7: Nunca Perca um Trabalho & Banco de Pontos',
-    texto: 'O botão Salvar (que muda de cor para avisar quando há alterações pendentes) guarda seu projeto de forma segura na nuvem e alimenta seu banco de pontos pessoal para evitar a repetição acidental de nomes de vértices. Além disso, o Souza CAD possui salvamento automático em segundo plano; se você fechar a aba sem querer, seu progresso recente estará a salvo.',
-  },
-];
-
-// PASSOS AVANÇADOS — só aparecem quando a tela está no modo Completo.
-const PASSOS_AVANCADOS: Passo[] = [
-  {
-    icone: UserCheck,
-    titulo: 'Casar Vértices dos Vizinhos',
-    texto: 'Para evitar a rejeição mais comum (múltiplos códigos para o mesmo ponto), você deve reaproveitar os códigos de vértices vizinhos certificados. No modo Completo, o botão CASAR adota automaticamente os códigos dos vértices SIGEF que encostam no seu imóvel, e o botão VIZINHOS permite ler arquivos de vértices exportados do Acervo Fundiário do INCRA.',
-  },
-  {
-    icone: Sparkles,
-    titulo: 'Desenho Avançado, Achuras e Símbolos',
-    texto: 'No modo Completo, você pode desenhar polilinhas livres, cotas de distância, textos e símbolos (como postes, árvores ou marcos). Os polígonos fechados de desenho aceitam cores de preenchimento e achuras (linhas 45°, grade/X, etc.), ideais para áreas ambientais do CAR. Ajuste ângulos precisos usando a trava Orto (90°) ou Polar (15°), ou digite diretamente o rumo e distância. Organize tudo pelo Gerenciador de Camadas (ajustando cor, espessura, visibilidade ou bloqueio de edição com o cadeado) e pressione Enter ou Espaço para repetir a última ferramenta.',
-  },
-  {
-    icone: Ruler,
-    titulo: 'Vértices Virtuais, Imã Esperto & Edição',
-    texto: 'O modo Completo oferece a ferramenta Vértice Virtual (V) para calcular pontos invisíveis/inacessíveis por afastamento ou interseções. O Imã Esperto (Snapping avançado) atrai o cursor para o fim de segmento, meio de segmento (triângulo verde), interseções (X verde), pé da perpendicular e extensão de alinhamentos. Use a ferramenta Paralela (Offset) para desenhar recuos e faixas de domínio, e use as ferramentas Dividir, Aparar (Trim) e Prolongar (Extend) para ajustar seus desenhos.',
-  },
-  {
-    icone: FileText,
-    titulo: 'Retificações Múltiplas e Atos de Errata',
-    texto: 'Precisa retificar mais de um dado na matrícula de uma vez só? Nas abas de Errata e Requerimento, você pode cadastrar múltiplas linhas de correções de diferentes naturezas (área, confrontantes, estado civil ou dados pessoais). O Souza CAD agrupa e escreve a narrativa legal de forma organizada no Word (.docx), permitindo que você entregue uma única peça consolidada para todas as retificações do seu projeto.',
-  },
-  {
-    icone: Ruler,
-    titulo: 'Área SGL (Sem distorção UTM)',
-    texto: 'O Souza CAD calcula automaticamente a Área SGL (Sistema Geodésico Local) no plano topocêntrico local (do elipsoide GRS80/SIRGAS2000). Ao contrário da área UTM bruta, que distorce as distâncias reais por causa do fator de escala do meridiano central da zona, a Área SGL é a exata medida física aceita pelo INCRA e pelo SIGEF na certificação.',
-  },
-  {
-    icone: Upload,
-    titulo: 'Mapeador de Colunas do Arquivo de Pontos',
-    texto: 'Seu receptor GNSS exporta arquivos com colunas fora do padrão (ex: Altitude antes do Nome, ou delimitado por ponto e vírgula)? Nas Configurações, você pode ajustar a ordem das colunas e o caractere de separação. O app salva essa configuração no seu navegador e aplica automaticamente em todas as próximas importações.',
-  },
-  {
-    icone: Save,
-    titulo: 'Contrato e Gestão Financeira',
-    texto: 'Gerencie o valor contratado, custos de campo e recebimentos de cada projeto diretamente pela barra inferior. Você pode gerar contratos de prestação de serviços com cláusulas de obrigações e recibos com preenchimento de valor por extenso automático.',
-  },
-];
 type TelaAjuda = 'menu' | 'passos' | 'aprenderMais' | 'temas' | 'tema';
 
 export default function TutorialModal({ open, onOpenChange }: Props) {
@@ -499,7 +409,10 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
               <DialogTitle className="flex items-center gap-2 text-base"><BookUser className="size-5 text-primary" /> {tema.titulo}</DialogTitle>
             </DialogHeader>
             {seletorNivel}
-            {audioControls(nivel === 'iniciante' ? tema.iniciante : tema.experiente)}
+            {audioControls(
+              nivel === 'iniciante' ? tema.iniciante : tema.experiente,
+              nivel === 'iniciante' ? tema.audioUrlIniciante : tema.audioUrlExperiente,
+            )}
             <p className="min-h-0 flex-1 overflow-y-auto pr-1 text-sm leading-relaxed text-muted-foreground">
               {nivel === 'iniciante' ? tema.iniciante : tema.experiente}
             </p>
