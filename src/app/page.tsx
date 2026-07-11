@@ -41,6 +41,7 @@ import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import AnuenciaModal from '@/components/AnuenciaModal';
 import GestaoProjetoModal from '@/components/GestaoProjetoModal';
 import TutorialModal from '@/components/TutorialModal';
+import MobileHome from '@/components/MobileHome';
 import AssinaturaModal from '@/components/AssinaturaModal';
 import IntroVideo from '@/components/IntroVideo';
 import { IntroAudioPill, TutorialAudioPill } from '@/components/IntroAudio';
@@ -438,6 +439,10 @@ export default function EditorPage() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+  // No celular, a tela inicial é a "home de escritório" (abrir/criar projeto, IA, dados) em vez do
+  // mapa — mapa/planta continuam existindo, só ficam atrás de um "Ver mapa" discreto. Só é
+  // consultado quando telaEstreita; no desktop não tem efeito nenhum.
+  const [mobileTela, setMobileTela] = useState<'home' | 'mapa'>('home');
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
   const [toolW, setToolW] = useState(270); // largura confortável pra não espremer os rótulos dos botões
   // No celular a barra de ferramentas nasce OCULTA — no mobile ela quase não serve (não se desenha),
@@ -4172,6 +4177,7 @@ export default function EditorPage() {
     setPartesAdicionais([]);
     setSigefStatus('idle'); setBaixou({}); setSalvoOk(false);
     localStorage.removeItem(rascunhoKey());
+    setMobileTela('home');
     aviso('Novo projeto iniciado. Importe pontos para começar.');
     setTimeout(() => {
       fileRef.current?.click();
@@ -4272,6 +4278,7 @@ export default function EditorPage() {
     // lista, só um aviso discreto passava na tela).
     setAba('vertices');
     setPainelAberto(false);
+    setMobileTela('home'); // no celular, abrir projeto volta pra home de escritório, não pro mapa
     aviso(`Projeto carregado (${p.glebas.length} gleba(s)).`);
   }
   async function remover(id: string) {
@@ -4571,8 +4578,18 @@ export default function EditorPage() {
             {barraLateralOculta ? <PanelLeft className="size-4" /> : <Maximize2 className="size-4" />}
           </button>
         )}
-        {/* Só no celular: alternar Mapa/Planta (a barra flutuante que trazia isso foi extinta no mobile). */}
-        {telaEstreita && (
+        {/* Só no celular, e só quando está "espiando" o mapa: voltar pra home de escritório. */}
+        {telaEstreita && mobileTela === 'mapa' && (
+          <button type="button" onClick={() => setMobileTela('home')}
+            title="Voltar pra tela inicial"
+            className="flex shrink-0 items-center gap-1 border-r px-2.5 text-[10px] font-bold text-muted-foreground hover:bg-muted/40">
+            <PanelLeft className="size-4" />
+            <span>INÍCIO</span>
+          </button>
+        )}
+        {/* Só no celular, e só quando está "espiando" o mapa: alternar Mapa/Planta (a barra
+            flutuante que trazia isso foi extinta no mobile). Some na home — lá não faz sentido. */}
+        {telaEstreita && mobileTela === 'mapa' && (
           <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
             title="Alternar entre mapa e planta"
             className="flex shrink-0 items-center gap-1 border-r px-2.5 text-[10px] font-bold text-primary hover:bg-muted/40">
@@ -5591,6 +5608,15 @@ export default function EditorPage() {
         <main className="relative isolate min-w-0 flex-1">
           {modoMaster === 'gerir' && souMaster() && user && !entrouSemLogin ? (
             <PainelMasterSaaS onVoltarDesenhar={() => setModoMaster('editar')} />
+          ) : telaEstreita && mobileTela === 'home' ? (
+            <MobileHome
+              nomeProjeto={nomeProjeto}
+              onAbrirProjetos={() => { setPainelAberto(true); setAba('projetos'); }}
+              onNovoProjeto={criarNovoProjeto}
+              onImportarIa={() => { setIaArquivoInicial(null); setIaAberta(true); }}
+              onCompletarDados={() => { setPainelAberto(true); setAba('imovel'); }}
+              onVerMapa={() => setMobileTela('mapa')}
+            />
           ) : (
             <>
               {/* BARRA FLUTUANTE ÚNICA (só desktop) — alternar Mapa/Planta, chave de modo, área e
