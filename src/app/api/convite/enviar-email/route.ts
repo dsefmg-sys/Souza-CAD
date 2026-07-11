@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   `;
 
   try {
-    const { enviado } = await enviarEmailSmtp({ to: paraEmail, subject: `${session.email || 'Um colega'} convidou você para o Souza CAD`, html });
+    const { enviado } = await enviarEmailSmtp({ to: paraEmail, subject: 'Você recebeu um convite de colaboração no Souza CAD', html });
     return NextResponse.json({ success: true, enviado });
   } catch (e: unknown) {
     console.error('[convite/enviar-email] erro ao enviar:', (e as Error)?.message || e);
