@@ -137,6 +137,8 @@ export const ESCRITORIO_PADRAO: EscritorioData = {
   cnpj: '',
   endereco: '',
   telefone: '',
+  corPrimaria: '#15803d',
+  corSecundaria: '#16a34a',
 };
 
 export function carregarEscritorio(): EscritorioData {

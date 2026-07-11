@@ -113,3 +113,12 @@ export async function entrarComoMembro(empresaId: string): Promise<void> {
     await updateDoc(doc(fdb()!, 'empresas', empresaId), { [`membros.${meuUid}`]: 'membro' });
   } catch { /* offline/sem permissão — não bloqueia o vínculo em si, só a listagem de membros */ }
 }
+
+export async function atualizarEmpresaNaNuvem(patch: Partial<Pick<Empresa, 'nome'>>): Promise<void> {
+  if (!firebaseConfigurado) return;
+  const wsUid = workspaceUidAtual();
+  if (!wsUid) return;
+  try {
+    await updateDoc(doc(fdb()!, 'empresas', wsUid), patch);
+  } catch { /* ignore */ }
+}

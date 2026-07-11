@@ -46,7 +46,7 @@ interface Props {
 }
 
 export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange, abaInicial }: Props) {
-  const [aba, setAba] = useState<AbaConfig>('pessoal');
+  const [aba, setAba] = useState<AbaConfig>('escritorio');
   useEffect(() => {
     if (open) {
       if (abaInicial) setAba(abaInicial);
@@ -321,6 +321,13 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               pessoal (do técnico) e o que é global (da empresa) */}
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-8">
             <div>
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Empresa</div>
+              <div className="flex flex-wrap gap-2">
+                <Tb a="escritorio" rotulo="Dados da Empresa" />
+                <Tb a="equipe" rotulo="Ajudantes / Equipe" />
+              </div>
+            </div>
+            <div>
               <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Pessoais</div>
               <div className="flex flex-wrap gap-2">
                 <Tb a="pessoal" rotulo="Responsável Técnico" />
@@ -328,13 +335,11 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               </div>
             </div>
             <div>
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Globais (empresa)</div>
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Workspace</div>
               <div className="flex flex-wrap gap-2">
-                <Tb a="escritorio" rotulo="Escritório & Carimbo" />
                 <Tb a="numeracao" rotulo="Numeração e Fuso" />
                 <Tb a="modelos" rotulo="Importação e Modelos" />
                 <Tb a="padroes" rotulo="Padrões & Backup" />
-                <Tb a="equipe" rotulo="Ajudantes / Equipe" />
               </div>
             </div>
           </div>
@@ -697,6 +702,42 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Razão Social / Nome do Escritório</Label>
                   <Input value={esc.nome} onChange={(e) => changeEsc('nome', e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Cor Primária (Tema)</Label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={esc.corPrimaria || '#15803d'}
+                        onChange={(e) => changeEsc('corPrimaria', e.target.value)}
+                        className="size-8 rounded-md border cursor-pointer p-0 bg-transparent"
+                      />
+                      <Input
+                        value={esc.corPrimaria || '#15803d'}
+                        onChange={(e) => changeEsc('corPrimaria', e.target.value.toUpperCase())}
+                        className="h-8 text-xs font-mono uppercase"
+                        maxLength={7}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Cor Secundária</Label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        value={esc.corSecundaria || '#16a34a'}
+                        onChange={(e) => changeEsc('corSecundaria', e.target.value)}
+                        className="size-8 rounded-md border cursor-pointer p-0 bg-transparent"
+                      />
+                      <Input
+                        value={esc.corSecundaria || '#16a34a'}
+                        onChange={(e) => changeEsc('corSecundaria', e.target.value.toUpperCase())}
+                        className="h-8 text-xs font-mono uppercase"
+                        maxLength={7}
+                      />
+                    </div>
+                  </div>
                 </div>
                 {prefs.modo === 'simples' ? (
                   <>

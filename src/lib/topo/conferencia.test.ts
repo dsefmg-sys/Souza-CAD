@@ -5,7 +5,7 @@ import { parseTxt, pontosDePerimetro } from './parseTxt';
 import { montarVertices } from './vertices';
 import { calcular } from './calcular';
 import { detectarZona } from './coords';
-import { segmentosCruzam, temAutoIntersecao, conferir, valoresEfetivos } from './conferencia';
+import { segmentosCruzam, temAutoIntersecao, conferir, valoresEfetivos, detectarConflitosDivisas } from './conferencia';
 import type { ImovelData, Vertex } from './types';
 
 const TXT = readFileSync(resolve(__dirname, '__fixtures__/ventania.txt'), 'latin1');
@@ -124,5 +124,93 @@ describe('validação de precisão de sigmas', () => {
     const res = calcular(vs);
     const probs = conferir(vs, res, imovelBase);
     expect(probs.some((p) => p.campo === 'precisão Z' && /precisão vertical/.test(p.msg))).toBe(true);
+  });
+});
+
+describe('detectarConflitosDivisas', () => {
+  const mkV = (leste: number, norte: number, lat = 0, lon = 0): Vertex => ({
+    id: String(Math.random()), ordem: 0, nome: '', codigoCampo: '', leste, norte, lat, lon,
+    elevacao: 0, tipo: 'P', codigoSigef: 'PT-1', isDivisa: true,
+  });
+
+  it('retorna lista vazia se não houver referências', () => {
+    const vertices = [mkV(0, 0), mkV(10, 0), mkV(10, 10), mkV(0, 10)];
+    expect(detectarConflitosDivisas(vertices, [])).toEqual([]);
+  });
+
+  it('detecta sobreposição de divisas (sobreposicao)', () => {
+    // Nosso polígono: quadrado 0,0 a 10,10.
+    // Lado 0: (0,0) a (10,0) com ponto médio (5,0).
+    const vertices = [
+      mkV(0, 0),
+      mkV(10, 0),
+      mkV(10, 10),
+      mkV(0, 10),
+    ];
+    // Referência: outro polígono que invade ligeiramente o nosso,
+    // de forma que o ponto médio (5,0) cai DENTRO dele.
+    // Exemplo: polígono de referência que vai de Y=-2 até Y=0.5
+    // então a borda superior dele é Y=0.5. O ponto médio Y=0 cai dentro dele.
+    const refRing = [
+      { leste: 0, norte: -2, lat: 0, lon: 0 },
+      { leste: 10, norte: -2, lat: 0, lon: 0 },
+      { leste: 10, norte: 0.5, lat: 0, lon: 0 },
+      { leste: 0, norte: 0.5, lat: 0, lon: 0 },
+    ];
+
+    const conflitos = detectarConflitosDivisas(vertices, [refRing]);
+    expect(conflitos.length).toBeGreaterThan(0);
+    expect(conflitos[0].tipo).toBe('sobreposicao');
+    expect(conflitos[0].distancia).toBeCloseTo(0.5, 2);
+  });
+
+  it('detecta vãos de divisas (vao)', () => {
+    // Nosso polígono: quadrado 0,0 a 10,10.
+    // Lado 0: (0,0) a (10,0) com ponto médio (5,0).
+    const vertices = [
+      mkV(0, 0),
+      mkV(10, 0),
+      mkV(10, 10),
+      mkV(0, 10),
+    ];
+    // Referência: vizinho afastado (Y=-0.5), de forma que o ponto médio (5,0) do nosso lado
+    // cai FORA dele (afastado por um vão).
+    const refRing = [
+      { leste: 0, norte: -5, lat: 0, lon: 0 },
+      { leste: 10, norte: -5, lat: 0, lon: 0 },
+      { leste: 10, norte: -0.5, lat: 0, lon: 0 },
+      { leste: 0, norte: -0.5, lat: 0, lon: 0 },
+    ];
+
+    const conflitos = detectarConflitosDivisas(vertices, [refRing]);
+    expect(conflitos.length).toBeGreaterThan(0);
+    expect(conflitos[0].tipo).toBe('vao');
+    expect(conflitos[0].distancia).toBeCloseTo(0.5, 2);
+  });
+
+  it('ignora conflitos muito pequenos (< 0.05m) ou muito grandes (> 3.0m)', () => {
+    const vertices = [
+      mkV(0, 0),
+      mkV(10, 0),
+      mkV(10, 10),
+      mkV(0, 10),
+    ];
+    // Caso 1: Praticamente colado (0.01m de afastamento) - deve ignorar
+    const refColado = [
+      { leste: 0, norte: -5, lat: 0, lon: 0 },
+      { leste: 10, norte: -5, lat: 0, lon: 0 },
+      { leste: 10, norte: -0.01, lat: 0, lon: 0 },
+      { leste: 0, norte: -0.01, lat: 0, lon: 0 },
+    ];
+    expect(detectarConflitosDivisas(vertices, [refColado])).toEqual([]);
+
+    // Caso 2: Muito afastado (5m de afastamento) - deve ignorar
+    const refAfastado = [
+      { leste: 0, norte: -10, lat: 0, lon: 0 },
+      { leste: 10, norte: -10, lat: 0, lon: 0 },
+      { leste: 10, norte: -5.0, lat: 0, lon: 0 },
+      { leste: 0, norte: -5.0, lat: 0, lon: 0 },
+    ];
+    expect(detectarConflitosDivisas(vertices, [refAfastado])).toEqual([]);
   });
 });

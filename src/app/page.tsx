@@ -247,6 +247,49 @@ function montarSnapshotDesenho(glebasArr: { vertices: Vertex[]; objetos?: Objeto
   });
 }
 
+function hexToHslValues(hex: string): string {
+  hex = hex.replace(/^#/, '');
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+
+  h = Math.round(h * 360);
+  s = Math.round(s * 100);
+  const lRound = Math.round(l * 100);
+
+  return `${h} ${s}% ${lRound}%`;
+}
+
+function isLightColor(hex: string): boolean {
+  hex = hex.replace(/^#/, '');
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 155;
+}
+
 export default function EditorPage() {
   const { user, carregando: authCarregando, disponivel: nuvemDisponivel } = useAuth();
   const modoEntrada = useModoEntrada();
@@ -294,6 +337,32 @@ export default function EditorPage() {
   const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
   const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && escritorio?.corPrimaria) {
+      const root = document.documentElement;
+      const hslVal = hexToHslValues(escritorio.corPrimaria);
+      root.style.setProperty('--primary', hslVal);
+      root.style.setProperty('--ring', hslVal);
+      const isLight = isLightColor(escritorio.corPrimaria);
+      root.style.setProperty('--primary-foreground', isLight ? '0 0% 9%' : '0 0% 100%');
+    } else if (typeof window !== 'undefined') {
+      const root = document.documentElement;
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--ring');
+      root.style.removeProperty('--primary-foreground');
+    }
+    if (typeof window !== 'undefined' && escritorio?.corSecundaria) {
+      const root = document.documentElement;
+      const hslValSec = hexToHslValues(escritorio.corSecundaria);
+      root.style.setProperty('--secondary', hslValSec);
+      const isLightSec = isLightColor(escritorio.corSecundaria);
+      root.style.setProperty('--secondary-foreground', isLightSec ? '0 0% 9%' : '0 0% 100%');
+    } else if (typeof window !== 'undefined') {
+      const root = document.documentElement;
+      root.style.removeProperty('--secondary');
+      root.style.removeProperty('--secondary-foreground');
+    }
+  }, [escritorio?.corPrimaria, escritorio?.corSecundaria]);
   const [vertices, setVertices] = useState<Vertex[]>([]);
   const [verticesIgnorados, setVerticesIgnorados] = useState<Vertex[]>([]); // fora do anel (ferramenta ignorar/considerar)
   const [gradeAltimetrica, setGradeAltimetrica] = useState<{ lat: number; lon: number; leste: number; norte: number; elevacao: number }[]>([]);

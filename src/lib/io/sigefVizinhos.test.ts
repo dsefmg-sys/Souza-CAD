@@ -261,4 +261,55 @@ describe('sigefVizinhos', () => {
     expect(prop.denominacao).toBe('S&iacute;tio "Barro & <Agua>" \'Feliz\'');
     expect(prop.detentor).toBe('Fulano & Cia');
   });
+
+  it('lida defensivamente com tags vazias ou ausentes no GML', () => {
+    const xmlIncompleto = `
+      <gml:featureMember>
+        <ms:codigo_imovel></ms:codigo_imovel>
+        <ms:nome_area>   </ms:nome_area>
+        <gml:outerBoundaryIs>
+          <gml:LinearRing>
+            <gml:coordinates></gml:coordinates>
+          </gml:LinearRing>
+        </gml:outerBoundaryIs>
+      </gml:featureMember>
+    `;
+    // coordinates vazias = anel com 0 pontos = descartado
+    const parcelas = parseGmlParcelas(xmlIncompleto);
+    expect(parcelas.length).toBe(0);
+
+    const xmlPropIncompleto = `
+      <wfs:FeatureCollection>
+        <ms:nome_area></ms:nome_area>
+        <ms:detentor>  </ms:detentor>
+      </wfs:FeatureCollection>
+    `;
+    const prop = parsePropriedadeSigefGml(xmlPropIncompleto);
+    expect(prop.denominacao).toBeUndefined();
+    expect(prop.detentor).toBeUndefined();
+  });
+
+  it('suporta coordenadas com quebras de linha ou espaçamentos irregulares no GML', () => {
+    const xmlEspacos = `
+      <gml:featureMember>
+        <gml:outerBoundaryIs>
+          <gml:LinearRing>
+            <gml:coordinates>
+              -41.91,-20.65
+              -41.90,-20.65
+              
+              -41.90,-20.64
+              -41.91,-20.64
+              -41.91,-20.65
+            </gml:coordinates>
+          </gml:LinearRing>
+        </gml:outerBoundaryIs>
+      </gml:featureMember>
+    `;
+    const parcelas = parseGmlParcelas(xmlEspacos);
+    expect(parcelas.length).toBe(1);
+    expect(parcelas[0].anel.length).toBe(5);
+    expect(parcelas[0].anel[0].lon).toBe(-41.91);
+    expect(parcelas[0].anel[0].lat).toBe(-20.65);
+  });
 });

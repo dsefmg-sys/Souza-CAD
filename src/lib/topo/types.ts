@@ -403,6 +403,8 @@ export interface EscritorioData {
   endereco: string;    // logradouro + número + bairro: "Rua Doutor José Paixão 1400, Sala 02, Santa Inês"
   telefone: string;    // "(32) 99911-6227"
   logoDataUrl?: string;// logotipo opcional (base64 data URL)
+  corPrimaria?: string; // cor primária para personalização da marca
+  corSecundaria?: string; // cor secundária para personalização da marca
   // Campos cadastrais complementares (opcionais p/ compatibilidade com cadastros antigos).
   nomeFantasia?: string;      // nome fantasia, se diferente da razão social
   inscricaoEstadual?: string; // IE ou "ISENTO"

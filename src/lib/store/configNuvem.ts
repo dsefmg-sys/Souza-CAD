@@ -66,11 +66,14 @@ export async function empurrarConfigParaNuvem(): Promise<void> {
   if (!uid) return;
   marcarDono(uid); // o cache local passa a ser (e a pertencer a) este usuário
   try {
+    const esc = carregarEscritorio();
     await setDoc(
       doc(fdb()!, 'users', uid),
-      { tecnico: carregarTecnico(), escritorio: carregarEscritorio(), configurado: true },
+      { tecnico: carregarTecnico(), escritorio: esc, configurado: true },
       { merge: true },
     );
+    const { atualizarEmpresaNaNuvem } = await import('./empresas');
+    await atualizarEmpresaNaNuvem({ nome: esc.nome });
   } catch {
     /* offline/sem permissão — o cache local segue valendo até reconectar */
   }

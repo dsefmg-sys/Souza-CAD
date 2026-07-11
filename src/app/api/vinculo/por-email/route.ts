@@ -3,6 +3,8 @@ import { getAuth } from 'firebase-admin/auth';
 import { verifySession, OWNER_EMAIL } from '@/lib/apiAuth';
 import { getAdminApp } from '@/lib/firebaseAdmin';
 
+import { getFirestore } from 'firebase-admin/firestore';
+
 export const runtime = 'nodejs';
 
 // Resolve um e-mail pro uid da conta correspondente — necessário porque o SDK de cliente do
@@ -38,6 +40,23 @@ export async function POST(req: Request) {
 
   try {
     const usuario = await getAuth(getAdminApp()).getUserByEmail(emailAlvo);
+
+    // Garante que o documento da empresa existe na nuvem antes de prosseguir
+    const db = getFirestore(getAdminApp());
+    const ref = db.collection('empresas').doc(usuario.uid);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      await ref.set({
+        id: usuario.uid,
+        nome: `Empresa de ${usuario.displayName || emailAlvo}`,
+        donoUid: usuario.uid,
+        criadoEm: Date.now(),
+        membros: { [usuario.uid]: 'admin' },
+        statusPagamento: 'atrasado',
+        atrasadoDesde: Date.now(),
+      });
+    }
+
     return NextResponse.json({ uid: usuario.uid });
   } catch (e: unknown) {
     const err = e as { code?: string };
