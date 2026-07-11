@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { garantirEmpresaDoWorkspace, minhaEmpresa, entrarComoMembro, atualizarEmpresaNaNuvem } from './empresas';
 import { workspaceUidAtual } from './perfilUso';

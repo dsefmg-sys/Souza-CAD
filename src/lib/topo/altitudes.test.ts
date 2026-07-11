@@ -52,4 +52,17 @@ describe('estimarAltitudes', () => {
     expect(z as number).toBeGreaterThanOrEqual(0);
     expect(z as number).toBeLessThanOrEqual(10);
   });
+
+  it('deduplica espacialmente pontos coincidentes (< 1mm) para evitar triangulação corrompida', () => {
+    const conhecidos: Ponto3D[] = [
+      { x: 0, y: 0, z: 5 },
+      { x: 0.0001, y: 0.0002, z: 10 }, // duplicado do primeiro
+      { x: 10, y: 0, z: 10 },
+      { x: 0, y: 10, z: 10 },
+    ];
+    // Deve ignorar o ponto duplicado (mantendo apenas 3) e interpolar corretamente no centro
+    const [z] = estimarAltitudes(conhecidos, [{ x: 3, y: 3 }]);
+    expect(z).not.toBeNull();
+    expect(z).toBeCloseTo(8, 6);
+  });
 });

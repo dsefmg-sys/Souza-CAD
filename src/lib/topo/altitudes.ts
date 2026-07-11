@@ -41,19 +41,31 @@ function idw(alvo: Ponto2D, conhecidos: Ponto3D[]): number | null {
 export function estimarAltitudes(conhecidos: Ponto3D[], alvos: Ponto2D[]): (number | null)[] {
   const cs = conhecidos.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
   if (cs.length === 0) return alvos.map(() => null);
-  // menos de 3 pontos não formam malha — só dá pra vizinhança (IDW)
-  if (cs.length < 3) return alvos.map((t) => idw(t, cs));
 
-  const tris = triangularDelaunay(cs);
+  // Deduplicação espacial por coordenadas planas (com tolerância de 1mm = 0.001) para evitar triângulos de área zero
+  const dedup: Ponto3D[] = [];
+  for (const p of cs) {
+    const duplicate = dedup.some(
+      (d) => Math.hypot(d.x - p.x, d.y - p.y) < 0.001
+    );
+    if (!duplicate) {
+      dedup.push(p);
+    }
+  }
+
+  // menos de 3 pontos não formam malha — só dá pra vizinhança (IDW)
+  if (dedup.length < 3) return alvos.map((t) => idw(t, dedup));
+
+  const tris = triangularDelaunay(dedup);
   return alvos.map((t) => {
     for (const tri of tris) {
-      const A = cs[tri[0]], B = cs[tri[1]], C = cs[tri[2]];
+      const A = dedup[tri[0]], B = dedup[tri[1]], C = dedup[tri[2]];
       const wgt = baricentrico(t, A, B, C);
       // dentro do triângulo: todos os pesos >= 0 (com folga numérica)
       if (wgt && wgt.u >= -1e-9 && wgt.v >= -1e-9 && wgt.w >= -1e-9) {
         return wgt.u * A.z + wgt.v * B.z + wgt.w * C.z;
       }
     }
-    return idw(t, cs); // fora do fecho dos pontos medidos
+    return idw(t, dedup); // fora do fecho dos pontos medidos
   });
 }
