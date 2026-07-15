@@ -10,7 +10,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft,
-  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Compass,
+  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Compass, Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -34,7 +34,8 @@ import ErrataModal from '@/components/ErrataModal';
 import MemorialPreviewModal from '@/components/MemorialPreviewModal';
 import ConsultarModal from '@/components/ConsultarModal';
 import { Packer } from 'docx';
-import { gerarAnuenciaDocumento } from '@/lib/export/anuencia';
+import { gerarAnuenciaDocumento, gerarAnuenciaLoteDocumento } from '@/lib/export/anuencia';
+import { confrontanteAssina } from '@/lib/export/confrontanteTexto';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import AnuenciaModal from '@/components/AnuenciaModal';
@@ -752,7 +753,7 @@ export default function EditorPage() {
   const [errataAberto, setErrataAberto] = useState(false);
   const [sigefMenuAberto, setSigefMenuAberto] = useState(false);
   const [prevMemorialAberto, setPrevMemorialAberto] = useState(false);
-  const [prevMemorialModo] = useState<'normal' | 'servidao'>('normal');
+  const [prevMemorialModo, setPrevMemorialModo] = useState<'normal' | 'servidao'>('normal');
   const [importTxtConfigAberto, setImportTxtConfigAberto] = useState(false);
 
   const projetoTemServidao = useMemo(() => {
@@ -3344,6 +3345,99 @@ export default function EditorPage() {
     }, 450);
   }
 
+  async function baixarRequerimentoDireto() {
+    setProcessando(true);
+    try {
+      const resReq = await fetch('/api/export/requerimento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imovel, tecnico, requerente, transmitente, tipoAto, partesAdicionais, correcoes,
+          areaRealHa: res ? valoresEfetivos(res, imovel).areaHa : 0,
+        })
+      });
+      if (!resReq.ok) throw new Error('Falha ao gerar requerimento.');
+      const reqBlob = await resReq.blob();
+      const requerimento = await compatibilizarWord2007(reqBlob);
+      const nome = (imovel.denominacao || 'imovel').replace(/[^\w.-]+/g, '_');
+      saveAs(requerimento, `Requerimento - ${nome}.docx`);
+      setBaixou((b) => ({ ...b, req: true }));
+    } catch (e) {
+      aviso((e as Error).message);
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function baixarTodasAnuenciasDireto() {
+    if (!tecnico) { aviso('Configure o responsável técnico primeiro nas configurações.'); return; }
+    const confrontantesAssinam = confrontantes.filter(confrontanteAssina);
+    if (!confrontantesAssinam.length) {
+      aviso('Não há confrontantes que precisem assinar neste projeto (bem público não conta).');
+      return;
+    }
+    setProcessando(true);
+    try {
+      const { gerarAnuenciaLoteDocumento } = await import('@/lib/export/anuencia');
+      const ladosDe = (id: string) => Object.entries(confrontantePorLado).filter(([, cid]) => cid === id).map(([i]) => Number(i));
+      const compartilhadosDe = (c: Confrontante) => ladosDe(c.id).map((i) => lados[i]).filter(Boolean);
+      const inputDe = (c: Confrontante) => ({
+        imovel, tecnico: tecnico as TecnicoData, confrontante: c, verticesCompartilhados: compartilhadosDe(c),
+        incluirVerticesLista: false,
+      });
+      const doc = gerarAnuenciaLoteDocumento(confrontantesAssinam.map(inputDe));
+      const blob = await compatibilizarWord2007(await Packer.toBlob(doc));
+      const nome = (imovel.denominacao || 'imovel').replace(/[^\w.-]+/g, '_');
+      saveAs(blob, `Cartas de Anuencia - ${nome}.docx`);
+    } catch (e) {
+      aviso('Erro ao gerar cartas de anuência: ' + (e as Error).message);
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  function dataExtensoHoje(): string {
+    const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    const d = new Date();
+    return `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+  }
+
+  async function baixarErrataDireta() {
+    if (!tecnico) { aviso('Configure o responsável técnico primeiro nas configurações.'); return; }
+    const validas = correcoes.filter((c) => c.onde.trim() && c.passa.trim());
+    if (!validas.length) {
+      setErrataAberto(true);
+      return;
+    }
+    setProcessando(true);
+    try {
+      const padroes = carregarPadroes();
+      const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
+      const response = await fetch('/api/export/errata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imovel,
+          tecnico,
+          correcoes: validas,
+          areaHa: res ? valoresEfetivos(res, imovel).areaHa : 0,
+          acrescimoRT: '',
+          dataExtenso: dataExtensoHoje(),
+          comarca
+        })
+      });
+      if (!response.ok) throw new Error('Falha ao gerar errata.');
+      const blobBruto = await response.blob();
+      const blob = await compatibilizarWord2007(blobBruto);
+      const nome = (imovel.denominacao || 'imovel').replace(/[^\w.-]+/g, '_');
+      saveAs(blob, `Errata - ${nome}.docx`);
+    } catch (e) {
+      aviso((e as Error).message);
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   // Gera o PDF da planta como Blob (mesma rasterização do exportarPlanta), sem baixar — pro pacote.
   function gerarPlantaPdfBlob(): Promise<Blob | null> {
     return new Promise((resolve) => {
@@ -4711,19 +4805,71 @@ export default function EditorPage() {
     );
   }
 
-  // Lista única de peças técnicas [rótulo, ação] — reaproveitada pelo menu PEÇAS e pela janela de
-  // peças do celular (MobileHome), pra não duplicar a lógica de quem gera/abre cada peça.
-  const itensPecas: [string, () => void][] = [
-    [`${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} — responsabilidade técnica`, () => setTrtAberto(true)],
-    ['Planilha SIGEF (.ods)', () => setPlanilhaConfAberta(true)],
-    ['Conferir projeto (limites, conflitos, SIGEF)', () => setConferirAberto(true)],
-    ['Memorial descritivo (.docx)', () => exportarMemorial('normal')],
-    ...(projetoTemServidao ? [['Memorial de servidão (.docx)', () => exportarMemorial('servidao')] as [string, () => void]] : []),
-    ['Planta A3 (PDF)', () => exportarPlanta()],
-    ['Requerimento ao cartório (.docx)', () => setReqAberto(true)],
-    ['Cartas de anuência (.docx)', () => setAnuenciaAberta(true)],
-    ...(medioOuMais ? [['Errata perimetral (.docx)', () => setErrataAberto(true)] as [string, () => void]] : []),
-    ...(medioOuMais ? [['CAR — Cadastro Ambiental Rural', () => setCarAberto(true)] as [string, () => void]] : []),
+  interface PecasItem {
+    id: string;
+    rotulo: string;
+    onVisualizar: () => void;
+    onBaixar?: () => void;
+  }
+
+  const itensPecas: PecasItem[] = [
+    {
+      id: 'trt',
+      rotulo: `${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} — responsabilidade técnica`,
+      onVisualizar: () => setTrtAberto(true)
+    },
+    {
+      id: 'ods',
+      rotulo: 'Planilha SIGEF (.ods)',
+      onVisualizar: () => setPlanilhaConfAberta(true),
+      onBaixar: () => exportarOds()
+    },
+    {
+      id: 'conferir',
+      rotulo: 'Conferir projeto (limites, conflitos, SIGEF)',
+      onVisualizar: () => setConferirAberto(true)
+    },
+    {
+      id: 'memorial_normal',
+      rotulo: 'Memorial descritivo (.docx)',
+      onVisualizar: () => { setPrevMemorialModo('normal'); setPrevMemorialAberto(true); },
+      onBaixar: () => exportarMemorial('normal')
+    },
+    ...(projetoTemServidao ? [{
+      id: 'memorial_servidao',
+      rotulo: 'Memorial de servidão (.docx)',
+      onVisualizar: () => { setPrevMemorialModo('servidao'); setPrevMemorialAberto(true); },
+      onBaixar: () => exportarMemorial('servidao')
+    }] : []),
+    {
+      id: 'planta',
+      rotulo: 'Planta A3 (PDF)',
+      onVisualizar: () => setVista('planta'),
+      onBaixar: () => exportarPlanta()
+    },
+    {
+      id: 'requerimento',
+      rotulo: 'Requerimento ao cartório (.docx)',
+      onVisualizar: () => setReqAberto(true),
+      onBaixar: () => baixarRequerimentoDireto()
+    },
+    {
+      id: 'anuencia',
+      rotulo: 'Cartas de anuência (.docx)',
+      onVisualizar: () => setAnuenciaAberta(true),
+      onBaixar: () => baixarTodasAnuenciasDireto()
+    },
+    ...(medioOuMais ? [{
+      id: 'errata',
+      rotulo: 'Errata perimetral (.docx)',
+      onVisualizar: () => setErrataAberto(true),
+      onBaixar: () => baixarErrataDireta()
+    }] : []),
+    ...(medioOuMais ? [{
+      id: 'car',
+      rotulo: 'CAR — Cadastro Ambiental Rural',
+      onVisualizar: () => setCarAberto(true)
+    }] : []),
   ];
 
   return (
@@ -4833,20 +4979,46 @@ export default function EditorPage() {
               {pecasMenuAberto && pecasMenuPos && (
                 <>
                   <div className="fixed inset-0 z-[1290]" onClick={() => setPecasMenuAberto(false)} />
-                  <div style={{ position: 'fixed', top: pecasMenuPos.top, right: pecasMenuPos.right }} className="z-[1300] w-60 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
-                    {([
-                      ['Memorial descritivo (.docx)', () => exportarMemorial('normal')],
-                      ...(projetoTemServidao ? [['Memorial de servidão (.docx)', () => exportarMemorial('servidao')] as [string, () => void]] : []),
-                      ['Planta A3 (PDF)', () => exportarPlanta()],
-                      ['Requerimento ao cartório (.docx)', () => setReqAberto(true)],
-                      ['Cartas de anuência (.docx)', () => setAnuenciaAberta(true)],
-                      ...(medioOuMais ? [['Errata perimetral (.docx)', () => setErrataAberto(true)] as [string, () => void]] : []),
-                    ] as [string, () => void][]).map(([rot, acao]) => (
-                      <button key={rot} type="button" onClick={() => { setPecasMenuAberto(false); acao(); }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-muted">
-                        <Download className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> {rot}
-                      </button>
-                    ))}
+                  <div style={{ position: 'fixed', top: pecasMenuPos.top, right: pecasMenuPos.right }} className="z-[1300] w-64 overflow-hidden rounded-xl border bg-background/98 p-1.5 shadow-2xl backdrop-blur-xl space-y-1">
+                    {/* Botão Baixar Tudo no topo do dropdown desktop */}
+                    <button type="button" onClick={() => { setPecasMenuAberto(false); baixarPacoteEntrega(); }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 px-3 py-2 text-center text-xs font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-600/20 transition-colors">
+                      <Archive className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> Baixar Tudo (Pacote ZIP)
+                    </button>
+                    <div className="my-1 border-b border-border/60" />
+
+                    {/* Lista de Peças */}
+                    {itensPecas
+                      .filter((item) => ['memorial_normal', 'memorial_servidao', 'planta', 'requerimento', 'anuencia', 'errata'].includes(item.id))
+                      .map((item) => (
+                        <div key={item.id} className="flex items-center justify-between gap-1.5 rounded-lg px-2 py-1 hover:bg-muted/50 transition-colors">
+                          <span className="text-xs font-semibold text-foreground truncate pl-1" title={item.rotulo}>
+                            {item.rotulo.replace(' (.docx)', '').replace(' (PDF)', '')}
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted"
+                              title="Visualizar ou editar no navegador"
+                              onClick={() => { setPecasMenuAberto(false); item.onVisualizar(); }}
+                            >
+                              <Eye className="size-3.5" />
+                            </Button>
+                            {item.onBaixar && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="size-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400 dark:hover:text-emerald-300"
+                                title="Baixar arquivo"
+                                onClick={() => { setPecasMenuAberto(false); item.onBaixar?.(); }}
+                              >
+                                <Download className="size-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 </>
               )}
@@ -6751,17 +6923,47 @@ export default function EditorPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base"><Download className="size-5 text-emerald-600 dark:text-emerald-400" /> Baixar peças técnicas</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-1.5">
-            {itensPecas.map(([rot, acao]) => (
-              <button key={rot} type="button" onClick={() => { setPecasSheetAberto(false); acao(); }}
-                className="flex w-full items-center gap-2.5 rounded-lg border bg-background/60 px-3 py-3 text-left text-sm font-medium hover:bg-muted/50 active:scale-[0.99] transition-transform">
-                <Download className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> {rot}
-              </button>
+          <div className="flex flex-col gap-2 max-h-[75vh] overflow-y-auto pr-1">
+            {/* Botão Baixar Tudo no topo do Mobile Sheet */}
+            <button type="button" onClick={() => { setPecasSheetAberto(false); baixarPacoteEntrega(); }}
+              className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-3.5 py-3 text-center text-sm font-bold text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400 active:scale-[0.98] transition-transform">
+              <Archive className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> Baixar Tudo (Pacote ZIP)
+            </button>
+            <div className="my-1 border-b border-border/60" />
+
+            {/* Lista de Peças */}
+            {itensPecas.map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border bg-background/60 p-2 text-left">
+                <span className="text-xs font-semibold text-foreground truncate pl-1" title={item.rotulo}>
+                  {item.rotulo}
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                    title="Visualizar ou editar no navegador"
+                    onClick={() => { setPecasSheetAberto(false); item.onVisualizar(); }}
+                  >
+                    <Eye className="size-3.5" /> Ver
+                  </Button>
+                  {item.onBaixar && (
+                    <Button
+                      size="sm"
+                      className="h-8 gap-1 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-800 active:scale-[0.97]"
+                      title="Baixar arquivo"
+                      onClick={() => { setPecasSheetAberto(false); item.onBaixar?.(); }}
+                    >
+                      <Download className="size-3.5" /> Baixar
+                    </Button>
+                  )}
+                </div>
+              </div>
             ))}
             {medioOuMais && (
               <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer"
                 onClick={() => setPecasSheetAberto(false)}
-                className="flex w-full items-center gap-2.5 rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-3 py-3 text-left text-sm font-semibold text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400">
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-3 py-3 text-center text-sm font-semibold text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400">
                 <LogIn className="size-4 shrink-0" /> Acessar o SIGEF (certificar)
               </a>
             )}
