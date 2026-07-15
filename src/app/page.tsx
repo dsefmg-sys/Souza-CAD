@@ -8,7 +8,7 @@ import {
   Upload, FileText, Map as MapIcon, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck,
+  Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft,
   Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Compass, Archive,
 } from 'lucide-react';
@@ -5497,9 +5497,83 @@ export default function EditorPage() {
                             </div>
                           )}
                           {objSel?.tipo === 'polilinha' && (
-                            <div className="col-span-2 flex flex-col gap-1 mt-1">
-                              <Button size="sm" variant="secondary" className="gap-1.5 w-full justify-start text-[11px]" onClick={converterPolilinhaEmPerimetro} title="Usar como perímetro"><RotateCcw className="size-3.5 text-emerald-500" /> Usar como perímetro</Button>
-                              <Button size="sm" variant={objSel.preenchido ? 'default' : 'ghost'} className="w-full justify-start gap-2 text-[11px]" onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher"><Brush className="size-3.5" /> Preencher</Button>
+                            <div className="col-span-3 flex flex-col gap-2 mt-1 rounded border border-border/40 bg-muted/5 p-2 animate-in fade-in duration-200">
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="secondary" className="gap-1.5 w-full justify-start text-[11px] h-7" onClick={converterPolilinhaEmPerimetro} title="Usar como perímetro">
+                                  <RotateCcw className="size-3.5 text-emerald-500" /> Usar como perímetro
+                                </Button>
+                                <Button size="sm" variant={objSel.preenchido ? 'default' : 'outline'} className="w-full justify-start gap-1.5 text-[11px] h-7" onClick={() => editarObjetoSel({ preenchido: !objSel.preenchido })} title="Preencher">
+                                  <Brush className="size-3.5 text-cyan-500" /> Preencher
+                                </Button>
+                              </div>
+
+                              {/* Seleção de Cores */}
+                              <div className="space-y-1">
+                                <div className="text-[10px] font-bold text-muted-foreground">Cor do item:</div>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {[
+                                    { hex: '#2563eb', label: 'Azul' },
+                                    { hex: '#dc2626', label: 'Vermelho' },
+                                    { hex: '#16a34a', label: 'Verde' },
+                                    { hex: '#ea580c', label: 'Laranja' },
+                                    { hex: '#9333ea', label: 'Roxo' },
+                                    { hex: '#eab308', label: 'Amarelo' },
+                                    { hex: '#78350f', label: 'Marrom' },
+                                    { hex: '#0f172a', label: 'Preto' },
+                                  ].map((c) => (
+                                    <button
+                                      key={c.hex}
+                                      type="button"
+                                      title={c.label}
+                                      className={`size-4 rounded-full border border-black/15 transition-all hover:scale-115 ${
+                                        (objSel.cor ?? '#2563eb') === c.hex
+                                          ? 'ring-2 ring-primary ring-offset-1 scale-110'
+                                          : 'opacity-85 hover:opacity-100'
+                                      }`}
+                                      style={{ backgroundColor: c.hex }}
+                                      onClick={() => editarObjetoSel({ cor: c.hex })}
+                                    />
+                                  ))}
+                                  <label title="Cor personalizada" className="relative cursor-pointer size-4 rounded-full border border-black/15 bg-gradient-to-tr from-rose-500 via-emerald-500 to-sky-500 hover:scale-115 transition-all flex items-center justify-center overflow-hidden">
+                                    <input
+                                      type="color"
+                                      className="sr-only"
+                                      value={objSel.cor ?? '#2563eb'}
+                                      onChange={(e) => editarObjetoSel({ cor: e.target.value })}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+
+                              {/* Ajuste de Espessura */}
+                              <div className="space-y-1">
+                                <div className="text-[10px] font-bold text-muted-foreground">Espessura da linha:</div>
+                                <div className="flex items-center gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    type="button"
+                                    variant="outline"
+                                    className="h-7 w-7 p-0 flex items-center justify-center"
+                                    onClick={() => editarObjetoSel({ espessura: Math.max(0.2, Number(((objSel.espessura ?? 1.2) - 0.2).toFixed(1))) })}
+                                    title="Diminuir espessura"
+                                  >
+                                    <Minus className="size-3" />
+                                  </Button>
+                                  <div className="flex h-7 items-center justify-center rounded border bg-background/50 px-2.5 text-[10px] font-mono font-bold min-w-[55px]">
+                                    {(objSel.espessura ?? 1.2).toFixed(1)} px
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    type="button"
+                                    variant="outline"
+                                    className="h-7 w-7 p-0 flex items-center justify-center"
+                                    onClick={() => editarObjetoSel({ espessura: Math.min(12, Number(((objSel.espessura ?? 1.2) + 0.2).toFixed(1))) })}
+                                    title="Aumentar espessura"
+                                  >
+                                    <Plus className="size-3" />
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                           )}
                           {objetoSelId && (
