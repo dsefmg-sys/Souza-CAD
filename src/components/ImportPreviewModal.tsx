@@ -186,7 +186,14 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
                       type="text"
                       value={nomes[i] ?? ''}
                       placeholder={`Ponto ${i + 1}`}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDestaque(i);
+                      }}
+                      onFocus={(e) => {
+                        setDestaque(i);
+                        e.target.select();
+                      }}
                       onChange={(e) => setNomes((a) => a.map((v, k) => (k === i ? e.target.value : v)))}
                       className="w-full min-w-0 truncate rounded-sm border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold hover:border-border focus:border-primary focus:bg-background focus:outline-none"
                     />
