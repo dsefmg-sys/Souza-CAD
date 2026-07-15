@@ -28,7 +28,7 @@ interface Props {
   modo: ModoEdicao;
   mostrarRotulos: boolean;
   bloqueado: boolean;
-  referencias?: [number, number][][];
+  referencias?: { lat: number; lon: number; leste: number; norte: number }[][];
   parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
   mostrarCert?: boolean;
   opacidadeCert?: number;
@@ -235,7 +235,7 @@ const iconeCentro = (linhas: string[], tamBase = 13, fator = 1, arrastavel = fal
   });
 };
 
-function AjustarLimites({ vertices, referencias = [] }: { vertices: Vertex[]; referencias?: [number, number][][] }) {
+function AjustarLimites({ vertices, referencias = [] }: { vertices: Vertex[]; referencias?: { lat: number; lon: number; leste: number; norte: number }[][] }) {
   const map = useMap();
   // Enquadra UMA vez, quando o primeiro polígono ou referências aparecem. NÃO reenquadra a cada edição (ignorar/
   // apagar/inserir vértice) — isso resetava o zoom do usuário. Reenquadrar de propósito = botão
@@ -244,7 +244,7 @@ function AjustarLimites({ vertices, referencias = [] }: { vertices: Vertex[]; re
   useEffect(() => {
     if (jaAjustou.current) return;
     const validos = vertices.filter(valido);
-    const refFlat = referencias.flat().map((p) => ({ lat: p[0], lon: p[1] }));
+    const refFlat = referencias.flat().map((p) => ({ lat: p.lat, lon: p.lon }));
     const pts = validos.length ? validos : refFlat;
     if (pts.length < 2) return;
     try {
@@ -1252,8 +1252,7 @@ export default function MapEditor(props: Props) {
     if (referencias) {
       for (const ring of referencias) {
         for (const pt of ring) {
-          const u = geoParaUtm(pt[0], pt[1], zona, hemisferio);
-          alvos.push({ leste: u.leste, norte: u.norte });
+          alvos.push({ leste: pt.leste, norte: pt.norte });
         }
       }
     }
@@ -1320,13 +1319,13 @@ export default function MapEditor(props: Props) {
       }
     }
 
-    // 3) Referências (referencias) - cada uma é um array de [lat, lon]
+    // 3) Referências (referencias) - cada uma é um array de { lat, lon, leste, norte }
     if (referencias) {
       for (const ring of referencias) {
         if (ring.length >= 2) {
           for (let i = 0; i < ring.length; i++) {
-            const a = paraUtm(ring[i][0], ring[i][1]);
-            const b = paraUtm(ring[(i + 1) % ring.length][0], ring[(i + 1) % ring.length][1]);
+            const a = { leste: ring[i].leste, norte: ring[i].norte };
+            const b = { leste: ring[(i + 1) % ring.length].leste, norte: ring[(i + 1) % ring.length].norte };
             segs.push({ a, b, tipoOrigem: 'referencia' });
           }
         }
@@ -1417,9 +1416,12 @@ export default function MapEditor(props: Props) {
       <FocoMap latLng={focoLatLng} />
 
       {/* referências certificadas (snap) */}
-      {referencias.filter((r) => r.length >= 2).map((r, i) => (
-        <Polyline key={`ref${i}`} positions={r.length >= 3 ? [...r, r[0]] : r} pathOptions={{ color: '#06b6d4', weight: 1.5, dashArray: '5 4' }} />
-      ))}
+      {referencias.filter((r) => r.length >= 2).map((r, i) => {
+        const pts = r.map((pt) => [pt.lat, pt.lon] as [number, number]);
+        return (
+          <Polyline key={`ref${i}`} positions={r.length >= 3 ? [...pts, pts[0]] : pts} pathOptions={{ color: '#06b6d4', weight: 1.5, dashArray: '5 4' }} />
+        );
+      })}
 
       {/* parcelas certificadas do INCRA: clicáveis (destaca + abre painel) + vértices clicáveis (adotar) */}
       {mostrarCert && parcelasCert.filter((p) => p.anel.length >= 3).map((p, i) => {

@@ -930,7 +930,8 @@ export default function Planta({
       {editavel && <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="transparent" style={{ pointerEvents: 'all' }} />}
 
       {/* ---------- GRADE (números DENTRO do quadro, no topo e na esquerda) ---------- */}
-      {verGrade && linhasX.map((x) => {
+      <g clipPath="url(#map-clip)">
+        {verGrade && linhasX.map((x) => {
         const valX = sx(x);
         if (valX < DRAW.x0 || valX > DRAW.x1) return null;
         return (
@@ -1067,6 +1068,8 @@ export default function Planta({
             stroke={cor} strokeWidth={config.larguraDivisasApoio ?? 3.2} strokeLinecap="round" opacity={0.9} />
         );
       })}
+
+      </g>
 
       {/* ---------- QUADRO DE ÁREAS (resumo de todos os polígonos; arrastável) ---------- */}
       {config.mostrarQuadroAreas && resumoGlebas.length > 0 && (() => {
@@ -1319,7 +1322,8 @@ export default function Planta({
       })()}
 
       {/* ---------- OBJETOS DE DESENHO ---------- */}
-      {objetos.map((o) => {
+      <g clipPath="url(#map-clip)">
+        {objetos.map((o) => {
         const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
         const isMultiSelected = objSelMulti?.has(o.id);
         const handlePlantaObjClick = (e: React.MouseEvent) => {
@@ -1673,6 +1677,8 @@ export default function Planta({
           </g>
         );
       })()}
+
+      </g>
 
       {/* ---------- BARRA DE ESCALA GRÁFICA (moderna) ---------- */}
       {verEscalaG && (() => {

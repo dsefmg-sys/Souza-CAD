@@ -6193,7 +6193,7 @@ export default function EditorPage() {
                  onAtivar3D={modo3dAtivado ? () => setVista('3d') : undefined}
                 confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
                 zona={zona} hemisferio={hemisferio} orto={orto} snapAtivo={snapAtivo} segmentoSelecionado={segmentoSelecionado} onSegmentoSelecionado={setSegmentoSelecionado} offsetDistancia={offsetDistancia} onConfirmarParalela={confirmarParalela} copiarPontoBase={copiarPontoBase} onConfirmarCopiaBase={confirmarCopiaBase} onConfirmarCopiaDestino={confirmarCopiaDestino} onDividirSegmento={dividirSegmento} linhaLimite={linhaLimite} onLinhaLimite={setLinhaLimite} onConfirmarTrim={confirmarTrim} onConfirmarExtend={confirmarExtend} camadasVisiveis={camadasVisiveis} camadasBloqueadas={camadasBloqueadas} estilosCamadas={estilosCamadas}
-                referencias={referencias.map((anel) => anel.map((p) => [p.lat, p.lon] as [number, number]))}
+                referencias={referencias}
                 parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho} verticesVizinho={verticesVizinho}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
                 selMulti={selMulti} objSelMulti={objSelMulti} onToggleMulti={alternarMulti} onToggleMultiObj={alternarMultiObj} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj}
