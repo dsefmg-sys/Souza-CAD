@@ -59,12 +59,18 @@ export default function DocumentosProjeto({
     recarregar();
   }
   function baixar(a: ArquivoProjeto) {
-    const url = URL.createObjectURL(a.blob);
+    const fileBlob = a.blob instanceof Blob 
+      ? (a.blob.type === a.tipo ? a.blob : new Blob([a.blob], { type: a.tipo })) 
+      : new Blob([a.blob], { type: a.tipo });
+    const url = URL.createObjectURL(fileBlob);
     const el = document.createElement('a'); el.href = url; el.download = a.nome; el.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
   function ver(a: ArquivoProjeto) {
-    const url = URL.createObjectURL(a.blob);
+    const fileBlob = a.blob instanceof Blob 
+      ? (a.blob.type === a.tipo ? a.blob : new Blob([a.blob], { type: a.tipo })) 
+      : new Blob([a.blob], { type: a.tipo });
+    const url = URL.createObjectURL(fileBlob);
     window.open(url, '_blank');
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }

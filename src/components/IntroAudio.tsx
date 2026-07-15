@@ -78,32 +78,6 @@ export function AudioPill({ src, rotulo, titulo }: { src: string; rotulo: string
   const [progresso, setProgresso] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    const a = new Audio(src);
-    a.preload = 'metadata';
-    audioRef.current = a;
-    // O estado segue os EVENTOS do elemento — assim pausa externa (tecla de mídia, fone) e
-    // falha de play (arquivo ausente, autoplay bloqueado) não deixam o ícone mentindo.
-    const onPlay = () => setTocando(true);
-    const onPause = () => setTocando(false);
-    const onTime = () => { if (a.duration) setProgresso(a.currentTime / a.duration); };
-    const onEnd = () => { setProgresso(0); a.currentTime = 0; };
-    a.addEventListener('play', onPlay);
-    a.addEventListener('pause', onPause);
-    a.addEventListener('timeupdate', onTime);
-    a.addEventListener('ended', onEnd);
-    return () => {
-      a.pause();
-      a.removeEventListener('play', onPlay);
-      a.removeEventListener('pause', onPause);
-      a.removeEventListener('timeupdate', onTime);
-      a.removeEventListener('ended', onEnd);
-      a.removeAttribute('src'); a.load(); // libera o player de mídia do navegador
-      audioRef.current = null;
-      setTocando(false); setProgresso(0);
-    };
-  }, [src]);
-
   function toggle() {
     const a = audioRef.current;
     if (!a) return;
@@ -122,6 +96,22 @@ export function AudioPill({ src, rotulo, titulo }: { src: string; rotulo: string
 
   return (
     <div className="flex items-center gap-1 rounded-full border bg-background/95 pl-1.5 pr-1 py-0.5 shadow-xl" title={titulo}>
+      <audio
+        ref={(el) => { audioRef.current = el; }}
+        src={src}
+        preload="metadata"
+        onPlay={() => setTocando(true)}
+        onPause={() => setTocando(false)}
+        onTimeUpdate={() => {
+          const a = audioRef.current;
+          if (a && a.duration) setProgresso(a.currentTime / a.duration);
+        }}
+        onEnded={() => {
+          setProgresso(0);
+          const a = audioRef.current;
+          if (a) a.currentTime = 0;
+        }}
+      />
       <Volume2 className="size-3 text-muted-foreground shrink-0" />
       <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground select-none shrink-0">{rotulo}</span>
       {/* barra de progresso minúscula — clicável pra retomar de onde parou */}
