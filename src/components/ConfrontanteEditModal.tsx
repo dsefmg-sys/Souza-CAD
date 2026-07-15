@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
-import type { Confrontante, CondicaoConfrontante } from '@/lib/topo/types';
+import type { Confrontante, CondicaoConfrontante, CartorioCad } from '@/lib/topo/types';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
 import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
 
@@ -13,9 +13,10 @@ interface Props {
   confrontante: Confrontante | null;
   onSalvar: (c: Confrontante) => void;
   onOpenChange: (o: boolean) => void;
+  sugCartorios?: CartorioCad[];
 }
 
-function Campo({ label, value, onChange, ph, aviso }: { label: string; value: string; onChange: (v: string) => void; ph?: string; aviso?: string }) {
+function Campo({ label, value, onChange, ph, aviso, list }: { label: string; value: string; onChange: (v: string) => void; ph?: string; aviso?: string; list?: string }) {
   const formatado = /cpf|cnpj/i.test(label) ? formatarCpfCnpj(value) : value;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,13 +31,13 @@ function Campo({ label, value, onChange, ph, aviso }: { label: string; value: st
   return (
     <label className="flex flex-col gap-0.5 text-xs">
       <span className="font-semibold text-muted-foreground">{label}</span>
-      <input className="h-8 rounded-sm border bg-background px-2 text-sm" value={formatado} placeholder={ph} onChange={handleChange} />
+      <input list={list} className="h-8 rounded-sm border bg-background px-2 text-sm" value={formatado} placeholder={ph} onChange={handleChange} />
       {aviso && <span className="mt-0.5 block font-medium text-amber-500">{aviso}</span>}
     </label>
   );
 }
 
-export default function ConfrontanteEditModal({ open, confrontante, onSalvar, onOpenChange }: Props) {
+export default function ConfrontanteEditModal({ open, confrontante, onSalvar, onOpenChange, sugCartorios = [] }: Props) {
   const [c, setC] = useState<Confrontante | null>(confrontante);
   useEffect(() => { setC(confrontante); }, [confrontante]);
   if (!c) return null;
@@ -93,7 +94,22 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
                     <Campo label="CPF do cônjuge" value={c.conjugeCpf ?? ''} onChange={(v) => set({ conjugeCpf: v })} aviso={avisoDoc(c.conjugeCpf ?? '')} />
                   </div>
                 )}
-                <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set({ cns: v })} />
+                <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set({ cns: v })} list="lista-cns-modal" />
+                {(() => {
+                  const cart = sugCartorios.find(x => x.cns === c.cns);
+                  return cart ? (
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 leading-tight">
+                      {cart.municipio ? `${cart.municipio} - ` : ''}{cart.nome}
+                    </p>
+                  ) : null;
+                })()}
+                <datalist id="lista-cns-modal">
+                  {sugCartorios.map((x) => (
+                    <option key={x.id} value={x.cns}>
+                      {x.municipio ? `${x.municipio} - ` : ''}{x.nome}
+                    </option>
+                  ))}
+                </datalist>
               </>
             )}
           </div>

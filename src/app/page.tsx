@@ -6533,7 +6533,13 @@ export default function EditorPage() {
           </div>
 
           <div className={`min-h-0 flex-1 overflow-auto p-2.5 scroll-fino ${telaEstreita ? 'mobile-conforto' : ''}`}>
-            <datalist id="lista-cns">{sugCns.map((c) => <option key={c} value={c} />)}</datalist>
+            <datalist id="lista-cns">
+              {sugCartorios.map((c) => (
+                <option key={c.id} value={c.cns}>
+                  {c.municipio ? `${c.municipio} - ` : ''}{c.nome}
+                </option>
+              ))}
+            </datalist>
             {aba === 'imovel' && <>
               <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} onIa={() => { setIaArquivoInicial(null); setIaAberta(true); }} />
               <div className="mt-2"><DocumentosProjeto projetoId={projetoId} dono="imovel" titulo="Documentos do imóvel e do proprietário" onExtrair={extrairDocumento} /></div>
@@ -6712,7 +6718,7 @@ export default function EditorPage() {
               </div>
             )}
             {aba === 'confrontantes' && (
-              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} onExcluir={excluirConfrontante} onEditar={setConfEditId} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} projetoId={projetoId} onExtrairConfrontante={extrairDocumentoConfrontante} />
+              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} onExcluir={excluirConfrontante} onEditar={setConfEditId} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} projetoId={projetoId} onExtrairConfrontante={extrairDocumentoConfrontante} sugCartorios={sugCartorios} />
             )}
             {aba === 'planta' && (
               <PainelPlanta config={plantaConfig} onChange={atualizarPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} numGlebas={glebas.length}
@@ -7107,6 +7113,7 @@ export default function EditorPage() {
             setConfEditId(null);
           }
         }}
+        sugCartorios={sugCartorios}
       />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
@@ -8028,7 +8035,17 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
       <Campo label="Denominação do imóvel" value={imovel.denominacao} onChange={(v) => set('denominacao', v)} placeholder={imovel.tipoImovel === 'urbano' ? "Lote / Residencial..." : "Fazenda..."} />
       <div className="grid grid-cols-2 gap-2">
         <Campo label="Matrícula" value={imovel.matricula} onChange={(v) => set('matricula', v)} />
-        <Campo label="Cartório (CNS)" value={imovel.cns} onChange={(v) => set('cns', v)} list="lista-cns" />
+        <div>
+          <Campo label="Cartório (CNS)" value={imovel.cns} onChange={(v) => set('cns', v)} list="lista-cns" />
+          {(() => {
+            const cart = sugCartorios.find(x => x.cns === imovel.cns);
+            return cart ? (
+              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 leading-tight">
+                {cart.municipio ? `${cart.municipio} - ` : ''}{cart.nome}
+              </p>
+            ) : null;
+          })()}
+        </div>
       </div>
       <div className="space-y-1">
         <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Regime de terra</Label>
@@ -8054,7 +8071,7 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
           {sugCartorios.map((c) => (
             <button key={c.id} onClick={() => set('cns', c.cns)} title={`${c.nome}${c.municipio ? ` — ${c.municipio}` : ''}`}
               className={`rounded-sm border px-1.5 py-0.5 text-[10px] ${imovel.cns === c.cns ? 'border-primary bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
-              {c.nome ? c.nome.replace(/Cart[óo]rio.*?de\s*/i, '').slice(0, 22) : c.cns}
+              {c.municipio ? `${c.municipio} - ` : ''}{c.nome ? c.nome.replace(/Cart[óo]rio.*?de\s*/i, '').slice(0, 22) : c.cns}
             </button>
           ))}
         </div>
@@ -8368,7 +8385,7 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, confrontanteP
   );
 }
 
-function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico, projetoId, onExtrairConfrontante, onExcluir, onEditar }: {
+function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico, projetoId, onExtrairConfrontante, onExcluir, onEditar, sugCartorios = [] }: {
   confrontantes: Confrontante[]; onChange: (c: Confrontante[]) => void;
   onExcluir: (id: string) => void;
   onEditar?: (id: string) => void;
@@ -8376,6 +8393,7 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
   sugConf: ConfrontanteCad[]; onSalvarCadastro: (c: Confrontante) => void;
   imovel: ImovelData; tecnico: TecnicoData | null;
   projetoId: string | null; onExtrairConfrontante: (a: ArquivoProjeto, confrontanteId: string) => void;
+  sugCartorios?: CartorioCad[];
 }) {
   const set = (id: string, k: keyof Confrontante, v: string) =>
     onChange(confrontantes.map((c) => (c.id === id ? ({ ...c, [k]: v } as Confrontante) : c)));
@@ -8533,7 +8551,17 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
                   <Campo label="CPF do cônjuge" value={c.conjugeCpf ?? ''} onChange={(v) => set(c.id, 'conjugeCpf', v)} />
                 </div>
               )}
-              <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set(c.id, 'cns', v)} list="lista-cns" />
+              <div>
+                <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set(c.id, 'cns', v)} list="lista-cns" />
+                {(() => {
+                  const cart = sugCartorios.find(x => x.cns === c.cns);
+                  return cart ? (
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 leading-tight">
+                      {cart.municipio ? `${cart.municipio} - ` : ''}{cart.nome}
+                    </p>
+                  ) : null;
+                })()}
+              </div>
               <div className="flex items-center gap-2">
                 <Label className="text-[11px]">Tamanho do rótulo/assinatura</Label>
                 <div className="flex items-center gap-1">
