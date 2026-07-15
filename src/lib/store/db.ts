@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Projeto, PontoRegistro, Contadores, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad } from '../topo/types';
+import type { Projeto, PontoRegistro, Contadores, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, ColegaCad } from '../topo/types';
 
 /** Arquivo anexo de um projeto (guardado localmente no navegador). */
 export interface ArquivoProjeto {
@@ -27,6 +27,7 @@ export interface MetricaDB extends DBSchema {
   confrontantes: { key: string; value: ConfrontanteCad };
   imoveis: { key: string; value: ImovelCad };
   cartorios: { key: string; value: CartorioCad };
+  colegas: { key: string; value: ColegaCad };
   arquivos: { key: string; value: ArquivoProjeto; indexes: { 'por-projeto': string } };
   // lixeira do banco de pontos: pontos "zerados" pelo credenciado ficam aqui, recuperáveis
   // (dado importante — nunca some de vez sem passar por aqui).
@@ -43,7 +44,7 @@ export function db(): Promise<IDBPDatabase<MetricaDB>> {
     return Promise.reject(new Error('IndexedDB indisponível neste ambiente'));
   }
   if (!_db) {
-    _db = openDB<MetricaDB>('metrica', 6, {
+    _db = openDB<MetricaDB>('metrica', 7, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           d.createObjectStore('projetos', { keyPath: 'id' });
@@ -70,6 +71,9 @@ export function db(): Promise<IDBPDatabase<MetricaDB>> {
         }
         if (oldVersion < 6) {
           d.createObjectStore('arquivosApp', { keyPath: 'chave' });
+        }
+        if (oldVersion < 7) {
+          d.createObjectStore('colegas', { keyPath: 'id' });
         }
       },
     });

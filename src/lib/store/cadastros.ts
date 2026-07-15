@@ -1,10 +1,10 @@
-import type { ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad } from '../topo/types';
+import type { ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, ColegaCad } from '../topo/types';
 import { db, novoId } from './db';
 import { collection, doc, getDoc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 import { db as fdb } from '../firebase/client';
 import { workspaceUidAtual } from './perfilUso';
 
-type Store = 'proprietarios' | 'confrontantes' | 'imoveis' | 'cartorios';
+type Store = 'proprietarios' | 'confrontantes' | 'imoveis' | 'cartorios' | 'colegas';
 
 // Logado + Firebase configurado → cadastros no Firestore (users/{uid}/{store}); senão local.
 function uidNuvem(): string | null {
@@ -58,13 +58,18 @@ export const cartoriosCad = {
   salvar: (c: CartorioCad) => gravar('cartorios', c),
   excluir: (id: string) => remover('cartorios', id),
 };
+export const colegasCad = {
+  listar: () => listar<ColegaCad>('colegas'),
+  salvar: (c: ColegaCad) => gravar('colegas', c),
+  excluir: (id: string) => remover('colegas', id),
+};
 
 export async function sincronizarCadastrosLocalParaNuvem(): Promise<void> {
   const uid = uidNuvem();
   if (!uid) return;
   try {
     const d = await db();
-    const stores: Store[] = ['proprietarios', 'confrontantes', 'imoveis', 'cartorios'];
+    const stores: Store[] = ['proprietarios', 'confrontantes', 'imoveis', 'cartorios', 'colegas'];
     for (const store of stores) {
       const localItems = (await d.getAll(store)) as { id: string }[];
       if (localItems.length === 0) continue;

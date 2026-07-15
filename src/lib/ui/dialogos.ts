@@ -7,7 +7,7 @@
 
 export interface ConfirmOpts { titulo?: string; mensagem: string; okLabel?: string; cancelLabel?: string; perigo?: boolean }
 export interface AvisoOpts { titulo?: string; mensagem: string; okLabel?: string }
-export interface PromptOpts { titulo?: string; mensagem?: string; valorInicial?: string; placeholder?: string }
+export interface PromptOpts { titulo?: string; mensagem?: string; valorInicial?: string; placeholder?: string; multiline?: boolean }
 export interface ChoiceOpts {
   titulo?: string;
   mensagem: string;

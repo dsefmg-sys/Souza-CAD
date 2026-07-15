@@ -120,7 +120,16 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
             <div className="flex min-h-[120px] items-center justify-center rounded-lg border bg-muted/30 p-4">
               <div className="rounded-sm border border-neutral-300 bg-white px-4 pb-2 pt-1 text-center text-[13px] text-black shadow-sm">
                 <div className="mx-auto mb-1 h-px w-40 bg-black" />
-                {linhas.map((l, i) => <div key={i} className="leading-snug">{l}</div>)}
+                {(() => {
+                  const matLine = linhas.find((l) => /^Matr[íi]cula/i.test(l));
+                  const rest = linhas.filter((l) => l !== matLine);
+                  return (
+                    <>
+                      {matLine && <div className="leading-snug font-bold">{matLine}</div>}
+                      {rest.map((l, i) => <div key={i} className="leading-snug">{l}</div>)}
+                    </>
+                  );
+                })()}
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground">{cond === 'publico' ? 'Bem público não assina — sem espaço de firma.' : 'A linha de cima é o espaço da assinatura do anuente.'}</p>

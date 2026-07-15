@@ -1,5 +1,6 @@
-import type { Vertex, ImovelData, ResultadoCalculo, Confrontante } from './types';
+import type { Vertex, ImovelData, ResultadoCalculo, Confrontante, TecnicoData } from './types';
 import { cpfOuCnpjValido } from './validation';
+import { obterTipoLimiteEfetivo } from './sigefVocab';
 
 export type Nivel = 'erro' | 'aviso' | 'ok';
 export interface Problema { nivel: Nivel; campo: string; msg: string; }
@@ -48,7 +49,8 @@ export function conferir(
   res: ResultadoCalculo | null,
   imovel: ImovelData,
   confrontantes: Confrontante[] = [],
-  confrontantePorLado?: Record<number, string>
+  confrontantePorLado?: Record<number, string>,
+  tecnico?: TecnicoData | null
 ): Problema[] {
   const out: Problema[] = [];
 
@@ -167,7 +169,7 @@ export function conferir(
     const sigH = Math.max(sigX, sigY);
     
     if (sigX > 0 || sigY > 0) {
-      const limite = v.tipoLimite || 'LA';
+      const limite = obterTipoLimiteEfetivo(v, tecnico?.tipoLimite);
       let maxPermitido = 0.10;
       let tipoDesc = 'Artificial';
       
@@ -191,8 +193,8 @@ export function conferir(
     // Precisão vertical (Z)
     const sigZ = v.sigmaZ ?? 0;
     if (sigZ > 0.30) {
-      const limite = v.tipoLimite || 'LA';
-      if (limite.startsWith('LA') || !v.tipoLimite) {
+      const limite = obterTipoLimiteEfetivo(v, tecnico?.tipoLimite);
+      if (limite.startsWith('LA')) {
         out.push({
           nivel: 'ok',
           campo: 'precisão Z',

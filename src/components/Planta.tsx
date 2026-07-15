@@ -16,7 +16,7 @@ import { calcularAreaSgl } from '@/lib/topo/sgl';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pencil, Save, Trash2 } from 'lucide-react';
-import { confirmar, avisar } from '@/lib/ui/dialogos';
+import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
 
 interface Props {
   vertices: Vertex[];
@@ -136,7 +136,7 @@ function Ted(props: {
   halo?: boolean;
   editando?: boolean;
   onTerminarEditar?: (id: string, novoTexto: string) => void;
-  onStartEdit?: (id: string) => void;
+  onStartEdit?: (id: string, atual: string) => void;
   selecionadoId?: string | null;
   onSelect?: (id: string | null) => void;
   onTextoPatch?: (id: string, patch: { escala?: number }) => void;
@@ -196,7 +196,7 @@ function Ted(props: {
   return (
     <g id={id} style={ed ? { cursor: 'move' } : undefined}
        onClick={ed ? (e) => { e.stopPropagation(); onSelect?.(id); } : undefined}
-       onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id); } : undefined}
+       onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id, conteudo); } : undefined}
        onContextMenu={ed ? (e) => { e.preventDefault(); e.stopPropagation(); onMenu?.(id, conteudo, e.clientX, e.clientY); } : undefined}
        onPointerDown={ed ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}>
       {halo && (
@@ -457,11 +457,19 @@ export default function Planta({
 
   // centro do rótulo do imóvel: usa a posição ajustada no MAPA (config.centroInfoPos), se houver —
   // assim a edição no mapa reflete na planta; senão, centróide do polígono.
-  let cx = anel.reduce((s, p) => s + p.x, 0) / anel.length;
-  let cy = anel.reduce((s, p) => s + p.y, 0) / anel.length;
-  if (config.centroInfoPos) {
+  const anelValido = anel.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+  let cx = anelValido.length > 0 ? anelValido.reduce((s, p) => s + p.x, 0) / anelValido.length : (DRAW.x0 + DRAW.x1) / 2;
+  let cy = anelValido.length > 0 ? anelValido.reduce((s, p) => s + p.y, 0) / anelValido.length : (DRAW.y0 + DRAW.y1) / 2;
+  if (config.centroInfoPos && Number.isFinite(config.centroInfoPos.lat) && Number.isFinite(config.centroInfoPos.lon)) {
     const u = geoParaUtm(config.centroInfoPos.lat, config.centroInfoPos.lon, zona, hemisferio);
-    cx = sx(u.leste); cy = sy(u.norte);
+    if (Number.isFinite(u.leste) && Number.isFinite(u.norte)) {
+      const sxVal = sx(u.leste);
+      const syVal = sy(u.norte);
+      if (Number.isFinite(sxVal) && Number.isFinite(syVal) && sxVal >= DRAW.x0 - 500 && sxVal <= DRAW.x1 + 500 && syVal >= DRAW.y0 - 500 && syVal <= DRAW.y1 + 500) {
+        cx = sxVal;
+        cy = syVal;
+      }
+    }
   }
 
   // ---- confrontantes por trecho: posição do rótulo (fora do polígono) ----
@@ -1492,28 +1500,99 @@ export default function Planta({
         // Bem público (estrada, rio...) não assina — sem titular pra colher assinatura, então a
         // caixa vira só o nome, sem linha de firma nenhuma.
         const semAssinatura = c.condicao === 'publico';
-        const half = Math.max(86, fz * 9);
-        const boxW = half * 2 + 16;
+        const isHorizontal = c.layoutAssinatura === 'horizontal' && temConjLinhas;
+
+        const colW = Math.max(140, fz * 9);
+        const boxW = isHorizontal ? colW * 2 + 24 : Math.max(172, fz * 18 + 16);
+        const half = boxW / 2 - 8;
         const lineH = fz + 3;
-        const signRoom = Math.max(40, fz * 4); // espaço acima de cada linha para a firma; cresce com a fonte pra nunca sobrepor texto vizinho
-        const nText = (matLine ? 1 : 0) + principalSemMat.length + conjLines.length;
-        const nSig = semAssinatura ? 0 : (temConjLinhas ? 2 : 1);
-        const boxH = nText * lineH + nSig * (signRoom + 6) + 14;
+        const signRoom = Math.max(40, fz * 4); // espaço acima de cada linha para a firma
+
+        let boxH = 0;
+        if (isHorizontal) {
+          const nTextMax = Math.max(principalSemMat.length, conjLines.length);
+          boxH = (matLine ? lineH : 0) + signRoom + nTextMax * lineH + 20;
+        } else {
+          const nText = (matLine ? 1 : 0) + principalSemMat.length + conjLines.length;
+          const nSig = semAssinatura ? 0 : (temConjLinhas ? 2 : 1);
+          boxH = nText * lineH + nSig * (signRoom + 6) + 14;
+        }
 
         const isDragging = dragTemp && dragTemp.kind === 'rotConf' && dragTemp.id === c.id;
         const px = isDragging ? r.x + dragTemp.dx : r.x;
         const py = isDragging ? r.y + dragTemp.dy : r.y;
         const top = py - boxH / 2;
 
-        // posiciona cada elemento (texto ou linha de assinatura) de cima para baixo
-        const placed: { kind: 'text' | 'sig'; t?: string; y: number }[] = [];
+        const placedElements = [];
         let cur = top + 7;
-        if (matLine) { cur += lineH; placed.push({ kind: 'text', t: matLine, y: cur - 2 }); }
-        if (!semAssinatura) { cur += signRoom; placed.push({ kind: 'sig', y: cur }); cur += 6; }
-        principalSemMat.forEach((t) => { cur += lineH; placed.push({ kind: 'text', t, y: cur - 2 }); });
-        if (temConjLinhas) {
-          cur += signRoom; placed.push({ kind: 'sig', y: cur }); cur += 6;
-          conjLines.forEach((t) => { cur += lineH; placed.push({ kind: 'text', t, y: cur - 2 }); });
+
+        if (isHorizontal) {
+          if (matLine) {
+            cur += lineH;
+            placedElements.push(
+              <text key="mat" x={px} y={cur - 2} fontSize={fz} textAnchor="middle" fill="#0f172a" fontWeight="bold">
+                {matLine}
+              </text>
+            );
+            cur += 4;
+          }
+          const sigY = cur + signRoom;
+          const colLeftX = px - colW / 2 - 6;
+          const colRightX = px + colW / 2 + 6;
+
+          // Left signature line (Proprietário)
+          placedElements.push(
+            <line key="sig-left" x1={px - colW - 12} y1={sigY} x2={px - 8} y2={sigY} stroke="#475569" strokeWidth={0.7} />
+          );
+          // Right signature line (Cônjuge)
+          placedElements.push(
+            <line key="sig-right" x1={px + 8} y1={sigY} x2={px + colW + 12} y2={sigY} stroke="#475569" strokeWidth={0.7} />
+          );
+
+          // Left column texts
+          let leftY = sigY + 6;
+          principalSemMat.forEach((t, idx) => {
+            leftY += lineH;
+            placedElements.push(
+              <text key={`l-txt-${idx}`} x={colLeftX} y={leftY - 2} fontSize={fz} textAnchor="middle" fill="#0f172a">
+                {t}
+              </text>
+            );
+          });
+
+          // Right column texts
+          let rightY = sigY + 6;
+          conjLines.forEach((t, idx) => {
+            rightY += lineH;
+            placedElements.push(
+              <text key={`r-txt-${idx}`} x={colRightX} y={rightY - 2} fontSize={fz} textAnchor="middle" fill="#0f172a">
+                {t}
+              </text>
+            );
+          });
+        } else {
+          const placed: { kind: 'text' | 'sig'; t?: string; y: number }[] = [];
+          if (!semAssinatura) { cur += signRoom; placed.push({ kind: 'sig', y: cur }); cur += 6; }
+          if (matLine) { cur += lineH; placed.push({ kind: 'text', t: matLine, y: cur - 2 }); }
+          principalSemMat.forEach((t) => { cur += lineH; placed.push({ kind: 'text', t, y: cur - 2 }); });
+          if (temConjLinhas) {
+            cur += signRoom; placed.push({ kind: 'sig', y: cur }); cur += 6;
+            conjLines.forEach((t) => { cur += lineH; placed.push({ kind: 'text', t, y: cur - 2 }); });
+          }
+
+          placed.forEach((p, k) => {
+            if (p.kind === 'sig') {
+              placedElements.push(
+                <line key={`sig-${k}`} x1={px - half} y1={p.y} x2={px + half} y2={p.y} stroke="#475569" strokeWidth={0.7} />
+              );
+            } else {
+              placedElements.push(
+                <text key={`txt-${k}`} x={px} y={p.y} fontSize={fz} textAnchor="middle" fill="#0f172a" fontWeight={p.t === matLine ? 'bold' : undefined}>
+                  {p.t}
+                </text>
+              );
+            }
+          });
         }
 
         return (
@@ -1524,18 +1603,13 @@ export default function Planta({
             onPointerDown={editavel ? (e) => {
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;
-              // guarda a posição de partida do rótulo (baseX/baseY). Sem isso, ao soltar o app
-              // somava o movimento a zero e o bloco caía preso no canto do quadro.
               dragRef.current = { kind: 'rotConf', id: c.id, dx: 0, dy: 0, baseX: r.x, baseY: r.y };
               setDragTemp({ kind: 'rotConf', id: c.id, dx: 0, dy: 0, baseX: r.x, baseY: r.y });
               folhaLast.current = u;
               captura(e);
             } : undefined}>
-            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="#ffffff" fillOpacity={0.92} stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
-            {placed.map((p, k) => p.kind === 'sig'
-              ? <line key={k} x1={px - half} y1={p.y} x2={px + half} y2={p.y} stroke="#475569" strokeWidth={0.7} />
-              : <text key={k} x={px} y={p.y} fontSize={fz} textAnchor="middle" fill="#0f172a">{p.t}</text>
-            )}
+            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="none" stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
+            {placedElements}
           </g>
         );
       })}
@@ -1893,11 +1967,18 @@ export default function Planta({
           textos: new Proxy(textosOv, { get: (target, prop) => typeof prop === 'string' ? getOverride(prop) : undefined }),
           onEditar: onTextoEditar,
           onMenu: onTextoMenu,
-          onStartEdit: (id) => {
+          onStartEdit: async (id, atual) => {
             if (id === 'carimbo.titulo') {
               setModalTituloAberto(true);
             } else {
-              setEditandoId(id);
+              const t = await perguntar({
+                titulo: 'Editar texto',
+                valorInicial: atual || '',
+                multiline: true
+              });
+              if (t != null) {
+                onTextoEditar?.(id, t);
+              }
             }
           },
           onTerminarEditar: terminarEdicao,
@@ -2457,7 +2538,7 @@ function CarimboA3(props: {
     onEditar?: (id: string, atual: string) => void;
     onMenu?: (id: string, atual: string, x: number, y: number) => void;
     editandoId?: string | null;
-    onStartEdit?: (id: string) => void;
+    onStartEdit?: (id: string, atual: string) => void;
     onTerminarEditar?: (id: string, novoTexto: string, larguraChars?: number) => void;
     onDragStart?: (id: string, e: ReactPointerEvent) => void;
     selecionadoId?: string | null;
@@ -2640,7 +2721,7 @@ function CarimboA3(props: {
           return (
             <g
               style={ed?.ativo ? { cursor: 'pointer' } : undefined}
-              onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT); } : undefined}
+              onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT, titulo); } : undefined}
             >
               <rect x={lx} y={Y_DADOS} width={wBox} height={hCabTitulo} rx={6} ry={6} fill="#475569" />
               <rect x={lx} y={Y_DADOS + hCabTitulo - 6} width={wBox} height={6} fill="#475569" />
@@ -2651,7 +2732,7 @@ function CarimboA3(props: {
               </g>
               {/* Dropdown Arrow Indicator (only visible on screen, hidden in print) */}
               {ed?.ativo && (
-                <g className="no-print" style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); ed.onStartEdit?.(idT); }}>
+                <g className="no-print" style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); ed.onStartEdit?.(idT, titulo); }}>
                   <circle cx={lx + wBox - 16} cy={Y_DADOS + hCabTitulo / 2} r={9} fill="rgba(255, 255, 255, 0.2)" />
                   <path d={`M ${lx + wBox - 20} ${Y_DADOS + hCabTitulo / 2 - 2} L ${lx + wBox - 12} ${Y_DADOS + hCabTitulo / 2 - 2} L ${lx + wBox - 16} ${Y_DADOS + hCabTitulo / 2 + 3} Z`} fill="#fff" />
                 </g>
@@ -2708,7 +2789,7 @@ function CarimboA3(props: {
           return (
             <g key={idProp} id={idProp}
                style={ed?.ativo ? { cursor: 'move' } : undefined}
-               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp); } : undefined}
+               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp, txtProp); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
               <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(8.5) * (ovProp.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovProp.escala ?? 1), ovProp.larguraChars ?? 68)} textAnchor="middle" texto={txtProp} lineHeight={1.35} maxHeight={100} centrarEmAltura={60} />
@@ -2755,7 +2836,7 @@ function CarimboA3(props: {
           return (
             <g key={idLaudo} id={idLaudo}
                style={ed?.ativo ? { cursor: 'move' } : undefined}
-               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo); } : undefined}
+               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo, txtLaudo); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
               <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(8.5) * (ovLaudo.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovLaudo.escala ?? 1), ovLaudo.larguraChars ?? 68)} textAnchor="middle" texto={txtLaudo} lineHeight={1.35} maxHeight={100} centrarEmAltura={60} />
@@ -2802,7 +2883,7 @@ function CarimboA3(props: {
           return (
             <g key={idConf} id={idConf}
                style={ed?.ativo ? { cursor: 'move' } : undefined}
-               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf); } : undefined}
+               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf, txtConf); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idConf, e); } : undefined}>
               <TextoQuebrado x={pxConf} y={pyConf} fontSize={fsConf(8.5) * (ovConf.escala ?? 1)} larguraChars={capChars(fsConf(8.5) * (ovConf.escala ?? 1), ovConf.larguraChars ?? 68)} textAnchor="middle" texto={txtConf} lineHeight={1.35} maxHeight={70} centrarEmAltura={70} />
@@ -2854,7 +2935,7 @@ function CarimboA3(props: {
                 </foreignObject>
               ) : (
                 <g style={ed?.ativo ? { cursor: 'move' } : undefined}
-                   onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idBloco); } : undefined}
+                   onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idBloco, txtB); } : undefined}
                    onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idBloco, txtB, e.clientX, e.clientY); } : undefined}
                    onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idBloco, e); } : undefined}>
                   {txtB.split('\n').map((l, k) => (

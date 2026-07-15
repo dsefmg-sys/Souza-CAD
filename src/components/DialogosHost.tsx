@@ -8,7 +8,7 @@ import { registrarDialogos, type ChoiceOpts } from '@/lib/ui/dialogos';
 type Estado =
   | { modo: 'confirm'; titulo: string; mensagem: string; okLabel: string; cancelLabel: string; perigo: boolean; resolve: (b: boolean) => void }
   | { modo: 'alert'; titulo: string; mensagem: string; okLabel: string; resolve: () => void }
-  | { modo: 'prompt'; titulo: string; mensagem: string; valor: string; placeholder: string; resolve: (v: string | null) => void }
+  | { modo: 'prompt'; titulo: string; mensagem: string; valor: string; placeholder: string; multiline?: boolean; resolve: (v: string | null) => void }
   | { modo: 'choice'; titulo: string; mensagem: string; opcoes: ChoiceOpts['opcoes']; cancelLabel: string; resolve: (v: string | null) => void };
 
 // Renderiza os diálogos próprios do app. Montado uma vez no layout; registra o tratador que
@@ -21,7 +21,7 @@ export default function DialogosHost() {
     registrarDialogos({
       confirmar: (o) => new Promise((resolve) => setEstado({ modo: 'confirm', titulo: o.titulo ?? 'Confirmar', mensagem: o.mensagem, okLabel: o.okLabel ?? 'Sim', cancelLabel: o.cancelLabel ?? 'Cancelar', perigo: !!o.perigo, resolve })),
       avisar: (o) => new Promise((resolve) => setEstado({ modo: 'alert', titulo: o.titulo ?? 'Aviso', mensagem: o.mensagem, okLabel: o.okLabel ?? 'Entendi', resolve })),
-      perguntar: (o) => new Promise((resolve) => setEstado({ modo: 'prompt', titulo: o.titulo ?? 'Digite', mensagem: o.mensagem ?? '', valor: o.valorInicial ?? '', placeholder: o.placeholder ?? '', resolve })),
+      perguntar: (o) => new Promise((resolve) => setEstado({ modo: 'prompt', titulo: o.titulo ?? 'Digite', mensagem: o.mensagem ?? '', valor: o.valorInicial ?? '', placeholder: o.placeholder ?? '', multiline: o.multiline, resolve })),
       escolher: (o) => new Promise((resolve) => setEstado({ modo: 'choice', titulo: o.titulo ?? 'Escolha uma opção', mensagem: o.mensagem, opcoes: o.opcoes, cancelLabel: o.cancelLabel ?? 'Cancelar', resolve })),
     });
     return () => registrarDialogos(null);
@@ -49,9 +49,14 @@ export default function DialogosHost() {
         {estado.mensagem && <p className="whitespace-pre-line text-sm text-muted-foreground">{estado.mensagem}</p>}
 
         {estado.modo === 'prompt' && (
-          <input ref={inputRef} autoFocus className="w-full rounded-sm border bg-background px-3 py-2 text-sm" placeholder={estado.placeholder}
-            value={estado.valor} onChange={(e) => setEstado((s) => (s && s.modo === 'prompt' ? { ...s, valor: e.target.value } : s))}
-            onKeyDown={(e) => { if (e.key === 'Enter') responder(estado.valor); }} />
+          estado.multiline ? (
+            <textarea autoFocus className="w-full rounded-sm border bg-background px-3 py-2 text-sm min-h-[100px] resize-y" placeholder={estado.placeholder}
+              value={estado.valor} onChange={(e) => setEstado((s) => (s && s.modo === 'prompt' ? { ...s, valor: e.target.value } : s))} />
+          ) : (
+            <input ref={inputRef} autoFocus className="w-full rounded-sm border bg-background px-3 py-2 text-sm" placeholder={estado.placeholder}
+              value={estado.valor} onChange={(e) => setEstado((s) => (s && s.modo === 'prompt' ? { ...s, valor: e.target.value } : s))}
+              onKeyDown={(e) => { if (e.key === 'Enter') responder(estado.valor); }} />
+          )
         )}
 
         {estado.modo === 'choice' ? (

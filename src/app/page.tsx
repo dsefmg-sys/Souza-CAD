@@ -58,7 +58,7 @@ import Map3DViewer from '@/components/Map3DViewer';
 import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
-import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte, RawPoint } from '@/lib/topo/types';
+import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, ColegaCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte, RawPoint } from '@/lib/topo/types';
 import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, comprimentoPolilinha, distanciaCota, CAR_TEMAS, COR_CURVA_NIVEL, COR_CURVA_AUTO } from '@/lib/topo/objetos';
 import { gerarCurvasDeNivel, intervaloSugerido, pontoNoPoligono, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { estimarAltitudes } from '@/lib/topo/altitudes';
@@ -111,7 +111,7 @@ import { carregarConfigAssinatura, verificarBloqueioFaturamento, type ConfigAssi
 
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
 import PlanilhaConferenciaModal from '@/components/PlanilhaConferenciaModal';
-import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
+import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, colegasCad, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
 import { exportarKML } from '@/lib/export/kml';
 import RelatorioSobreposicaoModal from '@/components/RelatorioSobreposicaoModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -559,6 +559,7 @@ export default function EditorPage() {
   // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
   const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
   const [parcelasCert, setParcelasCert] = useState<{ anel: [number, number][]; info: { titulo: string; linhas: string[] }; codigoImovel?: string }[]>([]);
+  const [listaColegas, setListaColegas] = useState<ColegaCad[]>([]);
   // vértices de imóveis vizinhos já certificados (importados do Distribuidor de Coordenadas): ficam
   // guardados no projeto para reaproveitar coordenada/sigma/nome na planta e servir de alvo de encaixe
   const [verticesVizinho, setVerticesVizinho] = useState<VerticeVizinho[]>([]);
@@ -566,6 +567,22 @@ export default function EditorPage() {
   const [mostrarCert, setMostrarCert] = useState(true);              // liga/desliga a camada de parcelas
   const [opacidadeCert, setOpacidadeCert] = useState(0.06);          // opacidade do preenchimento
   const conflitos = useMemo(() => detectarConflitosDivisas(vertices, referencias), [vertices, referencias]);
+  const colegasIdentificados = useMemo(() => {
+    const codigos = new Set<string>();
+    for (const vv of verticesVizinho) {
+      if (vv.nome) codigos.add(vv.nome);
+    }
+    for (const v of vertices) {
+      if (v.codigoSigef) codigos.add(v.codigoSigef);
+    }
+    const prefixos = new Set<string>();
+    for (const cod of codigos) {
+      const m = cod.trim().match(/^([A-Z]{3,4})[-_]/i);
+      if (m) prefixos.add(m[1].toUpperCase());
+    }
+    if (prefixos.size === 0) return [];
+    return listaColegas.filter((c) => prefixos.has(c.credenciamento.toUpperCase()));
+  }, [verticesVizinho, vertices, listaColegas]);
   const [tema, setTema] = useState<'claro' | 'escuro'>('escuro');
   const [temaCarregadoDaNuvem, setTemaCarregadoDaNuvem] = useState(false);
   const [planilhaAberta, setPlanilhaAberta] = useState(false);
@@ -1410,6 +1427,12 @@ export default function EditorPage() {
     const t = setTimeout(() => setSalvarLaranja(true), 1000);
     return () => clearTimeout(t);
   }, [projSig]);
+
+  useEffect(() => {
+    if (sigefMenuAberto) {
+      colegasCad.listar().then(setListaColegas).catch(() => {});
+    }
+  }, [sigefMenuAberto]);
 
   function aviso(t: string) {
     setMsg(t);
@@ -4991,20 +5014,20 @@ export default function EditorPage() {
               {pecasMenuAberto && pecasMenuPos && (
                 <>
                   <div className="fixed inset-0 z-[1290]" onClick={() => setPecasMenuAberto(false)} />
-                  <div style={{ position: 'fixed', top: pecasMenuPos.top, right: pecasMenuPos.right }} className="z-[1300] w-64 overflow-hidden rounded-xl border bg-background/98 p-1.5 shadow-2xl backdrop-blur-xl space-y-1">
+                  <div style={{ position: 'fixed', top: pecasMenuPos.top, right: pecasMenuPos.right }} className="z-[1300] w-64 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1.5 shadow-2xl backdrop-blur-xl space-y-1">
                     {/* Botão Baixar Tudo no topo do dropdown desktop */}
                     <button type="button" onClick={() => { setPecasMenuAberto(false); baixarPacoteEntrega(); }}
                       className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 px-3 py-2 text-center text-xs font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-600/20 transition-colors">
                       <Archive className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> Baixar Tudo (Pacote ZIP)
                     </button>
-                    <div className="my-1 border-b border-border/60" />
+                    <div className="my-1 border-b border-zinc-200 dark:border-zinc-800" />
 
                     {/* Lista de Peças */}
                     {itensPecas
                       .filter((item) => ['memorial_normal', 'memorial_servidao', 'planta', 'requerimento', 'anuencia', 'errata'].includes(item.id))
                       .map((item) => (
-                        <div key={item.id} className="flex items-center justify-between gap-1.5 rounded-lg px-2 py-1 hover:bg-muted/50 transition-colors">
-                          <span className="text-xs font-semibold text-foreground truncate pl-1" title={item.rotulo}>
+                        <div key={item.id} className="flex items-center justify-between gap-1.5 rounded-lg px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                          <span className="text-xs font-semibold text-zinc-950 dark:text-zinc-50 truncate pl-1" title={item.rotulo}>
                             {item.rotulo.replace(' (.docx)', '').replace(' (PDF)', '')}
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
@@ -6865,6 +6888,31 @@ export default function EditorPage() {
               O principal objetivo deste módulo é obter e importar os vértices e polígonos confrontantes oficiais do INCRA para casar com o seu projeto, garantindo conformidade jurídica, e nomes e dados corretos de confrontações.
             </p>
 
+            {colegasIdentificados.length > 0 && (
+              <div className="rounded-lg border border-emerald-600/20 bg-emerald-500/5 p-3 flex flex-col gap-1.5">
+                <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  📞 Colegas com vértices certificados identificados nesta área:
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                  {colegasIdentificados.map((col) => (
+                    <div key={col.id} className="text-xs bg-background border p-2 rounded flex flex-col gap-0.5 shadow-sm">
+                      <div className="font-bold flex items-center gap-1.5 text-foreground">
+                        <span className="px-1.5 py-px bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-[9px] font-black tracking-wider uppercase">
+                          {col.credenciamento}
+                        </span>
+                        <span className="truncate">{col.nome}</span>
+                      </div>
+                      {col.telefone && (
+                        <div className="text-[11px] text-muted-foreground">
+                          Telefone: <span className="font-semibold text-foreground">{col.telefone}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Confrontantes e Vértices Oficiais</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
               <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
@@ -7124,7 +7172,7 @@ export default function EditorPage() {
               <CheckCircle2 className="size-5" /> Conferir Projeto
             </DialogTitle>
           </DialogHeader>
-          <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} onChange={setImovel} conflitos={conflitos}
+          <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} onChange={setImovel} conflitos={conflitos} tecnico={tecnico}
             onIrParaConflito={(lat, lon) => { setConferirAberto(false); setVista('mapa'); setFocoLatLng([lat, lon]); }} />
         </DialogContent>
       </Dialog>
@@ -7304,6 +7352,21 @@ export default function EditorPage() {
                   </div>
                 </div>
                 <button className="block w-full border-t px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { editarConfrontantePlanta(menuContexto.id!); setMenuContexto(null); }}>Editar dados...</button>
+                {(() => {
+                  const c = confrontantes.find((conf) => conf.id === menuContexto.id);
+                  if (!c || !c.conjugeNome) return null;
+                  return (
+                    <button className="block w-full border-t px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => {
+                      snap();
+                      const novoLayout = c.layoutAssinatura === 'horizontal' ? 'vertical' : 'horizontal';
+                      setConfrontantes((cs) => cs.map((conf) => conf.id === c.id ? { ...conf, layoutAssinatura: novoLayout } : conf));
+                      aviso(`Assinatura cônjuge: ${novoLayout === 'horizontal' ? 'lado a lado' : 'uma abaixo da outra'}`);
+                      setMenuContexto(null);
+                    }}>
+                      Layout Assinatura: {c.layoutAssinatura === 'horizontal' ? 'Lado a lado ↔' : 'Abaixo ↕'}
+                    </button>
+                  );
+                })()}
               </div>
             )}
 
@@ -8280,12 +8343,13 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
   );
 }
 
-function PainelConferencia({ vertices, res, imovel, confrontantes, confrontantePorLado, onChange, conflitos, onIrParaConflito }: {
+function PainelConferencia({ vertices, res, imovel, confrontantes, confrontantePorLado, onChange, conflitos, onIrParaConflito, tecnico }: {
   vertices: Vertex[]; res: ReturnType<typeof calcular> | null; imovel: ImovelData; confrontantes: Confrontante[]; confrontantePorLado: Record<number, string>; onChange: (i: ImovelData) => void;
   conflitos: ConflitoDivisa[];
   onIrParaConflito: (lat: number, lon: number) => void;
+  tecnico: TecnicoData | null;
 }) {
-  const problemas: Problema[] = conferir(vertices, res, imovel, confrontantes, confrontantePorLado);
+  const problemas: Problema[] = conferir(vertices, res, imovel, confrontantes, confrontantePorLado, tecnico);
   const Icone = ({ n }: { n: Problema['nivel'] }) =>
     n === 'erro' ? <XCircle className="text-destructive" /> : n === 'aviso' ? <AlertTriangle className="text-amber-500" /> : <CheckCircle2 className="text-primary" />;
   const ef = res ? valoresEfetivos(res, imovel) : null;

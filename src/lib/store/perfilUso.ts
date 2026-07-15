@@ -169,7 +169,7 @@ async function apagarDadosDoUsuario(uid: string): Promise<void> {
   }
 
   // 3. Lista de subcoleções do usuário a serem limpas
-  const subcolecoes = ['projetos', 'proprietarios', 'confrontantes', 'imoveis', 'cartorios'];
+  const subcolecoes = ['projetos', 'proprietarios', 'confrontantes', 'imoveis', 'cartorios', 'colegas'];
 
   for (const sub of subcolecoes) {
     const colRef = collection(fdb()!, 'users', uid, sub);

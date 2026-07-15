@@ -222,6 +222,7 @@ export interface Confrontante {
   tamRotulo?: number;
   // cor personalizada para o confrontante; se vazia, usa a cor da paleta hash
   cor?: string;
+  layoutAssinatura?: 'vertical' | 'horizontal';
 }
 
 /** Objeto de desenho livre (georreferenciado) sobreposto ao mapa/planta. */
@@ -534,3 +535,11 @@ export interface CorrecaoErrata {
   passa: string;    // ex.: "Matrícula nº 5.378"
   natureza?: NaturezaCorrecao;
 }
+
+export interface ColegaCad {
+  id: string;
+  nome: string;
+  telefone: string;
+  credenciamento: string; // ex.: COIN (prefixo de credenciamento INCRA)
+}
+

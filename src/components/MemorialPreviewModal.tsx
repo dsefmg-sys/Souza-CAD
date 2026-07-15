@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Eye, Copy, Check, Download } from 'lucide-react';
@@ -46,8 +46,9 @@ export default function MemorialPreviewModal({
 }: Props) {
   const [copiouNarrativa, setCopiouNarrativa] = useState(false);
   const [copiouTudo, setCopiouTudo] = useState(false);
+  const papelRef = useRef<HTMLDivElement>(null);
 
-  // Calcula os dados geométricos do polígono
+  // Computa os dados geométricos do polígono
   const res = vertices.length >= 3 ? calcular(vertices, confrontantePorLado) : null;
   const ef = res ? valoresEfetivos(res, imovel) : { areaHa: 0, perimetro: 0 };
   const ehServidao = modo === 'servidao';
@@ -93,36 +94,39 @@ export default function MemorialPreviewModal({
       setCopiouNarrativa(true);
       setTimeout(() => setCopiouNarrativa(false), 2000);
     } else {
-      // Monta o memorial descritivo completo em texto simples formatado
-      const rot = rotulosProfissional(tecnico);
-      const ehUrbano = imovel.tipoImovel === 'urbano';
-      
-      texto = `${ehServidao ? 'MEMORIAL DESCRITIVO DE SERVIDÃO' : 'MEMORIAL DESCRITIVO'}\n\n`;
-      texto += `Denominação: ${imovel.denominacao || '—'}\n`;
-      texto += `Proprietário: ${imovel.proprietario || '—'} (CPF: ${imovel.cpfProprietario || '—'})\n`;
-      texto += `Município/UF: ${imovel.municipio || '—'}\n`;
-      texto += `Área: ${numBR(ef.areaHa, 4)} ha   |   Perímetro: ${numBR(ef.perimetro)} m\n\n`;
-      
-      if (ehServidao) {
-        texto += `${getMod('servidaoIntro')}\n\n`;
+      if (papelRef.current) {
+        texto = papelRef.current.innerText;
+      } else {
+        // Monta o memorial descritivo completo em texto simples formatado
+        const rot = rotulosProfissional(tecnico);
+        const ehUrbano = imovel.tipoImovel === 'urbano';
+        
+        texto = `${ehServidao ? 'MEMORIAL DESCRITIVO DE SERVIDÃO' : 'MEMORIAL DESCRITIVO'}\n\n`;
+        texto += `Denominação: ${imovel.denominacao || '—'}\n`;
+        texto += `Proprietário: ${imovel.proprietario || '—'} (CPF: ${imovel.cpfProprietario || '—'})\n`;
+        texto += `Município/UF: ${imovel.municipio || '—'}\n`;
+        texto += `Área: ${numBR(ef.areaHa, 4)} ha   |   Perímetro: ${numBR(ef.perimetro)} m\n\n`;
+        
+        if (ehServidao) {
+          texto += `${getMod('servidaoIntro')}\n\n`;
+        }
+        
+        texto += `DESCRIÇÃO DO PERÍMETRO\n`;
+        texto += `${narrativaTexto}\n\n`;
+        
+        texto += `INFORMAÇÕES TÉCNICAS\n`;
+        texto += `${getMod(ehUrbano ? 'memorialInfoTecnicasUrbano' : 'memorialInfoTecnicas')}\n\n`;
+        texto += `OBSERVAÇÕES\n`;
+        texto += `${getMod(ehUrbano ? 'memorialObservacoesUrbano' : 'memorialObservacoes')}\n\n`;
+        
+        texto += `${imovel.municipio || tecnico.cidadeAssinatura}, ${dataExtenso}.\n\n`;
+        texto += `________________________________________\n`;
+        texto += `${tecnico.nome.toUpperCase()}\n`;
+        texto += `${tecnico.formacao}\n`;
+        texto += `${rot.registro}: ${tecnico.cft}\n`;
+        texto += `${rot.termo} nº ${imovel.numeroTrt || tecnico.art}\n`;
+        texto += `Credenciamento INCRA: ${tecnico.credenciamentoIncra}\n`;
       }
-      
-      texto += `DESCRIÇÃO DO PERÍMETRO\n`;
-      texto += `${narrativaTexto}\n\n`;
-      
-      texto += `INFORMAÇÕES TÉCNICAS\n`;
-      texto += `${getMod(ehUrbano ? 'memorialInfoTecnicasUrbano' : 'memorialInfoTecnicas')}\n\n`;
-      texto += `OBSERVAÇÕES\n`;
-      texto += `${getMod(ehUrbano ? 'memorialObservacoesUrbano' : 'memorialObservacoes')}\n\n`;
-      
-      texto += `${imovel.municipio || tecnico.cidadeAssinatura}, ${dataExtenso}.\n\n`;
-      texto += `________________________________________\n`;
-      texto += `${tecnico.nome.toUpperCase()}\n`;
-      texto += `${tecnico.formacao}\n`;
-      texto += `${rot.registro}: ${tecnico.cft}\n`;
-      texto += `${rot.termo} nº ${imovel.numeroTrt || tecnico.art}\n`;
-      texto += `Credenciamento INCRA: ${tecnico.credenciamentoIncra}\n`;
-      
       setCopiouTudo(true);
       setTimeout(() => setCopiouTudo(false), 2000);
     }
@@ -169,7 +173,7 @@ export default function MemorialPreviewModal({
 
         {/* Papel A4 Virtual com Scroll */}
         <div className="flex-1 overflow-y-auto bg-neutral-100 dark:bg-neutral-950 p-4 md:p-8 flex justify-center">
-          <div className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 w-full max-w-[800px] shadow-lg rounded-md border border-neutral-200 dark:border-neutral-700 p-8 md:p-12 font-serif text-[13px] leading-relaxed space-y-6">
+          <div ref={papelRef} contentEditable suppressContentEditableWarning className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 w-full max-w-[800px] shadow-lg rounded-md border border-neutral-200 dark:border-neutral-700 p-8 md:p-12 font-serif text-[13px] leading-relaxed space-y-6 outline-none focus:ring-1 focus:ring-amber-500/30">
             
             {/* Aviso de Demonstração */}
             {imovel.ficticio && (

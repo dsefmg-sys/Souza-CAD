@@ -12,7 +12,7 @@ import { sincronizarPerfil, obterPerfilUsuario, criarConvite, listarConvitesEnvi
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { TecnicoData, EscritorioData, RegistroProfissionalExtra } from '@/lib/topo/types';
+import type { TecnicoData, EscritorioData, RegistroProfissionalExtra, ColegaCad } from '@/lib/topo/types';
 import {
   carregarTecnico,
   salvarTecnico,
@@ -35,9 +35,10 @@ import { exportarConfiguracoesJson, importarConfiguracoesJson } from '@/lib/stor
 import { confirmar } from '@/lib/ui/dialogos';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import ImportVerticesVizinhoConfigModal from '@/components/ImportVerticesVizinhoConfigModal';
+import { colegasCad } from '@/lib/store/cadastros';
 
 // Pessoal = só do usuário (assinatura técnica). Global = da empresa (todos usam o mesmo).
-type AbaConfig = 'pessoal' | 'comportamento' | 'escritorio' | 'numeracao' | 'modelos' | 'padroes' | 'equipe';
+type AbaConfig = 'pessoal' | 'comportamento' | 'escritorio' | 'numeracao' | 'modelos' | 'padroes' | 'equipe' | 'colegas';
 
 interface Props {
   open: boolean;
@@ -83,6 +84,48 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const [empresaVinculo, setEmpresaVinculo] = useState<Empresa | null>(null); // empresa/RT a que estou vinculado (quando sou auxiliar)
   const [solicitacoesRecebidas, setSolicitacoesRecebidas] = useState<SolicitacaoVinculo[]>([]);
   const [apagandoConta, setApagandoConta] = useState(false);
+
+  const [colegas, setColegas] = useState<ColegaCad[]>([]);
+  const [novoColegaNome, setNovoColegaNome] = useState('');
+  const [novoColegaTelefone, setNovoColegaTelefone] = useState('');
+  const [novoColegaCred, setNovoColegaCred] = useState('');
+
+  async function cadastrarColega() {
+    if (!novoColegaNome.trim()) { flash('Preencha o nome do colega.'); return; }
+    if (!novoColegaCred.trim()) { flash('Preencha o código de credenciamento.'); return; }
+    const cred = novoColegaCred.trim().toUpperCase();
+    if (!/^[A-Z]{3,4}$/.test(cred)) {
+      flash('O código de credenciamento do INCRA deve conter 3 ou 4 letras (Ex: COIN).');
+      return;
+    }
+    try {
+      const novo = await colegasCad.salvar({
+        id: '',
+        nome: novoColegaNome.trim(),
+        telefone: novoColegaTelefone.trim(),
+        credenciamento: cred,
+      });
+      setColegas((prev) => [...prev, novo]);
+      setNovoColegaNome('');
+      setNovoColegaTelefone('');
+      setNovoColegaCred('');
+      flash('Colega cadastrado com sucesso!');
+    } catch (e) {
+      flash('Erro ao cadastrar colega: ' + ((e as Error).message || e));
+    }
+  }
+
+  async function excluirColega(id: string) {
+    if (!(await confirmar({ titulo: 'Excluir Colega', mensagem: 'Deseja realmente excluir este colega do cadastro?', okLabel: 'Excluir', perigo: true }))) return;
+    try {
+      await colegasCad.excluir(id);
+      setColegas((prev) => prev.filter((c) => c.id !== id));
+      flash('Colega removido com sucesso.');
+    } catch (e) {
+      flash('Erro ao remover colega: ' + ((e as Error).message || e));
+    }
+  }
+
 
   async function desvincular() {
     const myUid = auth()?.currentUser?.uid;
@@ -172,6 +215,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
       setPadroes(carregarPadroes());
       setPrecos(carregarPrecos());
       setReciboSeq(proximoNumeroReciboSeq());
+      colegasCad.listar().then(setColegas).catch(() => {});
       if (souMaster()) {
         carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
         carregarGeminiApiKey().then(setGeminiKey).catch(() => {});
@@ -382,6 +426,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 <Tb a="numeracao" rotulo="Numeração e Fuso" titulo="Numeração automática dos vértices, fuso e hemisfério padrão do georreferenciamento" />
                 <Tb a="modelos" rotulo="Importação e Modelos" titulo="Modelos de documentos e regras de importação do TXT e dos vértices dos vizinhos" />
                 <Tb a="padroes" rotulo="Padrões & Backup" titulo="Valores padrão de novos projetos, backup das configurações e informações do sistema" />
+                <Tb a="colegas" rotulo="Colegas" titulo="Cadastro de colegas agrimensores credenciados no INCRA para facilitar identificação de confrontações" />
               </div>
             </div>
           </div>
@@ -1219,6 +1264,95 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <Button size="sm" variant="outline" disabled={apagandoConta} onClick={apagarMinhaConta} className="text-destructive border-destructive/40 hover:bg-destructive/10">
                     {apagandoConta ? 'Apagando…' : 'Apagar minha conta'}
                   </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {aba === 'colegas' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-4">
+                <div className="space-y-3 rounded-sm border p-3 bg-muted/5">
+                  <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                    <Plus className="size-3.5" /> Cadastrar Colega Agrimensor
+                  </div>
+                  <p className="text-[11px] leading-tight text-muted-foreground">
+                    Cadastre colegas com seu código de credenciamento do INCRA (3 ou 4 letras) para identificar automaticamente seus contatos ao importar parcelas certificadas no SIGEF.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Nome Completo</Label>
+                      <Input
+                        placeholder="Ex: João da Silva"
+                        value={novoColegaNome}
+                        onChange={(e) => setNovoColegaNome(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">Credenciamento INCRA</Label>
+                        <Input
+                          placeholder="Ex: COIN"
+                          maxLength={4}
+                          value={novoColegaCred}
+                          onChange={(e) => setNovoColegaCred(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold">Telefone / Contato</Label>
+                        <Input
+                          placeholder="Ex: (11) 98765-4321"
+                          value={novoColegaTelefone}
+                          onChange={(e) => setNovoColegaTelefone(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <Button size="sm" className="w-full font-bold gap-1 mt-1" onClick={cadastrarColega}>
+                      <Plus className="size-4" /> Cadastrar Colega
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  Colegas Cadastrados ({colegas.length})
+                </div>
+                <div className="border rounded-sm overflow-hidden">
+                  <div className="max-h-[300px] overflow-y-auto divide-y bg-background">
+                    {colegas.length === 0 && (
+                      <div className="p-4 text-center text-xs text-muted-foreground">
+                        Nenhum colega cadastrado ainda.
+                      </div>
+                    )}
+                    {colegas.map((c) => (
+                      <div key={c.id} className="p-2.5 flex items-center justify-between gap-3 text-xs bg-background hover:bg-muted/10 transition-colors">
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="font-bold text-foreground flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-[10px] font-black tracking-wider uppercase">
+                              {c.credenciamento}
+                            </span>
+                            <span className="truncate">{c.nome}</span>
+                          </div>
+                          {c.telefone && (
+                            <div className="text-[11px] text-muted-foreground">
+                              📞 {c.telefone}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="size-8 p-0 text-destructive shrink-0"
+                          title="Remover colega"
+                          onClick={() => excluirColega(c.id)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

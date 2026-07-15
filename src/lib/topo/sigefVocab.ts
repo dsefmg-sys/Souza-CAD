@@ -61,3 +61,31 @@ export function corDivisa(representacao: string | undefined): string | null {
   const c = key in coresOverride ? coresOverride[key] : CORES_DIVISA[key];
   return c || null;
 }
+
+/**
+ * Retorna o tipo de limite SIGEF correto para um vértice/lado,
+ * caindo de volta para a correspondência lógica com a representação se o tipoLimite não for informado ou for inválido.
+ */
+export function obterTipoLimiteEfetivo(v: { tipoLimite?: string; representacao?: string }, defaultLimite?: string): string {
+  if (v.tipoLimite && (v.tipoLimite.startsWith('LA') || v.tipoLimite.startsWith('LN'))) {
+    return v.tipoLimite;
+  }
+  const rep = v.representacao || 'linha-ideal';
+  switch (rep) {
+    case 'muro':
+      return 'LA1';
+    case 'cerca':
+      return 'LA2';
+    case 'vala':
+      return 'LA3';
+    case 'corrego':
+    case 'rio':
+    case 'acude':
+      return 'LN1';
+    case 'estrada':
+    case 'linha-ideal':
+    default:
+      return defaultLimite || 'LA6';
+  }
+}
+

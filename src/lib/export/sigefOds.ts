@@ -4,6 +4,7 @@ import { grausParaDMS } from '../topo/coords';
 import { numBR, formatMatricula } from '../topo/geometry';
 import { escaparXml } from './sanitizar';
 import { descreverConfrontante } from './confrontanteTexto';
+import { obterTipoLimiteEfetivo } from '../topo/sigefVocab';
 
 // Preenche o template oficial do SIGEF (ODS) sem recriar abas/validações:
 //  - regenera as linhas de vértice da aba "perimetro_1";
@@ -59,7 +60,7 @@ function linhaVertice(
     celStr('ce40', v.metodo || tec.metodoPosicionamento || 'PG6') +
     // ce40 é o estilo de célula de dado presente no template (o antigo ce93 não existe no modelo
     // em branco; manter referência válida evita estilo pendente)
-    celStr('ce40', v.tipoLimite || tec.tipoLimite || 'LA6') +
+    celStr('ce40', obterTipoLimiteEfetivo(v, tec.tipoLimite)) +
     celStr('ce40', cns) +
     celStr('ce40', mat) +
     celStr('ce40', descritivoConfrontante(conf));
@@ -222,7 +223,7 @@ export function linhasConferencia(
       altitude: numBR(Number.isFinite(v.elevacao) ? v.elevacao : 0),
       sigmaZ: sigmaBR(v.sigmaZ, '0,01'),
       metodo: v.metodo || tec.metodoPosicionamento || 'PG6',
-      tipoLimite: v.tipoLimite || tec.tipoLimite || 'LA6',
+      tipoLimite: obterTipoLimiteEfetivo(v, tec.tipoLimite),
       cns: (conf?.cns || cnsImovel || '').trim(),
       matricula: conf?.matricula ? formatMatricula(conf.matricula) : '',
       confrontante: descritivoConfrontante(conf),
