@@ -83,7 +83,7 @@ import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao, ufDoMunicipio } fro
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm, type SegmentoSnap } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
-import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
+import { corPorConfrontante, gerarCorNovaConfrontante } from '@/lib/topo/coresConfrontante';
 import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS, azimute } from '@/lib/topo/geometry';
@@ -3099,10 +3099,12 @@ export default function EditorPage() {
 
   // Cria um confrontante novo já como pincel ativo (nome preenchível depois na aba Confront.).
   async function novoConfrontantePincel() {
-    const nome = (await perguntar({ titulo: 'Novo confrontante', mensagem: 'Nome do confrontante (pode completar depois):' })) ?? '';
     const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
-    setConfrontantes((cs) => [...cs, { id, nome: nome.trim(), cpf: '', matricula: '', cns: '' }]);
+    const randomCor = gerarCorNovaConfrontante(confrontantes);
+    const novoConf: Confrontante = { id, nome: '', cpf: '', matricula: '', cns: '', condicao: 'proprietario', cor: randomCor };
+    setConfrontantes((cs) => [...cs, novoConf]);
     setConfrontantePincelId(id);
+    setConfEditId(id);
     setModo('confrontante');
   }
 
@@ -6142,15 +6144,29 @@ export default function EditorPage() {
 
                   {modo === 'confrontante' && (
                     <div className="flex items-center gap-1.5">
-                      {confrontantePincelId && (
-                        <span className="inline-block h-3 w-3 shrink-0 rounded-full border border-border"
-                          style={{ backgroundColor: corPorConfrontante(confrontantePincelId) }} title="Cor deste confrontante no mapa" />
-                      )}
+                      {confrontantePincelId && (() => {
+                        const pincelConf = confrontantes.find((x) => x.id === confrontantePincelId);
+                        const corConf = corPorConfrontante(confrontantePincelId, pincelConf);
+                        return (
+                          <label className="relative cursor-pointer inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-border hover:scale-110 transition-transform"
+                            style={{ backgroundColor: corConf }} title="Clique para mudar a cor deste confrontante">
+                            <input
+                              type="color"
+                              className="sr-only"
+                              value={corConf}
+                              onChange={(e) => {
+                                const novaCor = e.target.value;
+                                setConfrontantes((cs) => cs.map((x) => (x.id === confrontantePincelId ? { ...x, cor: novaCor } : x)));
+                              }}
+                            />
+                          </label>
+                        );
+                      })()}
                       <select className="h-7 max-w-[220px] rounded-full border border-border bg-background/95 px-2 text-[10px] font-semibold outline-none"
                         value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
                         <option value="" className="bg-background text-muted-foreground">— Escolher —</option>
                         {confrontantes.map((c) => (
-                          <option key={c.id} value={c.id} className="bg-background" style={{ color: corPorConfrontante(c.id) }}>{c.nome || '(sem nome)'}</option>
+                          <option key={c.id} value={c.id} className="bg-background" style={{ color: corPorConfrontante(c.id, c) }}>{c.nome || '(sem nome)'}</option>
                         ))}
                       </select>
                       {confrontantePincelId && (
@@ -6711,7 +6727,7 @@ export default function EditorPage() {
               </div>
             )}
             {aba === 'confrontantes' && (
-              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} onExcluir={excluirConfrontante} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} projetoId={projetoId} onExtrairConfrontante={extrairDocumentoConfrontante} />
+              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} onExcluir={excluirConfrontante} onEditar={setConfEditId} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} projetoId={projetoId} onExtrairConfrontante={extrairDocumentoConfrontante} />
             )}
             {aba === 'planta' && (
               <PainelPlanta config={plantaConfig} onChange={atualizarPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} numGlebas={glebas.length}
@@ -7086,8 +7102,26 @@ export default function EditorPage() {
       <ConfrontanteEditModal
         open={confEditId != null}
         confrontante={confrontantes.find((c) => c.id === confEditId) ?? null}
-        onSalvar={(novo) => setConfrontantes((cs) => cs.map((c) => (c.id === novo.id ? novo : c)))}
-        onOpenChange={(o) => { if (!o) setConfEditId(null); }}
+        onSalvar={(novo) => {
+          if (!novo.nome.trim()) {
+            aviso('Preencha o nome do confrontante.');
+            return;
+          }
+          setConfrontantes((cs) => cs.map((c) => (c.id === novo.id ? novo : c)));
+          salvarConfCadastro(novo);
+        }}
+        onOpenChange={(o) => {
+          if (!o) {
+            const atual = confrontantes.find((c) => c.id === confEditId);
+            if (atual && !atual.nome.trim()) {
+              setConfrontantes((cs) => cs.filter((c) => c.id !== confEditId));
+              if (confrontantePincelId === confEditId) {
+                setConfrontantePincelId('');
+              }
+            }
+            setConfEditId(null);
+          }
+        }}
       />
       <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
         areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
@@ -8275,9 +8309,10 @@ function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, con
   );
 }
 
-function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico, projetoId, onExtrairConfrontante, onExcluir }: {
+function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico, projetoId, onExtrairConfrontante, onExcluir, onEditar }: {
   confrontantes: Confrontante[]; onChange: (c: Confrontante[]) => void;
   onExcluir: (id: string) => void;
+  onEditar?: (id: string) => void;
   mapa: Record<number, string>; lados: Lado[];
   sugConf: ConfrontanteCad[]; onSalvarCadastro: (c: Confrontante) => void;
   imovel: ImovelData; tecnico: TecnicoData | null;
@@ -8322,13 +8357,21 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
     }
   };
 
-  const addConfrontante = () =>
-    onChange([...confrontantes, { id: `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`, nome: '', cpf: '', matricula: '', cns: '', condicao: 'proprietario' }]);
+  const addConfrontante = () => {
+    const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
+    const randomCor = gerarCorNovaConfrontante(confrontantes);
+    onChange([...confrontantes, { id, nome: '', cpf: '', matricula: '', cns: '', condicao: 'proprietario', cor: randomCor }]);
+    onEditar?.(id);
+  };
 
   // Atalho pra bem público (estrada, rio...): já nasce com condicao='publico' (nunca assina) e um
   // nome padrão que o usuário pode ajustar (ex.: trocar "Rio" por "Rio das Pedras").
-  const addConfrontanteEspecial = (nomePadrao: string) =>
-    onChange([...confrontantes, { id: `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`, nome: nomePadrao, cpf: '', matricula: '', cns: '', condicao: 'publico' }]);
+  const addConfrontanteEspecial = (nomePadrao: string) => {
+    const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
+    const randomCor = gerarCorNovaConfrontante(confrontantes);
+    onChange([...confrontantes, { id, nome: nomePadrao, cpf: '', matricula: '', cns: '', condicao: 'publico', cor: randomCor }]);
+    onEditar?.(id);
+  };
 
   return (
     <div className="space-y-3">
@@ -8363,7 +8406,7 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
             <CardContent className="space-y-2 p-3">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                  <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id) }} title="Cor deste confrontante no mapa" />
+                  <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id, c) }} title="Cor deste confrontante no mapa" />
                   {idxs.length} lado(s){lados.length ? `: ${idxs.map((i) => lados[i]?.de.codigoSigef).filter(Boolean).join(', ')}` : ''}
                 </span>
                 <div className="flex items-center gap-2">

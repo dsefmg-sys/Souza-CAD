@@ -220,6 +220,8 @@ export interface Confrontante {
   posRotulo?: { lat: number; lon: number };
   // tamanho da fonte do rótulo/assinatura (mapa e planta); vazio = padrão
   tamRotulo?: number;
+  // cor personalizada para o confrontante; se vazia, usa a cor da paleta hash
+  cor?: string;
 }
 
 /** Objeto de desenho livre (georreferenciado) sobreposto ao mapa/planta. */

@@ -1576,7 +1576,7 @@ export default function MapEditor(props: Props) {
           // Desloca para DENTRO do polígono (sinal negativo)
           const a: [number, number] = [v.lat - ny * off, v.lon - nx * off];
           const b: [number, number] = [prox.lat - ny * off, prox.lon - nx * off];
-          const corConf = corPorConfrontante(conf.id);
+          const corConf = corPorConfrontante(conf.id, conf);
 
           return (
             <Polyline
@@ -1989,7 +1989,7 @@ export default function MapEditor(props: Props) {
             <div className="mb-1 font-semibold text-muted-foreground">Confrontantes</div>
             {lista.map((c) => (
               <div key={c.id} className="flex items-center gap-1.5 py-0.5">
-                <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id) }} />
+                <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id, c) }} />
                 <span className="truncate">{c.nome || '(sem nome)'}</span>
               </div>
             ))}

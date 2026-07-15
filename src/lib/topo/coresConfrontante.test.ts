@@ -8,7 +8,7 @@ describe('corPorConfrontante', () => {
   });
 
   it('ids diferentes tendem a gerar cores diferentes', () => {
-    const cores = new Set(['a', 'b', 'c', 'd', 'e'].map(corPorConfrontante));
+    const cores = new Set(['a', 'b', 'c', 'd', 'e'].map(id => corPorConfrontante(id)));
     expect(cores.size).toBeGreaterThan(1);
   });
 

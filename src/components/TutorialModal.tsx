@@ -50,7 +50,6 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      audioRef.current = null;
     }
     setFalando(false);
     setPausado(false);
@@ -113,8 +112,11 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     falarFrase(0);
   }
 
+  const ultimoTextoRef = useRef('');
+
   function alternarAudio(texto: string, audioUrl?: string) {
     if (typeof window === 'undefined') return;
+    ultimoTextoRef.current = texto;
 
     if (falando) {
       if (pausado) {
@@ -136,38 +138,25 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
       setErroAudio('');
       if (audioUrl) {
         setTipoAudio('gravado');
-        const audio = new Audio(audioUrl);
-        audioRef.current = audio;
-
-        const usarFallback = (motivo: string, erro: unknown) => {
-          console.warn(motivo, erro);
-          audioRef.current = null;
-          if (texto.trim()) {
-            setTipoAudio('tts');
-            falarTexto(texto);
-          } else {
-            setFalando(false);
+        const audio = audioRef.current;
+        if (audio) {
+          audio.src = audioUrl;
+          audio.load();
+          audio.play().then(() => {
+            setFalando(true);
             setPausado(false);
-            setErroAudio('Não consegui tocar este áudio agora. Tente de novo em instantes.');
-          }
-        };
-
-        audio.addEventListener('ended', () => {
-          setFalando(false);
-          setPausado(false);
-          audioRef.current = null;
-        });
-
-        audio.addEventListener('error', () => {
-          usarFallback('Erro ao carregar o arquivo gravado.', undefined);
-        });
-
-        audio.play().then(() => {
-          setFalando(true);
-          setPausado(false);
-        }).catch((e) => {
-          usarFallback('Falha ao rodar áudio gravado:', e);
-        });
+          }).catch((e) => {
+            console.warn('Falha ao rodar áudio gravado:', e);
+            if (texto.trim()) {
+              setTipoAudio('tts');
+              falarTexto(texto);
+            } else {
+              setFalando(false);
+              setPausado(false);
+              setErroAudio('Não consegui tocar este áudio agora. Tente de novo em instantes.');
+            }
+          });
+        }
       } else {
         setTipoAudio('tts');
         falarTexto(texto);
@@ -422,6 +411,25 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             </div>
           </>
         )}
+        <audio
+          ref={audioRef}
+          preload="auto"
+          onEnded={() => {
+            setFalando(false);
+            setPausado(false);
+          }}
+          onError={() => {
+            console.warn('Erro ao carregar o áudio gravado.');
+            const txt = ultimoTextoRef.current;
+            if (txt && txt.trim()) {
+              setTipoAudio('tts');
+              falarTexto(txt);
+            } else {
+              setFalando(false);
+              setPausado(false);
+            }
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -133,7 +133,7 @@ export default function AnuenciaModal({
                 return (
                   <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border p-2.5">
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id) }} />
+                      <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id, c) }} />
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium">{nome(c)}</div>
                         <div className="text-[11px] text-muted-foreground">{n} trecho(s) de divisa</div>
