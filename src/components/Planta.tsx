@@ -152,21 +152,23 @@ function Ted(props: {
   const posY = y + (ov?.dy ?? 0);
 
   if (editando) {
-    const inputW = Math.max(120, fz * val.length * 0.65);
-    const inputH = fz * 1.5;
+    const lines = val.split('\n');
+    const maxLineLength = Math.max(...lines.map((l) => l.length), 1);
+    const inputW = Math.max(140, fz * maxLineLength * 0.65);
+    const inputH = Math.max(54, fz * lines.length * 1.35 + 24);
     const offX = anchor === 'middle' ? -inputW / 2 : anchor === 'end' ? -inputW : 0;
     const offY = -fz * 1.15;
     return (
       <foreignObject x={posX + offX} y={posY + offY} width={inputW} height={inputH} style={{ overflow: 'visible' }}>
-        <input
+        <textarea
           autoFocus
-          className="w-full h-full border border-blue-500 bg-white text-black outline-none px-1 shadow-md rounded-sm"
-          style={{ fontSize: `${fz}px`, fontWeight: peso, textAlign: anchor === 'middle' ? 'center' : anchor === 'end' ? 'right' : 'left', fontFamily: 'Arial, sans-serif' }}
+          className="w-full h-full border border-blue-500 bg-white text-black outline-none px-1 py-0.5 shadow-md rounded-sm resize-y"
+          style={{ fontSize: `${fz}px`, fontWeight: peso, textAlign: anchor === 'middle' ? 'center' : anchor === 'end' ? 'right' : 'left', fontFamily: 'Arial, sans-serif', lineHeight: 1.25 }}
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onBlur={() => onTerminarEditar?.(id, val)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
               e.preventDefault();
               onTerminarEditar?.(id, val);
             } else if (e.key === 'Escape') {
@@ -175,12 +177,18 @@ function Ted(props: {
             }
           }}
         />
+        <div className="text-[7.5px] text-gray-500 bg-white/90 border border-gray-200 px-1 py-0.5 rounded-sm mt-0.5 pointer-events-none select-none inline-block shadow-sm">
+          Enter quebra linha • Ctrl+Enter salva
+        </div>
       </foreignObject>
     );
   }
 
   const isSelected = ed && selecionadoId === id;
-  const textW = fz * (texto?.length || 1) * 0.55;
+  const lines = (texto || '').split('\n');
+  const maxLineLength = Math.max(...lines.map((l) => l.length), 1);
+  const textW = fz * maxLineLength * 0.55;
+  const textH = fz * lines.length * 1.25;
   const endX = anchor === 'middle' ? posX + textW / 2 : anchor === 'end' ? posX : posX + textW;
 
   return (
@@ -191,17 +199,20 @@ function Ted(props: {
        onPointerDown={ed ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}>
       {halo && (
         <text x={posX} y={posY} fontSize={fz} fontWeight={peso} textAnchor={anchor} fill="#fff" stroke="#fff" strokeWidth={2.6} strokeLinejoin="round">
-          {texto}
+          {lines.map((line, i) => (
+            <tspan key={i} x={posX} dy={i === 0 ? 0 : `${fz * 1.25}px`}>{line}</tspan>
+          ))}
         </text>
       )}
       <text x={posX} y={posY} fontSize={fz} fontWeight={peso} textAnchor={anchor} fill={fill}>
-        {texto}
+        {lines.map((line, i) => (
+          <tspan key={i} x={posX} dy={i === 0 ? 0 : `${fz * 1.25}px`}>{line}</tspan>
+        ))}
       </text>
 
       {isSelected && (() => {
-        // contorno dourado ao redor do texto selecionado (deixa claro o que está selecionado)
         const bx = anchor === 'middle' ? posX - textW / 2 : anchor === 'end' ? posX - textW : posX;
-        return <rect x={bx - 3} y={posY - fz} width={textW + 6} height={fz + 4} rx={2} fill="none" stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 2" style={{ pointerEvents: 'none' }} />;
+        return <rect x={bx - 3} y={posY - fz} width={textW + 6} height={textH + 4} rx={2} fill="none" stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 2" style={{ pointerEvents: 'none' }} />;
       })()}
       {isSelected && (
         <g style={{ pointerEvents: 'all' }}>
