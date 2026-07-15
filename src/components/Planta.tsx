@@ -94,7 +94,7 @@ const W = 1587;
 const H = 1123;
 const CARW = 470;            // largura da coluna de carimbo (direita)
 const STRIP = 210;           // altura da faixa inferior (observações/convenções/etc.)
-const DRAW = { x0: 95, y0: 26, x1: W - CARW - 26, y1: H - STRIP - 26 };
+const DRAW = { x0: 95, y0: 26, x1: W - CARW, y1: H - STRIP - 26 };
 
 /** Linhas do rótulo do confrontante na planta, conforme a condition (proprietário/posseiro/espólio). */
 function rotuloConfrontanteLinhas(c: Confrontante): string[] {
