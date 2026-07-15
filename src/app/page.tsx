@@ -87,7 +87,7 @@ import { corPorConfrontante, gerarCorNovaConfrontante } from '@/lib/topo/coresCo
 import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS, azimute } from '@/lib/topo/geometry';
-import { cpfOuCnpjValido } from '@/lib/topo/validation';
+import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
 import { aplicarOrto, parseAzimute, type ModoOrto } from '@/lib/topo/orto';
 import { dividirSegmentoUtm } from '@/lib/topo/editing';
 import { porAfastamento } from '@/lib/topo/verticeVirtual';
@@ -7942,10 +7942,21 @@ function avisoDoc(v?: string): string | undefined {
 }
 
 function Campo({ label, value, onChange, placeholder, list, aviso }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; list?: string; aviso?: string }) {
+  const formatado = /cpf|cnpj/i.test(label) ? formatarCpfCnpj(value) : value;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    if (/cpf|cnpj/i.test(label)) {
+      onChange(formatarCpfCnpj(rawVal));
+    } else {
+      onChange(rawVal);
+    }
+  };
+
   return (
     <div className="space-y-0.5">
       <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Label>
-      <Input list={list} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className={`h-8 text-sm${aviso ? ' border-amber-500' : ''}`} />
+      <Input list={list} value={formatado} placeholder={placeholder} onChange={handleChange} className={`h-8 text-sm${aviso ? ' border-amber-500' : ''}`} />
       {aviso && <p className="text-[10px] leading-tight text-amber-600">{aviso}</p>}
     </div>
   );
@@ -8523,7 +8534,6 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
                 </div>
               )}
               <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set(c.id, 'cns', v)} list="lista-cns" />
-              <Campo label="Descrição extra (sobrepõe o texto automático)" value={c.descricaoExtra ?? ''} onChange={(v) => set(c.id, 'descricaoExtra', v)} />
               <div className="flex items-center gap-2">
                 <Label className="text-[11px]">Tamanho do rótulo/assinatura</Label>
                 <div className="flex items-center gap-1">

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 import type { Confrontante, CondicaoConfrontante } from '@/lib/topo/types';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
-import { cpfOuCnpjValido } from '@/lib/topo/validation';
+import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
 
 interface Props {
   open: boolean;
@@ -16,10 +16,21 @@ interface Props {
 }
 
 function Campo({ label, value, onChange, ph, aviso }: { label: string; value: string; onChange: (v: string) => void; ph?: string; aviso?: string }) {
+  const formatado = /cpf|cnpj/i.test(label) ? formatarCpfCnpj(value) : value;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    if (/cpf|cnpj/i.test(label)) {
+      onChange(formatarCpfCnpj(rawVal));
+    } else {
+      onChange(rawVal);
+    }
+  };
+
   return (
     <label className="flex flex-col gap-0.5 text-xs">
       <span className="font-semibold text-muted-foreground">{label}</span>
-      <input className="h-8 rounded-sm border bg-background px-2 text-sm" value={value} placeholder={ph} onChange={(e) => onChange(e.target.value)} />
+      <input className="h-8 rounded-sm border bg-background px-2 text-sm" value={formatado} placeholder={ph} onChange={handleChange} />
       {aviso && <span className="mt-0.5 block font-medium text-amber-500">{aviso}</span>}
     </label>
   );

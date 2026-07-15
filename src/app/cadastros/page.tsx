@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad } from '@/lib/topo/types';
 import { proprietarios, confrontantesCad, imoveisCad, cartoriosCad } from '@/lib/store/cadastros';
 import { carregarProjeto } from '@/lib/store/projects';
-import { cpfValido, cnpjValido } from '@/lib/topo/validation';
+import { cpfValido, cnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
 import { useAuth } from '@/lib/firebase/auth';
 
 type Aba = 'proprietarios' | 'confrontantes' | 'imoveis' | 'cartorios' | 'global';
@@ -199,10 +199,21 @@ export default function CadastrosPage() {
 }
 
 function campo(label: string, value: string, onChange: (v: string) => void, list?: string, aviso?: string) {
+  const formatado = /cpf|cnpj/i.test(label) ? formatarCpfCnpj(value) : value;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    if (/cpf|cnpj/i.test(label)) {
+      onChange(formatarCpfCnpj(rawVal));
+    } else {
+      onChange(rawVal);
+    }
+  };
+
   return (
     <div className="space-y-1">
       <Label>{label}</Label>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} list={list} />
+      <Input value={formatado} onChange={handleChange} list={list} />
       {aviso && <span className="text-xs text-amber-500 font-medium block mt-0.5">{aviso}</span>}
     </div>
   );

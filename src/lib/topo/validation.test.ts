@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cpfValido, cnpjValido, cpfOuCnpjValido } from './validation';
+import { cpfValido, cnpjValido, cpfOuCnpjValido, formatarCpfCnpj } from './validation';
 
 describe('cpfValido', () => {
   it('valida CPFs corretos', () => {
@@ -42,5 +42,14 @@ describe('cpfOuCnpjValido', () => {
   it('reprova documentos inválidos de qualquer tamanho', () => {
     expect(cpfOuCnpjValido('111.111.111-11')).toBe(false);
     expect(cpfOuCnpjValido('11.111.111/1111-11')).toBe(false);
+  });
+});
+
+describe('formatarCpfCnpj', () => {
+  it('aplica mascara em CPF e CNPJ', () => {
+    expect(formatarCpfCnpj('11144477735')).toBe('111.444.777-35');
+    expect(formatarCpfCnpj('11222333000181')).toBe('11.222.333/0001-81');
+    expect(formatarCpfCnpj('111')).toBe('111');
+    expect(formatarCpfCnpj('1112')).toBe('111.2');
   });
 });
