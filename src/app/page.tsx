@@ -7117,7 +7117,7 @@ export default function EditorPage() {
               <CheckCircle2 className="size-5" /> Conferir Projeto
             </DialogTitle>
           </DialogHeader>
-          <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} onChange={setImovel} conflitos={conflitos}
+          <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} onChange={setImovel} conflitos={conflitos}
             onIrParaConflito={(lat, lon) => { setConferirAberto(false); setVista('mapa'); setFocoLatLng([lat, lon]); }} />
         </DialogContent>
       </Dialog>
@@ -8263,12 +8263,12 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
   );
 }
 
-function PainelConferencia({ vertices, res, imovel, confrontantes, onChange, conflitos, onIrParaConflito }: {
-  vertices: Vertex[]; res: ReturnType<typeof calcular> | null; imovel: ImovelData; confrontantes: Confrontante[]; onChange: (i: ImovelData) => void;
+function PainelConferencia({ vertices, res, imovel, confrontantes, confrontantePorLado, onChange, conflitos, onIrParaConflito }: {
+  vertices: Vertex[]; res: ReturnType<typeof calcular> | null; imovel: ImovelData; confrontantes: Confrontante[]; confrontantePorLado: Record<number, string>; onChange: (i: ImovelData) => void;
   conflitos: ConflitoDivisa[];
   onIrParaConflito: (lat: number, lon: number) => void;
 }) {
-  const problemas: Problema[] = conferir(vertices, res, imovel, confrontantes);
+  const problemas: Problema[] = conferir(vertices, res, imovel, confrontantes, confrontantePorLado);
   const Icone = ({ n }: { n: Problema['nivel'] }) =>
     n === 'erro' ? <XCircle className="text-destructive" /> : n === 'aviso' ? <AlertTriangle className="text-amber-500" /> : <CheckCircle2 className="text-primary" />;
   const ef = res ? valoresEfetivos(res, imovel) : null;

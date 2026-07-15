@@ -1,4 +1,5 @@
 import type { Vertex, ImovelData, ResultadoCalculo, Confrontante } from './types';
+import { cpfOuCnpjValido } from './validation';
 
 export type Nivel = 'erro' | 'aviso' | 'ok';
 export interface Problema { nivel: Nivel; campo: string; msg: string; }
@@ -42,7 +43,13 @@ export function temAutoIntersecao(vertices: Vertex[]): boolean {
 }
 
 /** Roda todas as conferências e devolve a lista de problemas. */
-export function conferir(vertices: Vertex[], res: ResultadoCalculo | null, imovel: ImovelData, confrontantes: Confrontante[] = []): Problema[] {
+export function conferir(
+  vertices: Vertex[],
+  res: ResultadoCalculo | null,
+  imovel: ImovelData,
+  confrontantes: Confrontante[] = [],
+  confrontantePorLado?: Record<number, string>
+): Problema[] {
   const out: Problema[] = [];
 
   if (vertices.length < 3) {
@@ -58,13 +65,62 @@ export function conferir(vertices: Vertex[], res: ResultadoCalculo | null, imove
   if (!imovel.proprietario) faltando.push('proprietário');
   if (faltando.length) out.push({ nivel: 'aviso', campo: 'imóvel', msg: `Faltam dados do imóvel: ${faltando.join(', ')}.` });
 
-  // confrontantes incompletos
+  // Validação CPFs/CNPJs do imóvel
+  if (imovel.cpfProprietario && !cpfOuCnpjValido(imovel.cpfProprietario)) {
+    out.push({ nivel: 'erro', campo: 'imóvel', msg: `CPF/CNPJ do proprietário "${imovel.cpfProprietario}" é inválido.` });
+  }
+  if (imovel.cpfComprador && !cpfOuCnpjValido(imovel.cpfComprador)) {
+    out.push({ nivel: 'erro', campo: 'imóvel', msg: `CPF/CNPJ do comprador "${imovel.cpfComprador}" é inválido.` });
+  }
+  if (imovel.cpfConjugeProprietario && !cpfOuCnpjValido(imovel.cpfConjugeProprietario)) {
+    out.push({ nivel: 'erro', campo: 'imóvel', msg: `CPF do cônjuge do proprietário "${imovel.cpfConjugeProprietario}" é inválido.` });
+  }
+
+  // confrontantes incompletos e CPFs inválidos
   for (const c of confrontantes) {
     if (!c.nome) { out.push({ nivel: 'aviso', campo: 'confrontante', msg: 'Há trecho de divisa sem confrontante informado.' }); continue; }
     const sem: string[] = [];
     if (!c.cpf) sem.push('CPF');
     if (!c.matricula) sem.push('matrícula');
     if (sem.length) out.push({ nivel: 'aviso', campo: 'confrontante', msg: `${c.nome}: falta ${sem.join(' e ')}.` });
+
+    if (c.cpf && !cpfOuCnpjValido(c.cpf)) {
+      out.push({ nivel: 'erro', campo: 'confrontante', msg: `${c.nome}: CPF/CNPJ "${c.cpf}" é inválido.` });
+    }
+    if (c.inventarianteCpf && !cpfOuCnpjValido(c.inventarianteCpf)) {
+      out.push({ nivel: 'erro', campo: 'confrontante', msg: `${c.nome} (Inventariante): CPF "${c.inventarianteCpf}" é inválido.` });
+    }
+    if (c.nuProprietarioCpf && !cpfOuCnpjValido(c.nuProprietarioCpf)) {
+      out.push({ nivel: 'erro', campo: 'confrontante', msg: `${c.nome} (Nu-proprietário): CPF/CNPJ "${c.nuProprietarioCpf}" é inválido.` });
+    }
+    if (c.conjugeCpf && !cpfOuCnpjValido(c.conjugeCpf)) {
+      out.push({ nivel: 'erro', campo: 'confrontante', msg: `${c.nome} (Cônjuge): CPF "${c.conjugeCpf}" é inválido.` });
+    }
+  }
+
+  // Segmentos sem confrontante ou divisa definidos
+  if (confrontantePorLado && vertices.length >= 3) {
+    for (let i = 0; i < vertices.length; i++) {
+      const v = vertices[i];
+      const proximo = vertices[(i + 1) % vertices.length];
+      const nomeTrecho = `de ${v.codigoSigef || v.nome || `Vértice ${i + 1}`} para ${proximo.codigoSigef || proximo.nome || `Vértice ${((i + 1) % vertices.length) + 1}`}`;
+
+      if (!confrontantePorLado[i]?.trim()) {
+        out.push({
+          nivel: 'erro',
+          campo: 'confrontante',
+          msg: `Trecho ${nomeTrecho} está sem confrontante definido.`
+        });
+      }
+
+      if (!v.representacao?.trim()) {
+        out.push({
+          nivel: 'erro',
+          campo: 'divisa',
+          msg: `Trecho ${nomeTrecho} está sem tipo de divisa definido.`
+        });
+      }
+    }
   }
 
   // vértices duplicados / muito próximos (< 5 cm)
@@ -125,7 +181,7 @@ export function conferir(vertices: Vertex[], res: ResultadoCalculo | null, imove
       
       if (sigH > maxPermitido) {
         out.push({
-          nivel: 'aviso',
+          nivel: 'ok',
           campo: 'precisão',
           msg: `Vértice ${nomeV}: precisão horizontal de ${sigH.toFixed(2)}m excede o limite legal de ${maxPermitido.toFixed(2)}m (limite ${tipoDesc}).`
         });
@@ -138,7 +194,7 @@ export function conferir(vertices: Vertex[], res: ResultadoCalculo | null, imove
       const limite = v.tipoLimite || 'LA';
       if (limite.startsWith('LA') || !v.tipoLimite) {
         out.push({
-          nivel: 'aviso',
+          nivel: 'ok',
           campo: 'precisão Z',
           msg: `Vértice ${nomeV}: precisão vertical de ${sigZ.toFixed(2)}m excede a recomendação de 0.30m para limites artificiais.`
         });

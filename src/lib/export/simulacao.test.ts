@@ -20,7 +20,7 @@ const tecnico: TecnicoData = {
 };
 const imovel: ImovelData = {
   denominacao: 'Fazenda Complexa', matricula: '1234', cns: '03.886-9', codigoImovelIncra: '9501143617043',
-  proprietario: 'Fulano de Tal', cpfProprietario: '000.000.000-00', tipoPessoa: 'Física',
+  proprietario: 'Fulano de Tal', cpfProprietario: '111.444.777-35', tipoPessoa: 'Física',
   municipio: 'Espera Feliz-MG', local: 'Córrego X, Espera Feliz-MG',
   naturezaServico: 'Particular', situacao: 'Imóvel Registrado', naturezaArea: 'Particular',
 };
@@ -47,7 +47,7 @@ function anelComplexo(cx: number, cy: number, n: number, rBase: number): RawPoin
 function montar(pts: RawPoint[]) {
   const vertices = montarVertices(pts, 23, 'S', tecnico).map((v, i) => ({ ...v, representacao: tipos[i % tipos.length] }));
   const { confrontantes, confrontantePorLado } = montarConfrontantes(vertices);
-  for (const c of confrontantes) { c.cpf = '111.111.111-11'; c.matricula = '999'; c.cns = '03.886-9'; }
+  for (const c of confrontantes) { c.cpf = '111.444.777-35'; c.matricula = '999'; c.cns = '03.886-9'; }
   const res = calcular(vertices, confrontantePorLado);
   return { vertices, confrontantes, confrontantePorLado, res };
 }
