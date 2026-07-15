@@ -908,6 +908,9 @@ export default function Planta({
             <pattern id="hach-pontos" patternUnits="userSpaceOnUse" width={7} height={7}>
               <circle cx={3.5} cy={3.5} r={1} fill={cor} />
             </pattern>
+            <clipPath id="map-clip">
+              <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} />
+            </clipPath>
           </defs>
         );
       })()}
