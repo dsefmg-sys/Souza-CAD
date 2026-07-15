@@ -1428,9 +1428,11 @@ export default function MapEditor(props: Props) {
               ? { color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: Math.max(opacidadeCert, 0.12) }
               : { color: '#0891b2', weight: 1.4, fillColor: '#06b6d4', fillOpacity: opacidadeCert }}
             eventHandlers={{ click: () => onSelParcelaCert?.(sel ? null : i) }}>
-            <Tooltip permanent direction="center" className="bg-cyan-50/95 border border-cyan-300 text-cyan-800 text-[9px] font-semibold px-1 py-0.5 rounded shadow-sm">
-              {label}
-            </Tooltip>
+            {mostrarRotulos && (
+              <Tooltip permanent direction="center" className="bg-blue-50/95 border border-blue-300 text-blue-600 text-[9px] font-semibold px-1 py-0.5 rounded shadow-sm">
+                {label}
+              </Tooltip>
+            )}
           </Polygon>
         );
       })}

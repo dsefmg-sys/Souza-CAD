@@ -331,7 +331,14 @@ export default function EditorPage() {
   // espelho de zoom/pan pra calcular o zoom-no-cursor sem atualizador aninhado (que o React roda 2x em dev)
   const vistaPlantaRef = useRef({ z: 1, x: 0, y: 0 });
   const [editarPlanta] = useState(true); // planta abre já no modo edição
-  const [folhaTravada, setFolhaTravada] = useState(false); // por padrão, destravada (dá pra reposicionar a moldura já na primeira vez que abre a planta)
+  const [folhaTravada, setFolhaTravadaState] = useState(false);
+  const setFolhaTravada = (valOrFunc: boolean | ((v: boolean) => boolean)) => {
+    setFolhaTravadaState((prev) => {
+      const next = typeof valOrFunc === 'function' ? valOrFunc(prev) : valOrFunc;
+      try { localStorage.setItem('metrica:planta_folha_travada', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
   const [menuContexto, setMenuContexto] = useState<{
     tipo: 'texto' | 'vertice' | 'divisa' | 'mapa' | 'objeto';
     x: number;
@@ -738,10 +745,25 @@ export default function EditorPage() {
       if (!salvaArea) {
         setPosArea({ x: window.innerWidth / 2 - 120, y: window.innerHeight - 80 });
       }
+      const salvaFolhaTravada = localStorage.getItem('metrica:planta_folha_travada');
+      if (salvaFolhaTravada !== null) {
+        setFolhaTravadaState(salvaFolhaTravada === '1');
+      }
+      const salvaPlantaDark = localStorage.getItem('metrica:planta_dark_mode');
+      if (salvaPlantaDark !== null) {
+        setPlantaDarkState(salvaPlantaDark === '1');
+      }
     }
   }, []);
 
-  const [plantaDark, setPlantaDark] = useState(true); // modo escuro só da folha A3 (conforto noturno)
+  const [plantaDark, setPlantaDarkState] = useState(true);
+  const setPlantaDark = (valOrFunc: boolean | ((v: boolean) => boolean)) => {
+    setPlantaDarkState((prev) => {
+      const next = typeof valOrFunc === 'function' ? valOrFunc(prev) : valOrFunc;
+      try { localStorage.setItem('metrica:planta_dark_mode', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean; errata?: boolean }>({});
@@ -1828,7 +1850,9 @@ export default function EditorPage() {
         denominacao: propsGml.denominacao || imovel.denominacao || importPendingFile.name.replace(/\.[^.]+$/, ''),
         proprietario: propsGml.detentor || imovel.proprietario,
         codigoImovelIncra: propsGml.codigoImovel || imovel.codigoImovelIncra,
-        matricula: propsGml.matricula || imovel.matricula
+        matricula: propsGml.matricula || imovel.matricula,
+        areaSigefHa: undefined,
+        perimetroSigef: undefined,
       };
 
       let contM = 1, contP = 1;
@@ -4397,6 +4421,8 @@ export default function EditorPage() {
       naturezaArea: 'Particular',
       tipoImovel: pad.tipoImovel,
       tipoAzimute: pad.tipoAzimute,
+      areaSigefHa: undefined,
+      perimetroSigef: undefined,
     });
     setVertices([]);
     const novaGleba = novaGlebaVazia(1);
@@ -6338,6 +6364,7 @@ export default function EditorPage() {
                       outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))}
                       resumoGlebas={resumoGlebas} verticesVizinho={verticesVizinho} parcelasCert={parcelasCert}
                       editavel={editarPlanta && !telaEstreita} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
+                      mostrarRotulos={mostrarRotulos}
                       selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
                       onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}

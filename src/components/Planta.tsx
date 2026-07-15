@@ -77,6 +77,7 @@ interface Props {
   onIgnorarVertice?: (id: string) => void;                         // ignorar o vértice (o desenho passa direto)
   onCiclarEstilo?: (campo: 'estiloRosa' | 'estiloEscala' | 'estiloDiagrama', total: number) => void; // botão direito troca o estilo
   folhaTravada?: boolean;
+  mostrarRotulos?: boolean;
   editandoTextoId?: string | null;
   onSetEditandoTextoId?: (id: string | null) => void;
   onTextoStartEdit?: () => void;
@@ -264,7 +265,7 @@ export default function Planta({
   onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
-  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch,
+  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
@@ -1009,7 +1010,7 @@ export default function Planta({
         return (
           <g key={`pc_cert_${idx}`}>
             <polygon points={ptsSvg} fill="#0284c7" fillOpacity={0.045} stroke="#0284c7" strokeWidth={0.7} strokeDasharray="3 3" />
-            {cx >= DRAW.x0 && cx <= DRAW.x1 && cy >= DRAW.y0 && cy <= DRAW.y1 && (
+            {mostrarRotulos && cx >= DRAW.x0 && cx <= DRAW.x1 && cy >= DRAW.y0 && cy <= DRAW.y1 && (
               <Ted
                 {...tProps(idLabel)}
                 x={cx}
@@ -1018,7 +1019,7 @@ export default function Planta({
                 size={fs(6.2)}
                 bold
                 anchor="middle"
-                fill="#0369a1"
+                fill="#2563eb"
                 halo
               />
             )}
