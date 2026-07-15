@@ -68,6 +68,7 @@ interface Props {
   onAjustarDivisaConf?: (id: string, az: number, len: number) => void; // arrastar a ponta do tique de troca
   onTextoEditar?: (id: string, atual: string, larguraChars?: number) => void;            // clique duplo: editar conteúdo
   onTextoMenu?: (id: string, atual: string, x: number, y: number) => void; // clique direito: formatar
+  onConfrontanteMenu?: (id: string, nome: string, x: number, y: number) => void;
   onMoverFolha?: (dx: number, dy: number) => void;                // arrastar o vazio: reposiciona a folha
   onToggleTravaFolha?: () => void;                                // clique do botão central: trava/destrava a folha
   onTextoMover?: (id: string, dx: number, dy: number) => void;     // arrastar o texto: salva o offset
@@ -221,7 +222,7 @@ function Ted(props: {
           <g onClick={(e) => {
             e.stopPropagation();
             const esc = ov?.escala ?? 1;
-            onTextoPatch?.(id, { escala: Math.max(0.4, +(esc - 0.1).toFixed(2)) });
+            onTextoPatch?.(id, { escala: Math.max(0.4, +(esc - 0.05).toFixed(2)) });
           }}>
             <circle cx={endX + 25} cy={posY - 3} r={7} fill="#f1f5f9" fillOpacity={0.9} stroke="#94a3b8" strokeWidth={0.5} style={{ cursor: 'pointer' }} />
             <text x={endX + 25} y={posY - 0.5} fontSize={9} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ pointerEvents: 'none', userSelect: 'none' }}>-</text>
@@ -230,7 +231,7 @@ function Ted(props: {
           <g onClick={(e) => {
             e.stopPropagation();
             const esc = ov?.escala ?? 1;
-            onTextoPatch?.(id, { escala: Math.min(4.0, +(esc + 0.1).toFixed(2)) });
+            onTextoPatch?.(id, { escala: Math.min(4.0, +(esc + 0.05).toFixed(2)) });
           }}>
             <circle cx={endX + 41} cy={posY - 3} r={7} fill="#f1f5f9" fillOpacity={0.9} stroke="#94a3b8" strokeWidth={0.5} style={{ cursor: 'pointer' }} />
             <text x={endX + 41} y={posY - 0.5} fontSize={8} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ pointerEvents: 'none', userSelect: 'none' }}>+</text>
@@ -249,10 +250,9 @@ function Ted(props: {
   );
 }
 
-function intervaloGrade(extent: number): number {
-  const alvo = extent / 6;
+function deParaNiceInterval(alvo: number): number {
   const pot = Math.pow(10, Math.floor(Math.log10(alvo)));
-  for (const m of [1, 2, 5, 10]) if (pot * m >= alvo) return pot * m;
+  for (const m of [1, 2, 2.5, 5, 10]) if (pot * m >= alvo) return pot * m;
   return pot * 10;
 }
 
@@ -264,7 +264,7 @@ export default function Planta({
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
   onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
-  onTextoEditar, onTextoMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
+  onTextoEditar, onTextoMenu, onConfrontanteMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true,
 }: Props) {
   // hooks antes de qualquer retorno condicional
@@ -416,8 +416,8 @@ export default function Planta({
   const ys = [...vertices.map((v) => v.norte), ...outrasPts.map((p) => p.norte)];
   let minX = Math.min(...xs), maxX = Math.max(...xs);
   let minY = Math.min(...ys), maxY = Math.max(...ys);
-  const padX = (maxX - minX) * 0.15 || 10;
-  const padY = (maxY - minY) * 0.15 || 10;
+  const padX = (maxX - minX) * 0.02 || 10;
+  const padY = (maxY - minY) * 0.02 || 10;
   minX -= padX; maxX += padX; minY -= padY; maxY += padY;
   const areaW = DRAW.x1 - DRAW.x0;
   const areaH = DRAW.y1 - DRAW.y0;
@@ -443,10 +443,10 @@ export default function Planta({
   const nMin = maxY - (DRAW.y1 + 200 - offY) / escala;
   const nMax = maxY - (DRAW.y0 - 200 - offY) / escala;
 
-  // Espaçamento da grade pelo TRECHO VISÍVEL (não pelo tamanho do imóvel): assim a densidade fica
-  // constante em qualquer escala. Antes, o espaçamento vinha do imóvel e, quando a área visível era
-  // bem maior que ele, saíam linhas demais (grade embolada).
-  const intervalo = intervaloGrade(Math.max(eMax - eMin, nMax - nMin));
+  // Espaçamento da grade pelo TRECHO VISÍVEL vertical: calcula o intervalo visível em metros (UTM)
+  // e deParaNiceInterval com alvo de 3.5 linhas, mantendo o visual sempre com 3 a 4 linhas horizontais/verticais.
+  const visibleHeightUTM = (DRAW.y1 - DRAW.y0) / escala;
+  const intervalo = deParaNiceInterval(visibleHeightUTM / 3.5);
   const linhasX: number[] = [];
   for (let x = Math.ceil(eMin / intervalo) * intervalo; x <= eMax; x += intervalo) linhasX.push(x);
   const linhasY: number[] = [];
@@ -472,8 +472,8 @@ export default function Planta({
     if (!trechos.has(cid)) trechos.set(cid, []);
     trechos.get(cid)!.push(i);
   }
-  const clampX = (x: number) => Math.max(DRAW.x0 + 75, Math.min(DRAW.x1 - 75, x));
-  const clampY = (y: number) => Math.max(DRAW.y0 + 22, Math.min(DRAW.y1 - 24, y));
+  const clampX = (x: number) => Math.max(DRAW.x0 + 10, Math.min(DRAW.x1 - 10, x));
+  const clampY = (y: number) => Math.max(DRAW.y0 + 10, Math.min(DRAW.y1 - 10, y));
   // ptsScr precisa ser declarado ANTES de rotulosConf, pois é usado dentro do .map
   const ptsScr = vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
   const rotulosConf = [...trechos.entries()].map(([cid, idxs]) => {
@@ -987,29 +987,38 @@ export default function Planta({
       {/* ---------- IMÓVEIS VIZINHOS CERTIFICADOS ---------- */}
       {/* Desenha as parcelas vizinhas certificadas no SIGEF em azul claro, mostrando o confrontamento homologado */}
       {verVizinhoVtx && parcelasCert.map((pc, idx) => {
-        const ptsSvg = pc.anel.map(([lat, lon]) => {
+        const anelPc = pc.anel.map(([lat, lon]) => {
           const u = geoParaUtm(lat, lon, zona, hemisferio);
-          return `${sx(u.leste)},${sy(u.norte)}`;
-        }).join(' ');
+          return { x: sx(u.leste), y: sy(u.norte) };
+        });
+        const ptsSvg = anelPc.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 
         if (!ptsSvg) return null;
 
         let cx = 0, cy = 0;
-        pc.anel.forEach(([lat, lon]) => {
-          const u = geoParaUtm(lat, lon, zona, hemisferio);
-          cx += sx(u.leste);
-          cy += sy(u.norte);
+        anelPc.forEach((p) => {
+          cx += p.x;
+          cy += p.y;
         });
-        cx /= pc.anel.length;
-        cy /= pc.anel.length;
+        cx /= anelPc.length;
+        cy /= anelPc.length;
 
         const areaHa = calcularAreaSgl(pc.anel.map(([lat, lon]) => ({ lat, lon, h: 0 }))).areaHa;
         const label = `${pc.info?.titulo || 'Certificado'} (${numBR(areaHa, 4)} ha)`;
         const idLabel = `planta.vizinhoCert.${idx}`;
 
+        const ov = textosOv[idLabel] || {};
+        const isDragging = dragTemp && dragTemp.kind === 'ted' && dragTemp.id === idLabel;
+        const px = cx + (ov.dx ?? 0) + (isDragging ? dragTemp.dx : 0);
+        const py = cy + (ov.dy ?? 0) + (isDragging ? dragTemp.dy : 0);
+        const fora = !pontoNoPoligono({ x: px, y: py }, anelPc);
+
         return (
           <g key={`pc_cert_${idx}`}>
             <polygon points={ptsSvg} fill="#0284c7" fillOpacity={0.045} stroke="#0284c7" strokeWidth={0.7} strokeDasharray="3 3" />
+            {fora && mostrarRotulos && cx >= DRAW.x0 && cx <= DRAW.x1 && cy >= DRAW.y0 && cy <= DRAW.y1 && (
+              <line x1={px} y1={py} x2={cx} y2={cy} stroke="#0284c7" strokeWidth={0.6} strokeDasharray="2.5 2.5" />
+            )}
             {mostrarRotulos && cx >= DRAW.x0 && cx <= DRAW.x1 && cy >= DRAW.y0 && cy <= DRAW.y1 && (
               <Ted
                 {...tProps(idLabel)}
@@ -1511,7 +1520,7 @@ export default function Planta({
           <g key={i}
             style={editavel ? { cursor: 'move' } : undefined}
             onDoubleClick={editavel ? (e) => { e.stopPropagation(); onEditarConfrontante?.(c.id); } : undefined}
-            onContextMenu={editavel && onTamRotuloConf ? async (e) => { e.preventDefault(); e.stopPropagation(); const maior = await confirmar({ titulo: 'Tamanho do rótulo', mensagem: 'Aumentar ou diminuir o tamanho deste rótulo?', okLabel: 'Aumentar', cancelLabel: 'Diminuir' }); onTamRotuloConf(c.id, maior ? 1 : -1); } : undefined}
+            onContextMenu={editavel && onConfrontanteMenu ? (e) => { e.preventDefault(); e.stopPropagation(); onConfrontanteMenu(c.id, c.nome, e.clientX, e.clientY); } : undefined}
             onPointerDown={editavel ? (e) => {
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;
@@ -2828,11 +2837,11 @@ function CarimboA3(props: {
                 onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ajustarLogo(0.1); } : undefined} />
               {logoSel && (
                 <g style={{ pointerEvents: 'all' }}>
-                  <g onClick={(e) => { e.stopPropagation(); ajustarLogo(-0.1); }} style={{ cursor: 'pointer' }}>
+                  <g onClick={(e) => { e.stopPropagation(); ajustarLogo(-0.05); }} style={{ cursor: 'pointer' }}>
                     <circle cx={rx - 30} cy={Y_ESC + 12} r={7} fill="#ffffff" fillOpacity={0.95} stroke="#94a3b8" strokeWidth={0.6} />
                     <text x={rx - 30} y={Y_ESC + 15.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ userSelect: 'none' }}>−</text>
                   </g>
-                  <g onClick={(e) => { e.stopPropagation(); ajustarLogo(0.1); }} style={{ cursor: 'pointer' }}>
+                  <g onClick={(e) => { e.stopPropagation(); ajustarLogo(0.05); }} style={{ cursor: 'pointer' }}>
                     <circle cx={rx - 13} cy={Y_ESC + 12} r={7} fill="#ffffff" fillOpacity={0.95} stroke="#94a3b8" strokeWidth={0.6} />
                     <text x={rx - 13} y={Y_ESC + 15.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ userSelect: 'none' }}>+</text>
                   </g>

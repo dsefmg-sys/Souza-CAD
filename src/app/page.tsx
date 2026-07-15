@@ -340,7 +340,7 @@ export default function EditorPage() {
     });
   };
   const [menuContexto, setMenuContexto] = useState<{
-    tipo: 'texto' | 'vertice' | 'divisa' | 'mapa' | 'objeto';
+    tipo: 'texto' | 'vertice' | 'divisa' | 'mapa' | 'objeto' | 'confrontante';
     x: number;
     y: number;
     id?: string;
@@ -3755,17 +3755,8 @@ export default function EditorPage() {
           codigoImovel: p.codigoImovel,
         }))]);
       }
-      const novos = confrontantesDeVizinhas(vizinhas);
-      if (novos.length) {
-        snap();
-        setConfrontantes((cs) => {
-          const nomes = new Set(cs.map((c) => c.nome.trim().toUpperCase()).filter(Boolean));
-          return [...cs, ...novos.filter((c) => !nomes.has(c.nome.trim().toUpperCase()))];
-        });
-        setSnapAtivo(true);
-      }
       setSigefStatus('enviado');
-      aviso(`${parcelas.length} parcela(s) desenhada(s) ao lado; ${novos.length} vizinho(s) viraram confrontantes. Use "pintar confrontante" para marcar os lados.`);
+      aviso(`${parcelas.length} parcela(s) de vizinho(s) importada(s) como referência visual.`);
     } catch { aviso('Não consegui ler o arquivo de parcelas certificadas.'); }
   }
 
@@ -3823,15 +3814,8 @@ export default function EditorPage() {
         },
         codigoImovel: p.codigoImovel,
       }))]);
-      const novos = confrontantesDeVizinhas(vizinhas);
-      snap();
-      setConfrontantes((cs) => {
-        const nomes = new Set(cs.map((c) => c.nome.trim().toUpperCase()).filter(Boolean));
-        return [...cs, ...novos.filter((c) => !nomes.has(c.nome.trim().toUpperCase()))];
-      });
-      setSnapAtivo(true);
       setSigefStatus('enviado');
-      aviso(`${vizinhas.length} vizinho(s) certificado(s) encontrado(s) e desenhado(s). Use "pintar confrontante" para marcar os lados.`);
+      aviso(`${vizinhas.length} vizinho(s) certificado(s) encontrado(s) e importado(s) como referência visual.`);
     } catch (e) {
       console.error('[SIGEF] falha inesperada em importarVizinhosAuto:', e);
       aviso('Não consegui consultar o INCRA agora. Use o import manual (arquivo GeoJSON).');
@@ -4676,7 +4660,7 @@ export default function EditorPage() {
   const etapas = useMemo<Record<string, EtapaEstado>>(() => {
     const nLados = Object.keys(confrontantePorLado).length;
     const todosLados = vertices.length > 0 && nLados >= vertices.length;
-    const todasDivisas = vertices.length > 0 && vertices.every((v) => v.representacao && v.representacao !== 'linha-ideal');
+    const todasDivisas = vertices.length > 0 && vertices.every((v) => !!v.representacao) && todosLados;
     const algumasDivisas = vertices.some((v) => v.representacao && v.representacao !== 'linha-ideal');
     return {
       txt: vertices.length >= 3 ? 'feito' : 'pendente',
@@ -6464,6 +6448,7 @@ export default function EditorPage() {
                       situacaoStale={!!situacaoUrl && situacaoVersSnapshot !== snapshotDesenho}
                       onAtualizarSituacao={gerarSituacaoPlanta}
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
+                      onConfrontanteMenu={(id, nome, x, y) => setMenuContexto({ tipo: 'confrontante', id, atual: nome, x, y })}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onToggleTravaFolha={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
                       onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} onCiclarEstilo={ciclarEstiloPlanta} />
@@ -7271,10 +7256,47 @@ export default function EditorPage() {
               <div className="flex flex-col gap-0.5">
                 <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={async () => { const m = menuContexto; setMenuContexto(null); const t = await perguntar({ titulo: 'Editar texto', valorInicial: m.atual! }); if (t != null) editarTextoPlanta(m.id!, t); }}>Editar texto…</button>
                 <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { negrito: !(plantaConfig.textos?.[menuContexto.id!]?.negrito) })}>Negrito (liga/desliga)</button>
-                <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { escala: Math.min(3, +(escTextoAtual(menuContexto.id!) + 0.1).toFixed(2)) })}>Aumentar este texto</button>
-                <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { escala: Math.max(0.4, +(escTextoAtual(menuContexto.id!) - 0.1).toFixed(2)) })}>Diminuir este texto</button>
+                <div className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm">
+                  <span className="text-xs font-semibold text-muted-foreground">Tamanho</span>
+                  <div className="flex items-center gap-1">
+                    <button className="h-6 w-8 rounded border bg-background hover:bg-muted text-xs font-bold flex items-center justify-center transition-colors" title="Diminuir"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const esc = escTextoAtual(menuContexto.id!);
+                        patchTextoPlanta(menuContexto.id!, { escala: Math.max(0.4, +(esc - 0.05).toFixed(2)) });
+                      }}>-</button>
+                    <button className="h-6 w-8 rounded border bg-background hover:bg-muted text-xs font-bold flex items-center justify-center transition-colors" title="Aumentar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const esc = escTextoAtual(menuContexto.id!);
+                        patchTextoPlanta(menuContexto.id!, { escala: Math.min(3, +(esc + 0.05).toFixed(2)) });
+                      }}>+</button>
+                  </div>
+                </div>
                 <button className="block w-full border-t px-2 py-1.5 text-left rounded-sm hover:bg-accent text-destructive" onClick={() => { patchTextoPlanta(menuContexto.id!, { dx: 0, dy: 0 }); setMenuContexto(null); }}>Resetar posição</button>
                 <button className="block w-full border-t px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { restaurarTextoPlanta(menuContexto.id!); setMenuContexto(null); }}>Restaurar padrão</button>
+              </div>
+            )}
+
+            {menuContexto.tipo === 'confrontante' && (
+              <div className="flex flex-col gap-0.5">
+                <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase truncate">Confrontante: {menuContexto.atual}</div>
+                <div className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm">
+                  <span className="text-xs font-semibold text-muted-foreground">Tamanho</span>
+                  <div className="flex items-center gap-1">
+                    <button className="h-6 w-8 rounded border bg-background hover:bg-muted text-xs font-bold flex items-center justify-center transition-colors" title="Diminuir"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        ajustarTamRotuloConf(menuContexto.id!, -1);
+                      }}>-</button>
+                    <button className="h-6 w-8 rounded border bg-background hover:bg-muted text-xs font-bold flex items-center justify-center transition-colors" title="Aumentar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        ajustarTamRotuloConf(menuContexto.id!, 1);
+                      }}>+</button>
+                  </div>
+                </div>
+                <button className="block w-full border-t px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { editarConfrontantePlanta(menuContexto.id!); setMenuContexto(null); }}>Editar dados...</button>
               </div>
             )}
 
@@ -7390,8 +7412,21 @@ export default function EditorPage() {
                       <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: o?.texto ?? '' }); if (t != null) editarObjetoSel({ texto: t }); setMenuContexto(null); }}>
                         <Pencil className="size-3.5" /> Editar texto…
                       </button>
-                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: (o?.tamanho ?? 12) + 2 }); }}><span className="w-3.5 text-center font-bold">A+</span> Aumentar</button>
-                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.max(6, (o?.tamanho ?? 12) - 2) }); }}><span className="w-3.5 text-center font-bold">A-</span> Diminuir</button>
+                      <div className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm">
+                        <span className="text-xs font-semibold text-muted-foreground">Tamanho</span>
+                        <div className="flex items-center gap-1">
+                          <button className="h-6 w-8 rounded border bg-background hover:bg-muted text-xs font-bold flex items-center justify-center transition-colors" title="Diminuir"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              editarObjetoSel({ tamanho: Math.max(6, (o?.tamanho ?? 12) - 1) });
+                            }}>-</button>
+                          <button className="h-6 w-8 rounded border bg-background hover:bg-muted text-xs font-bold flex items-center justify-center transition-colors" title="Aumentar"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              editarObjetoSel({ tamanho: (o?.tamanho ?? 12) + 1 });
+                            }}>+</button>
+                        </div>
+                      </div>
                       <div className="px-2 pt-1">
                         <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Cor do texto</div>
                         <div className="grid grid-cols-5 gap-1.5">
@@ -7412,8 +7447,21 @@ export default function EditorPage() {
                   const o = objetos.find((x) => x.id === menuContexto.id);
                   return (
                     <>
-                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.min(150, (o?.tamanho ?? 30) + 5) }); }}><span className="w-3.5 text-center font-bold">S+</span> Aumentar Símbolo</button>
-                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => { editarObjetoSel({ tamanho: Math.max(10, (o?.tamanho ?? 30) - 5) }); }}><span className="w-3.5 text-center font-bold">S-</span> Diminuir Símbolo</button>
+                      <div className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm">
+                        <span className="text-xs font-semibold text-muted-foreground">Tamanho</span>
+                        <div className="flex items-center gap-1">
+                          <button className="h-6 w-8 rounded border bg-background hover:bg-muted text-xs font-bold flex items-center justify-center transition-colors" title="Diminuir"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              editarObjetoSel({ tamanho: Math.max(10, (o?.tamanho ?? 30) - 2) });
+                            }}>-</button>
+                          <button className="h-6 w-8 rounded border bg-background hover:bg-muted text-xs font-bold flex items-center justify-center transition-colors" title="Aumentar"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              editarObjetoSel({ tamanho: Math.min(150, (o?.tamanho ?? 30) + 2) });
+                            }}>+</button>
+                        </div>
+                      </div>
                       <div className="px-2 pt-1">
                         <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Cor</div>
                         <div className="grid grid-cols-5 gap-1.5">
