@@ -11,6 +11,7 @@ import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
 import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import { rotuloPapelProprietario } from '@/lib/export/papelProprietario';
 import type { ObjetoDesenho } from '@/lib/topo/types';
+import { calcularAreaSgl } from '@/lib/topo/sgl';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -987,13 +988,25 @@ export default function Planta({
         cx /= pc.anel.length;
         cy /= pc.anel.length;
 
-        const label = pc.info?.titulo || 'Certificado';
+        const areaHa = calcularAreaSgl(pc.anel.map(([lat, lon]) => ({ lat, lon, h: 0 }))).areaHa;
+        const label = `${pc.info?.titulo || 'Certificado'} (${numBR(areaHa, 4)} ha)`;
+        const idLabel = `planta.vizinhoCert.${idx}`;
 
         return (
           <g key={`pc_cert_${idx}`}>
             <polygon points={ptsSvg} fill="#0284c7" fillOpacity={0.045} stroke="#0284c7" strokeWidth={0.7} strokeDasharray="3 3" />
             {cx >= DRAW.x0 && cx <= DRAW.x1 && cy >= DRAW.y0 && cy <= DRAW.y1 && (
-              <text x={cx} y={cy} fontSize={fs(6)} fontWeight="bold" textAnchor="middle" fill="#0369a1" fillOpacity={0.7}>{label}</text>
+              <Ted
+                {...tProps(idLabel)}
+                x={cx}
+                y={cy}
+                base={label}
+                size={fs(6.2)}
+                bold
+                anchor="middle"
+                fill="#0369a1"
+                halo
+              />
             )}
           </g>
         );

@@ -6275,8 +6275,8 @@ export default function EditorPage() {
                     <li>Clique em <strong>Copiar Código</strong> abaixo;</li>
                     <li>Clique em <strong>SIGEF 🔗</strong> para abrir a pesquisa;</li>
                     <li>No site, cole no campo <strong>Código do Imóvel</strong> e clique em Pesquisar;</li>
-                    <li>Clique no ícone da <strong>nuvenzinha azul</strong> no final da linha e selecione <strong>CSV → Vértices</strong>;</li>
-                    <li>Volte ao app e clique no botão violeta abaixo para importar o arquivo CSV.</li>
+                    <li>Clique no ícone da <strong>nuvenzinha azul</strong> no final da linha e selecione obrigatoriamente <strong>CSV → Vértices</strong> (evite baixar o GML/Shapefile do contorno, pois eles possuem precisão reduzida de metros/decímetros no portal do INCRA);</li>
+                    <li>Volte ao app e clique no botão violeta abaixo para importar o arquivo CSV para ter os vértices oficiais com precisão milimétrica.</li>
                   </ol>
                 </div>
 

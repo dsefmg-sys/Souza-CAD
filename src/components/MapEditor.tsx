@@ -12,6 +12,7 @@ import { corDivisa, REPRES_LABEL } from '@/lib/topo/sigefVocab';
 import { corPorConfrontante } from '@/lib/topo/coresConfrontante';
 import { numBR, azimute, distancia, azimuteDMS } from '@/lib/topo/geometry';
 import { casasTela } from '@/lib/store/preferencias';
+import { calcularAreaSgl } from '@/lib/topo/sgl';
 import { geoParaUtm, utmParaGeo } from '@/lib/topo/coords';
 import { aplicarOrto, type ModoOrto } from '@/lib/topo/orto';
 import { snapUtm, type SegmentoSnap, type AlvoSnap, type SnapResult } from '@/lib/topo/snap';
@@ -1248,14 +1249,7 @@ export default function MapEditor(props: Props) {
         }
       }
     }
-    // 3) Referências
-    if (referencias) {
-      for (const ring of referencias) {
-        for (const pt of ring) {
-          alvos.push({ leste: pt.leste, norte: pt.norte });
-        }
-      }
-    }
+    // 3) Referências - Removidas do snap de vértice para evitar o snap em coordenadas de baixa precisão (o usuário deve usar o CSV para alta precisão)
     // 4) Vértices vizinhos
     if (verticesVizinho) {
       for (const pt of verticesVizinho) {
@@ -1426,28 +1420,20 @@ export default function MapEditor(props: Props) {
       {/* parcelas certificadas do INCRA: clicáveis (destaca + abre painel) + vértices clicáveis (adotar) */}
       {mostrarCert && parcelasCert.filter((p) => p.anel.length >= 3).map((p, i) => {
         const sel = parcelaCertSel === i;
+        const areaHa = calcularAreaSgl(p.anel.map(([lat, lon]) => ({ lat, lon, h: 0 }))).areaHa;
+        const label = `${p.info?.titulo || 'Certificado'} (${numBR(areaHa, 4)} ha)`;
         return (
           <Polygon key={`pc${i}`} positions={p.anel}
             pathOptions={sel
               ? { color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: Math.max(opacidadeCert, 0.12) }
               : { color: '#0891b2', weight: 1.4, fillColor: '#06b6d4', fillOpacity: opacidadeCert }}
-            eventHandlers={{ click: () => onSelParcelaCert?.(sel ? null : i) }} />
+            eventHandlers={{ click: () => onSelParcelaCert?.(sel ? null : i) }}>
+            <Tooltip permanent direction="center" className="bg-cyan-50/95 border border-cyan-300 text-cyan-800 text-[9px] font-semibold px-1 py-0.5 rounded shadow-sm">
+              {label}
+            </Tooltip>
+          </Polygon>
         );
       })}
-      {mostrarCert && parcelasCert.flatMap((p, i) => p.anel.map((pt, j) => {
-        const sel = parcelaCertSel === i;
-        // rótulo do vértice só aparece com zoom (>=17) ou quando a parcela está selecionada
-        const verRotulo = sel || zoom >= 17;
-        return (
-          <CircleMarker key={`pcv${i}-${j}`} center={pt} radius={sel ? 5 : 4}
-            pathOptions={{ color: sel ? '#b45309' : '#0e7490', fillColor: sel ? '#fde047' : '#ffffff', fillOpacity: 1, weight: 1.6 }}
-            eventHandlers={{ click: () => { if (isDesenho) onCliqueDesenho?.(pt[0], pt[1]); else onAdotarVertice?.(pt[0], pt[1]); } }}>
-            {verRotulo
-              ? <Tooltip permanent direction="top" offset={[0, -4]} className="rotulo-cert">{`${j + 1}`}</Tooltip>
-              : <Tooltip direction="top" offset={[0, -4]}>Vértice certificado — clique para adotar</Tooltip>}
-          </CircleMarker>
-        );
-      }))}
 
       {/* vértices de imóveis VIZINHOS já certificados: coordenada oficial + sigma + código. Clicáveis
           para adotar a coordenada num vértice nosso; também são alvo de encaixe ao desenhar. */}
