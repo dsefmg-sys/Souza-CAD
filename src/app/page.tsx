@@ -6059,7 +6059,7 @@ export default function EditorPage() {
           {(vista === 'mapa' || vista === 'planta') && !telaEstreita && (
             <div
               style={telaEstreita ? undefined : { left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)' }}
-              className={`no-print pointer-events-auto z-[1160] flex items-center gap-x-1.5 overflow-x-auto border border-border/80 bg-background/95 backdrop-blur-sm p-1.5 shadow-xl select-none ${
+              className={`no-print pointer-events-auto z-[1160] flex items-center gap-x-1.5 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1.5 shadow-xl select-none ${
                 telaEstreita ? 'fixed inset-x-1 bottom-1 rounded-xl' : 'absolute rounded-2xl'
               }`}
             >
