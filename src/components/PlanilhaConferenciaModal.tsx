@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { FileSpreadsheet, Download } from 'lucide-react';
-import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo } from '@/lib/topo/types';
+import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, ImovelCad } from '@/lib/topo/types';
 import { linhasConferencia } from '@/lib/export/sigefOds';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { numBR } from '@/lib/topo/geometry';
@@ -18,15 +18,16 @@ interface Props {
   confrontantePorLado: Record<number, string>;
   tecnico: TecnicoData | null;
   onBaixar: () => void;
+  imoveisCadastrados?: ImovelCad[];
 }
 
 // Confere na tela os dados que vão para a planilha SIGEF (identificação + perímetro) ANTES de baixar.
 // Só leitura: para mudar um valor, edite os campos do projeto (o app regenera a planilha correta).
-export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, res, confrontantes, confrontantePorLado, tecnico, onBaixar }: Props) {
+export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, res, confrontantes, confrontantePorLado, tecnico, onBaixar, imoveisCadastrados }: Props) {
   const linhas = useMemo(() => {
     if (!res || !tecnico) return [];
-    try { return linhasConferencia(res, confrontantes, confrontantePorLado, tecnico, imovel.cns || ''); } catch { return []; }
-  }, [res, confrontantes, confrontantePorLado, tecnico, imovel.cns]);
+    try { return linhasConferencia(res, confrontantes, confrontantePorLado, tecnico, imovel.cns || '', imoveisCadastrados); } catch { return []; }
+  }, [res, confrontantes, confrontantePorLado, tecnico, imovel.cns, imoveisCadastrados]);
   const ef = res ? valoresEfetivos(res, imovel) : null;
 
   const idt: [string, string][] = [

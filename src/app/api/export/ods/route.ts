@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
+import { gerarSigefOds, gerarSigefOdsSeparadas, type GlebaSigef } from '@/lib/export/sigefOds';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,8 +38,10 @@ export async function POST(req: Request) {
     let contentType = 'application/vnd.oasis.opendocument.spreadsheet';
     let filename = 'sigef.ods';
 
+    const enrichedGlebas = glebas?.map((g: GlebaSigef) => ({ ...g, imoveisCadastrados: body.imoveisCadastrados }));
+
     if (tipo === 'separadas') {
-      resultBlob = await gerarSigefOdsSeparadas(templateBytes, imovel, tecnico, glebas);
+      resultBlob = await gerarSigefOdsSeparadas(templateBytes, imovel, tecnico, enrichedGlebas);
       contentType = 'application/zip';
       filename = 'sigef_glebas.zip';
     } else {
@@ -50,7 +52,8 @@ export async function POST(req: Request) {
         tecnico,
         confrontantes,
         confrontantePorLado,
-        glebas
+        glebas: enrichedGlebas,
+        imoveisCadastrados: body.imoveisCadastrados
       });
     }
 

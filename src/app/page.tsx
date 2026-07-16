@@ -111,7 +111,7 @@ import { carregarConfigAssinatura, verificarBloqueioFaturamento, type ConfigAssi
 
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
 import PlanilhaConferenciaModal from '@/components/PlanilhaConferenciaModal';
-import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, colegasCad, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
+import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, colegasCad, imoveisCad, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
 import { exportarKML } from '@/lib/export/kml';
 import RelatorioSobreposicaoModal from '@/components/RelatorioSobreposicaoModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -493,6 +493,12 @@ export default function EditorPage() {
   }
   const [setupOk, setSetupOk] = useState(true); // primeiro acesso: cadastro de empresa/autônomo
   const [planilhaConfAberta, setPlanilhaConfAberta] = useState(false); // conferência da planilha SIGEF
+  const [imoveisCadastrados, setImoveisCadastrados] = useState<ImovelCad[]>([]);
+  useEffect(() => {
+    if (planilhaConfAberta) {
+      imoveisCad.listar().then(setImoveisCadastrados).catch(() => {});
+    }
+  }, [planilhaConfAberta]);
 
   const [confrontantePincelId, setConfrontantePincelId] = useState<string>(''); // pincel do modo "pintar confrontantes"
   const [pincelInicioId, setPincelInicioId] = useState<string | null>(null); // início do trecho selecionado para pintura de divisa/confrontante
@@ -3298,7 +3304,8 @@ export default function EditorPage() {
             imovel,
             tecnico: tec,
             glebas: glebasSigef,
-            modeloProprioBase64
+            modeloProprioBase64,
+            imoveisCadastrados
           })
         });
         if (!response.ok) {
@@ -3333,7 +3340,8 @@ export default function EditorPage() {
               denominacao: ativa.denominacao || 'Parcela 1',
               parcela: ativa.parcela || '001'
             }] : undefined,
-            modeloProprioBase64
+            modeloProprioBase64,
+            imoveisCadastrados
           })
         });
         if (!response.ok) {
@@ -7888,6 +7896,7 @@ export default function EditorPage() {
         open={planilhaConfAberta} onOpenChange={setPlanilhaConfAberta}
         imovel={imovel} res={res} confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} tecnico={tecnico}
         onBaixar={() => { setPlanilhaConfAberta(false); exportarOds(); }}
+        imoveisCadastrados={imoveisCadastrados}
       />
       <ImportPreviewModal
         open={!!previewData}

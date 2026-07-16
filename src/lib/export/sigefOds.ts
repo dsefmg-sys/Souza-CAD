@@ -1,9 +1,8 @@
 import JSZip from 'jszip';
-import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex } from '../topo/types';
+import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex, ImovelCad } from '../topo/types';
 import { grausParaDMS } from '../topo/coords';
 import { numBR, formatMatricula } from '../topo/geometry';
 import { escaparXml } from './sanitizar';
-import { descreverConfrontante } from './confrontanteTexto';
 import { obterTipoLimiteEfetivo } from '../topo/sigefVocab';
 
 // Preenche o template oficial do SIGEF (ODS) sem recriar abas/validações:
@@ -15,22 +14,43 @@ import { obterTipoLimiteEfetivo } from '../topo/sigefVocab';
 // corrompem a planilha se vierem colados de outro programa junto com o texto)
 const esc = escaparXml;
 
+export function removerAcentos(str: string): string {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[çÇ]/g, (m) => (m === 'ç' ? 'c' : 'C'));
+}
+
+export function obterNomeConfrontanteFormatado(conf: Confrontante | undefined, imoveisCadastrados?: ImovelCad[]): string {
+  if (!conf) return '';
+  if (conf.matricula && imoveisCadastrados) {
+    const cnsLimpo = (conf.cns || '').replace(/\D/g, '');
+    const match = imoveisCadastrados.find((i) => {
+      const matMatch = i.matricula === conf.matricula;
+      const iCnsLimpo = (i.cns || '').replace(/\D/g, '');
+      const cnsMatch = !cnsLimpo || !iCnsLimpo || iCnsLimpo === cnsLimpo;
+      return matMatch && cnsMatch;
+    });
+    if (match && match.denominacao && match.denominacao.trim()) {
+      return match.denominacao.trim();
+    }
+  }
+  return conf.nome || '';
+}
+
 const TRAILING_FILLER =
   '<table:table-cell table:style-name="ce26" table:number-columns-repeated="1010"/>' +
   '<table:table-cell table:style-name="Default"/><table:table-cell/>';
 
 function celStr(style: string, texto: string): string {
-  return `<table:table-cell table:style-name="${style}" office:value-type="string" calcext:value-type="string"><text:p>${esc(texto)}</text:p></table:table-cell>`;
+  return `<table:table-cell table:style-name="${style}" office:value-type="string" calcext:value-type="string"><text:p>${esc(removerAcentos(texto))}</text:p></table:table-cell>`;
 }
 function celFloat(style: string, valor: number, texto: string): string {
-  return `<table:table-cell table:style-name="${style}" office:value-type="float" office:value="${valor}" calcext:value-type="float"><text:p>${esc(texto)}</text:p></table:table-cell>`;
+  return `<table:table-cell table:style-name="${style}" office:value-type="float" office:value="${valor}" calcext:value-type="float"><text:p>${esc(removerAcentos(texto))}</text:p></table:table-cell>`;
 }
 
-// MESMA descrição do memorial (confrontanteTexto.ts): espólio, matrícula e condição de
-// posseiro saem iguais nos dois documentos. Sem confrontante, a célula fica vazia.
-function descritivoConfrontante(c: Confrontante | undefined): string {
-  return c ? descreverConfrontante(c) : '';
-}
+
 
 // Sigma lido do TXT (precisão do vértice); se não veio, usa o padrão do template.
 function sigmaBR(s: number | undefined, padrao: string): string {
@@ -41,12 +61,13 @@ function linhaVertice(
   v: Vertex,
   conf: Confrontante | undefined,
   tec: TecnicoData,
-  cnsImovel: string
+  cnsImovel: string,
+  imoveisCadastrados?: ImovelCad[]
 ): string {
   const eLong = grausParaDMS(v.lon, { estilo: 'sigef', eixo: 'lon', casas: 3 });
   const nLat = grausParaDMS(v.lat, { estilo: 'sigef', eixo: 'lat', casas: 3 });
   const cns = (conf?.cns || cnsImovel || '').trim();
-  const mat = conf?.matricula ? `Matrícula: ${formatMatricula(conf.matricula)} ` : '';
+  const mat = conf?.matricula ? formatMatricula(conf.matricula) : '';
   // altitude pode vir vazia/NaN de importação só-geográfica — sem isso o .toFixed derrubaria o ODS inteiro
   const elev = Number.isFinite(v.elevacao) ? v.elevacao : 0;
   const cels =
@@ -63,7 +84,7 @@ function linhaVertice(
     celStr('ce40', obterTipoLimiteEfetivo(v, tec.tipoLimite)) +
     celStr('ce40', cns) +
     celStr('ce40', mat) +
-    celStr('ce40', descritivoConfrontante(conf));
+    celStr('ce40', obterNomeConfrontanteFormatado(conf, imoveisCadastrados));
   return `<table:table-row table:style-name="ro2">${cels}${TRAILING_FILLER}</table:table-row>`;
 }
 
@@ -188,6 +209,7 @@ export interface DadosSigef {
   tecnico: TecnicoData;
   confrontantes: Confrontante[];
   confrontantePorLado: Record<number, string>;
+  imoveisCadastrados?: ImovelCad[];
 }
 
 /** Uma gleba para a planilha: dados de cálculo + identificação da parcela. */
@@ -197,6 +219,7 @@ export interface GlebaSigef {
   confrontantePorLado: Record<number, string>;
   denominacao: string;
   parcela: string;
+  imoveisCadastrados?: ImovelCad[];
 }
 
 /** Uma linha de conferência do perímetro (os mesmos valores que vão pra planilha SIGEF). */
@@ -209,7 +232,7 @@ export interface LinhaConferencia {
 /** Monta os dados do perímetro (para conferir na tela ANTES de baixar a planilha .ods). */
 export function linhasConferencia(
   res: ResultadoCalculo, confrontantes: Confrontante[], confrontantePorLado: Record<number, string>,
-  tec: TecnicoData, cnsImovel: string,
+  tec: TecnicoData, cnsImovel: string, imoveisCadastrados?: ImovelCad[]
 ): LinhaConferencia[] {
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
   return res.vertices.map((v, i) => {
@@ -226,7 +249,7 @@ export function linhasConferencia(
       tipoLimite: obterTipoLimiteEfetivo(v, tec.tipoLimite),
       cns: (conf?.cns || cnsImovel || '').trim(),
       matricula: conf?.matricula ? formatMatricula(conf.matricula) : '',
-      confrontante: descritivoConfrontante(conf),
+      confrontante: obterNomeConfrontanteFormatado(conf, imoveisCadastrados),
     };
   });
 }
@@ -237,7 +260,7 @@ function linhasDaGleba(g: GlebaSigef, tecnico: TecnicoData, cnsImovel: string): 
   const mapaC = new Map(g.confrontantes.map((c) => [c.id, c]));
   return g.res.vertices.map((v, i) => {
     const cid = g.confrontantePorLado[i] ?? null;
-    return linhaVertice(v, cid ? mapaC.get(cid) : undefined, tecnico, cnsImovel);
+    return linhaVertice(v, cid ? mapaC.get(cid) : undefined, tecnico, cnsImovel, g.imoveisCadastrados);
   });
 }
 
@@ -268,7 +291,7 @@ export function montarContentXmlGlebas(xml: string, imovel: ImovelData, tecnico:
 export function montarContentXml(xml: string, dados: DadosSigef): string {
   return montarContentXmlGlebas(xml, dados.imovel, dados.tecnico, [{
     res: dados.res, confrontantes: dados.confrontantes, confrontantePorLado: dados.confrontantePorLado,
-    denominacao: 'Parcela 1', parcela: '001',
+    denominacao: 'Parcela 1', parcela: '001', imoveisCadastrados: dados.imoveisCadastrados
   }]);
 }
 
