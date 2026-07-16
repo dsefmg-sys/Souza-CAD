@@ -485,6 +485,9 @@ export default function Planta({
   const clampY = (y: number) => Math.max(DRAW.y0 + 10, Math.min(DRAW.y1 - 10, y));
   // ptsScr precisa ser declarado ANTES de rotulosConf, pois é usado dentro do .map
   const ptsScr = vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
+  const raioMedio = ptsScr.length > 0
+    ? ptsScr.reduce((s, p) => s + Math.hypot(p.x - cx, p.y - cy), 0) / ptsScr.length
+    : 150;
   const rotulosConf = [...trechos.entries()].map(([cid, idxs]) => {
     const c = mapaC.get(cid);
     if (c?.posRotulo) {
@@ -500,9 +503,9 @@ export default function Planta({
     
     // Tenta encontrar uma posição inicial livre de colisão com os vértices do polígono,
     // empurrando para as áreas vazias nas margens externas do desenho.
-    let dist = 135;
-    if (dy > 0.1) dist += 40 * dy;
-    if (Math.abs(dx) > 0.4) dist += 35 * Math.abs(dx);
+    let dist = Math.max(55, Math.min(100, raioMedio * 0.4));
+    if (dy > 0.1) dist += 30 * dy;
+    if (Math.abs(dx) > 0.4) dist += 25 * Math.abs(dx);
     
     let px = mx + dx * dist;
     let py = my + dy * dist;
@@ -1755,7 +1758,7 @@ export default function Planta({
               folhaLast.current = u;
               captura(e);
             } : undefined}>
-            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="#ffffff" fillOpacity={0.85} stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
+            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="transparent" stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
             {placedElements}
           </g>
         );
@@ -1818,7 +1821,7 @@ export default function Planta({
                } : undefined}
                onDoubleClick={editavel && onDblClickVertice ? (e) => { e.stopPropagation(); onDblClickVertice(v, e.clientX, e.clientY); } : undefined}>
               {editavel && <circle cx={vx} cy={vy} r={8} fill="transparent" />}
-              <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} />
+              <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} corCustom={v.tipo === 'M' ? config.corVerticeM : v.tipo === 'P' ? config.corVerticeP : undefined} />
             </g>
             {(() => {
               // linha-guia tracejada ligando o rótulo ao seu vértice (deixa claro de quem é o nome).
@@ -1903,14 +1906,13 @@ export default function Planta({
             )}
             <Ted
               {...tProps(idCentro)}
-              x={cx}
-              y={cy}
+              x={px}
+              y={py}
               base={linhasBase.join('\n')}
               size={fs(11)}
               bold={neg}
               anchor="middle"
               fill="#000000"
-              halo
             />
           </g>
         );
@@ -2079,6 +2081,7 @@ export default function Planta({
         onRemoverSituacao={() => { setSituacaoSel(false); onRemoverSituacao?.(); }}
         situacaoStale={situacaoStale} onAtualizarSituacao={onAtualizarSituacao}
         corCabecalho={corCabecalho} onHeaderContextMenu={onHeaderContextMenu}
+        corVerticeP={config.corVerticeP} corVerticeM={config.corVerticeM}
       />
 
       {/* ---------- CARIMBO (coluna direita - reformulada) ---------- */}
@@ -2288,14 +2291,14 @@ export default function Planta({
         setSelecionadoId(null);
       }
     }}>
-      <DialogContent className="max-w-md p-6 bg-background shadow-2xl rounded-xl">
-        <DialogHeader className="pb-4 border-b border-border/60">
-          <DialogTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2.5 text-primary">
-            <Paintbrush className="size-4" /> Estilo da Gleba (Perímetro)
+      <DialogContent className="fixed right-6 top-6 left-auto translate-x-0 translate-y-0 max-w-sm w-[340px] md:w-[380px] p-5 bg-background/95 backdrop-blur-md shadow-2xl rounded-xl border border-border/80">
+        <DialogHeader className="pb-3 border-b border-border/60">
+          <DialogTitle className="text-xs font-black uppercase tracking-wider flex items-center gap-2 text-primary">
+            <Paintbrush className="size-4" /> Estilo da Gleba e Vértices
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-5 py-3 max-h-[70vh] overflow-y-auto pr-1">
           {/* Cor de Preenchimento */}
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase text-muted-foreground">Cor de Preenchimento</label>
@@ -2305,7 +2308,7 @@ export default function Planta({
                   <button
                     key={c}
                     type="button"
-                    className="size-7 rounded-full border transition-transform hover:scale-110 active:scale-95"
+                    className="size-6 rounded-full border transition-transform hover:scale-110 active:scale-95"
                     style={{
                       backgroundColor: c,
                       borderColor: (config.fillPoligono || '#15803d') === c ? '#0f172a' : 'transparent',
@@ -2315,12 +2318,11 @@ export default function Planta({
                   />
                 ))}
               </div>
-              <div className="flex items-center gap-1.5 border rounded-lg px-2 py-1 bg-muted/40 shrink-0">
-                <span className="text-[10px] text-muted-foreground font-semibold">Custom:</span>
+              <div className="flex items-center gap-1.5 border rounded-lg px-2 py-0.5 bg-muted/40 shrink-0">
                 <input
                   type="color"
                   value={config.fillPoligono || '#15803d'}
-                  className="size-6 cursor-pointer rounded border-0 p-0 bg-transparent"
+                  className="size-5 cursor-pointer rounded border-0 p-0 bg-transparent"
                   onChange={(e) => onConfigPatch?.({ fillPoligono: e.target.value })}
                 />
               </div>
@@ -2336,7 +2338,7 @@ export default function Planta({
                   <button
                     key={c}
                     type="button"
-                    className="size-7 rounded-full border transition-transform hover:scale-110 active:scale-95"
+                    className="size-6 rounded-full border transition-transform hover:scale-110 active:scale-95"
                     style={{
                       backgroundColor: c,
                       borderColor: (config.corPoligono || '#334155') === c ? '#0f172a' : 'transparent',
@@ -2346,12 +2348,11 @@ export default function Planta({
                   />
                 ))}
               </div>
-              <div className="flex items-center gap-1.5 border rounded-lg px-2 py-1 bg-muted/40 shrink-0">
-                <span className="text-[10px] text-muted-foreground font-semibold">Custom:</span>
+              <div className="flex items-center gap-1.5 border rounded-lg px-2 py-0.5 bg-muted/40 shrink-0">
                 <input
                   type="color"
                   value={config.corPoligono || '#334155'}
-                  className="size-6 cursor-pointer rounded border-0 p-0 bg-transparent"
+                  className="size-5 cursor-pointer rounded border-0 p-0 bg-transparent"
                   onChange={(e) => onConfigPatch?.({ corPoligono: e.target.value })}
                 />
               </div>
@@ -2379,7 +2380,7 @@ export default function Planta({
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase text-muted-foreground">Padrão de Hachura</label>
             <select
-              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               value={config.hachura ?? 'nenhuma'}
               onChange={(e) => onConfigPatch?.({ hachura: e.target.value as PlantaConfig['hachura'] })}
             >
@@ -2389,10 +2390,76 @@ export default function Planta({
               <option value="pontos">Hachura Pontilhada</option>
             </select>
           </div>
+
+          {/* Cor dos Vértices P */}
+          <div className="space-y-2 border-t pt-3 border-border/40">
+            <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+              <span className="inline-block size-2 rounded-full" style={{ backgroundColor: config.corVerticeP || '#1e3a8a' }} />
+              Cor dos Vértices P (Círculo)
+            </label>
+            <div className="flex items-center gap-3">
+              <div className="flex flex-wrap gap-1.5 flex-grow">
+                {['#1e3a8a', '#1d4ed8', '#10b981', '#475569', '#dc2626', '#1e293b', '#6366f1'].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="size-6 rounded-full border transition-transform hover:scale-110 active:scale-95"
+                    style={{
+                      backgroundColor: c,
+                      borderColor: (config.corVerticeP || '#1e3a8a') === c ? '#0f172a' : 'transparent',
+                      borderWidth: (config.corVerticeP || '#1e3a8a') === c ? '2.5px' : '1px'
+                    }}
+                    onClick={() => onConfigPatch?.({ corVerticeP: c })}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 border rounded-lg px-2 py-0.5 bg-muted/40 shrink-0">
+                <input
+                  type="color"
+                  value={config.corVerticeP || '#1e3a8a'}
+                  className="size-5 cursor-pointer rounded border-0 p-0 bg-transparent"
+                  onChange={(e) => onConfigPatch?.({ corVerticeP: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Cor dos Vértices M */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+              <span className="inline-block size-2 rotate-45" style={{ backgroundColor: config.corVerticeM || '#f59e0b' }} />
+              Cor dos Vértices M (Marco)
+            </label>
+            <div className="flex items-center gap-3">
+              <div className="flex flex-wrap gap-1.5 flex-grow">
+                {['#f59e0b', '#d97706', '#dc2626', '#16a34a', '#1e3a8a', '#475569', '#4f46e5'].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="size-6 rounded-full border transition-transform hover:scale-110 active:scale-95"
+                    style={{
+                      backgroundColor: c,
+                      borderColor: (config.corVerticeM || '#f59e0b') === c ? '#0f172a' : 'transparent',
+                      borderWidth: (config.corVerticeM || '#f59e0b') === c ? '2.5px' : '1px'
+                    }}
+                    onClick={() => onConfigPatch?.({ corVerticeM: c })}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 border rounded-lg px-2 py-0.5 bg-muted/40 shrink-0">
+                <input
+                  type="color"
+                  value={config.corVerticeM || '#f59e0b'}
+                  className="size-5 cursor-pointer rounded border-0 p-0 bg-transparent"
+                  onChange={(e) => onConfigPatch?.({ corVerticeM: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="pt-4 border-t border-border/60 flex justify-end">
-          <Button onClick={() => { setModalGlebaAberto(false); setSelecionadoId(null); }} size="sm">
+        <div className="pt-3 border-t border-border/60 flex justify-end">
+          <Button onClick={() => { setModalGlebaAberto(false); setSelecionadoId(null); }} size="sm" className="h-8">
             Fechar
           </Button>
         </div>
@@ -2413,8 +2480,10 @@ function FaixaInferior(props: {
   situacaoStale?: boolean; onAtualizarSituacao?: () => void;
   corCabecalho?: string;
   onHeaderContextMenu?: (e: React.MouseEvent) => void;
+  corVerticeP?: string;
+  corVerticeM?: string;
 }) {
-  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu } = props;
+  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu, corVerticeP, corVerticeM } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -2498,7 +2567,7 @@ function FaixaInferior(props: {
             <g transform={`translate(${x2 + 14}, ${y0 + 40})`} fontSize={fs(8.5)} fill="#0f172a">
               {verts.map((v, i) => (
                 <g key={v.tipo} transform={`translate(0, ${i * lh})`}>
-                  <SimboloVertice tipo={v.tipo} cx={5} cy={5} r={v.r} />
+                  <SimboloVertice tipo={v.tipo} cx={5} cy={5} r={v.r} corCustom={v.tipo === 'M' ? corVerticeM : v.tipo === 'P' ? corVerticeP : undefined} />
                   <text x={18} y={8}>Vértice tipo {v.tipo}</text>
                 </g>
               ))}
