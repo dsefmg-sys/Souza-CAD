@@ -7020,31 +7020,31 @@ export default function EditorPage() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">2. Importar Coordenadas de Vizinho</span>
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-foreground">2. Importar CSV dos Vértices de Imóveis Vizinhos Certificados</span>
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="h-8 font-bold"
+                    className="h-8 font-bold shrink-0 bg-amber-500 hover:bg-amber-600 text-white border-transparent"
                     onClick={() => {
                       setSigefMenuAberto(false);
                       verticesVizinhoRef.current?.click();
                     }}
                   >
-                    Importar Arquivo
+                    Importar CSV
                   </Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  Importa o CSV dos Vértices do confrontante para servir como referência e alvo de encaixe no desenho, prevenindo vãos ou sobreposições.
+                  Importa o <strong>CSV dos Vértices</strong> do imóvel vizinho certificado para servir como referência de encaixe no desenho, prevenindo vãos ou sobreposições de divisa.
                 </p>
-                <div className="rounded-lg bg-indigo-500/5 border border-indigo-500/10 p-2 text-[10px] text-muted-foreground space-y-1 mt-1">
-                  <span className="font-extrabold uppercase text-[9px] tracking-wider text-indigo-600 dark:text-indigo-400 block">Como obter o CSV dos Vértices no SIGEF:</span>
-                  <ol className="list-decimal pl-4 space-y-0.5">
-                    <li>Acesse a <strong>Consulta Pública de Certificações</strong> do SIGEF/INCRA.</li>
-                    <li>Busque pela parcela do vizinho usando o código do vértice/imóvel, CPF/CNPJ ou nome do proprietário.</li>
-                    <li>Na página de detalhes da parcela, exporte as coordenadas como <strong>CSV dos Vértices</strong>.</li>
-                    <li>Importe o arquivo baixado aqui no botão acima.</li>
+                <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-2 text-[10px] text-muted-foreground space-y-1 mt-1">
+                  <span className="font-extrabold uppercase text-[9px] tracking-wider text-amber-700 dark:text-amber-400 block">Como obter o CSV dos Vértices:</span>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li><strong>Feche esta tela</strong> e clique no polígono vizinho já importado no mapa (item 1 acima).</li>
+                    <li>No painel que abrir, copie o <strong>Código INCRA</strong> do imóvel certificado.</li>
+                    <li>Acesse o <strong>SIGEF/INCRA</strong>, pesquise pelo Código INCRA copiado.</li>
+                    <li>Na página da parcela, baixe o <strong>CSV dos Vértices</strong>.</li>
+                    <li>Volte aqui e clique em <strong>Importar CSV</strong> (botão amarelo acima).</li>
                   </ol>
                 </div>
               </div>
@@ -7076,27 +7076,6 @@ export default function EditorPage() {
                 </p>
               </div>
 
-              {parcelasCert.length > 0 && (
-                <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-foreground">4. Relatório de Sobreposição</span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 font-bold border-teal-600 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/20"
-                      onClick={() => {
-                        setSigefMenuAberto(false);
-                        setModalSobreposicaoAberto(true);
-                      }}
-                    >
-                      Ver Relatório
-                    </Button>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
-                    Analisa e exibe a sobreposição espacial com os polígonos baixados.
-                  </p>
-                </div>
-              )}
 
               <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 p-3 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
