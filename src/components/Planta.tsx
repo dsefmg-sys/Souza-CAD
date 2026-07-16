@@ -1052,24 +1052,10 @@ export default function Planta({
         
         const tipo = obterTipoDeNome(v.nome);
         const r = (tipo === 'M' ? 3.6 : tipo === 'V' ? 3 : 2.6) * escVert;
-        const idLabel = `vv.${idx}`;
 
         return (
           <g key={`vv_planta_${idx}`}>
             <SimboloVertice tipo={tipo} cx={vx} cy={vy} r={r} corCustom="#2563eb" />
-            {mostrarRotulos && (
-              <Ted
-                {...tProps(idLabel)}
-                x={vx}
-                y={vy}
-                base={v.nome || `V${idx + 1}`}
-                size={Math.max(6, fonteRot - 0.5)}
-                bold
-                anchor="middle"
-                fill="#2563eb"
-                halo
-              />
-            )}
           </g>
         );
       })}
