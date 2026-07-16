@@ -957,7 +957,6 @@ export default function EditorPage() {
   const verticesVizinhoRef = useRef<HTMLInputElement>(null);
   const jsonBackupRef = useRef<HTMLInputElement>(null);
   const corrigirLatLonRef = useRef<HTMLInputElement>(null);
-  const corrigirTxtRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTecnico(carregarTecnico());
@@ -3786,13 +3785,22 @@ export default function EditorPage() {
     } catch { aviso('Não consegui ler o arquivo CSV de vértices do vizinho.'); }
   }
 
+  // As funções de "corrigir lat/lon do CSV" e "corrigir precisão reimportando TXT" foram
+  // consolidadas em src/lib/topo/correcaoPrecisao.ts (com preview + melhor tolerância). Os
+  // botões do menu SIGEF agora abrem o PlanilhaConferenciaModal / ModalSpreadsheet que
+  // disponibilizam a feature via UI única.
+
   /**
    * Corrige lat/lon dos vértices do polígono principal usando o CSV dos Vértices do SIGEF,
    * cruzando pelo codigoSigef. Preserva confrontantePorLado, glebas e todos os demais dados.
+   * Diferente de "Corrigir precisão do TXT" (que casa por proximidade UTM): aqui a chave
+   * é o código SIGEF — o usuário já tem o CSV oficial com a coordenada geográfica correta
+   * do vértice certificado e quer injetar lat/lon direto, sem mexer em E/N.
    */
   async function corrigirLatLonDoCSV(file: File) {
     try {
-      const texto = await file.text();
+      const buf = await file.arrayBuffer();
+      const texto = new TextDecoder('windows-1252').decode(buf);
       const cfg = carregarImportVerticesVizinho();
       const lidos = parseVerticesVizinho(texto, cfg, zona, hemisferio).filter((l) => l.nome);
       if (!lidos.length) { aviso('Nenhum vértice reconhecido no CSV. Confira o mapeamento em Configurações → Importação.'); return; }
@@ -3819,80 +3827,6 @@ export default function EditorPage() {
       setVertices(novos);
       aviso(`lat/lon corrigidos em ${corrigidos} vértice(s) com base no CSV dos Vértices. Confrontantes preservados.`);
     } catch { aviso('Nao foi possivel ler o CSV dos Vertices.'); }
-  }
-
-  /**
-   * Corrige a precisão de vértices reimportando o TXT original.
-   * Cruza por proximidade UTM (tolerância 5 m), só atualiza quando o TXT tem mais casas decimais.
-   * Preserva confrontantePorLado, glebas e todos os demais atributos.
-   *
-   * Causa do problema: vértices adotados do polígono WFS/GML do INCRA têm precisão de metros
-   * (ex: 201300 ao invés de 201300,123). Ao reimportar o TXT com milimétrica, restauramos a precisão.
-   */
-  async function corrigirPrecisaoDoTxt(file: File) {
-    try {
-      const texto = await file.text();
-      const cfgTxt = carregarImportTxt();
-      const pontosBrutos = parseTxt(texto, cfgTxt);
-      const perim = pontosDePerimetro(pontosBrutos);
-      if (!perim.length) { aviso('Nenhum vértice de perímetro reconhecido no TXT.'); return; }
-
-      // Converte TXT para UTM+geo
-      const txtPts = perim.map((p) => {
-        const { lat, lon } = utmParaGeo(p.leste, p.norte, zona, hemisferio);
-        return { ...p, lat, lon };
-      });
-
-      /** Conta dígitos decimais efetivos de um número (desconta zeros à direita). */
-      function decimaisEfetivos(n: number): number {
-        const s = n.toString();
-        const dot = s.indexOf('.');
-        if (dot === -1) return 0;
-        return s.length - dot - 1;
-      }
-
-      const TOLERANCIA = 5; // metros
-      let corrigidos = 0;
-
-      const novos = vertices.map((v) => {
-        // Encontra o ponto do TXT mais próximo
-        let melhor: typeof txtPts[0] | null = null;
-        let menorDist = Infinity;
-        for (const t of txtPts) {
-          const d = Math.hypot(t.leste - v.leste, t.norte - v.norte);
-          if (d < menorDist) { menorDist = d; melhor = t; }
-        }
-        if (!melhor || menorDist > TOLERANCIA) return v;
-
-        // Só atualiza se o TXT tem mais casas decimais (ou seja, mais precisão)
-        const decVE = decimaisEfetivos(v.leste);
-        const decVN = decimaisEfetivos(v.norte);
-        const decTE = decimaisEfetivos(melhor.leste);
-        const decTN = decimaisEfetivos(melhor.norte);
-        if (decTE <= decVE && decTN <= decVN) return v;
-
-        corrigidos++;
-        return {
-          ...v,
-          leste: melhor.leste,
-          norte: melhor.norte,
-          lat: melhor.lat,
-          lon: melhor.lon,
-          elevacao: melhor.elevacao,
-          ...(Number.isFinite(melhor.sigmaX) ? { sigmaX: melhor.sigmaX } : {}),
-          ...(Number.isFinite(melhor.sigmaY) ? { sigmaY: melhor.sigmaY } : {}),
-          ...(Number.isFinite(melhor.sigmaZ) ? { sigmaZ: melhor.sigmaZ } : {}),
-        };
-      });
-
-      if (!corrigidos) {
-        aviso('Nenhum vértice precisou de correção — todos já têm precisão milimétrica.');
-        return;
-      }
-      snap();
-      setVertices(novos);
-      aviso(`Precisão restaurada em ${corrigidos} vértice(s) com base no TXT. Confrontantes preservados.`);
-    } catch { aviso('Não foi possível ler o arquivo TXT.'); }
   }
 
   async function importarVizinhosCertificados(file: File) {
@@ -5083,8 +5017,6 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVerticesVizinho(f); e.currentTarget.value = ''; }} />
         <input ref={corrigirLatLonRef} type="file" accept=".txt,.csv,text/plain"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) corrigirLatLonDoCSV(f); e.currentTarget.value = ''; }} />
-        <input ref={corrigirTxtRef} type="file" accept=".txt,.csv,text/plain"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) corrigirPrecisaoDoTxt(f); e.currentTarget.value = ''; }} />
         <input ref={jsonBackupRef} type="file" accept=".json"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarProjetoJson(f); e.currentTarget.value = ''; }} />
       </div>
@@ -7189,13 +7121,13 @@ export default function EditorPage() {
                     size="sm"
                     variant="outline"
                     className="h-8 font-bold border-violet-500 text-violet-600 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/20"
-                    onClick={() => { setSigefMenuAberto(false); corrigirTxtRef.current?.click(); }}
+                    onClick={() => { setSigefMenuAberto(false); setPlanilhaConfAberta(true); }}
                   >
-                    Selecionar TXT
+                    Abrir
                   </Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  Restaura a precisão milimétrica dos vértices reimportando o TXT original do levantamento. Corrige apenas vértices próximos (≤5m) que tenham poucas casas decimais (ex: coordenada sem decimais vinda do polígono INCRA). Confrontantes e atribuições são preservados.
+                  Restaura a precisão milimétrica dos vértices reimportando o TXT original do levantamento. Compara cada vértice com o ponto do TXT mais próximo (até 0,5m em cada eixo) e só atualiza as coordenadas em que o TXT traz mais casas decimais. Confrontantes, código SIGEF e atribuições são preservados. Mostra um preview das mudanças antes de aplicar.
                 </p>
               </div>
             </div>
