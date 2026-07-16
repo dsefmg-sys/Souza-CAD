@@ -15,6 +15,11 @@ export interface ModelosDocs {
   memorialObservacoes: string;    // parágrafo "OBSERVAÇÕES" do memorial
   requerimentoConfrontantes: string; // declarações sobre confrontantes no requerimento (1+ parágrafos)
   requerimentoResponsabilidade: string; // cláusula de responsabilidade técnica do requerimento
+  requerimentoVenda: string;          // requerimento tipo: venda
+  requerimentoDoacao: string;         // requerimento tipo: doação
+  requerimentoUnificacao: string;     // requerimento tipo: unificação
+  requerimentoDesmembramento: string; // requerimento tipo: desmembramento
+  requerimentoUsucapiao: string;      // requerimento tipo: usucapião
   errataRatificacao: string;      // parágrafo de ratificação (considerações finais) da errata
   anuenciaFecho: string;          // parágrafo de fecho da carta de anuência
   // Variantes urbanas do memorial (usadas quando o imóvel é urbano):
@@ -74,6 +79,41 @@ export const MODELOS_PADRAO: ModelosDocs = {
     'informações, nos termos do §14 do art. 213 da Lei nº 6.015/73. “Verificado, a qualquer tempo, ' +
     'não serem verdadeiros os fatos constantes do memorial descritivo, responderão os requerentes e ' +
     'o profissional que o elaborou pelos prejuízos causados.”',
+  requerimentoVenda:
+    'O requerente, em conjunto com o proprietário registral acima qualificado, vem, ' +
+    'respeitosamente, à presença de Vossa Senhoria, com fundamento no art. 176, §3º e §4º, e ' +
+    'art. 213, inciso II, da Lei nº 6.015/73, com redação dada pela Lei nº 10.931/04, c/c o ' +
+    'Decreto nº 4.449/02, requerer a averbação do georreferenciamento com retificação da área e ' +
+    'da descrição do imóvel rural, visando a adequação da descrição tabular à realidade física ' +
+    'do imóvel, considerando que o mesmo encontra-se em processo de transmissão ao requerente.',
+  requerimentoDoacao:
+    'O requerente, em conjunto com o proprietário registral acima qualificado, vem, ' +
+    'respeitosamente, à presença de Vossa Senhoria, com fundamento no art. 176, §3º e §4º, e ' +
+    'art. 213, inciso II, da Lei nº 6.015/73, com redação dada pela Lei nº 10.931/04, c/c o ' +
+    'Decreto nº 4.449/02, requerer a averbação do georreferenciamento com retificação da área e ' +
+    'da descrição do imóvel rural, visando a adequação da descrição tabular à realidade física ' +
+    'do imóvel, considerando que o mesmo é objeto de doação ao requerente.',
+  requerimentoUnificacao:
+    'O requerente, em conjunto com o proprietário registral acima qualificado, vem, ' +
+    'respeitosamente, à presença de Vossa Senhoria, com fundamento no art. 176, §3º e §4º, e ' +
+    'art. 213, inciso II, da Lei nº 6.015/73, com redação dada pela Lei nº 10.931/04, c/c o ' +
+    'Decreto nº 4.449/02, requerer a averbação do georreferenciamento com retificação da área e ' +
+    'da descrição do imóvel rural, visando a adequação da descrição tabular à realidade física ' +
+    'do imóvel, considerando que o requerente promove a unificação deste imóvel com outro(s) de sua propriedade.',
+  requerimentoDesmembramento:
+    'O requerente, em conjunto com o proprietário registral acima qualificado, vem, ' +
+    'respeitosamente, à presença de Vossa Senhoria, com fundamento no art. 176, §3º e §4º, e ' +
+    'art. 213, inciso II, da Lei nº 6.015/73, com redação dada pela Lei nº 10.931/04, c/c o ' +
+    'Decreto nº 4.449/02, requerer a averbação do georreferenciamento com retificação da área e ' +
+    'da descrição do imóvel rural, visando a adequação da descrição tabular à realidade física ' +
+    'do imóvel, considerando que o requerente promove o desmembramento de parte deste imóvel.',
+  requerimentoUsucapiao:
+    'O requerente, em conjunto com o proprietário registral acima qualificado, vem, ' +
+    'respeitosamente, à presença de Vossa Senhoria, com fundamento no art. 176, §3º e §4º, e ' +
+    'art. 213, inciso II, da Lei nº 6.015/73, com redação dada pela Lei nº 10.931/04, c/c o ' +
+    'Decreto nº 4.449/02, requerer a averbação do georreferenciamento com retificação da área e ' +
+    'da descrição do imóvel rural, visando a adequação da descrição tabular à realidade física ' +
+    'do imóvel, considerando que o requerente busca o reconhecimento da usucapião sobre o imóvel.',
   errataRatificacao:
     'Esta errata visa sanar apenas os erros materiais de digitação referentes às matrículas dos ' +
     'confrontantes e à inclusão de registro profissional, mantendo-se inalterados os limites físicos, ' +

@@ -72,21 +72,6 @@ function rotuloPosse(s: string): string {
     .replace(/proprietário/g, 'possuidor');
 }
 
-function fraseContextoAto(tipo: TipoAtoRequerimento): string {
-  switch (tipo) {
-    case 'doacao':
-      return 'considerando que o mesmo é objeto de doação ao requerente';
-    case 'unificacao':
-      return 'considerando que o requerente promove a unificação deste imóvel com outro(s) de sua propriedade';
-    case 'desmembramento':
-      return 'considerando que o requerente promove o desmembramento de parte deste imóvel';
-    case 'usucapiao':
-      return 'considerando que o requerente busca o reconhecimento da usucapião sobre o imóvel';
-    case 'venda':
-    default:
-      return 'considerando que o mesmo encontra-se em processo de transmissão ao requerente';
-  }
-}
 
 function titulo(t: string) {
   return new Paragraph({ spacing: { before: 200, after: 80 }, children: [new TextRun({ text: t, bold: true, size: 22 })] });
@@ -122,16 +107,6 @@ function blocoPessoa(p: PessoaQualificada): Paragraph[] {
   return out;
 }
 
-function txtRequerimento(tipo: TipoAtoRequerimento): string {
-  return (
-    'O requerente, em conjunto com o proprietário registral acima qualificado, vem, ' +
-    'respeitosamente, à presença de Vossa Senhoria, com fundamento no art. 176, §3º e §4º, e ' +
-    'art. 213, inciso II, da Lei nº 6.015/73, com redação dada pela Lei nº 10.931/04, c/c o ' +
-    'Decreto nº 4.449/02, requerer a averbação do georreferenciamento com retificação da área e ' +
-    'da descrição do imóvel rural, visando a adequação da descrição tabular à realidade física ' +
-    `do imóvel, ${fraseContextoAto(tipo)}.`
-  );
-}
 
 export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Promise<Blob> {
   const input = sanitizarProfundo(inputBruto);
@@ -177,7 +152,14 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   });
 
   c.push(titulo('DO REQUERIMENTO'));
-  c.push(par(txtRequerimento(tipo)));
+  let reqTextoRaw = '';
+  if (tipo === 'doacao') reqTextoRaw = modelos.requerimentoDoacao;
+  else if (tipo === 'unificacao') reqTextoRaw = modelos.requerimentoUnificacao;
+  else if (tipo === 'desmembramento') reqTextoRaw = modelos.requerimentoDesmembramento;
+  else if (tipo === 'usucapiao') reqTextoRaw = modelos.requerimentoUsucapiao;
+  else reqTextoRaw = modelos.requerimentoVenda;
+
+  c.push(par(preencherModelo(reqTextoRaw, varsModelo)));
 
   c.push(titulo('DA IDENTIFICAÇÃO DO IMÓVEL'));
   const origens = (imovel.matriculasOrigem ?? []).filter((m) => m.trim());
