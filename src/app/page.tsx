@@ -6377,19 +6377,22 @@ export default function EditorPage() {
 
 
           {vista === '3d' ? (
-            <Map3DViewer
-              vertices={vertices}
-              objetos={objetos}
-              pontos3D={pontos3dCurvas()}
-              verticesSemCota={vertices.filter((v) => !v.elevacao).length}
-              onCompletarAltitudes={completarAltitudes}
-              zona={zona}
-              hemisferio={hemisferio}
-              imovel={imovel}
-              onVoltar2D={() => setVista('mapa')}
-            />
+            <ErrorBoundary onReset={() => setVista('mapa')}>
+              <Map3DViewer
+                vertices={vertices}
+                objetos={objetos}
+                pontos3D={pontos3dCurvas()}
+                verticesSemCota={vertices.filter((v) => !v.elevacao).length}
+                onCompletarAltitudes={completarAltitudes}
+                zona={zona}
+                hemisferio={hemisferio}
+                imovel={imovel}
+                onVoltar2D={() => setVista('mapa')}
+              />
+            </ErrorBoundary>
           ) : vista === 'mapa' ? (
-               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
+            <ErrorBoundary onReset={() => setVista('planta')}>
+              <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                  centroPadrao={entradaMapa.centro} zoomPadrao={entradaMapa.zoom}
                  onAtivar3D={modo3dAtivado ? () => setVista('3d') : undefined}
                 confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
@@ -6415,6 +6418,7 @@ export default function EditorPage() {
                   if (modo !== 'navegar') { setModo('navegar'); setDesenhoBuffer([]); return; }
                   setMenuContexto({ tipo: 'mapa', lat, lon, x, y });
                 }} />
+            </ErrorBoundary>
           ) : null}
 
           {/* MULTI-SELEÇÃO: ação flutuante para apagar os vértices marcados */}
@@ -6916,7 +6920,9 @@ export default function EditorPage() {
         correcoes={correcoes}
         onBaixar={() => setBaixou((b) => ({ ...b, req: true }))}
       />
-      <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
+      <ErrorBoundary onReset={() => setCalcAberta(false)}>
+        <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
+      </ErrorBoundary>
       <VerticeVirtualModal
         open={vvAberto}
         onOpenChange={(o) => { setVvAberto(o); if (!o) setVvBase(null); }}
@@ -6968,7 +6974,9 @@ export default function EditorPage() {
             aviso('Dados da IA aplicados ao confrontante — confira antes de gerar as peças.');
           }
         }} />
-      <PrecoSugeridoModal open={precoSugAberto} onOpenChange={setPrecoSugAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
+      <ErrorBoundary onReset={() => setPrecoSugAberto(false)}>
+        <PrecoSugeridoModal open={precoSugAberto} onOpenChange={setPrecoSugAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
+      </ErrorBoundary>
       <Dialog open={sigefMenuAberto} onOpenChange={setSigefMenuAberto}>
         <DialogContent className="max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -7172,9 +7180,11 @@ export default function EditorPage() {
           </div>
         </DialogContent>
       </Dialog>
-      <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
-        areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
-        onExportarShapefiles={exportarCarShapefiles} onImportarShapefile={() => shapefileRef.current?.click()} processando={processando} />
+      <ErrorBoundary onReset={() => setCarAberto(false)}>
+        <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
+          areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
+          onExportarShapefiles={exportarCarShapefiles} onImportarShapefile={() => shapefileRef.current?.click()} processando={processando} />
+      </ErrorBoundary>
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} correcoes={correcoes} onChangeCorrecoes={setCorrecoes} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
       <AnuenciaModal open={anuenciaAberta} onOpenChange={setAnuenciaAberta} confrontantes={confrontantes} lados={lados} mapa={confrontantePorLado} imovel={imovel} tecnico={tecnico} />
       <HistoriaModal open={historiaAberta} onOpenChange={setHistoriaAberta} />
@@ -7270,8 +7280,10 @@ export default function EditorPage() {
         }}
         sugCartorios={sugCartorios}
       />
-      <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
-        areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
+      <ErrorBoundary onReset={() => setTrtAberto(false)}>
+        <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
+          areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
+      </ErrorBoundary>
       <Dialog open={conferirAberto} onOpenChange={setConferirAberto}>
         <DialogContent className="max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -7283,22 +7295,24 @@ export default function EditorPage() {
             onIrParaConflito={(lat, lon) => { setConferirAberto(false); setVista('mapa'); setFocoLatLng([lat, lon]); }} />
         </DialogContent>
       </Dialog>
-      <MemorialPreviewModal
-        open={prevMemorialAberto}
-        onOpenChange={setPrevMemorialAberto}
-        vertices={vertices}
-        confrontantes={confrontantes}
-        confrontantePorLado={confrontantePorLado}
-        imovel={imovel}
-        tecnico={tecnico}
-        zona={zona}
-        hemisferio={hemisferio}
-        modo={prevMemorialModo}
-        dataExtenso={dataPorExtenso()}
-        requerente={requerente}
-        transmitente={transmitente}
-        onBaixar={() => exportarMemorial(prevMemorialModo)}
-      />
+      <ErrorBoundary onReset={() => setPrevMemorialAberto(false)}>
+        <MemorialPreviewModal
+          open={prevMemorialAberto}
+          onOpenChange={setPrevMemorialAberto}
+          vertices={vertices}
+          confrontantes={confrontantes}
+          confrontantePorLado={confrontantePorLado}
+          imovel={imovel}
+          tecnico={tecnico}
+          zona={zona}
+          hemisferio={hemisferio}
+          modo={prevMemorialModo}
+          dataExtenso={dataPorExtenso()}
+          requerente={requerente}
+          transmitente={transmitente}
+          onBaixar={() => exportarMemorial(prevMemorialModo)}
+        />
+      </ErrorBoundary>
       <ConsultarModal open={consultarAberto} onOpenChange={setConsultarAberto}
         onInserirProprietario={inserirPropConsulta} onInserirConfrontante={inserirConfConsulta}
         onInserirImovel={inserirImovelConsulta} onInserirCartorio={inserirCartorioConsulta} />
@@ -7841,15 +7855,17 @@ export default function EditorPage() {
         </defs>
       </svg>
 
-      <ModalSpreadsheet
-        isOpen={planilhaAberta}
-        onClose={() => setPlanilhaAberta(false)}
-        vertices={vertices}
-        onSave={salvarAlteracoesPlanilha}
-        contadorSugerido={contadorSugerido}
-        zona={zona}
-        hemisferio={hemisferio}
-      />
+      <ErrorBoundary onReset={() => setPlanilhaAberta(false)}>
+        <ModalSpreadsheet
+          isOpen={planilhaAberta}
+          onClose={() => setPlanilhaAberta(false)}
+          vertices={vertices}
+          onSave={salvarAlteracoesPlanilha}
+          contadorSugerido={contadorSugerido}
+          zona={zona}
+          hemisferio={hemisferio}
+        />
+      </ErrorBoundary>
       <ModalImport
         isOpen={importModalAberto}
         onClose={() => setImportModalAberto(false)}
@@ -8005,13 +8021,15 @@ export default function EditorPage() {
         numGlebas={glebas.length}
       />
       <PontosBancoModal open={pontosAberto} onOpenChange={setPontosAberto} />
-      <PlanilhaConferenciaModal
-        open={planilhaConfAberta} onOpenChange={setPlanilhaConfAberta}
-        imovel={imovel} res={res} confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} tecnico={tecnico}
-        onBaixar={() => { setPlanilhaConfAberta(false); exportarOds(); }}
-        imoveisCadastrados={imoveisCadastrados}
-        onAplicarCorrecoes={aplicarCorrecoesPrecisaoLocal}
-      />
+      <ErrorBoundary onReset={() => setPlanilhaConfAberta(false)}>
+        <PlanilhaConferenciaModal
+          open={planilhaConfAberta} onOpenChange={setPlanilhaConfAberta}
+          imovel={imovel} res={res} confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} tecnico={tecnico}
+          onBaixar={() => { setPlanilhaConfAberta(false); exportarOds(); }}
+          imoveisCadastrados={imoveisCadastrados}
+          onAplicarCorrecoes={aplicarCorrecoesPrecisaoLocal}
+        />
+      </ErrorBoundary>
       <ImportPreviewModal
         open={!!previewData}
         onOpenChange={(open) => { if (!open) setPreviewData(null); }}
