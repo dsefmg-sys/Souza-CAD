@@ -149,7 +149,7 @@ function setTextoP(rowStr: string, indice: number, novo: string): string {
   let i = -1;
   return rowStr.replace(/<text:p>([\s\S]*?)<\/text:p>/g, (m) => {
     i++;
-    return i === indice ? `<text:p>${esc(novo)}</text:p>` : m;
+    return i === indice ? `<text:p>${esc(removerAcentos(novo))}</text:p>` : m;
   });
 }
 
@@ -171,7 +171,7 @@ function setCelulaTexto(rowStr: string, ordinal: number, valor: string): string 
       + ' office:value-type="string" calcext:value-type="string"';
     // preserva eventuais controles de formulário já presentes na célula
     const controles = inner ? (inner.match(/<draw:control\b[\s\S]*?\/>/g) || []).join('') : '';
-    return `<table:table-cell${a}><text:p>${esc(valor)}</text:p>${controles}</table:table-cell>`;
+    return `<table:table-cell${a}><text:p>${esc(removerAcentos(valor))}</text:p>${controles}</table:table-cell>`;
   });
 }
 
@@ -320,7 +320,7 @@ export async function gerarSigefOdsSeparadas(templateBytes: ArrayBuffer | Uint8A
   const usados = new Set<string>();
   for (const g of glebas) {
     const bytes = await montarOds(templateBytes, (xml) => montarContentXmlGlebas(xml, imovel, tecnico, [g]));
-    const nome = `SIGEF - ${(imovel.denominacao || 'imovel')} - ${g.denominacao}`.replace(/[\\/:*?"<>|]/g, '_');
+    const nome = removerAcentos(`SIGEF - ${(imovel.denominacao || 'imovel')} - ${g.denominacao}`).replace(/[\\/:*?"<>|]/g, '_');
     let n = nome; let k = 2; while (usados.has(n)) n = `${nome} (${k++})`;
     usados.add(n);
     zipOut.file(`${n}.ods`, bytes);

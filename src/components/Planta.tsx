@@ -1519,8 +1519,15 @@ export default function Planta({
         const isHorizontal = c.layoutAssinatura === 'horizontal' && temConjLinhas;
 
         const gap = 52;
-        const colW = Math.max(220, fz * 14.5);
-        const boxW = isHorizontal ? colW * 2 + gap : Math.max(172, fz * 18 + 16);
+        // Largura estimada do texto mais longo (heurística: 0.55 * fz por caractere, margem de 24 cada lado)
+        const charW = fz * 0.55;
+        const margin = 24;
+        const maxTextLen = Math.max(...todas.map((t) => t.length), 12);
+        const textFitW = maxTextLen * charW + margin * 2;
+        const colW = isHorizontal
+          ? Math.max(220, fz * 14.5, textFitW)
+          : 0;
+        const boxW = isHorizontal ? colW * 2 + gap : Math.max(172, textFitW);
         const half = boxW / 2 - 8;
         const lineH = fz + 3;
         const signRoom = Math.max(40, fz * 4); // espaço acima de cada linha para a firma
