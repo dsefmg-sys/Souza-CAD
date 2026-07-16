@@ -258,7 +258,7 @@ function deParaNiceInterval(alvo: number): number {
 
 export default function Planta({
   vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado,
-  zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], parcelasCert = [], resumoGlebas = [], objetos = [], config = {},
+  zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], parcelasCert = [], resumoGlebas = [], objetos = [], config = {}, verticesVizinho = [],
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
@@ -1034,6 +1034,36 @@ export default function Planta({
                 y={cy}
                 base={label}
                 size={fs(6.2)}
+                bold
+                anchor="middle"
+                fill="#2563eb"
+                halo
+              />
+            )}
+          </g>
+        );
+      })}
+
+      {/* ---------- VÉRTICES DE IMÓVEIS VIZINHOS IMPORTADOS (CSV) ---------- */}
+      {verVizinhoVtx && verticesVizinho.map((v, idx) => {
+        const u = geoParaUtm(v.lat, v.lon, zona, hemisferio);
+        const vx = sx(u.leste), vy = sy(u.norte);
+        if (vx < DRAW.x0 || vx > DRAW.x1 || vy < DRAW.y0 || vy > DRAW.y1) return null;
+        
+        const tipo = obterTipoDeNome(v.nome);
+        const r = (tipo === 'M' ? 3.6 : tipo === 'V' ? 3 : 2.6) * escVert;
+        const idLabel = `vv.${idx}`;
+
+        return (
+          <g key={`vv_planta_${idx}`}>
+            <SimboloVertice tipo={tipo} cx={vx} cy={vy} r={r} corCustom="#2563eb" />
+            {mostrarRotulos && (
+              <Ted
+                {...tProps(idLabel)}
+                x={vx}
+                y={vy}
+                base={v.nome || `V${idx + 1}`}
+                size={Math.max(6, fonteRot - 0.5)}
                 bold
                 anchor="middle"
                 fill="#2563eb"
@@ -2959,8 +2989,8 @@ function CarimboA3(props: {
 }
 
 // símbolo do vértice por tipo (M = losango, P = círculo, V = triângulo)
-function SimboloVertice({ tipo, cx, cy, r }: { tipo: string; cx: number; cy: number; r: number }) {
-  const cor = tipo === 'M' ? '#f59e0b' : tipo === 'V' ? '#a855f7' : '#1e3a8a';
+function SimboloVertice({ tipo, cx, cy, r, corCustom }: { tipo: string; cx: number; cy: number; r: number; corCustom?: string }) {
+  const cor = corCustom || (tipo === 'M' ? '#f59e0b' : tipo === 'V' ? '#a855f7' : '#1e3a8a');
   if (tipo === 'M') {
     const d = r * 1.15;
     return <rect x={cx - d} y={cy - d} width={d * 2} height={d * 2} transform={`rotate(45 ${cx} ${cy})`} fill={cor} stroke="#000" strokeWidth={0.5} />;
@@ -2969,6 +2999,13 @@ function SimboloVertice({ tipo, cx, cy, r }: { tipo: string; cx: number; cy: num
     return <polygon points={`${cx},${cy - r * 1.25} ${cx + r * 1.15},${cy + r} ${cx - r * 1.15},${cy + r}`} fill={cor} stroke="#000" strokeWidth={0.5} />;
   }
   return <circle cx={cx} cy={cy} r={r} fill={cor} stroke="#000" strokeWidth={0.5} />;
+}
+
+function obterTipoDeNome(nome: string): 'M' | 'P' | 'V' {
+  const n = (nome || '').toUpperCase();
+  if (/-M-/i.test(n) || n.startsWith('M')) return 'M';
+  if (/-V-/i.test(n) || n.startsWith('V')) return 'V';
+  return 'P';
 }
 
 function SimboloDivisa({ tipo, x, y }: { tipo: string; x: number; y: number }) {

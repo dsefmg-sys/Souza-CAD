@@ -189,6 +189,42 @@ function iconeNomeVertice(texto: string, tam: number, dirx = 0, diry = 0) {
   });
 }
 
+function iconeNomeVerticeVizinho(texto: string, tam: number) {
+  const fs = tam && tam > 0 ? tam : 11;
+  const txt = (texto || '').replace(/</g, '&lt;');
+  const { w: estW, h: estH } = estimarCaixaRotulo(texto, fs);
+  const halo = '-1px -1px 2px #fff,1px -1px 2px #fff,-1px 1px 2px #fff,1px 1px 2px #fff,0 0 4px #fff';
+  return L.divIcon({
+    className: 'vertice-vizinho-nome',
+    html: `<div style="font-size:${fs}px;font-weight:700;color:#2563eb;text-shadow:${halo};white-space:nowrap;width:max-content;display:inline-block">${txt}</div>`,
+    iconSize: [1, 1],
+    iconAnchor: [estW / 2, estH / 2 + 10],
+  });
+}
+
+function obterTipoDeNome(nome: string): 'M' | 'P' | 'V' {
+  const n = (nome || '').toUpperCase();
+  if (/-M-/i.test(n) || n.startsWith('M')) return 'M';
+  if (/-V-/i.test(n) || n.startsWith('V')) return 'V';
+  return 'P';
+}
+
+function iconeVerticeVizinho(v: VerticeVizinho) {
+  const tipo = obterTipoDeNome(v.nome);
+  const cor = '#2563eb'; // azul médio para vizinhos
+  const borda = '#ffffff';
+  const sw = 1.6;
+  let shape: string;
+  if (tipo === 'M') shape = `<rect x="4" y="4" width="9" height="9" transform="rotate(45 8.5 8.5)" fill="${cor}" stroke="${borda}" stroke-width="${sw}"/>`;
+  else if (tipo === 'V') shape = `<polygon points="8.5,2 15,15 2,15" fill="${cor}" stroke="${borda}" stroke-width="${sw}"/>`;
+  else shape = `<circle cx="8.5" cy="8.5" r="5.5" fill="${cor}" stroke="${borda}" stroke-width="${sw}"/>`;
+  return L.divIcon({
+    className: 'vertice-vizinho-icon',
+    html: `<svg width="17" height="17" viewBox="0 0 17 17" style="overflow:visible;filter:drop-shadow(0 0 1px rgba(0,0,0,.8))">${shape}</svg>`,
+    iconSize: [17, 17], iconAnchor: [8.5, 8.5],
+  });
+}
+
 // ponta arrastável do tique de troca de confrontante (visível no mapa para poder pegar)
 const L_DIVISA_ICON = L.divIcon({
   className: 'ponta-divisa',
@@ -1440,19 +1476,28 @@ export default function MapEditor(props: Props) {
       {/* vértices de imóveis VIZINHOS já certificados: coordenada oficial + sigma + código. Clicáveis
           para adotar a coordenada num vértice nosso; também são alvo de encaixe ao desenhar. */}
       {verticesVizinho.map((p, i) => {
-        const verRotulo = mostrarRotulos || zoom >= 17;
+        const verRotulo = mostrarRotulos;
         const detalhe = [
           p.metodo ? `Método ${p.metodo}` : '',
           (p.sigmaX != null || p.sigmaY != null) ? `σ ${numBR(p.sigmaX ?? p.sigmaY ?? 0, 3)} m` : '',
         ].filter(Boolean).join(' · ');
         return (
-          <CircleMarker key={`vv${i}`} center={[p.lat, p.lon]} radius={4}
-            pathOptions={{ color: '#a21caf', fillColor: '#f0abfc', fillOpacity: 1, weight: 1.6 }}
-            eventHandlers={{ click: () => { if (isDesenho) onCliqueDesenho?.(p.lat, p.lon); else onAdotarVertice?.(p.lat, p.lon); } }}>
-            {verRotulo
-              ? <Tooltip permanent direction="top" offset={[0, -4]} className="rotulo-cert">{p.nome || `V${i + 1}`}</Tooltip>
-              : <Tooltip direction="top" offset={[0, -4]}>{`Vizinho certificado ${p.nome}${detalhe ? ` — ${detalhe}` : ''} — clique para adotar`}</Tooltip>}
-          </CircleMarker>
+          <Fragment key={`vv_frag_${i}`}>
+            <Marker key={`vv${i}`} position={[p.lat, p.lon]}
+              icon={iconeVerticeVizinho(p)}
+              eventHandlers={{ click: () => { if (isDesenho) onCliqueDesenho?.(p.lat, p.lon); else onAdotarVertice?.(p.lat, p.lon); } }}>
+              {!verRotulo && (
+                <Tooltip direction="top" offset={[0, -4]}>{`Vizinho certificado ${p.nome}${detalhe ? ` — ${detalhe}` : ''} — clique para adotar`}</Tooltip>
+              )}
+            </Marker>
+            {verRotulo && (
+              <Marker
+                position={[p.lat, p.lon]}
+                interactive={false}
+                icon={iconeNomeVerticeVizinho(p.nome || `V${i + 1}`, Math.round(tamNomes * fzZoom))}
+              />
+            )}
+          </Fragment>
         );
       })}
 
