@@ -30,10 +30,30 @@ function toTitleCase(str: string): string {
     .join(' ');
 }
 
-/** Nome comum entre duas etiquetas de divisa (o confrontante do trecho entre elas). */
+/**
+ * Nome do confrontante entre duas etiquetas de divisa.
+ *
+ * Em "DIVISA A X B" e "DIVISA B X C" os dois vértices dividem A/B e B/C. O confrontante do
+ * trecho entre eles é o nome que aparece do MESMO LADO nos dois códigos (o "B", que está
+ * em a[1] e b[0] — o lado que muda entre as duas etiquetas é o confrontante do trecho).
+ *
+ * Algoritmo: pra cada posição (0, 1), se os tokens das duas etiquetas batem, esse é o
+ * confrontante. Preferência por posições correspondentes (a[0]==b[0] ou a[1]==b[1]) em vez
+ * de match em qualquer posição (que era o bug antigo — pegava "A" em "DIVISA A X B" + "DIVISA
+ * B X A" como se A fosse o confrontante, mas na verdade o trecho está entre A e B nos dois
+ * lados do polígono).
+ */
 function nomeComum(labelA: string, labelB: string): string {
   const a = partesDaDivisa(labelA);
   const b = partesDaDivisa(labelB);
+  // Itera nas posições (0 e 1) e prioriza o match na MESMA posição. A primeira que bater
+  // vence — isso captura a semântica do "lado que muda entre as duas etiquetas".
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (a[i] !== undefined && b[i] !== undefined && a[i].toUpperCase() === b[i].toUpperCase()) {
+      return toTitleCase(a[i]);
+    }
+  }
+  // Fallback: match em qualquer posição (caso degenerado onde tokens mudaram de ordem).
   for (const x of a) {
     for (const y of b) {
       if (x.toUpperCase() === y.toUpperCase()) return toTitleCase(x);

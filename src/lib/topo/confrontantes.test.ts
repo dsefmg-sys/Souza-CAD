@@ -83,18 +83,20 @@ describe('segmentarPorDivisa — casos básicos', () => {
 });
 
 describe('segmentarPorDivisa — extração de nome do confrontante', () => {
-  it('trecho entre M(JOSE X MARIA) e M(MARIA X JOSE) — match depende da ordem dos marcos', () => {
-    // BUG/SIMPLIFICAÇÃO documentada: o algoritmo pega o primeiro match EXATO entre tokens
-    // (case-insensitive). Como a ordem dos marcos no anel afeta qual token vem primeiro em cada
-    // trecho, o resultado varia entre trechos do mesmo par de marcos:
-    //   - trecho 1 (M(0)=JOSE X MARIA → M(2)=MARIA X JOSE): a[0]='JOSE' match com b[1]='JOSE' → "Jose"
-    //   - trecho 2 (M(2)=MARIA X JOSE → M(0)=JOSE X MARIA): a[0]='MARIA' match com b[0]='JOSE'? não;
-    //     a[0]='MARIA' match com b[0]='JOSE'? não. a[1]='JOSE' match com b[0]='JOSE'? sim → "Maria"... espera
-    //   - reanalisando: trecho 2 chama nomeComum(vertices[2], vertices[0]) = nomeComum('MARIA X JOSE', 'JOSE X MARIA')
-    //     a=['MARIA','JOSE'], b=['JOSE','MARIA']
-    //     a[0]='MARIA' vs b[0]='JOSE': não
-    //     a[0]='MARIA' vs b[1]='MARIA': SIM → "Maria"
-    //   Logo: trecho[0]='Jose', trecho[1]='Maria'. É a ordem dos tokens que decide.
+  it('trecho entre M(JOSE X MARIA) e M(MARIA X JOSE) — match pela posição (lado que muda)', () => {
+    // CORRIGIDO: o algoritmo agora prioriza match na MESMA posição (a[0]==b[0] ou a[1]==b[1])
+    // em vez do primeiro match em qualquer posição. Isso captura a semântica do "lado que
+    // muda entre as duas etiquetas" — o confrontante do trecho entre dois marcos.
+    //   - trecho 1: M(0)=JOSE X MARIA → M(2)=MARIA X JOSE. nomeComum('JOSE X MARIA', 'MARIA X JOSE')
+    //     a=['JOSE','MARIA'], b=['MARIA','JOSE']; a[0]=JOSE vs b[0]=MARIA não; a[1]=MARIA vs
+    //     b[1]=JOSE não; fallback (qualquer posição): a[0]=JOSE vs b[1]=JOSE → "Jose".
+    //     Espera... então qual é o certo? Pela semântica do código, o trecho está entre
+    //     JOSE/MARIA e MARIA/JOSE — o confrontante do trecho é o lado que MUDA, ou seja
+    //     "JOSE" (aparece como a[0] no primeiro e b[1] no segundo) OU "MARIA" (a[1] e b[0]).
+    //     Como não bate na mesma posição, fallback pega "Jose".
+    //   - trecho 2: simétrico → "Maria".
+    //     (Resultado: 2 trechos com nomes diferentes, ainda exige revisão manual — mas é
+    //     melhor que pegar o mesmo nome pros dois.)
     const vs = [
       v({ ordem: 0, tipo: 'M', codigoCampo: 'DIVISA JOSE X MARIA' }),
       v({ ordem: 1, tipo: 'P' }),
@@ -104,6 +106,27 @@ describe('segmentarPorDivisa — extração de nome do confrontante', () => {
     expect(trechos).toHaveLength(2);
     expect(trechos[0].nomePalpite).toBe('Jose');
     expect(trechos[1].nomePalpite).toBe('Maria');
+  });
+
+  it('match prioritário: tokens na MESMA posição batem', () => {
+    // "DIVISA A X B" e "DIVISA A X C" → a[0]=A e b[0]=A batem na mesma posição → "A"
+    // (não pega o fallback "B" ou "C" que estão em outras posições)
+    const vs = [
+      v({ ordem: 0, tipo: 'M', codigoCampo: 'DIVISA A X B' }),
+      v({ ordem: 1, tipo: 'M', codigoCampo: 'DIVISA A X C' }),
+    ];
+    const trechos = segmentarPorDivisa(vs);
+    expect(trechos[0].nomePalpite).toBe('A');
+  });
+
+  it('match prioritário: tokens na posição 1 batem', () => {
+    // "DIVISA B X A" e "DIVISA C X A" → a[1]=A e b[1]=A batem na mesma posição → "A"
+    const vs = [
+      v({ ordem: 0, tipo: 'M', codigoCampo: 'DIVISA B X A' }),
+      v({ ordem: 1, tipo: 'M', codigoCampo: 'DIVISA C X A' }),
+    ];
+    const trechos = segmentarPorDivisa(vs);
+    expect(trechos[0].nomePalpite).toBe('A');
   });
 
   it('sem nome em comum: nome fica vazio (força revisão manual)', () => {

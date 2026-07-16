@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aplicarOrto, parseAzimute, type ModoOrto } from './orto';
+import { aplicarOrto, parseAzimute, passoParaDirecoes, type ModoOrto } from './orto';
 
 const p = (leste: number, norte: number) => ({ leste, norte });
 // Tolerância para comparações de float (8 casas decimais = 0.000000005m, < 1mm)
@@ -54,12 +54,33 @@ describe('aplicarOrto — ortogonal 90°', () => {
   });
 
   it('45° (fronteira) trava pra 90° (Math.round arredonda 0.5 pra cima)', () => {
-    // Math.round(45/90) = Math.round(0.5) = 1, então trava em 90°
-    // Design choice do código: usar Math.round (banker's rounding não) — 0.5 sempre vai pra cima.
+    // LIMITÇÃO DOCUMENTADA: com passo 90, o `Math.round` do JS arredonda 0.5 pra CIMA, então
+    // 45° trava em 90° (Leste) em vez de 0° (Norte). Geometricamente, 45° é equidistante
+    // de 0 e 90 — não tem resposta "certa". Pra ter 8 direções (com 45° real), use passo 45.
+    // Veja o comentário no `aplicarOrto` em orto.ts e `passoParaDirecoes(8) === 45`.
     const r = aplicarOrto(p(100, 100), p(107.071, 107.071) /* 10m a 45° */, 90);
     expect(r.leste).toBeCloseTo(110, 3);
     expect(r.norte).toBeCloseTo(100, 3);
   });
+
+  it('45° com passo 45 trava em 45° (8 direções)', () => {
+    // Diferente do passo 90: aqui 45° é uma trava válida, e o ponto é projetado
+    // exatamente em (10·sin(45°), 10·cos(45°)) = (7.071, 7.071)
+    const r = aplicarOrto(p(0, 0), p(7.071, 7.071), 45);
+    expect(r.leste).toBeCloseTo(7.071, 3);
+    expect(r.norte).toBeCloseTo(7.071, 3);
+  });
+});
+
+describe('passoParaDirecoes', () => {
+  it('4 direções → passo 90', () => expect(passoParaDirecoes(4)).toBe(90));
+  it('8 direções → passo 45', () => expect(passoParaDirecoes(8)).toBe(45));
+  it('12 direções → passo 30', () => expect(passoParaDirecoes(12)).toBe(30));
+  it('24 direções → passo 15', () => expect(passoParaDirecoes(24)).toBe(15));
+  it('36 direções → passo 10', () => expect(passoParaDirecoes(36)).toBe(10));
+  it('número inválido (< 1) → 0', () => expect(passoParaDirecoes(0)).toBe(0));
+  it('número inválido (> 360) → 0', () => expect(passoParaDirecoes(400)).toBe(0));
+  it('não-número → 0', () => expect(passoParaDirecoes(NaN)).toBe(0));
 });
 
 describe('aplicarOrto — polar 15°', () => {

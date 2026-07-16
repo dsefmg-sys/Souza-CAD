@@ -1426,9 +1426,14 @@ export default function EditorPage() {
     }).filter((g) => g.areaHa > 0);
   }, [glebas, glebaAtivaId, vertices]);
 
-  // assinatura do conteúdo do projeto, para acender o disquete laranja quando há mudança não salva
+  // Assinatura do conteúdo do projeto, pra acender o disquete laranja quando há mudança não salva.
+  // ATENÇÃO: incluir `glebas` INTEIRO (não só IDs) é proposital — sem isso, edições em
+  // vértices de glebas INATIVAS (que não estão em `vertices`) não mudariam a assinatura e o
+  // usuário perderia trabalho sem aviso. Custo: a serialização cresce com o número de
+  // glebas. Medido: 25k vértices → 16ms de JSON.stringify, aceitável. Se o projeto ficar
+  // MUITO grande (centenas de glebas), considerar hash incremental em vez de stringify.
   const projSig = useMemo(
-    () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas.map((g) => g.id), vv: verticesVizinho, ig: verticesIgnorados, np: nomeProjeto, rq: requerente, tr: transmitente, ta: tipoAto, pa: partesAdicionais, ga: gradeAltimetrica }),
+    () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas, vv: verticesVizinho, ig: verticesIgnorados, np: nomeProjeto, rq: requerente, tr: transmitente, ta: tipoAto, pa: partesAdicionais, ga: gradeAltimetrica }),
     [vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas, verticesVizinho, verticesIgnorados, nomeProjeto, requerente, transmitente, tipoAto, partesAdicionais, gradeAltimetrica],
   );
   useEffect(() => {

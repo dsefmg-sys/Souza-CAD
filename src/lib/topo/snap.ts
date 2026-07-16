@@ -94,6 +94,14 @@ export function snapUtm(
     let bestMeioD = tolV;
     let bestMeioSeg: SegmentoSnap | undefined;
     for (const seg of segmentos) {
+      const dx = seg.b.leste - seg.a.leste;
+      const dy = seg.b.norte - seg.a.norte;
+      const lenSq = dx * dx + dy * dy;
+      // Segmento degenerado (a === b): o "meio" seria o próprio ponto, o que gera snap
+      // espúrio quando o clique coincide. Mesma proteção que já existia em "perpendicular"
+      // e "extensão". Coberto pelo teste 'segmento degenerado tem o "meio" igual ao próprio
+      // ponto — edge case'.
+      if (lenSq < 1e-6) continue;
       const mx = (seg.a.leste + seg.b.leste) / 2;
       const my = (seg.a.norte + seg.b.norte) / 2;
       const dist = Math.hypot(leste - mx, norte - my);

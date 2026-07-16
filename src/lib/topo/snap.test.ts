@@ -234,17 +234,13 @@ describe('snapUtm — ordem de prioridade', () => {
 });
 
 describe('snapUtm — robustez', () => {
-  it('segmento degenerado (a === b) tem o "meio" igual ao próprio ponto — edge case', () => {
-    // BUG LATENTE: o código calcula meio = (a+b)/2 e verifica distância do clique.
-    // Se a===b, o "meio" é o próprio ponto a, e se o clique coincide (dist=0), snap em "meio".
-    // Não causa crash, mas é semântico errado. Documentado pra rastreio.
+  it('segmento degenerado (a === b) é pulado, não vira snap espúrio em "meio"', () => {
+    // CORRIGIDO: o código agora pula segmentos de comprimento zero no cálculo de "meio" (mesma
+    // proteção que já existia em "perpendicular" e "extensão"). Antes, snap retornava 'meio'
+    // com o próprio ponto a, o que era semântico errado quando o clique coincidia.
     const r = snapUtm(5, 5, [], { segmentos: [seg(v(5, 5), v(5, 5))] });
-    // Hoje retorna 'meio' com o ponto (5,5). Se quiser corrigir, adicionar
-    // `if (lenSq < 1e-6) continue;` no loop de "meio" (mesma proteção que já existe em
-    // "perpendicular" e "extensao").
-    expect(r.tipo).toBe('meio');
-    expect(r.leste).toBe(5);
-    expect(r.norte).toBe(5);
+    // Sem snap válido disponível → cai pra grade ou null (NÃO 'meio')
+    expect(r.tipo).not.toBe('meio');
   });
 
   it('lista vazia de segmentos com gradeIntervalo funciona', () => {
