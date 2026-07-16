@@ -1023,42 +1023,13 @@ export default function Planta({
 
         return (
           <g key={`pc_cert_${idx}`}>
+            {/* No modo planta apenas o contorno da parcela é exibido; vértices e rótulos são omitidos */}
             <polygon points={ptsSvg} fill="#0284c7" fillOpacity={0.045} stroke="#0284c7" strokeWidth={0.7} strokeDasharray="3 3" />
-            {fora && mostrarRotulos && cx >= DRAW.x0 && cx <= DRAW.x1 && cy >= DRAW.y0 && cy <= DRAW.y1 && (
-              <line x1={px} y1={py} x2={cx} y2={cy} stroke="#0284c7" strokeWidth={0.6} strokeDasharray="2.5 2.5" />
-            )}
-            {mostrarRotulos && cx >= DRAW.x0 && cx <= DRAW.x1 && cy >= DRAW.y0 && cy <= DRAW.y1 && (
-              <Ted
-                {...tProps(idLabel)}
-                x={px}
-                y={py}
-                base={label}
-                size={fs(6.2)}
-                bold
-                anchor="middle"
-                fill="#2563eb"
-                halo
-              />
-            )}
           </g>
         );
       })}
 
-      {/* ---------- VÉRTICES DE IMÓVEIS VIZINHOS IMPORTADOS (CSV) ---------- */}
-      {verVizinhoVtx && verticesVizinho.map((v, idx) => {
-        const u = geoParaUtm(v.lat, v.lon, zona, hemisferio);
-        const vx = sx(u.leste), vy = sy(u.norte);
-        if (vx < DRAW.x0 || vx > DRAW.x1 || vy < DRAW.y0 || vy > DRAW.y1) return null;
-        
-        const tipo = obterTipoDeNome(v.nome);
-        const r = (tipo === 'M' ? 3.6 : tipo === 'V' ? 3 : 2.6) * escVert;
-
-        return (
-          <g key={`vv_planta_${idx}`}>
-            <SimboloVertice tipo={tipo} cx={vx} cy={vy} r={r} corCustom="#2563eb" />
-          </g>
-        );
-      })}
+      {/* Vértices individuais dos imóveis vizinhos (CSV) são suprimidos no modo planta */}
 
       {/* ---------- POLÍGONO (gleba ativa) ---------- */}
       {/* Polígono de fundo branco para mascarar a grade (só quando a grade estiver visível) */}
