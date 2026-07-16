@@ -385,59 +385,61 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             </div>
             {seletorNivel}
 
-            <div className="rounded-lg border p-3 bg-muted/20">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-semibold text-primary"><Play className="size-4 text-emerald-500 fill-emerald-500" /> Audioguia Completo (MP3)</div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Ouça a narração em áudio gravado sobre o Souza CAD.</p>
+            <div className="rounded-lg border p-3.5 bg-muted/20 flex flex-col gap-2">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                    <Play className="size-4 text-emerald-500 fill-emerald-500" />
+                    <span>Audioguia e Autoplay Geral</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground leading-normal">
+                    Narração gravada em alta qualidade para ensinar a usar o sistema.
+                  </p>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => alternarAudio('', '/tutorial.mp3')}
-                  className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors hover:bg-muted"
-                >
-                  {falando && tipoAudio === 'gravado' && !pausado ? (
-                    <><Pause className="size-3 text-amber-500 fill-amber-500" /> Pausar</>
-                  ) : (
-                    <><Play className="size-3 text-emerald-500 fill-emerald-500" /> Ouvir</>
-                  )}
-                </Button>
+                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => alternarAudio('', '/tutorial.mp3')}
+                    title="Ouvir áudio explicativo único de 10 minutos"
+                    className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors hover:bg-muted"
+                  >
+                    {falando && tipoAudio === 'gravado' && !pausado && !ouvirTudo ? (
+                      <><Pause className="size-3 text-amber-500 fill-amber-500" /> Pausar Guia</>
+                    ) : (
+                      <><Play className="size-3 text-emerald-500 fill-emerald-500" /> Guia de Áudio</>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      if (ouvirTudo) {
+                        pararAudio();
+                      } else {
+                        setTela('passos');
+                        setPasso(0);
+                        ouvirTudoRef.current = true;
+                        setOuvirTudo(true);
+                        const pFirst = passos[0];
+                        alternarAudio(pFirst.texto, pFirst.audioUrl);
+                      }
+                    }}
+                    title="Ouvir todos os áudios do tutorial em sequência automática (recomendado)"
+                    className="gap-1.5 h-8 font-bold text-xs px-3 transition-colors bg-amber-500 hover:bg-amber-600 text-white border-none shadow-sm shrink-0"
+                  >
+                    {ouvirTudo ? (
+                      <><Pause className="size-3 text-white fill-white animate-pulse" /> Parar</>
+                    ) : (
+                      <><Play className="size-3 text-white fill-white" /> Autoplay Geral</>
+                    )}
+                  </Button>
+                </div>
               </div>
               {erroAudio && (
-                <p className="mt-2 text-xs font-medium text-red-500">{erroAudio}</p>
+                <p className="text-xs font-medium text-red-500">{erroAudio}</p>
               )}
-            </div>
-
-            {/* Bloco Ouvir Tudo */}
-            <div className="rounded-lg border p-3 bg-amber-500/10 border-amber-500/30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-bold text-amber-700 dark:text-amber-400"><Volume2 className="size-4 shrink-0" /> Ouvir Tudo (Autoplay)</div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Reproduz todos os áudios do tutorial passo a passo na sequência.</p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setTela('passos');
-                    setPasso(0);
-                    ouvirTudoRef.current = true;
-                    setOuvirTudo(true);
-                    const pFirst = passos[0];
-                    alternarAudio(pFirst.texto, pFirst.audioUrl);
-                  }}
-                  className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors border-amber-500/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400"
-                >
-                  {ouvirTudo ? (
-                    <><Pause className="size-3 text-amber-500 fill-amber-500" /> Parar</>
-                  ) : (
-                    <><Play className="size-3 text-amber-500 fill-amber-500" /> Iniciar</>
-                  )}
-                </Button>
-              </div>
             </div>
 
             <button type="button" onClick={() => { setPasso(0); setTela('passos'); }}
