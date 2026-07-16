@@ -116,7 +116,7 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
 
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
-      <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col bg-[#05140b] border border-[#1e4d2e]/60 text-white rounded-2xl p-4 md:p-6 shadow-2xl" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col bg-background border border-border text-foreground rounded-2xl p-4 md:p-6 shadow-2xl" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="shrink-0 pb-2 border-b border-border/60">
           <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
             <FileWarning className="size-5.5 text-amber-500 animate-pulse" /> Errata para o Cartório
@@ -131,13 +131,13 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
         <div className="flex-grow overflow-y-auto space-y-4 pr-1 my-2">
           {/* Duas colunas para atalhos e acréscimo RT */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0 mt-1">
-            {/* Atalhos de Sugestões */}
-            <div className="space-y-2 rounded-xl border border-border/80 p-3.5 bg-muted/20 flex flex-col justify-between">
+            {/* Atalhos de Sugestões (Esquerda) */}
+            <div className="space-y-2 rounded-xl border border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/10 p-3.5 flex flex-col justify-between">
               <div>
-                <span className="text-[11px] font-bold text-[#87a992] uppercase tracking-wider block mb-2">Atalhos de preenchimento rápido:</span>
+                <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider block mb-2">Atalhos de preenchimento rápido:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {sugestoes.map((s, i) => (
-                    <Button key={i} size="sm" type="button" variant="outline" className="h-8 text-xs px-2.5 font-bold transition-all"
+                    <Button key={i} size="sm" type="button" variant="secondary" className="h-8 text-xs px-2.5 font-semibold bg-white hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-border/60 transition-all text-foreground"
                       onClick={() => addCor({ onde: s.onde, constava: s.constava, natureza: s.natureza })} title={`Adicionar correção de ${s.onde}`}>
                       <Plus className="size-3.5 mr-0.5" /> {s.rotulo}
                     </Button>
@@ -146,31 +146,31 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
               </div>
             </div>
 
-            {/* Acréscimo RT */}
-            <div className="space-y-2 rounded-xl border border-border/80 p-3.5 bg-muted/20 flex flex-col justify-center">
-              <Label className="text-[11px] font-bold text-[#87a992] uppercase tracking-wider block leading-none mb-1">Responsabilidade Técnica Adicional (Opcional)</Label>
+            {/* Acréscimo RT (Direita) */}
+            <div className="space-y-2 rounded-xl border border-amber-500/20 bg-amber-50/30 dark:bg-amber-950/10 p-3.5 flex flex-col justify-center">
+              <Label className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block leading-none mb-1">Responsabilidade Técnica Adicional (Opcional)</Label>
               <Input value={acrescimoRT} onChange={(e) => setAcrescimoRT(e.target.value)}
-                placeholder="Ex.: Número do CFT/TRT ou CREA/ART" className="h-10 text-sm bg-[#05140b] dark:bg-[#05140b] border-border/80" />
+                placeholder="Ex.: Número do CFT/TRT ou CREA/ART" className="h-10 text-sm bg-background border-border/80 focus:ring-1 focus:ring-primary outline-none" />
             </div>
           </div>
 
           {/* Lista de Correções */}
-          <div className="space-y-3 rounded-xl border border-border/80 bg-muted/10 p-4">
+          <div className="space-y-3 rounded-xl border border-border/80 bg-zinc-50/30 dark:bg-zinc-900/10 p-4">
             <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-2">
               <span className="text-xs font-black uppercase tracking-wider text-foreground">Itens de Correção</span>
-              <Button size="sm" type="button" className="h-9 text-xs px-3 font-bold gap-1 transition-all" onClick={() => addCor()}><Plus className="size-4" /> Adicionar Correção</Button>
+              <Button size="sm" type="button" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 text-xs px-3 gap-1 transition-all" onClick={() => addCor()}><Plus className="size-4" /> Adicionar Correção</Button>
             </div>
             
             <div className="space-y-3 divide-y divide-border/40">
               {correcoes.map((c, i) => (
-                 <div key={i} className="flex items-end gap-3 pt-3 first:pt-0">
+                <div key={i} className="flex items-end gap-3 pt-3 first:pt-0">
                   <div className="flex-grow grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div className="space-y-1.5 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] leading-none">Natureza</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none">Natureza</Label>
                       <select
                         value={c.natureza || 'outros'}
                         onChange={(e) => setCor(i, { natureza: e.target.value as NaturezaCorrecao })}
-                        className="flex h-10 w-full rounded-lg border border-border/80 bg-[#05140b] dark:bg-[#05140b] px-3 py-0 text-sm text-foreground focus:border-emerald-500 focus:outline-none"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-0 text-sm text-foreground focus:ring-1 focus:ring-primary focus:outline-none"
                       >
                         <option value="imovel">Dados Imóvel</option>
                         <option value="pessoais">Dados Pessoais</option>
@@ -180,16 +180,16 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
                       </select>
                     </div>
                     <div className="space-y-1.5 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] leading-none">Onde está o erro</Label>
-                      <Input value={c.onde} onChange={(e) => setCor(i, { onde: e.target.value })} placeholder="ex.: Confrontante João" className="h-10 text-sm bg-[#05140b] dark:bg-[#05140b] border-border/80" />
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none">Onde está o erro</Label>
+                      <Input value={c.onde} onChange={(e) => setCor(i, { onde: e.target.value })} placeholder="ex.: Confrontante João" className="h-10 text-sm bg-background border-border/80 focus:ring-1 focus:ring-primary outline-none" />
                     </div>
                     <div className="space-y-1.5 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] leading-none">Onde se lê (errado)</Label>
-                      <Input value={c.constava} onChange={(e) => setCor(i, { constava: e.target.value })} placeholder="ex.: Matrícula 3383" className="h-10 text-sm bg-[#05140b] dark:bg-[#05140b] border-border/80" />
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none">Onde se lê (errado)</Label>
+                      <Input value={c.constava} onChange={(e) => setCor(i, { constava: e.target.value })} placeholder="ex.: Matrícula 3383" className="h-10 text-sm bg-background border-border/80 focus:ring-1 focus:ring-primary outline-none" />
                     </div>
                     <div className="space-y-1.5 text-left">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-[#87a992] leading-none">Leia-se (correto)</Label>
-                      <Input value={c.passa} onChange={(e) => setCor(i, { passa: e.target.value })} placeholder="ex.: Matrícula 5378" className="h-10 text-sm bg-[#05140b] dark:bg-[#05140b] border-border/80" />
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none">Leia-se (correto)</Label>
+                      <Input value={c.passa} onChange={(e) => setCor(i, { passa: e.target.value })} placeholder="ex.: Matrícula 5378" className="h-10 text-sm bg-background border-border/80 focus:ring-1 focus:ring-primary outline-none" />
                     </div>
                   </div>
                   <Button size="sm" type="button" variant="ghost" className="h-10 w-10 p-0 shrink-0 hover:bg-destructive/10 rounded-lg transition-colors" onClick={() => rmCor(i)} title="Remover"><Trash2 className="size-4.5 text-destructive" /></Button>
@@ -201,14 +201,14 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
 
         {/* Rodapé Fixo */}
         <div className="flex items-center justify-between border-t border-border/60 pt-4 mt-auto shrink-0">
-          <Button onClick={gerar} size="sm" className="h-11 px-5 text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-[#05140b] border-none transition-colors">
+          <Button onClick={gerar} size="sm" className="h-11 px-5 text-xs font-black uppercase tracking-wider bg-amber-600 hover:bg-amber-700 text-white border-none transition-colors shadow-md hover:shadow-lg">
             <FileWarning className="size-4.5 mr-1.5" /> Gerar Documento Errata (.docx)
           </Button>
           {msg && (
-            <span className={`text-xs md:text-sm font-bold bg-[#07170d] border border-border/80 px-3.5 py-1.5 rounded-lg ${
+            <span className={`text-xs md:text-sm font-bold bg-[#07170d]/10 border border-border/80 px-3.5 py-1.5 rounded-lg ${
               msg.includes('Erro') || msg.includes('primeiro') || msg.includes('Preencha') 
-                ? 'text-red-400 border-red-500/20' 
-                : 'text-emerald-400 border-emerald-500/20'
+                ? 'text-red-600 dark:text-red-400 border-red-500/20 bg-red-500/5' 
+                : 'text-emerald-600 dark:text-emerald-400 border-emerald-500/20 bg-emerald-500/5'
             }`}>
               {msg}
             </span>

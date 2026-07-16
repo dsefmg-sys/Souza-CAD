@@ -139,55 +139,59 @@ export default function CalculadoraModal({ open, onOpenChange, zona, hemisferio 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-background shadow-2xl p-6 rounded-xl">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl bg-background shadow-2xl p-6 rounded-xl overflow-hidden">
+        <DialogHeader className="border-b pb-3">
           <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
-            <Ruler className="size-5.5 text-emerald-500" /> Calculadora Topográfica
+            <Ruler className="size-5.5 text-emerald-500 animate-pulse" /> Calculadora Topográfica
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex items-center gap-3 text-sm bg-muted/30 p-3 rounded-lg border border-border/60">
-          <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Configuração UTM:</span>
+        {/* Configurações Globais do Fuso e Hemisfério */}
+        <div className="flex items-center gap-4 text-sm border border-emerald-500/20 bg-emerald-500/5 p-4 rounded-xl justify-between shadow-sm">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium">Fuso:</span>
-            <input className="w-14 h-8 rounded-md border bg-[#05140b] dark:bg-[#05140b] border-border/80 px-2 text-sm text-center font-bold font-mono" value={zonaSel} onChange={(e) => setZonaSel(e.target.value)} />
+            <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Fuso Padrão:</span>
+            <input className="w-14 h-8 rounded-md border bg-background border-border/80 px-2 text-sm text-center font-bold font-mono" value={zonaSel} onChange={(e) => setZonaSel(e.target.value)} />
           </div>
-          <div className="flex gap-0.5 border rounded-lg p-0.5 bg-[#05140b] border-border/60 ml-auto">
-            {(['S', 'N'] as const).map((h) => (
-              <button key={h} type="button" className={`h-7 px-3.5 rounded-md text-xs font-bold transition-all ${hemi === h ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setHemi(h)}>{h}</button>
-            ))}
+          <div className="flex items-center gap-3">
+            <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider">Hemisfério:</span>
+            <div className="flex gap-0.5 border rounded-lg p-0.5 bg-background border-border/60">
+              {(['S', 'N'] as const).map((h) => (
+                <button key={h} type="button" className={`h-7 px-3.5 rounded-md text-xs font-bold transition-all ${hemi === h ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setHemi(h)}>{h}</button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-1 border-b border-border/80">
-          <button className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${aba === 'converter' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} onClick={() => setAba('converter')}>Coordenadas</button>
-          <button className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${aba === 'distancia' ? 'border-b-2 border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} onClick={() => setAba('distancia')}>Distância & Azimute</button>
-          <button className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${aba === 'lote' ? 'border-b-2 border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`} onClick={() => setAba('lote')}>Lote (Massa)</button>
+        {/* Abas como Segmented Control */}
+        <div className="flex gap-1.5 bg-zinc-100 dark:bg-zinc-900/60 p-1.5 rounded-xl border border-border/40 my-2">
+          <button className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider transition-all rounded-lg ${aba === 'converter' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => setAba('converter')}>Conversão UTM ↔ Geo</button>
+          <button className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider transition-all rounded-lg ${aba === 'distancia' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => setAba('distancia')}>Distância & Azimute</button>
+          <button className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider transition-all rounded-lg ${aba === 'lote' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => setAba('lote')}>Conversão em Lote</button>
         </div>
 
         {aba === 'converter' ? (
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-1">
             <div className="grid grid-cols-2 gap-3">
               <Campo label="Este (E) - Metros" value={leste} onChange={setLeste} ph="ex.: 290000.000" />
               <Campo label="Norte (N) - Metros" value={norte} onChange={setNorte} ph="ex.: 7720000.000" />
             </div>
             <div className="flex justify-center gap-3">
-              <Button size="sm" className="h-10 px-4 font-bold gap-1.5 transition-all text-xs" onClick={utmParaGeoCalc}>UTM → Geo <ArrowLeftRight className="size-3.5" /></Button>
-              <Button size="sm" className="h-10 px-4 font-bold gap-1.5 transition-all text-xs" onClick={geoParaUtmCalc}><ArrowLeftRight className="size-3.5" /> Geo → UTM</Button>
+              <Button className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 transition-all text-xs shadow-md" onClick={utmParaGeoCalc}>UTM → Geo <ArrowLeftRight className="size-3.5" /></Button>
+              <Button className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 transition-all text-xs shadow-md" onClick={geoParaUtmCalc}><ArrowLeftRight className="size-3.5" /> Geo → UTM</Button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Campo label="Latitude (Graus Decimais)" value={lat} onChange={setLat} ph="-20.59180" />
               <Campo label="Longitude (Graus Decimais)" value={lon} onChange={setLon} ph="-42.00344" />
             </div>
             {(dmsLat || dmsLon) && (
-              <div className="rounded-lg border border-border/80 bg-[#07170d]/30 p-3 text-center text-sm font-mono leading-relaxed text-foreground">
-                {dmsLat && <div className="flex justify-between border-b border-border/20 pb-1.5 mb-1.5"><span>Lat (DMS):</span><span className="font-bold">{dmsLat}</span></div>}
-                {dmsLon && <div className="flex justify-between"><span>Lon (DMS):</span><span className="font-bold">{dmsLon}</span></div>}
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-center text-sm font-mono leading-relaxed text-foreground">
+                {dmsLat && <div className="flex justify-between border-b border-border/20 pb-1.5 mb-1.5"><span>Lat (DMS):</span><span className="font-bold text-emerald-600 dark:text-emerald-400">{dmsLat}</span></div>}
+                {dmsLon && <div className="flex justify-between"><span>Lon (DMS):</span><span className="font-bold text-emerald-600 dark:text-emerald-400">{dmsLon}</span></div>}
               </div>
             )}
           </div>
         ) : aba === 'distancia' ? (
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-1">
             <div className="grid grid-cols-2 gap-3">
               <Campo label="Ponto A — Este" value={ea} onChange={setEa} ph="Ex.: 290000" />
               <Campo label="Ponto A — Norte" value={na} onChange={setNa} ph="Ex.: 7720000" />
@@ -195,8 +199,8 @@ export default function CalculadoraModal({ open, onOpenChange, zona, hemisferio 
               <Campo label="Ponto B — Norte" value={nb} onChange={setNb} ph="Ex.: 7720100" />
             </div>
             {dist != null && az != null ? (
-              <div className="rounded-xl border border-border bg-[#07170d]/40 p-4 text-center space-y-1">
-                <div className="text-xl md:text-2xl font-black text-emerald-500 dark:text-emerald-400">{numBR(dist, 3)} m</div>
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center space-y-1">
+                <div className="text-xl md:text-2xl font-black text-emerald-600 dark:text-emerald-400">{numBR(dist, 3)} m</div>
                 <div className="text-sm font-mono text-foreground font-semibold">Azimute: {numBR(az, 4)}° ({azimuteDMS(az)})</div>
               </div>
             ) : (

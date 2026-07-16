@@ -7,8 +7,13 @@ export interface ModelosDocs {
   declProprietario: string;   // declaração do(s) proprietário(s) — memorial e planta
   declConfrontantes: string;  // declaração dos confrontantes — memorial e planta
   laudoTecnico: string;       // laudo técnico — planta
+  contratoContratante: string; // qualificação do contratante
+  contratoContratado: string;  // qualificação do contratado
   contratoObjeto: string;     // cláusula de OBJETO do contrato
+  contratoValor: string;      // cláusula de VALOR e pagamento
+  contratoPrazo: string;      // cláusula de PRAZO
   contratoObrigacoes: string; // cláusula de OBRIGAÇÕES do contrato
+  contratoForo: string;        // cláusula de FORO
   reciboReferente: string;    // "referente a..." do recibo
   // Blocos que antes eram fixos no código e agora são editáveis:
   memorialInfoTecnicas: string;   // parágrafo "INFORMAÇÕES TÉCNICAS" do memorial
@@ -29,6 +34,9 @@ export interface ModelosDocs {
   propostaTexto: string;                // corpo da proposta/orçamento comercial
   declPosse: string;                    // declaração de posse (do possuidor)
   declInexistenciaSobreposicao: string; // declaração de inexistência de sobreposição (do técnico)
+  declIncapaz: string;                  // declaração de representação de incapaz (menores/interditos)
+  declEspolio: string;                  // declaração de representação de espólio (inventariante)
+  declRespeitoLimites: string;          // declaração de respeito de limites e ausência de conflitos
   servidaoIntro: string;                // parágrafo de abertura do memorial de servidão/faixa de domínio
   // Variante INTERMAT (Mato Grosso): parágrafo de finalidade que entra logo abaixo do cabeçalho do
   // memorial quando o padrão escolhido é INTERMAT (só ofertado em imóveis de MT).
@@ -42,10 +50,20 @@ export const MODELOS_PADRAO: ModelosDocs = {
     'Concordamos com as medidas apresentadas neste memorial e na planta anexa no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade. Estamos cientes de que, nos termos do §10 do artigo 213 da LRP, nossa anuência supre a participação do cônjuge e de eventuais outros condôminos titulares de nosso imóvel.',
   laudoTecnico:
     'Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.',
+  contratoContratante:
+    '{proprietario}, CPF nº {cpfProprietario}, doravante denominado(a) CONTRATANTE.',
+  contratoContratado:
+    '{escritorio}, CNPJ nº {cnpjEscritorio}, neste ato representado por {responsavelTecnico}, doravante denominado CONTRATADO.',
   contratoObjeto:
     'Prestação de serviços de georreferenciamento e certificação do imóvel {denominacao}, matrícula {matricula}, situado em {municipio}, com área de {area} e perímetro de {perimetro}.',
+  contratoValor:
+    'Pelos serviços, o CONTRATANTE pagará ao CONTRATADO o valor de {valor} ({valorExtenso}), {formaPagamento}.',
+  contratoPrazo:
+    'O CONTRATADO executará os serviços no prazo de {prazoDias} dias, ressalvadas as etapas que dependam de terceiros (cartório, INCRA, confrontantes) e de condições de campo.',
   contratoObrigacoes:
     'O CONTRATANTE fornecerá documentos e informações necessárias e indicará as divisas em campo; o CONTRATADO executará os serviços com zelo técnico e responsabilidade profissional.',
+  contratoForo:
+    'Fica eleito o foro da comarca de {municipio} para dirimir eventuais dúvidas oriundas deste contrato.',
   reciboReferente:
     'serviços de georreferenciamento e certificação do imóvel {denominacao}, matrícula {matricula}, situado em {municipio}, com área de {area}',
   memorialInfoTecnicas:
@@ -147,6 +165,21 @@ export const MODELOS_PADRAO: ModelosDocs = {
     'situado em {municipio}, que os limites levantados e georreferenciados (SIRGAS2000) não incidem em sobreposição ' +
     'ou invasão sobre imóveis confrontantes, tampouco sobre áreas públicas, respeitando-se integralmente as divisas ' +
     'de terceiros, conforme apurado no levantamento de campo.',
+  declIncapaz:
+    'DECLARO, sob as penas da lei, que sou o representante legal (tutor/curador/representante) de {representado}, ' +
+    'menor/incapaz titular de direitos sobre o imóvel {denominacao}, comarca de {municipio}, e que o represento para ' +
+    'todos os fins de georreferenciamento, retificação de registro e anuências de limites, respondendo civil e criminalmente ' +
+    'pela veracidade desta representação.',
+  declEspolio:
+    'DECLARO, sob as penas da lei, que sou o inventariante devidamente nomeado do espólio de {falecido}, ' +
+    'proprietário falecido do imóvel {denominacao}, comarca de {municipio}, e que possuo plenos poderes de representação ' +
+    'ativa e passiva do espólio para fins de georreferenciamento, retificação de registro e anuências perante confrontantes, ' +
+    'respondendo civil e criminalmente por esta declaração.',
+  declRespeitoLimites:
+    'DECLARAMOS, sob as penas da lei, que os limites e divisas do imóvel {denominacao}, matrícula {matricula}, ' +
+    'situado em {municipio}, são respeitados de comum acordo por todas as partes confrontantes há longa data, ' +
+    'inexistindo qualquer tipo de sobreposição, invasão ou litígio sobre as áreas ou linhas limítrofes indicadas ' +
+    'na planta e memorial descritivo.',
   servidaoIntro:
     'O presente memorial descritivo tem por objeto a ÁREA DE SERVIDÃO instituída sobre o imóvel {denominacao}, ' +
     'matrícula {matricula}, situado em {municipio}, com área de servidão de {area} e perímetro de {perimetro}. ' +

@@ -387,14 +387,32 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     r.readAsDataURL(file);
   }
 
+  function lerAssinatura(file: File) {
+    if (file.size > 500 * 1024) {
+      flash('Assinatura muito grande! Limite de 500 KB para evitar lentidão.');
+      return;
+    }
+    const r = new FileReader();
+    r.onload = () => {
+      changeEsc('assinaturaDataUrl', String(r.result));
+    };
+    r.readAsDataURL(file);
+  }
+
   const Tb = ({ a, rotulo, titulo }: { a: AbaConfig; rotulo: string; titulo?: string }) => {
     if (prefs.modo === 'simples' && (a === 'numeracao' || a === 'modelos')) {
       return null;
     }
+    const ativo = aba === a;
     return (
       <button onClick={() => setAba(a)} title={titulo}
-        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${aba === a ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/50'}`}>
-        {rotulo}
+        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-150 flex items-center justify-between border ${
+          ativo
+            ? 'bg-emerald-600/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm shadow-emerald-500/5'
+            : 'bg-zinc-50/50 hover:bg-zinc-100 dark:bg-zinc-900/40 dark:hover:bg-zinc-900/80 border-border/40 text-muted-foreground hover:text-foreground'
+        }`}>
+        <span>{rotulo}</span>
+        {ativo && <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />}
       </button>
     );
   };
@@ -404,7 +422,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
       {/* h-[92vh] (não max-h): a janela sempre ocupa o mesmo tamanho, do maior conteúdo possível,
           então trocar de aba não redimensiona a janela — só o conteúdo interno rola. */}
       <DialogContent className="max-w-5xl h-[92vh] flex flex-col bg-background/95 backdrop-blur-md shadow-2xl p-3 sm:p-6 rounded-lg text-foreground">
-        <DialogHeader className="border-b pb-3">
+        <DialogHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
               Configurações do Sistema
@@ -415,30 +433,43 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               </span>
             )}
           </div>
-          {/* dois grupos com TÍTULO acima dos botões (não na mesma linha) — deixa claro o que é
-              pessoal (do técnico) e o que é global (da empresa) */}
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-8">
-            <div>
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600" title="Configurações compartilhadas por toda a equipe da empresa">Empresa</div>
-              <div className="flex flex-wrap gap-2">
-                <Tb a="escritorio" rotulo="Dados da Empresa" titulo="Identificação, contato, endereço, logotipo e cores da marca — usados nas peças e no cabeçalho dos documentos" />
-                <Tb a="equipe" rotulo="Ajudantes / Equipe" titulo="Convidar colaboradores, aprovar pedidos de acesso e ver a qual empresa você está vinculado" />
+          {/* visual de cards/sub-grupos limpos e bem organizados */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Grupo 1: Empresa */}
+            <div className="rounded-xl border border-border/50 bg-zinc-50/30 dark:bg-zinc-900/10 p-3 space-y-2 flex flex-col">
+              <div className="flex items-center gap-1.5 px-1">
+                <span className="size-1.5 rounded-full bg-amber-500" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Configurações da Empresa</span>
+              </div>
+              <div className="grid grid-cols-1 gap-1.5 flex-1 justify-start">
+                <Tb a="escritorio" rotulo="Dados da Empresa" titulo="Identificação, contato, endereço, logotipo e cores da marca" />
+                <Tb a="equipe" rotulo="Ajudantes / Equipe" titulo="Convidar colaboradores e gerenciar permissões" />
               </div>
             </div>
-            <div>
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600" title="Configurações só da sua conta, não afetam a equipe">Pessoais</div>
-              <div className="flex flex-wrap gap-2">
-                <Tb a="pessoal" rotulo="Responsável Técnico" titulo="Seu nome, formação, conselho (CFT/CREA) e registros — o que assina as peças técnicas" />
-                <Tb a="comportamento" rotulo="Comportamento" titulo="Como o app se comporta: modo simples/completo, tema, tamanhos e preferências de uso" />
+
+            {/* Grupo 2: Pessoais */}
+            <div className="rounded-xl border border-border/50 bg-zinc-50/30 dark:bg-zinc-900/10 p-3 space-y-2 flex flex-col">
+              <div className="flex items-center gap-1.5 px-1">
+                <span className="size-1.5 rounded-full bg-indigo-550" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Preferências Pessoais</span>
+              </div>
+              <div className="grid grid-cols-1 gap-1.5 flex-1 justify-start">
+                <Tb a="pessoal" rotulo="Responsável Técnico" titulo="Seu nome, formação, conselho (CFT/CREA) e registros" />
+                <Tb a="comportamento" rotulo="Comportamento" titulo="Tema, tamanho da fonte e preferências do editor" />
               </div>
             </div>
-            <div>
-              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600" title="Configurações técnicas do espaço de trabalho, compartilhadas pela equipe">Workspace</div>
-              <div className="flex flex-wrap gap-2">
-                <Tb a="numeracao" rotulo="Numeração e Fuso" titulo="Numeração automática dos vértices, fuso e hemisfério padrão do georreferenciamento" />
-                <Tb a="modelos" rotulo="Importação e Modelos" titulo="Modelos de documentos e regras de importação do TXT e dos vértices dos vizinhos" />
-                <Tb a="padroes" rotulo="Padrões & Backup" titulo="Valores padrão de novos projetos, backup das configurações e informações do sistema" />
-                <Tb a="colegas" rotulo="Colegas" titulo="Cadastro de colegas agrimensores credenciados no INCRA para facilitar identificação de confrontações" />
+
+            {/* Grupo 3: Workspace */}
+            <div className="rounded-xl border border-border/50 bg-zinc-50/30 dark:bg-zinc-900/10 p-3 space-y-2 flex flex-col">
+              <div className="flex items-center gap-1.5 px-1">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Parâmetros do Workspace</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-1.5 flex-1 justify-start">
+                <Tb a="numeracao" rotulo="Numeração e Fuso" titulo="Contador de marcos, fuso e hemisfério do projeto" />
+                <Tb a="modelos" rotulo="Importação e Modelos" titulo="Modelos de memorial, layout TXT e vizinhos" />
+                <Tb a="padroes" rotulo="Padrões & Backup" titulo="Valores padrão, tabela de preços e exportação de backup" />
+                <Tb a="colegas" rotulo="Colegas" titulo="Lista de agrimensores credenciados confrontantes" />
               </div>
             </div>
           </div>
@@ -569,6 +600,13 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   onToggle={(v) => mudarPref('confirmarAntesApagar', v)}
                   titulo="Confirmar antes de apagar"
                   descricao="Ligado (recomendado): pede confirmação antes de excluir vértice, projeto ou divisa, pra você não apagar sem querer. Desligado: apaga na hora, mais rápido pra quem tem certeza." />
+
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1">Desenho e Planta</div>
+                <Interruptor
+                  ligado={!!prefs.mostrarAssinaturaConfrontantes}
+                  onToggle={(v) => mudarPref('mostrarAssinaturaConfrontantes', v)}
+                  titulo="Assinatura dos confrontantes na planta"
+                  descricao="Ligado (padrão): exibe os campos/linhas para assinatura dos confrontantes na planta final impressa. Desligado: oculta esses campos para um desenho mais limpo." />
 
               </div>
 
@@ -981,37 +1019,87 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               </div>
 
               <div className="space-y-3.5 border-t md:border-t-0 md:border-l md:pl-4 pt-3.5 md:pt-0 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Logotipo para a Planta</Label>
-                  <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors relative cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) lerLogo(f);
-                      }}
-                    />
-                    <UploadCloud className="size-8 text-muted-foreground mb-1" />
-                    <span className="text-xs font-medium text-muted-foreground">Clique para selecionar imagem</span>
+                <div className="space-y-4">
+                  {/* Logotipo */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold">Logotipo para a Planta</Label>
+                    {!esc.logoDataUrl && (
+                      <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors relative cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) lerLogo(f);
+                          }}
+                        />
+                        <UploadCloud className="size-8 text-muted-foreground mb-1" />
+                        <span className="text-xs font-medium text-muted-foreground">Clique para selecionar imagem</span>
+                      </div>
+                    )}
+                    {esc.logoDataUrl && (
+                      <div className="mt-2 p-2 border rounded-sm bg-background flex items-center justify-between">
+                        <img src={esc.logoDataUrl} alt="Logotipo do Escritório" className="h-10 object-contain" />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs text-destructive font-semibold hover:bg-destructive/10"
+                          onClick={() => changeEsc('logoDataUrl', '')}
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  {esc.logoDataUrl && (
-                    <div className="mt-2 p-2 border rounded-sm bg-background flex items-center justify-between">
-                      <img src={esc.logoDataUrl} alt="Logotipo do Escritório" className="h-10 object-contain" />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs text-destructive font-semibold hover:bg-destructive/10"
-                        onClick={() => changeEsc('logoDataUrl', '')}
-                      >
-                        Remover
-                      </Button>
-                    </div>
-                  )}
+
+                  {/* Assinatura PNG */}
+                  <div className="space-y-2 border-t pt-3.5">
+                    <Label className="text-xs font-semibold">Assinatura Digital (PNG transparente)</Label>
+                    {!esc.assinaturaDataUrl && (
+                      <div className="border border-dashed rounded-lg p-4 flex flex-col items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors relative cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/png"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) lerAssinatura(f);
+                          }}
+                        />
+                        <UploadCloud className="size-8 text-muted-foreground mb-1" />
+                        <span className="text-xs font-medium text-muted-foreground">Clique para selecionar assinatura PNG</span>
+                      </div>
+                    )}
+                    {esc.assinaturaDataUrl && (
+                      <div className="space-y-2">
+                        <div className="p-2 border rounded-sm bg-background flex items-center justify-between">
+                          <img src={esc.assinaturaDataUrl} alt="Assinatura Digital" className="h-10 object-contain bg-muted/10" />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs text-destructive font-semibold hover:bg-destructive/10"
+                            onClick={() => changeEsc('assinaturaDataUrl', '')}
+                          >
+                            Remover
+                          </Button>
+                        </div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={!!esc.autoAssinar}
+                            onChange={(e) => changeEsc('autoAssinar', e.target.checked)}
+                            className="rounded border-border text-emerald-600 focus:ring-emerald-500"
+                          />
+                          Assinar recibos, contratos e propostas automaticamente
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
                 <div className="p-3 bg-muted/40 rounded-sm border text-[11px] leading-snug text-muted-foreground">
-                  O logotipo será desenhado automaticamente no quadro de convenções e carimbo de assinaturas nas pranchas impressas e exportações em PDF.
+                  O logotipo e a assinatura serão desenhados automaticamente nas peças técnicas e exportações em PDF caso configurados.
                 </div>
               </div>
             </div>

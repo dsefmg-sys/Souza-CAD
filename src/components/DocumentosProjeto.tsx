@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Upload, Download, Trash2, Eye, FileText, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { listarArquivosPorDono, salvarArquivo, excluirArquivo, type ArquivoProjeto } from '@/lib/store/arquivosProjeto';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
 
@@ -34,6 +35,12 @@ export default function DocumentosProjeto({
   const [tipoDoc, setTipoDoc] = useState(TIPOS_DOC[0]);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // States para Resumo com IA
+  const [resumoAberto, setResumoAberto] = useState(false);
+  const [resumoTexto, setResumoTexto] = useState('');
+  const [resumindoId, setResumindoId] = useState<string | null>(null);
+  const [resumoNome, setResumoNome] = useState('');
+
   async function recarregar() {
     if (!projetoId) { setArquivos([]); return; }
     setCarregando(true);
@@ -41,6 +48,47 @@ export default function DocumentosProjeto({
     finally { setCarregando(false); }
   }
   useEffect(() => { recarregar();   }, [projetoId, dono, confrontanteId]);
+
+  async function resumir(a: ArquivoProjeto) {
+    setResumoNome(a.nome);
+    setResumindoId(a.id);
+    setResumoTexto('');
+    setResumoAberto(true);
+    try {
+      const r = new FileReader();
+      r.onload = async () => {
+        try {
+          const resp = await fetch('/api/ia/resumir', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('metrica.token') || ''}`,
+            },
+            body: JSON.stringify({
+              arquivo: {
+                data: String(r.result),
+                mimeType: a.tipo,
+              }
+            })
+          });
+          const res = await resp.json();
+          if (res.erro) {
+            setResumoTexto(`Erro ao resumir com IA (limite excedido ou falha): ${res.erro}\n${res.detalhe || ''}`);
+          } else {
+            setResumoTexto(res.resumo);
+          }
+        } catch (e) {
+          setResumoTexto(`Falha na requisição: ${(e as Error).message}`);
+        } finally {
+          setResumindoId(null);
+        }
+      };
+      r.readAsDataURL(a.blob);
+    } catch (e) {
+      setResumoTexto(`Erro ao ler arquivo: ${(e as Error).message}`);
+      setResumindoId(null);
+    }
+  }
 
   async function subir(files: FileList | null) {
     if (!files || !projetoId) return;
@@ -111,8 +159,16 @@ export default function DocumentosProjeto({
                     <div className="truncate font-medium">{a.nome}</div>
                     <div className="text-[10px] text-muted-foreground">{a.tipoDoc ? `${a.tipoDoc} · ` : ''}{tamanhoBR(a.tamanho)}</div>
                   </div>
+                  <button
+                    className="rounded-sm p-1 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
+                    title="Resumo com IA (essencial para certidões de inteiro teor)"
+                    aria-label={`Resumir ${a.nome} com IA`}
+                    onClick={() => resumir(a)}
+                  >
+                    <Sparkles className="size-4" />
+                  </button>
                   {onExtrair && (
-                    <button className="rounded-sm p-1 text-violet-600 hover:bg-violet-500/10 dark:text-violet-400" title="Extrair dados com IA" aria-label={`Extrair dados de ${a.nome}`} onClick={() => onExtrair(a)}><Sparkles className="size-4" /></button>
+                    <button className="rounded-sm p-1 text-violet-600 hover:bg-violet-500/10 dark:text-violet-400" title="Extrair dados com IA" aria-label={`Extrair dados de ${a.nome}`} onClick={() => onExtrair(a)}><FileText className="size-4" /></button>
                   )}
                   <button className="rounded-sm p-1 hover:bg-muted" title="Visualizar" aria-label={`Visualizar ${a.nome}`} onClick={() => ver(a)}><Eye className="size-4" /></button>
                   <button className="rounded-sm p-1 hover:bg-muted" title="Baixar" aria-label={`Baixar ${a.nome}`} onClick={() => baixar(a)}><Download className="size-4" /></button>
@@ -123,6 +179,43 @@ export default function DocumentosProjeto({
           )}
         </>
       )}
+
+      {/* Modal de Resumo com IA */}
+      <Dialog open={resumoAberto} onOpenChange={setResumoAberto}>
+        <DialogContent className="max-w-xl max-h-[85vh] flex flex-col p-6 bg-background shadow-2xl rounded-xl overflow-hidden text-foreground">
+          <DialogHeader className="shrink-0 pb-4 border-b border-border/60">
+            <DialogTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+              <Sparkles className="size-4 animate-pulse" /> Resumo do Documento por IA
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-grow overflow-y-auto my-4 pr-1 min-h-0 text-left space-y-3">
+            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
+              Documento: <span className="text-foreground normal-case font-semibold">{resumoNome}</span>
+            </div>
+            {resumindoId ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-3">
+                <div className="size-8 rounded-full border-4 border-emerald-500/25 border-t-emerald-600 animate-spin" />
+                <span className="text-xs font-semibold text-muted-foreground text-center">A inteligência artificial está analisando e estruturando o resumo...</span>
+              </div>
+            ) : (
+              <div className="p-4 rounded-lg border bg-muted/30 text-xs leading-relaxed whitespace-pre-wrap font-medium text-foreground">
+                {resumoTexto || 'Nenhum resumo gerado.'}
+              </div>
+            )}
+          </div>
+
+          <div className="shrink-0 flex items-center justify-end gap-3 pt-4 border-t border-border/60">
+            <Button
+              size="sm"
+              className="text-xs h-9 px-4 font-bold"
+              onClick={() => setResumoAberto(false)}
+            >
+              Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

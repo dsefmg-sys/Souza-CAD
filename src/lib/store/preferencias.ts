@@ -59,6 +59,8 @@ export interface PreferenciasApp {
   casasDecimais: number;
   /** Pede confirmação antes de apagar (vértice, projeto, divisa). Padrão: true. */
   confirmarAntesApagar: boolean;
+  /** Mostra campos para assinatura dos confrontantes na planta. Padrão: true. */
+  mostrarAssinaturaConfrontantes: boolean;
 }
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {
@@ -75,6 +77,7 @@ export const PREFERENCIAS_PADRAO: PreferenciasApp = {
   casasDecimaisAtivo: false,
   casasDecimais: 3,
   confirmarAntesApagar: true,
+  mostrarAssinaturaConfrontantes: true,
 };
 
 const KEY = 'metrica.preferencias';

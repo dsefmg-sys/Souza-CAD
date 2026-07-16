@@ -79,9 +79,9 @@ export default function AnuenciaModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
+      <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col bg-background/98 shadow-2xl p-6 rounded-xl">
+        <DialogHeader className="border-b pb-3">
+          <DialogTitle className="flex items-center gap-2 text-base font-black text-foreground">
             <FileText className="size-5 text-primary" /> Cartas de Anuência
           </DialogTitle>
         </DialogHeader>
@@ -102,11 +102,11 @@ export default function AnuenciaModal({
         ) : (
           <>
             {/* Opções da carta (valem para o download em lote e individual) */}
-            <label className="flex cursor-pointer items-start gap-2 rounded-lg border bg-muted/20 p-2.5 text-sm">
-              <input type="checkbox" className="mt-0.5 size-4 accent-primary" checked={incluirVertices} onChange={(e) => setIncluirVertices(e.target.checked)} />
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 dark:bg-indigo-950/10 p-3.5 text-sm transition-colors hover:bg-indigo-500/10">
+              <input type="checkbox" className="mt-0.5 size-4 accent-primary rounded" checked={incluirVertices} onChange={(e) => setIncluirVertices(e.target.checked)} />
               <span>
-                <span className="font-medium">Incluir a relação de vértices</span>
-                <span className="block text-xs text-muted-foreground">Anexa, no fim de cada carta, a lista dos vértices do trecho anuído com código e coordenadas Leste/Norte.</span>
+                <span className="font-semibold text-foreground">Incluir a relação de vértices na carta</span>
+                <span className="block text-xs text-muted-foreground">Anexa, no fim de cada carta, a tabela dos vértices do trecho anuído com código e coordenadas Leste/Norte.</span>
               </span>
             </label>
 
@@ -115,31 +115,31 @@ export default function AnuenciaModal({
               type="button"
               disabled={ocupado || !tecnico}
               onClick={baixarTodas}
-              className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-left transition-colors hover:bg-amber-500/10 disabled:opacity-50"
+              className="flex items-center justify-between gap-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white p-4 text-left transition-all duration-150 shadow-md hover:shadow-lg disabled:opacity-50 select-none font-bold"
             >
               <div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400"><Files className="size-4" /> Baixar todas num único documento</div>
-                <p className="mt-0.5 text-xs text-muted-foreground">Um único arquivo .docx com uma carta por confrontante, cada uma em sua folha.</p>
+                <div className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-white"><Files className="size-4" /> Baixar todas num único documento</div>
+                <p className="mt-0.5 text-xs text-amber-100 font-medium">Um único arquivo .docx com uma carta por confrontante, cada uma em sua folha.</p>
               </div>
-              <Download className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <Download className="size-5 shrink-0 text-white" />
             </button>
 
-            <div className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">ou uma de cada vez</div>
+            <div className="text-center text-[10px] font-black uppercase tracking-wider text-muted-foreground">ou uma de cada vez</div>
 
             {/* Uma carta por confrontante */}
-            <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
               {confrontantesAssinam.map((c) => {
                 const n = compartilhadosDe(c).length;
                 return (
-                  <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border p-2.5">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="inline-block h-0 w-5 shrink-0 border-t-[3px] border-dashed" style={{ borderColor: corPorConfrontante(c.id, c) }} />
+                  <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/85 bg-zinc-50/30 dark:bg-zinc-900/10 p-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="inline-block h-0 w-6 shrink-0 border-t-[3.5px] border-dashed" style={{ borderColor: corPorConfrontante(c.id, c) }} />
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">{nome(c)}</div>
-                        <div className="text-[11px] text-muted-foreground">{n} trecho(s) de divisa</div>
+                        <div className="truncate text-sm font-semibold text-foreground">{nome(c)}</div>
+                        <div className="text-xs text-muted-foreground font-medium">{n} trecho(s) de divisa compartilhados</div>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" className="h-8 shrink-0 gap-1.5" disabled={ocupado || !tecnico} onClick={() => baixarUma(c)}>
+                    <Button size="sm" variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8 shrink-0 gap-1.5 shadow-sm px-3" disabled={ocupado || !tecnico} onClick={() => baixarUma(c)}>
                       <Download className="size-3.5" /> Baixar
                     </Button>
                   </div>

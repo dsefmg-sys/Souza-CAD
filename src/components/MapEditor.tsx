@@ -1824,7 +1824,7 @@ export default function MapEditor(props: Props) {
             leste: p1.leste ?? geoParaUtm(p1.lat, p1.lon, zona, hemisferio).leste,
             norte: p1.norte ?? geoParaUtm(p1.lat, p1.lon, zona, hemisferio).norte,
           };
-          const { alOffset, blOffset } = obterPontosCotaOffset(utmA, utmB);
+          const { alOffset, blOffset } = obterPontosCotaOffset(utmA, utmB, o.tamanho);
           const g0 = utmParaGeo(alOffset.leste, alOffset.norte, zona, hemisferio);
           const g1 = utmParaGeo(blOffset.leste, blOffset.norte, zona, hemisferio);
 
@@ -1833,6 +1833,18 @@ export default function MapEditor(props: Props) {
 
           const corCota = o.cor ?? estiloCamada?.cor ?? '#b91c1c';
           const espessuraCota = o.espessura ?? estiloCamada?.espessura ?? 1.2;
+          const tamanhoFonte = o.tamanhoFonte ?? 10;
+          const corFonte = o.corFonte ?? corCota;
+
+          // Calculate rotation angle of the cota to keep text parallel to the line:
+          const dx = utmB.leste - utmA.leste;
+          const dy = utmB.norte - utmA.norte;
+          const anguloRad = Math.atan2(dy, dx);
+          let anguloDeg = anguloRad * (180 / Math.PI);
+          if (anguloDeg > 90) anguloDeg -= 180;
+          else if (anguloDeg < -90) anguloDeg += 180;
+
+          const labelHtml = `<div style="font-size:${tamanhoFonte}px;color:${corFonte};background:#fff;padding:0 2px;border:1px solid ${corCota};border-radius:2px;width:max-content;display:inline-block;transform:translate(-50%, -50%) rotate(${anguloDeg.toFixed(1)}deg);white-space:nowrap;transform-origin:center center">${numBR(distanciaCota(o))} m</div>`;
 
           return (
             <Fragment key={o.id}>
@@ -1840,7 +1852,7 @@ export default function MapEditor(props: Props) {
               <Polyline positions={[[p1.lat, p1.lon], [g1.lat, g1.lon]]} pathOptions={{ color: corCota, weight: 0.8, dashArray: '2 3' }} />
               <Polyline positions={posOffset} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
               <Polyline positions={posOffset} pathOptions={{ color: corCota, weight: espessuraCota + (sel ? 0.8 : 0) }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
-              <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: `<div style="font-size:10px;color:${corCota};background:#fff;padding:0 2px;border:1px solid ${corCota};border-radius:2px;width:max-content;display:inline-block">${numBR(distanciaCota(o))} m</div>`, iconSize: [1, 1], iconAnchor: [0, 8] })}
+              <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: labelHtml, iconSize: [1, 1], iconAnchor: [0, 0] })}
                 eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
               {sel && !bloqueada && pos.map((p, idx) => (
                 <Marker key={`hc${idx}`} position={p} draggable opacity={0}

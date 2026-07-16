@@ -34,6 +34,30 @@ export async function gerarDeclaracaoSobreposicaoDocx(inputBruto: DeclaracaoInpu
   return montar('DECLARAÇÃO DE INEXISTÊNCIA DE SOBREPOSIÇÃO', corpo, tecnico.nome || '', rotulo, imovel, tecnico, dataExtenso);
 }
 
+/** Declaração de representação de incapaz (menores/interditos). */
+export async function gerarDeclaracaoIncapazDocx(inputBruto: DeclaracaoInput & { representado?: string }): Promise<Blob> {
+  const { imovel, tecnico, dataExtenso, representado } = sanitizarProfundo(inputBruto);
+  const vars = { ...varsDeclaracao(imovel, tecnico), representado: representado || '_______________________' };
+  const corpo = preencherModelo(carregarModelos().declIncapaz, vars);
+  return montar('DECLARAÇÃO DE REPRESENTAÇÃO DE INCAPAZ', corpo, imovel.proprietario || '', 'Representante Legal', imovel, tecnico, dataExtenso);
+}
+
+/** Declaração de representação de espólio (inventariante). */
+export async function gerarDeclaracaoEspolioDocx(inputBruto: DeclaracaoInput & { falecido?: string }): Promise<Blob> {
+  const { imovel, tecnico, dataExtenso, falecido } = sanitizarProfundo(inputBruto);
+  const vars = { ...varsDeclaracao(imovel, tecnico), falecido: falecido || '_______________________' };
+  const corpo = preencherModelo(carregarModelos().declEspolio, vars);
+  return montar('DECLARAÇÃO DE REPRESENTAÇÃO DE ESPÓLIO', corpo, imovel.proprietario || '', 'Inventariante', imovel, tecnico, dataExtenso);
+}
+
+/** Declaração de respeito de limites e ausência de sobreposição (assinada pelo proprietário/possuidor). */
+export async function gerarDeclaracaoRespeitoLimitesDocx(inputBruto: DeclaracaoInput): Promise<Blob> {
+  const { imovel, tecnico, dataExtenso } = sanitizarProfundo(inputBruto);
+  const corpo = preencherModelo(carregarModelos().declRespeitoLimites, varsDeclaracao(imovel, tecnico));
+  return montar('DECLARAÇÃO DE RESPEITO DE LIMITES E INEXISTÊNCIA DE CONFLITOS', corpo, imovel.proprietario || '', 'Requerente', imovel, tecnico, dataExtenso);
+}
+
+
 /** Monta o docx de uma declaração simples (título, corpo, data e assinatura). */
 async function montar(titulo: string, corpo: string, assinaNome: string, assinaRotulo: string, imovel: ImovelData, tecnico: TecnicoData, dataExtenso?: string): Promise<Blob> {
   const c: Paragraph[] = [];

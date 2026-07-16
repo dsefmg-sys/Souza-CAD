@@ -12,6 +12,7 @@ import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
 import { rotuloPapelProprietario } from '@/lib/export/papelProprietario';
 import type { ObjetoDesenho } from '@/lib/topo/types';
 import { calcularAreaSgl } from '@/lib/topo/sgl';
+import { carregarPreferencias, type PreferenciasApp } from '@/lib/store/preferencias';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -59,6 +60,7 @@ interface Props {
   onDblClickDivisa?: (v: Vertex, idx: number, x: number, y: number) => void; // duplo clique num segmento/divisa: abre o painel de ajuste rápido do lado
   onAntesEditar?: () => void; // dispara UMA foto pro desfazer no começo de cada arraste/edição da planta
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
+  onMoverObjeto?: (id: string, dlat: number, dlon: number) => void; // move o objeto inteiro (arrastar o corpo)
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
   onRemoverSituacao?: () => void;      // clicar na imagem da situação mostra um X; o X chama isto
@@ -85,6 +87,8 @@ interface Props {
   onSetEditandoTextoId?: (id: string | null) => void;
   onTextoStartEdit?: () => void;
   onTextoPatch?: (id: string, patch: { escala?: number; texto?: string; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) => void;
+  onDblClick?: (lat: number, lon: number) => void;
+  onContextMenuVazio?: () => void;
 }
 
 /** Ajuste salvo de um texto (conteúdo/escala/negrito/deslocamento). */
@@ -314,14 +318,19 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
-  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
+  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onConfrontanteMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
-  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true,
+  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onContextMenuVazio,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [prefs, setPrefs] = useState<PreferenciasApp | null>(null);
+
+  useEffect(() => {
+    setPrefs(carregarPreferencias());
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -335,7 +344,7 @@ export default function Planta({
   }, [editavel, modo]);
 
   const escalaDenomRef = useRef(0); // escala atual lida pelo handler da roda (evita depender do valor no efeito)
-  const dragRef = useRef<null | { kind: 'objPonto' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf' | 'selecao'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number; snapped?: boolean }>(null);
+  const dragRef = useRef<null | { kind: 'objPonto' | 'objCorpo' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf' | 'selecao'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number; snapped?: boolean; lastGeo?: { lat: number; lon: number } }>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
   // Arraste suave: em vez de atualizar o estado a cada micro-movimento do mouse (que redesenha o
   // SVG inteiro e trava), juntamos as atualizações e aplicamos no máximo uma por quadro de tela.
@@ -398,7 +407,7 @@ export default function Planta({
 
   // Estado para arrasto fluído/suave (evita recálculos geográficos pesados em tempo real)
   const [dragTemp, setDragTemp] = useState<{
-    kind: 'rotConf' | 'rotVert' | 'ted' | 'divisaConf' | 'folha' | 'objPonto' | 'selecao';
+    kind: 'rotConf' | 'rotVert' | 'ted' | 'divisaConf' | 'folha' | 'objPonto' | 'objCorpo' | 'selecao';
     id: string;
     dx: number;
     dy: number;
@@ -756,7 +765,7 @@ export default function Planta({
   };
 
   // ---- EDIÇÃO NA PLANTA: converte pixel do SVG -> terreno e arrasta itens ----
-  function svgPonto(e: ReactPointerEvent): { x: number; y: number } | null {
+  function svgPonto(e: { clientX: number; clientY: number }): { x: number; y: number } | null {
     const svg = svgRef.current; const ctm = svg?.getScreenCTM();
     if (!svg || !ctm) return null;
     const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
@@ -789,17 +798,56 @@ export default function Planta({
       }
     }
     // modos de desenho: o clique cria/continua o objeto (só dentro da área de desenho, nunca no carimbo)
-    if (modo === 'linha' || modo === 'polilinha' || modo === 'cota' || modo === 'texto' || modo === 'retangulo' || modo === 'arco') {
+    if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'simbolo' || modo === 'retangulo' || modo === 'arco') {
       if (u.x < DRAW.x0 || u.x > DRAW.x1 || u.y < DRAW.y0 || u.y > DRAW.y1) return;
       const g = paraGeo(u); onCliquePlanta?.(g.lat, g.lon); return;
     }
-    // navegar: arrastar item mais próximo (prioridade: ponto de objeto)
+    // navegar: arrastar item mais próximo.
+    // Prioridade 1: endpoint de qualquer objeto (vértice de controle).
     for (const o of objetos) {
-      if (o.curvaNivel != null) continue; // curva de nível não é editável (não seleciona/arrasta pontos)
+      if (o.curvaNivel != null) continue;
       for (let i = 0; i < o.pontos.length; i++) {
-        if (Math.hypot(sx(o.pontos[i].leste) - u.x, sy(o.pontos[i].norte) - u.y) < 7) {
+        if (Math.hypot(sx(o.pontos[i].leste) - u.x, sy(o.pontos[i].norte) - u.y) < 8) {
           dragRef.current = { kind: 'objPonto', id: o.id, idx: i, dx: 0, dy: 0 }; onSelecObjeto?.(o.id); captura(e); return;
         }
+      }
+    }
+    // Prioridade 2: corpo do objeto (clique sobre o segmento/linha → mover o objeto inteiro).
+    // Calcula a distância ponto-segmento para cada segmento da polilinha/cota.
+    function distPontoSegmento(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+      const dx = bx - ax, dy = by - ay;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq === 0) return Math.hypot(px - ax, py - ay);
+      const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+      return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+    }
+    for (const o of objetos) {
+      if (o.curvaNivel != null) continue;
+      const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
+      const hitThresh = 8;
+      let hit = false;
+      if (o.tipo === 'polilinha' && sp.length >= 2) {
+        for (let i = 0; i < sp.length - 1; i++) {
+          if (distPontoSegmento(u.x, u.y, sp[i].x, sp[i].y, sp[i+1].x, sp[i+1].y) < hitThresh) { hit = true; break; }
+        }
+      } else if (o.tipo === 'cota' && sp.length >= 2) {
+        // testa a linha principal da cota e também as extensões
+        const p0 = o.pontos[0], p1 = o.pontos[1];
+        const utmA = { leste: p0.leste ?? sx(0), norte: p0.norte ?? sy(0) };
+        const utmB = { leste: p1.leste ?? sx(0), norte: p1.norte ?? sy(0) };
+        const { alOffset, blOffset } = obterPontosCotaOffset(utmA, utmB);
+        const ao = { x: sx(alOffset.leste), y: sy(alOffset.norte) };
+        const bo = { x: sx(blOffset.leste), y: sy(blOffset.norte) };
+        if (
+          distPontoSegmento(u.x, u.y, ao.x, ao.y, bo.x, bo.y) < hitThresh ||
+          distPontoSegmento(u.x, u.y, sp[0].x, sp[0].y, ao.x, ao.y) < hitThresh ||
+          distPontoSegmento(u.x, u.y, sp[1].x, sp[1].y, bo.x, bo.y) < hitThresh
+        ) { hit = true; }
+      }
+      if (hit) {
+        const g = paraGeo(u);
+        dragRef.current = { kind: 'objCorpo', id: o.id, dx: 0, dy: 0, lastGeo: { lat: g.lat, lon: g.lon } };
+        onSelecObjeto?.(o.id); captura(e); return;
       }
     }
     // clique/arrasto no vazio: desseleciona e permite reposicionar a FOLHA inteira (se destravada)
@@ -846,6 +894,15 @@ export default function Planta({
     if (d.kind === 'objPonto') {
       const g = paraGeo(u);
       onMoverPontoObjeto?.(d.id, d.idx!, g.lat, g.lon);
+    }
+    if (d.kind === 'objCorpo') {
+      const g = paraGeo(u);
+      if (d.lastGeo) {
+        const dlat = g.lat - d.lastGeo.lat;
+        const dlon = g.lon - d.lastGeo.lon;
+        onMoverObjeto?.(d.id, dlat, dlon);
+      }
+      d.lastGeo = { lat: g.lat, lon: g.lon };
     }
   }
   function plantaUp(e: ReactPointerEvent) {
@@ -1071,7 +1128,7 @@ export default function Planta({
     const matLine = principalAll.find((l) => /^Matr[íi]cula/i.test(l)) ?? null;
     const principalSemMat = principalAll.filter((l) => l !== matLine);
 
-    const semAssinatura = c.condicao === 'publico';
+    const semAssinatura = c.condicao === 'publico' || (prefs !== null && !prefs.mostrarAssinaturaConfrontantes);
     const isHorizontal = c.layoutAssinatura === 'horizontal' && temConjLinhas;
 
     const gap = 52;
@@ -1113,6 +1170,21 @@ export default function Planta({
       <svg ref={svgRef} id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%" height="100%"
         style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : CURSOR_CROSSHAIR) : 'default', touchAction: editavel ? 'none' : undefined }}
         onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
+        onContextMenu={(e) => {
+          if (e.target === svgRef.current || (e.target as HTMLElement).tagName === 'svg') {
+            e.preventDefault();
+            if (modo === 'navegar') {
+              onContextMenuVazio?.();
+            }
+          }
+        }}
+        onDoubleClick={editavel ? (e) => {
+          const u = svgPonto(e);
+          if (u && onDblClick) {
+            const g = paraGeo(u);
+            onDblClick(g.lat, g.lon);
+          }
+        } : undefined}
         xmlns="http://www.w3.org/2000/svg">
       {/* padrões de hachura pro preenchimento do polígono (escolhidos no painel, na cor do perímetro) */}
       {(() => {
@@ -1597,15 +1669,34 @@ export default function Planta({
           const mx = (svgAOffset.x + svgBOffset.x) / 2;
           const my = (svgAOffset.y + svgBOffset.y) / 2;
           const corCota = isMultiSelected ? '#f59e0b' : (o.cor ?? '#b91c1c');
+          const fsCota = o.tamanhoFonte ?? o.tamanho ?? 8;
+          const espCota = o.espessura ?? 0.8;
+          // Ângulo da linha de cota (paralela ao segmento) em graus — SVG usa sentido horário
+          const angRad = Math.atan2(svgBOffset.y - svgAOffset.y, svgBOffset.x - svgAOffset.x);
+          let angDeg = (angRad * 180) / Math.PI;
+          // Normaliza para que o texto nunca fique de cabeça para baixo
+          if (angDeg > 90 || angDeg < -90) angDeg += 180;
+          // Deslocamento perpendicular à linha (positivo = acima da linha no SVG, i.e. sentido contrário de y)
+          const perpOff = o.posicaoTexto === 'centro' ? 0 : o.posicaoTexto === 'abaixo' ? (fsCota + 3) : -(fsCota * 0.5 + 3);
 
           return (
             <g key={o.id} {...ctx} onClick={handlePlantaObjClick}>
+              {/* Área de hit invisível larga para facilitar o clique */}
+              <line x1={svgAOffset.x} y1={svgAOffset.y} x2={svgBOffset.x} y2={svgBOffset.y} stroke="transparent" strokeWidth={12} style={{ cursor: editavel ? 'pointer' : 'default' }} />
               {/* Linhas de extensão perpendiculares tracejadas */}
-              <line x1={sp[0].x} y1={sp[0].y} x2={svgAOffset.x} y2={svgAOffset.y} stroke={corCota} strokeWidth={0.5} strokeDasharray="2 1" />
-              <line x1={sp[1].x} y1={sp[1].y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={corCota} strokeWidth={0.5} strokeDasharray="2 1" />
+              <line x1={sp[0].x} y1={sp[0].y} x2={svgAOffset.x} y2={svgAOffset.y} stroke={corCota} strokeWidth={espCota * 0.6} strokeDasharray="2 1" style={{ pointerEvents: 'none' }} />
+              <line x1={sp[1].x} y1={sp[1].y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={corCota} strokeWidth={espCota * 0.6} strokeDasharray="2 1" style={{ pointerEvents: 'none' }} />
               {/* Linha de cota paralela */}
-              <line x1={svgAOffset.x} y1={svgAOffset.y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={corCota} strokeWidth={0.8 + (isMultiSelected ? 0.8 : 0)} />
-              <text x={mx} y={my - 3} fontSize={8} textAnchor="middle" fill={corCota}>{numBR(distanciaCota(o))} m</text>
+              <line x1={svgAOffset.x} y1={svgAOffset.y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={corCota} strokeWidth={espCota + (isMultiSelected ? 0.8 : 0)} style={{ pointerEvents: 'none' }} />
+              {/* Texto paralelo à linha, deslocado perpendicularmente */}
+              <text
+                x={mx} y={my}
+                fontSize={fsCota} textAnchor="middle" dominantBaseline="central"
+                fill={o.corFonte ?? corCota} fontWeight="bold"
+                paintOrder="stroke" stroke="#fff" strokeWidth={fsCota * 0.35} strokeLinejoin="round"
+                transform={`rotate(${angDeg.toFixed(1)}, ${mx.toFixed(1)}, ${my.toFixed(1)}) translate(0, ${perpOff.toFixed(1)})`}
+                style={{ pointerEvents: 'none' }}
+              >{numBR(distanciaCota(o))} m</text>
             </g>
           );
         }
@@ -1632,8 +1723,12 @@ export default function Planta({
               <polygon key={o.id} {...ctx} onClick={handlePlantaObjClick} points={pp} fill={fillVal} fillOpacity={fillOp} stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
             );
           } else {
+            // Área de hit invisível larga (permite clicar/arrastar mesmo em linhas finas e tracejadas)
             el = (
-              <polyline key={o.id} {...ctx} onClick={handlePlantaObjClick} points={pp} fill="none" stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
+              <g key={o.id} {...ctx} onClick={handlePlantaObjClick} style={{ cursor: editavel && o.curvaNivel == null ? 'pointer' : 'default' }}>
+                <polyline points={pp} fill="none" stroke="transparent" strokeWidth={12} style={{ pointerEvents: 'stroke' }} />
+                <polyline points={pp} fill="none" stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} style={{ pointerEvents: 'none' }} />
+              </g>
             );
           }
 
@@ -1682,7 +1777,7 @@ export default function Planta({
 
         // Bem público (estrada, rio...) não assina — sem titular pra colher assinatura, então a
         // caixa vira só o nome, sem linha de firma nenhuma.
-        const semAssinatura = c.condicao === 'publico';
+        const semAssinatura = c.condicao === 'publico' || (prefs !== null && !prefs.mostrarAssinaturaConfrontantes);
         const isHorizontal = c.layoutAssinatura === 'horizontal' && temConjLinhas;
 
         const gap = 52;
@@ -2190,7 +2285,7 @@ export default function Planta({
     </svg>
 
     <Dialog open={modalTituloAberto} onOpenChange={setModalTituloAberto}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-6 bg-background shadow-2xl rounded-xl overflow-hidden">
+      <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col p-6 bg-background shadow-2xl rounded-xl overflow-hidden">
         <DialogHeader className="shrink-0 pb-4 border-b border-border/60">
           <DialogTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2.5 text-primary">
             <Pencil className="size-4" /> Escolher Serviço (Título da Página)
@@ -2204,7 +2299,7 @@ export default function Planta({
             <span className="font-extrabold text-foreground block mb-1">
               Como funcionam os Modelos de Planta associados aos Serviços:
             </span>
-            Para cada título de serviço que você escolhe ou salva abaixo, o sistema vincula um Modelo de Planta completo. Isso significa que as configurações da folha, escala, logotipo do escritório e todos os textos personalizados das peças técnicas (como declarações de proprietário e laudos) são salvos especificamente para esse serviço. Ao selecionar o título, o sistema carrega e aplica instantaneamente todos os padrões cadastrados para aquele tipo de trabalho.
+            Ao selecionar um serviço padrão ou personalizado, o sistema vincula um **Modelo de Planta completo**. Configurações de prancha, escala, logotipo e blocos de textos jurídicos editáveis são salvos individualmente por tipo de serviço, permitindo a transição instantânea entre diferentes padrões de entrega.
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
@@ -2240,51 +2335,80 @@ export default function Planta({
 
               {/* Meus Modelos Salvos */}
               <div className="flex-grow flex flex-col min-h-[150px] text-left">
-                <span className="text-[10px] font-black uppercase text-foreground tracking-wider mb-1.5">Meus Serviços Personalizados ({titulosSalvos.length})</span>
+                <span className="text-[10px] font-black uppercase text-foreground tracking-wider mb-1.5 font-bold">Meus Serviços Personalizados ({titulosSalvos.length})</span>
                 {titulosSalvos.length > 0 ? (
-                  <div className="flex-grow overflow-y-auto border border-border rounded-lg p-2 bg-muted/10 space-y-1 scroll-fino">
-                    {titulosSalvos.map((t) => (
-                      <div key={t} className="group flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted text-left transition-all border border-border/30 bg-background">
-                        <button
-                          type="button"
-                          className="flex-grow text-left text-xs font-bold text-foreground"
-                          onClick={() => setTempTitulo(t)}
-                        >
-                          {t}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:text-destructive p-1 rounded-sm hover:bg-destructive/10 transition-colors"
-                          onClick={() => excluirTituloCustom(t)}
-                          title="Excluir este modelo"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="flex-grow overflow-y-auto border border-border rounded-lg p-2 bg-muted/10 space-y-2 scroll-fino h-[250px]">
+                    {titulosSalvos.map((t, index) => {
+                      const sel = tempTitulo === t;
+                      const CORES_SERVICOS = [
+                        { bg: 'bg-blue-500/10 dark:bg-blue-500/5', border: 'border-blue-500/40 dark:border-blue-500/20 text-blue-700 dark:text-blue-400 border-l-4 border-l-blue-500 hover:bg-blue-500/15' },
+                        { bg: 'bg-emerald-500/10 dark:bg-emerald-500/5', border: 'border-emerald-500/40 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-l-4 border-l-emerald-500 hover:bg-emerald-500/15' },
+                        { bg: 'bg-indigo-500/10 dark:bg-indigo-500/5', border: 'border-indigo-500/40 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400 border-l-4 border-l-indigo-500 hover:bg-indigo-500/15' },
+                        { bg: 'bg-rose-500/10 dark:bg-rose-500/5', border: 'border-rose-500/40 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 border-l-4 border-l-rose-500 hover:bg-rose-500/15' },
+                        { bg: 'bg-amber-500/10 dark:bg-amber-500/5', border: 'border-amber-500/40 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 border-l-4 border-l-amber-500 hover:bg-amber-500/15' },
+                        { bg: 'bg-teal-500/10 dark:bg-teal-500/5', border: 'border-teal-500/40 dark:border-teal-500/20 text-teal-700 dark:text-teal-400 border-l-4 border-l-teal-500 hover:bg-teal-500/15' },
+                        { bg: 'bg-sky-500/10 dark:bg-sky-500/5', border: 'border-sky-500/40 dark:border-sky-500/20 text-sky-700 dark:text-sky-400 border-l-4 border-l-sky-500 hover:bg-sky-500/15' },
+                        { bg: 'bg-purple-500/10 dark:bg-purple-500/5', border: 'border-purple-500/40 dark:border-purple-500/20 text-purple-700 dark:text-purple-400 border-l-4 border-l-purple-500 hover:bg-purple-500/15' },
+                      ];
+                      const cor = CORES_SERVICOS[(index + 3) % CORES_SERVICOS.length];
+                      return (
+                        <div key={t} className={`group flex items-center justify-between gap-3 p-2 rounded-lg border transition-all ${cor.bg} ${cor.border} ${sel ? 'ring-2 ring-foreground' : ''}`}>
+                          <button
+                            type="button"
+                            className="flex-grow text-left text-xs font-bold uppercase truncate"
+                            onClick={() => setTempTitulo(t)}
+                          >
+                            {t}
+                          </button>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-destructive p-1 rounded-sm hover:bg-destructive/10 transition-colors shrink-0"
+                            onClick={() => excluirTituloCustom(t)}
+                            title="Excluir este modelo"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="flex-grow flex items-center justify-center border border-border border-dashed rounded-lg bg-muted/5 text-xs text-muted-foreground p-4">
-                    Nenhum serviço salvo ainda. Digite um título e clique em &quot;Salvar&quot; para adicioná-lo.
+                    Nenhum serviço personalizado salvo ainda. Digite um título e clique em &quot;Salvar&quot; para adicioná-lo.
                   </div>
                 )}
               </div>
             </div>
 
             {/* Coluna Direita: Modelos Padrão */}
-            <div className="flex flex-col min-h-[250px] text-left">
+            <div className="flex flex-col min-h-[300px] text-left">
               <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mb-1.5">Serviços Padrão (Modelos de Agrimensura)</span>
-              <div className="flex-grow overflow-y-auto border border-border rounded-lg divide-y divide-border bg-muted/5 scroll-fino">
-                {TITULOS_EDUCATIVOS.map((item) => {
+              <div className="flex-grow overflow-y-auto border border-border rounded-lg bg-muted/5 scroll-fino h-[380px] p-2 space-y-2">
+                {TITULOS_EDUCATIVOS.map((item, index) => {
                   const sel = tempTitulo === item.titulo;
+                  const CORES_SERVICOS = [
+                    { bg: 'bg-blue-500/10 dark:bg-blue-500/5', border: 'border-blue-500/40 dark:border-blue-500/20 text-blue-700 dark:text-blue-400 border-l-4 border-l-blue-500 hover:bg-blue-500/15' },
+                    { bg: 'bg-emerald-500/10 dark:bg-emerald-500/5', border: 'border-emerald-500/40 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-l-4 border-l-emerald-500 hover:bg-emerald-500/15' },
+                    { bg: 'bg-indigo-500/10 dark:bg-indigo-500/5', border: 'border-indigo-500/40 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400 border-l-4 border-l-indigo-500 hover:bg-indigo-500/15' },
+                    { bg: 'bg-rose-500/10 dark:bg-rose-500/5', border: 'border-rose-500/40 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 border-l-4 border-l-rose-500 hover:bg-rose-500/15' },
+                    { bg: 'bg-amber-500/10 dark:bg-amber-500/5', border: 'border-amber-500/40 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 border-l-4 border-l-amber-500 hover:bg-amber-500/15' },
+                    { bg: 'bg-teal-500/10 dark:bg-teal-500/5', border: 'border-teal-500/40 dark:border-teal-500/20 text-teal-700 dark:text-teal-400 border-l-4 border-l-teal-500 hover:bg-teal-500/15' },
+                    { bg: 'bg-sky-500/10 dark:bg-sky-500/5', border: 'border-sky-500/40 dark:border-sky-500/20 text-sky-700 dark:text-sky-400 border-l-4 border-l-sky-500 hover:bg-sky-500/15' },
+                    { bg: 'bg-purple-500/10 dark:bg-purple-500/5', border: 'border-purple-500/40 dark:border-purple-500/20 text-purple-700 dark:text-purple-400 border-l-4 border-l-purple-500 hover:bg-purple-500/15' },
+                    { bg: 'bg-violet-500/10 dark:bg-violet-500/5', border: 'border-violet-500/40 dark:border-violet-500/20 text-violet-700 dark:text-violet-400 border-l-4 border-l-violet-500 hover:bg-violet-500/15' },
+                    { bg: 'bg-cyan-500/10 dark:bg-cyan-500/5', border: 'border-cyan-500/40 dark:border-cyan-500/20 text-cyan-700 dark:text-cyan-400 border-l-4 border-l-cyan-500 hover:bg-cyan-500/15' },
+                    { bg: 'bg-orange-500/10 dark:bg-orange-500/5', border: 'border-orange-500/40 dark:border-orange-500/20 text-orange-700 dark:text-orange-400 border-l-4 border-l-orange-500 hover:bg-orange-500/15' },
+                    { bg: 'bg-slate-500/10 dark:bg-slate-500/5', border: 'border-slate-500/40 dark:border-slate-500/20 text-slate-700 dark:text-slate-400 border-l-4 border-l-slate-500 hover:bg-slate-500/15' },
+                  ];
+                  const cor = CORES_SERVICOS[index % CORES_SERVICOS.length];
                   return (
                     <button
                       key={item.titulo}
                       type="button"
-                      className={`w-full text-left p-3 flex flex-col gap-1 hover:bg-muted transition-all ${sel ? 'bg-primary/10 border-l-4 border-primary' : ''}`}
+                      className={`w-full text-left p-3 rounded-lg border flex flex-col gap-1 transition-all ${cor.bg} ${cor.border} ${sel ? 'ring-2 ring-foreground scale-[0.99] brightness-100 shadow-md' : 'opacity-85 hover:opacity-100'}`}
                       onClick={() => setTempTitulo(item.titulo)}
                     >
-                      <span className={`text-xs font-black uppercase ${sel ? 'text-primary' : 'text-foreground'}`}>
+                      <span className="text-xs font-black uppercase">
                         {item.titulo}
                       </span>
                       <span className="text-[10px] text-muted-foreground leading-normal font-semibold">
@@ -2299,21 +2423,24 @@ export default function Planta({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 flex items-center justify-end gap-3 pt-4 border-t border-border/60">
+        <div className="shrink-0 flex items-center justify-end gap-2.5 pt-4 border-t border-border/60">
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="text-xs h-9 px-4 font-bold"
+            className="text-xs h-9 px-4 font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-foreground border-transparent"
             onClick={() => setModalTituloAberto(false)}
           >
             Cancelar
           </Button>
           <Button
             size="sm"
-            className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs h-9 px-5 transition-colors"
+            className="text-xs h-9 px-5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm border-transparent"
+            disabled={!tempTitulo.trim()}
             onClick={() => {
-              onTextoEditar?.('carimbo.titulo', tempTitulo);
-              setModalTituloAberto(false);
+              if (tempTitulo.trim()) {
+                onTextoEditar?.('carimbo.titulo', tempTitulo.trim());
+                setModalTituloAberto(false);
+              }
             }}
           >
             Confirmar Título
@@ -2658,10 +2785,10 @@ function FaixaInferior(props: {
 
               {/* Diagrama técnico de convergência (NV/NQ/NM) — bloco próprio, arrastável sozinho */}
               {verNortes && bloco('coord.diagrama', (
-                <g onContextMenu={coordEditavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloDiagrama', 4); } : undefined}>
+                <g>
                   {/* área transparente de captura: sem ela, só as linhas finas pegavam o arraste */}
                   <rect x={x3 + 38} y={y0 + 130} width={74} height={60} fill="transparent" />
-                  <Nortes cx={x3 + 75} cy={y0 + 164} conv={conv} decl={decl} fs={fs} variante={estiloDiagrama} />
+                  <Nortes cx={x3 + 75} cy={y0 + 164} conv={conv} decl={decl} fs={fs} variante={0} />
                 </g>
               ))}
               {/* rótulo do diagrama — bloco SEPARADO, move livre do diagrama. Padrão: AO LADO
@@ -2837,32 +2964,6 @@ function Nortes({ cx, cy, conv, decl, fs, variante = 0 }: { cx: number; cy: numb
   const temNM = decl !== 0;
   return (
     <g>
-      {/* variação 1: um arco/círculo de referência atrás das linhas (visual de bússola técnica) */}
-      {variante === 1 && <circle cx={cx} cy={cy} r={L} fill="#ffffff" fillOpacity={0.6} stroke="#cbd5e1" strokeWidth={0.6} />}
-      {/* variação 2: mostrador técnico com marcações radiais (ticks de grau) */}
-      {variante === 2 && (
-        <g opacity={0.7}>
-          <circle cx={cx} cy={cy} r={L} fill="#ffffff" fillOpacity={0.6} stroke="#64748b" strokeWidth={0.6} />
-          <circle cx={cx} cy={cy} r={L - 4} fill="none" stroke="#cbd5e1" strokeWidth={0.4} strokeDasharray="1 2" />
-          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
-            const rad = (deg * Math.PI) / 180;
-            const x1 = cx + (L - 3) * Math.sin(rad);
-            const y1 = cy - (L - 3) * Math.cos(rad);
-            const x2 = cx + L * Math.sin(rad);
-            const y2 = cy - L * Math.cos(rad);
-            return <line key={deg} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#64748b" strokeWidth={0.4} />;
-          })}
-        </g>
-      )}
-      {/* variação 3: retículo em cruz com anel de mira (estilo telescópico) */}
-      {variante === 3 && (
-        <g opacity={0.6}>
-          <line x1={cx - L - 4} y1={cy} x2={cx + L + 4} y2={cy} stroke="#94a3b8" strokeWidth={0.4} strokeDasharray="2 2" />
-          <line x1={cx} y1={cy - L - 4} x2={cx} y2={cy + L + 4} stroke="#94a3b8" strokeWidth={0.4} strokeDasharray="2 2" />
-          <circle cx={cx} cy={cy} r={L * 0.5} fill="none" stroke="#94a3b8" strokeWidth={0.4} />
-          <circle cx={cx} cy={cy} r={L} fill="none" stroke="#94a3b8" strokeWidth={0.5} />
-        </g>
-      )}
       {/* linhas (coloridas só pra distinguir; o texto é escuro e fica fora delas) */}
       {temNM && <line x1={cx} y1={cy} x2={mx} y2={my} stroke="#b91c1c" strokeWidth={0.9} strokeDasharray="3 2" />}
       {temNQ && <line x1={cx} y1={cy} x2={qx} y2={qy} stroke="#1d4ed8" strokeWidth={0.9} />}
@@ -3029,8 +3130,7 @@ function CarimboA3(props: {
   }
   campos.push(
     ['DATA:', dataExtenso || '—'],
-    // folha e escala juntas numa linha só (ambas curtas)
-    ['FOLHA / ESCALA:', `${folha} · 1/${escalaDenom}`],
+    ['FOLHA:', folha],
   );
 
   // título principal: quebra em até 2 linhas (calculado aqui pra o cabeçalho e os campos se alinharem)

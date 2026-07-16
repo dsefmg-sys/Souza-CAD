@@ -35,6 +35,14 @@ import MemorialPreviewModal from '@/components/MemorialPreviewModal';
 import ConsultarModal from '@/components/ConsultarModal';
 import { Packer } from 'docx';
 import { gerarAnuenciaDocumento, gerarAnuenciaLoteDocumento } from '@/lib/export/anuencia';
+import { gerarContratoPdf, gerarPropostaPdf } from '@/lib/export/financeiro';
+import {
+  gerarDeclaracaoPosseDocx,
+  gerarDeclaracaoSobreposicaoDocx,
+  gerarDeclaracaoIncapazDocx,
+  gerarDeclaracaoEspolioDocx,
+  gerarDeclaracaoRespeitoLimitesDocx
+} from '@/lib/export/declaracoes';
 import { confrontanteAssina } from '@/lib/export/confrontanteTexto';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
@@ -43,6 +51,7 @@ import GestaoProjetoModal from '@/components/GestaoProjetoModal';
 import TutorialModal from '@/components/TutorialModal';
 import MobileHome from '@/components/MobileHome';
 import AssinaturaModal from '@/components/AssinaturaModal';
+import { rotulosProfissional } from '@/lib/topo/profissional';
 import IntroVideo from '@/components/IntroVideo';
 import { IntroAudioPill, TutorialAudioPill } from '@/components/IntroAudio';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
@@ -55,7 +64,7 @@ import PorcentagemModal from '@/components/PorcentagemModal';
 import EstudioModal from '@/components/EstudioModal';
 import HistoriaModal from '@/components/HistoriaModal';
 import Map3DViewer from '@/components/Map3DViewer';
-import ProjetoInfoModal, { infoJaVista } from '@/components/ProjetoInfoModal';
+
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
 import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Projeto, ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad, ColegaCad, Gleba, PessoaQualificada, ObjetoDesenho, PontoLL, PlantaConfig, Contadores, Lado, VerticeVizinho, TipoVertice, CorrecaoErrata, ProprietarioParte, RawPoint } from '@/lib/topo/types';
@@ -785,8 +794,60 @@ export default function EditorPage() {
     };
   }, [arrastandoArea, posArea]);
 
+  const [posAudioBarra, setPosAudioBarra] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const salva = localStorage.getItem('metrica:pos_barra_audios');
+      if (salva) {
+        try {
+          const p = JSON.parse(salva);
+          if (typeof p.x === 'number' && typeof p.y === 'number') {
+            return p;
+          }
+        } catch {}
+      }
+    }
+    return { x: 350, y: 720 };
+  });
+
+  const [arrastandoAudioBarra, setArrastandoAudioBarra] = useState<{
+    startX: number;
+    startY: number;
+    startPosX: number;
+    startPosY: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!arrastandoAudioBarra) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - arrastandoAudioBarra.startX;
+      const dy = e.clientY - arrastandoAudioBarra.startY;
+      setPosAudioBarra({
+        x: Math.max(10, Math.min(window.innerWidth - 300, arrastandoAudioBarra.startPosX + dx)),
+        y: Math.max(10, Math.min(window.innerHeight - 50, arrastandoAudioBarra.startPosY + dy)),
+      });
+    };
+    const handleMouseUp = () => {
+      localStorage.setItem('metrica:pos_barra_audios', JSON.stringify(posAudioBarra));
+      setArrastandoAudioBarra(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [arrastandoAudioBarra, posAudioBarra]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const salvaAudios = localStorage.getItem('metrica:pos_barra_audios');
+      if (!salvaAudios) {
+        setPosAudioBarra({
+          x: Math.max(10, Math.floor(window.innerWidth / 2 - 200)),
+          y: Math.max(10, window.innerHeight - 56),
+        });
+      }
       const salvaAtalhos = localStorage.getItem('metrica:pos_barra_atalhos');
       if (!salvaAtalhos) {
         setPosAtalhos({ x: window.innerWidth / 2 - 250, y: 64 });
@@ -901,7 +962,6 @@ export default function EditorPage() {
   // primeira vez neste navegador: abre o tutorial sozinho (independe de login/rascunho).
   useEffect(() => { if (!tutorialJaVisto()) setTutorialAberto(true); }, []);
   function fecharTutorial(o: boolean) { setTutorialAberto(o); if (!o) marcarTutorialVisto(); }
-  const [infoAberto, setInfoAberto] = useState(false);
   const [pontosAberto, setPontosAberto] = useState(false);
   const [previewData, setPreviewData] = useState<{
     perim: unknown; vs: Vertex[]; numGlebas: number; municipio: string; fuso: unknown; z: number;
@@ -2745,7 +2805,26 @@ export default function EditorPage() {
     } else if (modo === 'cota') {
       setDesenhoBuffer((buf) => {
         const nb = [...buf, p];
-        if (nb.length >= 2) { snap(); setObjetos((os) => [...os, novaCota(nb[0], nb[1])]); return []; }
+        if (nb.length >= 2) {
+          snap();
+          let cotaOpts = {};
+          try {
+            const defCor = localStorage.getItem('default_cota_cor');
+            const defEsp = localStorage.getItem('default_cota_espessura');
+            const defTam = localStorage.getItem('default_cota_tamanho');
+            const defPos = localStorage.getItem('default_cota_posicaoTexto');
+            cotaOpts = {
+              cor: defCor || undefined,
+              espessura: defEsp ? Number(defEsp) : undefined,
+              tamanho: defTam ? Number(defTam) : undefined,
+              tamanhoFonte: defTam ? Number(defTam) : undefined,
+              corFonte: defCor || undefined,
+              posicaoTexto: defPos || undefined
+            };
+          } catch {}
+          setObjetos((os) => [...os, novaCota(nb[0], nb[1], cotaOpts)]);
+          return [];
+        }
         return nb;
       });
     } else if (modo === 'linha') {
@@ -3020,6 +3099,12 @@ export default function EditorPage() {
   function onMoverPontoObjeto(id: string, idx: number, lat: number, lon: number) {
     const p = pontoLL(lat, lon);
     setObjetos((os) => os.map((o) => (o.id === id ? { ...o, pontos: o.pontos.map((q, i) => (i === idx ? p : q)) } : o)));
+  }
+  function onMoverObjeto(id: string, dlat: number, dlon: number) {
+    setObjetos((os) => os.map((o) => o.id !== id ? o : {
+      ...o,
+      pontos: o.pontos.map((q) => pontoLL(q.lat + dlat, q.lon + dlon)),
+    }));
   }
   async function excluirObjetoPorId(id: string) {
     const obj = objetos.find((o) => o.id === id);
@@ -4997,66 +5082,148 @@ export default function EditorPage() {
     rotulo: string;
     onVisualizar: () => void;
     onBaixar?: () => void;
+    tipo: 'principais' | 'adicionais';
   }
 
   const itensPecas: PecasItem[] = [
     {
-      id: 'trt',
-      rotulo: `${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} — responsabilidade técnica`,
-      onVisualizar: () => setTrtAberto(true)
-    },
-    {
-      id: 'ods',
-      rotulo: 'Planilha SIGEF (.ods)',
-      onVisualizar: () => setPlanilhaConfAberta(true),
-      onBaixar: () => exportarOds()
-    },
-    {
-      id: 'conferir',
-      rotulo: 'Conferir projeto (limites, conflitos, SIGEF)',
-      onVisualizar: () => setConferirAberto(true)
-    },
-    {
       id: 'memorial_normal',
+      tipo: 'principais',
       rotulo: 'Memorial descritivo (.docx)',
       onVisualizar: () => { setPrevMemorialModo('normal'); setPrevMemorialAberto(true); },
       onBaixar: () => exportarMemorial('normal')
     },
     ...(projetoTemServidao ? [{
       id: 'memorial_servidao',
+      tipo: 'principais',
       rotulo: 'Memorial de servidão (.docx)',
       onVisualizar: () => { setPrevMemorialModo('servidao'); setPrevMemorialAberto(true); },
       onBaixar: () => exportarMemorial('servidao')
-    }] : []),
+    } as PecasItem] : []),
     {
       id: 'planta',
+      tipo: 'principais',
       rotulo: 'Planta A3 (PDF)',
       onVisualizar: () => setVista('planta'),
       onBaixar: () => exportarPlanta()
     },
     {
       id: 'requerimento',
+      tipo: 'principais',
       rotulo: 'Requerimento ao cartório (.docx)',
       onVisualizar: () => setReqAberto(true),
       onBaixar: () => baixarRequerimentoDireto()
     },
     {
       id: 'anuencia',
+      tipo: 'principais',
       rotulo: 'Cartas de anuência (.docx)',
       onVisualizar: () => setAnuenciaAberta(true),
       onBaixar: () => baixarTodasAnuenciasDireto()
     },
     ...(medioOuMais ? [{
       id: 'errata',
+      tipo: 'principais',
       rotulo: 'Errata perimetral (.docx)',
       onVisualizar: () => setErrataAberto(true),
       onBaixar: () => baixarErrataDireta()
-    }] : []),
-    ...(medioOuMais ? [{
-      id: 'car',
-      rotulo: 'CAR — Cadastro Ambiental Rural',
-      onVisualizar: () => setCarAberto(true)
-    }] : []),
+    } as PecasItem] : []),
+    {
+      id: 'contrato',
+      tipo: 'adicionais',
+      rotulo: 'Contrato de prestação de serviços (PDF)',
+      onVisualizar: () => setGestaoAberta(true),
+      onBaixar: () => {
+        const fin = imovel.financeiro ?? {};
+        gerarContratoPdf({
+          imovel,
+          tecnico: tecnico!,
+          escritorio: escritorio!,
+          areaHa: res?.areaHa ?? 0,
+          perimetro: res?.perimetro ?? 0,
+          valor: fin.valorCobrado ?? 0,
+          dataExtenso: dataPorExtenso(),
+        });
+      }
+    },
+    {
+      id: 'proposta',
+      tipo: 'adicionais',
+      rotulo: 'Proposta comercial (PDF)',
+      onVisualizar: () => setGestaoAberta(true),
+      onBaixar: () => {
+        const fin = imovel.financeiro ?? {};
+        gerarPropostaPdf({
+          imovel,
+          tecnico: tecnico!,
+          escritorio: escritorio!,
+          areaHa: res?.areaHa ?? 0,
+          perimetro: res?.perimetro ?? 0,
+          valor: fin.valorCobrado ?? 0,
+          dataExtenso: dataPorExtenso(),
+        });
+      }
+    },
+    {
+      id: 'decl_posse',
+      tipo: 'adicionais',
+      rotulo: 'Declaração de posse (.docx)',
+      onVisualizar: () => setGestaoAberta(true),
+      onBaixar: async () => {
+        saveAs(
+          await gerarDeclaracaoPosseDocx({ imovel, tecnico: tecnico!, dataExtenso: dataPorExtenso() }),
+          `Declaracao de posse - ${imovel.denominacao || 'imovel'}.docx`
+        );
+      }
+    },
+    {
+      id: 'decl_sobreposicao',
+      tipo: 'adicionais',
+      rotulo: 'Declaração de inexistência de sobreposição (.docx)',
+      onVisualizar: () => setGestaoAberta(true),
+      onBaixar: async () => {
+        saveAs(
+          await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico: tecnico!, dataExtenso: dataPorExtenso() }),
+          `Declaracao de inexistencia de sobreposicao - ${imovel.denominacao || 'imovel'}.docx`
+        );
+      }
+    },
+    {
+      id: 'decl_incapaz',
+      tipo: 'adicionais',
+      rotulo: 'Representação de incapaz (menores/interditos) (.docx)',
+      onVisualizar: () => setGestaoAberta(true),
+      onBaixar: async () => {
+        saveAs(
+          await gerarDeclaracaoIncapazDocx({ imovel, tecnico: tecnico!, dataExtenso: dataPorExtenso() }),
+          `Representacao de incapaz - ${imovel.denominacao || 'imovel'}.docx`
+        );
+      }
+    },
+    {
+      id: 'decl_espolio',
+      tipo: 'adicionais',
+      rotulo: 'Representação de espólio (inventariante) (.docx)',
+      onVisualizar: () => setGestaoAberta(true),
+      onBaixar: async () => {
+        saveAs(
+          await gerarDeclaracaoEspolioDocx({ imovel, tecnico: tecnico!, dataExtenso: dataPorExtenso() }),
+          `Representacao de espolio - ${imovel.denominacao || 'imovel'}.docx`
+        );
+      }
+    },
+    {
+      id: 'decl_respeito_limites',
+      tipo: 'adicionais',
+      rotulo: 'Declaração de respeito de limites (.docx)',
+      onVisualizar: () => setGestaoAberta(true),
+      onBaixar: async () => {
+        saveAs(
+          await gerarDeclaracaoRespeitoLimitesDocx({ imovel, tecnico: tecnico!, dataExtenso: dataPorExtenso() }),
+          `Declaracao de respeito de limites - ${imovel.denominacao || 'imovel'}.docx`
+        );
+      }
+    },
   ];
 
   return (
@@ -5230,6 +5397,7 @@ export default function EditorPage() {
             {medioOuMais && (
               <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf /> CAR</Button>
             )}
+
           </>
         )}
        </div>
@@ -5314,7 +5482,7 @@ export default function EditorPage() {
           const rotulo = toolWEfetivo >= 104;
           return (
             <>
-              <aside style={{ width: toolWEfetivo }} className={`no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-card p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
+              <aside style={{ width: toolWEfetivo }} className={`sidebar-lateral no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-card p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
                 {/* DADOS E AÇÕES DO PROJETO */}
                 {rotulo ? (
                   <div className="flex flex-col gap-2 text-xs">
@@ -5358,23 +5526,14 @@ export default function EditorPage() {
                       
 
 
-                      {/* Botões de Gestão — grade de 3 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo
+                      {/* Botões de Gestão — grade de 2 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo
                           (sem botão de largura total; menos rolagem). */}
-                      <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
+                      <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
                         <Button size="sm" variant="secondary" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
                           <Plus className="text-amber-500" /> <span>Novo</span>
                         </Button>
                         <Button size="sm" variant="secondary" onClick={salvar} disabled={processando} title="Salvar projeto atual (Ctrl+S)">
                           <Save className="text-emerald-500" /> <span>SALVAR</span>
-                        </Button>
-                        <Button size="sm" variant={painelAberto ? 'default' : 'secondary'} className={painelAberto ? COR_ATIVO : ''} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
-                          <Settings className={painelAberto ? 'text-white' : 'text-indigo-500'} /> <span>Dados</span>
-                        </Button>
-                        <Button size="sm" variant={infoJaVista(projetoId) ? 'secondary' : 'default'} className={infoJaVista(projetoId) ? '' : COR_ATIVO} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
-                          <FileText className={!infoJaVista(projetoId) ? 'text-white' : 'text-cyan-500'} /> <span>Detalhes</span>
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
-                          <Target className="text-rose-500" /> <span>Foco</span>
                         </Button>
                         <Button size="sm" variant="secondary" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }} title="Extrair dados (coordenadas, proprietários, confrontantes, áreas) de PDFs, imagens e documentos com Inteligência Artificial">
                           <Sparkles className="text-indigo-500" /> <span>IA</span>
@@ -6075,7 +6234,7 @@ export default function EditorPage() {
                   /* Coluna única para barra colapsada */
                   <div className="flex flex-col gap-1 mb-1 [&>button]:relative [&>button]:size-9 [&>button]:p-0 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&_svg]:size-4">
                     <Button size="sm" variant="outline" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto"><Plus className="size-4" /></Button>
-                    <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} onClick={() => setInfoAberto(true)} title="Detalhes do projeto"><FileText className="size-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => setConferirAberto(true)} title="Conferir projeto"><CheckCircle2 className="size-4 text-emerald-500" /></Button>
                     <Button size="sm" variant={painelAberto ? 'default' : 'outline'} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto"><Settings className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Foco"><Target className="size-4" /></Button>
                     <Button size="sm" variant="outline" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }} title="IA Extrair: dados de PDFs, imagens e documentos"><Sparkles className="size-4 text-indigo-500" /></Button>
@@ -6159,10 +6318,7 @@ export default function EditorPage() {
                       ...(completo ? [['Vért. V', 'Criar vértice virtual (V): canto que você não ocupou, por afastamento ou interseção de alinhamentos', <Waypoints key="i" className="size-4" />, () => { setVvBase(null); setVvAberto(true); }, 'text-indigo-600 dark:text-indigo-400']] : []),
                       ...(completo ? [['DXF', 'Editor de DXF (abrir e editar um DXF qualquer, ex.: projeto elétrico — isolado do projeto)', <PencilRuler key="i" className="size-4" />, () => setDxfEditorAberto(true), 'text-indigo-600 dark:text-indigo-400']] : []),
                       ...(completo ? [['% Área', 'Porcentagem entre dois polígonos (área de um em relação ao outro e ao total)', <Percent key="i" className="size-4" />, () => setPorcentagemAberta(true), 'text-indigo-600 dark:text-indigo-400']] : []),
-                      ...(completo ? [['Estúdio', 'Estúdio: edição de imagem (mini-Canva, isolado do projeto)', <ImagePlus key="i" className="size-4" />, () => setEstudioAberto(true), 'text-indigo-600 dark:text-indigo-400']] : []),
                       ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')), 'text-slate-500'],
-                      ['Ajuda', 'Tutorial: como usar o Métrica, passo a passo', <HelpCircle key="i" className="size-4" />, () => setTutorialAberto(true), 'text-slate-500'],
-                      ['RT', 'Dados do responsável técnico: nome, CFT, código do credenciado e contadores', <UserCheck key="i" className="size-4" />, () => { setConfigAba('pessoal'); setConfigAberta(true); }, 'text-slate-500'],
                       ['Config.', 'Configurações gerais', <Settings key="i" className="size-4" />, () => { setConfigAba(undefined); setConfigAberta(true); }, 'text-slate-500'],
                       ...(!ocultarCobranca || souMaster() ? [['Planos', souMaster() ? 'Cobrança do app: planos, preços e nível de cada cliente (admin)' : 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400']] : []),
 
@@ -6424,39 +6580,50 @@ export default function EditorPage() {
               (a barra principal, com Mapa/Planta etc., fica na parte de cima). Abre por padrão ao
               abrir o app; tem botão pra fechar, já que nem todo mundo quer ouvir toda vez. */}
           {(vista === 'mapa' || vista === 'planta') && !telaEstreita && !introTocando && barraAudiosAberta && (
-            <div className="no-print pointer-events-auto fixed inset-x-0 bottom-3 z-[1160] flex justify-center">
-              <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 p-1.5 shadow-xl backdrop-blur-sm">
-                <IntroAudioPill />
-                <TutorialAudioPill />
-                <button type="button" onClick={() => setTutorialAberto(true)}
-                  className="flex h-6 items-center gap-1 rounded-full border border-amber-500/60 bg-amber-500/10 px-2.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
-                  title="Tutorial em áudio e texto: passo a passo e temas de ajuda">
-                  <HelpCircle className="size-3" /> Guia em Áudio
-                </button>
-                {(videosUrl || videosTutorial.length > 0) && (
-                  <button type="button" onClick={() => setVideosListaAberta(true)}
-                    className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
-                    title="Vídeos tutoriais por tema, ou o curso completo em playlist">
-                    <Youtube className="size-3" /> Vídeos
-                  </button>
-                )}
-                <div className="mx-0.5 h-4 w-px bg-border" />
-                <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
-                  title={completo
-                    ? 'Modo Completo: todas as ferramentas. Clique para o Fácil.'
-                    : medio
-                      ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
-                      : 'Modo Fácil: só o essencial. Clique para o Médio.'}
-                  className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                  {completo ? <Briefcase className="size-3 text-sky-500" /> : medio ? <PencilRuler className="size-3 text-emerald-500" /> : <GraduationCap className="size-3 text-amber-500" />}
-                  {completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}
-                </button>
-                <button type="button" onClick={() => setBarraAudiosAberta(false)}
-                  className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                  title="Fechar">
-                  <X className="size-3.5" />
-                </button>
+            <div
+              style={{ left: `${posAudioBarra.x}px`, top: `${posAudioBarra.y}px` }}
+              className="no-print pointer-events-auto fixed z-[1160] flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 p-1.5 shadow-xl backdrop-blur-sm select-none"
+            >
+              <div
+                className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setArrastandoAudioBarra({ startX: e.clientX, startY: e.clientY, startPosX: posAudioBarra.x, startPosY: posAudioBarra.y });
+                }}
+                title="Arraste para mover a barra de áudio"
+              >
+                <GripVertical className="size-3.5" />
               </div>
+              <IntroAudioPill />
+              <TutorialAudioPill />
+              <button type="button" onClick={() => setTutorialAberto(true)}
+                className="flex h-6 items-center gap-1 rounded-full border border-amber-500/60 bg-amber-500/10 px-2.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+                title="Tutorial em áudio e texto: passo a passo e temas de ajuda">
+                <HelpCircle className="size-3" /> Guia em Áudio
+              </button>
+              {(videosUrl || videosTutorial.length > 0) && (
+                <button type="button" onClick={() => setVideosListaAberta(true)}
+                  className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
+                  title="Vídeos tutoriais por tema, ou o curso completo em playlist">
+                  <Youtube className="size-3" /> Vídeos
+                </button>
+              )}
+              <div className="mx-0.5 h-4 w-px bg-border" />
+              <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
+                title={completo
+                  ? 'Modo Completo: todas as ferramentas. Clique para o Fácil.'
+                  : medio
+                    ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
+                    : 'Modo Fácil: só o essencial. Clique para o Médio.'}
+                className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                {completo ? <Briefcase className="size-3 text-sky-500" /> : medio ? <PencilRuler className="size-3 text-emerald-500" /> : <GraduationCap className="size-3 text-amber-500" />}
+                {completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}
+              </button>
+              <button type="button" onClick={() => setBarraAudiosAberta(false)}
+                className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                title="Fechar">
+                <X className="size-3.5" />
+              </button>
             </div>
           )}
 
@@ -6515,9 +6682,9 @@ export default function EditorPage() {
                 onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
                 onContextMenuMapa={(lat, lon, x, y) => {
                   // Com ferramenta ativa, botão direito LARGA a ferramenta (praxe de CAD) em vez
-                  // de abrir o menu; desenho pela metade é descartado. No navegar, menu normal.
+                  // de alternar; desenho pela metade é descartado. No navegar, alterna entre mapa e planta.
                   if (modo !== 'navegar') { setModo('navegar'); setDesenhoBuffer([]); return; }
-                  setMenuContexto({ tipo: 'mapa', lat, lon, x, y });
+                  setVista('planta');
                 }} />
             </ErrorBoundary>
           ) : null}
@@ -6528,6 +6695,208 @@ export default function EditorPage() {
               <button className="flex items-center gap-2 rounded-full border border-red-500/40 bg-background/95 px-4 py-1.5 text-sm font-semibold text-red-600 shadow-lg backdrop-blur hover:bg-red-500 hover:text-white" onClick={apagarMultiSelecionados}>
                 <Trash2 className="size-4" /> Apagar {[selMulti.size ? `${selMulti.size} vértice(s)` : '', objSelMulti.size ? `${objSelMulti.size} elemento(s)` : ''].filter(Boolean).join(' + ')}
               </button>
+            </div>
+          )}
+
+          {/* PAINEL FLUTUANTE DE PROPRIEDADES DO ELEMENTO SELECIONADO (Canto Superior Direito) */}
+          {objSel && (
+            <div className="absolute right-3 top-16 z-[1100] w-80 rounded-xl border border-indigo-500/20 bg-background/98 p-4 text-xs shadow-2xl backdrop-blur">
+              <div className="mb-3 flex items-center justify-between border-b pb-2">
+                <span className="font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider text-[10px]">Editar Elemento Selecionado</span>
+                <button className="rounded-full p-1 hover:bg-muted text-muted-foreground transition-colors" onClick={() => setObjetoSelId(null)} title="Fechar"><X className="size-4" /></button>
+              </div>
+
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between text-[10px] font-black uppercase text-muted-foreground bg-muted/40 px-2 py-1 rounded">
+                  <span>Tipo: {objSel.tipo}</span>
+                  <span className="font-mono text-zinc-400">ID: {objSel.id.substring(4)}</span>
+                </div>
+
+                {objSel.tipo === 'texto' && (
+                  <div className="space-y-2">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-bold text-muted-foreground">Conteúdo do Texto</span>
+                      <textarea
+                        className="w-full border rounded-lg p-2 text-sm bg-background text-foreground"
+                        rows={2}
+                        value={objSel.texto ?? ''}
+                        onChange={(e) => editarObjetoSel({ texto: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-muted-foreground">Tamanho Fonte</span>
+                        <input
+                          type="number"
+                          className="w-full h-9 border rounded-lg px-2 bg-background text-foreground font-mono"
+                          value={objSel.tamanho ?? 12}
+                          onChange={(e) => editarObjetoSel({ tamanho: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-muted-foreground">Cor do Texto</span>
+                        <input
+                          type="color"
+                          className="w-full h-9 border rounded-lg p-1 bg-background text-foreground cursor-pointer"
+                          value={objSel.cor || '#000000'}
+                          onChange={(e) => editarObjetoSel({ cor: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 font-bold text-muted-foreground cursor-pointer pt-1">
+                      <input
+                        type="checkbox"
+                        className="accent-primary size-4"
+                        checked={!!objSel.negrito}
+                        onChange={(e) => editarObjetoSel({ negrito: e.target.checked })}
+                      />
+                      Negrito
+                    </label>
+                  </div>
+                )}
+
+                {objSel.tipo === 'cota' && (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-muted-foreground">Tamanho Fonte</span>
+                        <input
+                          type="number"
+                          className="w-full h-9 border rounded-lg px-2 bg-background text-foreground font-mono"
+                          value={objSel.tamanhoFonte ?? objSel.tamanho ?? 10}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            editarObjetoSel({ tamanhoFonte: val, tamanho: val });
+                            try { localStorage.setItem('default_cota_tamanho', String(val)); } catch {}
+                          }}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-muted-foreground">Cor</span>
+                        <input
+                          type="color"
+                          className="w-full h-9 border rounded-lg p-1 bg-background text-foreground cursor-pointer"
+                          value={objSel.cor || '#b91c1c'}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            editarObjetoSel({ cor: val, corFonte: val });
+                            try { localStorage.setItem('default_cota_cor', val); } catch {}
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-muted-foreground">Espessura (px)</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          className="w-full h-9 border rounded-lg px-2 bg-background text-foreground font-mono"
+                          value={objSel.espessura ?? 1.0}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            editarObjetoSel({ espessura: val });
+                            try { localStorage.setItem('default_cota_espessura', String(val)); } catch {}
+                          }}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-muted-foreground">Posição Texto</span>
+                        <select
+                          className="w-full h-9 border rounded-lg px-2 bg-background text-foreground"
+                          value={objSel.posicaoTexto || 'acima'}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            editarObjetoSel({ posicaoTexto: val });
+                            try { localStorage.setItem('default_cota_posicaoTexto', val); } catch {}
+                          }}
+                        >
+                          <option value="acima">Acima da Linha</option>
+                          <option value="centro">No Centro</option>
+                          <option value="abaixo">Abaixo da Linha</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {objSel.tipo === 'polilinha' && (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-muted-foreground">Cor da Linha</span>
+                        <input
+                          type="color"
+                          className="w-full h-9 border rounded-lg p-1 bg-background text-foreground cursor-pointer"
+                          value={objSel.cor || '#2563eb'}
+                          onChange={(e) => editarObjetoSel({ cor: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-muted-foreground">Espessura (px)</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          className="w-full h-9 border rounded-lg px-2 bg-background text-foreground font-mono"
+                          value={objSel.espessura ?? 1.2}
+                          onChange={(e) => editarObjetoSel({ espessura: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-bold text-muted-foreground">Estilo da Linha</span>
+                      <select
+                        className="w-full h-9 border rounded-lg px-2 bg-background text-foreground"
+                        value={objSel.estiloLinha || (objSel.tracejado ? 'tracejado' : 'solido')}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          editarObjetoSel({ estiloLinha: val, tracejado: val === 'tracejado' });
+                        }}
+                      >
+                        <option value="solido">Sólida</option>
+                        <option value="tracejado">Tracejada</option>
+                        <option value="pontilhado">Pontilhada</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {objSel.tipo === 'simbolo' && (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-muted-foreground">Símbolo</span>
+                        <select
+                          className="w-full h-9 border rounded-lg px-2 bg-background text-foreground"
+                          value={objSel.simbolo || 'norte'}
+                          onChange={(e) => editarObjetoSel({ simbolo: e.target.value })}
+                        >
+                          <option value="norte">Rosa dos Ventos</option>
+                          <option value="marco">Marco Geodésico</option>
+                          <option value="arvore">Árvore</option>
+                          <option value="casa">Construção</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-muted-foreground">Tamanho</span>
+                        <input
+                          type="number"
+                          className="w-full h-9 border rounded-lg px-2 bg-background text-foreground font-mono"
+                          value={objSel.tamanho ?? 30}
+                          onChange={(e) => editarObjetoSel({ tamanho: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Ações */}
+                <div className="pt-2 border-t flex gap-2">
+                  <Button size="sm" variant="destructive" className="flex-1 font-bold h-9 bg-red-600 hover:bg-red-700 text-white gap-1.5" onClick={apagarObjetoSel}>
+                    <Trash2 className="size-4" /> Apagar Elemento
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -6662,7 +7031,21 @@ export default function EditorPage() {
                       editavel={editarPlanta && !telaEstreita} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       mostrarRotulos={mostrarRotulos}
                       selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
-                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
+                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverObjeto={onMoverObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
+                      onDblClick={async (lat, lon) => {
+                        if (modo === 'polilinha' || modo === 'tracejado') {
+                          if (desenhoBuffer.length >= 2) {
+                            snap();
+                            const buf = desenhoBuffer;
+                            setDesenhoBuffer([]);
+                            setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
+                            aviso(modo === 'tracejado' ? 'Tracejado adicionado.' : 'Polilinha adicionada.');
+                          }
+                          return;
+                        }
+                        const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:', multiline: true });
+                        if (t) { snap(); setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }
+                      }}
                       onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}
                       onExcluirObjeto={excluirObjetoPorId}
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
@@ -6673,7 +7056,8 @@ export default function EditorPage() {
                       onConfrontanteMenu={(id, nome, x, y) => setMenuContexto({ tipo: 'confrontante', id, atual: nome, x, y })}
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onToggleTravaFolha={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
-                      onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} onCiclarEstilo={ciclarEstiloPlanta} />
+                      onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} onCiclarEstilo={ciclarEstiloPlanta}
+                      onContextMenuVazio={() => setVista('mapa')} />
                     </ErrorBoundary>
                   </div>
                 )}
@@ -7396,14 +7780,28 @@ export default function EditorPage() {
           areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
       </ErrorBoundary>
       <Dialog open={conferirAberto} onOpenChange={setConferirAberto}>
-        <DialogContent className="max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-              <CheckCircle2 className="size-5" /> Conferir Projeto
+        <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-6 rounded-xl bg-background shadow-2xl overflow-hidden">
+          <DialogHeader className="shrink-0 pb-4 border-b border-border/60">
+            <DialogTitle className="text-sm font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2.5">
+              <CheckCircle2 className="size-5" /> Conferir Projeto e Dados Gerais
             </DialogTitle>
           </DialogHeader>
-          <PainelConferencia vertices={vertices} res={res} imovel={imovel} confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} onChange={setImovel} conflitos={conflitos} tecnico={tecnico}
-            onIrParaConflito={(lat, lon) => { setConferirAberto(false); setVista('mapa'); setFocoLatLng([lat, lon]); }} />
+          <div className="flex-grow overflow-y-auto min-h-0 pr-1 py-4">
+            <PainelConferencia
+              vertices={vertices}
+              res={res}
+              imovel={imovel}
+              confrontantes={confrontantes}
+              confrontantePorLado={confrontantePorLado}
+              onChange={setImovel}
+              conflitos={conflitos}
+              tecnico={tecnico}
+              nomeProjeto={nomeProjeto}
+              numGlebas={glebas.length}
+              projetoId={projetoId}
+              onIrParaConflito={(lat, lon) => { setConferirAberto(false); setVista('mapa'); setFocoLatLng([lat, lon]); }}
+            />
+          </div>
         </DialogContent>
       </Dialog>
       <ErrorBoundary onReset={() => setPrevMemorialAberto(false)}>
@@ -8175,20 +8573,7 @@ export default function EditorPage() {
       <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
       <PrimeiroAcessoModal open={!setupOk && !entrouSemLogin} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } const tec = carregarTecnico(); const esc = carregarEscritorio(); setTecnico(tec); setEscritorio(esc); setSetupOk(true); empurrarConfigParaNuvem().catch(() => {}); sincronizarPerfil({ empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {}); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
 
-      <ProjetoInfoModal
-        open={infoAberto}
-        onOpenChange={setInfoAberto}
-        projetoId={projetoId}
-        nome={nomeProjeto}
-        imovel={imovel}
-        tecnico={tecnico}
-        areaHa={res?.areaHa ?? 0}
-        perimetro={res?.perimetro ?? 0}
-        vertices={vertices}
-        confrontantes={confrontantes}
-        confrontantePorLado={confrontantePorLado}
-        numGlebas={glebas.length}
-      />
+
       <PontosBancoModal open={pontosAberto} onOpenChange={setPontosAberto} />
       <ErrorBoundary onReset={() => setPlanilhaConfAberta(false)}>
         <PlanilhaConferenciaModal
@@ -8416,8 +8801,27 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
               <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 leading-tight">
                 {cart.municipio ? `${cart.municipio} - ` : ''}{cart.nome}
               </p>
+            ) : imovel.cns === 'não informar' ? (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 leading-tight font-semibold">
+                Imóvel sem registro em cartório
+              </p>
             ) : null;
           })()}
+          <label className="flex items-center gap-1.5 cursor-pointer mt-1 select-none">
+            <input
+              type="checkbox"
+              checked={imovel.cns === 'não informar'}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  onChange({ ...imovel, cns: 'não informar', matricula: '' });
+                } else {
+                  onChange({ ...imovel, cns: '' });
+                }
+              }}
+              className="rounded border-zinc-300 dark:border-zinc-700 text-primary focus:ring-primary size-3.5"
+            />
+            <span className="text-[9px] font-bold text-muted-foreground uppercase">Sem registro (Não informar)</span>
+          </label>
         </div>
       </div>
       <div className="space-y-1">
@@ -8439,16 +8843,6 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
           </button>
         </div>
       </div>
-      {sugCartorios.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {sugCartorios.map((c) => (
-            <button key={c.id} onClick={() => set('cns', c.cns)} title={`${c.nome}${c.municipio ? ` — ${c.municipio}` : ''}`}
-              className={`rounded-sm border px-1.5 py-0.5 text-[10px] ${imovel.cns === c.cns ? 'border-primary bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
-              {c.municipio ? `${c.municipio} - ` : ''}{c.nome ? c.nome.replace(/Cart[óo]rio.*?de\s*/i, '').slice(0, 22) : c.cns}
-            </button>
-          ))}
-        </div>
-      )}
 
       {imovel.tipoImovel === 'urbano' ? (
         <>
@@ -8651,110 +9045,216 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
   );
 }
 
-function PainelConferencia({ vertices, res, imovel, confrontantes, confrontantePorLado, onChange, conflitos, onIrParaConflito, tecnico }: {
+function PainelConferencia({
+  vertices, res, imovel, confrontantes, confrontantePorLado, onChange, conflitos, onIrParaConflito, tecnico,
+  nomeProjeto, numGlebas, projetoId
+}: {
   vertices: Vertex[]; res: ReturnType<typeof calcular> | null; imovel: ImovelData; confrontantes: Confrontante[]; confrontantePorLado: Record<number, string>; onChange: (i: ImovelData) => void;
   conflitos: ConflitoDivisa[];
   onIrParaConflito: (lat: number, lon: number) => void;
   tecnico: TecnicoData | null;
+  nomeProjeto: string;
+  numGlebas: number;
+  projetoId: string | null;
 }) {
   const problemas: Problema[] = conferir(vertices, res, imovel, confrontantes, confrontantePorLado, tecnico);
   const Icone = ({ n }: { n: Problema['nivel'] }) =>
-    n === 'erro' ? <XCircle className="text-destructive" /> : n === 'aviso' ? <AlertTriangle className="text-amber-500" /> : <CheckCircle2 className="text-primary" />;
+    n === 'erro' ? <XCircle className="text-destructive size-4" /> : n === 'aviso' ? <AlertTriangle className="text-amber-500 size-4" /> : <CheckCircle2 className="text-primary size-4" />;
   const ef = res ? valoresEfetivos(res, imovel) : null;
-  const num = (v: number | undefined) => (v == null ? '' : String(v));
+
+  useEffect(() => {
+    if (projetoId && typeof window !== 'undefined') {
+      try { localStorage.setItem(`metrica.infoVista:${projetoId}`, '1'); } catch { /* ignore */ }
+    }
+  }, [projetoId]);
+
+  const areaHa = res?.areaHa ?? 0;
+  const perimetro = res?.perimetro ?? 0;
+
+  const det: [string, string][] = [
+    ['Projeto', nomeProjeto || '—'],
+    [imovel.tipoImovel === 'urbano' ? 'Lote/Imóvel' : 'Imóvel', imovel.denominacao || '—'],
+    ['Proprietário', imovel.proprietario || '—'],
+    ['CPF/CNPJ', imovel.cpfProprietario || '—'],
+    ['Matrícula', imovel.matricula || '—'],
+    ['Cartório (CNS)', imovel.cns || '—'],
+    ['Código INCRA', imovel.codigoImovelIncra || '—'],
+    ['Município', imovel.municipio || '—'],
+    [rotulosProfissional(tecnico).termo, imovel.numeroTrt || tecnico?.art || '—'],
+    ['Responsável técnico', tecnico?.nome || '—'],
+    ['Área SGL', `${numBR(areaHa, 4)} ha`],
+    ['Perímetro', `${numBR(perimetro)} m`],
+    ['Vértices', String(vertices.length)],
+    ['Confrontantes', String(confrontantes.length)],
+    ['Glebas', String(numGlebas)],
+  ];
+
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Card className="border-blue-500/20 bg-blue-500/5">
-          <CardHeader className="pb-1.5 pt-2">
-            <CardTitle className="text-[11px] text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5">
-              <Info className="size-4 text-blue-500" />
-              Limites Legais de Precisão (INCRA)
+    <div className="space-y-4">
+      {/* Box de Reconciliação com o SIGEF */}
+      <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl shadow-sm text-left">
+        <h3 className="text-xs font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider mb-2 flex items-center gap-1.5">
+          <CheckCircle2 className="size-4 text-amber-500" /> Reconciliação de Área/Perímetro com o SIGEF
+        </h3>
+        <p className="text-[11px] text-muted-foreground mb-3">
+          Por segurança jurídica, cole aqui a Área SGL e o Perímetro oficiais recalculados pelo SIGEF após processar a planilha ODS. Marque "Usar" para utilizá-los no memorial, planta e peças técnicas.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-foreground">Área Oficial (ha):</span>
+            <input
+              type="number"
+              step="0.0001"
+              placeholder="ex.: 12.3456"
+              value={imovel.areaSigefHa == null ? '' : imovel.areaSigefHa}
+              onChange={(e) => onChange({ ...imovel, areaSigefHa: e.target.value ? Number(e.target.value) : undefined })}
+              className="h-8 w-28 px-2.5 text-xs font-semibold border border-border/80 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-foreground">Perímetro Oficial (m):</span>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="ex.: 1240.50"
+              value={imovel.perimetroSigef == null ? '' : imovel.perimetroSigef}
+              onChange={(e) => onChange({ ...imovel, perimetroSigef: e.target.value ? Number(e.target.value) : undefined })}
+              className="h-8 w-28 px-2.5 text-xs font-semibold border border-border/80 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
+            />
+          </div>
+          <label className="flex items-center gap-1.5 cursor-pointer select-none bg-background dark:bg-zinc-900 border px-3 h-8 rounded-lg text-xs font-bold" title="Usar valores do SIGEF nas peças finais">
+            <input
+              type="checkbox"
+              checked={!!imovel.usarValoresSigef}
+              onChange={(e) => onChange({ ...imovel, usarValoresSigef: e.target.checked })}
+              className="rounded border-zinc-300 dark:border-zinc-700 text-amber-600 focus:ring-amber-500 size-3.5"
+            />
+            <span className="text-[11px] font-black text-amber-700 dark:text-amber-400 uppercase">Usar Valores do SIGEF</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Coluna Esquerda: Dados Gerais do Projeto (5 cols) */}
+      <div className="lg:col-span-5 space-y-4 text-left">
+        <Card className="border border-border/80 shadow-md">
+          <CardHeader className="pb-3 border-b border-border/50">
+            <CardTitle className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2">
+              <Info className="size-4 text-primary" /> Dados Gerais do Projeto
             </CardTitle>
           </CardHeader>
-          <CardContent className="pb-2 text-[10px] text-muted-foreground space-y-1">
-            <p>Para aprovação no SIGEF, os vértices devem atender aos limites de desvio padrão (sigma):</p>
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li><b>Limites Artificiais (LA):</b> 0.10 m (muros, cercas, marcos)</li>
-              <li><b>Limites Naturais (LN):</b> 3.00 m (rios, córregos, serras)</li>
-              <li><b>Limites Inacessíveis (LV):</b> 7.50 m (grotas, encostas)</li>
-              <li><b>Vertical (Sigma Z):</b> máximo de 0.30 m recomendado para LA</li>
-            </ul>
-            <NotaLegal chave="divisaLimite" />
+          <CardContent className="p-0 divide-y divide-border/60">
+            {det.map(([k, v]) => (
+              <div key={k} className="flex items-center justify-between gap-4 px-4 py-2.5 text-xs">
+                <span className="text-muted-foreground font-semibold">{k}</span>
+                <span className="truncate text-right font-medium text-foreground max-w-[200px]" title={v}>{v}</span>
+              </div>
+            ))}
           </CardContent>
         </Card>
+        
+        <div className="p-3.5 bg-muted/40 rounded-xl border text-[11px] leading-relaxed text-muted-foreground">
+          Os documentos de matrícula e os anexos dos confrontantes podem ser gerenciados na seção <strong>AJUSTES / DADOS</strong> do projeto na aba correspondente, com suporte a resumo automático e leitura via IA.
+        </div>
+      </div>
 
-        {conflitos.length > 0 && (
-          <Card className="border-pink-500/20 bg-pink-500/5">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-pink-700 dark:text-pink-300 font-bold flex items-center gap-1.5">
-                <AlertTriangle className="size-4 text-pink-500" />
-                Conflitos de Divisa (SIGEF)
+      {/* Coluna Direita: Análise de Limites, Conflitos e Pendências (7 cols) */}
+      <div className="lg:col-span-7 space-y-4">
+        {/* Limites Legais e Conflitos de Divisa */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardHeader className="pb-2 pt-3">
+              <CardTitle className="text-[11px] text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5 uppercase tracking-wide">
+                <Info className="size-4 text-blue-500" />
+                Limites de Precisão
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1.5">
-              <p className="text-[10px] text-muted-foreground mb-1">
-                Detectados desvios em relação aos confrontantes certificados importados. Clique para focar no mapa.
-              </p>
-              {conflitos.map((c, i) => {
-                const label = c.tipo === 'sobreposicao' ? 'Sobreposição' : 'Vão';
-                const corLabel = c.tipo === 'sobreposicao' ? 'text-pink-600 dark:text-pink-400 font-semibold' : 'text-cyan-600 dark:text-cyan-400 font-semibold';
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => onIrParaConflito(c.pontoConflito.lat, c.pontoConflito.lon)}
-                    className="w-full text-left flex items-center justify-between text-[11px] rounded-sm border border-border bg-background p-1.5 hover:bg-accent transition-colors"
-                  >
-                    <span>
-                      Lado {c.ladoIdx + 1} ({vertices[c.ladoIdx]?.codigoSigef || c.ladoIdx + 1} → {vertices[(c.ladoIdx + 1) % vertices.length]?.codigoSigef || c.ladoIdx + 2}): <span className={corLabel}>{label}</span>
-                    </span>
-                    <span className="font-mono text-muted-foreground text-[10px]">
-                      {numBR(c.distancia)} m
-                    </span>
-                  </button>
-                );
-              })}
+            <CardContent className="pb-3 text-[10px] text-muted-foreground space-y-1.5">
+              <p>Limites recomendados de desvio padrão (sigma) para aprovação no SIGEF:</p>
+              <ul className="list-disc pl-4 space-y-0.5 font-medium">
+                <li><b>Artificiais (LA):</b> 0.10 m</li>
+                <li><b>Naturais (LN):</b> 3.00 m</li>
+                <li><b>Inacessíveis (LV):</b> 7.50 m</li>
+                <li><b>Vertical (Sigma Z):</b> 0.30 m</li>
+              </ul>
             </CardContent>
           </Card>
-        )}
-      </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {problemas.map((p, i) => (
-          <div key={i} className="flex items-start gap-2 rounded-sm border p-2 text-xs">
-            <span className="mt-0.5 [&_svg]:size-4"><Icone n={p.nivel} /></span>
-            <span><b className="capitalize">{p.campo}:</b> {p.msg}</span>
-          </div>
-        ))}
-      </div>
+          {conflitos.length > 0 ? (
+            <Card className="border-pink-500/20 bg-pink-500/5">
+              <CardHeader className="pb-2 pt-3">
+                <CardTitle className="text-[11px] text-pink-700 dark:text-pink-300 font-bold flex items-center gap-1.5 uppercase tracking-wide">
+                  <AlertTriangle className="size-4 text-pink-500" />
+                  Conflitos (SIGEF)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1.5 pb-3">
+                {conflitos.map((c, i) => {
+                  const label = c.tipo === 'sobreposicao' ? 'Sobreposição' : 'Vão';
+                  const corLabel = c.tipo === 'sobreposicao' ? 'text-pink-600 dark:text-pink-400 font-bold' : 'text-cyan-600 dark:text-cyan-400 font-bold';
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => onIrParaConflito(c.pontoConflito.lat, c.pontoConflito.lon)}
+                      className="w-full text-left flex items-center justify-between text-[10px] rounded border border-border bg-background p-1.5 hover:bg-accent transition-colors"
+                    >
+                      <span>
+                        Lado {c.ladoIdx + 1}: <span className={corLabel}>{label}</span>
+                      </span>
+                      <span className="font-mono text-muted-foreground">
+                        {numBR(c.distancia)} m
+                      </span>
+                    </button>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-emerald-500/20 bg-emerald-500/5">
+              <CardHeader className="pb-2 pt-3">
+                <CardTitle className="text-[11px] text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1.5 uppercase tracking-wide">
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                  Conflitos de Divisa
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3 text-[10px] text-muted-foreground font-medium">
+                Nenhum conflito de divisa ou sobreposição geométrica foi detectado com as parcelas certificadas vizinhas.
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
-      {/* Validade jurídica da peça: o app confere a parte técnica; as exigências formais são do cartório. */}
-      <NotaLegal chave="validadePeca" />
-
-      <Card>
-        <CardHeader className="pb-2"><CardTitle>Reconciliação com o SIGEF</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-[10px] text-muted-foreground">O SIGEF recalcula a área SGL e costuma diferir alguns m². Cole aqui os valores do rascunho oficial; as peças finais passam a usá-los.</p>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label>Área SGL oficial (ha)</Label>
-              <Input type="number" step="0.0001" value={num(imovel.areaSigefHa)} onChange={(e) => onChange({ ...imovel, areaSigefHa: e.target.value ? Number(e.target.value) : undefined })} />
+        {/* Pendências / Checklist */}
+        <div className="space-y-2">
+          <div className="text-[10px] font-black uppercase text-muted-foreground tracking-wider text-left">Checklist de Conformidade</div>
+          {problemas.length > 0 ? (
+            <div className="grid grid-cols-1 gap-2 max-h-[350px] overflow-y-auto pr-1 scroll-fino">
+              {problemas.map((p, i) => (
+                <div key={i} className="flex items-start gap-2.5 rounded-lg border bg-background p-3 text-xs text-left shadow-sm">
+                  <span className="mt-0.5 shrink-0"><Icone n={p.nivel} /></span>
+                  <div className="space-y-0.5">
+                    <span className="font-bold uppercase text-[10px] text-foreground tracking-wide">{p.campo}</span>
+                    <p className="text-muted-foreground text-[11px] leading-relaxed font-medium">{p.msg}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="space-y-1">
-              <Label>Perímetro oficial (m)</Label>
-              <Input type="number" step="0.01" value={num(imovel.perimetroSigef)} onChange={(e) => onChange({ ...imovel, perimetroSigef: e.target.value ? Number(e.target.value) : undefined })} />
+          ) : (
+            <div className="p-6 border border-dashed rounded-xl bg-emerald-500/5 border-emerald-500/25 flex flex-col items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="size-8" />
+              <span className="text-xs font-bold uppercase tracking-wide">Projeto 100% Regularizado</span>
+              <p className="text-[11px] text-muted-foreground text-center">Nenhuma pendência encontrada. O projeto atende todos os requisitos do SIGEF/INCRA.</p>
             </div>
-          </div>
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={!!imovel.usarValoresSigef} onChange={(e) => onChange({ ...imovel, usarValoresSigef: e.target.checked })} />
-            Usar os valores do SIGEF nas peças finais
-          </label>
-          {ef && <div className="text-[11px] text-muted-foreground">Nas peças: <b>{numBR(ef.areaHa, 4)} ha</b> · {numBR(ef.perimetro)} m <span className="uppercase">({ef.fonte})</span></div>}
-        </CardContent>
-      </Card>
+          )}
+        </div>
+
+        {/* Nota Legal */}
+        <NotaLegal chave="validadePeca" />
+      </div>
     </div>
-  );
+  </div>
+);
 }
 
 function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico, projetoId, onExtrairConfrontante, onExcluir, onEditar, sugCartorios = [] }: {

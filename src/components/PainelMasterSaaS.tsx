@@ -363,18 +363,18 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
     : 0;
 
   return (
-    <div className="flex h-full flex-col bg-gradient-to-b from-[#030f07] via-[#05140b] to-[#071a0e] text-[#e2f1e8] overflow-hidden font-sans">
+    <div className="flex h-full flex-col bg-zinc-950 text-zinc-50 overflow-hidden font-sans">
       {/* ─── Header ─── */}
-      <div className="shrink-0 border-b border-[#12361d]/60 px-6 py-4 bg-[#05140b]/80 backdrop-blur-xl">
+      <div className="shrink-0 border-b border-zinc-800 px-6 py-4 bg-zinc-900/60 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="flex items-center gap-2.5 text-2xl font-black tracking-tight">
               <div className="flex size-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg shadow-amber-500/20">
-                <Crown className="size-5 text-[#05140b]" />
+                <Crown className="size-5 text-zinc-950" />
               </div>
               <span className="bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent">PAINEL DO PROPRIETÁRIO</span>
             </h1>
-            <p className="text-xs text-[#87a992] mt-1 ml-[46px]">Gestão administrativa, CRM de faturamento e uso real de Souza-CAD</p>
+            <p className="text-xs text-zinc-400 mt-1 ml-[46px]">Gestão administrativa, CRM de faturamento e uso real de Souza-CAD</p>
           </div>
           <div className="flex items-center gap-3">
             {msg && (
@@ -382,16 +382,16 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                 {msg}
               </span>
             )}
-            <label className="flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-emerald-600/25 bg-emerald-600/5 px-2.5 hover:bg-emerald-600/10 transition-colors"
+            <label className="flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/50 px-2.5 hover:bg-zinc-800 transition-colors"
               title="Modo 3D (relevo): mostra o botão de visualização 3D do terreno para os clientes. Desligado por padrão enquanto amadurece. Os clientes precisam recarregar o app para a mudança valer.">
-              <input type="checkbox" className="rounded-sm text-[#05140b] focus:ring-emerald-500 size-3.5 border-[#12361d] accent-emerald-500"
+              <input type="checkbox" className="rounded text-zinc-950 focus:ring-emerald-500 size-3.5 border-zinc-700 accent-emerald-500"
                 checked={modo3d} onChange={(e) => alterarModo3d(e.target.checked)} />
-              <span className="text-xs font-bold text-emerald-300 whitespace-nowrap">Modo 3D</span>
+              <span className="text-xs font-bold text-zinc-300 whitespace-nowrap">Modo 3D</span>
             </label>
-            <Button size="sm" variant="outline" className="h-9 gap-1.5 border-[#1e4d2e] bg-[#0c2415] hover:bg-[#12361d] text-[#e2f1e8] font-semibold" onClick={recarregar} disabled={carregando}>
+            <Button size="sm" variant="outline" className="h-9 gap-1.5 border-zinc-750 bg-zinc-900 hover:bg-zinc-800 text-zinc-100 font-semibold" onClick={recarregar} disabled={carregando}>
               <RefreshCw className={`size-4 ${carregando ? 'animate-spin' : ''}`} /> Atualizar
             </Button>
-            <Button size="sm" className="h-9 gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-[#05140b] font-extrabold shadow-lg shadow-amber-500/20 border-0" onClick={onVoltarDesenhar}>
+            <Button size="sm" className="h-9 gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-extrabold shadow-lg shadow-amber-500/20 border-0" onClick={onVoltarDesenhar}>
               <LogOut className="size-4 rotate-180" /> Voltar a Desenhar
             </Button>
           </div>
@@ -410,84 +410,84 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
             { label: 'Adimplência', valor: `${taxaAdimplencia}%`, sub: `${faturamentoReal.recebido > 0 ? 'Pagos / Previstos' : 'Sem dados'}`, cor: 'text-cyan-400', icone: <TrendingUp className="size-5 text-cyan-400" />, borda: 'border-cyan-500/20' },
             { label: 'Clientes', valor: `${perfis.length}`, sub: `${ativos.length} ativos · ${faturamentoReal.isentoCont} isentos · ${totalProjetos} projetos`, cor: 'text-amber-400', icone: <Users className="size-5 text-amber-400" />, borda: 'border-amber-500/20' },
           ].map((kpi) => (
-            <div key={kpi.label} className={`rounded-xl border ${kpi.borda} bg-[#091b10]/60 p-4 shadow-lg backdrop-blur-sm hover:bg-[#0c2415]/60 transition-colors`}>
-              <div className="flex items-center justify-between text-[#87a992]">
-                <span className="text-[10px] font-bold uppercase tracking-wider">{kpi.label}</span>
+            <div key={kpi.label} className={`rounded-xl border ${kpi.borda} bg-zinc-900/60 p-4 shadow-lg backdrop-blur-sm hover:bg-zinc-800/60 transition-colors`}>
+              <div className="flex items-center justify-between text-zinc-400">
+                <span className="text-xs font-bold uppercase tracking-wider">{kpi.label}</span>
                 {kpi.icone}
               </div>
               <div className={`mt-2 text-2xl font-black ${kpi.cor}`}>{kpi.valor}</div>
-              <div className="text-[10px] text-[#6b937a] mt-1 leading-snug">{kpi.sub}</div>
+              <div className="text-xs text-zinc-500 mt-1 leading-snug">{kpi.sub}</div>
             </div>
           ))}
         </div>
 
         {/* ─── Configurações colapsáveis ─── */}
-        <div className="rounded-xl border border-[#12361d]/60 bg-[#091b10]/40 shadow-lg backdrop-blur-sm overflow-hidden">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 shadow-lg backdrop-blur-sm overflow-hidden">
           <button type="button" onClick={() => setConfigExpandido((v) => !v)}
-            className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#0c2415]/40 transition-colors">
+            className="w-full flex items-center justify-between px-5 py-3 hover:bg-zinc-800/40 transition-colors">
             <h2 className="text-sm font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-2">
               <Shield className="size-4" /> Parâmetros e Credenciais Globais
             </h2>
-            {configExpandido ? <ChevronUp className="size-4 text-[#87a992]" /> : <ChevronDown className="size-4 text-[#87a992]" />}
+            {configExpandido ? <ChevronUp className="size-4 text-zinc-400" /> : <ChevronDown className="size-4 text-zinc-400" />}
           </button>
 
           {configExpandido && (
-            <div className="px-5 pb-5 pt-2 border-t border-[#12361d]/40">
+            <div className="px-5 pb-5 pt-2 border-t border-zinc-800/60">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                 {/* WhatsApp */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-[#87a992]">WhatsApp de Suporte Técnico</Label>
+                  <Label className="text-xs font-bold text-zinc-400">WhatsApp de Suporte Técnico</Label>
                   <div className="flex gap-2">
-                    <Input placeholder="Ex.: 32 9 9999-9999" value={zap} onChange={(e) => setZap(e.target.value)} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
+                    <Input placeholder="Ex.: 32 9 9999-9999" value={zap} onChange={(e) => setZap(e.target.value)} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-amber-500 text-white placeholder:text-zinc-700" />
                     <Button size="sm" onClick={salvarZap} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-10 px-4">Salvar</Button>
                   </div>
-                  <p className="text-[10px] text-[#6b937a]">Link wa.me mostrado no tutorial dos clientes.</p>
+                  <p className="text-xs text-zinc-500">Link wa.me mostrado no tutorial dos clientes.</p>
                 </div>
 
                 {/* Gemini Key */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-[#87a992]">Chave de API do Gemini IA</Label>
+                  <Label className="text-xs font-bold text-zinc-400">Chave de API do Gemini IA</Label>
                   <div className="flex gap-2">
-                    <Input type="password" placeholder="AIzaSy..." value={geminiKey} onChange={(e) => setGeminiKey(e.target.value)} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
+                    <Input type="password" placeholder="AIzaSy..." value={geminiKey} onChange={(e) => setGeminiKey(e.target.value)} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-amber-500 text-white placeholder:text-zinc-700" />
                     <Button size="sm" onClick={salvarGemini} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-10 px-4">Salvar</Button>
                   </div>
-                  <p className="text-[10px] text-[#6b937a]">Usada no servidor para extrair dados de matrículas.</p>
+                  <p className="text-xs text-zinc-500">Usada no servidor para extrair dados de matrículas.</p>
                 </div>
 
                 {/* Link do App */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-[#87a992]">Link Oficial do App (Souza CAD)</Label>
+                  <Label className="text-xs font-bold text-zinc-400">Link Oficial do App (Souza CAD)</Label>
                   <div className="flex gap-2">
-                    <Input placeholder="https://..." value={appUrl} onChange={(e) => setAppUrl(e.target.value)} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
+                    <Input placeholder="https://..." value={appUrl} onChange={(e) => setAppUrl(e.target.value)} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-amber-500 text-white placeholder:text-zinc-700" />
                     <Button size="sm" onClick={salvarAppUrlConfig} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-10 px-4">Salvar</Button>
                   </div>
-                  <p className="text-[10px] text-[#6b937a]">Link base usado nas peças e compartilhamento.</p>
+                  <p className="text-xs text-zinc-500">Link base usado nas peças e compartilhamento.</p>
                 </div>
 
                 {/* Playlist de vídeos no YouTube */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-[#87a992]">Playlist de vídeos-tutorial (YouTube)</Label>
+                  <Label className="text-xs font-bold text-zinc-400">Playlist de vídeos-tutorial (YouTube)</Label>
                   <div className="flex gap-2">
-                    <Input placeholder="https://www.youtube.com/playlist?list=..." value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
+                    <Input placeholder="https://www.youtube.com/playlist?list=..." value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-amber-500 text-white placeholder:text-zinc-700" />
                     <Button size="sm" onClick={salvarYoutubeUrlConfig} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-10 px-4">Salvar</Button>
                   </div>
-                  <p className="text-[10px] text-[#6b937a]">Link do botão &quot;Curso completo&quot;, dentro da lista de vídeos do app (abre a playlist inteira).</p>
+                  <p className="text-xs text-zinc-500">Link do botão &quot;Curso completo&quot;, dentro da lista de vídeos do app (abre a playlist inteira).</p>
                 </div>
 
                 {/* Vídeos por tema */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs font-bold text-[#87a992]">Vídeos tutoriais por tema</Label>
-                    <Button size="sm" variant="outline" onClick={() => setFormNovoVideoAberto((v) => !v)} className="h-8 gap-1 border-[#1e4d2e]/60 text-emerald-400 hover:bg-[#0c2415]">
-                      <Plus className="size-3.5" /> Adicionar vídeo tutorial
+                    <Label className="text-xs font-bold text-zinc-400">Vídeos tutoriais por tema</Label>
+                    <Button size="sm" variant="outline" onClick={() => setFormNovoVideoAberto((v) => !v)} className="h-8 gap-1 border-zinc-800 text-emerald-400 hover:bg-zinc-800">
+                      <Plus className="size-3.5" /> Adicionar vídeo
                     </Button>
                   </div>
                   {formNovoVideoAberto && (
-                    <div className="space-y-2 rounded-lg border border-[#1e4d2e]/60 bg-[#07170d] p-3">
-                      <Input placeholder="Título (ex.: Como importar pontos do GNSS)" value={novoVideoTitulo} onChange={(e) => setNovoVideoTitulo(e.target.value)} className="h-9 text-sm bg-[#05140b] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
-                      <Input placeholder="https://www.youtube.com/watch?v=..." value={novoVideoUrl} onChange={(e) => setNovoVideoUrl(e.target.value)} className="h-9 text-sm bg-[#05140b] border-[#1e4d2e]/60 focus-visible:ring-amber-500 text-white placeholder:text-[#374e40]" />
+                    <div className="space-y-2 rounded-lg border border-zinc-850 bg-zinc-950 p-3">
+                      <Input placeholder="Título (ex.: Como importar pontos do GNSS)" value={novoVideoTitulo} onChange={(e) => setNovoVideoTitulo(e.target.value)} className="h-9 text-sm bg-zinc-900 border-zinc-800 focus-visible:ring-amber-500 text-white placeholder:text-zinc-700" />
+                      <Input placeholder="https://www.youtube.com/watch?v=..." value={novoVideoUrl} onChange={(e) => setNovoVideoUrl(e.target.value)} className="h-9 text-sm bg-zinc-900 border-zinc-800 focus-visible:ring-amber-500 text-white placeholder:text-zinc-700" />
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => { setFormNovoVideoAberto(false); setNovoVideoTitulo(''); setNovoVideoUrl(''); }} className="text-[#87a992] hover:bg-[#0c2415]">Cancelar</Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setFormNovoVideoAberto(false); setNovoVideoTitulo(''); setNovoVideoUrl(''); }} className="text-zinc-400 hover:bg-zinc-800">Cancelar</Button>
                         <Button size="sm" onClick={adicionarVideo} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold">Salvar vídeo</Button>
                       </div>
                     </div>
@@ -495,17 +495,17 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                   {videos.length > 0 ? (
                     <div className="space-y-1.5">
                       {videos.map((v, i) => (
-                        <div key={i} className="flex items-center gap-2 rounded-lg border border-[#1e4d2e]/60 bg-[#07170d] px-3 py-2">
+                        <div key={i} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
                           <Youtube className="size-4 shrink-0 text-red-500" />
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white" title={v.titulo}>{v.titulo}</span>
-                          <button type="button" onClick={() => removerVideo(i)} title="Remover este vídeo" className="rounded-sm p-1 text-[#87a992] hover:bg-[#12361d] hover:text-red-400 transition-colors">
+                          <span className="min-w-0 flex-1 truncate text-xs font-semibold text-white" title={v.titulo}>{v.titulo}</span>
+                          <button type="button" onClick={() => removerVideo(i)} title="Remover este vídeo" className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400 transition-colors">
                             <Trash2 className="size-3.5" />
                           </button>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-[10px] text-[#6b937a]">Nenhum vídeo cadastrado ainda — o botão &quot;Vídeos&quot; do app só aparece quando houver ao menos 1 vídeo ou a playlist acima preenchida.</p>
+                    <p className="text-xs text-zinc-500">Nenhum vídeo cadastrado ainda.</p>
                   )}
                 </div>
 
@@ -514,49 +514,48 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                   <label className="flex items-start gap-3 rounded-xl border border-amber-600/25 bg-amber-600/5 p-4 cursor-pointer hover:bg-amber-600/10 transition-colors w-full h-full">
                     <input
                       type="checkbox"
-                      className="rounded-sm text-[#05140b] focus:ring-amber-500 size-4 mt-0.5 border-[#12361d] accent-amber-500"
+                      className="rounded text-zinc-950 focus:ring-amber-500 size-4 mt-0.5 border-zinc-700 accent-amber-500"
                       checked={!!cfg.ocultarCobranca}
                       onChange={(e) => alterarOcultarCobranca(e.target.checked)}
                     />
                     <div className="space-y-1">
                       <span className="text-sm font-bold text-amber-300">Ocultar cobrança</span>
-                      <p className="text-[11px] text-[#87a992] leading-snug">Se ativado, clientes usam de graça — sem alertas ou telas de planos.</p>
+                      <p className="text-xs text-zinc-400 leading-snug">Se ativado, clientes usam de graça — sem alertas ou telas de planos.</p>
                     </div>
                   </label>
                 </div>
 
               </div>
 
-              {/* Servidor de e-mail (SMTP): credenciais pra disparar comunicados de verdade — sem
-                  isso preenchido, o painel abaixo só SIMULA o envio (fica no log do servidor). */}
+              {/* Servidor de e-mail (SMTP): credenciais pra disparar comunicados de verdade */}
               <div className="mt-5 rounded-xl border border-indigo-500/25 bg-indigo-500/5 p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <Mail className="size-4 text-indigo-400" />
-                  <span className="text-xs font-bold uppercase tracking-wide text-indigo-300">Servidor de E-mail (SMTP) — pra disparar comunicados de verdade</span>
+                  <span className="text-xs font-bold uppercase tracking-wide text-indigo-300">Servidor de E-mail (SMTP) — para disparar comunicados reais</span>
                 </div>
-                <p className="text-[11px] text-[#87a992] leading-snug">
-                  Cole aqui as informações da conta de e-mail que vai disparar os comunicados. Pra Gmail: o host é <code className="text-indigo-300">smtp.gmail.com</code>, a porta é <code className="text-indigo-300">465</code>, o usuário é o próprio endereço de e-mail, e a senha precisa ser uma &quot;senha de app&quot; gerada nas configurações de segurança da conta Google (a senha normal não funciona). Enquanto isso não estiver preenchido, o disparo fica só simulado.
+                <p className="text-xs text-zinc-400 leading-snug">
+                  Cole aqui as informações da conta de e-mail que vai disparar os comunicados. Pra Gmail: o host é <code className="text-indigo-300 font-bold">smtp.gmail.com</code>, a porta é <code className="text-indigo-300 font-bold">465</code>, o usuário é o próprio endereço de e-mail, e a senha precisa ser uma &quot;senha de app&quot; gerada nas configurações de segurança do Google.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-[11px] font-bold text-[#87a992]">Servidor (host)</Label>
-                    <Input placeholder="smtp.gmail.com" value={smtp.host ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, host: e.target.value }))} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-indigo-500 text-white placeholder:text-[#374e40]" />
+                    <Label className="text-xs font-bold text-zinc-400">Servidor (host)</Label>
+                    <Input placeholder="smtp.gmail.com" value={smtp.host ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, host: e.target.value }))} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[11px] font-bold text-[#87a992]">Porta</Label>
-                    <Input placeholder="465" value={smtp.port ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, port: e.target.value }))} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-indigo-500 text-white placeholder:text-[#374e40]" />
+                    <Label className="text-xs font-bold text-zinc-400">Porta</Label>
+                    <Input placeholder="465" value={smtp.port ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, port: e.target.value }))} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[11px] font-bold text-[#87a992]">E-mail remetente</Label>
-                    <Input placeholder="souzagestaofundiaria@gmail.com" value={smtp.user ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, user: e.target.value }))} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-indigo-500 text-white placeholder:text-[#374e40]" />
+                    <Label className="text-xs font-bold text-zinc-400">E-mail remetente</Label>
+                    <Input placeholder="seuemail@provedor.com" value={smtp.user ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, user: e.target.value }))} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[11px] font-bold text-[#87a992]">Senha de app</Label>
-                    <Input type="password" placeholder="•••• •••• •••• ••••" value={smtp.pass ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, pass: e.target.value }))} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-indigo-500 text-white placeholder:text-[#374e40]" />
+                    <Label className="text-xs font-bold text-zinc-400">Senha de app</Label>
+                    <Input type="password" placeholder="•••• •••• •••• ••••" value={smtp.pass ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, pass: e.target.value }))} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[11px] font-bold text-[#87a992]">Nome de exibição (opcional)</Label>
-                    <Input placeholder="Souza CAD <souzagestaofundiaria@gmail.com>" value={smtp.from ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, from: e.target.value }))} className="h-10 text-sm bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-indigo-500 text-white placeholder:text-[#374e40]" />
+                    <Label className="text-xs font-bold text-zinc-400">Nome de exibição (opcional)</Label>
+                    <Input placeholder="Souza CAD <remetente@provedor.com>" value={smtp.from ?? ''} onChange={(e) => setSmtp((s) => ({ ...s, from: e.target.value }))} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-indigo-500 text-white placeholder:text-zinc-700" />
                   </div>
                 </div>
                 <Button size="sm" onClick={salvarSmtpConfig} disabled={salvandoSmtp} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-10 px-4">
@@ -568,80 +567,80 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
         </div>
 
         {/* ─── Painel de E-mail / Comunicado ─── */}
-        <div className="rounded-xl border border-[#12361d]/60 bg-[#091b10]/40 shadow-lg backdrop-blur-sm overflow-hidden">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 shadow-lg backdrop-blur-sm overflow-hidden">
           <button type="button" onClick={() => setComunicadoExpandido((v) => !v)}
-            className="w-full flex items-center justify-between px-5 py-3 hover:bg-[#0c2415]/40 transition-colors">
+            className="w-full flex items-center justify-between px-5 py-3 hover:bg-zinc-800/40 transition-colors">
             <h2 className="text-sm font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
               <Mail className="size-4" /> Disparar Comunicado / E-mail ({selectedEmails.length > 0 ? `${selectedEmails.length} selecionado(s)` : 'Todos os clientes'})
             </h2>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[#6b937a]">
+              <span className="text-xs text-zinc-500">
                 {comunicadoExpandido ? 'Recolher painel' : 'Expandir painel de e-mail'}
               </span>
-              {comunicadoExpandido ? <ChevronUp className="size-4 text-[#87a992]" /> : <ChevronDown className="size-4 text-[#87a992]" />}
+              {comunicadoExpandido ? <ChevronUp className="size-4 text-zinc-400" /> : <ChevronDown className="size-4 text-zinc-400" />}
             </div>
           </button>
 
           {comunicadoExpandido && (
-            <div className="p-5 border-t border-[#12361d]/40 bg-[#06140b]/60">
+            <div className="p-5 border-t border-zinc-800/60 bg-zinc-950/60">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* Form Compositor (Esquerda) */}
-                <div className="space-y-4">
-                  <div className="text-xs font-bold uppercase tracking-wide text-[#87a992]">Editor do Comunicado</div>
+                <div className="space-y-4 text-left">
+                  <div className="text-xs font-bold uppercase tracking-wide text-zinc-400">Editor do Comunicado</div>
                   
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-[#87a992]">Assunto do E-mail</Label>
+                    <Label className="text-xs font-semibold text-zinc-400">Assunto do E-mail</Label>
                     <Input
                       value={emailAssunto}
                       onChange={(e) => setEmailAssunto(e.target.value)}
-                      className="bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-emerald-500 text-white placeholder:text-[#374e40]"
+                      className="bg-zinc-950 border-zinc-800 focus-visible:ring-emerald-500 text-white placeholder:text-zinc-700"
                       placeholder="Assunto da mensagem"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-[#87a992]">Mensagem (Texto com quebras de linha)</Label>
+                    <Label className="text-xs font-semibold text-zinc-400">Mensagem (Texto com quebras de linha)</Label>
                     <textarea
                       value={emailTexto}
                       onChange={(e) => setEmailTexto(e.target.value)}
                       rows={6}
-                      className="w-full rounded-lg border border-[#1e4d2e]/60 bg-[#07170d] p-3 text-sm text-white placeholder:text-[#374e40] focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 resize-y font-sans"
+                      className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-white placeholder:text-zinc-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/30 resize-y font-sans"
                       placeholder="Olá, escreva aqui a mensagem..."
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs font-semibold text-[#87a992]">Texto do Botão de Acesso</Label>
+                      <Label className="text-xs font-semibold text-zinc-400">Texto do Botão de Acesso</Label>
                       <Input
                         value={emailBotaoTexto}
                         onChange={(e) => setEmailBotaoTexto(e.target.value)}
-                        className="bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-emerald-500 text-white"
+                        className="bg-zinc-950 border-zinc-800 focus-visible:ring-emerald-500 text-white"
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs font-semibold text-[#87a992]">Link do Botão de Acesso</Label>
+                      <Label className="text-xs font-semibold text-zinc-400">Link do Botão de Acesso</Label>
                       <Input
                         value={emailBotaoLink}
                         onChange={(e) => setEmailBotaoLink(e.target.value)}
-                        className="bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-emerald-500 text-white placeholder:text-[#374e40]"
+                        className="bg-zinc-950 border-zinc-800 focus-visible:ring-emerald-500 text-white placeholder:text-zinc-700"
                         placeholder="https://..."
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-[#87a992]">URL de Imagem no E-mail (Opcional)</Label>
+                    <Label className="text-xs font-semibold text-zinc-400">URL de Imagem no E-mail (Opcional)</Label>
                     <Input
                       value={emailImagemUrl}
                       onChange={(e) => setEmailImagemUrl(e.target.value)}
-                      className="bg-[#07170d] border-[#1e4d2e]/60 focus-visible:ring-emerald-500 text-white placeholder:text-[#374e40]"
+                      className="bg-zinc-950 border-zinc-800 focus-visible:ring-emerald-500 text-white placeholder:text-zinc-700"
                       placeholder="https://exemplo.com/imagem.png"
                     />
                   </div>
 
-                  <div className="p-3 bg-[#081f11] rounded-lg border border-emerald-800/30 text-xs text-[#87a992] space-y-1">
+                  <div className="p-3 bg-emerald-950/20 rounded-lg border border-emerald-900/30 text-xs text-zinc-400 space-y-1">
                     <div className="font-bold text-white">Destinatários Selecionados:</div>
                     <div>
                       {selectedEmails.length > 0 
@@ -660,13 +659,13 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                 </div>
 
                 {/* Real-time HTML Preview (Direita) */}
-                <div className="space-y-4 flex flex-col">
-                  <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground flex items-center justify-between">
+                <div className="space-y-4 flex flex-col text-left">
+                  <div className="text-xs font-bold uppercase tracking-wide text-zinc-400 flex items-center justify-between">
                     <span>Prévia Visual (Como o cliente receberá)</span>
-                    <span className="text-[10px] text-emerald-400 bg-emerald-950/30 border border-emerald-800/30 px-2 py-0.5 rounded">Identidade Oficial</span>
+                    <span className="text-xs text-emerald-400 bg-emerald-950/30 border border-emerald-800/30 px-2 py-0.5 rounded">Identidade Oficial</span>
                   </div>
                   
-                  <div className="flex-1 border border-[#12361d] rounded-lg overflow-hidden bg-white max-h-[460px] overflow-y-auto">
+                  <div className="flex-grow border border-zinc-800 rounded-lg overflow-hidden bg-white max-h-[460px] overflow-y-auto">
                     <div className="p-4 bg-[#f4f7f5] text-left">
                       <div className="max-w-[480px] mx-auto bg-white rounded-lg shadow-sm border border-zinc-200 overflow-hidden text-zinc-800" style={{ fontFamily: 'sans-serif' }}>
                         <div className="bg-[#0a1f14] p-4 text-center">
@@ -688,7 +687,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                           )}
                           <div className="text-center mt-5" style={{ margin: '20px 0 10px 0' }}>
                             <span className="inline-block bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded shadow-sm text-center" style={{ textDecoration: 'none' }}>
-                              {emailBotaoTexto}
+                                {emailBotaoTexto}
                             </span>
                           </div>
                         </div>
@@ -707,41 +706,41 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
         </div>
 
         {/* ─── Tabela CRM e Faturamento ─── */}
-        <div className="flex-1 border border-[#12361d]/60 rounded-xl bg-[#091b10]/30 shadow-lg overflow-hidden flex flex-col">
-          <div className="bg-[#091b10]/80 px-5 py-3 border-b border-[#12361d]/40 flex shrink-0 justify-between items-center gap-4">
-            <div className="flex flex-col">
+        <div className="flex-1 border border-zinc-800 rounded-xl bg-zinc-900/20 shadow-lg overflow-hidden flex flex-col">
+          <div className="bg-zinc-900/80 px-5 py-3 border-b border-zinc-800/80 flex shrink-0 justify-between items-center gap-4">
+            <div className="flex flex-col text-left">
               <span className="text-sm font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-2">
                 <Sparkles className="size-4" /> CRM & Faturamento ({perfisFiltrados.length}{busca ? ` de ${perfis.length}` : ''})
               </span>
-              <span className="text-[10px] text-[#6b937a] mt-0.5">Os dados editados são salvos automaticamente ao sair do campo.</span>
+              <span className="text-xs text-zinc-400 mt-0.5">Os dados editados são salvos automaticamente ao sair do campo.</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-[#6b937a]" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-zinc-500" />
                 <input
                   type="text"
                   placeholder="Buscar cliente..."
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  className="h-9 w-52 rounded-lg border border-[#1e4d2e]/60 bg-[#07170d] pl-8 pr-3 text-xs text-white placeholder:text-[#374e40] focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
+                  className="h-9 w-52 rounded-lg border border-zinc-800 bg-zinc-950 pl-8 pr-3 text-xs text-white placeholder:text-zinc-700 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
                 />
               </div>
-              <span className="text-[10px] text-emerald-400 bg-emerald-950/30 border border-emerald-800/30 px-2.5 py-1 rounded-full font-bold whitespace-nowrap">CRM Ativo</span>
+              <span className="text-xs text-emerald-400 bg-emerald-950/30 border border-emerald-800/30 px-2.5 py-1 rounded-full font-bold whitespace-nowrap">CRM Ativo</span>
             </div>
           </div>
           <div className="flex-1 overflow-auto">
             {carregando ? (
-              <div className="p-8 text-center text-sm text-[#87a992]">
+              <div className="p-8 text-center text-xs text-zinc-400">
                 <RefreshCw className="size-6 animate-spin mx-auto mb-2 text-amber-500" />
                 Carregando perfis...
               </div>
             ) : perfisFiltrados.length === 0 ? (
-              <div className="p-8 text-center text-sm text-[#87a992]">
+              <div className="p-8 text-center text-xs text-zinc-400">
                 {busca ? `Nenhum resultado para "${busca}".` : 'Nenhum perfil de uso encontrado.'}
               </div>
             ) : (
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 bg-[#07170d] text-[#87a992] text-[10px] uppercase font-bold tracking-wider border-b border-[#12361d] z-10">
+                <thead className="sticky top-0 bg-zinc-950 text-zinc-400 text-xs uppercase font-bold tracking-wider border-b border-zinc-800 z-10">
                   <tr>
                     <th className="px-4 py-3 w-10 text-center">
                       <input
@@ -755,7 +754,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                             setSelectedUids([]);
                           }
                         }}
-                        className="rounded-sm text-[#05140b] focus:ring-emerald-500 size-4 mt-0.5 border-[#12361d] accent-emerald-500 cursor-pointer"
+                        className="rounded text-zinc-950 focus:ring-emerald-500 size-4 mt-0.5 border-zinc-750 accent-emerald-500 cursor-pointer"
                       />
                     </th>
                     <th className="px-4 py-3 min-w-[140px]">Cliente / RT</th>
@@ -769,7 +768,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     <th className="px-4 py-3 text-center w-16">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#12361d]/30">
+                <tbody className="divide-y divide-zinc-800/40">
                   {perfisFiltrados.map((p) => {
                     const ativo = (agora - (p.ultimoAcessoEm ?? p.ultimoProjetoEm ?? 0)) < DIAS_ATIVO;
                     const status = p.statusPagamento || 'atrasado';
@@ -780,7 +779,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     const dono = souMembro ? perfis.find((x) => x.uid === p.workspaceUid) : null;
                     if (souMembro) {
                       return (
-                        <tr key={p.uid} className="hover:bg-[#0c2415]/40 transition-colors">
+                        <tr key={p.uid} className="hover:bg-zinc-900/30 transition-colors">
                           <td className="px-4 py-2.5 w-10 text-center">
                             <input
                               type="checkbox"
@@ -793,22 +792,36 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                                   setSelectedUids((prev) => prev.filter((id) => id !== p.uid));
                                 }
                               }}
-                              className="rounded-sm text-[#05140b] focus:ring-emerald-500 size-4 mt-0.5 border-[#12361d] accent-emerald-500 cursor-pointer"
+                              className="rounded text-zinc-950 focus:ring-emerald-500 size-4 mt-0.5 border-zinc-750 accent-emerald-500 cursor-pointer"
                             />
                           </td>
                           <td className="px-4 py-2.5">
-                            <div className="font-bold text-white leading-tight text-[13px]">{p.empresaNome || 'Sem Empresa'}</div>
-                            <div className="text-[10px] text-[#87a992] mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
+                            <div className="font-bold text-white leading-tight text-sm">{p.empresaNome || 'Sem Empresa'}</div>
+                            <div className="text-xs text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
                           </td>
-                          <td className="px-4 py-2.5 text-[#87a992] select-all text-[11px]">{p.email || '—'}</td>
-                          <td className="px-2 py-2.5 text-center font-bold text-emerald-400 text-[13px]">{p.totalProjetos ?? 0}</td>
-                          <td colSpan={4} className="px-4 py-2.5 text-center text-[11px] text-[#6b937a] italic">
+                          <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">{p.email || '—'}</td>
+                          <td className="px-2 py-2.5 text-center font-bold text-emerald-400 text-sm">{p.totalProjetos ?? 0}</td>
+                          <td colSpan={3} className="px-4 py-2.5 text-center text-xs text-zinc-500 italic">
                             Membro — cobrança segue a empresa de {dono?.empresaNome || dono?.email || 'outra conta'}
                           </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-[#6b937a] border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
+                          <td className="px-4 py-2.5">
+                            <input
+                              type="text"
+                              placeholder="Anotações internas..."
+                              defaultValue={p.observacoesAdmin || ''}
+                              onBlur={(e) => {
+                                const val = e.target.value;
+                                if (val !== (p.observacoesAdmin || '')) {
+                                  atualizarClienteCRM(p.uid, { observacoesAdmin: val });
+                                }
+                              }}
+                              className="w-full h-9 bg-zinc-950 border border-zinc-800 rounded-lg text-white px-3 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 placeholder-zinc-700 transition-colors"
+                            />
                           </td>
                           <td className="px-4 py-2.5 text-center">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-zinc-450 border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-center flex justify-center gap-1">
                             <Button
                               size="sm"
                               variant="ghost"
@@ -832,7 +845,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                       );
                     }
                     return (
-                      <tr key={p.uid} className="hover:bg-[#0c2415]/40 transition-colors">
+                      <tr key={p.uid} className="hover:bg-zinc-900/30 transition-colors">
                         <td className="px-4 py-2.5 w-10 text-center">
                           <input
                             type="checkbox"
@@ -845,15 +858,15 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                                 setSelectedUids((prev) => prev.filter((id) => id !== p.uid));
                               }
                             }}
-                            className="rounded-sm text-[#05140b] focus:ring-emerald-500 size-4 mt-0.5 border-[#12361d] accent-emerald-500 cursor-pointer"
+                            className="rounded text-zinc-950 focus:ring-emerald-500 size-4 mt-0.5 border-zinc-750 accent-emerald-500 cursor-pointer"
                           />
                         </td>
                         <td className="px-4 py-2.5">
-                          <div className="font-bold text-white leading-tight text-[13px]">{p.empresaNome || 'Sem Empresa'}</div>
-                          <div className="text-[10px] text-[#87a992] mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
+                          <div className="font-bold text-white leading-tight text-sm">{p.empresaNome || 'Sem Empresa'}</div>
+                          <div className="text-xs text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
                         </td>
-                        <td className="px-4 py-2.5 text-[#87a992] select-all text-[11px]">{p.email || '—'}</td>
-                        <td className="px-2 py-2.5 text-center font-bold text-emerald-400 text-[13px]">{p.totalProjetos ?? 0}</td>
+                        <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">{p.email || '—'}</td>
+                        <td className="px-2 py-2.5 text-center font-bold text-emerald-400 text-sm">{p.totalProjetos ?? 0}</td>
                         
                         {/* CRM: Mensalidade */}
                         <td className="px-2 py-2.5 text-center">
@@ -866,7 +879,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                                 atualizarClienteCRM(p.uid, { mensalidade: val });
                               }
                             }}
-                            className="w-20 h-9 text-center bg-[#07170d] border border-[#1e4d2e]/60 rounded-lg text-white px-1.5 text-xs font-bold focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
+                            className="w-20 h-9 text-center bg-zinc-950 border border-zinc-800 rounded-lg text-white px-1.5 text-xs font-bold focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
                           />
                         </td>
 
@@ -883,7 +896,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                                 atualizarClienteCRM(p.uid, { vencimentoDia: val });
                               }
                             }}
-                            className="w-16 h-9 text-center bg-[#07170d] border border-[#1e4d2e]/60 rounded-lg text-white px-1 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
+                            className="w-16 h-9 text-center bg-zinc-950 border border-zinc-800 rounded-lg text-white px-1 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
                           />
                         </td>
 
@@ -901,19 +914,19 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                               }
                               atualizarClienteCRM(p.uid, patch);
                             }}
-                            className={`w-28 h-9 rounded-lg px-2 text-[11px] font-bold bg-[#07170d] border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 cursor-pointer transition-colors ${
+                            className={`w-28 h-9 rounded-lg px-2 text-xs font-bold bg-zinc-950 border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 cursor-pointer transition-colors ${
                               status === 'pago' ? 'text-emerald-400 border-emerald-500/40' :
                               status === 'isento' ? 'text-zinc-400 border-zinc-500/40' :
                               'text-red-400 border-red-500/40'
                             }`}
                           >
-                            <option value="pago" className="text-emerald-400 font-bold bg-[#05140b]">Pago (Ok)</option>
-                            <option value="atrasado" className="text-red-400 font-bold bg-[#05140b]">Atrasado (🚨)</option>
-                            <option value="isento" className="text-zinc-400 font-bold bg-[#05140b]">Isento (Free)</option>
+                            <option value="pago" className="text-emerald-400 font-bold bg-zinc-900">Pago (Ok)</option>
+                            <option value="atrasado" className="text-red-400 font-bold bg-zinc-900">Atrasado (🚨)</option>
+                            <option value="isento" className="text-zinc-400 font-bold bg-zinc-900">Isento (Free)</option>
                           </select>
                         </td>
 
-                        {/* CRM: Observações / Obs. Contrato */}
+                        {/* CRM: Observações */}
                         <td className="px-4 py-2.5">
                           <input
                             type="text"
@@ -925,14 +938,14 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                                 atualizarClienteCRM(p.uid, { observacoesAdmin: val });
                               }
                             }}
-                            className="w-full h-9 bg-[#07170d] border border-[#1e4d2e]/60 rounded-lg text-white px-3 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 placeholder-[#374e40] transition-colors"
+                            className="w-full h-9 bg-zinc-950 border border-zinc-800 rounded-lg text-white px-3 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 placeholder-zinc-700 transition-colors"
                           />
                         </td>
 
                         <td className="px-4 py-2.5 text-center">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-[#6b937a] border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-zinc-450 border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
                         </td>
-                        <td className="px-4 py-2.5 text-center">
+                        <td className="px-4 py-2.5 text-center flex justify-center gap-1">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -962,44 +975,40 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
         </div>
       </div>
 
-      {/* Diagnóstico dos projetos de um cliente: NUNCA abre nem edita o projeto DELE — só mostra
-          números (vértices, confrontantes, denominação, última alteração) pra achar rápido onde a
-          pessoa travou. A única ação possível é "Copiar para meus projetos", que LÊ o projeto do
-          cliente (a regra do Firestore já dá essa leitura ao master) e GRAVA uma cópia independente
-          na própria conta do master — nunca escreve nada na conta do cliente. */}
+      {/* Diagnóstico dos projetos de um cliente */}
       {projetosCliente && (
         <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/70 p-4" onClick={() => setProjetosCliente(null)}>
-          <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-[#1e4d2e]/60 bg-[#05140b] shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-[#12361d] px-5 py-3">
+          <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3">
               <div>
-                <div className="text-sm font-bold text-white">Projetos de {projetosCliente.nome}</div>
-                <div className="text-[11px] text-[#87a992]">Só leitura — diagnóstico pra ver onde a pessoa travou</div>
+                <div className="text-sm font-bold text-white text-left">Projetos de {projetosCliente.nome}</div>
+                <div className="text-xs text-zinc-400 mt-0.5 text-left">Só leitura — diagnóstico para ver onde travou</div>
               </div>
-              <button type="button" onClick={() => setProjetosCliente(null)} className="rounded-lg p-1.5 text-[#87a992] hover:bg-white/5 hover:text-white">
+              <button type="button" onClick={() => setProjetosCliente(null)} className="rounded-lg p-1.5 text-zinc-400 hover:bg-white/5 hover:text-white">
                 <X className="size-4" />
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
-              {carregandoProjetos && <div className="py-8 text-center text-sm text-[#87a992]">Carregando…</div>}
+              {carregandoProjetos && <div className="py-8 text-center text-xs text-zinc-400">Carregando…</div>}
               {!carregandoProjetos && erroProjetos && (
-                <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-400">{erroProjetos}</div>
+                <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-400">{erroProjetos}</div>
               )}
               {!carregandoProjetos && !erroProjetos && projetosCliente.projetos.length === 0 && (
-                <div className="py-8 text-center text-sm text-[#87a992]">Este cliente ainda não tem nenhum projeto salvo na nuvem.</div>
+                <div className="py-8 text-center text-xs text-zinc-400">Este cliente ainda não tem nenhum projeto salvo na nuvem.</div>
               )}
               {!carregandoProjetos && !erroProjetos && projetosCliente.projetos.map((proj) => {
                 const totalVertices = proj.glebas.reduce((s, g) => s + g.vertices.length, 0);
                 const totalConfrontantes = proj.glebas.reduce((s, g) => s + g.confrontantes.length, 0);
                 return (
-                  <div key={proj.id} className="mb-2 rounded-xl border border-[#1e4d2e]/50 bg-[#07170d] p-3">
+                  <div key={proj.id} className="mb-2 rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-left">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-bold text-white">{proj.nome}</div>
-                        <div className="truncate text-[11px] text-[#87a992]">{proj.imovel?.denominacao || 'Sem denominação do imóvel'}</div>
+                        <div className="truncate text-xs text-zinc-400">{proj.imovel?.denominacao || 'Sem denominação do imóvel'}</div>
                       </div>
-                      <span className="shrink-0 text-[10px] text-[#6b937a]">Alterado em {dataBR(proj.atualizadoEm)}</span>
+                      <span className="shrink-0 text-xs text-zinc-500">Alterado em {dataBR(proj.atualizadoEm)}</span>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-3 text-[11px]">
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs">
                       <span className={`flex items-center gap-1 ${totalVertices > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                         <MapPin className="size-3.5" /> {totalVertices} vértice(s){totalVertices === 0 && ' — nunca importou pontos'}
                       </span>
@@ -1007,11 +1016,11 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                         <Waypoints className="size-3.5" /> {totalConfrontantes} confrontante(s){totalVertices > 0 && totalConfrontantes === 0 && ' — ainda não pintou'}
                       </span>
                     </div>
-                    <div className="mt-2 flex justify-end border-t border-[#12361d]/40 pt-2">
+                    <div className="mt-2 flex justify-end border-t border-zinc-800/60 pt-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-7 gap-1.5 border-[#1e4d2e] bg-[#0c2415] px-2.5 text-[11px] font-semibold text-emerald-300 hover:bg-[#12361d]"
+                        className="h-7 gap-1.5 border-zinc-800 bg-zinc-900 px-2.5 text-xs font-semibold text-emerald-300 hover:bg-zinc-800"
                         disabled={copiandoId === proj.id}
                         title="Cria uma cópia independente deste projeto no SEU gestor de projetos — não altera nada na conta do cliente"
                         onClick={() => copiarProjeto(proj)}

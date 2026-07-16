@@ -27,11 +27,12 @@ interface Props {
   tecnico: TecnicoData;
   escritorio: EscritorioData;
   dataExtenso: string;
+  isAdmin?: boolean;
 }
 
 const hoje = () => new Date().toISOString().slice(0, 10);
 
-export default function GestaoProjetoModal({ open, onOpenChange, imovel, financeiro, onChange, nomeProjeto, areaHa, perimetro, tecnico, escritorio, dataExtenso }: Props) {
+export default function GestaoProjetoModal({ open, onOpenChange, imovel, financeiro, onChange, nomeProjeto, areaHa, perimetro, tecnico, escritorio, dataExtenso, isAdmin = false }: Props) {
   const lancamentos = financeiro.lancamentos ?? [];
   const valorCobrado = financeiro.valorCobrado ?? 0;
 
@@ -45,6 +46,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
   const [novo, setNovo] = useState<{ tipo: 'gasto' | 'recebimento'; descricao: string; valor: string; data: string }>({ tipo: 'recebimento', descricao: '', valor: '', data: hoje() });
   const [reciboValor, setReciboValor] = useState('');
   const [formaPagamento, setFormaPagamento] = useState('');
+  const [prazoDias, setPrazoDias] = useState('30');
   const [aba, setAba] = useState<'projeto' | 'empresa'>('projeto');
   const [projetos, setProjetos] = useState<Projeto[] | null>(null);
   const [precos, setPrecos] = useState<PrecoServico[]>([]);
@@ -53,16 +55,25 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
 
   const patch = (p: Partial<FinanceiroProjeto>) => onChange({ ...financeiro, ...p });
 
-  function adicionar() {
-    const valor = Number(novo.valor.replace(',', '.'));
-    if (!novo.descricao.trim() || !Number.isFinite(valor) || valor <= 0) return;
-    const l: LancamentoFinanceiro = { id: `f_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`, tipo: novo.tipo, descricao: novo.descricao.trim(), valor, data: novo.data || hoje() };
-    patch({ lancamentos: [...lancamentos, l] });
-    setNovo({ tipo: novo.tipo, descricao: '', valor: '', data: hoje() });
-  }
-  function remover(id: string) {
-    patch({ lancamentos: lancamentos.filter((l) => l.id !== id) });
-  }
+  const setRecebidoTotal = (val: number) => {
+    const outros = lancamentos.filter((l) => l.tipo !== 'recebimento');
+    patch({
+      lancamentos: val > 0 ? [
+        ...outros,
+        { id: 'recebido_unico', tipo: 'recebimento', descricao: 'Valor Recebido', valor: val, data: hoje() }
+      ] : outros
+    });
+  };
+
+  const setCustoTotal = (val: number) => {
+    const outros = lancamentos.filter((l) => l.tipo !== 'gasto');
+    patch({
+      lancamentos: val > 0 ? [
+        ...outros,
+        { id: 'gasto_unico', tipo: 'gasto', descricao: 'Custos com o Serviço', valor: val, data: hoje() }
+      ] : outros
+    });
+  };
 
   const baseArgs = { imovel, escritorio, tecnico, dataExtenso, areaHa, perimetro };
 
@@ -101,26 +112,36 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                 {/* ---- Documentos ---- */}
                 <section>
                   <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Documentos para o cliente</h3>
-                  <div className="flex flex-wrap items-end gap-3 rounded-md border p-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-md border p-3 bg-muted/10">
                     <div className="space-y-1">
                       <Label className="text-xs">Valor do recibo (R$)</Label>
-                      <Input type="number" className="w-40" placeholder={String(valorCobrado || '0,00')} value={reciboValor} onChange={(e) => setReciboValor(e.target.value)} />
+                      <Input type="number" placeholder={String(valorCobrado || '0,00')} value={reciboValor} onChange={(e) => setReciboValor(e.target.value)} />
                     </div>
-                    <Button variant="outline" onClick={() => gerarReciboPdf({ ...baseArgs, valor: Number(reciboValor.replace(',', '.')) || valorCobrado || recebido, numero: consumirNumeroRecibo(new Date().getFullYear()) })}>
-                      <Receipt className="size-4" /> Emitir recibo (PDF)
-                    </Button>
+                    <div className="space-y-1 flex items-end">
+                      <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold border-transparent" onClick={() => gerarReciboPdf({ ...baseArgs, valor: Number(reciboValor.replace(',', '.')) || valorCobrado || recebido, numero: consumirNumeroRecibo(new Date().getFullYear()) })}>
+                        <Receipt className="size-4 mr-1.5" /> Emitir recibo (PDF)
+                      </Button>
+                    </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Forma de pagamento (contrato)</Label>
-                      <Input className="w-56" placeholder="ex.: 50% na entrada, 50% na entrega" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} />
+                      <Input placeholder="ex.: 50% na entrada, 50% na entrega" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} />
                     </div>
-                    <Button variant="outline" onClick={() => gerarContratoPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined })}>
-                      <FileText className="size-4" /> Emitir contrato (PDF)
-                    </Button>
-                    <Button variant="outline" onClick={() => gerarPropostaPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined })}>
-                      <FileText className="size-4" /> Emitir proposta (PDF)
-                    </Button>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Prazo de execução (dias)</Label>
+                      <Input type="number" placeholder="30" value={prazoDias} onChange={(e) => setPrazoDias(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold border-transparent" onClick={() => gerarContratoPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined })}>
+                        <FileText className="size-4 mr-1.5" /> Emitir contrato (PDF)
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold border-transparent" onClick={() => gerarPropostaPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined })}>
+                        <FileText className="size-4 mr-1.5" /> Emitir proposta (PDF)
+                      </Button>
+                    </div>
                   </div>
-                  <p className="mt-2 text-[11px] text-muted-foreground">O contrato e a proposta usam o valor cobrado acima. Todos saem prontos para revisar, imprimir e assinar.</p>
+                  <p className="mt-2 text-[11px] text-muted-foreground">O contrato e a proposta usam o valor cobrado e prazo informados acima.</p>
 
                   <h3 className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted-foreground">Declarações avulsas</h3>
                   <div className="flex flex-wrap items-center gap-3 rounded-md border p-3">
@@ -167,37 +188,27 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                     </div>
                   </div>
 
-                  {/* lançamentos */}
-                  <div className="overflow-hidden rounded-md border">
-                    <table className="w-full text-xs">
-                      <thead className="bg-muted/50 text-left text-muted-foreground">
-                        <tr><th className="p-2">Data</th><th className="p-2">Tipo</th><th className="p-2">Descrição</th><th className="p-2 text-right">Valor</th><th className="p-2"></th></tr>
-                      </thead>
-                      <tbody>
-                        {lancamentos.length === 0 && (
-                          <tr><td colSpan={5} className="p-3 text-center text-muted-foreground">Nenhum lançamento ainda.</td></tr>
-                        )}
-                        {lancamentos.slice().sort((a, b) => a.data.localeCompare(b.data)).map((l) => (
-                          <tr key={l.id} className="border-t">
-                            <td className="p-2">{l.data.split('-').reverse().join('/')}</td>
-                            <td className="p-2">{l.tipo === 'recebimento' ? <span className="text-emerald-600 dark:text-emerald-400">Recebimento</span> : <span className="text-red-600 dark:text-red-400">Gasto</span>}</td>
-                            <td className="p-2">{l.descricao}</td>
-                            <td className="p-2 text-right font-medium">{moedaBR(l.valor)}</td>
-                            <td className="p-2 text-right"><button onClick={() => remover(l.id)} title="Excluir este lançamento" className="text-muted-foreground hover:text-destructive"><Trash2 className="size-3.5" /></button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {/* nova linha */}
-                    <div className="flex flex-wrap items-end gap-2 border-t bg-muted/20 p-2">
-                      <select className="h-9 rounded-sm border bg-background px-2 text-xs" value={novo.tipo} onChange={(e) => setNovo((n) => ({ ...n, tipo: e.target.value as 'gasto' | 'recebimento' }))}>
-                        <option value="recebimento">Recebimento</option>
-                        <option value="gasto">Gasto</option>
-                      </select>
-                      <Input className="h-9 flex-1 min-w-[140px] text-xs" placeholder="Descrição (ex.: entrada, diária de campo, cartório)" value={novo.descricao} onChange={(e) => setNovo((n) => ({ ...n, descricao: e.target.value }))} />
-                      <Input className="h-9 w-28 text-xs" type="number" placeholder="Valor R$" value={novo.valor} onChange={(e) => setNovo((n) => ({ ...n, valor: e.target.value }))} />
-                      <Input className="h-9 w-36 text-xs" type="date" value={novo.data} onChange={(e) => setNovo((n) => ({ ...n, data: e.target.value }))} />
-                      <Button size="sm" className="h-9" onClick={adicionar}><Plus className="size-4" /> Lançar</Button>
+                  {/* Simplificação de Lançamentos */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-md border bg-muted/10 p-3 mt-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-bold text-foreground">Valor recebido até o momento (R$)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0,00"
+                        value={recebido || ''}
+                        onChange={(e) => setRecebidoTotal(e.target.value === '' ? 0 : Number(e.target.value))}
+                        className="bg-background text-emerald-600 font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-bold text-foreground">Custos com o serviço (R$)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0,00"
+                        value={gasto || ''}
+                        onChange={(e) => setCustoTotal(e.target.value === '' ? 0 : Number(e.target.value))}
+                        className="bg-background text-red-600 font-bold"
+                      />
                     </div>
                   </div>
 
@@ -209,7 +220,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
               </div>
             </div>
           )}
-          {aba === 'empresa' && <EmpresaResumo projetos={projetos} />}
+          {aba === 'empresa' && <EmpresaResumo projetos={projetos} isAdmin={isAdmin} />}
         </div>
       </DialogContent>
     </Dialog>
@@ -224,36 +235,102 @@ function resumoFin(f?: FinanceiroProjeto) {
   return { cobrado, recebido, gasto, saldo: recebido - gasto, aReceber: cobrado - recebido };
 }
 
-function EmpresaResumo({ projetos }: { projetos: Projeto[] | null }) {
-  if (projetos === null) return <div className="p-6 text-center text-muted-foreground">Carregando projetos…</div>;
-  if (projetos.length === 0) return <div className="p-6 text-center text-muted-foreground">Nenhum projeto salvo ainda. Salve projetos para acompanhar o financeiro de cada um aqui.</div>;
-  const linhas = projetos.map((p) => ({ nome: p.nome || p.imovel?.denominacao || 'Projeto', r: resumoFin(p.imovel?.financeiro) }));
-  const tot = linhas.reduce((s, l) => ({ cobrado: s.cobrado + l.r.cobrado, recebido: s.recebido + l.r.recebido, gasto: s.gasto + l.r.gasto, aReceber: s.aReceber + l.r.aReceber }), { cobrado: 0, recebido: 0, gasto: 0, aReceber: 0 });
-  return (
-    <section>
-      <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Visão geral da empresa — {projetos.length} projeto(s) salvo(s)</h3>
-      <div className="overflow-hidden rounded-md border">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/50 text-left text-muted-foreground">
-            <tr><th className="p-2">Projeto</th><th className="p-2 text-right">Cobrado</th><th className="p-2 text-right">Recebido</th><th className="p-2 text-right">A receber</th><th className="p-2 text-right">Saldo</th></tr>
-          </thead>
-          <tbody>
-            {linhas.map((l, i) => (
-              <tr key={i} className="border-t">
-                <td className="p-2">{l.nome}</td>
-                <td className="p-2 text-right">{moedaBR(l.r.cobrado)}</td>
-                <td className="p-2 text-right text-emerald-600">{moedaBR(l.r.recebido)}</td>
-                <td className={`p-2 text-right ${l.r.aReceber > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>{moedaBR(l.r.aReceber)}</td>
-                <td className={`p-2 text-right font-medium ${l.r.saldo >= 0 ? '' : 'text-red-600'}`}>{moedaBR(l.r.saldo)}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot className="border-t bg-muted/30 font-semibold">
-            <tr><td className="p-2">Total</td><td className="p-2 text-right">{moedaBR(tot.cobrado)}</td><td className="p-2 text-right">{moedaBR(tot.recebido)}</td><td className="p-2 text-right">{moedaBR(tot.aReceber)}</td><td className="p-2 text-right">{moedaBR(tot.recebido - tot.gasto)}</td></tr>
-          </tfoot>
-        </table>
+function EmpresaResumo({ projetos, isAdmin }: { projetos: Projeto[] | null; isAdmin: boolean }) {
+  if (!isAdmin) {
+    return (
+      <div className="rounded-lg border border-zinc-500/20 bg-zinc-500/5 p-6 text-center text-muted-foreground">
+        A visão geral financeira consolidada é restrita aos administradores da empresa.
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">Soma o financeiro de todos os projetos salvos. O projeto aberto agora aparece aqui depois de salvo.</p>
+    );
+  }
+  if (projetos === null) return <div className="p-6 text-center text-muted-foreground">Carregando projetos…</div>;
+  if (projetos.length === 0) return <div className="p-6 text-center text-muted-foreground">Nenhum projeto salvo ainda.</div>;
+
+  const obterMesAno = (timestamp: number | undefined) => {
+    const d = new Date(timestamp || Date.now());
+    const meses = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    return `${meses[d.getMonth()]} de ${d.getFullYear()}`;
+  };
+
+  const grupos: Record<string, { nome: string; criadoEm: number; r: ReturnType<typeof resumoFin> }[]> = {};
+  projetos.forEach((p) => {
+    const mes = obterMesAno(p.criadoEm);
+    if (!grupos[mes]) grupos[mes] = [];
+    grupos[mes].push({
+      nome: p.nome || p.imovel?.denominacao || 'Projeto',
+      criadoEm: p.criadoEm || 0,
+      r: resumoFin(p.imovel?.financeiro)
+    });
+  });
+
+  const mesesOrdenados = Object.keys(grupos).sort((a, b) => {
+    const timeA = grupos[a][0]?.criadoEm || 0;
+    const timeB = grupos[b][0]?.criadoEm || 0;
+    return timeB - timeA;
+  });
+
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Visão geral consolidada por mês</h3>
+        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Administrador</span>
+      </div>
+
+      {mesesOrdenados.map((mes) => {
+        const linhas = grupos[mes];
+        const tot = linhas.reduce((s, l) => ({
+          cobrado: s.cobrado + l.r.cobrado,
+          recebido: s.recebido + l.r.recebido,
+          gasto: s.gasto + l.r.gasto,
+          aReceber: s.aReceber + l.r.aReceber,
+          saldo: s.saldo + l.r.saldo
+        }), { cobrado: 0, recebido: 0, gasto: 0, aReceber: 0, saldo: 0 });
+
+        return (
+          <div key={mes} className="space-y-2 rounded-lg border border-border bg-background/50 p-3 shadow-sm">
+            <div className="flex items-center justify-between border-b pb-1">
+              <span className="text-xs font-extrabold text-foreground uppercase tracking-wider">{mes}</span>
+              <span className="text-[10px] text-muted-foreground font-semibold">{linhas.length} projeto(s)</span>
+            </div>
+            <div className="overflow-hidden rounded-md border bg-background">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50 text-left text-muted-foreground">
+                  <tr>
+                    <th className="p-2">Projeto</th>
+                    <th className="p-2 text-right">Cobrado</th>
+                    <th className="p-2 text-right">Recebido</th>
+                    <th className="p-2 text-right">A receber</th>
+                    <th className="p-2 text-right">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {linhas.map((l, i) => (
+                    <tr key={i} className="border-t hover:bg-muted/30">
+                      <td className="p-2 font-medium">{l.nome}</td>
+                      <td className="p-2 text-right text-muted-foreground">{moedaBR(l.r.cobrado)}</td>
+                      <td className="p-2 text-right text-emerald-600 font-semibold">{moedaBR(l.r.recebido)}</td>
+                      <td className={`p-2 text-right ${l.r.aReceber > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>{moedaBR(l.r.aReceber)}</td>
+                      <td className={`p-2 text-right font-bold ${l.r.saldo >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{moedaBR(l.r.saldo)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="border-t bg-muted/30 font-extrabold text-foreground">
+                  <tr>
+                    <td className="p-2">Total do Mês</td>
+                    <td className="p-2 text-right">{moedaBR(tot.cobrado)}</td>
+                    <td className="p-2 text-right text-emerald-600">{moedaBR(tot.recebido)}</td>
+                    <td className="p-2 text-right text-amber-600">{moedaBR(tot.aReceber)}</td>
+                    <td className={`p-2 text-right font-black ${tot.saldo >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{moedaBR(tot.saldo)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        );
+      })}
     </section>
   );
 }

@@ -32,8 +32,22 @@ export function novoSimbolo(pt: PontoLL, simbolo: string): ObjetoDesenho {
   return { id: novoObjetoId(), tipo: 'simbolo', pontos: [pt], simbolo };
 }
 
-export function novaCota(a: PontoLL, b: PontoLL, opts: { cor?: string } = {}): ObjetoDesenho {
-  return { id: novoObjetoId(), tipo: 'cota', pontos: [a, b], cor: opts.cor ?? '#b91c1c', espessura: 1 };
+export function novaCota(
+  a: PontoLL,
+  b: PontoLL,
+  opts: { cor?: string; espessura?: number; tamanho?: number; tamanhoFonte?: number; corFonte?: string; posicaoTexto?: string } = {}
+): ObjetoDesenho {
+  return {
+    id: novoObjetoId(),
+    tipo: 'cota',
+    pontos: [a, b],
+    cor: opts.cor ?? '#b91c1c',
+    espessura: opts.espessura ?? 1,
+    tamanho: opts.tamanho,
+    tamanhoFonte: opts.tamanhoFonte ?? 10,
+    corFonte: opts.corFonte ?? opts.cor ?? '#b91c1c',
+    posicaoTexto: opts.posicaoTexto
+  };
 }
 
 /** Distância (m) de uma cota (no plano UTM). */
@@ -74,7 +88,8 @@ export function comprimentoPolilinha(o: ObjetoDesenho): number {
 /** Calcula o offset paralelo de uma linha de cota à direita do segmento percorrido de A para B. */
 export function obterPontosCotaOffset(
   a: { leste: number; norte: number },
-  b: { leste: number; norte: number }
+  b: { leste: number; norte: number },
+  offsetCustomizado?: number
 ) {
   const dx = b.leste - a.leste;
   const dy = b.norte - a.norte;
@@ -88,7 +103,7 @@ export function obterPontosCotaOffset(
   const ny = -ux;
 
   // Distância de offset proporcional ao comprimento do segmento, com limites para áreas urbanas e rurais:
-  const d = Math.max(3, Math.min(15, len * 0.08));
+  const d = offsetCustomizado ?? Math.max(3, Math.min(15, len * 0.08));
 
   const alOffset = { leste: a.leste + nx * d, norte: a.norte + ny * d };
   const blOffset = { leste: b.leste + nx * d, norte: b.norte + ny * d };

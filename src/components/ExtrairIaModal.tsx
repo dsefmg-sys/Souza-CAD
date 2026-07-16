@@ -166,8 +166,8 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4 min-h-0 pr-1">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Arraste qualquer tipo de arquivo (PDF de Matrícula, Escritura, Planta, lista de coordenadas ou foto de papel) ou cole o texto livre abaixo. 
-            A inteligência artificial analisará o texto para extrair qualquer informação útil (coordenadas, proprietários, confrontantes, áreas, etc.) e preencher o cadastro.
+            Arraste qualquer tipo de arquivo (PDF de Matrícula, Escritura, Planta, lista de coordenadas ou foto de papel) para ler e extrair os dados automaticamente.
+            A inteligência artificial analisará o documento para extrair qualquer informação útil (coordenadas, proprietários, confrontantes, áreas, etc.) e preencher o cadastro.
           </p>
 
           {/* Area Multimodal: Upload / Dropzone */}
@@ -226,23 +226,10 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="h-px bg-border flex-1" />
-            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Ou cole o texto</span>
-            <div className="h-px bg-border flex-1" />
-          </div>
-
-          <textarea
-            className="min-h-[100px] w-full rounded-lg border border-input bg-background p-3 text-xs leading-relaxed placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            placeholder="Se preferir, cole o texto da matrícula ou escritura copiado aqui..."
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-          />
-
           <div className="flex items-center gap-3 pt-2">
             <Button
               size="sm"
-              disabled={carregando || (!texto.trim() && !arquivo)}
+              disabled={carregando || !arquivo}
               onClick={extrair}
               className="gap-1.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs shadow-md"
             >

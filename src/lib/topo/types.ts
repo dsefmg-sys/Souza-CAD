@@ -246,6 +246,10 @@ export interface ObjetoDesenho {
   carTema?: 'app' | 'reservaLegal' | 'vegetacao' | 'usoConsolidado'; // camada ambiental (CAR) do polígono
   curvaNivel?: number;        // quando é uma CURVA DE NÍVEL gerada: a altitude (m) desta curva
   curvaMestra?: boolean;      // verdadeiro se for uma curva mestra (grossa)
+  tamanhoFonte?: number;      // tamanho da fonte do texto/cota
+  corFonte?: string;          // cor da fonte do texto/cota
+  posicaoTexto?: string;      // posição da cota (acima, centro, abaixo)
+  negrito?: boolean;          // texto em negrito
 }
 
 /** Um lado da poligonal (vértice i → vértice i+1). */
@@ -420,6 +424,8 @@ export interface EscritorioData {
   cep?: string;               // "36830-000"
   email?: string;             // e-mail de contato/comercial
   site?: string;              // site ou rede social
+  assinaturaDataUrl?: string; // imagem da assinatura em PNG (base64 data URL)
+  autoAssinar?: boolean;      // marcar para assinar recibos/contratos/propostas automaticamente
 }
 
 /** Dados fixos do responsável técnico (Configurações). */

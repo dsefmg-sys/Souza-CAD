@@ -26,7 +26,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   // ajuda dá, conforme o tempo de profissão). O seletor visível é o do nível, porque é ele que muda
   // o texto que a pessoa está lendo aqui. O modo só decide se aparecem os passos avançados.
   const [modo, setModo] = useState<'simples' | 'medio' | 'completo'>('simples');
-  const [nivel, setNivel] = useState<'iniciante' | 'experiente'>('iniciante');
+  const [nivel, setNivel] = useState<'iniciante' | 'experiente'>('experiente');
   const [zapSuporte, setZapSuporte] = useState('');
 
   // Estados para reprodução de áudio por Text-to-Speech ou Arquivo Gravado
@@ -66,14 +66,12 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
               audio.play().then(() => {
                 setFalando(true);
                 setPausado(false);
-              }).catch(() => {
-                setTipoAudio('tts');
-                falarTextoRef.current(proxP.texto);
+              }).catch((e) => {
+                console.warn('Autoplay play failed:', e);
+                setFalando(false);
+                setPausado(false);
               });
             }
-          } else {
-            setTipoAudio('tts');
-            falarTextoRef.current(proxP.texto);
           }
         }, 1000);
         return proximo;
@@ -233,19 +231,11 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             setPausado(false);
           }).catch((e) => {
             console.warn('Falha ao rodar áudio gravado:', e);
-            if (texto.trim()) {
-              setTipoAudio('tts');
-              falarTexto(texto);
-            } else {
-              setFalando(false);
-              setPausado(false);
-              setErroAudio('Não consegui tocar este áudio agora. Tente de novo em instantes.');
-            }
+            setFalando(false);
+            setPausado(false);
+            setErroAudio('Erro ao reproduzir áudio gravado. Clique novamente para tentar.');
           });
         }
-      } else {
-        setTipoAudio('tts');
-        falarTexto(texto);
       }
     }
   }
@@ -267,7 +257,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     if (!open) return;
     setTela('menu'); setPasso(0); setTemaId(null);
     const p = carregarPreferencias();
-    setModo(p.modo); setNivel(p.nivelExperiencia);
+    setModo(p.modo); setNivel('experiente');
     carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
   }, [open]);
   const linkSuporte = linkWhatsapp(zapSuporte);
@@ -364,36 +354,33 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   if (!open) return null;
 
   return (
-    <div className="no-print fixed bottom-16 right-4 z-[1250] w-[360px] md:w-[420px] flex flex-col bg-background/95 backdrop-blur-md shadow-2xl rounded-2xl border border-border/80 p-4 transition-all duration-300 max-h-[75vh] overflow-y-auto scroll-fino">
+    <div className="no-print fixed bottom-16 right-4 z-[1250] w-[380px] md:w-[440px] flex flex-col bg-white dark:bg-zinc-950 shadow-2xl rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 transition-all duration-300 max-h-[80vh] overflow-y-auto scroll-fino text-foreground">
       {/* Botão fechar flutuante */}
-      <button type="button" onClick={() => onOpenChange(false)} className="absolute top-3 right-3 z-20 rounded-full bg-background/80 p-1.5 text-muted-foreground hover:text-foreground shadow-sm border border-border/40 hover:bg-muted" title="Fechar tutorial">
-        <X className="size-4" />
+      <button type="button" onClick={() => onOpenChange(false)} className="absolute top-4 right-4 z-20 rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors" title="Fechar tutorial">
+        <X className="size-4.5" />
       </button>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3.5">
         {tela === 'menu' && (
           <>
-            {/* Banner de boas-vindas com a textura do campo (arte da marca) */}
-            <div className="relative -mx-4 -mt-4 mb-1 h-24 overflow-hidden rounded-t-2xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/fundo-campo.png" alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0a1f14]/90 via-[#0a1f14]/60 to-transparent" />
-              <div className="relative flex h-full flex-col justify-center px-6 text-white">
-                <div className="flex items-center gap-2 text-base font-bold drop-shadow"><GraduationCap className="size-5" /> Central de ajuda</div>
-                <p className="text-xs text-white/85 drop-shadow">Bem-vindo ao Souza CAD — aprenda no seu ritmo.</p>
+            {/* Banner de boas-vindas com gradiente moderno e sofisticado */}
+            <div className="relative -mx-5 -mt-5 mb-2 h-28 overflow-hidden rounded-t-2xl bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-700 dark:to-zinc-900 flex flex-col justify-center px-6 text-white shadow-inner">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent)]" />
+              <div className="relative flex h-full flex-col justify-center gap-1">
+                <div className="flex items-center gap-2 text-base font-black uppercase tracking-wider"><GraduationCap className="size-5 text-emerald-300 animate-bounce" /> Central de ajuda</div>
+                <p className="text-[10px] text-emerald-100 font-bold uppercase tracking-wider">Bem-vindo ao Souza CAD — aprenda no seu ritmo.</p>
               </div>
             </div>
-            {seletorNivel}
 
-            <div className="rounded-lg border p-3.5 bg-muted/20 flex flex-col gap-2">
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-850 p-4 bg-zinc-50/50 dark:bg-zinc-900/30 flex flex-col gap-3">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-primary">
                     <Play className="size-4 text-emerald-500 fill-emerald-500" />
-                    <span>Audioguia e Autoplay Geral</span>
+                    <span>Audioguia e Autoplay</span>
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground leading-normal">
-                    Narração gravada em alta qualidade para ensinar a usar o sistema.
+                  <p className="mt-1 text-[11px] text-muted-foreground leading-normal font-semibold">
+                    Narração gravada em alta qualidade com as principais orientações técnicas.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
@@ -432,40 +419,52 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
                     {ouvirTudo ? (
                       <><Pause className="size-3 text-white fill-white animate-pulse" /> Parar</>
                     ) : (
-                      <><Play className="size-3 text-white fill-white" /> Autoplay Geral</>
+                      <><Play className="size-3 text-white fill-white" /> Autoplay</>
                     )}
                   </Button>
                 </div>
               </div>
               {erroAudio && (
-                <p className="text-xs font-medium text-red-500">{erroAudio}</p>
+                <p className="text-xs font-semibold text-red-500 text-left">{erroAudio}</p>
               )}
             </div>
 
             <button type="button" onClick={() => { setPasso(0); setTela('passos'); }}
-              className="rounded-lg border p-3 text-left hover:bg-muted/50">
-              <div className="flex items-center gap-2 text-sm font-semibold"><CircleCheck className="size-4 text-primary" /> Tutorial passo a passo</div>
-              <p className="mt-1 text-sm text-muted-foreground">O fluxo completo de um projeto, na ordem dos botões da tela. Comece por aqui.</p>
+              className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 text-left bg-zinc-50/50 dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex items-start gap-3">
+              <div className="p-2 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-lg text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5">
+                <CircleCheck className="size-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs font-bold uppercase text-foreground tracking-wider">Tutorial Passo a Passo</div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed font-semibold">O fluxo completo de um projeto, na ordem dos botões da tela. Ideal para guiar seu trabalho do início ao fim.</p>
+              </div>
             </button>
+
             <button type="button" onClick={() => setTela('temas')}
-              className="rounded-lg border p-3 text-left hover:bg-muted/50">
-              <div className="flex items-center gap-2 text-sm font-semibold"><BookUser className="size-4 text-primary" /> Aprender por tema</div>
-              <p className="mt-1 text-sm text-muted-foreground">Cada área que o app atende, explicada no seu nível: SIGEF, fuso, confrontantes, memorial, planta, requerimento e mais.</p>
+              className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 text-left bg-zinc-50/50 dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex items-start gap-3">
+              <div className="p-2 bg-blue-500/10 dark:bg-blue-500/5 rounded-lg text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
+                <BookUser className="size-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs font-bold uppercase text-foreground tracking-wider">Aprender por Tema</div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed font-semibold">Cada área técnica detalhada: SIGEF, fusos UTM, confrontações, memorial descritivo, prancha de desenho e mais.</p>
+              </div>
             </button>
+
             {botaoSuporte}
           </>
         )}
 
         {tela === 'passos' && (
           <>
-            <div className="flex items-center gap-2 text-base font-bold pb-2 border-b mb-1">
+            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-wider pb-2 border-b mb-1 text-left text-primary">
               <Icone className="size-5 text-primary" /> {p.titulo}
             </div>
             {audioControls(p.texto, p.audioUrl)}
-            <p className="text-sm leading-relaxed text-muted-foreground">{p.texto}</p>
+            <p className="text-xs font-semibold leading-relaxed text-muted-foreground text-left whitespace-pre-line">{p.texto}</p>
             {modo === 'simples' && noFimDoBasico && (
               <button type="button" onClick={irParaCompleto}
-                className="flex items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-2 text-left text-xs text-muted-foreground hover:bg-primary/10">
+                className="flex items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3.5 text-left text-xs text-muted-foreground hover:bg-primary/10">
                 <Sparkles className="size-4 shrink-0 text-primary" />
                 <span>Quer ver as ferramentas avançadas? Toque aqui pra virar a tela pro <b className="text-primary">modo Completo</b> e ganhar mais passos neste tutorial.</span>
               </button>
@@ -475,16 +474,16 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
                 <span key={i} className={`h-1.5 rounded-full transition-all ${i === passo ? 'w-5 bg-primary' : 'w-1.5 bg-muted-foreground/30'}`} />
               ))}
             </div>
-            <div className="flex items-center justify-between border-t pt-3">
-              <Button variant="ghost" size="sm" onClick={() => setTela('menu')}>Voltar ao menu</Button>
+            <div className="flex items-center justify-between border-t pt-3.5 mt-2">
+              <Button variant="ghost" size="sm" className="font-bold text-xs" onClick={() => setTela('menu')}>Voltar ao menu</Button>
               <div className="flex items-center gap-2">
                 {passo > 0 && (
-                  <Button variant="outline" size="sm" onClick={() => setPasso((n) => n - 1)}><ChevronLeft className="size-4" /> Voltar</Button>
+                  <Button variant="outline" size="sm" className="font-bold text-xs" onClick={() => setPasso((n) => n - 1)}><ChevronLeft className="size-4" /> Voltar</Button>
                 )}
                 {ultimo ? (
-                  <Button size="sm" onClick={() => setTela('aprenderMais')}><CircleCheck className="size-4" /> Entendi</Button>
+                  <Button size="sm" className="font-bold text-xs" onClick={() => setTela('aprenderMais')}><CircleCheck className="size-4" /> Entendi</Button>
                 ) : (
-                  <Button size="sm" onClick={() => setPasso((n) => n + 1)}>Avançar <ChevronRight className="size-4" /></Button>
+                  <Button size="sm" className="font-bold text-xs" onClick={() => setPasso((n) => n + 1)}>Avançar <ChevronRight className="size-4" /></Button>
                 )}
               </div>
             </div>
@@ -493,32 +492,31 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
 
         {tela === 'aprenderMais' && (
           <>
-            <div className="flex items-center gap-2 text-base font-bold pb-2 border-b mb-1">
+            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-wider pb-2 border-b mb-1 text-left text-primary">
               <GraduationCap className="size-5 text-primary" /> Deseja aprender mais?
             </div>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Tem muito mais dica por aqui: explicações de cada área do trabalho — SIGEF, fuso, confrontantes, memorial, planta, requerimento — no seu nível de experiência.
+            <p className="text-xs font-semibold leading-relaxed text-muted-foreground text-left">
+              Tem muito mais dica por aqui: explicações detalhadas de cada área do trabalho — SIGEF, fuso UTM, confrontantes, memorial descritivo, prancha de desenho, requerimento — prontas para o agrimensor experiente.
             </p>
-            <div className="flex items-center justify-end gap-2 border-t pt-3">
-              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>Agora não</Button>
-              <Button size="sm" onClick={() => setTela('temas')}><BookUser className="size-4" /> Sim, ver os temas</Button>
+            <div className="flex items-center justify-end gap-2 border-t pt-3.5 mt-2">
+              <Button variant="ghost" size="sm" className="font-bold text-xs" onClick={() => onOpenChange(false)}>Agora não</Button>
+              <Button size="sm" className="font-bold text-xs" onClick={() => setTela('temas')}><BookUser className="size-4" /> Sim, ver os temas</Button>
             </div>
           </>
         )}
 
         {tela === 'temas' && (
           <>
-            <div className="flex items-center gap-2 text-base font-bold pb-2 border-b mb-1">
+            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-wider pb-2 border-b mb-1 text-left text-primary">
               <BookUser className="size-5 text-primary" /> Aprender por tema
             </div>
-            {seletorNivel}
 
             {/* Bloco Ouvir Todos os Temas */}
-            <div className="rounded-lg border p-3 bg-amber-500/10 border-amber-500/30 my-1 shrink-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-bold text-amber-700 dark:text-amber-400"><Volume2 className="size-4 shrink-0" /> Ouvir Todos os Temas (Autoplay)</div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Reproduz a explicação em áudio de cada tema na sequência.</p>
+            <div className="rounded-xl border p-3 bg-amber-500/10 border-amber-500/30 my-1 shrink-0 text-left">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide"><Volume2 className="size-4 shrink-0" /> Ouvir Temas (Autoplay)</div>
+                  <p className="mt-0.5 text-[11px] font-semibold text-muted-foreground leading-normal">Reproduz a explicação em áudio de todos os temas na sequência.</p>
                 </div>
                 <Button
                   type="button"
@@ -533,14 +531,14 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
                       const firstT = TEMAS_AJUDA[0];
                       setTemaId(firstT.id);
                       setTela('tema');
-                      const audioUrl = nivel === 'iniciante' ? firstT.audioUrlIniciante : firstT.audioUrlExperiente;
-                      const texto = nivel === 'iniciante' ? firstT.iniciante : firstT.experiente;
+                      const audioUrl = firstT.audioUrlExperiente;
+                      const texto = firstT.experiente;
                       setTimeout(() => {
                         alternarAudio(texto, audioUrl);
                       }, 100);
                     }
                   }}
-                  className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors border-amber-500/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400"
+                  className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors border-amber-500/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 shrink-0"
                 >
                   {ouvirTudoTemas ? (
                     <><Pause className="size-3 text-amber-500 fill-amber-500" /> Parar</>
@@ -554,34 +552,30 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
               {TEMAS_AJUDA.map((t) => (
                 <button key={t.id} type="button" onClick={() => { setTemaId(t.id); setTela('tema'); }}
-                  className="flex w-full items-center justify-between rounded-lg border p-2.5 text-left text-sm font-medium hover:bg-muted/50">
+                  className="flex w-full items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-800 p-2.5 text-left text-xs font-bold uppercase tracking-wide hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors text-foreground">
                   {t.titulo} <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-between border-t pt-3">
-              <Button variant="ghost" size="sm" onClick={() => setTela('menu')}>Voltar ao menu</Button>
-              <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+            <div className="flex items-center justify-between border-t pt-3.5 mt-2">
+              <Button variant="ghost" size="sm" className="font-bold text-xs" onClick={() => setTela('menu')}>Voltar ao menu</Button>
+              <Button size="sm" variant="outline" className="font-bold text-xs" onClick={() => onOpenChange(false)}>Fechar</Button>
             </div>
           </>
         )}
 
         {tela === 'tema' && tema && (
           <>
-            <div className="flex items-center gap-2 text-base font-bold pb-2 border-b mb-1">
+            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-wider pb-2 border-b mb-1 text-left text-primary">
               <BookUser className="size-5 text-primary" /> {tema.titulo}
             </div>
-            {seletorNivel}
-            {audioControls(
-              nivel === 'iniciante' ? tema.iniciante : tema.experiente,
-              nivel === 'iniciante' ? tema.audioUrlIniciante : tema.audioUrlExperiente,
-            )}
-            <p className="min-h-0 flex-1 overflow-y-auto pr-1 text-sm leading-relaxed text-muted-foreground">
-              {nivel === 'iniciante' ? tema.iniciante : tema.experiente}
+            {audioControls(tema.experiente, tema.audioUrlExperiente)}
+            <p className="min-h-0 flex-1 overflow-y-auto pr-1 text-xs font-semibold leading-relaxed text-muted-foreground text-left whitespace-pre-line">
+              {tema.experiente}
             </p>
-            <div className="flex items-center justify-between border-t pt-3">
-              <Button variant="ghost" size="sm" onClick={() => setTela('temas')}><ChevronLeft className="size-4" /> Todos os temas</Button>
-              <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+            <div className="flex items-center justify-between border-t pt-3.5 mt-2">
+              <Button variant="ghost" size="sm" className="font-bold text-xs" onClick={() => setTela('temas')}><ChevronLeft className="size-4" /> Todos os temas</Button>
+              <Button size="sm" variant="outline" className="font-bold text-xs" onClick={() => onOpenChange(false)}>Fechar</Button>
             </div>
           </>
         )}

@@ -133,3 +133,21 @@
   .mobile-conforto .text-\[10px\] { font-size: 11px; line-height: 1.25; }
   .mobile-conforto .text-\[11px\] { font-size: 12px; }
 }
+
+/* Estilo customizado e coerente para os botões secundários da barra lateral */
+.sidebar-lateral button[class*="bg-secondary"] {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+}
+
+.dark .sidebar-lateral button[class*="bg-secondary"] {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+
+.dark .sidebar-lateral button[class*="bg-secondary"]:hover {
+  background-color: #334155 !important;
+}
+

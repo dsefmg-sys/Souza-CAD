@@ -93,47 +93,51 @@ export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, r
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><FileSpreadsheet className="size-5 text-primary" /> Conferência da planilha SIGEF</DialogTitle>
+      <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col bg-background shadow-2xl p-6 rounded-xl overflow-hidden">
+        <DialogHeader className="border-b pb-3">
+          <DialogTitle className="flex items-center gap-2 text-lg font-black text-foreground">
+            <FileSpreadsheet className="size-5.5 text-primary" /> Conferência da Planilha SIGEF
+          </DialogTitle>
         </DialogHeader>
 
-        <p className="text-xs text-muted-foreground">Confira antes de baixar. Para corrigir algum valor, edite os campos do projeto (proprietário, confrontantes, vértices) — a planilha é gerada automaticamente a partir deles.</p>
+        <p className="text-xs text-muted-foreground">Confira as informações da planilha antes de baixar. Para corrigir qualquer dado, ajuste diretamente os campos do imóvel nas abas correspondentes.</p>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-sm border p-2 text-xs md:grid-cols-3">
+        {/* Metadados organizados em card colorido */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/10 p-3.5 text-xs md:grid-cols-3">
           {idt.map(([k, v]) => (
-            <div key={k} className="flex justify-between gap-2 border-b border-dashed border-border/50 py-0.5">
-              <span className="text-muted-foreground">{k}</span><span className="truncate text-right font-medium">{v}</span>
+            <div key={k} className="flex justify-between gap-2 border-b border-dashed border-border/50 py-1">
+              <span className="text-muted-foreground font-semibold">{k}</span>
+              <span className="truncate text-right font-semibold text-foreground" title={v}>{v}</span>
             </div>
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto rounded-sm border">
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border/80 my-2">
           <table className="w-full text-[11px] font-mono">
-            <thead className="sticky top-0 bg-muted/60 text-[10px] uppercase text-muted-foreground">
+            <thead className="sticky top-0 bg-muted/95 text-[10px] uppercase text-muted-foreground shadow-sm">
               <tr>
-                <th className="px-1.5 py-1 text-left">Código</th>
-                <th className="px-1.5 py-1 text-left">Longitude</th>
-                <th className="px-1.5 py-1 text-left">Latitude</th>
-                <th className="px-1.5 py-1 text-right">Alt.</th>
-                <th className="px-1.5 py-1 text-center">Método</th>
-                <th className="px-1.5 py-1 text-center">Limite</th>
-                <th className="px-1.5 py-1 text-left">Confrontante</th>
+                <th className="px-2 py-2 text-left">Código</th>
+                <th className="px-2 py-2 text-left">Longitude</th>
+                <th className="px-2 py-2 text-left">Latitude</th>
+                <th className="px-2 py-2 text-right">Alt.</th>
+                <th className="px-2 py-2 text-center">Método</th>
+                <th className="px-2 py-2 text-center">Limite</th>
+                <th className="px-2 py-2 text-left">Confrontante</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border/60">
               {linhas.map((l, i) => (
-                <tr key={i} className="border-t">
-                  <td className="px-1.5 py-1 font-semibold">{l.codigo}</td>
-                  <td className="px-1.5 py-1">{l.longitude}</td>
-                  <td className="px-1.5 py-1">{l.latitude}</td>
-                  <td className="px-1.5 py-1 text-right">{l.altitude}</td>
-                  <td className="px-1.5 py-1 text-center">{l.metodo}</td>
-                  <td className="px-1.5 py-1 text-center">{l.tipoLimite}</td>
-                  <td className="px-1.5 py-1 truncate" title={`${l.confrontante}${l.matricula ? ` · Matrícula ${l.matricula}` : ''}`}>{l.confrontante || '—'}{l.matricula ? ` · Mat. ${l.matricula}` : ''}</td>
+                <tr key={i} className="hover:bg-muted/40 transition-colors">
+                  <td className="px-2 py-1.5 font-bold text-foreground">{l.codigo}</td>
+                  <td className="px-2 py-1.5">{l.longitude}</td>
+                  <td className="px-2 py-1.5">{l.latitude}</td>
+                  <td className="px-2 py-1.5 text-right">{l.altitude}</td>
+                  <td className="px-2 py-1.5 text-center font-semibold text-sky-600 dark:text-sky-400">{l.metodo}</td>
+                  <td className="px-2 py-1.5 text-center font-semibold text-amber-600 dark:text-amber-400">{l.tipoLimite}</td>
+                  <td className="px-2 py-1.5 truncate max-w-[200px]" title={`${l.confrontante}${l.matricula ? ` · Matrícula ${l.matricula}` : ''}`}>{l.confrontante || '—'}{l.matricula ? ` · Mat. ${l.matricula}` : ''}</td>
                 </tr>
               ))}
-              {linhas.length === 0 && <tr><td colSpan={7} className="p-3 text-center text-muted-foreground">Sem dados — importe pontos e defina os confrontantes.</td></tr>}
+              {linhas.length === 0 && <tr><td colSpan={7} className="p-4 text-center text-muted-foreground font-medium">Sem dados — importe pontos e defina os confrontantes.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -147,30 +151,31 @@ export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, r
         )}
 
         {erro && (
-          <div className="rounded-sm border border-red-500/40 bg-red-50/40 dark:bg-red-900/10 p-2 text-xs text-red-700 dark:text-red-400">
+          <div className="rounded-xl border border-red-500/40 bg-red-50/40 dark:bg-red-900/10 p-3 text-xs text-red-700 dark:text-red-400">
             {erro}
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground">{linhas.length} vértice(s)</span>
+        <div className="flex items-center justify-between gap-2 pt-3 border-t shrink-0">
+          <span className="text-xs text-muted-foreground font-semibold">{linhas.length} vértice(s)</span>
           <div className="flex items-center gap-2">
             {relatorio && relatorio.correcoes.length > 0 && (
-              <Button size="sm" variant="default" onClick={aplicar}>
+              <Button size="sm" variant="default" onClick={aplicar} className="bg-amber-600 hover:bg-amber-700 text-white font-bold h-9 shadow-sm px-4">
                 <CheckCircle2 className="size-4" /> Aplicar {relatorio.correcoes.length} correções
               </Button>
             )}
             <Button
               size="sm"
-              variant="outline"
+              variant="default"
               disabled={processando || !res}
               onClick={abrirFilePicker}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-9 shadow-sm px-4"
               title="Reimportar o TXT do GNSS para casar vértices por proximidade e corrigir a precisão das coordenadas"
             >
-              <Wand2 className="size-4" /> {processando ? 'Lendo…' : 'Corrigir precisão importando TXT novamente'}
+              <Wand2 className="size-4" /> {processando ? 'Lendo…' : 'Corrigir Precisão (TXT)'}
             </Button>
-            <Button size="sm" disabled={!linhas.length} onClick={onBaixar}>
-              <Download className="size-4" /> Baixar planilha (.ods)
+            <Button size="sm" disabled={!linhas.length} onClick={onBaixar} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 shadow-md hover:shadow-lg px-4">
+              <Download className="size-4" /> Baixar Planilha (.ods)
             </Button>
           </div>
         </div>

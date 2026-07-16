@@ -50,18 +50,22 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Users className="size-5 text-primary" /> Editar confrontante</DialogTitle>
+      <DialogContent className="max-w-4xl bg-background shadow-2xl p-6 rounded-xl overflow-hidden">
+        <DialogHeader className="border-b pb-3">
+          <DialogTitle className="flex items-center gap-2 text-lg font-black text-foreground">
+            <Users className="size-5 text-primary" /> Editar Confrontante
+          </DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground">Edite os dados; a prévia mostra exatamente como o rótulo vai aparecer na planta.</p>
+        <p className="text-xs text-muted-foreground">Edite os dados cadastrais do confrontante; a prévia à direita mostra exatamente como o rótulo será impresso na planta final.</p>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* formulário */}
-          <div className="space-y-2">
-            <label className="flex flex-col gap-0.5 text-xs">
-              <span className="font-semibold text-muted-foreground">Condição</span>
-              <select className="h-8 rounded-sm border bg-background px-2 text-sm" value={cond} onChange={(e) => set({ condicao: e.target.value as CondicaoConfrontante })}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch my-2">
+          {/* Formulário (Esquerda) */}
+          <div className="border-l-4 border-indigo-500 bg-indigo-50/30 dark:bg-indigo-950/10 p-4 rounded-r-xl space-y-3.5 flex flex-col justify-start">
+            <div className="text-xs font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400 mb-1">Dados de Qualificação</div>
+            
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="font-bold text-muted-foreground">Condição Jurídica</span>
+              <select className="h-9 rounded-lg border bg-background px-3 text-sm focus:ring-1 focus:ring-primary outline-none" value={cond} onChange={(e) => set({ condicao: e.target.value as CondicaoConfrontante })}>
                 <option value="proprietario">Proprietário(a)</option>
                 <option value="condomino">Condômino / coproprietário</option>
                 <option value="usufrutuario">Usufrutuário (assina com nu-proprietário)</option>
@@ -70,39 +74,43 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
                 <option value="publico">Bem público (estrada, rio... não assina)</option>
               </select>
             </label>
-            <Campo label="Nome" value={c.nome} onChange={(v) => set({ nome: v })} ph={cond === 'publico' ? 'Ex.: Estrada Municipal, Rio das Pedras' : 'Nome do confrontante'} />
+            
+            <Campo label="Nome ou Denominação" value={c.nome} onChange={(v) => set({ nome: v })} ph={cond === 'publico' ? 'Ex.: Estrada Municipal, Rio das Pedras' : 'Nome do confrontante'} />
+            
             {cond !== 'publico' && (
               <>
-                <div className="grid grid-cols-2 gap-2">
-                  <Campo label="CPF/CNPJ" value={c.cpf} onChange={(v) => set({ cpf: v })} aviso={avisoDoc(c.cpf)} />
-                  {cond !== 'posseiro' && <Campo label="Matrícula" value={c.matricula} onChange={(v) => set({ matricula: v })} />}
+                <div className="grid grid-cols-2 gap-3">
+                  <Campo label="CPF / CNPJ" value={c.cpf} onChange={(v) => set({ cpf: v })} aviso={avisoDoc(c.cpf)} />
+                  {cond !== 'posseiro' && <Campo label="Matrícula de Origem" value={c.matricula} onChange={(v) => set({ matricula: v })} />}
                 </div>
                 {cond === 'usufrutuario' && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <Campo label="Nu-proprietário (assina junto)" value={c.nuProprietarioNome ?? ''} onChange={(v) => set({ nuProprietarioNome: v })} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Nu-proprietário" value={c.nuProprietarioNome ?? ''} onChange={(v) => set({ nuProprietarioNome: v })} />
                     <Campo label="CPF do nu-proprietário" value={c.nuProprietarioCpf ?? ''} onChange={(v) => set({ nuProprietarioCpf: v })} aviso={avisoDoc(c.nuProprietarioCpf ?? '')} />
                   </div>
                 )}
                 {cond === 'espolio' ? (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <Campo label="Inventariante" value={c.inventarianteNome ?? ''} onChange={(v) => set({ inventarianteNome: v })} />
                     <Campo label="CPF do inventariante" value={c.inventarianteCpf ?? ''} onChange={(v) => set({ inventarianteCpf: v })} aviso={avisoDoc(c.inventarianteCpf ?? '')} />
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    <Campo label="Cônjuge" value={c.conjugeNome ?? ''} onChange={(v) => set({ conjugeNome: v })} />
-                    <Campo label="CPF do cônjuge" value={c.conjugeCpf ?? ''} onChange={(v) => set({ conjugeCpf: v })} aviso={avisoDoc(c.conjugeCpf ?? '')} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Nome do Cônjuge" value={c.conjugeNome ?? ''} onChange={(v) => set({ conjugeNome: v })} />
+                    <Campo label="CPF do Cônjuge" value={c.conjugeCpf ?? ''} onChange={(v) => set({ conjugeCpf: v })} aviso={avisoDoc(c.conjugeCpf ?? '')} />
                   </div>
                 )}
-                <Campo label="Cartório (CNS)" value={c.cns} onChange={(v) => set({ cns: v })} list="lista-cns-modal" />
-                {(() => {
-                  const cart = sugCartorios.find(x => x.cns === c.cns);
-                  return cart ? (
-                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 leading-tight">
-                      {cart.municipio ? `${cart.municipio} - ` : ''}{cart.nome}
-                    </p>
-                  ) : null;
-                })()}
+                <div className="space-y-1">
+                  <Campo label="Código do Cartório (CNS)" value={c.cns} onChange={(v) => set({ cns: v })} list="lista-cns-modal" />
+                  {(() => {
+                    const cart = sugCartorios.find(x => x.cns === c.cns);
+                    return cart ? (
+                      <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 leading-tight">
+                        {cart.municipio ? `${cart.municipio} - ` : ''}{cart.nome}
+                      </p>
+                    ) : null;
+                  })()}
+                </div>
                 <datalist id="lista-cns-modal">
                   {sugCartorios.map((x) => (
                     <option key={x.id} value={x.cns}>
@@ -114,31 +122,44 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
             )}
           </div>
 
-          {/* prévia do rótulo */}
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Prévia do rótulo na planta</span>
-            <div className="flex min-h-[120px] items-center justify-center rounded-lg border bg-muted/30 p-4">
-              <div className="rounded-sm border border-neutral-300 bg-white px-4 pb-2 pt-1 text-center text-[13px] text-black shadow-sm">
-                <div className="mx-auto mb-1 h-px w-40 bg-black" />
-                {(() => {
-                  const matLine = linhas.find((l) => /^Matr[íi]cula/i.test(l));
-                  const rest = linhas.filter((l) => l !== matLine);
-                  return (
-                    <>
-                      {matLine && <div className="leading-snug font-bold">{matLine}</div>}
-                      {rest.map((l, i) => <div key={i} className="leading-snug">{l}</div>)}
-                    </>
-                  );
-                })()}
+          {/* Prévia do Rótulo na Planta (Direita) */}
+          <div className="border-l-4 border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/10 p-4 rounded-r-xl flex flex-col justify-between">
+            <div>
+              <div className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-2">Visualização na Planta</div>
+              <p className="text-[11px] text-muted-foreground mb-4">Veja como este confrontante será renderizado no rodapé da prancha:</p>
+              
+              <div className="flex items-center justify-center p-4 bg-zinc-100/50 dark:bg-zinc-950/40 rounded-xl border border-dashed border-border/80 min-h-[160px]">
+                <div className="rounded-lg border border-neutral-300 bg-white px-6 pb-3 pt-2 text-center text-[12px] text-black shadow-lg w-full max-w-[280px]">
+                  {cond !== 'publico' && <div className="mx-auto mb-2.5 h-[1px] w-full bg-neutral-400" />}
+                  {(() => {
+                    const matLine = linhas.find((l) => /^Matr[íi]cula/i.test(l));
+                    const rest = linhas.filter((l) => l !== matLine);
+                    return (
+                      <div className="space-y-0.5">
+                        {matLine && <div className="leading-tight font-extrabold text-neutral-800">{matLine}</div>}
+                        {rest.map((l, idx) => <div key={idx} className="leading-tight text-neutral-700">{l}</div>)}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground">{cond === 'publico' ? 'Bem público não assina — sem espaço de firma.' : 'A linha de cima é o espaço da assinatura do anuente.'}</p>
+            
+            <p className="text-[10px] text-muted-foreground mt-3 font-medium">
+              {cond === 'publico' 
+                ? 'Bem público não gera linha para assinatura nem termo de anuência.' 
+                : 'A linha horizontal indica onde o confrontante assinará a planta.'}
+            </p>
           </div>
         </div>
 
-        <footer className="flex justify-end gap-2 border-t pt-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => { onSalvar(c); onOpenChange(false); }}>Salvar</Button>
+        <footer className="flex justify-end gap-2 border-t pt-4 shrink-0">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-foreground font-semibold px-4">
+            Cancelar
+          </Button>
+          <Button onClick={() => { onSalvar(c); onOpenChange(false); }} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5">
+            Salvar Alterações
+          </Button>
         </footer>
       </DialogContent>
     </Dialog>

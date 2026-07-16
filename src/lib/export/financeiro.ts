@@ -5,13 +5,40 @@ import { carregarModelos, preencherModelo } from '../store/modelos';
 import { valorPorExtenso } from '../topo/extenso';
 
 /** Variáveis dos modelos (recibo/contrato) a partir dos dados do serviço. */
-function varsFinanceiro(a: { imovel: ImovelData; tecnico: TecnicoData; areaHa: number; perimetro?: number }): Record<string, string> {
+function varsFinanceiro(a: {
+  imovel: ImovelData;
+  tecnico: TecnicoData;
+  areaHa: number;
+  perimetro?: number;
+  valor?: number;
+  formaPagamento?: string;
+  prazoDias?: number | string;
+  escritorio?: EscritorioData;
+}): Record<string, string> {
+  const v = a.valor ?? 0;
+  const prazo = a.prazoDias ?? '';
+  const fp = a.formaPagamento ?? '';
+  const esc = a.escritorio ?? {} as EscritorioData;
+  const rep = [a.tecnico.nome, a.tecnico.formacao, a.tecnico.cft && `${rotulosProfissional(a.tecnico).registro} ${a.tecnico.cft}`].filter(Boolean).join(', ');
   return {
-    proprietario: a.imovel.proprietario || '', cpf: a.imovel.cpfProprietario || '', denominacao: a.imovel.denominacao || '',
-    matricula: a.imovel.matricula || '', municipio: a.imovel.municipio || '',
+    proprietario: a.imovel.proprietario || '',
+    cpfProprietario: a.imovel.cpfProprietario || '',
+    cpf: a.imovel.cpfProprietario || '',
+    denominacao: a.imovel.denominacao || '',
+    matricula: a.imovel.matricula || '',
+    municipio: a.imovel.municipio || '',
     area: `${a.areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha`,
     perimetro: a.perimetro != null ? `${a.perimetro.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m` : '',
-    tecnico: a.tecnico.nome || '', cft: a.tecnico.cft || '', cidade: a.imovel.municipio || a.tecnico.cidadeAssinatura || '',
+    tecnico: a.tecnico.nome || '',
+    cft: a.tecnico.cft || '',
+    cidade: a.imovel.municipio || a.tecnico.cidadeAssinatura || '',
+    escritorio: esc.nome || '',
+    cnpjEscritorio: esc.cnpj || '',
+    responsavelTecnico: rep || a.tecnico.nome || '',
+    valor: moedaBR(v),
+    valorExtenso: extensoReais(v),
+    formaPagamento: fp,
+    prazoDias: String(prazo),
   };
 }
 
@@ -35,8 +62,18 @@ interface BaseArgs {
 }
 
 function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, larg: number): number {
+  let y = margem;
+  if (esc.logoDataUrl) {
+    try {
+      const fmt = esc.logoDataUrl.includes('image/png') ? 'PNG' : 'JPEG';
+      doc.addImage(esc.logoDataUrl, fmt, larg / 2 - 18, y, 36, 15);
+      y += 18;
+    } catch (err) {
+      console.warn("Erro ao renderizar logo no PDF:", err);
+    }
+  }
   doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
-  doc.text(esc.nome || 'Escritório', larg / 2, margem + 4, { align: 'center' });
+  doc.text(esc.nome || 'Escritório', larg / 2, y + 4, { align: 'center' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
   // Endereço + cidade/UF/CEP numa linha só; documentos, inscrições e contatos noutras.
   const cidadeUf = [esc.cidade, esc.uf].filter(Boolean).join('-');
@@ -52,7 +89,7 @@ function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, la
     esc.site,
   ].filter(Boolean).join('  ·  ');
   const linhas = [esc.ramo, localLinha, docsLinha, contatoLinha].filter(Boolean) as string[];
-  let y = margem + 9;
+  y += 9;
   linhas.forEach((l) => { doc.text(l, larg / 2, y, { align: 'center' }); y += 4.2; });
   doc.setDrawColor(120); doc.line(margem, y + 1, larg - margem, y + 1);
   return y + 8;
@@ -96,6 +133,13 @@ export function gerarReciboPdf(a: BaseArgs & { valor: number; referente?: string
 
   doc.text(`${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 26;
+  if (a.escritorio.autoAssinar && a.escritorio.assinaturaDataUrl) {
+    try {
+      doc.addImage(a.escritorio.assinaturaDataUrl, 'PNG', larg / 2 - 20, y - 13, 40, 12);
+    } catch (e) {
+      console.warn("Erro ao desenhar assinatura automática no recibo:", e);
+    }
+  }
   doc.setLineWidth(0.3); doc.line(larg / 2 - 45, y, larg / 2 + 45, y);
   doc.setFontSize(10);
   doc.text(a.escritorio.nome || a.tecnico.nome || '', larg / 2, y + 5, { align: 'center' });
@@ -118,15 +162,16 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
   doc.text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE GEORREFERENCIAMENTO', larg / 2, y, { align: 'center', maxWidth: larg - margem * 2 });
   y += 12;
 
-  const repres = [a.tecnico.nome, a.tecnico.formacao, a.tecnico.cft && `${rotulosProfissional(a.tecnico).registro} ${a.tecnico.cft}`].filter(Boolean).join(', ');
+  const vVars = varsFinanceiro({ ...a, valor: a.valor, formaPagamento: a.formaPagamento, prazoDias: a.prazoDias, escritorio: a.escritorio });
+  const md = carregarModelos();
   const clausulas: [string, string][] = [
-    ['CONTRATANTE', `${a.imovel.proprietario || '—'}${a.imovel.cpfProprietario ? `, CPF nº ${a.imovel.cpfProprietario}` : ''}, doravante denominado(a) CONTRATANTE.`],
-    ['CONTRATADO', `${a.escritorio.nome || '—'}${a.escritorio.cnpj ? `, CNPJ nº ${a.escritorio.cnpj}` : ''}, neste ato representado por ${repres || '—'}, doravante denominado CONTRATADO.`],
-    ['CLÁUSULA 1ª – DO OBJETO', preencherModelo(carregarModelos().contratoObjeto, varsFinanceiro(a))],
-    ['CLÁUSULA 2ª – DO VALOR E PAGAMENTO', `Pelos serviços, o CONTRATANTE pagará ao CONTRATADO o valor de ${moedaBR(a.valor)} (${extensoReais(a.valor)}), ${a.formaPagamento || 'na forma combinada entre as partes'}.`],
-    ['CLÁUSULA 3ª – DO PRAZO', `O CONTRATADO executará os serviços no prazo de ${a.prazoDias ?? '____'} dias, ressalvadas as etapas que dependam de terceiros (cartório, INCRA, confrontantes) e de condições de campo.`],
-    ['CLÁUSULA 4ª – DAS OBRIGAÇÕES', preencherModelo(carregarModelos().contratoObrigacoes, varsFinanceiro(a))],
-    ['CLÁUSULA 5ª – DO FORO', `Fica eleito o foro da comarca de ${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'} para dirimir eventuais dúvidas oriundas deste contrato.`],
+    ['CONTRATANTE', preencherModelo(md.contratoContratante, vVars)],
+    ['CONTRATADO', preencherModelo(md.contratoContratado, vVars)],
+    ['CLÁUSULA 1ª – DO OBJETO', preencherModelo(md.contratoObjeto, vVars)],
+    ['CLÁUSULA 2ª – DO VALOR E PAGAMENTO', preencherModelo(md.contratoValor, vVars)],
+    ['CLÁUSULA 3ª – DO PRAZO', preencherModelo(md.contratoPrazo, vVars)],
+    ['CLÁUSULA 4ª – DAS OBRIGAÇÕES', preencherModelo(md.contratoObrigacoes, vVars)],
+    ['CLÁUSULA 5ª – DO FORO', preencherModelo(md.contratoForo, vVars)],
   ];
 
   doc.setFontSize(10.5);
@@ -143,6 +188,13 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
   y += 6;
   doc.text(`${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 24;
+  if (a.escritorio.autoAssinar && a.escritorio.assinaturaDataUrl) {
+    try {
+      doc.addImage(a.escritorio.assinaturaDataUrl, 'PNG', larg - margem - 55, y - 13, 40, 12);
+    } catch (e) {
+      console.warn("Erro ao desenhar assinatura automática no contrato:", e);
+    }
+  }
   doc.setLineWidth(0.3);
   doc.line(margem, y, margem + 70, y);
   doc.line(larg - margem - 70, y, larg - margem, y);
@@ -196,6 +248,13 @@ export function gerarPropostaPdf(a: BaseArgs & { valor: number; prazoDias?: numb
   if (y > alt - 40) { doc.addPage(); y = margem; }
   doc.text(`${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 22;
+  if (a.escritorio.autoAssinar && a.escritorio.assinaturaDataUrl) {
+    try {
+      doc.addImage(a.escritorio.assinaturaDataUrl, 'PNG', larg / 2 - 20, y - 13, 40, 12);
+    } catch (e) {
+      console.warn("Erro ao desenhar assinatura automática na proposta:", e);
+    }
+  }
   doc.setLineWidth(0.3); doc.line(larg / 2 - 45, y, larg / 2 + 45, y);
   doc.setFontSize(10);
   doc.text(a.escritorio.nome || a.tecnico.nome || '', larg / 2, y + 5, { align: 'center' });
