@@ -396,6 +396,7 @@ export interface PlantaConfig {
   corOutrasGlebas?: string;    // cor das linhas de outras glebas, padrão "#c2410c"
   larguraOutrasGlebas?: number;// espessura das linhas de outras glebas, padrão 1.2
   larguraDivisasApoio?: number;// espessura das linhas de apoio das divisas, padrão 3.2
+  corCabecalho?: string;       // cor dos cabeçalhos das sessões, padrão "#475569"
 }
 
 /** Dados fixos do escritório (carimbo da planta, cabeçalho de recibos/contratos). */

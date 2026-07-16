@@ -15,7 +15,7 @@ import { calcularAreaSgl } from '@/lib/topo/sgl';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pencil, Save, Trash2 } from 'lucide-react';
+import { Pencil, Save, Trash2, Paintbrush } from 'lucide-react';
 import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
 
 interface Props {
@@ -142,7 +142,7 @@ function Ted(props: {
   onTextoPatch?: (id: string, patch: { escala?: number }) => void;
 }) {
   const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onMenu, onDragStart, halo = false, editando = false, onTerminarEditar, onStartEdit, selecionadoId, onSelect, onTextoPatch } = props;
-  const conteudo = ov?.texto ?? base;
+  const conteudo = (ov?.texto !== undefined && ov?.texto !== null && ov.texto.trim() !== '') ? ov.texto : base;
   const texto = slice ? conteudo.slice(0, slice) : conteudo;
   const fz = +(size * (ov?.escala ?? 1)).toFixed(2);
   const peso = (ov?.negrito ?? bold) ? 'bold' : 'normal';
@@ -309,6 +309,7 @@ export default function Planta({
 
 
   const [modalTituloAberto, setModalTituloAberto] = useState(false);
+  const [modalGlebaAberto, setModalGlebaAberto] = useState(false);
   const [tempTitulo, setTempTitulo] = useState('');
   const [titulosSalvos, setTitulosSalvos] = useState<string[]>([]);
 
@@ -908,6 +909,160 @@ export default function Planta({
   const rotX = rotuloGrade(linhasX, sx, DRAW.x0, DRAW.x1);
   const rotY = rotuloGrade(linhasY, sy, DRAW.y0, DRAW.y1);
 
+  const corGlobal = (typeof window !== 'undefined' && localStorage.getItem('metrica.corCabecalhoPlanta')) || '#475569';
+  const corCabecalho = config.corCabecalho || corGlobal;
+
+  const onHeaderContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = corCabecalho;
+    input.style.position = 'fixed';
+    input.style.left = `${e.clientX}px`;
+    input.style.top = `${e.clientY}px`;
+    input.style.opacity = '0';
+    input.style.width = '1px';
+    input.style.height = '1px';
+    input.style.border = 'none';
+    input.style.padding = '0';
+    document.body.appendChild(input);
+    input.onchange = (evt) => {
+      const val = (evt.target as HTMLInputElement).value;
+      if (onConfigPatch) {
+        onConfigPatch({ corCabecalho: val });
+      }
+      try {
+        localStorage.setItem('metrica.corCabecalhoPlanta', val);
+      } catch (err) {
+        console.error('Erro ao salvar cor dos cabeçalhos no localStorage:', err);
+      }
+    };
+    input.addEventListener('change', () => {
+      if (input.parentNode) {
+        document.body.removeChild(input);
+      }
+    });
+    input.click();
+    setTimeout(() => {
+      if (input.parentNode) {
+        document.body.removeChild(input);
+      }
+    }, 60000);
+  };
+
+  // Pre-computação das caixas flutuantes que devem mascarar a grade (grid-mask)
+  let areaTableBox: { left: number; top: number; width: number; height: number } | null = null;
+  if (config.mostrarQuadroAreas && resumoGlebas.length > 0) {
+    const idQ = 'planta.quadroAreas';
+    const ovQ = getOverride(idQ);
+    const bx = DRAW.x0 + 24 + (ovQ.dx ?? 0);
+    const by = DRAW.y0 + 24 + (ovQ.dy ?? 0);
+    const fz = Math.max(7, fonteRot * escTab);
+    const lh = fz + 5;
+    const ch = 0.62 * fz;
+    const WN = 16 * ch;
+    const WA = 11 * ch;
+    const WP = 10.5 * ch;
+    const wq = 8 + WN + WA + WP + 8;
+    const hq = (resumoGlebas.length + 3.4) * lh;
+    areaTableBox = { left: bx, top: by, width: wq, height: hq };
+  }
+
+  let roteiroTableBox: { left: number; top: number; width: number; height: number } | null = null;
+  if (config.mostrarRoteiro && res.lados.length > 0) {
+    const idR = 'planta.roteiro';
+    const ovR = getOverride(idR);
+    const comConf = config.roteiroComConfrontante !== false;
+    const fz = Math.max(6.5, (fonteRot - 1) * escTab);
+    const lh = fz + 4;
+    const ch = 0.62 * fz;
+    const WV = 13 * ch;
+    const WAZ = 11.5 * ch;
+    const WD = 10 * ch;
+    const WC = comConf ? 19.5 * ch : 0;
+    const colH = 18;
+    const numCols = Math.ceil(res.lados.length / colH);
+    const colW = 8 + WV + WAZ + WD + WC;
+    const gap = 10;
+    const wr = numCols * colW + (numCols - 1) * gap + 8;
+    const hr = (Math.min(res.lados.length, colH) + 2.4) * lh;
+    const bx = DRAW.x0 + 24 + (ovR.dx ?? 0);
+    const by = DRAW.y1 - 24 - hr + (ovR.dy ?? 0);
+    roteiroTableBox = { left: bx, top: by, width: wr, height: hr };
+  }
+
+  let coordenadasTableBox: { left: number; top: number; width: number; height: number } | null = null;
+  if (config.mostrarCoordenadas && vertices.length > 0) {
+    const idC = 'planta.coordenadas';
+    const ovC = getOverride(idC);
+    const fz = Math.max(6.5, (fonteRot - 1) * escTab);
+    const lh = fz + 4;
+    const ch = 0.62 * fz;
+    const WV = 13 * ch;
+    const WE = 12.5 * ch;
+    const WN = 13 * ch;
+    const WH = 8.5 * ch;
+    const WM = 9 * ch;
+    const colW = 8 + WV + WE + WN + WH + 4 + WM;
+    const gap = 10;
+    const colH = 18;
+    const numCols = Math.ceil(vertices.length / colH);
+    const wBox = numCols * colW + (numCols - 1) * gap + 8;
+    const hr = (Math.min(vertices.length, colH) + 2.4) * lh;
+    const bx = DRAW.x0 + 24 + (ovC.dx ?? 0);
+    const by = DRAW.y0 + 24 + (ovC.dy ?? 0);
+    coordenadasTableBox = { left: bx, top: by, width: wBox, height: hr };
+  }
+
+  const signatureBoxes = rotulosConf.map((r) => {
+    if (!r.c || !r.c.nome) return null;
+    const c = r.c;
+    const fz = c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteRot;
+    const todas = rotuloConfrontanteLinhas(c);
+    const temConjLinhas = !!c.conjugeNome && todas.length >= 2 && /^C[ôo]njuge:/i.test(todas[todas.length - 2]);
+    const conjLines = temConjLinhas ? todas.slice(-2) : [];
+    const principalAll = temConjLinhas ? todas.slice(0, -2) : todas;
+    const matLine = principalAll.find((l) => /^Matr[íi]cula/i.test(l)) ?? null;
+    const principalSemMat = principalAll.filter((l) => l !== matLine);
+
+    const semAssinatura = c.condicao === 'publico';
+    const isHorizontal = c.layoutAssinatura === 'horizontal' && temConjLinhas;
+
+    const gap = 52;
+    const charW = fz * 0.55;
+    const margin = 24;
+    const maxTextLen = Math.max(...todas.map((t) => t.length), 12);
+    const textFitW = maxTextLen * charW + margin * 2;
+    const colW = isHorizontal ? Math.max(220, fz * 14.5, textFitW) : 0;
+    const boxW = isHorizontal ? colW * 2 + gap : Math.max(172, textFitW);
+    const half = boxW / 2 - 8;
+    const lineH = fz + 3;
+    const signRoom = Math.max(40, fz * 4);
+
+    let boxH = 0;
+    if (isHorizontal) {
+      const leftTexts = [...principalSemMat];
+      if (matLine) leftTexts.push(matLine);
+      const rightTexts = [...conjLines];
+      if (matLine) rightTexts.push(matLine);
+      const nTextMax = Math.max(leftTexts.length, rightTexts.length);
+      boxH = signRoom + nTextMax * lineH + 20;
+    } else {
+      const nText = (matLine ? 1 : 0) + principalSemMat.length + conjLines.length;
+      const nSig = semAssinatura ? 0 : (temConjLinhas ? 2 : 1);
+      boxH = nText * lineH + nSig * (signRoom + 6) + 14;
+    }
+
+    const isDragging = dragTemp && dragTemp.kind === 'rotConf' && dragTemp.id === c.id;
+    const px = isDragging ? r.x + dragTemp.dx : r.x;
+    const py = isDragging ? r.y + dragTemp.dy : r.y;
+    const top = py - boxH / 2;
+    const left = px - half - 8;
+
+    return { left, top, width: boxW, height: boxH };
+  }).filter((b): b is { left: number; top: number; width: number; height: number } => b !== null);
+
   return (
     <div ref={containerRef} className="relative w-full h-full flex items-center justify-center overflow-hidden">
       <svg ref={svgRef} id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%" height="100%"
@@ -931,6 +1086,21 @@ export default function Planta({
             <clipPath id="map-clip">
               <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} />
             </clipPath>
+            <mask id="grid-mask">
+              <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={DRAW.y1 - DRAW.y0} fill="#ffffff" />
+              {signatureBoxes.map((box, idx) => (
+                <rect key={`sig-${idx}`} x={box.left} y={box.top} width={box.width} height={box.height} fill="#000000" />
+              ))}
+              {areaTableBox && (
+                <rect x={areaTableBox.left} y={areaTableBox.top} width={areaTableBox.width} height={areaTableBox.height} fill="#000000" />
+              )}
+              {roteiroTableBox && (
+                <rect x={roteiroTableBox.left} y={roteiroTableBox.top} width={roteiroTableBox.width} height={roteiroTableBox.height} fill="#000000" />
+              )}
+              {coordenadasTableBox && (
+                <rect x={coordenadasTableBox.left} y={coordenadasTableBox.top} width={coordenadasTableBox.width} height={coordenadasTableBox.height} fill="#000000" />
+              )}
+            </mask>
           </defs>
         );
       })()}
@@ -955,26 +1125,30 @@ export default function Planta({
 
       {/* ---------- GRADE (números DENTRO do quadro, no topo e na esquerda) ---------- */}
       <g clipPath="url(#map-clip)">
-        {verGrade && linhasX.map((x) => {
-        const valX = sx(x);
-        if (valX < DRAW.x0 || valX > DRAW.x1) return null;
-        return (
-          <g key={`x${x}`}>
-            <line x1={valX} y1={DRAW.y0} x2={valX} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
-            {rotX.has(x) && valX >= DRAW.x0 + 48 && valX <= DRAW.x1 - 48 && <text x={valX} y={DRAW.y0 + 13} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>}
+        {verGrade && (
+          <g mask="url(#grid-mask)">
+            {linhasX.map((x) => {
+              const valX = sx(x);
+              if (valX < DRAW.x0 || valX > DRAW.x1) return null;
+              return (
+                <g key={`x${x}`}>
+                  <line x1={valX} y1={DRAW.y0} x2={valX} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
+                  {rotX.has(x) && valX >= DRAW.x0 + 48 && valX <= DRAW.x1 - 48 && <text x={valX} y={DRAW.y0 + 13} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>}
+                </g>
+              );
+            })}
+            {linhasY.map((y) => {
+              const valY = sy(y);
+              if (valY < DRAW.y0 || valY > DRAW.y1) return null;
+              return (
+                <g key={`y${y}`}>
+                  <line x1={DRAW.x0} y1={valY} x2={DRAW.x1} y2={valY} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
+                  {rotY.has(y) && valY >= DRAW.y0 + 48 && valY <= DRAW.y1 - 48 && <text x={DRAW.x0 + 13} y={valY} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${valY})`}>{`N ${numBR(y, 4)}`}</text>}
+                </g>
+              );
+            })}
           </g>
-        );
-      })}
-      {verGrade && linhasY.map((y) => {
-        const valY = sy(y);
-        if (valY < DRAW.y0 || valY > DRAW.y1) return null;
-        return (
-          <g key={`y${y}`}>
-            <line x1={DRAW.x0} y1={valY} x2={DRAW.x1} y2={valY} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
-            {rotY.has(y) && valY >= DRAW.y0 + 48 && valY <= DRAW.y1 - 48 && <text x={DRAW.x0 + 13} y={valY} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${valY})`}>{`N ${numBR(y, 4)}`}</text>}
-          </g>
-        );
-      })}
+        )}
 
       {/* demais glebas do imóvel (contorno + nome) */}
       {outrasGlebas.map((g, i) => {
@@ -1041,32 +1215,9 @@ export default function Planta({
         fillOpacity={config.hachura && config.hachura !== 'nenhuma' ? 1 : 0.08}
         stroke={config.corPoligono || '#334155'} strokeWidth={config.larguraPoligono ?? 1.8}
         style={editavel ? { cursor: 'pointer' } : undefined}
-        onClick={editavel ? (e) => { e.stopPropagation(); setSelecionadoId(selecionadoId === 'planta.poligono' ? null : 'planta.poligono'); } : undefined} />
+        onClick={editavel ? (e) => { e.stopPropagation(); setSelecionadoId('planta.poligono'); setModalGlebaAberto(true); } : undefined} />
       {selecionadoId === 'planta.poligono' && (
-        <>
-          <polygon points={pts} fill="none" stroke="#3b82f6" strokeWidth={1.2} strokeDasharray="5 3" pointerEvents="none" />
-          <g style={{ pointerEvents: 'all' }} transform={`translate(${cx - 76}, ${cy - 70})`}>
-            <rect x={-8} y={-12} width={164} height={24} rx={7} fill="#ffffff" fillOpacity={0.97} stroke="#cbd5e1" strokeWidth={0.7} />
-            <g onClick={(e) => { e.stopPropagation(); onConfigPatch?.({ larguraPoligono: Math.max(0.5, +(((config.larguraPoligono ?? 1.8) - 0.4)).toFixed(1)) }); }} style={{ cursor: 'pointer' }}>
-              <circle cx={4} cy={0} r={7} fill="#f1f5f9" stroke="#94a3b8" strokeWidth={0.6} />
-              <text x={4} y={3.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ userSelect: 'none' }}>−</text>
-            </g>
-            <g onClick={(e) => { e.stopPropagation(); onConfigPatch?.({ larguraPoligono: Math.min(5, +(((config.larguraPoligono ?? 1.8) + 0.4)).toFixed(1)) }); }} style={{ cursor: 'pointer' }}>
-              <circle cx={22} cy={0} r={7} fill="#f1f5f9" stroke="#94a3b8" strokeWidth={0.6} />
-              <text x={22} y={3.5} fontSize={11} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ userSelect: 'none' }}>+</text>
-            </g>
-            <line x1={34} y1={-9} x2={34} y2={9} stroke="#e2e8f0" strokeWidth={0.8} />
-            {['#15803d', '#1d4ed8', '#d97706', '#475569', '#dc2626'].map((c, i) => (
-              <g key={c} onClick={(e) => { e.stopPropagation(); onConfigPatch?.({ fillPoligono: c }); }} style={{ cursor: 'pointer' }}>
-                <circle cx={48 + i * 18} cy={0} r={7} fill={c} stroke={(config.fillPoligono || '#15803d') === c ? '#0f172a' : '#ffffff'} strokeWidth={(config.fillPoligono || '#15803d') === c ? 1.5 : 0.8} />
-              </g>
-            ))}
-            <g onClick={(e) => { e.stopPropagation(); setSelecionadoId(null); }} style={{ cursor: 'pointer' }}>
-              <circle cx={150} cy={0} r={7} fill="#fee2e2" stroke="#fca5a5" strokeWidth={0.6} />
-              <text x={150} y={3} fontSize={9} fontWeight="bold" textAnchor="middle" fill="#991b1b" style={{ userSelect: 'none' }}>×</text>
-            </g>
-          </g>
-        </>
+        <polygon points={pts} fill="none" stroke="#3b82f6" strokeWidth={1.2} strokeDasharray="5 3" pointerEvents="none" />
       )}
 
       {/* ---------- ÁREA DE DUPLO CLIQUE POR SEGMENTO (invisível, mais larga) ----------
@@ -1125,8 +1276,8 @@ export default function Planta({
         return (
           <g style={editavel ? { cursor: 'move' } : undefined}
              onPointerDown={editavel ? (e) => { e.stopPropagation(); tedComum.onDragStart(idQ, e); } : undefined}>
-            <rect x={bx} y={by} width={wq} height={hq} rx={4} fill="#ffffff" fillOpacity={0.95} stroke="#475569" strokeWidth={0.8} />
-            <rect x={bx} y={by} width={wq} height={lh + 2} rx={4} fill="#475569" />
+            <rect x={bx} y={by} width={wq} height={hq} rx={4} fill="#ffffff" fillOpacity={0.85} stroke="#475569" strokeWidth={0.8} />
+            <rect x={bx} y={by} width={wq} height={lh + 2} rx={4} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
             <text x={bx + wq / 2} y={by + lh - 2} fontSize={fz} fontWeight="bold" fill="#fff" textAnchor="middle">QUADRO DE ÁREAS</text>
             <text x={colNome} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569">POLÍGONO</text>
             <text x={colArea} y={by + lh * 2} fontSize={fz - 1} fontWeight="bold" fill="#475569" textAnchor="end">ÁREA (ha)</text>
@@ -1204,8 +1355,8 @@ export default function Planta({
                 <rect x={bx} y={by} width={wr} height={hr} />
               </clipPath>
             </defs>
-            <rect x={bx} y={by} width={wr} height={hr} rx={4} fill="#ffffff" fillOpacity={0.95} stroke="#475569" strokeWidth={0.8} />
-            <rect x={bx} y={by} width={wr} height={lh + 2} rx={4} fill="#475569" />
+            <rect x={bx} y={by} width={wr} height={hr} rx={4} fill="#ffffff" fillOpacity={0.85} stroke="#475569" strokeWidth={0.8} />
+            <rect x={bx} y={by} width={wr} height={lh + 2} rx={4} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
             <text x={bx + wr / 2} y={by + lh - 2} fontSize={fz} fontWeight="bold" fill="#fff" textAnchor="middle">ROTEIRO PERIMÉTRICO</text>
             {/* tudo que pode vazar fica num grupo com clip na caixa inteira */}
             <g clipPath={`url(#${clipId})`}>
@@ -1288,8 +1439,8 @@ export default function Planta({
                 <rect x={bx} y={by} width={wBox} height={hr} />
               </clipPath>
             </defs>
-            <rect x={bx} y={by} width={wBox} height={hr} rx={4} fill="#ffffff" fillOpacity={0.95} stroke="#475569" strokeWidth={0.8} />
-            <rect x={bx} y={by} width={wBox} height={lh + 2} rx={4} fill="#475569" />
+            <rect x={bx} y={by} width={wBox} height={hr} rx={4} fill="#ffffff" fillOpacity={0.85} stroke="#475569" strokeWidth={0.8} />
+            <rect x={bx} y={by} width={wBox} height={lh + 2} rx={4} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
             <text x={bx + wBox / 2} y={by + lh - 2} fontSize={fz} fontWeight="bold" fill="#fff" textAnchor="middle">QUADRO DE COORDENADAS (SIRGAS 2000)</text>
 
             {/* tudo que pode vazar fica num grupo com clip na caixa inteira */}
@@ -1604,7 +1755,7 @@ export default function Planta({
               folhaLast.current = u;
               captura(e);
             } : undefined}>
-            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="#ffffff" stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
+            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="#ffffff" fillOpacity={0.85} stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
             {placedElements}
           </g>
         );
@@ -1731,10 +1882,9 @@ export default function Planta({
       {/* texto central com dados da gleba (como bloco único arrastável) */}
       {(() => {
         const idCentro = 'planta.centroInfo';
-        const ov = textosOv[idCentro] || {};
-        const isDragging = dragTemp && dragTemp.kind === 'ted' && dragTemp.id === idCentro;
-        const px = cx + (ov.dx ?? 0) + (isDragging ? dragTemp.dx : 0);
-        const py = cy + (ov.dy ?? 0) + (isDragging ? dragTemp.dy : 0);
+        const ov = getOverride(idCentro);
+        const px = cx + (ov.dx ?? 0);
+        const py = cy + (ov.dy ?? 0);
         const neg = ov.negrito ?? false;
 
         const linhasBase = [
@@ -1928,6 +2078,7 @@ export default function Planta({
         situacaoSel={situacaoSel} onSituacaoClick={() => setSituacaoSel((s) => !s)}
         onRemoverSituacao={() => { setSituacaoSel(false); onRemoverSituacao?.(); }}
         situacaoStale={situacaoStale} onAtualizarSituacao={onAtualizarSituacao}
+        corCabecalho={corCabecalho} onHeaderContextMenu={onHeaderContextMenu}
       />
 
       {/* ---------- CARIMBO (coluna direita - reformulada) ---------- */}
@@ -1939,6 +2090,7 @@ export default function Planta({
         escalaDecl={config.escalaDeclaracoes && config.escalaDeclaracoes > 0 ? config.escalaDeclaracoes : 1}
         escalaConf={config.escalaConfront && config.escalaConfront > 0 ? config.escalaConfront : 1}
         requerente={requerente} transmitente={transmitente}
+        corCabecalho={corCabecalho} onHeaderContextMenu={onHeaderContextMenu}
         ed={{
           ativo: editavel,
           textos: new Proxy(textosOv, { get: (target, prop) => typeof prop === 'string' ? getOverride(prop) : undefined }),
@@ -2129,6 +2281,123 @@ export default function Planta({
         </div>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={modalGlebaAberto} onOpenChange={(open) => {
+      setModalGlebaAberto(open);
+      if (!open && selecionadoId === 'planta.poligono') {
+        setSelecionadoId(null);
+      }
+    }}>
+      <DialogContent className="max-w-md p-6 bg-background shadow-2xl rounded-xl">
+        <DialogHeader className="pb-4 border-b border-border/60">
+          <DialogTitle className="text-sm font-black uppercase tracking-wider flex items-center gap-2.5 text-primary">
+            <Paintbrush className="size-4" /> Estilo da Gleba (Perímetro)
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* Cor de Preenchimento */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase text-muted-foreground">Cor de Preenchimento</label>
+            <div className="flex items-center gap-3">
+              <div className="flex flex-wrap gap-1.5 flex-grow">
+                {['#15803d', '#1d4ed8', '#d97706', '#475569', '#dc2626', '#10b981', '#6366f1'].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="size-7 rounded-full border transition-transform hover:scale-110 active:scale-95"
+                    style={{
+                      backgroundColor: c,
+                      borderColor: (config.fillPoligono || '#15803d') === c ? '#0f172a' : 'transparent',
+                      borderWidth: (config.fillPoligono || '#15803d') === c ? '2.5px' : '1px'
+                    }}
+                    onClick={() => onConfigPatch?.({ fillPoligono: c })}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 border rounded-lg px-2 py-1 bg-muted/40 shrink-0">
+                <span className="text-[10px] text-muted-foreground font-semibold">Custom:</span>
+                <input
+                  type="color"
+                  value={config.fillPoligono || '#15803d'}
+                  className="size-6 cursor-pointer rounded border-0 p-0 bg-transparent"
+                  onChange={(e) => onConfigPatch?.({ fillPoligono: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Cor da Linha (Contorno) */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase text-muted-foreground">Cor da Linha (Contorno)</label>
+            <div className="flex items-center gap-3">
+              <div className="flex flex-wrap gap-1.5 flex-grow">
+                {['#334155', '#1e293b', '#0f172a', '#dc2626', '#b91c1c', '#7c2d12', '#2563eb'].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="size-7 rounded-full border transition-transform hover:scale-110 active:scale-95"
+                    style={{
+                      backgroundColor: c,
+                      borderColor: (config.corPoligono || '#334155') === c ? '#0f172a' : 'transparent',
+                      borderWidth: (config.corPoligono || '#334155') === c ? '2.5px' : '1px'
+                    }}
+                    onClick={() => onConfigPatch?.({ corPoligono: c })}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 border rounded-lg px-2 py-1 bg-muted/40 shrink-0">
+                <span className="text-[10px] text-muted-foreground font-semibold">Custom:</span>
+                <input
+                  type="color"
+                  value={config.corPoligono || '#334155'}
+                  className="size-6 cursor-pointer rounded border-0 p-0 bg-transparent"
+                  onChange={(e) => onConfigPatch?.({ corPoligono: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Espessura da Linha */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase text-muted-foreground">Espessura da Linha</label>
+              <span className="text-xs font-bold text-foreground bg-muted px-2 py-0.5 rounded">{(config.larguraPoligono ?? 1.8).toFixed(1)} mm</span>
+            </div>
+            <input
+              type="range"
+              min="0.5"
+              max="5.0"
+              step="0.1"
+              value={config.larguraPoligono ?? 1.8}
+              className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+              onChange={(e) => onConfigPatch?.({ larguraPoligono: Number(e.target.value) })}
+            />
+          </div>
+
+          {/* Hachura */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase text-muted-foreground">Padrão de Hachura</label>
+            <select
+              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              value={config.hachura ?? 'nenhuma'}
+              onChange={(e) => onConfigPatch?.({ hachura: e.target.value as PlantaConfig['hachura'] })}
+            >
+              <option value="nenhuma">Cor sólida (Sem hachura)</option>
+              <option value="diagonal">Linhas Diagonais</option>
+              <option value="cruzada">Hachura Cruzada / Gradeada</option>
+              <option value="pontos">Hachura Pontilhada</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-border/60 flex justify-end">
+          <Button onClick={() => { setModalGlebaAberto(false); setSelecionadoId(null); }} size="sm">
+            Fechar
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 );
 }
@@ -2142,8 +2411,10 @@ function FaixaInferior(props: {
   coordEditavel?: boolean; coordGetOv?: (id: string) => TextoOverride; onCoordItemDown?: (id: string, e: ReactPointerEvent) => void;
   situacaoSel?: boolean; onSituacaoClick?: () => void; onRemoverSituacao?: () => void;
   situacaoStale?: boolean; onAtualizarSituacao?: () => void;
+  corCabecalho?: string;
+  onHeaderContextMenu?: (e: React.MouseEvent) => void;
 }) {
-  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao } = props;
+  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -2166,8 +2437,8 @@ function FaixaInferior(props: {
       {/* --- BOX 1: SITUAÇÃO --- */}
       <g>
         <rect x={x1} y={y0} width={w1} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-        <rect x={x1} y={y0} width={w1} height={24} rx={6} ry={6} fill="#475569" />
-        <rect x={x1} y={y0 + 18} width={w1} height={6} fill="#475569" />
+        <rect x={x1} y={y0} width={w1} height={24} rx={6} ry={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
+        <rect x={x1} y={y0 + 18} width={w1} height={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
         <text x={x1 + w1 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">SITUAÇÃO</text>
         {situacaoUrl && verSituacao ? (
           <g>
@@ -2220,8 +2491,8 @@ function FaixaInferior(props: {
         return (
           <g>
             <rect x={x2} y={y0} width={w2} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-            <rect x={x2} y={y0} width={w2} height={24} rx={6} ry={6} fill="#475569" />
-            <rect x={x2} y={y0 + 18} width={w2} height={6} fill="#475569" />
+            <rect x={x2} y={y0} width={w2} height={24} rx={6} ry={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
+            <rect x={x2} y={y0 + 18} width={w2} height={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
             <text x={x2 + w2 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">CONVENÇÕES</text>
 
             <g transform={`translate(${x2 + 14}, ${y0 + 40})`} fontSize={fs(8.5)} fill="#0f172a">
@@ -2250,8 +2521,8 @@ function FaixaInferior(props: {
       {/* --- BOX 3: INFORMAÇÕES DE COORDENADAS (quadro fixo; os BLOCOS internos é que se arrastam) --- */}
       <g>
         <rect x={x3} y={y0} width={w3} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-        <rect x={x3} y={y0} width={w3} height={24} rx={6} ry={6} fill="#475569" />
-        <rect x={x3} y={y0 + 18} width={w3} height={6} fill="#475569" />
+        <rect x={x3} y={y0} width={w3} height={24} rx={6} ry={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
+        <rect x={x3} y={y0 + 18} width={w3} height={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
         <text x={x3 + w3 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">INFORMAÇÕES DE COORDENADAS</text>
 
         {(() => {
@@ -2509,6 +2780,8 @@ function CarimboA3(props: {
   titulo: string; folha: string; textoLaudo: string; textoConfront: string; escala: number;
   escalaDecl?: number; escalaConf?: number;
   requerente?: PessoaQualificada; transmitente?: PessoaQualificada;
+  corCabecalho?: string;
+  onHeaderContextMenu?: (e: React.MouseEvent) => void;
   ed?: {
     ativo: boolean;
     textos: Record<string, TextoOverride>;
@@ -2523,7 +2796,7 @@ function CarimboA3(props: {
     onTextoPatch?: (id: string, patch: { escala?: number }) => void;
   };
 }) {
-  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, escalaDecl = 1, escalaConf = 1, ed } = props;
+  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, escalaDecl = 1, escalaConf = 1, ed, corCabecalho = '#475569', onHeaderContextMenu } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const fsDecl = (n: number) => +(n * escala * escalaDecl).toFixed(2); // declarações (proprietário/laudo)
   const fsConf = (n: number) => +(n * escala * escalaConf).toFixed(2); // texto/assinatura dos confrontantes
@@ -2550,9 +2823,9 @@ function CarimboA3(props: {
   // Cabeçalho escuro (tarja #475569 + título branco) idêntico aos quadros de baixo da planta
   // (Situação/Convenções/Informações de Coordenadas). Se receber um id, o título fica editável.
   const Cab = (y: number, label: string, id?: string, size = 8.5) => (
-    <g>
-      <rect x={lx} y={y} width={wBox} height={24} rx={6} ry={6} fill="#475569" />
-      <rect x={lx} y={y + 18} width={wBox} height={6} fill="#475569" />
+    <g onContextMenu={onHeaderContextMenu}>
+      <rect x={lx} y={y} width={wBox} height={24} rx={6} ry={6} fill={corCabecalho} />
+      <rect x={lx} y={y + 18} width={wBox} height={6} fill={corCabecalho} />
       {id
         ? T(id, label, { x: cxc, y: y + 16, size: fs(size), bold: true, anchor: 'middle', fill: '#fff' })
         : <text x={cxc} y={y + 16} fontSize={fs(size)} fontWeight="bold" fill="#fff" textAnchor="middle">{label}</text>}
@@ -2699,9 +2972,10 @@ function CarimboA3(props: {
             <g
               style={ed?.ativo ? { cursor: 'pointer' } : undefined}
               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT, titulo); } : undefined}
+              onContextMenu={onHeaderContextMenu}
             >
-              <rect x={lx} y={Y_DADOS} width={wBox} height={hCabTitulo} rx={6} ry={6} fill="#475569" />
-              <rect x={lx} y={Y_DADOS + hCabTitulo - 6} width={wBox} height={6} fill="#475569" />
+              <rect x={lx} y={Y_DADOS} width={wBox} height={hCabTitulo} rx={6} ry={6} fill={corCabecalho} />
+              <rect x={lx} y={Y_DADOS + hCabTitulo - 6} width={wBox} height={6} fill={corCabecalho} />
               <g>
                 {tituloLinhas.map((ln, k) => (
                   <text key={k} x={cxc} y={Y_DADOS + (duas ? 19 + k * 18 : 17)} fontSize={fs(10.5)} fontWeight="bold" fill="#fff" textAnchor="middle">{ln}</text>
@@ -2710,8 +2984,9 @@ function CarimboA3(props: {
               {/* Dropdown Arrow Indicator (only visible on screen, hidden in print) */}
               {ed?.ativo && (
                 <g className="no-print" style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); ed.onStartEdit?.(idT, titulo); }}>
-                  <circle cx={lx + wBox - 16} cy={Y_DADOS + hCabTitulo / 2} r={9} fill="rgba(255, 255, 255, 0.2)" />
-                  <path d={`M ${lx + wBox - 20} ${Y_DADOS + hCabTitulo / 2 - 2} L ${lx + wBox - 12} ${Y_DADOS + hCabTitulo / 2 - 2} L ${lx + wBox - 16} ${Y_DADOS + hCabTitulo / 2 + 3} Z`} fill="#fff" />
+                  <title>Escolher um modelo de serviço/título pronto ou digitar personalizado</title>
+                  <circle cx={lx + wBox - 20} cy={Y_DADOS + hCabTitulo / 2} r={12} fill="rgba(255, 255, 255, 0.25)" className="hover:fill-white/40 transition-colors" />
+                  <path d={`M ${lx + wBox - 25} ${Y_DADOS + hCabTitulo / 2 - 3} L ${lx + wBox - 15} ${Y_DADOS + hCabTitulo / 2 - 3} L ${lx + wBox - 20} ${Y_DADOS + hCabTitulo / 2 + 4} Z`} fill="#fff" />
                 </g>
               )}
             </g>
