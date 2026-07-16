@@ -5134,11 +5134,12 @@ export default function EditorPage() {
       rotulo: 'Contrato de prestação de serviços (PDF)',
       onVisualizar: () => setGestaoAberta(true),
       onBaixar: () => {
+        if (!tecnico || !escritorio) { aviso('Configure os dados do técnico e escritório antes de emitir o contrato.'); return; }
         const fin = imovel.financeiro ?? {};
         gerarContratoPdf({
           imovel,
-          tecnico: tecnico!,
-          escritorio: escritorio!,
+          tecnico,
+          escritorio,
           areaHa: res?.areaHa ?? 0,
           perimetro: res?.perimetro ?? 0,
           valor: fin.valorCobrado ?? 0,
@@ -5152,11 +5153,12 @@ export default function EditorPage() {
       rotulo: 'Proposta comercial (PDF)',
       onVisualizar: () => setGestaoAberta(true),
       onBaixar: () => {
+        if (!tecnico || !escritorio) { aviso('Configure os dados do técnico e escritório antes de emitir a proposta.'); return; }
         const fin = imovel.financeiro ?? {};
         gerarPropostaPdf({
           imovel,
-          tecnico: tecnico!,
-          escritorio: escritorio!,
+          tecnico,
+          escritorio,
           areaHa: res?.areaHa ?? 0,
           perimetro: res?.perimetro ?? 0,
           valor: fin.valorCobrado ?? 0,
@@ -5170,8 +5172,9 @@ export default function EditorPage() {
       rotulo: 'Declaração de posse (.docx)',
       onVisualizar: () => setGestaoAberta(true),
       onBaixar: async () => {
+        if (!tecnico) { aviso('Configure os dados do técnico antes de gerar a declaração.'); return; }
         saveAs(
-          await gerarDeclaracaoPosseDocx({ imovel, tecnico: tecnico!, dataExtenso: dataPorExtenso() }),
+          await gerarDeclaracaoPosseDocx({ imovel, tecnico, dataExtenso: dataPorExtenso() }),
           `Declaracao de posse - ${imovel.denominacao || 'imovel'}.docx`
         );
       }
@@ -5182,8 +5185,9 @@ export default function EditorPage() {
       rotulo: 'Declaração de inexistência de sobreposição (.docx)',
       onVisualizar: () => setGestaoAberta(true),
       onBaixar: async () => {
+        if (!tecnico) { aviso('Configure os dados do técnico antes de gerar a declaração.'); return; }
         saveAs(
-          await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico: tecnico!, dataExtenso: dataPorExtenso() }),
+          await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico, dataExtenso: dataPorExtenso() }),
           `Declaracao de inexistencia de sobreposicao - ${imovel.denominacao || 'imovel'}.docx`
         );
       }
@@ -5194,8 +5198,9 @@ export default function EditorPage() {
       rotulo: 'Representação de incapaz (menores/interditos) (.docx)',
       onVisualizar: () => setGestaoAberta(true),
       onBaixar: async () => {
+        if (!tecnico) { aviso('Configure os dados do técnico antes de gerar a declaração.'); return; }
         saveAs(
-          await gerarDeclaracaoIncapazDocx({ imovel, tecnico: tecnico!, dataExtenso: dataPorExtenso() }),
+          await gerarDeclaracaoIncapazDocx({ imovel, tecnico, dataExtenso: dataPorExtenso() }),
           `Representacao de incapaz - ${imovel.denominacao || 'imovel'}.docx`
         );
       }
@@ -5206,8 +5211,9 @@ export default function EditorPage() {
       rotulo: 'Representação de espólio (inventariante) (.docx)',
       onVisualizar: () => setGestaoAberta(true),
       onBaixar: async () => {
+        if (!tecnico) { aviso('Configure os dados do técnico antes de gerar a declaração.'); return; }
         saveAs(
-          await gerarDeclaracaoEspolioDocx({ imovel, tecnico: tecnico!, dataExtenso: dataPorExtenso() }),
+          await gerarDeclaracaoEspolioDocx({ imovel, tecnico, dataExtenso: dataPorExtenso() }),
           `Representacao de espolio - ${imovel.denominacao || 'imovel'}.docx`
         );
       }
@@ -5218,8 +5224,9 @@ export default function EditorPage() {
       rotulo: 'Declaração de respeito de limites (.docx)',
       onVisualizar: () => setGestaoAberta(true),
       onBaixar: async () => {
+        if (!tecnico) { aviso('Configure os dados do técnico antes de gerar a declaração.'); return; }
         saveAs(
-          await gerarDeclaracaoRespeitoLimitesDocx({ imovel, tecnico: tecnico!, dataExtenso: dataPorExtenso() }),
+          await gerarDeclaracaoRespeitoLimitesDocx({ imovel, tecnico, dataExtenso: dataPorExtenso() }),
           `Declaracao de respeito de limites - ${imovel.denominacao || 'imovel'}.docx`
         );
       }
