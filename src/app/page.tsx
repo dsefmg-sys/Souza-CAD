@@ -77,6 +77,7 @@ import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
 import { parseParcelasSigef, parseGmlParcelas, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas, parseVerticesSigefGml, parsePropriedadeSigefGml } from '@/lib/io/sigefVizinhos';
 import { parseVerticesVizinho } from '@/lib/io/verticesVizinho';
+import { validarTamanhoArquivo } from '@/lib/io/validarArquivo';
 import { ufsNoBbox, temaIncra, TEMAS_CONFRONTANTE, INCRA_UFS } from '@/lib/io/incraTemas';
 import { linhasRotuloConfrontante } from '@/lib/topo/rotuloConfrontante';
 import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao, ufDoMunicipio } from '@/lib/topo/municipios';
@@ -1721,6 +1722,10 @@ export default function EditorPage() {
 
   async function importarArquivo(file: File) {
     if (processando) return;
+    // Valida o tamanho ANTES de qualquer trabalho pesado: ler o arquivo, fazer parse, mexer no
+    // estado. Um DXF de 500MB iria travar a aba por minutos; melhor cortar logo.
+    const v = validarTamanhoArquivo(file);
+    if (!v.ok) { aviso(v.erro); return; }
     setImportPendingFile(file);
 
     if (file.name.toLowerCase().endsWith('.txt') || file.name.toLowerCase().endsWith('.csv')) {
@@ -3662,6 +3667,8 @@ export default function EditorPage() {
   }
 
   async function importarReferenciaGeoJson(file: File) {
+    const v = validarTamanhoArquivo(file);
+    if (!v.ok) { aviso(v.erro); return; }
     try {
       const texto = await file.text();
       const { aneis, geografico } = importarGeoJsonAneis(texto);
@@ -3679,6 +3686,8 @@ export default function EditorPage() {
   // referência tracejada ao lado do desenho (alvo de snap), igual ao GeoJSON. O fuso vem do .prj
   // quando existe; senão usa o fuso atual do projeto.
   async function importarShapefileRef(file: File) {
+    const v = validarTamanhoArquivo(file);
+    if (!v.ok) { aviso(v.erro); return; }
     try {
       const buf = await file.arrayBuffer();
       const lido = file.name.toLowerCase().endsWith('.zip') ? await importarShapefileZip(buf) : lerShp(buf);
@@ -3712,6 +3721,8 @@ export default function EditorPage() {
   // agora com o parser reescrito de forma segura). CSV é o método mais fácil mesmo, então simplificar
   // pra só ele reduz a instrução na tela sem perder nada que valesse a pena manter.
   async function importarVerticesVizinho(file: File) {
+    const v = validarTamanhoArquivo(file);
+    if (!v.ok) { aviso(v.erro); return; }
     const TOL_M = 2; // mesma tolerância usada no snap de vértice
     try {
       const texto = await file.text();
@@ -3830,6 +3841,8 @@ export default function EditorPage() {
   }
 
   async function importarVizinhosCertificados(file: File) {
+    const v = validarTamanhoArquivo(file);
+    if (!v.ok) { aviso(v.erro); return; }
     try {
       const texto = await file.text();
       let parcelas = parseParcelasSigef(texto);
@@ -4286,6 +4299,9 @@ export default function EditorPage() {
 
   async function importarDxfArquivo(file: File) {
     if (processando) return;
+    // Valida o tamanho ANTES de mexer no estado de processamento — DXFs grandes travam o navegador
+    const v = validarTamanhoArquivo(file);
+    if (!v.ok) { aviso(v.erro); return; }
     setProcessando(true);
     try {
       const texto = await file.text();

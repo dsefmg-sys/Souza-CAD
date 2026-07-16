@@ -19,12 +19,11 @@ describe('snapUtm — caso base', () => {
     expect(r.leste).toBe(101);
   });
 
-  it('alvo exatamente NA tolerância (2m) NÃO snap (d < tol, não d <= tol)', () => {
-    // BUG LATENTE documentado: o snap usa `d < bestVerticeD` (estritamente menor). Se a
-    // distância for EXATAMENTE igual à tolerância, não snap. Faz diferença em casos limítrofes.
-    // Se quiser mudar pra `<=`, é 1 caractere no snap.ts:42.
+  it('alvo exatamente NA tolerância (2m) snap (d <= tol)', () => {
+    // Corrigido: era `<` (estritamente menor) e a borda caía. Agora é `<=` — inclui o caso
+    // de distância EXATAMENTE igual à tolerância. Fail silencioso em casos limítrofes resolvido.
     const r = snapUtm(100, 200, [v(102, 200)]); // exatamente 2m
-    expect(r.tipo).toBe(null);
+    expect(r.tipo).toBe('vertice');
   });
 });
 

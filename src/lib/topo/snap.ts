@@ -41,7 +41,10 @@ export function snapUtm(
   let bestVerticeD = tolV;
   for (const a of alvos) {
     const d = Math.hypot(leste - a.leste, norte - a.norte);
-    if (d < bestVerticeD) {
+    // Usamos `<=` (e não `<`) pra incluir o caso de borda: distância EXATAMENTE igual à
+    // tolerância também deve snapar. Antes, era `<` e a borda caía — fail silencioso em
+    // casos limítrofes. Coberto pelo teste 'alvo exatamente NA tolerância (2m) snap'.
+    if (d <= bestVerticeD) {
       bestVerticeD = d;
       bestVertice = a;
     }
