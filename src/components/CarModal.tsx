@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Leaf, Download, Upload } from 'lucide-react';
+import { Leaf, Download, Upload, AlertTriangle, Check } from 'lucide-react';
 import { type Bioma, resumirCar, appMargemRio, appLago, APP_NASCENTE_M } from '@/lib/car/car';
 
 // Primeira tela do CAR (Cadastro Ambiental Rural): usa o motor de cálculo puro (lib/car/car.ts)
@@ -149,10 +149,20 @@ export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onE
             </div>
 
             {reservaHa.trim() && (
-              <div className={`rounded-xl border p-4 text-sm font-semibold text-center ${r.reservaLegal.atende ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-400 animate-pulse'}`}>
-                {r.reservaLegal.atende
-                  ? '✓ A reserva legal informada atende aos mínimos legais exigidos.'
-                  : `⚠️ Falta ${num(r.reservaLegal.faltaHa)} ha de reserva legal para atingir o limite mínimo.`}
+              <div className={`rounded-xl border p-4 text-sm font-semibold ${r.reservaLegal.atende ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-400 animate-pulse'}`}>
+                <div className="flex items-center justify-center gap-1.5">
+                  {r.reservaLegal.atende ? (
+                    <>
+                      <Check className="size-4 shrink-0 text-emerald-500" />
+                      <span>A reserva legal informada atende aos mínimos legais exigidos.</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="size-4 shrink-0 text-amber-500 animate-bounce" />
+                      <span>Falta {num(r.reservaLegal.faltaHa)} ha de reserva legal para atingir o limite mínimo.</span>
+                    </>
+                  )}
+                </div>
               </div>
             )}
 
@@ -166,8 +176,8 @@ export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onE
             </div>
 
             <div className="rounded-xl border border-amber-500/20 p-4 bg-amber-500/5 text-left text-xs leading-relaxed space-y-2">
-              <div className="font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                ⚠️ Diretrizes Técnicas, Legais e Responsabilidade no CAR
+              <div className="font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle className="size-4 shrink-0" /> Diretrizes Técnicas, Legais e Responsabilidade no CAR
               </div>
               <p className="text-muted-foreground">
                 O <strong>Cadastro Ambiental Rural (CAR)</strong> é um registro público eletrônico obrigatório para todos os imóveis rurais. Como agrimensor, atente-se às bases leis (Lei Federal 12.651/2012):

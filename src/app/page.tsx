@@ -9,7 +9,7 @@ import {
   RotateCcw, Flag, Save, FolderOpen, MousePointer2,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
-  Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft,
+  Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
   Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Compass, Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7094,7 +7094,7 @@ export default function EditorPage() {
             {colegasIdentificados.length > 0 && (
               <div className="rounded-lg border border-emerald-600/20 bg-emerald-500/5 p-3 flex flex-col gap-1.5">
                 <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                  📞 Colegas com vértices certificados identificados nesta área:
+                  <Phone className="size-3.5" /> Colegas com vértices certificados identificados nesta área:
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                   {colegasIdentificados.map((col) => (

@@ -42,7 +42,11 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   const [ouvirTudo, setOuvirTudo] = useState(false);
   const ouvirTudoRef = useRef(false);
 
+  const [ouvirTudoTemas, setOuvirTudoTemas] = useState(false);
+  const ouvirTudoTemasRef = useRef(false);
+
   const avancarPassoAutoplayRef = useRef<() => void>(() => {});
+  const avancarTemaAutoplayRef = useRef<() => void>(() => {});
   const falarTextoRef = useRef<(texto: string) => Promise<void>>(async () => {});
 
   const avancarPassoAutoplay = useCallback(() => {
@@ -85,6 +89,32 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     avancarPassoAutoplayRef.current = avancarPassoAutoplay;
   }, [avancarPassoAutoplay]);
 
+  const avancarTemaAutoplay = useCallback(() => {
+    if (!ouvirTudoTemasRef.current) return;
+    setTemaId((currentId) => {
+      const atualIdx = currentId ? TEMAS_AJUDA.findIndex((t) => t.id === currentId) : -1;
+      const proximoIdx = atualIdx + 1;
+      if (proximoIdx < TEMAS_AJUDA.length) {
+        const proxTema = TEMAS_AJUDA[proximoIdx];
+        const audioUrl = nivel === 'iniciante' ? proxTema.audioUrlIniciante : proxTema.audioUrlExperiente;
+        const texto = nivel === 'iniciante' ? proxTema.iniciante : proxTema.experiente;
+        setTimeout(() => {
+          alternarAudio(texto, audioUrl);
+        }, 1000);
+        return proxTema.id;
+      } else {
+        ouvirTudoTemasRef.current = false;
+        setOuvirTudoTemas(false);
+        setTela('temas');
+        return null;
+      }
+    });
+  }, [nivel]);
+
+  useEffect(() => {
+    avancarTemaAutoplayRef.current = avancarTemaAutoplay;
+  }, [avancarTemaAutoplay]);
+
   function pararAudio() {
     audioSessaoRef.current += 1;
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -96,6 +126,8 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     }
     ouvirTudoRef.current = false;
     setOuvirTudo(false);
+    ouvirTudoTemasRef.current = false;
+    setOuvirTudoTemas(false);
     setFalando(false);
     setPausado(false);
     setErroAudio('');
@@ -138,6 +170,8 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
         setPausado(false);
         if (ouvirTudoRef.current) {
           avancarPassoAutoplayRef.current();
+        } else if (ouvirTudoTemasRef.current) {
+          avancarTemaAutoplayRef.current();
         }
         return;
       }
@@ -308,12 +342,12 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
       <div className="flex items-center gap-1.5">
         {ouvirTudo && (
           <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full animate-pulse">
-            🔁 Ouvindo Tudo
+            Ouvindo Tudo
           </span>
         )}
         {falando && (
           <span className="text-[10px] font-semibold text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border/60">
-            {tipoAudio === 'gravado' ? '🎙️ Narração Gravada' : '🤖 Síntese de Voz'}
+            {tipoAudio === 'gravado' ? 'Narração Gravada' : 'Síntese de Voz'}
           </span>
         )}
       </div>
@@ -476,6 +510,45 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
               <BookUser className="size-5 text-primary" /> Aprender por tema
             </div>
             {seletorNivel}
+
+            {/* Bloco Ouvir Todos os Temas */}
+            <div className="rounded-lg border p-3 bg-amber-500/10 border-amber-500/30 my-1 shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-bold text-amber-700 dark:text-amber-400"><Volume2 className="size-4 shrink-0" /> Ouvir Todos os Temas (Autoplay)</div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Reproduz a explicação em áudio de cada tema na sequência.</p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (ouvirTudoTemas) {
+                      pararAudio();
+                    } else {
+                      ouvirTudoTemasRef.current = true;
+                      setOuvirTudoTemas(true);
+                      const firstT = TEMAS_AJUDA[0];
+                      setTemaId(firstT.id);
+                      setTela('tema');
+                      const audioUrl = nivel === 'iniciante' ? firstT.audioUrlIniciante : firstT.audioUrlExperiente;
+                      const texto = nivel === 'iniciante' ? firstT.iniciante : firstT.experiente;
+                      setTimeout(() => {
+                        alternarAudio(texto, audioUrl);
+                      }, 100);
+                    }
+                  }}
+                  className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors border-amber-500/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400"
+                >
+                  {ouvirTudoTemas ? (
+                    <><Pause className="size-3 text-amber-500 fill-amber-500" /> Parar</>
+                  ) : (
+                    <><Play className="size-3 text-amber-500 fill-amber-500" /> Iniciar</>
+                  )}
+                </Button>
+              </div>
+            </div>
+
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
               {TEMAS_AJUDA.map((t) => (
                 <button key={t.id} type="button" onClick={() => { setTemaId(t.id); setTela('tema'); }}
@@ -518,6 +591,8 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             setPausado(false);
             if (ouvirTudoRef.current) {
               avancarPassoAutoplay();
+            } else if (ouvirTudoTemasRef.current) {
+              avancarTemaAutoplay();
             }
           }}
           onError={() => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music, Shield, Crown } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music, Shield, Crown, Phone } from 'lucide-react';
 import ModelosDocsModal from './ModelosDocsModal';
 import PontosBancoModal from './PontosBancoModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
@@ -1377,8 +1377,8 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                             <span className="truncate">{c.nome}</span>
                           </div>
                           {c.telefone && (
-                            <div className="text-[11px] text-muted-foreground">
-                              📞 {c.telefone}
+                            <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              <Phone className="size-3 text-muted-foreground" /> {c.telefone}
                             </div>
                           )}
                         </div>

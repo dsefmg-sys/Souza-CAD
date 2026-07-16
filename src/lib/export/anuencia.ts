@@ -69,10 +69,7 @@ function montarParagrafosAnuencia(input: AnuenciaInput): Paragraph[] {
   if (confrontante.cpf) qualConfrontante += `inscrito(a) no CPF sob o nº ${confrontante.cpf}, `;
   qualConfrontante += `na qualidade de ${condicaoTxt} do imóvel confrontante `;
   if (confrontante.matricula) qualConfrontante += `registrado sob a Matrícula nº ${confrontante.matricula} (CNS: ${confrontante.cns || '________'}) `;
-  // Não há campo de endereço no confrontante; o `descricaoExtra` é descrição livre (espólio/inventariante),
-  // usada pelo memorial e pela planilha SIGEF. Deixa um espaço para preencher o endereço à mão, em vez de
-  // despejar a descrição no lugar do endereço.
-  qualConfrontante += `${conjugeTxt}${inventarianteTxt}, residente e domiciliado(a) em ____________________________________, `;
+  qualConfrontante += `${conjugeTxt}${inventarianteTxt}, `;
 
   paragraphs.push(new Paragraph({
     alignment: AlignmentType.JUSTIFIED,

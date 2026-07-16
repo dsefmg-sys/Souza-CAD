@@ -38,7 +38,7 @@ interface Job { id: string; texto: string; }
 function montarJobs(): Job[] {
   const jobs: Job[] = [];
   PASSOS_BASE.forEach((p, i) => {
-    if (p.audioUrl) return; // já tem narração gravada de verdade (ex: introducao.mp3)
+    if (p.audioUrl && p.audioUrl === '/introducao.mp3') return; // já tem narração gravada de verdade (ex: introducao.mp3)
     jobs.push({ id: `passo-base-${i}`, texto: p.texto });
   });
   PASSOS_AVANCADOS.forEach((p, i) => {
