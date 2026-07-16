@@ -263,7 +263,7 @@ function linhasDaGleba(g: GlebaSigef, tecnico: TecnicoData, cnsImovel: string): 
   // O SIGEF exige que o primeiro vértice seja o mais ao norte e a oeste.
   // Rotaciona os vértices e re-indexa confrontantePorLado para manter correspondência.
   const ordenados = iniciarDoNorteHorario(g.res.vertices);
-  const idxOriginal = ordenados.map((v) => g.res.vertices.indexOf(v));
+  const idxOriginal = ordenados.map((v) => g.res.vertices.findIndex((x) => x.id === v.id));
   const cplReindexado: Record<number, string> = {};
   idxOriginal.forEach((origIdx, novoIdx) => {
     const cid = g.confrontantePorLado[origIdx];

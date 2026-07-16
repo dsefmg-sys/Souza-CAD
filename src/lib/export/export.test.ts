@@ -276,6 +276,11 @@ describe('sigef ods', () => {
     const perimTbl = novo.match(/table:name="perimetro_1"[\s\S]*?<\/table:table>/)![0];
     const dados = perimTbl.match(/-[MP]-\d{4}/g) || [];
     expect(dados.length).toBe(11);
+    // confrontantes devem estar na tabela de perímetro
+    expect(perimTbl.toUpperCase()).toContain('VALDERIS');
+    expect(perimTbl.toUpperCase()).toContain('ADILSON');
+    expect(perimTbl.toUpperCase()).toContain('LOBATO');
+    expect(perimTbl.toUpperCase()).toContain('CLAUDIO');
     // identificação preservou os valores (são os mesmos do modelo)
     expect(novo).toContain('Fazenda Ventania');
     expect(novo).toContain('9501143617043');
