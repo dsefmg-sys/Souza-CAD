@@ -156,6 +156,15 @@ function gerarTituloAutomatico(im: ImovelData): string {
   return partes.join(' — ');
 }
 
+/** Remove acentos/cedilha de um nome de arquivo para evitar rejeição pelo SIGEF. */
+function limparNomeArquivo(nome: string): string {
+  if (!nome) return '';
+  return nome
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[çÇ]/g, (m) => (m === 'ç' ? 'c' : 'C'));
+}
+
 type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'planta' | 'projetos';
 
 // tons médios e suaves (funcionam no tema claro e escuro via opacidade)
@@ -1771,13 +1780,16 @@ export default function EditorPage() {
               limite: p.limite,
               sigmaH: p.sigmaH,
               sigmaV: p.sigmaV,
-              codigoSigef: p.codigoSigef
+              codigoSigef: p.codigoSigef,
+              origLat: p.lat,
+              origLon: p.lon,
             };
           });
           perim = perimGml;
 
           vs = perimGml.map((p, idx) => {
-            const { lat, lon } = utmParaGeo(p.leste, p.norte, z, hemisferio);
+            // Usa lat/lon ORIGINAIS do GML — converter de volta via UTM perde precisão e gera
+            // diferença de milésimos de segundo nas coordenadas da planilha SIGEF.
             return {
               id: `v_${Date.now().toString(36)}_${idx}`,
               ordem: idx,
@@ -1786,8 +1798,8 @@ export default function EditorPage() {
               norte: p.norte,
               leste: p.leste,
               elevacao: p.altitude,
-              lat,
-              lon,
+              lat: p.origLat,
+              lon: p.origLon,
               tipo: p.tipo,
               metodo: p.metodo || tec.metodoPosicionamento || 'PG1',
               tipoLimite: p.limite || tec.tipoLimite || 'ideal',
@@ -3239,7 +3251,7 @@ export default function EditorPage() {
       const blob = await compatibilizarWord2007(blobBruto);
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
       const prefixo = modo === 'servidao' ? 'Memorial de servidao' : 'Memorial';
-      saveAs(blob, `${prefixo} - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`);
+      saveAs(blob, limparNomeArquivo(`${prefixo} - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`));
       setBaixou((b) => ({ ...b, memorial: true }));
     } catch (e: unknown) { aviso((e as Error).message || 'Erro ao gerar o memorial.'); }
   }
@@ -3289,7 +3301,7 @@ export default function EditorPage() {
           confrontantes: g.confrontantes, confrontantePorLado: g.confrontantePorLado,
           denominacao: g.denominacao, parcela: g.parcela,
         }));
-        const nome = imovel.denominacao || nomeProjeto || 'imovel';
+        const nome = limparNomeArquivo(imovel.denominacao || nomeProjeto || 'imovel');
         const unica = await confirmar({
           titulo: 'Planilha SIGEF',
           mensagem: `Planilha SIGEF com ${glebasSigef.length} glebas: gerar uma planilha única (uma aba por gleba) ou planilhas separadas num .zip?`,
@@ -3349,7 +3361,7 @@ export default function EditorPage() {
           throw new Error(err.erro || 'Falha ao gerar planilha no servidor.');
         }
         const blob = await response.blob();
-        saveAs(blob, `SIGEF - ${imovel.denominacao || nomeProjeto || 'imovel'}.ods`);
+        saveAs(blob, `SIGEF - ${limparNomeArquivo(imovel.denominacao || nomeProjeto || 'imovel')}.ods`);
       }
       setBaixou((b) => ({ ...b, ods: true }));
     } catch (e: unknown) { aviso((e as Error).message || 'Erro ao gerar a planilha.'); }
@@ -3391,7 +3403,7 @@ export default function EditorPage() {
         })
         .then((blob) => {
           const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
-          saveAs(blob, `Planta - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.pdf`);
+          saveAs(blob, limparNomeArquivo(`Planta - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.pdf`));
           setBaixou((b) => ({ ...b, planta: true }));
           aviso('PDF da planta gerado.');
         })
@@ -3445,7 +3457,7 @@ export default function EditorPage() {
       const doc = gerarAnuenciaLoteDocumento(confrontantesAssinam.map(inputDe));
       const blob = await compatibilizarWord2007(await Packer.toBlob(doc));
       const nome = (imovel.denominacao || 'imovel').replace(/[^\w.-]+/g, '_');
-      saveAs(blob, `Cartas de Anuencia - ${nome}.docx`);
+      saveAs(blob, limparNomeArquivo(`Cartas de Anuencia - ${nome}.docx`));
     } catch (e) {
       aviso('Erro ao gerar cartas de anuência: ' + (e as Error).message);
     } finally {
@@ -3487,7 +3499,7 @@ export default function EditorPage() {
       const blobBruto = await response.blob();
       const blob = await compatibilizarWord2007(blobBruto);
       const nome = (imovel.denominacao || 'imovel').replace(/[^\w.-]+/g, '_');
-      saveAs(blob, `Errata - ${nome}.docx`);
+      saveAs(blob, limparNomeArquivo(`Errata - ${nome}.docx`));
     } catch (e) {
       aviso((e as Error).message);
     } finally {
@@ -3630,7 +3642,7 @@ export default function EditorPage() {
       zip.file(`Requerimento - ${nome}.docx`, requerimento);
       if (planta) zip.file(`Planta - ${nome}.pdf`, planta);
       const blob = await zip.generateAsync({ type: 'blob' });
-      saveAs(blob, `Pacote de entrega - ${nome}.zip`);
+      saveAs(blob, limparNomeArquivo(`Pacote de entrega - ${nome}.zip`));
       setBaixou((b) => ({ ...b, memorial: true, ods: true, req: true, planta: planta ? true : b.planta }));
       aviso(planta ? 'Pacote de entrega gerado com todas as peças.' : 'Pacote gerado (a planta falhou ao rasterizar — gere-a à parte).');
     } catch (e) { aviso((e as Error).message || 'Erro ao montar o pacote.'); }
@@ -4173,7 +4185,7 @@ export default function EditorPage() {
       }
       const blob = await response.blob();
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
-      saveAs(blob, `${imovel.denominacao || nomeProjeto || 'desenho'}${sufixo}.dxf`);
+      saveAs(blob, limparNomeArquivo(`${imovel.denominacao || nomeProjeto || 'desenho'}${sufixo}.dxf`));
     } catch (e: unknown) { aviso((e as Error).message || 'Erro ao exportar DXF.'); }
   }
 
@@ -8517,7 +8529,7 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
       
       const blobBruto = await Packer.toBlob(doc);
       const blob = await compatibilizarWord2007(blobBruto);
-      saveAs(blob, `Carta de Anuencia - ${c.nome || 'Confrontante'}.docx`);
+      saveAs(blob, limparNomeArquivo(`Carta de Anuencia - ${c.nome || 'Confrontante'}.docx`));
     } catch {
       await avisar({ titulo: 'Carta de Anuência', mensagem: 'Erro ao gerar a Carta de Anuência.' });
     }

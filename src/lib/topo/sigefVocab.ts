@@ -72,9 +72,9 @@ export function obterTipoLimiteEfetivo(v: { tipoLimite?: string; representacao?:
   }
   const rep = v.representacao || 'linha-ideal';
   switch (rep) {
-    case 'muro':
-      return 'LA1';
     case 'cerca':
+      return 'LA1';
+    case 'muro':
       return 'LA2';
     case 'vala':
       return 'LA3';
