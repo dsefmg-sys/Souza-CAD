@@ -4,7 +4,16 @@
 /build
 /node-out
 *.log
-.env*
+# Ignora arquivos de ambiente REAIS (.env.local, .env.production, etc) mas mantém
+# o template .env.example versionado — é o único `.env*` que pode ir pro git.
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+# Mas mantém o .env.example:
+!.env.example
 .DS_Store
 next-env.d.ts
 *.tsbuildinfo
