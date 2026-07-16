@@ -956,6 +956,7 @@ export default function EditorPage() {
   const vizinhosRef = useRef<HTMLInputElement>(null);
   const verticesVizinhoRef = useRef<HTMLInputElement>(null);
   const jsonBackupRef = useRef<HTMLInputElement>(null);
+  const corrigirLatLonRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTecnico(carregarTecnico());
@@ -3773,6 +3774,41 @@ export default function EditorPage() {
     } catch { aviso('Não consegui ler o arquivo CSV de vértices do vizinho.'); }
   }
 
+  /**
+   * Corrige lat/lon dos vértices do polígono principal usando o CSV dos Vértices do SIGEF,
+   * cruzando pelo codigoSigef. Preserva confrontantePorLado, glebas e todos os demais dados.
+   */
+  async function corrigirLatLonDoCSV(file: File) {
+    try {
+      const texto = await file.text();
+      const cfg = carregarImportVerticesVizinho();
+      const lidos = parseVerticesVizinho(texto, cfg, zona, hemisferio).filter((l) => l.nome);
+      if (!lidos.length) { aviso('Nenhum vértice reconhecido no CSV. Confira o mapeamento em Configurações → Importação.'); return; }
+
+      // Índice por codigoSigef para busca O(1)
+      const mapaCSV = new Map(lidos.map((l) => [l.nome.toUpperCase(), l]));
+
+      let corrigidos = 0;
+      const novos = vertices.map((v) => {
+        const chave = (v.codigoSigef || v.nome || '').toUpperCase();
+        const csv = mapaCSV.get(chave);
+        if (!csv) return v;
+        // Verifica que a coordenada realmente mudou antes de contar
+        if (Math.abs(csv.lat - v.lat) < 1e-12 && Math.abs(csv.lon - v.lon) < 1e-12) return v;
+        corrigidos++;
+        return { ...v, lat: csv.lat, lon: csv.lon };
+      });
+
+      if (!corrigidos) {
+        aviso('Nenhum vértice do projeto foi encontrado no CSV (verifique se os códigos SIGEF batem com os do arquivo).');
+        return;
+      }
+      snap();
+      setVertices(novos);
+      aviso(`lat/lon corrigidos em ${corrigidos} vértice(s) com base no CSV dos Vértices. Confrontantes preservados.`);
+    } catch { aviso('Nao foi possivel ler o CSV dos Vertices.'); }
+  }
+
   async function importarVizinhosCertificados(file: File) {
     try {
       const texto = await file.text();
@@ -4959,6 +4995,8 @@ export default function EditorPage() {
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVizinhosCertificados(f); e.currentTarget.value = ''; }} />
         <input ref={verticesVizinhoRef} type="file" accept=".txt,.csv,text/plain"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarVerticesVizinho(f); e.currentTarget.value = ''; }} />
+        <input ref={corrigirLatLonRef} type="file" accept=".txt,.csv,text/plain"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) corrigirLatLonDoCSV(f); e.currentTarget.value = ''; }} />
         <input ref={jsonBackupRef} type="file" accept=".json"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) importarProjetoJson(f); e.currentTarget.value = ''; }} />
       </div>
@@ -6998,14 +7036,14 @@ export default function EditorPage() {
                   </Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  Importa arquivo de coordenadas (CSV ou GML) do confrontante para servir como referência e alvo de encaixe no desenho, prevenindo vãos ou sobreposições.
+                  Importa o CSV dos Vértices do confrontante para servir como referência e alvo de encaixe no desenho, prevenindo vãos ou sobreposições.
                 </p>
                 <div className="rounded-lg bg-indigo-500/5 border border-indigo-500/10 p-2 text-[10px] text-muted-foreground space-y-1 mt-1">
-                  <span className="font-extrabold uppercase text-[9px] tracking-wider text-indigo-600 dark:text-indigo-400 block">Como obter este arquivo no SIGEF:</span>
+                  <span className="font-extrabold uppercase text-[9px] tracking-wider text-indigo-600 dark:text-indigo-400 block">Como obter o CSV dos Vértices no SIGEF:</span>
                   <ol className="list-decimal pl-4 space-y-0.5">
                     <li>Acesse a <strong>Consulta Pública de Certificações</strong> do SIGEF/INCRA.</li>
                     <li>Busque pela parcela do vizinho usando o código do vértice/imóvel, CPF/CNPJ ou nome do proprietário.</li>
-                    <li>Na página de detalhes da parcela, exporte as coordenadas (<strong>CSV</strong> ou <strong>GML</strong>).</li>
+                    <li>Na página de detalhes da parcela, exporte as coordenadas como <strong>CSV dos Vértices</strong>.</li>
                     <li>Importe o arquivo baixado aqui no botão acima.</li>
                   </ol>
                 </div>
@@ -7059,6 +7097,23 @@ export default function EditorPage() {
                   </p>
                 </div>
               )}
+
+              <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 p-3 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">Corrigir lat/lon do CSV dos Vértices</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 font-bold border-orange-500 text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950/20"
+                    onClick={() => { setSigefMenuAberto(false); corrigirLatLonRef.current?.click(); }}
+                  >
+                    Selecionar CSV
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Atualiza apenas o lat/lon dos vértices do projeto usando o CSV dos Vértices oficial do SIGEF, cruzando pelo código SIGEF de cada vértice. Confrontantes e atribuições são preservados.
+                </p>
+              </div>
             </div>
 
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground border-t pt-3">Conciliar Medidas (Área e Perímetro)</span>
