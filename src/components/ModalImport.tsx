@@ -9,6 +9,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 import { MUNICIPIOS, formatarNome } from '@/lib/topo/municipios';
 import { zonaPorLongitude } from '@/lib/topo/coords';
+import { carregarTecnico, salvarTecnico } from '@/lib/store/settings';
+import { carregarModelos, salvarModelos, MODELOS_PADRAO } from '@/lib/store/modelos';
+
+const TEXTO_TECNICO_RTK_NTRIP =
+  'As coordenadas dos vértices descritos neste memorial foram determinadas por meio de ' +
+  'levantamento topográfico georreferenciado ao Sistema Geodésico Brasileiro, adotando-se o ' +
+  'datum SIRGAS2000, mediante utilização de tecnologia GNSS de dupla frequência em modo RTK ' +
+  'com correções diferenciais em tempo real recebidas via protocolo NTRIP, a partir de ' +
+  'estações de referência ativa integrantes da Rede Brasileira de Monitoramento Contínuo (RBMC/IBGE). ' +
+  'As determinações asseguram coerência geométrica, confiabilidade dos dados e ' +
+  'compatibilidade com os padrões adotados pelo Incra para fins de certificação, quando ' +
+  'aplicável. As distâncias, perímetro e área do imóvel foram calculados a partir das ' +
+  'coordenadas dos vértices levantados, em sistema de referência adequado ao levantamento realizado.';
 
 interface Props {
   isOpen: boolean;
@@ -37,6 +50,18 @@ export default function ModalImport({ isOpen, onClose, onConfirm }: Props) {
   const [municipio, setMunicipio] = useState('Espera Feliz-MG');
   const [fuso, setFuso] = useState(23);
   const [numGlebas, setNumGlebas] = useState(1);
+  const [tipoLevantamento, setTipoLevantamento] = useState<'base_rover' | 'rtk_ntrip'>('base_rover');
+
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        const tec = carregarTecnico();
+        setTipoLevantamento(tec.tipoLevantamento || 'base_rover');
+      } catch (err) {
+        console.error('Erro ao carregar preferência de levantamento:', err);
+      }
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const found = MUNICIPIOS_PADRAO.find(
@@ -77,6 +102,41 @@ export default function ModalImport({ isOpen, onClose, onConfirm }: Props) {
                   {m.nome}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="import-tecnologia" className="text-xs font-semibold">Tecnologia do Levantamento (Método de Trabalho)</Label>
+            <select
+              id="import-tecnologia"
+              value={tipoLevantamento}
+              onChange={(e) => {
+                const val = e.target.value as 'base_rover' | 'rtk_ntrip';
+                setTipoLevantamento(val);
+                try {
+                  const tec = carregarTecnico();
+                  tec.tipoLevantamento = val;
+                  tec.metodoPosicionamento = val === 'rtk_ntrip' ? 'PG7' : 'PG6';
+                  salvarTecnico(tec);
+
+                  const mods = carregarModelos();
+                  if (
+                    mods.memorialInfoTecnicas === MODELOS_PADRAO.memorialInfoTecnicas ||
+                    mods.memorialInfoTecnicas === TEXTO_TECNICO_RTK_NTRIP
+                  ) {
+                    mods.memorialInfoTecnicas = val === 'rtk_ntrip'
+                      ? TEXTO_TECNICO_RTK_NTRIP
+                      : MODELOS_PADRAO.memorialInfoTecnicas;
+                    salvarModelos(mods);
+                  }
+                } catch (err) {
+                  console.error('Erro ao atualizar tecnologia na importação:', err);
+                }
+              }}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="base_rover">Base + Rover (RTK Convencional - PG6)</option>
+              <option value="rtk_ntrip">NTRIP + RTK (Correção em Rede - PG7)</option>
             </select>
           </div>
 

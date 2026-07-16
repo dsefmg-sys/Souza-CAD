@@ -442,6 +442,7 @@ export interface TecnicoData {
   // credencial citar naquela peça específica; as demais peças (memorial, planta etc.) continuam
   // usando a formação principal, como sempre.
   registrosExtras?: RegistroProfissionalExtra[];
+  tipoLevantamento?: 'base_rover' | 'rtk_ntrip';
 }
 
 export interface RegistroProfissionalExtra {

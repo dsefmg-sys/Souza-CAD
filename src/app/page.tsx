@@ -382,6 +382,21 @@ export default function EditorPage() {
   const [imovel, setImovel] = useState<ImovelData>(IMOVEL_VAZIO);
   const [confrontantes, setConfrontantes] = useState<Confrontante[]>([]);
   const [confrontantePorLado, setConfrontantePorLado] = useState<Record<number, string>>({});
+
+  // Auxiliar para manter a correspondência dos confrontantes ao reordenar, apagar ou rotacionar vértices
+  function reindexarCplPara(novos: Vertex[]) {
+    setConfrontantePorLado((prev) => {
+      const proximo: Record<number, string> = {};
+      novos.forEach((v, novoIdx) => {
+        const origIdx = vertices.findIndex((x) => x.id === v.id);
+        if (origIdx >= 0) {
+          const cid = prev[origIdx];
+          if (cid) proximo[novoIdx] = cid;
+        }
+      });
+      return proximo;
+    });
+  }
   // Multi-gleba: `glebas` é a lista completa (a ativa pode estar desatualizada); o estado de
   // trabalho acima (vertices/confrontantes/confrontantePorLado) é a FONTE da gleba ativa.
   // `sincronizarGlebas()` devolve a lista com a ativa atualizada a partir do estado de trabalho.
@@ -2270,7 +2285,9 @@ export default function EditorPage() {
     const label = v ? `o vértice ${v.codigoSigef || v.id}` : 'este vértice';
     if (!(await confirmarApagar(`Deseja realmente apagar ${label}?`))) return;
     snap();
-    setVertices((vs) => reordenar(vs.filter((v) => v.id !== id)));
+    const novos = reordenar(vertices.filter((v) => v.id !== id));
+    reindexarCplPara(novos);
+    setVertices(novos);
     if (selecionadoId === id) setSelecionadoId(null);
   }
 
@@ -2302,7 +2319,9 @@ export default function EditorPage() {
     if (!(await confirmarApagar(msg))) return;
     snap();
     if (nVert) {
-      setVertices((vs) => reordenar(vs.filter((v) => !selMulti.has(v.id))));
+      const novos = reordenar(vertices.filter((v) => !selMulti.has(v.id)));
+      reindexarCplPara(novos);
+      setVertices(novos);
       setVerticesIgnorados((vs) => vs.filter((v) => !selMulti.has(v.id)));
     }
     if (nObj) setObjetos((os) => os.filter((o) => !objSelMulti.has(o.id)));
@@ -2639,7 +2658,9 @@ export default function EditorPage() {
     });
     if (!ok) return;
     snap();
-    await aplicarCodigos(iniciarDoNorteHorario(vertices));
+    const ordenados = iniciarDoNorteHorario(vertices);
+    reindexarCplPara(ordenados);
+    await aplicarCodigos(ordenados);
     aviso('Vértices reordenados (norte → horário) e renumerados.');
   }
 
@@ -2650,7 +2671,9 @@ export default function EditorPage() {
     const out = [...vertices];
     const [m] = out.splice(from, 1);
     out.splice(to, 0, m);
-    await aplicarCodigos(reordenar(out));
+    const novos = reordenar(out);
+    reindexarCplPara(novos);
+    await aplicarCodigos(novos);
   }
 
   // ---------- desenho livre (CAD leve) ----------
@@ -7511,7 +7534,13 @@ export default function EditorPage() {
             {menuContexto.tipo === 'vertice' && menuContexto.vertice && (
               <div className="flex flex-col gap-0.5">
                 <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">Ações do Vértice</div>
-                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded-sm hover:bg-accent" onClick={() => { snap(); setVertices((vs) => definirInicio(vs, menuContexto.vertice!.id)); setMenuContexto(null); }}><Flag className="size-3.5" /> Definir Início</button>
+                <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded-sm hover:bg-accent" onClick={() => {
+                  snap();
+                  const novos = definirInicio(vertices, menuContexto.vertice!.id);
+                  reindexarCplPara(novos);
+                  setVertices(novos);
+                  setMenuContexto(null);
+                }}><Flag className="size-3.5" /> Definir Início</button>
                 <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded-sm hover:bg-accent text-destructive" onClick={() => { apagarVertice(menuContexto.vertice!.id); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Excluir Vértice</button>
                 <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded-sm hover:bg-accent" onClick={() => { ignorarVertice(menuContexto.vertice!.id); setMenuContexto(null); }}><EyeOff className="size-3.5" /> Ignorar Vértice</button>
                 

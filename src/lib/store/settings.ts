@@ -128,6 +128,7 @@ export const TECNICO_PADRAO: TecnicoData = {
   contadorVirtual: 1,
   zonaBase: 23,
   fusosPermitidos: [18, 19, 20, 21, 22, 23, 24, 25],
+  tipoLevantamento: 'base_rover',
 };
 
 // Padrão do escritório: também SEM dados de nenhuma empresa. Só o ramo genérico como sugestão.

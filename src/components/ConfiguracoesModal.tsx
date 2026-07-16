@@ -28,6 +28,7 @@ import {
 } from '@/lib/store/settings';
 import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey } from '@/lib/store/suporte';
 import { minhaEmpresa, type Empresa } from '@/lib/store/empresas';
+import { carregarModelos, salvarModelos, MODELOS_PADRAO } from '@/lib/store/modelos';
 import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes, salvarPadroes, PADROES_PADRAO, type PadroesProjeto } from '@/lib/store/padroes';
 import { carregarPrecos, salvarPrecos, type PrecoServico } from '@/lib/store/precos';
@@ -36,6 +37,17 @@ import { confirmar } from '@/lib/ui/dialogos';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import ImportVerticesVizinhoConfigModal from '@/components/ImportVerticesVizinhoConfigModal';
 import { colegasCad } from '@/lib/store/cadastros';
+
+const TEXTO_TECNICO_RTK_NTRIP =
+  'As coordenadas dos vértices descritos neste memorial foram determinadas por meio de ' +
+  'levantamento topográfico georreferenciado ao Sistema Geodésico Brasileiro, adotando-se o ' +
+  'datum SIRGAS2000, mediante utilização de tecnologia GNSS de dupla frequência em modo RTK ' +
+  'com correções diferenciais em tempo real recebidas via protocolo NTRIP, a partir de ' +
+  'estações de referência ativa integrantes da Rede Brasileira de Monitoramento Contínuo (RBMC/IBGE). ' +
+  'As determinações asseguram coerência geométrica, confiabilidade dos dados e ' +
+  'compatibilidade com os padrões adotados pelo Incra para fins de certificação, quando ' +
+  'aplicável. As distâncias, perímetro e área do imóvel foram calculados a partir das ' +
+  'coordenadas dos vértices levantados, em sistema de referência adequado ao levantamento realizado.';
 
 // Pessoal = só do usuário (assinatura técnica). Global = da empresa (todos usam o mesmo).
 type AbaConfig = 'pessoal' | 'comportamento' | 'escritorio' | 'numeracao' | 'modelos' | 'padroes' | 'equipe' | 'colegas';
@@ -702,6 +714,35 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Credenciamento INCRA (prefixo dos vértices)</Label>
                   <Input value={t.credenciamentoIncra} onChange={(e) => changeT('credenciamentoIncra', e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Tecnologia do Levantamento (Padrão)</Label>
+                  <select
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    value={t.tipoLevantamento || 'base_rover'}
+                    onChange={(e) => {
+                      const val = e.target.value as 'base_rover' | 'rtk_ntrip';
+                      changeT('tipoLevantamento', val);
+                      changeT('metodoPosicionamento', val === 'rtk_ntrip' ? 'PG7' : 'PG6');
+                      try {
+                        const mods = carregarModelos();
+                        if (
+                          mods.memorialInfoTecnicas === MODELOS_PADRAO.memorialInfoTecnicas ||
+                          mods.memorialInfoTecnicas === TEXTO_TECNICO_RTK_NTRIP
+                        ) {
+                          mods.memorialInfoTecnicas = val === 'rtk_ntrip'
+                            ? TEXTO_TECNICO_RTK_NTRIP
+                            : MODELOS_PADRAO.memorialInfoTecnicas;
+                          salvarModelos(mods);
+                        }
+                      } catch (err) {
+                        console.error('Erro ao atualizar modelo de memorial:', err);
+                      }
+                    }}
+                  >
+                    <option value="base_rover">Base + Rover (RTK Convencional - PG6)</option>
+                    <option value="rtk_ntrip">NTRIP + RTK (Correção em Rede - PG7)</option>
+                  </select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">

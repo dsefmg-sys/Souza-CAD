@@ -227,7 +227,7 @@ function assinatura(linhas: string[], boldPrimeira = false) {
 }
 
 /** Identificação no topo do memorial: linhas simples de texto (rótulo em negrito), sem tabela nem moldura. */
-function linhasCabecalho(imovel: ImovelData, areaHa: number, perimetro: number): Paragraph[] {
+function linhasCabecalho(imovel: ImovelData, areaHa: number, perimetro: number, tecnico: TecnicoData): Paragraph[] {
   const isUrbano = imovel.tipoImovel === 'urbano';
   const labelArea = isUrbano ? 'Área SGL (m²):' : 'Área SGL (ha):';
   const valArea = isUrbano ? `${numBR(areaHa * 10000)} m²` : `${numBR(areaHa, 4)} ha`;
@@ -244,6 +244,9 @@ function linhasCabecalho(imovel: ImovelData, areaHa: number, perimetro: number):
     ],
   });
 
+  const rot = rotulosProfissional(tecnico);
+  const termoVal = imovel.numeroTrt || tecnico.art || '';
+
   return [
     linha(isUrbano ? 'Imóvel/Lote:' : 'Imóvel:', imovel.denominacao),
     linha(imovel.regimeTerra === 'posse' ? 'Situação jurídica:' : 'Matrícula:', imovel.regimeTerra === 'posse' && !imovel.matricula ? 'Posse' : `${imovel.matricula}${idMunicipal}`),
@@ -251,6 +254,7 @@ function linhasCabecalho(imovel: ImovelData, areaHa: number, perimetro: number):
     linha(labelArea, valArea),
     linha('Local:', imovel.local || imovel.municipio),
     linha('Perímetro (m):', `${numBR(perimetro)} m`),
+    linha(`${rot.termo}:`, termoVal),
   ];
 }
 
@@ -328,7 +332,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
 
   // Identificação em texto simples (valores oficiais do SIGEF quando reconciliado; no modo
   // plano o perímetro já foi trocado acima pela soma das distâncias planas da narrativa)
-  linhasCabecalho(imovel, efMod.areaHa, efMod.perimetro).forEach((c) => children.push(c));
+  linhasCabecalho(imovel, efMod.areaHa, efMod.perimetro, tecnico).forEach((c) => children.push(c));
 
   // Variante INTERMAT (Mato Grosso): referência ao órgão estadual + parágrafo de finalidade próprio,
   // logo abaixo do cabeçalho. O restante do memorial (perímetro, tabelas, assinaturas) é o mesmo do
@@ -366,7 +370,6 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     (tecnico.nome || '').toUpperCase(),
     tecnico.formacao,
     `${rot.registro}: ${tecnico.cft}`,
-    `${rot.termo} nº ${imovel.numeroTrt || tecnico.art}`,
     `Credenciamento INCRA: ${tecnico.credenciamentoIncra}`,
   ], true).forEach((c) => children.push(c));
 
