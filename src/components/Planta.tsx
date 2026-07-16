@@ -1030,8 +1030,8 @@ export default function Planta({
             {mostrarRotulos && cx >= DRAW.x0 && cx <= DRAW.x1 && cy >= DRAW.y0 && cy <= DRAW.y1 && (
               <Ted
                 {...tProps(idLabel)}
-                x={cx}
-                y={cy}
+                x={px}
+                y={py}
                 base={label}
                 size={fs(6.2)}
                 bold
@@ -1532,16 +1532,22 @@ export default function Planta({
         const semAssinatura = c.condicao === 'publico';
         const isHorizontal = c.layoutAssinatura === 'horizontal' && temConjLinhas;
 
-        const colW = Math.max(140, fz * 9);
-        const boxW = isHorizontal ? colW * 2 + 24 : Math.max(172, fz * 18 + 16);
+        const gap = 52;
+        const colW = Math.max(220, fz * 14.5);
+        const boxW = isHorizontal ? colW * 2 + gap : Math.max(172, fz * 18 + 16);
         const half = boxW / 2 - 8;
         const lineH = fz + 3;
         const signRoom = Math.max(40, fz * 4); // espaço acima de cada linha para a firma
 
         let boxH = 0;
         if (isHorizontal) {
-          const nTextMax = Math.max(principalSemMat.length, conjLines.length);
-          boxH = (matLine ? lineH : 0) + signRoom + nTextMax * lineH + 20;
+          const leftTexts = [...principalSemMat];
+          if (matLine) leftTexts.push(matLine);
+          const rightTexts = [...conjLines];
+          if (matLine) rightTexts.push(matLine);
+
+          const nTextMax = Math.max(leftTexts.length, rightTexts.length);
+          boxH = signRoom + nTextMax * lineH + 20;
         } else {
           const nText = (matLine ? 1 : 0) + principalSemMat.length + conjLines.length;
           const nSig = semAssinatura ? 0 : (temConjLinhas ? 2 : 1);
@@ -1557,34 +1563,30 @@ export default function Planta({
         let cur = top + 7;
 
         if (isHorizontal) {
-          if (matLine) {
-            cur += lineH;
-            placedElements.push(
-              <text key="mat" x={px} y={cur - 2} fontSize={fz} textAnchor="middle" fill="#0f172a" fontWeight="bold">
-                {matLine}
-              </text>
-            );
-            cur += 4;
-          }
+          const leftTexts = [...principalSemMat];
+          if (matLine) leftTexts.push(matLine);
+          const rightTexts = [...conjLines];
+          if (matLine) rightTexts.push(matLine);
+
           const sigY = cur + signRoom;
-          const colLeftX = px - colW / 2 - 6;
-          const colRightX = px + colW / 2 + 6;
+          const colLeftX = px - colW / 2 - gap / 2;
+          const colRightX = px + colW / 2 + gap / 2;
 
           // Left signature line (Proprietário)
           placedElements.push(
-            <line key="sig-left" x1={px - colW - 12} y1={sigY} x2={px - 8} y2={sigY} stroke="#475569" strokeWidth={0.7} />
+            <line key="sig-left" x1={px - colW - gap / 2} y1={sigY} x2={px - gap / 2} y2={sigY} stroke="#475569" strokeWidth={0.7} />
           );
           // Right signature line (Cônjuge)
           placedElements.push(
-            <line key="sig-right" x1={px + 8} y1={sigY} x2={px + colW + 12} y2={sigY} stroke="#475569" strokeWidth={0.7} />
+            <line key="sig-right" x1={px + gap / 2} y1={sigY} x2={px + colW + gap / 2} y2={sigY} stroke="#475569" strokeWidth={0.7} />
           );
 
           // Left column texts
           let leftY = sigY + 6;
-          principalSemMat.forEach((t, idx) => {
+          leftTexts.forEach((t, idx) => {
             leftY += lineH;
             placedElements.push(
-              <text key={`l-txt-${idx}`} x={colLeftX} y={leftY - 2} fontSize={fz} textAnchor="middle" fill="#0f172a">
+              <text key={`l-txt-${idx}`} x={colLeftX} y={leftY - 2} fontSize={fz} textAnchor="middle" fill="#0f172a" fontWeight={t === matLine ? 'bold' : undefined}>
                 {t}
               </text>
             );
@@ -1592,10 +1594,10 @@ export default function Planta({
 
           // Right column texts
           let rightY = sigY + 6;
-          conjLines.forEach((t, idx) => {
+          rightTexts.forEach((t, idx) => {
             rightY += lineH;
             placedElements.push(
-              <text key={`r-txt-${idx}`} x={colRightX} y={rightY - 2} fontSize={fz} textAnchor="middle" fill="#0f172a">
+              <text key={`r-txt-${idx}`} x={colRightX} y={rightY - 2} fontSize={fz} textAnchor="middle" fill="#0f172a" fontWeight={t === matLine ? 'bold' : undefined}>
                 {t}
               </text>
             );
@@ -1638,7 +1640,7 @@ export default function Planta({
               folhaLast.current = u;
               captura(e);
             } : undefined}>
-            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="none" stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
+            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="#ffffff" stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
             {placedElements}
           </g>
         );
@@ -1769,10 +1771,9 @@ export default function Planta({
         const isDragging = dragTemp && dragTemp.kind === 'ted' && dragTemp.id === idCentro;
         const px = cx + (ov.dx ?? 0) + (isDragging ? dragTemp.dx : 0);
         const py = cy + (ov.dy ?? 0) + (isDragging ? dragTemp.dy : 0);
-        const esc = ov.escala ?? 1;
         const neg = ov.negrito ?? false;
 
-        const linhas = [
+        const linhasBase = [
           glebaNome || imovel.denominacao || 'Imóvel',
           imovel.matricula ? `Matrícula nº ${formatMatricula(imovel.matricula)}` : imovel.regimeTerra === 'posse' ? 'Imóvel sob Posse' : '',
           imovel.proprietario ? `${imovel.regimeTerra === 'posse' ? 'Poss.' : 'Prop.'}: ${imovel.proprietario}` : '',
@@ -1782,39 +1783,21 @@ export default function Planta({
         const fora = !pontoNoPoligono({ x: px, y: py }, anel);
 
         return (
-          <g>
+          <g key={idCentro}>
             {fora && (
               <line x1={px} y1={py} x2={cx} y2={cy} stroke="#475569" strokeWidth={0.8} strokeDasharray="3 3" />
             )}
-            <g
-              style={editavel ? { cursor: 'move' } : undefined}
-              onContextMenu={editavel ? (e) => { e.preventDefault(); e.stopPropagation(); onTextoMenu?.(idCentro, linhas[0], e.clientX, e.clientY); } : undefined}
-              onPointerDown={editavel ? (e) => {
-                e.stopPropagation();
-                const u = svgPonto(e); if (!u) return;
-                dragRef.current = { kind: 'ted', id: idCentro, dx: 0, dy: 0, baseX: ov.dx ?? 0, baseY: ov.dy ?? 0 };
-                setDragTemp({ kind: 'ted', id: idCentro, dx: 0, dy: 0, baseX: ov.dx ?? 0, baseY: ov.dy ?? 0 });
-                folhaLast.current = u;
-                captura(e);
-              } : undefined}
-            >
-              {/* Cartão invisível por trás para facilitar o clique/arraste */}
-              <rect x={px - 90 * esc} y={py - 16 * esc} width={180 * esc} height={22 * linhas.length * esc + 8 * esc} fill="transparent" />
-              {linhas.map((t, i) => (
-                <Ted
-                  key={i}
-                  id={`${idCentro}.${i}`}
-                  x={px}
-                  y={py + i * 22 * esc}
-                  base={t}
-                  size={fs(i === 0 ? 13 : 11) * esc}
-                  bold={i === 0 || neg}
-                  anchor="middle"
-                  fill="#000000"
-                  ed={false} // Não editável diretamente por duplo clique para evitar conflitos com arrasto
-                />
-              ))}
-            </g>
+            <Ted
+              {...tProps(idCentro)}
+              x={cx}
+              y={cy}
+              base={linhasBase.join('\n')}
+              size={fs(11)}
+              bold={neg}
+              anchor="middle"
+              fill="#000000"
+              halo
+            />
           </g>
         );
       })()}

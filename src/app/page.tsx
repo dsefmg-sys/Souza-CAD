@@ -6440,6 +6440,22 @@ export default function EditorPage() {
                     title="Adota a coordenada oficial do INCRA nos pontos de divisa em comum">
                     <Check className="size-3.5" /> Casar Vértices
                   </Button>
+
+                  <div className="mt-2 flex flex-col gap-1 rounded bg-muted/30 p-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase">Transparência:</span>
+                      <span className="text-[10px] font-mono text-muted-foreground">{Math.round(opacidadeCert * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={0.5}
+                      step={0.02}
+                      value={opacidadeCert}
+                      onChange={(e) => setOpacidadeCert(Number(e.target.value))}
+                      className="w-full h-1 bg-muted rounded-lg appearance-none cursor-pointer accent-cyan-600"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

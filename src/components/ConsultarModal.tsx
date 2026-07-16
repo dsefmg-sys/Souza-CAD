@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,14 +53,25 @@ export default function ConsultarModal({ open, onOpenChange, onInserirProprietar
       </div>
     );
   }
-  function Linha({ titulo, sub, onInserir }: { titulo: string; sub: string; onInserir: () => void }) {
+  function Linha({ titulo, sub, onInserir, onExcluir }: { titulo: string; sub: string; onInserir: () => void; onExcluir: () => void }) {
     return (
       <div className="flex items-center justify-between gap-2 p-2.5 text-sm">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="truncate font-medium">{titulo}</div>
           <div className="truncate text-xs text-muted-foreground">{sub}</div>
         </div>
-        <Button size="sm" variant="outline" className="h-8 shrink-0 gap-1" onClick={onInserir}><Plus className="h-3 w-3" /> Inserir neste projeto</Button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button size="sm" variant="outline" className="h-8 gap-1" onClick={onInserir}><Plus className="h-3 w-3" /> Inserir neste projeto</Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={onExcluir}
+            title="Apagar permanentemente"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     );
   }
@@ -82,19 +93,47 @@ export default function ConsultarModal({ open, onOpenChange, onInserirProprietar
         <div className="max-h-[55vh] space-y-4 overflow-auto">
           <Grupo titulo="Proprietários" n={fp.length}>
             {fp.map((p) => <Linha key={p.id} titulo={p.nome} sub={`CPF/CNPJ: ${p.cpf || '—'}`}
-              onInserir={() => { onInserirProprietario(p); flash(`Proprietário "${p.nome}" inserido.`); }} />)}
+              onInserir={() => { onInserirProprietario(p); flash(`Proprietário "${p.nome}" inserido.`); }}
+              onExcluir={async () => {
+                if (window.confirm(`Deseja realmente apagar "${p.nome}" dos cadastros?`)) {
+                  await proprietarios.excluir(p.id);
+                  setProps((prev) => prev.filter((x) => x.id !== p.id));
+                  flash(`Proprietário "${p.nome}" removido.`);
+                }
+              }} />)}
           </Grupo>
           <Grupo titulo="Confrontantes" n={fc.length}>
             {fc.map((c) => <Linha key={c.id} titulo={c.nome} sub={`CPF: ${c.cpf || '—'} · Mat.: ${c.matricula || '—'} · CNS: ${c.cns || '—'}`}
-              onInserir={() => { onInserirConfrontante(c); flash(`Confrontante "${c.nome}" adicionado.`); }} />)}
+              onInserir={() => { onInserirConfrontante(c); flash(`Confrontante "${c.nome}" adicionado.`); }}
+              onExcluir={async () => {
+                if (window.confirm(`Deseja realmente apagar "${c.nome}" dos cadastros?`)) {
+                  await confrontantesCad.excluir(c.id);
+                  setConfs((prev) => prev.filter((x) => x.id !== c.id));
+                  flash(`Confrontante "${c.nome}" removido.`);
+                }
+              }} />)}
           </Grupo>
           <Grupo titulo="Imóveis" n={fi.length}>
             {fi.map((i) => <Linha key={i.id} titulo={i.denominacao} sub={`Mat.: ${i.matricula || '—'} · ${i.municipio || '—'}`}
-              onInserir={() => { onInserirImovel(i); flash(`Imóvel "${i.denominacao}" inserido.`); }} />)}
+              onInserir={() => { onInserirImovel(i); flash(`Imóvel "${i.denominacao}" inserido.`); }}
+              onExcluir={async () => {
+                if (window.confirm(`Deseja realmente apagar "${i.denominacao}" dos cadastros?`)) {
+                  await imoveisCad.excluir(i.id);
+                  setImoveis((prev) => prev.filter((x) => x.id !== i.id));
+                  flash(`Imóvel "${i.denominacao}" removido.`);
+                }
+              }} />)}
           </Grupo>
           <Grupo titulo="Cartórios" n={fk.length}>
             {fk.map((c) => <Linha key={c.id} titulo={c.nome} sub={`CNS: ${c.cns || '—'} · ${c.municipio || '—'}`}
-              onInserir={() => { onInserirCartorio(c); flash(`Cartório "${c.nome}" inserido.`); }} />)}
+              onInserir={() => { onInserirCartorio(c); flash(`Cartório "${c.nome}" inserido.`); }}
+              onExcluir={async () => {
+                if (window.confirm(`Deseja realmente apagar "${c.nome}" dos cadastros?`)) {
+                  await cartoriosCad.excluir(c.id);
+                  setCartorios((prev) => prev.filter((x) => x.id !== c.id));
+                  flash(`Cartório "${c.nome}" removido.`);
+                }
+              }} />)}
           </Grupo>
           {busca && !algumResultado && <div className="py-10 text-center text-sm text-muted-foreground">Nenhum registro encontrado para “{busca}”.</div>}
           {!busca && <div className="py-10 text-center text-sm text-muted-foreground">Digite para buscar nos seus cadastros.</div>}
