@@ -23,7 +23,7 @@ export interface SnapResult {
 export function snapUtm(
   leste: number,
   norte: number,
-  alvos: AlvoSnap[],
+  alvos: AlvoSnap[] = [],
   opts: {
     tolVerticeM?: number;
     gradeIntervalo?: number;
