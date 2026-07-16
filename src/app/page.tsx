@@ -5314,7 +5314,7 @@ export default function EditorPage() {
           const rotulo = toolWEfetivo >= 104;
           return (
             <>
-              <aside style={{ width: toolWEfetivo }} className={`no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-background p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
+              <aside style={{ width: toolWEfetivo }} className={`no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-card p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
                 {/* DADOS E AÇÕES DO PROJETO */}
                 {rotulo ? (
                   <div className="flex flex-col gap-2 text-xs">
@@ -5361,34 +5361,34 @@ export default function EditorPage() {
                       {/* Botões de Gestão — grade de 3 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo
                           (sem botão de largura total; menos rolagem). */}
                       <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                        <Button size="sm" variant="outline" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
+                        <Button size="sm" variant="secondary" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
                           <Plus className="text-amber-500" /> <span>Novo</span>
                         </Button>
-                        <Button size="sm" variant="outline" onClick={salvar} disabled={processando} title="Salvar projeto atual (Ctrl+S)">
+                        <Button size="sm" variant="secondary" onClick={salvar} disabled={processando} title="Salvar projeto atual (Ctrl+S)">
                           <Save className="text-emerald-500" /> <span>SALVAR</span>
                         </Button>
-                        <Button size="sm" variant={painelAberto ? 'default' : 'outline'} className={painelAberto ? COR_ATIVO : ''} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
+                        <Button size="sm" variant={painelAberto ? 'default' : 'secondary'} className={painelAberto ? COR_ATIVO : ''} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
                           <Settings className={painelAberto ? 'text-white' : 'text-indigo-500'} /> <span>Dados</span>
                         </Button>
-                        <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={infoJaVista(projetoId) ? '' : COR_ATIVO} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
+                        <Button size="sm" variant={infoJaVista(projetoId) ? 'secondary' : 'default'} className={infoJaVista(projetoId) ? '' : COR_ATIVO} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
                           <FileText className={!infoJaVista(projetoId) ? 'text-white' : 'text-cyan-500'} /> <span>Detalhes</span>
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
+                        <Button size="sm" variant="secondary" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
                           <Target className="text-rose-500" /> <span>Foco</span>
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }} title="Extrair dados (coordenadas, proprietários, confrontantes, áreas) de PDFs, imagens e documentos com Inteligência Artificial">
+                        <Button size="sm" variant="secondary" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }} title="Extrair dados (coordenadas, proprietários, confrontantes, áreas) de PDFs, imagens e documentos com Inteligência Artificial">
                           <Sparkles className="text-indigo-500" /> <span>IA</span>
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => setPrecoSugAberto(true)} title="Preço sugerido: quanto cobrar por este imóvel">
+                        <Button size="sm" variant="secondary" onClick={() => setPrecoSugAberto(true)} title="Preço sugerido: quanto cobrar por este imóvel">
                           <PencilRuler className="text-emerald-600" /> <span>Preço</span>
                         </Button>
                         {completo && (
-                          <Button size="sm" variant="outline" onClick={() => setPontosAberto(true)} title="Banco de pontos">
+                          <Button size="sm" variant="secondary" onClick={() => setPontosAberto(true)} title="Banco de pontos">
                             <Database className="text-emerald-500" /> <span>Pontos</span>
                           </Button>
                         )}
                         {completo && (
-                          <Button size="sm" variant="outline" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
+                          <Button size="sm" variant="secondary" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
                             <Info className="text-sky-500" /> <span>Financ.</span>
                           </Button>
                         )}
@@ -6699,7 +6699,7 @@ export default function EditorPage() {
 
         {/* Painel suspenso de dados do projeto — ocupa toda a altura disponível do fim da página ao cabeçalho */}
         <div ref={painelWrap}
-          className={`no-print z-[2000] flex flex-col bg-background shadow-2xl transition-all duration-300 ${
+          className={`no-print z-[2000] flex flex-col bg-card shadow-2xl transition-all duration-300 ${
             telaEstreita
               // Celular: folha de aplicativo que SOBE de baixo e cobre a tela abaixo do cabeçalho.
               ? `fixed inset-x-0 bottom-0 top-11 rounded-t-2xl border-t ${painelAberto ? 'translate-y-0 opacity-100 visible' : 'translate-y-full opacity-0 invisible pointer-events-none'}`
@@ -6709,7 +6709,7 @@ export default function EditorPage() {
           onMouseEnter={() => { painelMouseDentro.current = true; }}
           onMouseLeave={() => { painelMouseDentro.current = false; if (!telaEstreita && !asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
           onBlurCapture={() => { if (telaEstreita) return; setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 50); }}>
-          <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-background">
+          <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-card">
             {/* No desktop o painel some sozinho quando o mouse sai; no celular (sem mouse) mostramos
                 um botão Fechar, senão não teria como sair dele. */}
             {telaEstreita && (
