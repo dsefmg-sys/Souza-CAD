@@ -5199,8 +5199,13 @@ export default function EditorPage() {
       onVisualizar: () => setGestaoAberta(true),
       onBaixar: async () => {
         if (!tecnico) { aviso('Configure os dados do técnico antes de gerar a declaração.'); return; }
+        const representado = await perguntar({
+          titulo: 'Qualificação do Incapaz',
+          mensagem: 'Nome completo do menor ou incapaz representado:'
+        });
+        if (representado === null) return; // cancelou
         saveAs(
-          await gerarDeclaracaoIncapazDocx({ imovel, tecnico, dataExtenso: dataPorExtenso() }),
+          await gerarDeclaracaoIncapazDocx({ imovel, tecnico, representado, dataExtenso: dataPorExtenso() }),
           `Representacao de incapaz - ${imovel.denominacao || 'imovel'}.docx`
         );
       }
@@ -5212,8 +5217,13 @@ export default function EditorPage() {
       onVisualizar: () => setGestaoAberta(true),
       onBaixar: async () => {
         if (!tecnico) { aviso('Configure os dados do técnico antes de gerar a declaração.'); return; }
+        const falecido = await perguntar({
+          titulo: 'Qualificação do Falecido',
+          mensagem: 'Nome completo do proprietário falecido (autor da herança):'
+        });
+        if (falecido === null) return; // cancelou
         saveAs(
-          await gerarDeclaracaoEspolioDocx({ imovel, tecnico, dataExtenso: dataPorExtenso() }),
+          await gerarDeclaracaoEspolioDocx({ imovel, tecnico, falecido, dataExtenso: dataPorExtenso() }),
           `Representacao de espolio - ${imovel.denominacao || 'imovel'}.docx`
         );
       }
