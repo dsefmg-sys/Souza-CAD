@@ -847,6 +847,7 @@ export default function Planta({
       if (hit) {
         const g = paraGeo(u);
         dragRef.current = { kind: 'objCorpo', id: o.id, dx: 0, dy: 0, lastGeo: { lat: g.lat, lon: g.lon } };
+        folhaLast.current = u;
         onSelecObjeto?.(o.id); captura(e); return;
       }
     }
@@ -1690,11 +1691,11 @@ export default function Planta({
               <line x1={svgAOffset.x} y1={svgAOffset.y} x2={svgBOffset.x} y2={svgBOffset.y} stroke={corCota} strokeWidth={espCota + (isMultiSelected ? 0.8 : 0)} style={{ pointerEvents: 'none' }} />
               {/* Texto paralelo à linha, deslocado perpendicularmente */}
               <text
-                x={mx} y={my}
+                x={0} y={0}
                 fontSize={fsCota} textAnchor="middle" dominantBaseline="central"
                 fill={o.corFonte ?? corCota} fontWeight="bold"
                 paintOrder="stroke" stroke="#fff" strokeWidth={fsCota * 0.35} strokeLinejoin="round"
-                transform={`rotate(${angDeg.toFixed(1)}, ${mx.toFixed(1)}, ${my.toFixed(1)}) translate(0, ${perpOff.toFixed(1)})`}
+                transform={`translate(${mx.toFixed(1)}, ${my.toFixed(1)}) rotate(${angDeg.toFixed(1)}) translate(0, ${perpOff.toFixed(1)})`}
                 style={{ pointerEvents: 'none' }}
               >{numBR(distanciaCota(o))} m</text>
             </g>
