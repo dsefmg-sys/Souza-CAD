@@ -6,8 +6,8 @@ export function novoObjetoId(): string {
   return `o_${Date.now().toString(36)}_${_seq}`;
 }
 
-export function novaPolilinha(pontos: PontoLL[], opts: { cor?: string; espessura?: number; preenchido?: boolean; tracejado?: boolean } = {}): ObjetoDesenho {
-  return { id: novoObjetoId(), tipo: 'polilinha', pontos, cor: opts.cor ?? '#2563eb', espessura: opts.espessura ?? 1.5, preenchido: opts.preenchido, tracejado: opts.tracejado };
+export function novaPolilinha(pontos: PontoLL[], opts: { cor?: string; espessura?: number; preenchido?: boolean; tracejado?: boolean; estiloLinha?: string } = {}): ObjetoDesenho {
+  return { id: novoObjetoId(), tipo: 'polilinha', pontos, cor: opts.cor ?? '#2563eb', espessura: opts.espessura ?? 1.5, preenchido: opts.preenchido, tracejado: opts.tracejado, estiloLinha: opts.estiloLinha ?? (opts.tracejado ? 'tracejado' : 'solido') };
 }
 
 /** Cor sépia/marrom clássica de carta topográfica para as curvas de nível. */
