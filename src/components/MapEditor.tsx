@@ -1628,6 +1628,17 @@ export default function MapEditor(props: Props) {
               key={`conf-seg-${v.id}`}
               positions={[a, b]}
               pathOptions={{ color: corConf, weight: estilosCamadas.divisas?.espessura ? estilosCamadas.divisas.espessura * 2.2 : 8, opacity: 0.95, dashArray: '6 8' }}
+              eventHandlers={{
+                contextmenu: (e) => {
+                  L.DomEvent.stopPropagation(e.originalEvent);
+                  e.originalEvent.preventDefault();
+                  onContextMenuDivisa?.(v, idxOriginal, e.originalEvent.clientX, e.originalEvent.clientY);
+                },
+                click: (e) => {
+                  L.DomEvent.stopPropagation(e.originalEvent);
+                  onContextMenuDivisa?.(v, idxOriginal, e.originalEvent.clientX, e.originalEvent.clientY);
+                },
+              }}
             >
               <Tooltip sticky direction="top" opacity={0.9}>
                 <span className="font-bold" style={{ color: corConf }}>Confrontante: {conf.nome || '(sem nome)'}</span>

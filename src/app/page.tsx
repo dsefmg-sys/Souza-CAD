@@ -7484,6 +7484,18 @@ export default function EditorPage() {
                   <option value="">— Sem confrontante —</option>
                   {confrontantes.map((c) => <option key={c.id} value={c.id}>{c.nome || '(sem nome)'}</option>)}
                 </select>
+
+                {confrontantePorLado[menuContexto.verticeIdx ?? -1] && (
+                  <>
+                    <div className="border-t my-1" />
+                    <button
+                      className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent text-destructive"
+                      onClick={() => { definirConfrontanteLado(menuContexto.verticeIdx ?? -1, ''); setMenuContexto(null); }}
+                    >
+                      <Trash2 className="size-3.5" /> Apagar confrontante deste lado
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -8265,7 +8277,11 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         </datalist>
       </div>
       <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} aviso={avisoDoc(imovel.cpfProprietario)} />
-      
+      <div className="grid grid-cols-2 gap-2">
+        <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
+        <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} aviso={avisoDoc(imovel.cpfConjugeProprietario)} />
+      </div>
+
       {/* Comprador (para compra e venda / transferências) */}
       <div className="flex items-center justify-between">
         <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Comprador (se houver)</Label>
@@ -8294,10 +8310,6 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         <Campo label="CPF/CNPJ do comprador" value={imovel.cpfComprador ?? ''} onChange={(v) => set('cpfComprador', v)} aviso={avisoDoc(imovel.cpfComprador)} />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
-        <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} aviso={avisoDoc(imovel.cpfConjugeProprietario)} />
-      </div>
 
       {/* Papel do proprietário na cadeia dominial — decide como ele assina as peças. */}
       <div className="space-y-1">

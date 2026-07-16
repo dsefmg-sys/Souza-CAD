@@ -4,6 +4,7 @@ import { grausParaDMS } from '../topo/coords';
 import { numBR, formatMatricula } from '../topo/geometry';
 import { escaparXml } from './sanitizar';
 import { obterTipoLimiteEfetivo } from '../topo/sigefVocab';
+import { iniciarDoNorteHorario } from '../topo/vertices';
 
 // Preenche o template oficial do SIGEF (ODS) sem recriar abas/validações:
 //  - regenera as linhas de vértice da aba "perimetro_1";
@@ -257,9 +258,20 @@ export function linhasConferencia(
 function linhasDaGleba(g: GlebaSigef, tecnico: TecnicoData, cnsImovel: string): string[] {
   const sem = g.res.vertices.filter((v) => !v.codigoSigef).length;
   if (sem > 0) throw new Error(`${sem} vértice(s) sem código. Renumere os vértices antes de gerar a planilha.`);
+
+  // O SIGEF exige que o primeiro vértice seja o mais ao norte e a oeste.
+  // Rotaciona os vértices e re-indexa confrontantePorLado para manter correspondência.
+  const ordenados = iniciarDoNorteHorario(g.res.vertices);
+  const idxOriginal = ordenados.map((v) => g.res.vertices.indexOf(v));
+  const cplReindexado: Record<number, string> = {};
+  idxOriginal.forEach((origIdx, novoIdx) => {
+    const cid = g.confrontantePorLado[origIdx];
+    if (cid) cplReindexado[novoIdx] = cid;
+  });
+
   const mapaC = new Map(g.confrontantes.map((c) => [c.id, c]));
-  return g.res.vertices.map((v, i) => {
-    const cid = g.confrontantePorLado[i] ?? null;
+  return ordenados.map((v, i) => {
+    const cid = cplReindexado[i] ?? null;
     return linhaVertice(v, cid ? mapaC.get(cid) : undefined, tecnico, cnsImovel, g.imoveisCadastrados);
   });
 }
