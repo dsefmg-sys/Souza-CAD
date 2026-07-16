@@ -94,18 +94,16 @@ export default function MemorialPreviewModal({
       setCopiouNarrativa(true);
       setTimeout(() => setCopiouNarrativa(false), 2000);
     } else {
-      if (papelRef.current) {
-        texto = papelRef.current.innerText;
-      } else {
-        // Monta o memorial descritivo completo em texto simples formatado
+      {
         const rot = rotulosProfissional(tecnico);
         const ehUrbano = imovel.tipoImovel === 'urbano';
+        const labelArea = ehUrbano ? 'Área SGL (m²):' : 'Área SGL (ha):';
+        const valArea = ehUrbano ? `${numBR(ef.areaHa * 10000)} m²` : `${numBR(ef.areaHa, 4)} ha`;
         
         texto = `${ehServidao ? 'MEMORIAL DESCRITIVO DE SERVIDÃO' : 'MEMORIAL DESCRITIVO'}\n\n`;
-        texto += `Denominação: ${imovel.denominacao || '—'}\n`;
-        texto += `Proprietário: ${imovel.proprietario || '—'} (CPF: ${imovel.cpfProprietario || '—'})\n`;
-        texto += `Município/UF: ${imovel.municipio || '—'}\n`;
-        texto += `Área: ${numBR(ef.areaHa, 4)} ha   |   Perímetro: ${numBR(ef.perimetro)} m\n\n`;
+        texto += `Imóvel: ${(imovel.denominacao || '—').padEnd(46)} Matrícula: ${imovel.matricula || '—'}\n`;
+        texto += `${labelArea} ${(valArea).padEnd(40)} Perímetro (m): ${numBR(ef.perimetro)} m\n`;
+        texto += `Proprietário(a): ${(imovel.proprietario || '—').padEnd(38)} TRT: ${imovel.numeroTrt || tecnico?.art || '—'}\n\n`;
         
         if (ehServidao) {
           texto += `${getMod('servidaoIntro')}\n\n`;
@@ -116,8 +114,8 @@ export default function MemorialPreviewModal({
         
         texto += `INFORMAÇÕES TÉCNICAS\n`;
         texto += `${getMod(ehUrbano ? 'memorialInfoTecnicasUrbano' : 'memorialInfoTecnicas')}\n\n`;
-        texto += `OBSERVAÇÕES\n`;
-        texto += `${getMod(ehUrbano ? 'memorialObservacoesUrbano' : 'memorialObservacoes')}\n\n`;
+        texto += `OBSERVAÇÕES:\n`;
+        texto += `${getMod(ehUrbano ? 'memorialObservacoesUrbano' : 'memorialObservacoes').replace(/^\s*OBSERVAÇÕES:\s*/i, '')}\n\n`;
         
         texto += `${imovel.municipio || tecnico.cidadeAssinatura}, ${dataExtenso}.\n\n`;
         texto += `________________________________________\n`;
@@ -171,9 +169,9 @@ export default function MemorialPreviewModal({
           </div>
         </DialogHeader>
 
-        {/* Papel A4 Virtual com Scroll */}
-        <div className="flex-1 overflow-y-auto bg-neutral-100 dark:bg-neutral-950 p-4 md:p-8 flex justify-center">
-          <div ref={papelRef} contentEditable suppressContentEditableWarning className="bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 w-full max-w-[800px] shadow-lg rounded-md border border-neutral-200 dark:border-neutral-700 p-8 md:p-12 font-serif text-[13px] leading-relaxed space-y-6 outline-none focus:ring-1 focus:ring-amber-500/30">
+        {/* Papel A4 Virtual com Scroll - Blends in with dialog background to avoid weird rectangle */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 flex justify-center bg-background">
+          <div ref={papelRef} contentEditable suppressContentEditableWarning className="text-foreground w-full max-w-[800px] font-serif text-[13px] leading-relaxed space-y-8 outline-none focus:ring-1 focus:ring-amber-500/30">
             
             {/* Aviso de Demonstração */}
             {imovel.ficticio && (
@@ -189,15 +187,35 @@ export default function MemorialPreviewModal({
               </h2>
             </div>
 
-            {/* Identificação em texto simples (sem moldura), espelhando o DOCX */}
-            <div className="space-y-0.5">
-              <div><strong>Imóvel:</strong> {imovel.denominacao || '—'}</div>
-              <div><strong>Matrícula:</strong> {imovel.matricula || '—'} (CNS: {imovel.cns || '—'})</div>
-              <div><strong>Proprietário(a):</strong> {imovel.proprietario || '—'}</div>
-              <div><strong>Área SGL (ha):</strong> {numBR(ef.areaHa, 4)} ha</div>
-              <div><strong>Local:</strong> {imovel.local || imovel.municipio || '—'}</div>
-              <div><strong>Perímetro (m):</strong> {numBR(ef.perimetro)} m</div>
-            </div>
+            {/* Identificação em tabela de duas colunas, espelhando o DOCX */}
+            <table className="w-full text-[13px] border-collapse my-4" style={{ border: 'none' }}>
+              <tbody>
+                <tr>
+                  <td className="py-1 pr-4" style={{ width: '60%', border: 'none', verticalAlign: 'top' }}>
+                    <strong>Imóvel:</strong> {imovel.denominacao || '—'}
+                  </td>
+                  <td className="py-1" style={{ width: '40%', border: 'none', verticalAlign: 'top' }}>
+                    <strong>Matrícula:</strong> {imovel.matricula || '—'} {imovel.cns && `(CNS: ${imovel.cns})`}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-4" style={{ border: 'none', verticalAlign: 'top' }}>
+                    <strong>Área SGL (ha):</strong> {numBR(ef.areaHa, 4)} ha
+                  </td>
+                  <td className="py-1" style={{ border: 'none', verticalAlign: 'top' }}>
+                    <strong>Perímetro (m):</strong> {numBR(ef.perimetro)} m
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-4" style={{ border: 'none', verticalAlign: 'top' }}>
+                    <strong>Proprietário(a):</strong> {imovel.proprietario || '—'}
+                  </td>
+                  <td className="py-1" style={{ border: 'none', verticalAlign: 'top' }}>
+                    <strong>TRT:</strong> {imovel.numeroTrt || tecnico?.art || '—'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
             {/* Abertura de Servidão se houver */}
             {ehServidao && (
@@ -223,7 +241,7 @@ export default function MemorialPreviewModal({
             </div>
 
             {/* Informações Técnicas e Observações */}
-            <div className="space-y-4 pt-2">
+            <div className="space-y-6 pt-2">
               <div className="space-y-2">
                 <h3 className="font-bold text-center uppercase tracking-wider text-[11px]">
                   INFORMAÇÕES TÉCNICAS
@@ -234,10 +252,10 @@ export default function MemorialPreviewModal({
               </div>
               <div className="space-y-2">
                 <h3 className="font-bold text-center uppercase tracking-wider text-[11px]">
-                  OBSERVAÇÕES
+                  OBSERVAÇÕES:
                 </h3>
                 <p className="text-justify whitespace-pre-wrap">
-                  {getMod(imovel.tipoImovel === 'urbano' ? 'memorialObservacoesUrbano' : 'memorialObservacoes')}
+                  {getMod(imovel.tipoImovel === 'urbano' ? 'memorialObservacoesUrbano' : 'memorialObservacoes').replace(/^\s*OBSERVAÇÕES:\s*/i, '')}
                 </p>
               </div>
             </div>
@@ -251,7 +269,7 @@ export default function MemorialPreviewModal({
 
             {/* Assinatura do Técnico */}
             {tecnico && (
-              <div className="text-center pt-6 space-y-1 max-w-sm mx-auto">
+              <div className="text-center pt-12 space-y-1 max-w-sm mx-auto">
                 <div className="border-t border-neutral-400 pt-1.5 font-bold uppercase">
                   {tecnico.nome}
                 </div>
@@ -265,11 +283,11 @@ export default function MemorialPreviewModal({
             )}
 
             {/* Assinatura dos Proprietários */}
-            <div className="pt-6 space-y-4">
+            <div className="pt-12 space-y-4">
               <h4 className="font-bold text-center uppercase text-[10px] tracking-wider">PROPRIETÁRIOS</h4>
               <p className="text-justify whitespace-pre-wrap text-neutral-500 text-[10px]">{getMod('declProprietario')}</p>
               
-              <div className="grid grid-cols-2 gap-8 pt-4">
+              <div className="grid grid-cols-2 gap-8 pt-10">
                 <div className="text-center space-y-1">
                   <div className="border-t border-neutral-400 pt-1.5 font-semibold">
                     {imovel.proprietario || 'Proprietário'}
@@ -282,7 +300,7 @@ export default function MemorialPreviewModal({
                 {(imovel.conjugeProprietario || transmitente?.conjugeNome) && (
                   <div className="text-center space-y-1">
                     <div className="border-t border-neutral-400 pt-1.5 font-semibold">
-                      {imovel.conjugeProprietario || transmitente?.conjugeNome}
+                       {imovel.conjugeProprietario || transmitente?.conjugeNome}
                     </div>
                     <div className="text-[10px] text-neutral-500">
                       Cônjuge | CPF: {imovel.cpfConjugeProprietario || transmitente?.conjugeCpf || '—'}
@@ -294,11 +312,11 @@ export default function MemorialPreviewModal({
 
             {/* Assinatura dos Compradores (se houver) */}
             {imovel.comprador && (
-              <div className="pt-6 space-y-4">
+              <div className="pt-12 space-y-4">
                 <h4 className="font-bold text-center uppercase text-[10px] tracking-wider">COMPRADORES</h4>
                 <p className="text-justify whitespace-pre-wrap text-neutral-500 text-[10px]">{getMod('declProprietario')}</p>
                 
-                <div className="grid grid-cols-2 gap-8 pt-4">
+                <div className="grid grid-cols-2 gap-8 pt-10">
                   <div className="text-center space-y-1">
                     <div className="border-t border-neutral-400 pt-1.5 font-semibold">
                       {imovel.comprador}
@@ -323,11 +341,11 @@ export default function MemorialPreviewModal({
 
             {/* Assinatura dos Confrontantes */}
             {confrontantes.filter(c => c.nome).length > 0 && (
-              <div className="pt-6 space-y-4">
+              <div className="pt-12 space-y-4">
                 <h4 className="font-bold text-center uppercase text-[10px] tracking-wider">CONFRONTANTES</h4>
                 <p className="text-justify whitespace-pre-wrap text-neutral-500 text-[10px]">{getMod('declConfrontantes')}</p>
                 
-                <div className="grid grid-cols-2 gap-x-8 gap-y-10 pt-4">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-12 pt-10">
                   {confrontantes.filter(c => c.nome).map((c, idx) => {
                     const cond = c.condicao ?? 'proprietario';
                     let descCond = 'Proprietário(a)';

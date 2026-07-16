@@ -262,7 +262,7 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   assina([tecnico.nome, `${rotProf.registro} ${tecnico.cft} - INCRA: ${tecnico.credenciamentoIncra}`]);
 
   const doc = new Document({
-    styles: { default: { document: { run: { font: 'Times New Roman' } } } },
+    styles: { default: { document: { run: { font: 'Arial' } } } },
     sections: [{ properties: { page: { margin: { top: 1133, bottom: 1133, left: 1133, right: 1133 } } }, children: c }],
   });
   const blob = await Packer.toBlob(doc);

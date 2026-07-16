@@ -1,11 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   ChevronLeft, ChevronRight, CircleCheck, MessageCircle, GraduationCap,
-  Sparkles, Play, Pause, Square, BookUser,
+  Sparkles, Play, Pause, Square, BookUser, X, Volume2
 } from 'lucide-react';
 import { carregarWhatsappSuporte, linkWhatsapp } from '@/lib/store/suporte';
 import { TEMAS_AJUDA } from '@/lib/ajuda/temas';
@@ -42,6 +39,52 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   // pra descartar callbacks (onend/onvoiceschanged) de uma fala antiga que já não vale mais.
   const audioSessaoRef = useRef(0);
 
+  const [ouvirTudo, setOuvirTudo] = useState(false);
+  const ouvirTudoRef = useRef(false);
+
+  const avancarPassoAutoplayRef = useRef<() => void>(() => {});
+  const falarTextoRef = useRef<(texto: string) => Promise<void>>(async () => {});
+
+  const avancarPassoAutoplay = useCallback(() => {
+    if (!ouvirTudoRef.current) return;
+    setPasso((p) => {
+      const passosArr = modo === 'completo' ? [...PASSOS_BASE, ...PASSOS_AVANCADOS] : PASSOS_BASE;
+      const proximo = p + 1;
+      if (proximo < passosArr.length) {
+        const proxP = passosArr[proximo];
+        setTimeout(() => {
+          if (proxP.audioUrl) {
+            setTipoAudio('gravado');
+            const audio = audioRef.current;
+            if (audio) {
+              audio.src = proxP.audioUrl;
+              audio.load();
+              audio.play().then(() => {
+                setFalando(true);
+                setPausado(false);
+              }).catch(() => {
+                setTipoAudio('tts');
+                falarTextoRef.current(proxP.texto);
+              });
+            }
+          } else {
+            setTipoAudio('tts');
+            falarTextoRef.current(proxP.texto);
+          }
+        }, 1000);
+        return proximo;
+      } else {
+        ouvirTudoRef.current = false;
+        setOuvirTudo(false);
+        return p;
+      }
+    });
+  }, [modo]);
+
+  useEffect(() => {
+    avancarPassoAutoplayRef.current = avancarPassoAutoplay;
+  }, [avancarPassoAutoplay]);
+
   function pararAudio() {
     audioSessaoRef.current += 1;
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -51,6 +94,8 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
+    ouvirTudoRef.current = false;
+    setOuvirTudo(false);
     setFalando(false);
     setPausado(false);
     setErroAudio('');
@@ -71,7 +116,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     });
   }
 
-  async function falarTexto(texto: string) {
+  const falarTexto = useCallback(async (texto: string) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
 
@@ -91,6 +136,9 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
       if (indice >= frases.length) {
         setFalando(false);
         setPausado(false);
+        if (ouvirTudoRef.current) {
+          avancarPassoAutoplayRef.current();
+        }
         return;
       }
       const utterance = new SpeechSynthesisUtterance(frases[indice]);
@@ -110,7 +158,11 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     };
 
     falarFrase(0);
-  }
+  }, []);
+
+  useEffect(() => {
+    falarTextoRef.current = falarTexto;
+  }, [falarTexto]);
 
   const ultimoTextoRef = useRef('');
 
@@ -221,12 +273,18 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => alternarAudio(texto, audioUrl)}
+          onClick={() => {
+            if (ouvirTudo) {
+              pararAudio();
+            } else {
+              alternarAudio(texto, audioUrl);
+            }
+          }}
           className="h-8 gap-1.5 px-3 font-semibold text-xs transition-colors hover:bg-muted"
         >
           {falando && !pausado ? (
             <>
-              <Pause className="size-3.5 text-amber-500 fill-amber-500" /> Pausar áudio
+              <Pause className="size-3.5 text-amber-500 fill-amber-500" /> {ouvirTudo ? 'Parar tudo' : 'Pausar áudio'}
             </>
           ) : (
             <>
@@ -247,11 +305,18 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
           </Button>
         )}
       </div>
-      {falando && (
-        <span className="text-[10px] font-semibold text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border/60">
-          {tipoAudio === 'gravado' ? '🎙️ Narração Gravada' : '🤖 Síntese de Voz'}
-        </span>
-      )}
+      <div className="flex items-center gap-1.5">
+        {ouvirTudo && (
+          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full animate-pulse">
+            🔁 Ouvindo Tudo
+          </span>
+        )}
+        {falando && (
+          <span className="text-[10px] font-semibold text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border/60">
+            {tipoAudio === 'gravado' ? '🎙️ Narração Gravada' : '🤖 Síntese de Voz'}
+          </span>
+        )}
+      </div>
     </div>
   );
 
@@ -262,13 +327,20 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     </a>
   );
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col">
+    <div className="no-print fixed bottom-16 right-4 z-[1250] w-[360px] md:w-[420px] flex flex-col bg-background/95 backdrop-blur-md shadow-2xl rounded-2xl border border-border/80 p-4 transition-all duration-300 max-h-[75vh] overflow-y-auto scroll-fino">
+      {/* Botão fechar flutuante */}
+      <button type="button" onClick={() => onOpenChange(false)} className="absolute top-3 right-3 z-20 rounded-full bg-background/80 p-1.5 text-muted-foreground hover:text-foreground shadow-sm border border-border/40 hover:bg-muted" title="Fechar tutorial">
+        <X className="size-4" />
+      </button>
+
+      <div className="flex flex-col gap-3">
         {tela === 'menu' && (
           <>
             {/* Banner de boas-vindas com a textura do campo (arte da marca) */}
-            <div className="relative -mx-5 -mt-5 mb-1 h-24 overflow-hidden rounded-t-lg">
+            <div className="relative -mx-4 -mt-4 mb-1 h-24 overflow-hidden rounded-t-2xl">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/marca/fundo-campo.png" alt="" aria-hidden className="absolute inset-0 size-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#0a1f14]/90 via-[#0a1f14]/60 to-transparent" />
@@ -277,7 +349,6 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
                 <p className="text-xs text-white/85 drop-shadow">Bem-vindo ao Souza CAD — aprenda no seu ritmo.</p>
               </div>
             </div>
-            <DialogHeader className="sr-only"><DialogTitle>Central de ajuda</DialogTitle></DialogHeader>
             {seletorNivel}
 
             <div className="rounded-lg border p-3 bg-muted/20">
@@ -305,6 +376,36 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
               )}
             </div>
 
+            {/* Bloco Ouvir Tudo */}
+            <div className="rounded-lg border p-3 bg-amber-500/10 border-amber-500/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-bold text-amber-700 dark:text-amber-400"><Volume2 className="size-4 shrink-0" /> Ouvir Tudo (Autoplay)</div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Reproduz todos os áudios do tutorial passo a passo na sequência.</p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setTela('passos');
+                    setPasso(0);
+                    ouvirTudoRef.current = true;
+                    setOuvirTudo(true);
+                    const pFirst = passos[0];
+                    alternarAudio(pFirst.texto, pFirst.audioUrl);
+                  }}
+                  className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors border-amber-500/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400"
+                >
+                  {ouvirTudo ? (
+                    <><Pause className="size-3 text-amber-500 fill-amber-500" /> Parar</>
+                  ) : (
+                    <><Play className="size-3 text-amber-500 fill-amber-500" /> Iniciar</>
+                  )}
+                </Button>
+              </div>
+            </div>
+
             <button type="button" onClick={() => { setPasso(0); setTela('passos'); }}
               className="rounded-lg border p-3 text-left hover:bg-muted/50">
               <div className="flex items-center gap-2 text-sm font-semibold"><CircleCheck className="size-4 text-primary" /> Tutorial passo a passo</div>
@@ -321,11 +422,9 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
 
         {tela === 'passos' && (
           <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base">
-                <Icone className="size-5 text-primary" /> {p.titulo}
-              </DialogTitle>
-            </DialogHeader>
+            <div className="flex items-center gap-2 text-base font-bold pb-2 border-b mb-1">
+              <Icone className="size-5 text-primary" /> {p.titulo}
+            </div>
             {audioControls(p.texto, p.audioUrl)}
             <p className="text-sm leading-relaxed text-muted-foreground">{p.texto}</p>
             {modo === 'simples' && noFimDoBasico && (
@@ -358,9 +457,9 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
 
         {tela === 'aprenderMais' && (
           <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base"><GraduationCap className="size-5 text-primary" /> Deseja aprender mais?</DialogTitle>
-            </DialogHeader>
+            <div className="flex items-center gap-2 text-base font-bold pb-2 border-b mb-1">
+              <GraduationCap className="size-5 text-primary" /> Deseja aprender mais?
+            </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Tem muito mais dica por aqui: explicações de cada área do trabalho — SIGEF, fuso, confrontantes, memorial, planta, requerimento — no seu nível de experiência.
             </p>
@@ -373,9 +472,9 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
 
         {tela === 'temas' && (
           <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base"><BookUser className="size-5 text-primary" /> Aprender por tema</DialogTitle>
-            </DialogHeader>
+            <div className="flex items-center gap-2 text-base font-bold pb-2 border-b mb-1">
+              <BookUser className="size-5 text-primary" /> Aprender por tema
+            </div>
             {seletorNivel}
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
               {TEMAS_AJUDA.map((t) => (
@@ -394,9 +493,9 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
 
         {tela === 'tema' && tema && (
           <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base"><BookUser className="size-5 text-primary" /> {tema.titulo}</DialogTitle>
-            </DialogHeader>
+            <div className="flex items-center gap-2 text-base font-bold pb-2 border-b mb-1">
+              <BookUser className="size-5 text-primary" /> {tema.titulo}
+            </div>
             {seletorNivel}
             {audioControls(
               nivel === 'iniciante' ? tema.iniciante : tema.experiente,
@@ -417,6 +516,9 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
           onEnded={() => {
             setFalando(false);
             setPausado(false);
+            if (ouvirTudoRef.current) {
+              avancarPassoAutoplay();
+            }
           }}
           onError={() => {
             console.warn('Erro ao carregar o áudio gravado.');
@@ -430,7 +532,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             }
           }}
         />
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

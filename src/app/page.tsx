@@ -183,6 +183,7 @@ const COR_VIZINHO = 'bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:b
 const COR_DADOS = 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-800 text-white border-transparent'; // cadastro e IA
 const COR_MARCAR = 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white border-transparent';    // marcar no mapa
 const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída — cor de ação principal (verde da marca)
+const COR_ATIVO = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent shadow-xs'; // botões ativos da lateral esquerda
 const PREM_BTN = 'shadow-xs hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 font-bold border rounded-lg';
 
 type EtapaEstado = 'feito' | 'andamento' | 'pendente';
@@ -351,7 +352,7 @@ export default function EditorPage() {
     });
   };
   const [menuContexto, setMenuContexto] = useState<{
-    tipo: 'texto' | 'vertice' | 'divisa' | 'mapa' | 'objeto' | 'confrontante';
+    tipo: 'texto' | 'vertice' | 'divisa' | 'mapa' | 'objeto' | 'confrontante' | 'parcelaCert';
     x: number;
     y: number;
     id?: string;
@@ -857,6 +858,9 @@ export default function EditorPage() {
   const [gestaoAberta, setGestaoAberta] = useState(false);
   const [precoSugAberto, setPrecoSugAberto] = useState(false);
   const [tutorialAberto, setTutorialAberto] = useState(false);
+  const [corCert, setCorCert] = useState('#06b6d4');
+  const [corBordaCert, setCorBordaCert] = useState('#0891b2');
+  const [espessuraCert, setEspessuraCert] = useState(1.4);
   const [assinaturaAberta, setAssinaturaAberta] = useState(false);
   // A CHAVE do app: 'simples' (tela enxuta, ideal pra aprender) x 'completo' (tudo à mostra).
   // Novo usuário começa no simples. Fica salvo nas preferências e vale no app inteiro.
@@ -1418,6 +1422,16 @@ export default function EditorPage() {
           if (['linha', 'polilinha', 'tracejado', 'cota', 'retangulo', 'arco'].includes(refUltimaFerramenta.current)) {
             setDesenhoBuffer([]);
           }
+        }
+      }
+      else if (k === 'Enter') {
+        if ((modo === 'polilinha' || modo === 'tracejado') && desenhoBuffer.length >= 2) {
+          e.preventDefault();
+          snap();
+          const buf = desenhoBuffer;
+          setDesenhoBuffer([]);
+          setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
+          aviso(modo === 'tracejado' ? 'Tracejado adicionado.' : 'Polilinha adicionada.');
         }
       }
       else if (k === 'Escape') {
@@ -2725,7 +2739,7 @@ export default function EditorPage() {
       setObjetos((os) => [...os, novoSimbolo(p, simboloSel)]);
       return;
     } else if (modo === 'texto') {
-      const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' }); if (!t) return;
+      const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:', multiline: true }); if (!t) return;
       snap();
       setObjetos((os) => [...os, novoTexto(p, t)]);
     } else if (modo === 'cota') {
@@ -2734,19 +2748,17 @@ export default function EditorPage() {
         if (nb.length >= 2) { snap(); setObjetos((os) => [...os, novaCota(nb[0], nb[1])]); return []; }
         return nb;
       });
-    } else if (modo === 'linha' || modo === 'tracejado') {
-      // linha = traço reto de 2 pontos (fecha sozinho no 2º clique). Tracejado é IDÊNTICO à linha —
-      // mesmo fluxo, mesma cor/espessura padrão — só troca o estilo do traço pra tracejado. Antes
-      // ficava agrupado com a ferramenta "medir" (que nunca cria objeto, só mede na tela), por isso
-      // os pontos ficavam acumulando no buffer sem nunca virar uma linha de verdade.
+    } else if (modo === 'linha') {
+      // linha = traço reto de 2 pontos (fecha sozinho no 2º clique)
       setDesenhoBuffer((buf) => {
         const nb = [...buf, p];
-        if (nb.length >= 2) { snap(); setObjetos((os) => [...os, novaPolilinha(nb, modo === 'tracejado' ? { tracejado: true } : {})]); return []; }
+        if (nb.length >= 2) { snap(); setObjetos((os) => [...os, novaPolilinha(nb)]); return []; }
         return nb;
       });
-    } else if (modo === 'polilinha') {
-      // polilinha = vários pontos; ao CLICAR PERTO DO 1º ponto, fecha e vira polígono (preenchido)
-      if (desenhoBuffer.length >= 3) {
+    } else if (modo === 'polilinha' || modo === 'tracejado') {
+      // polilinha ou tracejado = vários pontos.
+      // No caso da polilinha (que vira polígono se fechar): ao CLICAR PERTO DO 1º ponto, fecha.
+      if (modo === 'polilinha' && desenhoBuffer.length >= 3) {
         const first = desenhoBuffer[0];
         const lats = desenhoBuffer.map((q) => q.lat), lons = desenhoBuffer.map((q) => q.lon);
         const ext = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons)) || 0.0005;
@@ -3452,6 +3464,18 @@ export default function EditorPage() {
   }
 
   async function baixarRequerimentoDireto() {
+    if (!requerente || !requerente.nome) {
+      const resp = await confirmar({
+        titulo: 'Requerimento com dados incompletos',
+        mensagem: 'Os dados do requerente ainda não foram preenchidos. Deseja abrir o formulário para completá-los agora antes de baixar o documento?',
+        okLabel: 'Abrir Formulário',
+        cancelLabel: 'Baixar assim mesmo'
+      });
+      if (resp) {
+        setReqAberto(true);
+        return;
+      }
+    }
     setProcessando(true);
     try {
       const resReq = await fetch('/api/export/requerimento', {
@@ -3587,6 +3611,18 @@ export default function EditorPage() {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     if (!(await verificarConciliacaoSigef())) return;
     if (!(await verificarProntoParaExportar())) return;
+    if (!requerente || !requerente.nome) {
+      const resp = await confirmar({
+        titulo: 'Requerimento com dados incompletos',
+        mensagem: 'Os dados do requerente no Requerimento ainda não foram preenchidos. Deseja abrir o formulário para completá-los antes de baixar o pacote de entrega?',
+        okLabel: 'Abrir Formulário',
+        cancelLabel: 'Baixar assim mesmo'
+      });
+      if (resp) {
+        setReqAberto(true);
+        return;
+      }
+    }
     setProcessando(true);
     aviso('Montando o pacote de entrega (memorial, planilha, requerimento e planta)…');
     try {
@@ -5134,9 +5170,19 @@ export default function EditorPage() {
                   <div className="fixed inset-0 z-[1290]" onClick={() => setPecasMenuAberto(false)} />
                   <div style={{ position: 'fixed', top: pecasMenuPos.top, right: pecasMenuPos.right }} className="z-[1300] w-64 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1.5 shadow-2xl backdrop-blur-xl space-y-1">
                     {/* Botão Baixar Tudo no topo do dropdown desktop */}
-                    <button type="button" onClick={() => { setPecasMenuAberto(false); baixarPacoteEntrega(); }}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 px-3 py-2 text-center text-xs font-bold text-emerald-700 dark:text-emerald-400 border border-emerald-600/20 transition-colors">
-                      <Archive className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> Baixar Tudo (Pacote ZIP)
+                    <button type="button" disabled={processando} onClick={() => { baixarPacoteEntrega(); }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 px-3 py-2 text-center text-xs font-bold text-amber-700 dark:text-amber-400 border border-amber-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      {processando ? (
+                        <>
+                          <RefreshCw className="size-3.5 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
+                          <span>Baixando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Archive className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                          <span>Baixar Tudo (Pacote ZIP)</span>
+                        </>
+                      )}
                     </button>
                     <div className="my-1 border-b border-zinc-200 dark:border-zinc-800" />
 
@@ -5321,11 +5367,11 @@ export default function EditorPage() {
                         <Button size="sm" variant="outline" onClick={salvar} disabled={processando} title="Salvar projeto atual (Ctrl+S)">
                           <Save className="text-emerald-500" /> <span>SALVAR</span>
                         </Button>
-                        <Button size="sm" variant={painelAberto ? 'default' : 'outline'} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
-                          <Settings className="text-indigo-500" /> <span>Dados</span>
+                        <Button size="sm" variant={painelAberto ? 'default' : 'outline'} className={painelAberto ? COR_ATIVO : ''} onClick={() => setPainelAberto((v) => !v)} title="Dados do projeto (proprietário, cartório, etc.)">
+                          <Settings className={painelAberto ? 'text-white' : 'text-indigo-500'} /> <span>Dados</span>
                         </Button>
-                        <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={infoJaVista(projetoId) ? '' : 'bg-amber-500 text-white hover:bg-amber-600'} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
-                          <FileText className="text-cyan-500" /> <span>Detalhes</span>
+                        <Button size="sm" variant={infoJaVista(projetoId) ? 'outline' : 'default'} className={infoJaVista(projetoId) ? '' : COR_ATIVO} onClick={() => setInfoAberto(true)} title="Detalhes do projeto e pendências">
+                          <FileText className={!infoJaVista(projetoId) ? 'text-white' : 'text-cyan-500'} /> <span>Detalhes</span>
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => (vista === 'mapa' ? centralizar() : ajustarPlanta())} title="Centralizar/enquadrar desenho">
                           <Target className="text-rose-500" /> <span>Foco</span>
@@ -5394,11 +5440,11 @@ export default function EditorPage() {
                                 <Redo2 className="size-3.5" />
                               </Button>
                             </div>
-                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className={`relative ${modo === 'navegar' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
+                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className={`relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
                               <MousePointer2 /> <span>Mover</span>
                               <Atalho k="F2" />
                             </Button>
-                            <Button size="sm" variant={orto !== 'off' ? 'default' : 'outline'} className={`relative ${orto !== 'off' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
+                            <Button size="sm" variant={orto !== 'off' ? 'default' : 'outline'} className={`relative ${orto !== 'off' ? COR_ATIVO : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
                               <Compass /> <span>{orto === 'off' ? 'Orto Off' : orto === '90' ? 'Orto 90°' : 'Polar 15°'}</span>
                             </Button>
                           </div>
@@ -5408,11 +5454,11 @@ export default function EditorPage() {
                               {bloqueado ? <Lock /> : <LockOpen />} <span>{bloqueado ? 'TRAVADO' : 'SOLTO'}</span>
                               <Atalho k="F5" />
                             </Button>
-                            <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar GRUDA no vértice mais próximo do imóvel (2 m). Bom para cotar de vértice a vértice ou fechar polilinha bem no canto. Se você não desenha perto dos vértices, deixe desligado.`} onClick={() => setSnapAtivo((s) => !s)} className={`relative ${snapAtivo ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}`}>
+                            <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar GRUDA no vértice mais próximo do imóvel (2 m). Bom para cotar de vértice a vértice ou fechar polilinha bem no canto. Se você não desenha perto dos vértices, deixe desligado.`} onClick={() => setSnapAtivo((s) => !s)} className={`relative ${snapAtivo ? COR_ATIVO : ''}`}>
                               <Magnet /> <span>Ímã</span>
                               <Atalho k="F3" />
                             </Button>
-                            <Button size="sm" variant={mostrarRotulos ? 'default' : 'outline'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? 'bg-sky-600 text-white hover:bg-sky-700' : ''}`}>
+                            <Button size="sm" variant={mostrarRotulos ? 'default' : 'outline'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
                               {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
                               <Atalho k="F4" />
                             </Button>
@@ -5428,11 +5474,11 @@ export default function EditorPage() {
                               <Redo2 className="size-3.5" />
                             </Button>
                           </div>
-                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className={`relative ${modo === 'navegar' ? 'bg-cyan-600 text-white hover:bg-cyan-700' : ''}`} title="Mover/editar: arrastar textos, rótulos e a folha (F1)" onClick={() => setModo('navegar')}>
+                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className={`relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/editar: arrastar textos, rótulos e a folha (F1)" onClick={() => setModo('navegar')}>
                             <MousePointer2 /> <span>Mover</span>
                             <Atalho k="F1" />
                           </Button>
-                          <Button size="sm" variant={orto !== 'off' ? 'default' : 'outline'} className={`relative ${orto !== 'off' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
+                          <Button size="sm" variant={orto !== 'off' ? 'default' : 'outline'} className={`relative ${orto !== 'off' ? COR_ATIVO : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
                             <Compass /> <span>{orto === 'off' ? 'Orto Off' : orto === '90' ? 'Orto 90°' : 'Polar 15°'}</span>
                           </Button>
                         </div>
@@ -5463,49 +5509,49 @@ export default function EditorPage() {
                           </div>
                         )}
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
-                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} className="relative" onClick={() => alternarModo('linha', true)} title="Linha reta: clique 2 pontos (F6)">
-                            <PenTool className="text-amber-500 shrink-0" /> <span className="truncate">Linha</span>
+                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} className={`relative ${modo === 'linha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('linha', true)} title="Linha reta: clique 2 pontos (F6)">
+                            <PenTool className={modo === 'linha' ? 'text-white shrink-0' : 'text-amber-500 shrink-0'} /> <span className="truncate">Linha</span>
                             <Atalho k="F6" />
                           </Button>
-                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'outline'} className="relative" onClick={() => alternarModo('polilinha', true)} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
-                            <PenTool className="text-cyan-500 shrink-0" /> <span className="truncate">Polilinha</span>
+                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'outline'} className={`relative ${modo === 'polilinha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('polilinha', true)} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
+                            <PenTool className={modo === 'polilinha' ? 'text-white shrink-0' : 'text-cyan-500 shrink-0'} /> <span className="truncate">Polilinha</span>
                             <Atalho k="F7" />
                           </Button>
-                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'outline'} className="relative" onClick={() => alternarModo('tracejado', true)} title="Tracejado: linha tracejada aberta (F8)">
-                            <PenTool className="text-indigo-500 opacity-80 shrink-0" /> <span className="truncate">Tracejado</span>
+                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'outline'} className={`relative ${modo === 'tracejado' ? COR_ATIVO : ''}`} onClick={() => alternarModo('tracejado', true)} title="Tracejado: linha tracejada aberta (F8)">
+                            <PenTool className={modo === 'tracejado' ? 'text-white shrink-0' : 'text-indigo-500 opacity-80 shrink-0'} /> <span className="truncate">Tracejado</span>
                             <Atalho k="F8" />
                           </Button>
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} className="relative" onClick={() => alternarModo('texto')} title="Texto: clique para inserir (F9)">
-                            <FileText className="text-emerald-500 shrink-0" /> <span className="truncate">Texto</span>
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} onClick={() => alternarModo('texto')} title="Texto: clique para inserir (F9)">
+                            <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span className="truncate">Texto</span>
                             <Atalho k="F9" />
                           </Button>
-                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} className="relative" onClick={() => alternarModo('cota', true)} title="Cotar: clique dois pontos para medir (F10)">
-                            <IconeCota className="text-rose-500 shrink-0" /> <span className="truncate">Cota</span>
+                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} className={`relative ${modo === 'cota' ? COR_ATIVO : ''}`} onClick={() => alternarModo('cota', true)} title="Cotar: clique dois pontos para medir (F10)">
+                            <IconeCota className={modo === 'cota' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Cota</span>
                             <Atalho k="F10" />
                           </Button>
-                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'outline'} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
-                            <div className="shrink-0 text-sky-500"><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
+                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'outline'} className={modo === 'simbolo' ? COR_ATIVO : ''} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
+                            <div className={modo === 'simbolo' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'}><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
                             <span className="truncate">Símbolos</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'outline'} onClick={() => alternarModo('retangulo', true)} title="Retângulo: clique dois cantos opostos">
-                            <Square className="text-orange-500 shrink-0" /> <span className="truncate">Retângulo</span>
+                          <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'outline'} className={modo === 'retangulo' ? COR_ATIVO : ''} onClick={() => alternarModo('retangulo', true)} title="Retângulo: clique dois cantos opostos">
+                            <Square className={modo === 'retangulo' ? 'text-white shrink-0' : 'text-orange-500 shrink-0'} /> <span className="truncate">Retângulo</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'arco' ? 'default' : 'outline'} onClick={() => alternarModo('arco', true)} title="Arco: clique início, um ponto por onde passa e o fim">
-                            <Spline className="text-teal-500 shrink-0" /> <span className="truncate">Arco</span>
+                          <Button size="sm" variant={modo === 'arco' ? 'default' : 'outline'} className={modo === 'arco' ? COR_ATIVO : ''} onClick={() => alternarModo('arco', true)} title="Arco: clique início, um ponto por onde passa e o fim">
+                            <Spline className={modo === 'arco' ? 'text-white shrink-0' : 'text-teal-500 shrink-0'} /> <span className="truncate">Arco</span>
                           </Button>
                           {/* Geometria avançada de CAD — só no Completo (o Médio fica com o desenho do dia a dia) */}
                           {completo && (<>
-                          <Button size="sm" variant={modo === 'paralela' ? 'default' : 'outline'} onClick={() => alternarModo('paralela', true)} title="Paralela: criar linha paralela a uma divisa">
-                            <Waypoints className="text-violet-500 shrink-0" /> <span className="truncate">Paralela</span>
+                          <Button size="sm" variant={modo === 'paralela' ? 'default' : 'outline'} className={modo === 'paralela' ? COR_ATIVO : ''} onClick={() => alternarModo('paralela', true)} title="Paralela: criar linha paralela a uma divisa">
+                            <Waypoints className={modo === 'paralela' ? 'text-white shrink-0' : 'text-violet-500 shrink-0'} /> <span className="truncate">Paralela</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'dividir' ? 'default' : 'outline'} onClick={() => alternarModo('dividir')} title="Dividir: dividir um segmento de divisa em N partes iguais">
-                            <GitCommit className="text-purple-500 shrink-0" /> <span className="truncate">Dividir</span>
+                          <Button size="sm" variant={modo === 'dividir' ? 'default' : 'outline'} className={modo === 'dividir' ? COR_ATIVO : ''} onClick={() => alternarModo('dividir')} title="Dividir: dividir um segmento de divisa em N partes iguais">
+                            <GitCommit className={modo === 'dividir' ? 'text-white shrink-0' : 'text-purple-500 shrink-0'} /> <span className="truncate">Dividir</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'trim' ? 'default' : 'outline'} onClick={() => alternarModo('trim')} title="Aparar (Trim): cortar linhas no cruzamento de um limite">
-                            <Scissors className="text-rose-500 shrink-0" /> <span className="truncate">Aparar</span>
+                          <Button size="sm" variant={modo === 'trim' ? 'default' : 'outline'} className={modo === 'trim' ? COR_ATIVO : ''} onClick={() => alternarModo('trim')} title="Aparar (Trim): cortar linhas no cruzamento de um limite">
+                            <Scissors className={modo === 'trim' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Aparar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'extend' ? 'default' : 'outline'} onClick={() => alternarModo('extend')} title="Prolongar (Extend): estender uma linha até encontrar um limite">
-                            <Expand className="text-sky-500 shrink-0" /> <span className="truncate">Prolongar</span>
+                          <Button size="sm" variant={modo === 'extend' ? 'default' : 'outline'} className={modo === 'extend' ? COR_ATIVO : ''} onClick={() => alternarModo('extend')} title="Prolongar (Extend): estender uma linha até encontrar um limite">
+                            <Expand className={modo === 'extend' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'} /> <span className="truncate">Prolongar</span>
                           </Button>
                           </>)}
                           {modo === 'simbolo' && (
@@ -5614,7 +5660,7 @@ export default function EditorPage() {
                             <div className="col-span-2 grid grid-cols-3 gap-1 mt-1">
                               <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold font-mono">A-</span></Button>
                               <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold font-mono">A+</span></Button>
-                              <Button size="sm" variant="outline" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: objSel.texto ?? '' }); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5 text-cyan-500" /></Button>
+                              <Button size="sm" variant="outline" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: objSel.texto ?? '', multiline: true }); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5 text-cyan-500" /></Button>
                             </div>
                           )}
                           {objSel?.tipo === 'simbolo' && (
@@ -5903,18 +5949,18 @@ export default function EditorPage() {
 
                         {/* DXF e KML lado a lado */}
                         <div className="grid grid-cols-2 gap-1 mt-1.5">
-                          <div className={`flex items-center justify-between rounded-md border px-1.5 py-0.5 ${COR_IMPORT}`}>
+                          <div className={`flex items-center justify-between rounded-md border px-1.5 py-0.5 ${COR_PECA}`}>
                             <span className="text-[9px] font-bold shrink-0">DXF</span>
                             <div className="flex gap-0.5">
-                              <Button size="sm" variant="ghost" className="size-7 p-0" title="Exportar DXF" onClick={exportarDxf}><Download className="size-3.5" /></Button>
-                              <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Importar DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-3.5" /></Button>
+                              <Button size="sm" variant="ghost" className="size-7 p-0 hover:bg-emerald-700 hover:text-white" title="Exportar DXF" onClick={exportarDxf}><Download className="size-3.5" /></Button>
+                              <Button size="sm" variant="ghost" className="size-7 p-0 hover:bg-emerald-700 hover:text-white" disabled={processando} title="Importar DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-3.5" /></Button>
                             </div>
                           </div>
-                          <div className={`flex items-center justify-between rounded-md border px-1.5 py-0.5 ${COR_IMPORT}`}>
+                          <div className={`flex items-center justify-between rounded-md border px-1.5 py-0.5 ${COR_PECA}`}>
                             <span className="text-[9px] font-bold shrink-0">KML</span>
                             <div className="flex gap-0.5">
-                              <Button size="sm" variant="ghost" className="size-7 p-0" title="Exportar KML" onClick={() => exportarKML(vertices, imovel)}><Download className="size-3.5" /></Button>
-                              <Button size="sm" variant="ghost" className="size-7 p-0" disabled={processando} title="Importar KML" onClick={() => kmlRef.current?.click()}><Upload className="size-3.5" /></Button>
+                              <Button size="sm" variant="ghost" className="size-7 p-0 hover:bg-emerald-700 hover:text-white" title="Exportar KML" onClick={() => exportarKML(vertices, imovel)}><Download className="size-3.5" /></Button>
+                              <Button size="sm" variant="ghost" className="size-7 p-0 hover:bg-emerald-700 hover:text-white" disabled={processando} title="Importar KML" onClick={() => kmlRef.current?.click()}><Upload className="size-3.5" /></Button>
                             </div>
                           </div>
                         </div>
@@ -6384,8 +6430,8 @@ export default function EditorPage() {
                 <TutorialAudioPill />
                 <button type="button" onClick={() => setTutorialAberto(true)}
                   className="flex h-6 items-center gap-1 rounded-full border border-amber-500/60 bg-amber-500/10 px-2.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
-                  title="Tutorial em texto: passo a passo e temas de ajuda">
-                  <HelpCircle className="size-3" /> Guia
+                  title="Tutorial em áudio e texto: passo a passo e temas de ajuda">
+                  <HelpCircle className="size-3" /> Guia em Áudio
                 </button>
                 {(videosUrl || videosTutorial.length > 0) && (
                   <button type="button" onClick={() => setVideosListaAberta(true)}
@@ -6440,8 +6486,23 @@ export default function EditorPage() {
                 referencias={referencias}
                 parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho} verticesVizinho={verticesVizinho}
                 mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
+                corCert={corCert} corBordaCert={corBordaCert} espessuraCert={espessuraCert}
+                onContextMenuCert={(idx, x, y) => setMenuContexto({ tipo: 'parcelaCert', verticeIdx: idx, x, y })}
                 selMulti={selMulti} objSelMulti={objSelMulti} onToggleMulti={alternarMulti} onToggleMultiObj={alternarMultiObj} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj}
-                onDblClick={async (lat, lon) => { const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' }); if (t) { snap(); setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); } }}
+                onDblClick={async (lat, lon) => {
+                  if (modo === 'polilinha' || modo === 'tracejado') {
+                    if (desenhoBuffer.length >= 2) {
+                      snap();
+                      const buf = desenhoBuffer;
+                      setDesenhoBuffer([]);
+                      setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
+                      aviso(modo === 'tracejado' ? 'Tracejado adicionado.' : 'Polilinha adicionada.');
+                    }
+                    return;
+                  }
+                  const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:', multiline: true });
+                  if (t) { snap(); setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }
+                }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
@@ -7238,9 +7299,19 @@ export default function EditorPage() {
           </DialogHeader>
           <div className="flex flex-col gap-2 max-h-[75vh] overflow-y-auto pr-1">
             {/* Botão Baixar Tudo no topo do Mobile Sheet */}
-            <button type="button" onClick={() => { setPecasSheetAberto(false); baixarPacoteEntrega(); }}
-              className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-3.5 py-3 text-center text-sm font-bold text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400 active:scale-[0.98] transition-transform">
-              <Archive className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" /> Baixar Tudo (Pacote ZIP)
+            <button type="button" disabled={processando} onClick={() => { baixarPacoteEntrega(); }}
+              className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-3 text-center text-sm font-bold text-amber-700 hover:bg-amber-500/20 dark:text-amber-400 active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
+              {processando ? (
+                <>
+                  <RefreshCw className="size-4 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
+                  <span>Baixando...</span>
+                </>
+              ) : (
+                <>
+                  <Archive className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>Baixar Tudo (Pacote ZIP)</span>
+                </>
+              )}
             </button>
             <div className="my-1 border-b border-border/60" />
 
@@ -7470,7 +7541,7 @@ export default function EditorPage() {
             
             {menuContexto.tipo === 'texto' && (
               <div className="flex flex-col gap-0.5">
-                <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={async () => { const m = menuContexto; setMenuContexto(null); const t = await perguntar({ titulo: 'Editar texto', valorInicial: m.atual! }); if (t != null) editarTextoPlanta(m.id!, t); }}>Editar texto…</button>
+                <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={async () => { const m = menuContexto; setMenuContexto(null); const t = await perguntar({ titulo: 'Editar texto', valorInicial: m.atual!, multiline: true }); if (t != null) editarTextoPlanta(m.id!, t); }}>Editar texto…</button>
                 <button className="block w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={() => patchTextoPlanta(menuContexto.id!, { negrito: !(plantaConfig.textos?.[menuContexto.id!]?.negrito) })}>Negrito (liga/desliga)</button>
                 <div className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm">
                   <span className="text-xs font-semibold text-muted-foreground">Tamanho</span>
@@ -7621,7 +7692,7 @@ export default function EditorPage() {
                 <button
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent"
                   onClick={async () => {
-                    const txt = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:' });
+                    const txt = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:', multiline: true });
                     if (txt) {
                       snap();
                       const utm = geoParaUtm(menuContexto.lat!, menuContexto.lon!, zona, hemisferio);
@@ -7658,7 +7729,7 @@ export default function EditorPage() {
                   const o = objetos.find((x) => x.id === menuContexto.id);
                   return (
                     <>
-                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: o?.texto ?? '' }); if (t != null) editarObjetoSel({ texto: t }); setMenuContexto(null); }}>
+                      <button className="flex items-center gap-2 w-full px-2 py-1.5 text-left rounded-sm hover:bg-accent" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: o?.texto ?? '', multiline: true }); if (t != null) editarObjetoSel({ texto: t }); setMenuContexto(null); }}>
                         <Pencil className="size-3.5" /> Editar texto…
                       </button>
                       <div className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm">
@@ -7860,6 +7931,58 @@ export default function EditorPage() {
                   );
                 })()}
                 <button className="flex items-center gap-2 w-full border-t px-2 py-1.5 text-left rounded-sm hover:bg-accent text-destructive" onClick={() => { apagarObjetoSel(); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Apagar</button>
+              </div>
+            )}
+
+            {menuContexto.tipo === 'parcelaCert' && (
+              <div className="flex flex-col gap-1 p-2 text-[11px] space-y-1">
+                <div className="font-bold text-xs border-b pb-1 mb-1 text-primary">Estilo SIGEF / Vizinhos</div>
+                
+                {/* Cor do Preenchimento */}
+                <div>
+                  <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Cor de Preenchimento</div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {PALETA_DESENHO.map((pal) => (
+                      <button key={pal.hex} type="button" title={pal.nome}
+                        className={`size-4 rounded-full border border-black/10 transition-transform hover:scale-115 ${corCert === pal.hex ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                        style={{ backgroundColor: pal.hex }}
+                        onClick={() => setCorCert(pal.hex)} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Cor da Borda */}
+                <div>
+                  <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Cor da Borda</div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {PALETA_DESENHO.map((pal) => (
+                      <button key={pal.hex} type="button" title={pal.nome}
+                        className={`size-4 rounded-full border border-black/10 transition-transform hover:scale-115 ${corBordaCert === pal.hex ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                        style={{ backgroundColor: pal.hex }}
+                        onClick={() => setCorBordaCert(pal.hex)} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Espessura da linha */}
+                <div>
+                  <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Espessura da Borda: {espessuraCert.toFixed(1)} px</div>
+                  <div className="flex gap-1.5">
+                    <button type="button" className="px-2 py-0.5 rounded-sm border font-bold hover:bg-muted" onClick={() => setEspessuraCert((e) => Math.max(0.5, e - 0.5))}>−</button>
+                    <button type="button" className="px-2 py-0.5 rounded-sm border font-bold hover:bg-muted" onClick={() => setEspessuraCert((e) => Math.min(8, e + 0.5))}>+</button>
+                  </div>
+                </div>
+
+                {/* Opacidade do Preenchimento */}
+                <div>
+                  <div className="font-semibold text-muted-foreground mb-1 uppercase text-[9px] tracking-wider font-bold">Opacidade: {(opacidadeCert * 100).toFixed(0)}%</div>
+                  <div className="flex gap-1.5">
+                    <button type="button" className="px-2 py-0.5 rounded-sm border font-bold hover:bg-muted" onClick={() => setOpacidadeCert((o) => Math.max(0.0, +(o - 0.02).toFixed(2)))}>−</button>
+                    <button type="button" className="px-2 py-0.5 rounded-sm border font-bold hover:bg-muted" onClick={() => setOpacidadeCert((o) => Math.min(0.8, +(o + 0.02).toFixed(2)))}>+</button>
+                  </div>
+                </div>
+
+                <button className="flex items-center justify-center gap-2 w-full border-t pt-1.5 text-center rounded-sm hover:bg-accent font-semibold" onClick={() => setMenuContexto(null)}>Concluir</button>
               </div>
             )}
 

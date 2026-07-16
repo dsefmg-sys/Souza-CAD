@@ -23,19 +23,15 @@ export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha
 
 export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
+const CURSOR_CROSSHAIR = `url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj48cGF0aCBkPSJNMTIgMnYyME0yIDEyaDIwIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMiAydjIwTTIgMTJoMjAiIHN0cm9rZT0iYmxhY2siIHN0cm9rZS13aWR0aD0iMSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+') 12 12, crosshair`;
+
 interface Props {
   vertices: Vertex[];
   selecionadoId: string | null;
   modo: ModoEdicao;
   mostrarRotulos: boolean;
   bloqueado: boolean;
-  referencias?: { lat: number; lon: number; leste: number; norte: number }[][];
-  parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
-  mostrarCert?: boolean;
-  opacidadeCert?: number;
-  parcelaCertSel?: number | null;
-  onSelParcelaCert?: (i: number | null) => void;
-  verticesVizinho?: VerticeVizinho[]; // vértices de imóveis vizinhos certificados (desenho + adotar)
+
   selMulti?: Set<string>;
   objSelMulti?: Set<string>;
   onToggleMulti?: (id: string) => void;
@@ -109,6 +105,17 @@ interface Props {
   camadasVisiveis?: Record<string, boolean>;
   camadasBloqueadas?: Record<string, boolean>;
   estilosCamadas?: Record<string, { cor: string; espessura: number }>;
+  referencias?: { lat: number; lon: number; leste: number; norte: number }[][];
+  corCert?: string;
+  corBordaCert?: string;
+  espessuraCert?: number;
+  onContextMenuCert?: (idx: number, x: number, y: number) => void;
+  parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] }; codigoImovel?: string }[];
+  mostrarCert?: boolean;
+  opacidadeCert?: number;
+  parcelaCertSel?: number | null;
+  onSelParcelaCert?: (idx: number | null) => void;
+  verticesVizinho?: VerticeVizinho[];
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -193,10 +200,10 @@ function iconeNomeVerticeVizinho(texto: string, tam: number) {
   const fs = tam && tam > 0 ? tam : 11;
   const txt = (texto || '').replace(/</g, '&lt;');
   const { w: estW, h: estH } = estimarCaixaRotulo(texto, fs);
-  const halo = '-1px -1px 2px #fff,1px -1px 2px #fff,-1px 1px 2px #fff,1px 1px 2px #fff,0 0 4px #fff';
+  const shadow = '-1px -1px 2px #2563eb,1px -1px 2px #2563eb,-1px 1px 2px #2563eb,1px 1px 2px #2563eb,0 0 4px #2563eb';
   return L.divIcon({
     className: 'vertice-vizinho-nome',
-    html: `<div style="font-size:${fs}px;font-weight:700;color:#2563eb;text-shadow:${halo};white-space:nowrap;width:max-content;display:inline-block">${txt}</div>`,
+    html: `<div style="font-size:${fs}px;font-weight:700;color:#fff;text-shadow:${shadow};white-space:nowrap;width:max-content;display:inline-block">${txt}</div>`,
     iconSize: [1, 1],
     iconAnchor: [estW / 2, estH / 2 + 10],
   });
@@ -472,10 +479,10 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
       }
     },
     mousemove(e) {
-      if (['medir', 'copiar_destino'].includes(modo)) onMouseMove?.(e.latlng);
+      if (['medir', 'copiar_destino', 'linha', 'polilinha', 'tracejado', 'cota', 'texto', 'retangulo', 'arco'].includes(modo)) onMouseMove?.(e.latlng);
     },
     mouseout() {
-      if (['medir', 'copiar_destino'].includes(modo)) onMouseOut?.();
+      if (['medir', 'copiar_destino', 'linha', 'polilinha', 'tracejado', 'cota', 'texto', 'retangulo', 'arco'].includes(modo)) onMouseOut?.();
     }
   });
   return null;
@@ -599,11 +606,49 @@ function CursorMapa({ ativo }: { ativo: boolean }) {
 
   useEffect(() => {
     const el = map.getContainer();
-    el.style.cursor = ativo ? 'crosshair' : '';
+    el.style.cursor = ativo ? CURSOR_CROSSHAIR : '';
     return () => { el.style.cursor = ''; };
   }, [ativo, map]);
 
   return null;
+}
+
+function arcoTresPontos(a: PontoLL, b: PontoLL, c: PontoLL, zona: number, hemisferio: 'N' | 'S'): PontoLL[] {
+  const ax = a.leste, ay = a.norte, bx = b.leste, by = b.norte, cx = c.leste, cy = c.norte;
+  const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+  if (Math.abs(d) < 1e-6) return [a, b, c];
+  const a2 = ax * ax + ay * ay, b2 = bx * bx + by * by, c2 = cx * cx + cy * cy;
+  const ux = (a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d;
+  const uy = (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d;
+  const r = Math.hypot(ax - ux, ay - uy);
+  const angA = Math.atan2(ay - uy, ax - ux);
+  const angB = Math.atan2(by - uy, bx - ux);
+  const angC = Math.atan2(cy - uy, cx - ux);
+  const TAU = Math.PI * 2;
+  const norm = (x: number) => ((x % TAU) + TAU) % TAU;
+
+  const sA = norm(angA), sB = norm(angB), sC = norm(angC);
+  let horario = true;
+  if (sA < sC) {
+    if (sA < sB && sB < sC) horario = false;
+  } else {
+    if (sB > sA || sB < sC) horario = false;
+  }
+  const pts: PontoLL[] = [];
+  const passos = 24;
+  const dif = horario
+    ? (sA >= sC ? sA - sC : sA + TAU - sC)
+    : (sC >= sA ? sC - sA : sC + TAU - sA);
+
+  for (let i = 0; i <= passos; i++) {
+    const t = i / passos;
+    const ang = horario ? sA - t * dif : sA + t * dif;
+    const le = ux + r * Math.cos(ang);
+    const no = uy + r * Math.sin(ang);
+    const g = utmParaGeo(le, no, zona, hemisferio);
+    pts.push({ lat: g.lat, lon: g.lon, leste: le, norte: no });
+  }
+  return pts;
 }
 
 // MEDIDA DINÂMICA (CAD): enquanto se desenha, o trecho até o cursor aparece como linha elástica
@@ -1252,6 +1297,10 @@ export default function MapEditor(props: Props) {
     camadasVisiveis = {},
     camadasBloqueadas = {},
     estilosCamadas = {},
+    corCert = '#06b6d4',
+    corBordaCert = '#0891b2',
+    espessuraCert = 1.4,
+    onContextMenuCert,
   } = props;
 
   const [zoom, setZoom] = useState(16);
@@ -1425,6 +1474,13 @@ export default function MapEditor(props: Props) {
   return (
     <MapContainer center={centro} zoom={validos.length ? 16 : zoomPadrao} maxZoom={28} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
       <CursorMapa ativo={modo !== 'navegar' && !bloqueado} />
+      {isDesenho && (
+        <style dangerouslySetInnerHTML={{ __html: `
+          .leaflet-container, .leaflet-grab, .leaflet-interactive, .leaflet-marker-icon {
+            cursor: ${CURSOR_CROSSHAIR} !important;
+          }
+        `}} />
+      )}
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Híbrido (Google)">
           <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={28} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
@@ -1449,7 +1505,18 @@ export default function MapEditor(props: Props) {
       {referencias.filter((r) => r.length >= 2).map((r, i) => {
         const pts = r.map((pt) => [pt.lat, pt.lon] as [number, number]);
         return (
-          <Polyline key={`ref${i}`} positions={r.length >= 3 ? [...pts, pts[0]] : pts} pathOptions={{ color: '#06b6d4', weight: 1.5, dashArray: '5 4' }} />
+          <Polyline key={`ref${i}`} positions={r.length >= 3 ? [...pts, pts[0]] : pts}
+            pathOptions={{ color: corBordaCert, weight: espessuraCert, dashArray: '5 4' }}
+            eventHandlers={{
+              contextmenu: (e) => {
+                if (!bloqueado) {
+                  e.originalEvent.preventDefault();
+                  e.originalEvent.stopPropagation();
+                  onContextMenuCert?.(i, e.originalEvent.clientX, e.originalEvent.clientY);
+                }
+              }
+            }}
+          />
         );
       })}
 
@@ -1461,9 +1528,18 @@ export default function MapEditor(props: Props) {
         return (
           <Polygon key={`pc${i}`} positions={p.anel}
             pathOptions={sel
-              ? { color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: Math.max(opacidadeCert, 0.12) }
-              : { color: '#0891b2', weight: 1.4, fillColor: '#06b6d4', fillOpacity: opacidadeCert }}
-            eventHandlers={{ click: () => onSelParcelaCert?.(sel ? null : i) }}>
+              ? { color: '#facc15', weight: Math.max(espessuraCert, 2.5), fillColor: '#facc15', fillOpacity: Math.max(opacidadeCert, 0.12) }
+              : { color: corBordaCert, weight: espessuraCert, fillColor: corCert, fillOpacity: opacidadeCert }}
+            eventHandlers={{
+              click: () => onSelParcelaCert?.(sel ? null : i),
+              contextmenu: (e) => {
+                if (!bloqueado) {
+                  e.originalEvent.preventDefault();
+                  e.originalEvent.stopPropagation();
+                  onContextMenuCert?.(i, e.originalEvent.clientX, e.originalEvent.clientY);
+                }
+              }
+            }}>
             {mostrarRotulos && (
               <Tooltip permanent direction="center" className="bg-blue-50/95 border border-blue-300 text-blue-600 text-[9px] font-semibold px-1 py-0.5 rounded shadow-sm">
                 {label}
@@ -1806,6 +1882,35 @@ export default function MapEditor(props: Props) {
       {['linha', 'polilinha', 'tracejado', 'cota', 'medir'].includes(modo) && desenhoAtual.length >= 1 && (
         <MedidaDinamica base={desenhoAtual[desenhoAtual.length - 1]} orto={orto} zona={zona} hemisferio={hemisferio} />
       )}
+
+      {/* retângulo em andamento */}
+      {modo === 'retangulo' && desenhoAtual.length === 1 && cursorLatLng && (() => {
+        const a = desenhoAtual[0];
+        const c = [cursorLatLng.lat, cursorLatLng.lng] as [number, number];
+        const pts = [
+          a,
+          [c[0], a[1]] as [number, number],
+          c,
+          [a[0], c[1]] as [number, number],
+          a
+        ];
+        return <Polyline positions={pts} pathOptions={{ color: '#2563eb', weight: 1.5, dashArray: '4 4' }} />;
+      })()}
+
+      {/* arco em andamento */}
+      {modo === 'arco' && cursorLatLng && (() => {
+        if (desenhoAtual.length === 1) {
+          return <Polyline positions={[desenhoAtual[0], [cursorLatLng.lat, cursorLatLng.lng]]} pathOptions={{ color: '#2563eb', weight: 1.5, dashArray: '4 4' }} />;
+        }
+        if (desenhoAtual.length === 2) {
+          const aLL = { lat: desenhoAtual[0][0], lon: desenhoAtual[0][1], leste: geoParaUtm(desenhoAtual[0][0], desenhoAtual[0][1], zona, hemisferio).leste, norte: geoParaUtm(desenhoAtual[0][0], desenhoAtual[0][1], zona, hemisferio).norte };
+          const bLL = { lat: desenhoAtual[1][0], lon: desenhoAtual[1][1], leste: geoParaUtm(desenhoAtual[1][0], desenhoAtual[1][1], zona, hemisferio).leste, norte: geoParaUtm(desenhoAtual[1][0], desenhoAtual[1][1], zona, hemisferio).norte };
+          const cLL = { lat: cursorLatLng.lat, lon: cursorLatLng.lng, leste: geoParaUtm(cursorLatLng.lat, cursorLatLng.lng, zona, hemisferio).leste, norte: geoParaUtm(cursorLatLng.lat, cursorLatLng.lng, zona, hemisferio).norte };
+          const pts = arcoTresPontos(aLL, bLL, cLL, zona, hemisferio);
+          return <Polyline positions={pts.map(p => [p.lat, p.lon])} pathOptions={{ color: '#2563eb', weight: 1.5, dashArray: '4 4' }} />;
+        }
+        return null;
+      })()}
 
       {/* dados-chave no centro da gleba (arrastável no modo navegar) */}
       {centroGleba && centroGleba.linhas.length > 0 && (() => {

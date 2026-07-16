@@ -1,4 +1,4 @@
-import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } from 'docx';
 import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, Vertex, PessoaQualificada } from '../topo/types';
 import { grausParaDMS, convergenciaMeridiana } from '../topo/coords';
 import { azimute, distancia, azimuteDMS, numBR, numBRmilhar, formatMatricula } from '../topo/geometry';
@@ -194,7 +194,7 @@ function seguePor(representacao: string): string {
   }
 }
 
-// Tipografia do memorial: Times New Roman 12 pt (tamanho 24 em meios-pontos) em TODO o corpo —
+// Tipografia do memorial: Arial 12 pt (tamanho 24 em meios-pontos) em TODO o corpo —
 // padrão de peça técnica de cartório. Só o título principal sobe pra 14 pt.
 const CORPO = 24;
 
@@ -209,7 +209,7 @@ function p(text: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[
   });
   return new Paragraph({
     alignment: opts.align ?? AlignmentType.JUSTIFIED,
-    spacing: { after: 120 },
+    spacing: { after: 200 },
     children: runChildren,
   });
 }
@@ -218,16 +218,16 @@ function p(text: string, opts: { bold?: boolean; align?: (typeof AlignmentType)[
 // de assinatura e o nome, ou entre uma linha de dado e a próxima (bloco sempre atômico).
 function assinatura(linhas: string[], boldPrimeira = false) {
   const filhos = [
-    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360 }, keepNext: true, keepLines: true, children: [new TextRun({ text: '________________________________________', size: CORPO })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 640 }, keepNext: true, keepLines: true, children: [new TextRun({ text: '________________________________________', size: CORPO })] }),
   ];
   linhas.forEach((l, i) =>
-    filhos.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, keepNext: true, keepLines: true, children: [new TextRun({ text: l, bold: boldPrimeira && i === 0, size: CORPO })] }))
+    filhos.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 40 }, keepNext: true, keepLines: true, children: [new TextRun({ text: l, bold: boldPrimeira && i === 0, size: CORPO })] }))
   );
   return filhos;
 }
 
 /** Identificação no topo do memorial: linhas simples de texto (rótulo em negrito), sem tabela nem moldura. */
-function linhasCabecalho(imovel: ImovelData, areaHa: number, perimetro: number, tecnico: TecnicoData): Paragraph[] {
+function cabecalhoTabelaDocx(imovel: ImovelData, areaHa: number, perimetro: number, tecnico: TecnicoData): Table {
   const isUrbano = imovel.tipoImovel === 'urbano';
   const labelArea = isUrbano ? 'Área SGL (m²):' : 'Área SGL (ha):';
   const valArea = isUrbano ? `${numBR(areaHa * 10000)} m²` : `${numBR(areaHa, 4)} ha`;
@@ -235,27 +235,58 @@ function linhasCabecalho(imovel: ImovelData, areaHa: number, perimetro: number, 
   const idMunicipal = isUrbano && imovel.inscricaoMunicipal
     ? ` / Insc.: ${imovel.inscricaoMunicipal}`
     : '';
-
-  const linha = (rotulo: string, valor: string) => new Paragraph({
-    spacing: { after: 40 },
-    children: [
-      new TextRun({ text: `${rotulo} `, bold: true, size: CORPO }),
-      new TextRun({ text: valor || '—', size: CORPO }),
-    ],
-  });
+  const valMatricula = imovel.regimeTerra === 'posse' && !imovel.matricula 
+    ? 'Posse' 
+    : `${imovel.matricula || '—'}${idMunicipal}`;
 
   const rot = rotulosProfissional(tecnico);
   const termoVal = imovel.numeroTrt || tecnico.art || '';
 
-  return [
-    linha(isUrbano ? 'Imóvel/Lote:' : 'Imóvel:', imovel.denominacao),
-    linha(imovel.regimeTerra === 'posse' ? 'Situação jurídica:' : 'Matrícula:', imovel.regimeTerra === 'posse' && !imovel.matricula ? 'Posse' : `${imovel.matricula}${idMunicipal}`),
-    linha(imovel.regimeTerra === 'posse' ? 'Possuidor(a):' : 'Proprietário(a):', imovel.proprietario),
-    linha(labelArea, valArea),
-    linha('Local:', imovel.local || imovel.municipio),
-    linha('Perímetro (m):', `${numBR(perimetro)} m`),
-    linha(`${rot.termo}:`, termoVal),
-  ];
+  const borderNone = { style: BorderStyle.NONE, size: 0, color: 'auto' };
+  const bordersNone = {
+    top: borderNone,
+    bottom: borderNone,
+    left: borderNone,
+    right: borderNone,
+  };
+
+  const celula = (rotulo: string, valor: string, pctWidth: number) => new TableCell({
+    width: { size: pctWidth, type: WidthType.PERCENTAGE },
+    borders: bordersNone,
+    children: [
+      new Paragraph({
+        spacing: { after: 60 },
+        children: [
+          new TextRun({ text: `${rotulo} `, bold: true, size: CORPO }),
+          new TextRun({ text: valor || '—', size: CORPO }),
+        ],
+      }),
+    ],
+  });
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          celula(isUrbano ? 'Imóvel/Lote:' : 'Imóvel:', imovel.denominacao || '—', 60),
+          celula(imovel.regimeTerra === 'posse' ? 'Situação jurídica:' : 'Matrícula:', valMatricula, 40),
+        ],
+      }),
+      new TableRow({
+        children: [
+          celula(labelArea, valArea, 60),
+          celula('Perímetro (m):', `${numBR(perimetro)} m`, 40),
+        ],
+      }),
+      new TableRow({
+        children: [
+          celula(imovel.regimeTerra === 'posse' ? 'Possuidor(a):' : 'Proprietário(a):', imovel.proprietario || '—', 60),
+          celula(`${rot.termo}:`, termoVal, 40),
+        ],
+      }),
+    ],
+  });
 }
 
 /** Assinatura de uma pessoa e, se houver, do seu cônjuge logo abaixo. */
@@ -293,7 +324,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   if (semCodigo > 0) throw new Error(`${semCodigo} vértice(s) sem código. Renumere os vértices antes de gerar o memorial.`);
   const narrativaSegs = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado, imovel, zonaUtm);
 
-  const children: Paragraph[] = [];
+  const children: (Paragraph | Table)[] = [];
 
   // Aviso de dados fictícios (projeto de demonstração)
   if (imovel.ficticio) {
@@ -330,9 +361,9 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
     new TextRun({ text: ehServidao ? 'MEMORIAL DESCRITIVO DE SERVIDÃO' : 'MEMORIAL DESCRITIVO', bold: true, size: 28 }),
   ] }));
 
-  // Identificação em texto simples (valores oficiais do SIGEF quando reconciliado; no modo
+  // Identificação em tabela de duas colunas (valores oficiais do SIGEF quando reconciliado; no modo
   // plano o perímetro já foi trocado acima pela soma das distâncias planas da narrativa)
-  linhasCabecalho(imovel, efMod.areaHa, efMod.perimetro, tecnico).forEach((c) => children.push(c));
+  children.push(cabecalhoTabelaDocx(imovel, efMod.areaHa, efMod.perimetro, tecnico));
 
   // Variante INTERMAT (Mato Grosso): referência ao órgão estadual + parágrafo de finalidade próprio,
   // logo abaixo do cabeçalho. O restante do memorial (perímetro, tabelas, assinaturas) é o mesmo do
@@ -359,7 +390,9 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   // Imóvel urbano usa o texto próprio (sem menção a INCRA/área rural); rural usa o padrão.
   const ehUrbano = imovel.tipoImovel === 'urbano';
   children.push(p(mod(ehUrbano ? 'memorialInfoTecnicasUrbano' : 'memorialInfoTecnicas')));
-  children.push(p(mod(ehUrbano ? 'memorialObservacoesUrbano' : 'memorialObservacoes')));
+
+  children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 240, after: 120 }, children: [new TextRun({ text: 'OBSERVAÇÕES:', bold: true, size: 24 })] }));
+  children.push(p(mod(ehUrbano ? 'memorialObservacoesUrbano' : 'memorialObservacoes').replace(/^\s*OBSERVAÇÕES:\s*/i, '')));
 
   // Data e assinatura do técnico
   const data = input.dataExtenso ? `, ${input.dataExtenso}` : '';
@@ -443,7 +476,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   });
 
   const doc = new Document({
-    styles: { default: { document: { run: { font: 'Times New Roman', size: CORPO } } } },
+    styles: { default: { document: { run: { font: 'Arial', size: CORPO } } } },
     sections: [{
       properties: { page: { margin: { top: 1133, bottom: 1133, left: 1133, right: 1133 } } },
       children,

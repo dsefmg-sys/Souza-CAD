@@ -115,13 +115,13 @@ export default function AnuenciaModal({
               type="button"
               disabled={ocupado || !tecnico}
               onClick={baixarTodas}
-              className="flex items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/5 p-3 text-left transition-colors hover:bg-primary/10 disabled:opacity-50"
+              className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-left transition-colors hover:bg-amber-500/10 disabled:opacity-50"
             >
               <div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-primary"><Files className="size-4" /> Baixar todas num único documento</div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400"><Files className="size-4" /> Baixar todas num único documento</div>
                 <p className="mt-0.5 text-xs text-muted-foreground">Um único arquivo .docx com uma carta por confrontante, cada uma em sua folha.</p>
               </div>
-              <Download className="size-4 shrink-0 text-primary" />
+              <Download className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
             </button>
 
             <div className="text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">ou uma de cada vez</div>

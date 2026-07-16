@@ -41,7 +41,7 @@ export default function DialogosHost() {
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) cancelarPorFora(); }}>
-      <DialogContent className="max-w-md" onEscapeKeyDown={cancelarPorFora}>
+      <DialogContent className={estado.modo === 'prompt' && estado.multiline ? 'max-w-2xl w-full' : 'max-w-md'} onEscapeKeyDown={cancelarPorFora}>
         <DialogHeader>
           <DialogTitle className={estado.modo === 'confirm' && estado.perigo ? 'text-destructive' : undefined}>{estado.titulo}</DialogTitle>
         </DialogHeader>
@@ -50,7 +50,7 @@ export default function DialogosHost() {
 
         {estado.modo === 'prompt' && (
           estado.multiline ? (
-            <textarea autoFocus className="w-full rounded-sm border bg-background px-3 py-2 text-sm min-h-[100px] resize-y" placeholder={estado.placeholder}
+            <textarea autoFocus className="w-full rounded-sm border bg-background px-3 py-2 text-sm min-h-[250px] resize-y" placeholder={estado.placeholder}
               value={estado.valor} onChange={(e) => setEstado((s) => (s && s.modo === 'prompt' ? { ...s, valor: e.target.value } : s))} />
           ) : (
             <input ref={inputRef} autoFocus className="w-full rounded-sm border bg-background px-3 py-2 text-sm" placeholder={estado.placeholder}

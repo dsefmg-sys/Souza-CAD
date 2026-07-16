@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
+import { useRef, useState, useEffect, useMemo, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Vertex, ImovelData, TecnicoData, EscritorioData, ResultadoCalculo, Confrontante, PlantaConfig, PessoaQualificada, PontoLL, VerticeVizinho } from '@/lib/topo/types';
 import { numBR, formatMatricula, azimuteDMS, azimute, distancia } from '@/lib/topo/geometry';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pencil, Save, Trash2, Paintbrush } from 'lucide-react';
 import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
+
+const CURSOR_CROSSHAIR = `url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj48cGF0aCBkPSJNMTIgMnYyME0yIDEyaDIwIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMiAydjIwTTIgMTJoMjAiIHN0cm9rZT0iYmxhY2siIHN0cm9rZS13aWR0aD0iMSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+') 12 12, crosshair`;
 
 interface Props {
   vertices: Vertex[];
@@ -139,7 +141,7 @@ function Ted(props: {
   onStartEdit?: (id: string, atual: string) => void;
   selecionadoId?: string | null;
   onSelect?: (id: string | null) => void;
-  onTextoPatch?: (id: string, patch: { escala?: number }) => void;
+  onTextoPatch?: (id: string, patch: { escala?: number; texto?: string; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) => void;
 }) {
   const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onMenu, onDragStart, halo = false, editando = false, onTerminarEditar, onStartEdit, selecionadoId, onSelect, onTextoPatch } = props;
   const conteudo = (ov?.texto !== undefined && ov?.texto !== null && ov.texto.trim() !== '') ? ov.texto : base;
@@ -165,7 +167,7 @@ function Ted(props: {
         <textarea
           autoFocus
           className="w-full h-full border border-blue-500 bg-white text-black outline-none px-1 py-0.5 shadow-md rounded-sm resize-y"
-          style={{ fontSize: `${fz}px`, fontWeight: peso, textAlign: anchor === 'middle' ? 'center' : anchor === 'end' ? 'right' : 'left', fontFamily: 'Arial, sans-serif', lineHeight: 1.25 }}
+          style={{ fontSize: `${fz}px`, fontWeight: peso, textAlign: anchor === 'middle' ? 'center' : anchor === 'end' ? 'right' : 'left', fontFamily: 'Arial, Helvetica, sans-serif', lineHeight: 1.25 }}
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onBlur={() => onTerminarEditar?.(id, val)}
@@ -187,7 +189,39 @@ function Ted(props: {
   }
 
   const isSelected = ed && selecionadoId === id;
-  const lines = (texto || '').split('\n');
+  const rawLines = (texto || '').split('\n');
+  const initialMaxLineLength = Math.max(...rawLines.map((l) => l.length), 1);
+  const lChars = ov?.larguraChars;
+  let lines: string[];
+  if (lChars && lChars > 0) {
+    const partes = (texto || '').split('\n');
+    lines = [];
+    for (const parte of partes) {
+      const palavras = parte.split(' ');
+      let atual = '';
+      for (const p of palavras) {
+        if (!p) continue;
+        if ((atual + (atual ? ' ' : '') + p).length > lChars) {
+          if (atual) {
+            lines.push(atual);
+            atual = p;
+          } else {
+            lines.push(p);
+            atual = '';
+          }
+        } else {
+          atual = atual + (atual ? ' ' : '') + p;
+        }
+      }
+      if (atual) {
+        lines.push(atual);
+      } else if (parte === '') {
+        lines.push('');
+      }
+    }
+  } else {
+    lines = rawLines;
+  }
   const maxLineLength = Math.max(...lines.map((l) => l.length), 1);
   const textW = fz * maxLineLength * 0.55;
   const textH = fz * lines.length * 1.25;
@@ -236,13 +270,31 @@ function Ted(props: {
             <circle cx={endX + 41} cy={posY - 3} r={7} fill="#f1f5f9" fillOpacity={0.9} stroke="#94a3b8" strokeWidth={0.5} style={{ cursor: 'pointer' }} />
             <text x={endX + 41} y={posY - 0.5} fontSize={8} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ pointerEvents: 'none', userSelect: 'none' }}>+</text>
           </g>
+          {/* Botão de Diminuir Largura (W-) */}
+          <g onClick={(e) => {
+            e.stopPropagation();
+            const w = ov?.larguraChars ?? initialMaxLineLength;
+            onTextoPatch?.(id, { larguraChars: Math.max(8, w - 4) });
+          }}>
+            <circle cx={endX + 57} cy={posY - 3} r={7} fill="#f1f5f9" fillOpacity={0.9} stroke="#94a3b8" strokeWidth={0.5} style={{ cursor: 'pointer' }} />
+            <text x={endX + 57} y={posY - 1} fontSize={6} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ pointerEvents: 'none', userSelect: 'none' }}>W-</text>
+          </g>
+          {/* Botão de Aumentar Largura (W+) */}
+          <g onClick={(e) => {
+            e.stopPropagation();
+            const w = ov?.larguraChars ?? initialMaxLineLength;
+            onTextoPatch?.(id, { larguraChars: Math.min(250, w + 4) });
+          }}>
+            <circle cx={endX + 73} cy={posY - 3} r={7} fill="#f1f5f9" fillOpacity={0.9} stroke="#94a3b8" strokeWidth={0.5} style={{ cursor: 'pointer' }} />
+            <text x={endX + 73} y={posY - 1} fontSize={6} fontWeight="bold" textAnchor="middle" fill="#475569" style={{ pointerEvents: 'none', userSelect: 'none' }}>W+</text>
+          </g>
           {/* Botão de Fechar (x) */}
           <g onClick={(e) => {
             e.stopPropagation();
             onSelect?.(null);
           }}>
-            <circle cx={endX + 57} cy={posY - 3} r={7} fill="#fee2e2" fillOpacity={0.9} stroke="#fca5a5" strokeWidth={0.5} style={{ cursor: 'pointer' }} />
-            <text x={endX + 57} y={posY - 0.5} fontSize={7} fontWeight="bold" textAnchor="middle" fill="#991b1b" style={{ pointerEvents: 'none', userSelect: 'none' }}>x</text>
+            <circle cx={endX + 89} cy={posY - 3} r={7} fill="#fee2e2" fillOpacity={0.9} stroke="#fca5a5" strokeWidth={0.5} style={{ cursor: 'pointer' }} />
+            <text x={endX + 89} y={posY - 0.5} fontSize={7} fontWeight="bold" textAnchor="middle" fill="#991b1b" style={{ pointerEvents: 'none', userSelect: 'none' }}>x</text>
           </g>
         </g>
       )}
@@ -278,7 +330,7 @@ export default function Planta({
     // ele fica cravado no ponteiro e alinhado mesmo com o zoom da folha — o crosshair desenhado à
     // mão saía do lugar justamente por causa do transform de zoom do contêiner.
     const desenhando = editavel && modo !== 'navegar';
-    el.style.cursor = desenhando ? 'crosshair' : '';
+    el.style.cursor = desenhando ? CURSOR_CROSSHAIR : '';
     return () => { el.style.cursor = ''; };
   }, [editavel, modo]);
 
@@ -391,6 +443,43 @@ export default function Planta({
     };
   }, [onConfigPatch, folhaTravada, vertices.length]);
 
+  const { linhasX, linhasY } = useMemo(() => {
+    if (vertices.length < 3) return { linhasX: [], linhasY: [] };
+    const outrasPts = outrasGlebas.flatMap((g) => g.pts);
+    const xs = [...vertices.map((v) => v.leste), ...outrasPts.map((p) => p.leste)];
+    const ys = [...vertices.map((v) => v.norte), ...outrasPts.map((p) => p.norte)];
+    let minX = Math.min(...xs), maxX = Math.max(...xs);
+    let minY = Math.min(...ys), maxY = Math.max(...ys);
+    const padX = (maxX - minX) * 0.02 || 10;
+    const padY = (maxY - minY) * 0.02 || 10;
+    minX -= padX; maxX += padX; minY -= padY; maxY += padY;
+    const areaW = DRAW.x1 - DRAW.x0;
+    const areaH = DRAW.y1 - DRAW.y0;
+    const escalaFit = Math.min(areaW / (maxX - minX), areaH / (maxY - minY));
+    const denomNatural = 1 / (escalaFit * 0.0002645);
+    const TABELA = [250, 500, 750, 1000, 1500, 2000, 2500, 4000, 5000, 7500, 10000, 15000, 20000, 25000, 50000, 100000];
+    const escalaDenom = (config.escalaManual && config.escalaManual > 0)
+      ? config.escalaManual
+      : (TABELA.find((d) => d >= denomNatural) ?? Math.ceil(denomNatural / 10000) * 10000);
+    const escala = 1 / (escalaDenom * 0.0002645);
+    const desW = (maxX - minX) * escala, desH = (maxY - minY) * escala;
+    const offX = DRAW.x0 + (areaW - desW) / 2 + (config.offsetX ?? 0);
+    const offY = DRAW.y0 + (areaH - desH) / 2 + (config.offsetY ?? 0);
+
+    const eMin = minX + (DRAW.x0 - 200 - offX) / escala;
+    const eMax = minX + (DRAW.x1 + 200 - offX) / escala;
+    const nMin = maxY - (DRAW.y1 + 200 - offY) / escala;
+    const nMax = maxY - (DRAW.y0 - 200 - offY) / escala;
+
+    const visibleHeightUTM = (DRAW.y1 - DRAW.y0) / escala;
+    const intervalo = deParaNiceInterval(visibleHeightUTM / 3.5);
+    const xsL: number[] = [];
+    for (let x = Math.ceil(eMin / intervalo) * intervalo; x <= eMax; x += intervalo) xsL.push(x);
+    const ysL: number[] = [];
+    for (let y = Math.ceil(nMin / intervalo) * intervalo; y <= nMax; y += intervalo) ysL.push(y);
+    return { linhasX: xsL, linhasY: ysL };
+  }, [vertices, outrasGlebas, config.escalaManual, config.offsetX, config.offsetY]);
+
   if (vertices.length < 3) {
     return <div className="p-8 text-sm text-muted-foreground">Importe pontos para gerar a planta.</div>;
   }
@@ -437,21 +526,6 @@ export default function Planta({
   const sx = (e: number) => offX + (e - minX) * escala;
   const sy = (n: number) => offY + (maxY - n) * escala;
 
-
-
-  const eMin = minX + (DRAW.x0 - 200 - offX) / escala;
-  const eMax = minX + (DRAW.x1 + 200 - offX) / escala;
-  const nMin = maxY - (DRAW.y1 + 200 - offY) / escala;
-  const nMax = maxY - (DRAW.y0 - 200 - offY) / escala;
-
-  // Espaçamento da grade pelo TRECHO VISÍVEL vertical: calcula o intervalo visível em metros (UTM)
-  // e deParaNiceInterval com alvo de 3.5 linhas, mantendo o visual sempre com 3 a 4 linhas horizontais/verticais.
-  const visibleHeightUTM = (DRAW.y1 - DRAW.y0) / escala;
-  const intervalo = deParaNiceInterval(visibleHeightUTM / 3.5);
-  const linhasX: number[] = [];
-  for (let x = Math.ceil(eMin / intervalo) * intervalo; x <= eMax; x += intervalo) linhasX.push(x);
-  const linhasY: number[] = [];
-  for (let y = Math.ceil(nMin / intervalo) * intervalo; y <= nMax; y += intervalo) linhasY.push(y);
 
   const anel = vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
   const pts = anel.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
@@ -636,7 +710,9 @@ export default function Planta({
       if (id.startsWith('vert.')) {
         const vId = id.slice(5);
         const rv = rotuloVert.find((x) => x.v.id === vId);
-        dragRef.current = { kind: 'rotVert', id: vId, dx: 0, dy: 0, baseX: rv?.x ?? 0, baseY: rv?.y ?? 0 };
+        const baseX = rv?.x ?? 0;
+        const baseY = rv?.y ?? 0;
+        dragRef.current = { kind: 'rotVert', id: vId, dx: 0, dy: 0, baseX, baseY, absX: baseX, absY: baseY };
         setDragTemp({ kind: 'rotVert', id: vId, dx: 0, dy: 0 });
       } else {
         // Ctrl/Cmd+clique: adiciona/remove da seleção múltipla (não arrasta ainda)
@@ -751,51 +827,19 @@ export default function Planta({
       return;
     }
     if (folhaLast.current) {
-      let dx = u.x - folhaLast.current.x;
-      let dy = u.y - folhaLast.current.y;
+      const dx = u.x - folhaLast.current.x;
+      const dy = u.y - folhaLast.current.y;
       
       d.dx = dx;
       d.dy = dy;
 
-      const guias: { x?: number; y?: number; cor: string }[] = [];
-
-      if (d.kind === 'ted' && d.absX != null && d.absY != null) {
-        const SNAP = 6, MARG = 24;
-        const xs = anel.map((p) => p.x), ys = anel.map((p) => p.y);
-        const pMinX = Math.min(...xs), pMaxX = Math.max(...xs), pCx = xs.reduce((a, b) => a + b, 0) / xs.length;
-        const pMinY = Math.min(...ys), pMaxY = Math.max(...ys), pCy = ys.reduce((a, b) => a + b, 0) / ys.length;
-        // referências: margem (azul claro), centros do desenho/folha/coluna do carimbo (azul
-        // escuro), bordas do polígono (amarelo), centro do polígono (laranja). Cobre TAMBÉM o
-        // carimbo (à direita) — antes só a área de desenho tinha guias.
-        const xCarimbo = W - CARW / 2; // centro da coluna do carimbo (onde ficam os textos centrados)
-        const refX = [
-          { pos: DRAW.x0 + MARG, cor: '#38bdf8' }, { pos: DRAW.x1 - MARG, cor: '#38bdf8' },
-          { pos: W - CARW + 10 + MARG, cor: '#38bdf8' }, { pos: W - 26 - 10 - MARG, cor: '#38bdf8' }, // margens da coluna do carimbo
-          { pos: (DRAW.x0 + DRAW.x1) / 2, cor: '#1d4ed8' }, { pos: xCarimbo, cor: '#1d4ed8' },
-          { pos: pMinX, cor: '#eab308' }, { pos: pMaxX, cor: '#eab308' },
-          { pos: pCx, cor: '#f97316' },
-        ];
-        const refY = [
-          { pos: DRAW.y0 + MARG, cor: '#38bdf8' }, { pos: DRAW.y1 - MARG, cor: '#38bdf8' },
-          { pos: (DRAW.y0 + DRAW.y1) / 2, cor: '#1d4ed8' }, { pos: H / 2, cor: '#1d4ed8' },
-          { pos: pMinY, cor: '#eab308' }, { pos: pMaxY, cor: '#eab308' },
-          { pos: pCy, cor: '#f97316' },
-        ];
-        const curX = d.absX + dx, curY = d.absY + dy;
-        const hitX = refX.find((r) => Math.abs(curX - r.pos) < SNAP);
-        if (hitX) { dx = hitX.pos - d.absX; d.dx = dx; guias.push({ x: hitX.pos, cor: hitX.cor }); }
-        const hitY = refY.find((r) => Math.abs(curY - r.pos) < SNAP);
-        if (hitY) { dy = hitY.pos - d.absY; d.dy = dy; guias.push({ y: hitY.pos, cor: hitY.cor }); }
-      }
-
       // coalesce por quadro de tela: no máximo um re-render por frame → arraste suave
-      dragPending.current = { dx, dy, guias };
+      dragPending.current = { dx, dy };
       if (dragRaf.current == null) {
         dragRaf.current = requestAnimationFrame(() => {
           dragRaf.current = null;
           const p = dragPending.current; if (!p) return;
           setDragTemp({ kind: d.kind, id: d.id, dx: p.dx, dy: p.dy });
-          setGuias(p.guias ?? []);
         });
       }
     }
@@ -805,10 +849,8 @@ export default function Planta({
     }
   }
   function plantaUp(e: ReactPointerEvent) {
-    // garante que o último movimento pendente (ainda não aplicado pelo frame) entre no commit final
     if (dragRaf.current != null) { cancelAnimationFrame(dragRaf.current); dragRaf.current = null; }
     const pend = dragPending.current; dragPending.current = null;
-    setGuias([]);
     if (dragRef.current) {
       const d = dragRef.current;
       const dxFinal = pend ? pend.dx : (d.dx ?? 0);
@@ -1069,7 +1111,7 @@ export default function Planta({
   return (
     <div ref={containerRef} className="relative w-full h-full flex items-center justify-center overflow-hidden">
       <svg ref={svgRef} id="planta-svg" viewBox={`0 0 ${W} ${H}`} width="100%" height="100%"
-        style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : 'crosshair') : 'default', touchAction: editavel ? 'none' : undefined }}
+        style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : CURSOR_CROSSHAIR) : 'default', touchAction: editavel ? 'none' : undefined }}
         onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
         xmlns="http://www.w3.org/2000/svg">
       {/* padrões de hachura pro preenchimento do polígono (escolhidos no painel, na cor do perímetro) */}
@@ -1753,7 +1795,7 @@ export default function Planta({
             onPointerDown={editavel ? (e) => {
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;
-              dragRef.current = { kind: 'rotConf', id: c.id, dx: 0, dy: 0, baseX: r.x, baseY: r.y };
+              dragRef.current = { kind: 'rotConf', id: c.id, dx: 0, dy: 0, baseX: r.x, baseY: r.y, absX: r.x, absY: r.y };
               setDragTemp({ kind: 'rotConf', id: c.id, dx: 0, dy: 0, baseX: r.x, baseY: r.y });
               folhaLast.current = u;
               captura(e);
@@ -2050,7 +2092,7 @@ export default function Planta({
             x={DRAW.x1 - 72}
             y={DRAW.y0 + 74}
             style={editavel ? { cursor: 'move' } : undefined}
-            onContextMenu={editavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloRosa', 5); } : undefined}
+            onContextMenu={editavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloRosa', 6); } : undefined}
             onPointerDown={editavel ? (e) => {
               if (e.button === 2) return; // direito troca o estilo, não arrasta
               e.stopPropagation();
@@ -2119,12 +2161,7 @@ export default function Planta({
           onSelect: setSelecionadoId,
           onTextoPatch: tedComum.onTextoPatch,
         }}
-      />      {editavel && guias.map((g, i) => (
-        <g key={i}>
-          {g.x != null && <line x1={g.x} y1={26} x2={g.x} y2={H - 26} stroke={g.cor} strokeWidth={0.9} strokeDasharray="5 3" />}
-          {g.y != null && <line x1={26} y1={g.y} x2={W - 26} y2={g.y} stroke={g.cor} strokeWidth={0.9} strokeDasharray="5 3" />}
-        </g>
-      ))}
+      />
       {editavel && multiSel.size > 0 && (
         <g>
           <rect x={DRAW.x0 + 6} y={DRAW.y0 + 6} width={224} height={18} rx={4} fill="#1d4ed8" fillOpacity={0.9} />
@@ -2621,7 +2658,7 @@ function FaixaInferior(props: {
 
               {/* Diagrama técnico de convergência (NV/NQ/NM) — bloco próprio, arrastável sozinho */}
               {verNortes && bloco('coord.diagrama', (
-                <g onContextMenu={coordEditavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloDiagrama', 2); } : undefined}>
+                <g onContextMenu={coordEditavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloDiagrama', 4); } : undefined}>
                   {/* área transparente de captura: sem ela, só as linhas finas pegavam o arraste */}
                   <rect x={x3 + 38} y={y0 + 130} width={74} height={60} fill="transparent" />
                   <Nortes cx={x3 + 75} cy={y0 + 164} conv={conv} decl={decl} fs={fs} variante={estiloDiagrama} />
@@ -2741,6 +2778,30 @@ function RosaDosVentos({ cx, cy, fs, variante = 0 }: { cx: number; cy: number; c
     );
   }
 
+  if (variante === 5) {
+    // Variante 5: Aeronautical/military compass style (dual-ring, fine sub-cardinal ticks, triangular pointer)
+    const subTicks = Array.from({ length: 8 }).map((_, i) => {
+      const a = (i * 45 * Math.PI) / 180;
+      const x1 = cx + (R - 6) * Math.sin(a), y1 = cy - (R - 6) * Math.cos(a);
+      const x2 = cx + (R - 2) * Math.sin(a), y2 = cy - (R - 2) * Math.cos(a);
+      return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#475569" strokeWidth={0.6} />;
+    });
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={R} fill="#ffffff" fillOpacity={0.9} stroke="#475569" strokeWidth={1} />
+        <circle cx={cx} cy={cy} r={R - 3} fill="none" stroke="#94a3b8" strokeWidth={0.5} strokeDasharray="1 1.5" />
+        {subTicks}
+        <polygon points={`${cx},${cy - (R - 5)} ${cx - 4},${cy - 2} ${cx + 4},${cy - 2}`} fill="#dc2626" /> {/* North pointing red triangle */}
+        <polygon points={`${cx},${cy + (R - 5)} ${cx - 3},${cy + 2} ${cx + 3},${cy + 2}`} fill="#475569" />
+        <circle cx={cx} cy={cy} r={2.5} fill="#475569" />
+        <text x={cx} y={cy - R + 9} fontSize={fs(6)} fontWeight="extrabold" textAnchor="middle" fill="#0f172a">N</text>
+        <text x={cx + R - 8} y={cy + 2} fontSize={fs(5)} fontWeight="bold" textAnchor="middle" fill="#475569">E</text>
+        <text x={cx} y={cy + R - 5} fontSize={fs(5)} fontWeight="bold" textAnchor="middle" fill="#475569">S</text>
+        <text x={cx - R + 8} y={cy + 2} fontSize={fs(5)} fontWeight="bold" textAnchor="middle" fill="#475569">W</text>
+      </g>
+    );
+  }
+
   // Variante 0: Seta clássica dupla padrão
   return (
     <g>
@@ -2778,6 +2839,30 @@ function Nortes({ cx, cy, conv, decl, fs, variante = 0 }: { cx: number; cy: numb
     <g>
       {/* variação 1: um arco/círculo de referência atrás das linhas (visual de bússola técnica) */}
       {variante === 1 && <circle cx={cx} cy={cy} r={L} fill="#ffffff" fillOpacity={0.6} stroke="#cbd5e1" strokeWidth={0.6} />}
+      {/* variação 2: mostrador técnico com marcações radiais (ticks de grau) */}
+      {variante === 2 && (
+        <g opacity={0.7}>
+          <circle cx={cx} cy={cy} r={L} fill="#ffffff" fillOpacity={0.6} stroke="#64748b" strokeWidth={0.6} />
+          <circle cx={cx} cy={cy} r={L - 4} fill="none" stroke="#cbd5e1" strokeWidth={0.4} strokeDasharray="1 2" />
+          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
+            const rad = (deg * Math.PI) / 180;
+            const x1 = cx + (L - 3) * Math.sin(rad);
+            const y1 = cy - (L - 3) * Math.cos(rad);
+            const x2 = cx + L * Math.sin(rad);
+            const y2 = cy - L * Math.cos(rad);
+            return <line key={deg} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#64748b" strokeWidth={0.4} />;
+          })}
+        </g>
+      )}
+      {/* variação 3: retículo em cruz com anel de mira (estilo telescópico) */}
+      {variante === 3 && (
+        <g opacity={0.6}>
+          <line x1={cx - L - 4} y1={cy} x2={cx + L + 4} y2={cy} stroke="#94a3b8" strokeWidth={0.4} strokeDasharray="2 2" />
+          <line x1={cx} y1={cy - L - 4} x2={cx} y2={cy + L + 4} stroke="#94a3b8" strokeWidth={0.4} strokeDasharray="2 2" />
+          <circle cx={cx} cy={cy} r={L * 0.5} fill="none" stroke="#94a3b8" strokeWidth={0.4} />
+          <circle cx={cx} cy={cy} r={L} fill="none" stroke="#94a3b8" strokeWidth={0.5} />
+        </g>
+      )}
       {/* linhas (coloridas só pra distinguir; o texto é escuro e fica fora delas) */}
       {temNM && <line x1={cx} y1={cy} x2={mx} y2={my} stroke="#b91c1c" strokeWidth={0.9} strokeDasharray="3 2" />}
       {temNQ && <line x1={cx} y1={cy} x2={qx} y2={qy} stroke="#1d4ed8" strokeWidth={0.9} />}
@@ -2862,7 +2947,7 @@ function CarimboA3(props: {
     onDragStart?: (id: string, e: ReactPointerEvent) => void;
     selecionadoId?: string | null;
     onSelect?: (id: string | null) => void;
-    onTextoPatch?: (id: string, patch: { escala?: number }) => void;
+    onTextoPatch?: (id: string, patch: { escala?: number; texto?: string; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) => void;
   };
 }) {
   const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, escalaDecl = 1, escalaConf = 1, ed, corCabecalho = '#475569', onHeaderContextMenu } = props;
@@ -3094,7 +3179,7 @@ function CarimboA3(props: {
                 <textarea
                   autoFocus
                   className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded-sm text-center"
-                  style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, sans-serif' }}
+                  style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, Helvetica, sans-serif' }}
                   value={txtProp}
                   onChange={(e) => ed.onEditar?.(idProp, e.target.value)}
                   onBlur={(e) => {
@@ -3141,7 +3226,7 @@ function CarimboA3(props: {
                 <textarea
                   autoFocus
                   className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded-sm text-center"
-                  style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, sans-serif' }}
+                  style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, Helvetica, sans-serif' }}
                   value={txtLaudo}
                   onChange={(e) => ed.onEditar?.(idLaudo, e.target.value)}
                   onBlur={(e) => {
@@ -3188,7 +3273,7 @@ function CarimboA3(props: {
                 <textarea
                   autoFocus
                   className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded-sm text-center"
-                  style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, sans-serif' }}
+                  style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, Helvetica, sans-serif' }}
                   value={txtConf}
                   onChange={(e) => ed.onEditar?.(idConf, e.target.value)}
                   onBlur={(e) => {
