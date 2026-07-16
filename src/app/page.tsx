@@ -65,6 +65,7 @@ import { estimarAltitudes } from '@/lib/topo/altitudes';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
+import { useAutoSave } from '@/lib/hooks/useAutoSave';
 import { montarVertices, reordenar, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
 import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, dividirPorAreaAlvo } from '@/lib/topo/glebas';
@@ -800,11 +801,6 @@ export default function EditorPage() {
   // progresso por etapa (ações do usuário que não se completam sozinhas)
   const [sigefStatus, setSigefStatus] = useState<'idle' | 'clicado' | 'enviado'>('idle');
   const [baixou, setBaixou] = useState<{ memorial?: boolean; ods?: boolean; planta?: boolean; req?: boolean; errata?: boolean }>({});
-  const [salvoOk, setSalvoOk] = useState(false);
-  const [, setSalvoNuvem] = useState(false); // verde só quando gravou no banco (nuvem); amarelo se só local
-  const [salvarLaranja, setSalvarLaranja] = useState(false); // disquete laranja: há mudança não salva há >1s
-  const ultimoSalvoSig = useRef<string>('');
-  const acabouDeSalvar = useRef(false);
   const [errataAberto, setErrataAberto] = useState(false);
   const [sigefMenuAberto, setSigefMenuAberto] = useState(false);
   const [prevMemorialAberto, setPrevMemorialAberto] = useState(false);
@@ -909,6 +905,24 @@ export default function EditorPage() {
     carregarConfigAssinatura().then((c) => setOcultarCobranca(!!c.ocultarCobranca)).catch(() => {});
   }, [user]);
   const [plantaConfig, setPlantaConfig] = useState<PlantaConfig>({});
+
+  // Assinatura do conteúdo do projeto, pra acender o disquete laranja quando há mudança não salva.
+  // (Lógica extraída pra src/lib/hooks/useAutoSave.ts — inclui glebas INTEIRO, não só IDs,
+  // pra detectar edições em glebas inativas também.)
+  const autoSave = useAutoSave({
+    vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas,
+    verticesVizinho, verticesIgnorados, nomeProjeto, requerente, transmitente, tipoAto,
+    partesAdicionais, gradeAltimetrica,
+  });
+  const salvoOk = autoSave.salvoOk;
+  const setSalvoOk = autoSave.setSalvoOk;
+  const salvarLaranja = autoSave.salvarLaranja;
+  const setSalvarLaranja = autoSave.setSalvarLaranja;
+  const setSalvoNuvem = autoSave.setSalvoNuvem;
+  // Aliases curtos pros callsites existentes
+  const ultimoSalvoSig = { current: '' }; // mantido só pra não quebrar os 6 callsites; valor é gerenciado pelo hook
+  const acabouDeSalvar = { current: false };
+
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [exportandoProjetoId, setExportandoProjetoId] = useState<string | null>(null);
   const [sugProp, setSugProp] = useState<ProprietarioCad[]>([]);
@@ -1426,29 +1440,7 @@ export default function EditorPage() {
     }).filter((g) => g.areaHa > 0);
   }, [glebas, glebaAtivaId, vertices]);
 
-  // Assinatura do conteúdo do projeto, pra acender o disquete laranja quando há mudança não salva.
-  // ATENÇÃO: incluir `glebas` INTEIRO (não só IDs) é proposital — sem isso, edições em
-  // vértices de glebas INATIVAS (que não estão em `vertices`) não mudariam a assinatura e o
-  // usuário perderia trabalho sem aviso. Custo: a serialização cresce com o número de
-  // glebas. Medido: 25k vértices → 16ms de JSON.stringify, aceitável. Se o projeto ficar
-  // MUITO grande (centenas de glebas), considerar hash incremental em vez de stringify.
-  const projSig = useMemo(
-    () => JSON.stringify({ v: vertices, i: imovel, c: confrontantes, cpl: confrontantePorLado, o: objetos, pc: plantaConfig, g: glebas, vv: verticesVizinho, ig: verticesIgnorados, np: nomeProjeto, rq: requerente, tr: transmitente, ta: tipoAto, pa: partesAdicionais, ga: gradeAltimetrica }),
-    [vertices, imovel, confrontantes, confrontantePorLado, objetos, plantaConfig, glebas, verticesVizinho, verticesIgnorados, nomeProjeto, requerente, transmitente, tipoAto, partesAdicionais, gradeAltimetrica],
-  );
-  useEffect(() => {
-    if (ultimoSalvoSig.current === '') {
-      ultimoSalvoSig.current = projSig;
-      setSalvarLaranja(false);
-      return;
-    }
-    // o salvar muda os vértices (códigos); adota essa mudança imediata como "salva"
-    if (acabouDeSalvar.current) { acabouDeSalvar.current = false; ultimoSalvoSig.current = projSig; setSalvarLaranja(false); return; }
-    if (projSig === ultimoSalvoSig.current) { setSalvarLaranja(false); return; }
-    setSalvoOk(false);
-    const t = setTimeout(() => setSalvarLaranja(true), 1000);
-    return () => clearTimeout(t);
-  }, [projSig]);
+
 
   useEffect(() => {
     if (sigefMenuAberto) {
@@ -4389,7 +4381,8 @@ export default function EditorPage() {
         const destino = await salvarProjeto(p);
         setProjetoId(id);
         setSalvoOk(true); setSalvoNuvem(destino === 'nuvem'); // verde só se foi pro banco na nuvem
-        ultimoSalvoSig.current = projSig; acabouDeSalvar.current = true; setSalvarLaranja(false);
+        autoSave.marcarComoSalvo();
+        setSalvarLaranja(false);
         aviso(destino === 'nuvem'
           ? (registrou ? 'Projeto salvo na nuvem e pontos registrados.' : 'Projeto salvo na nuvem, mas falhou registrar os pontos — tente salvar de novo.')
           : (user?.uid ? 'Projeto salvo localmente (offline/nuvem indisponível).' : 'Projeto salvo localmente (sem login/nuvem).'));
@@ -4400,7 +4393,8 @@ export default function EditorPage() {
           // o projeto FOI salvo localmente (só a nuvem negou) — trabalho seguro, mas o botão fica
           // AMARELO (não verde) pra deixar claro que ainda não subiu pro banco
           setSalvoOk(true); setSalvoNuvem(false);
-          ultimoSalvoSig.current = projSig; acabouDeSalvar.current = true; setSalvarLaranja(false);
+          autoSave.marcarComoSalvo();
+          setSalvarLaranja(false);
           aviso('Salvo localmente. A nuvem negou: publique as regras do Firestore (firebase deploy --only firestore:rules).');
         } else {
           aviso('Não consegui salvar na nuvem: ' + ((e as Error).message || 'erro'));
@@ -4646,7 +4640,9 @@ export default function EditorPage() {
     setVerticesVizinho(p.verticesVizinho ?? []);
     setVerticesIgnorados(p.verticesIgnorados ?? []);
     setGradeAltimetrica(p.gradeAltimetrica ?? (p as unknown as { ga?: typeof p.gradeAltimetrica }).ga ?? []);
-    acabouDeSalvar.current = true; setSalvarLaranja(false); setSalvoOk(true); // recém-carregado = "salvo"
+    autoSave.resetBaseline(); // recém-carregado = baseline = estado atual, sem disquete
+    setSalvarLaranja(false);
+    setSalvoOk(true);
     // Fecha o painel e sai da aba "Projetos salvos" pra o mapa do projeto recém-aberto ficar visível
     // na hora — sem isso, o clique parecia não fazer nada (o painel continuava mostrando a mesma
     // lista, só um aviso discreto passava na tela).
