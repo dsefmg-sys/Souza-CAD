@@ -1,4 +1,4 @@
-import { Document, Paragraph, TextRun, AlignmentType, PageBreak } from 'docx';
+import { Document, Paragraph, TextRun, AlignmentType, PageBreak, Table, TableRow, TableCell, WidthType, BorderStyle } from 'docx';
 import type { ImovelData, TecnicoData, Confrontante, Vertex } from '../topo/types';
 import { numBR } from '../topo/geometry';
 import { rotulosProfissional } from '../topo/profissional';
@@ -20,7 +20,7 @@ export interface AnuenciaInput {
 
 /** Monta os parágrafos de UMA carta de anuência. Isolado pra ser reaproveitado tanto na carta
  *  individual quanto no documento único com todas as cartas (uma por confrontante). */
-function montarParagrafosAnuencia(input: AnuenciaInput): Paragraph[] {
+function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
   const { imovel, tecnico, confrontante, verticesCompartilhados, comarca, dataExtenso, incluirVerticesLista } = sanitizarProfundo(input);
 
   const local = comarca || imovel.municipio || '________';
@@ -28,7 +28,7 @@ function montarParagrafosAnuencia(input: AnuenciaInput): Paragraph[] {
 
   const rotuloRT = rotulosProfissional(tecnico);
 
-  const paragraphs: Paragraph[] = [];
+  const paragraphs: (Paragraph | Table)[] = [];
 
   const addP = (text: string, bold = false, align: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.JUSTIFIED, spaceAfter = 120, size = 22) => {
     paragraphs.push(new Paragraph({
@@ -126,22 +126,106 @@ function montarParagrafosAnuencia(input: AnuenciaInput): Paragraph[] {
   if (incluirVerticesLista && verticesCompartilhados.length > 0) {
     addVazio(80);
     addP('RELAÇÃO DE VÉRTICES DO TRECHO ANUÍDO:', true, AlignmentType.LEFT, 80, 20);
+
     const vistos = new Set<string>();
-    const listarVertice = (v: Vertex) => {
+    const uniqueVertices: Vertex[] = [];
+    const coletarVertice = (v: Vertex) => {
       const cod = v.codigoSigef || v.nome || v.id;
       if (!cod || vistos.has(cod)) return;
       vistos.add(cod);
-      paragraphs.push(new Paragraph({
-        alignment: AlignmentType.LEFT,
-        spacing: { after: 30 },
-        children: [
-          new TextRun({ text: 'Vértice ', size: 20 }),
-          new TextRun({ text: cod, bold: true, size: 20 }),
-          new TextRun({ text: `   E: ${numBR(v.leste, 3)} m   N: ${numBR(v.norte, 3)} m`, size: 20 }),
-        ],
-      }));
+      uniqueVertices.push(v);
     };
-    verticesCompartilhados.forEach((t) => { listarVertice(t.de); listarVertice(t.para); });
+    verticesCompartilhados.forEach((t) => {
+      coletarVertice(t.de);
+      coletarVertice(t.para);
+    });
+
+    if (uniqueVertices.length > 0) {
+      const tableRows: TableRow[] = [];
+
+      // Header Row
+      tableRows.push(new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 40, type: WidthType.PERCENTAGE },
+            shading: { fill: "F2F2F2" },
+            children: [new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 80, after: 80 },
+              children: [new TextRun({ text: "Vértice", bold: true, size: 20 })]
+            })]
+          }),
+          new TableCell({
+            width: { size: 30, type: WidthType.PERCENTAGE },
+            shading: { fill: "F2F2F2" },
+            children: [new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 80, after: 80 },
+              children: [new TextRun({ text: "Coordenada Este (E)", bold: true, size: 20 })]
+            })]
+          }),
+          new TableCell({
+            width: { size: 30, type: WidthType.PERCENTAGE },
+            shading: { fill: "F2F2F2" },
+            children: [new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 80, after: 80 },
+              children: [new TextRun({ text: "Coordenada Norte (N)", bold: true, size: 20 })]
+            })]
+          })
+        ]
+      }));
+
+      // Data Rows
+      uniqueVertices.forEach((v) => {
+        const cod = v.codigoSigef || v.nome || v.id;
+        tableRows.push(new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 40, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 60, after: 60 },
+                children: [new TextRun({ text: cod, bold: true, size: 20 })]
+              })]
+            }),
+            new TableCell({
+              width: { size: 30, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 60, after: 60 },
+                children: [new TextRun({ text: `${numBR(v.leste, 3)} m`, size: 20 })]
+              })]
+            }),
+            new TableCell({
+              width: { size: 30, type: WidthType.PERCENTAGE },
+              children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 60, after: 60 },
+                children: [new TextRun({ text: `${numBR(v.norte, 3)} m`, size: 20 })]
+              })]
+            })
+          ]
+        }));
+      });
+
+      const borders = {
+        top: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+        bottom: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+        left: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+        right: { style: BorderStyle.SINGLE, size: 4, color: "CCCCCC" },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "EAEAEA" },
+        insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "EAEAEA" }
+      };
+
+      const table = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: borders,
+        rows: tableRows
+      });
+
+      paragraphs.push(table);
+    }
   }
 
   addVazio(120);
@@ -230,7 +314,7 @@ export function gerarAnuenciaDocumento(input: AnuenciaInput): Document {
  * as assinaturas. A ordem segue a lista recebida.
  */
 export function gerarAnuenciaLoteDocumento(inputs: AnuenciaInput[]): Document {
-  const children: Paragraph[] = [];
+  const children: (Paragraph | Table)[] = [];
   inputs.forEach((input, i) => {
     if (i > 0) {
       // Quebra de página antes de cada carta seguinte, pra cada confrontante ter a sua folha.
