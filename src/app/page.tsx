@@ -5433,32 +5433,32 @@ export default function EditorPage() {
                           {/* Grade de 3 colunas: [Desfazer+Refazer] + Mover + Orto */}
                           <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none mb-1">
                             <div className="flex gap-0.5 w-full">
-                              <Button size="sm" variant="outline" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
+                              <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
                                 <Undo2 className="size-3.5" />
                               </Button>
-                              <Button size="sm" variant="outline" className="h-8 flex-1 px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
+                              <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
                                 <Redo2 className="size-3.5" />
                               </Button>
                             </div>
-                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className={`relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
+                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'secondary'} className={`relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
                               <MousePointer2 /> <span>Mover</span>
                               <Atalho k="F2" />
                             </Button>
-                            <Button size="sm" variant={orto !== 'off' ? 'default' : 'outline'} className={`relative ${orto !== 'off' ? COR_ATIVO : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
+                            <Button size="sm" variant={orto !== 'off' ? 'default' : 'secondary'} className={`relative ${orto !== 'off' ? COR_ATIVO : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
                               <Compass /> <span>{orto === 'off' ? 'Orto Off' : orto === '90' ? 'Orto 90°' : 'Polar 15°'}</span>
                             </Button>
                           </div>
                           {/* Grade de 3 colunas: Travar + Ímã + Rótulos */}
                           <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                            <Button size="sm" variant={bloqueado ? 'outline' : 'default'} className={`relative ${bloqueado ? 'text-emerald-600 border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'}`} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
+                            <Button size="sm" variant={bloqueado ? 'secondary' : 'default'} className={`relative ${bloqueado ? 'text-emerald-600 border border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'}`} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
                               {bloqueado ? <Lock /> : <LockOpen />} <span>{bloqueado ? 'TRAVADO' : 'SOLTO'}</span>
                               <Atalho k="F5" />
                             </Button>
-                            <Button size="sm" variant={snapAtivo ? 'default' : 'outline'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar GRUDA no vértice mais próximo do imóvel (2 m). Bom para cotar de vértice a vértice ou fechar polilinha bem no canto. Se você não desenha perto dos vértices, deixe desligado.`} onClick={() => setSnapAtivo((s) => !s)} className={`relative ${snapAtivo ? COR_ATIVO : ''}`}>
+                            <Button size="sm" variant={snapAtivo ? 'default' : 'secondary'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar GRUDA no vértice mais próximo do imóvel (2 m). Bom para cotar de vértice a vértice ou fechar polilinha bem no canto. Se você não desenha perto dos vértices, deixe desligado.`} onClick={() => setSnapAtivo((s) => !s)} className={`relative ${snapAtivo ? COR_ATIVO : ''}`}>
                               <Magnet /> <span>Ímã</span>
                               <Atalho k="F3" />
                             </Button>
-                            <Button size="sm" variant={mostrarRotulos ? 'default' : 'outline'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
+                            <Button size="sm" variant={mostrarRotulos ? 'default' : 'secondary'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
                               {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
                               <Atalho k="F4" />
                             </Button>
@@ -5467,18 +5467,18 @@ export default function EditorPage() {
                       ) : (
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
                           <div className="flex gap-0.5 w-full">
-                            <Button size="sm" variant="outline" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
+                            <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
                               <Undo2 className="size-3.5" />
                             </Button>
-                            <Button size="sm" variant="outline" className="h-8 flex-1 px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
+                            <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
                               <Redo2 className="size-3.5" />
                             </Button>
                           </div>
-                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'outline'} className={`relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/editar: arrastar textos, rótulos e a folha (F1)" onClick={() => setModo('navegar')}>
+                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'secondary'} className={`relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/editar: arrastar textos, rótulos e a folha (F1)" onClick={() => setModo('navegar')}>
                             <MousePointer2 /> <span>Mover</span>
                             <Atalho k="F1" />
                           </Button>
-                          <Button size="sm" variant={orto !== 'off' ? 'default' : 'outline'} className={`relative ${orto !== 'off' ? COR_ATIVO : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
+                          <Button size="sm" variant={orto !== 'off' ? 'default' : 'secondary'} className={`relative ${orto !== 'off' ? COR_ATIVO : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
                             <Compass /> <span>{orto === 'off' ? 'Orto Off' : orto === '90' ? 'Orto 90°' : 'Polar 15°'}</span>
                           </Button>
                         </div>
@@ -5509,48 +5509,48 @@ export default function EditorPage() {
                           </div>
                         )}
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
-                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'outline'} className={`relative ${modo === 'linha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('linha', true)} title="Linha reta: clique 2 pontos (F6)">
+                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'secondary'} className={`relative ${modo === 'linha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('linha', true)} title="Linha reta: clique 2 pontos (F6)">
                             <PenTool className={modo === 'linha' ? 'text-white shrink-0' : 'text-amber-500 shrink-0'} /> <span className="truncate">Linha</span>
                             <Atalho k="F6" />
                           </Button>
-                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'outline'} className={`relative ${modo === 'polilinha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('polilinha', true)} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
+                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'secondary'} className={`relative ${modo === 'polilinha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('polilinha', true)} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
                             <PenTool className={modo === 'polilinha' ? 'text-white shrink-0' : 'text-cyan-500 shrink-0'} /> <span className="truncate">Polilinha</span>
                             <Atalho k="F7" />
                           </Button>
-                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'outline'} className={`relative ${modo === 'tracejado' ? COR_ATIVO : ''}`} onClick={() => alternarModo('tracejado', true)} title="Tracejado: linha tracejada aberta (F8)">
+                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'secondary'} className={`relative ${modo === 'tracejado' ? COR_ATIVO : ''}`} onClick={() => alternarModo('tracejado', true)} title="Tracejado: linha tracejada aberta (F8)">
                             <PenTool className={modo === 'tracejado' ? 'text-white shrink-0' : 'text-indigo-500 opacity-80 shrink-0'} /> <span className="truncate">Tracejado</span>
                             <Atalho k="F8" />
                           </Button>
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'outline'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} onClick={() => alternarModo('texto')} title="Texto: clique para inserir (F9)">
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} onClick={() => alternarModo('texto')} title="Texto: clique para inserir (F9)">
                             <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span className="truncate">Texto</span>
                             <Atalho k="F9" />
                           </Button>
-                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'outline'} className={`relative ${modo === 'cota' ? COR_ATIVO : ''}`} onClick={() => alternarModo('cota', true)} title="Cotar: clique dois pontos para medir (F10)">
+                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'secondary'} className={`relative ${modo === 'cota' ? COR_ATIVO : ''}`} onClick={() => alternarModo('cota', true)} title="Cotar: clique dois pontos para medir (F10)">
                             <IconeCota className={modo === 'cota' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Cota</span>
                             <Atalho k="F10" />
                           </Button>
-                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'outline'} className={modo === 'simbolo' ? COR_ATIVO : ''} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
+                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'secondary'} className={modo === 'simbolo' ? COR_ATIVO : ''} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
                             <div className={modo === 'simbolo' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'}><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
                             <span className="truncate">Símbolos</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'outline'} className={modo === 'retangulo' ? COR_ATIVO : ''} onClick={() => alternarModo('retangulo', true)} title="Retângulo: clique dois cantos opostos">
+                          <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'secondary'} className={modo === 'retangulo' ? COR_ATIVO : ''} onClick={() => alternarModo('retangulo', true)} title="Retângulo: clique dois cantos opostos">
                             <Square className={modo === 'retangulo' ? 'text-white shrink-0' : 'text-orange-500 shrink-0'} /> <span className="truncate">Retângulo</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'arco' ? 'default' : 'outline'} className={modo === 'arco' ? COR_ATIVO : ''} onClick={() => alternarModo('arco', true)} title="Arco: clique início, um ponto por onde passa e o fim">
+                          <Button size="sm" variant={modo === 'arco' ? 'default' : 'secondary'} className={modo === 'arco' ? COR_ATIVO : ''} onClick={() => alternarModo('arco', true)} title="Arco: clique início, um ponto por onde passa e o fim">
                             <Spline className={modo === 'arco' ? 'text-white shrink-0' : 'text-teal-500 shrink-0'} /> <span className="truncate">Arco</span>
                           </Button>
                           {/* Geometria avançada de CAD — só no Completo (o Médio fica com o desenho do dia a dia) */}
                           {completo && (<>
-                          <Button size="sm" variant={modo === 'paralela' ? 'default' : 'outline'} className={modo === 'paralela' ? COR_ATIVO : ''} onClick={() => alternarModo('paralela', true)} title="Paralela: criar linha paralela a uma divisa">
+                          <Button size="sm" variant={modo === 'paralela' ? 'default' : 'secondary'} className={modo === 'paralela' ? COR_ATIVO : ''} onClick={() => alternarModo('paralela', true)} title="Paralela: criar linha paralela a uma divisa">
                             <Waypoints className={modo === 'paralela' ? 'text-white shrink-0' : 'text-violet-500 shrink-0'} /> <span className="truncate">Paralela</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'dividir' ? 'default' : 'outline'} className={modo === 'dividir' ? COR_ATIVO : ''} onClick={() => alternarModo('dividir')} title="Dividir: dividir um segmento de divisa em N partes iguais">
+                          <Button size="sm" variant={modo === 'dividir' ? 'default' : 'secondary'} className={modo === 'dividir' ? COR_ATIVO : ''} onClick={() => alternarModo('dividir')} title="Dividir: dividir um segmento de divisa em N partes iguais">
                             <GitCommit className={modo === 'dividir' ? 'text-white shrink-0' : 'text-purple-500 shrink-0'} /> <span className="truncate">Dividir</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'trim' ? 'default' : 'outline'} className={modo === 'trim' ? COR_ATIVO : ''} onClick={() => alternarModo('trim')} title="Aparar (Trim): cortar linhas no cruzamento de um limite">
+                          <Button size="sm" variant={modo === 'trim' ? 'default' : 'secondary'} className={modo === 'trim' ? COR_ATIVO : ''} onClick={() => alternarModo('trim')} title="Aparar (Trim): cortar linhas no cruzamento de um limite">
                             <Scissors className={modo === 'trim' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Aparar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'extend' ? 'default' : 'outline'} className={modo === 'extend' ? COR_ATIVO : ''} onClick={() => alternarModo('extend')} title="Prolongar (Extend): estender uma linha até encontrar um limite">
+                          <Button size="sm" variant={modo === 'extend' ? 'default' : 'secondary'} className={modo === 'extend' ? COR_ATIVO : ''} onClick={() => alternarModo('extend')} title="Prolongar (Extend): estender uma linha até encontrar um limite">
                             <Expand className={modo === 'extend' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'} /> <span className="truncate">Prolongar</span>
                           </Button>
                           </>)}

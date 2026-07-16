@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Eye, Copy, Check, Download } from 'lucide-react';
+import { Eye, Download } from 'lucide-react';
 import type { ImovelData, TecnicoData, Confrontante, Vertex, PessoaQualificada } from '@/lib/topo/types';
 import { calcular } from '@/lib/topo/calcular';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
@@ -44,8 +44,6 @@ export default function MemorialPreviewModal({
   transmitente,
   onBaixar,
 }: Props) {
-  const [copiouNarrativa, setCopiouNarrativa] = useState(false);
-  const [copiouTudo, setCopiouTudo] = useState(false);
   const papelRef = useRef<HTMLDivElement>(null);
 
   // Computa os dados geométricos do polígono
@@ -83,58 +81,6 @@ export default function MemorialPreviewModal({
     ? construirNarrativaSegmentos(res, confrontantes, confrontantePorLado, imovel, zona)
     : [];
 
-  const narrativaTexto = narrativaSegs.map((s) => s.t).join('');
-
-  const copiarTexto = async (tipo: 'narrativa' | 'tudo') => {
-    if (!res || !tecnico) return;
-
-    let texto = '';
-    if (tipo === 'narrativa') {
-      texto = narrativaTexto;
-      setCopiouNarrativa(true);
-      setTimeout(() => setCopiouNarrativa(false), 2000);
-    } else {
-      {
-        const rot = rotulosProfissional(tecnico);
-        const ehUrbano = imovel.tipoImovel === 'urbano';
-        const labelArea = ehUrbano ? 'Área SGL (m²):' : 'Área SGL (ha):';
-        const valArea = ehUrbano ? `${numBR(ef.areaHa * 10000)} m²` : `${numBR(ef.areaHa, 4)} ha`;
-        
-        texto = `${ehServidao ? 'MEMORIAL DESCRITIVO DE SERVIDÃO' : 'MEMORIAL DESCRITIVO'}\n\n`;
-        texto += `Imóvel: ${(imovel.denominacao || '—').padEnd(46)} Matrícula: ${imovel.matricula || '—'}\n`;
-        texto += `${labelArea} ${(valArea).padEnd(40)} Perímetro (m): ${numBR(ef.perimetro)} m\n`;
-        texto += `Proprietário(a): ${(imovel.proprietario || '—').padEnd(38)} TRT: ${imovel.numeroTrt || tecnico?.art || '—'}\n\n`;
-        
-        if (ehServidao) {
-          texto += `${getMod('servidaoIntro')}\n\n`;
-        }
-        
-        texto += `DESCRIÇÃO DO PERÍMETRO\n`;
-        texto += `${narrativaTexto}\n\n`;
-        
-        texto += `INFORMAÇÕES TÉCNICAS\n`;
-        texto += `${getMod(ehUrbano ? 'memorialInfoTecnicasUrbano' : 'memorialInfoTecnicas')}\n\n`;
-        texto += `OBSERVAÇÕES:\n`;
-        texto += `${getMod(ehUrbano ? 'memorialObservacoesUrbano' : 'memorialObservacoes').replace(/^\s*OBSERVAÇÕES:\s*/i, '')}\n\n`;
-        
-        texto += `${imovel.municipio || tecnico.cidadeAssinatura}, ${dataExtenso}.\n\n`;
-        texto += `________________________________________\n`;
-        texto += `${tecnico.nome.toUpperCase()}\n`;
-        texto += `${tecnico.formacao}\n`;
-        texto += `${rot.registro}: ${tecnico.cft}\n`;
-        texto += `Credenciamento INCRA: ${tecnico.credenciamentoIncra}\n`;
-      }
-      setCopiouTudo(true);
-      setTimeout(() => setCopiouTudo(false), 2000);
-    }
-
-    try {
-      await navigator.clipboard.writeText(texto);
-    } catch {
-      // Fallback
-    }
-  };
-
   if (!open) return null;
 
   return (
@@ -151,14 +97,6 @@ export default function MemorialPreviewModal({
             </p>
           </div>
           <div className="flex items-center gap-2 pr-6">
-            <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => copiarTexto('narrativa')}>
-              {copiouNarrativa ? <Check className="size-3 text-green-600" /> : <Copy className="size-3" />}
-              {copiouNarrativa ? 'Copiado!' : 'Copiar Narrativa'}
-            </Button>
-            <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => copiarTexto('tudo')}>
-              {copiouTudo ? <Check className="size-3 text-green-600" /> : <Copy className="size-3" />}
-              {copiouTudo ? 'Copiado!' : 'Copiar Laudo'}
-            </Button>
             {onBaixar && (
               <Button size="sm" className="text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white" onClick={() => { onBaixar(); onOpenChange(false); }}>
                 <Download className="size-3" />
@@ -187,34 +125,48 @@ export default function MemorialPreviewModal({
             </div>
 
             {/* Identificação em tabela de duas colunas, espelhando o DOCX */}
-            <table className="w-full text-[13px] border-collapse my-4" style={{ border: 'none' }}>
-              <tbody>
-                <tr>
-                  <td className="py-1 pr-4" style={{ width: '60%', border: 'none', verticalAlign: 'top' }}>
-                    <strong>Imóvel:</strong> {imovel.denominacao || '—'}
-                  </td>
-                  <td className="py-1" style={{ width: '40%', border: 'none', verticalAlign: 'top' }}>
-                    <strong>Matrícula:</strong> {imovel.matricula || '—'} {imovel.cns && `(CNS: ${imovel.cns})`}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1 pr-4" style={{ border: 'none', verticalAlign: 'top' }}>
-                    <strong>Área SGL (ha):</strong> {numBR(ef.areaHa, 4)} ha
-                  </td>
-                  <td className="py-1" style={{ border: 'none', verticalAlign: 'top' }}>
-                    <strong>Perímetro (m):</strong> {numBR(ef.perimetro)} m
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1 pr-4" style={{ border: 'none', verticalAlign: 'top' }}>
-                    <strong>Proprietário(a):</strong> {imovel.proprietario || '—'}
-                  </td>
-                  <td className="py-1" style={{ border: 'none', verticalAlign: 'top' }}>
-                    <strong>TRT:</strong> {imovel.numeroTrt || tecnico?.art || '—'}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            {(() => {
+              const isUrbano = imovel.tipoImovel === 'urbano';
+              const labelArea = isUrbano ? 'Área SGL (m²):' : 'Área SGL (ha):';
+              const valArea = isUrbano ? `${numBR(ef.areaHa * 10000)} m²` : `${numBR(ef.areaHa, 4)} ha`;
+              const idMunicipal = isUrbano && imovel.inscricaoMunicipal
+                ? ` / Insc.: ${imovel.inscricaoMunicipal}`
+                : '';
+              const valMatricula = imovel.regimeTerra === 'posse' && !imovel.matricula 
+                ? 'Posse' 
+                : `${imovel.matricula || '—'}${idMunicipal}`;
+
+              return (
+                <table className="w-full text-[13px] border-collapse my-4" style={{ border: 'none' }}>
+                  <tbody>
+                    <tr>
+                      <td className="py-1 pr-4" style={{ width: '60%', border: 'none', verticalAlign: 'top' }}>
+                        <strong>Imóvel:</strong> {imovel.denominacao || '—'}
+                      </td>
+                      <td className="py-1" style={{ width: '40%', border: 'none', verticalAlign: 'top' }}>
+                        <strong>Matrícula:</strong> {valMatricula} {imovel.cns && `(CNS: ${imovel.cns})`}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 pr-4" style={{ border: 'none', verticalAlign: 'top' }}>
+                        <strong>{labelArea}</strong> {valArea}
+                      </td>
+                      <td className="py-1" style={{ border: 'none', verticalAlign: 'top' }}>
+                        <strong>Perímetro (m):</strong> {numBR(ef.perimetro)} m
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 pr-4" style={{ border: 'none', verticalAlign: 'top' }}>
+                        <strong>Proprietário(a):</strong> {imovel.proprietario || '—'}
+                      </td>
+                      <td className="py-1" style={{ border: 'none', verticalAlign: 'top' }}>
+                        <strong>TRT:</strong> {imovel.numeroTrt || tecnico?.art || '—'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              );
+            })()}
 
             {/* Abertura de Servidão se houver */}
             {ehServidao && (
