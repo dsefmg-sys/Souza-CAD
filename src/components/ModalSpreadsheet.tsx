@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Vertex, Contadores } from '@/lib/topo/types';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO } from '@/lib/topo/sigefVocab';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { X, Play } from 'lucide-react';
+import { X, Play, Wand2, CheckCircle2 } from 'lucide-react';
+import { lerTxtECalcularCorrecoes } from '@/lib/topo/correcaoPrecisao';
+import { aplicarCorrecoesPrecisao, type CorrecaoPrecisao } from '@/lib/topo/vertices';
+import { RelatorioCorrecaoPrecisao } from './RelatorioCorrecaoPrecisao';
 
 interface Props {
   isOpen: boolean;
@@ -14,12 +17,19 @@ interface Props {
   vertices: Vertex[];
   onSave: (updated: Vertex[]) => void;
   contadorSugerido: Contadores | null;
+  /** Necessário para re-derivar lat/lon quando o TXT atualiza E/N. */
+  zona: number;
+  hemisferio: 'N' | 'S';
 }
 
-export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, contadorSugerido }: Props) {
+export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, contadorSugerido, zona, hemisferio }: Props) {
   const [localVertices, setLocalVertices] = useState<Vertex[]>([]);
   const [prefix, setPrefix] = useState('M-');
   const [startNum, setStartNum] = useState(1);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [relatorio, setRelatorio] = useState<{ nomeArquivo: string; correcoes: CorrecaoPrecisao[] } | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [processando, setProcessando] = useState(false);
 
   // Initialize prefix dynamically when opening the modal
   useEffect(() => {
@@ -88,6 +98,34 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
     onClose();
   };
 
+  function abrirFilePicker() {
+    setErro(null);
+    setRelatorio(null);
+    fileInputRef.current?.click();
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = ''; // permite reescolher o mesmo arquivo
+    if (!f) return;
+    setProcessando(true);
+    setErro(null);
+    const resultado = await lerTxtECalcularCorrecoes(f, localVertices);
+    setProcessando(false);
+    if (!resultado.ok) {
+      setErro(resultado.erro);
+      return;
+    }
+    setRelatorio({ nomeArquivo: resultado.nomeArquivo, correcoes: resultado.correcoes });
+  }
+
+  function aplicarCorrecoes() {
+    if (!relatorio) return;
+    const novos = aplicarCorrecoesPrecisao(localVertices, relatorio.correcoes, zona, hemisferio);
+    setLocalVertices(novos);
+    setRelatorio(null);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="flex h-[90vh] w-[95vw] max-w-6xl flex-col rounded-lg border border-border bg-background shadow-xl">
@@ -97,9 +135,20 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
             <h2 className="text-lg font-bold text-foreground">Tabela de Vértices</h2>
             <p className="text-xs text-muted-foreground">Editor em modo planilha. Digite diretamente nas células para alterar valores.</p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
-            <X className="size-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={processando || localVertices.length === 0}
+              onClick={abrirFilePicker}
+              title="Reimportar o TXT do GNSS para casar vértices por proximidade e corrigir a precisão das coordenadas"
+            >
+              <Wand2 className="size-4" /> {processando ? 'Lendo…' : 'Corrigir precisão importando TXT novamente'}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+              <X className="size-5" />
+            </Button>
+          </div>
         </header>
 
         {/* Batch Renaming Toolbar */}
@@ -144,6 +193,20 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
             </div>
           )}
         </div>
+
+        {/* Relatório de correção de precisão — só aparece após o usuário escolher um TXT */}
+        {(relatorio || erro) && (
+          <div className="border-b p-3 space-y-2">
+            {relatorio && (
+              <RelatorioCorrecaoPrecisao nomeArquivo={relatorio.nomeArquivo} correcoes={relatorio.correcoes} />
+            )}
+            {erro && (
+              <div className="rounded-sm border border-red-500/40 bg-red-50/40 dark:bg-red-900/10 p-2 text-xs text-red-700 dark:text-red-400">
+                {erro}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Table Area */}
         <div className="flex-1 overflow-auto p-4">
@@ -257,9 +320,23 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
 
         {/* Footer */}
         <footer className="flex items-center justify-end gap-2 border-t p-4">
+          {relatorio && relatorio.correcoes.length > 0 && (
+            <Button variant="default" onClick={aplicarCorrecoes}>
+              <CheckCircle2 className="size-4" /> Aplicar {relatorio.correcoes.length} correções
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button variant="default" onClick={handleSave}>Salvar Alterações</Button>
         </footer>
+
+        {/* File picker escondido — acionado pelo botão "Corrigir precisão…" no header */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.csv,text/plain,text/csv"
+          className="hidden"
+          onChange={handleFile}
+        />
       </div>
     </div>
   );

@@ -3,6 +3,142 @@ import { ehDivisa } from './parseTxt';
 import { utmParaGeo } from './coords';
 import { TIPO_LIMITE_PADRAO, METODO_PADRAO } from './sigefVocab';
 
+/**
+ * Quantas casas decimais significativas tem o número. Usado para detectar perda de precisão:
+ * um valor UTM com 3 casas (mm) é o esperado de campo; 0-2 casas indica que a coordenada
+ * chegou truncada/arredondada da fonte (TXT do GNSS configurado pra poucas casas, GML com
+ * lat/lon de baixa resolução, KML, ou edição manual no editor de vértices).
+ *
+ * Tolera notação científica (1.5e6) tratando só a parte fracionária visível — improvável
+ * para UTM em metros, mas não custa defender.
+ */
+export function casasDecimais(n: number): number {
+  if (!Number.isFinite(n) || n === 0) return 0;
+  const s = Math.abs(n).toString();
+  if (s.includes('e') || s.includes('E')) {
+    const [, exp] = s.split(/[eE]/);
+    const mantissa = s.split(/[eE]/)[0];
+    const [, frac = ''] = mantissa.split('.');
+    const e = parseInt(exp, 10);
+    // posição da última casa fracionária do número "real"
+    return Math.max(0, frac.length - e);
+  }
+  const i = s.indexOf('.');
+  if (i < 0) return 0;
+  return s.length - i - 1;
+}
+
+/**
+ * Sugestão de correção de precisão: casa cada vértice atual com o ponto mais próximo do TXT
+ * e marca apenas os casos em que o ponto do TXT traz MAIS casas decimais (logo, mais precisão).
+ * Não mexe em vértice que já está no mesmo nível (ou melhor) de precisão que o TXT — pra
+ * atualização ser segura, sem regredir nada.
+ *
+ * Tolerância pequena (10 cm por padrão) garante que só vamos trocar coordenadas de quem é
+ * praticamente o MESMO ponto físico, evitando sobrescrever um vértice que o usuário moveu
+ * de propósito (ex.: vértice virtual por interseção, ou ponto editado à mão).
+ */
+export interface CorrecaoPrecisao {
+  verticeId: string;
+  codigo: string;       // identificação amigável (codigoSigef ou nome) p/ relatório
+  antes: { leste: number; norte: number; elevacao: number };
+  depois: { leste: number; norte: number; elevacao: number };
+  distanciaM: number;   // distância entre antes e depois (sempre ≤ toleranciaM)
+  pontoTxtIdx: number;  // índice no array de pontos do TXT
+  motivo: 'leste' | 'norte' | 'elevacao' | 'leste+norte' | 'leste+elevacao' | 'norte+elevacao' | 'todos';
+}
+
+export interface OpcCasamento {
+  /** Tolerância POR EIXO em metros (|E_v - E_p| E |N_v - N_p| têm que caber aqui). Default 0.5m.
+   * Cobre o pior caso de arredondamento (0 casas no TXT vs 3 casas reais = até 0.5m de erro
+   * em cada eixo). Usar tolerância por eixo — e não raio — evita casar um vértice que esteja
+   * 0.01m ao norte mas 0.4m a oeste com o ponto errado. */
+  toleranciaEixoM?: number;
+  /** Se true, também atualiza a elevação quando o TXT trouxer uma cota com mais casas. Default true. */
+  corrigirElevacao?: boolean;
+}
+
+export function correcoesPrecisaoViaTxt(
+  vertices: Vertex[],
+  pontosTxt: RawPoint[],
+  opcoes: OpcCasamento = {}
+): CorrecaoPrecisao[] {
+  const tol = opcoes.toleranciaEixoM ?? 0.5;
+  const corrigirElevacao = opcoes.corrigirElevacao ?? true;
+  // Cada ponto do TXT só casa com UM vértice — evita que dois vértices próximos herdem a
+  // mesma coordenada e, pior, que o segundo "roube" a correção do primeiro.
+  const usados = new Set<number>();
+  const out: CorrecaoPrecisao[] = [];
+  for (const v of vertices) {
+    if (!Number.isFinite(v.leste) || !Number.isFinite(v.norte)) continue;
+    let melhorIdx = -1;
+    let melhorD = Infinity;
+    for (let i = 0; i < pontosTxt.length; i++) {
+      if (usados.has(i)) continue;
+      const p = pontosTxt[i];
+      if (!Number.isFinite(p.leste) || !Number.isFinite(p.norte)) continue;
+      const d = Math.hypot(p.leste - v.leste, p.norte - v.norte);
+      if (d < melhorD) { melhorD = d; melhorIdx = i; }
+    }
+    if (melhorIdx < 0) continue;
+    const p = pontosTxt[melhorIdx];
+    // Filtro de casamento: as diferenças POR EIXO têm que caber na tolerância. Distância
+    // total pequena mas um eixo muito deslocado (ex.: 0.4m de raio num ponto 1m ao norte
+    // e 0.001m a leste) não é o mesmo ponto físico.
+    if (Math.abs(p.leste - v.leste) > tol || Math.abs(p.norte - v.norte) > tol) continue;
+    const temLeste = casasDecimais(p.leste) > casasDecimais(v.leste) && p.leste !== v.leste;
+    const temNorte = casasDecimais(p.norte) > casasDecimais(v.norte) && p.norte !== v.norte;
+    const temElev = corrigirElevacao
+      && Number.isFinite(p.elevacao)
+      && Number.isFinite(v.elevacao)
+      && casasDecimais(p.elevacao) > casasDecimais(v.elevacao)
+      && p.elevacao !== v.elevacao;
+    if (!temLeste && !temNorte && !temElev) continue; // TXT não traz ganho de precisão aqui
+    usados.add(melhorIdx);
+    const partes: string[] = [];
+    if (temLeste) partes.push('leste');
+    if (temNorte) partes.push('norte');
+    if (temElev) partes.push('elevacao');
+    out.push({
+      verticeId: v.id,
+      codigo: v.codigoSigef || v.nome || v.id,
+      antes: { leste: v.leste, norte: v.norte, elevacao: v.elevacao },
+      // `depois` traz o valor NOVO só nas dimensões que vão ser atualizadas; nas outras,
+      // mantém o valor original pra `aplicarCorrecoesPrecisao` não regredir a precisão.
+      depois: {
+        leste: temLeste ? p.leste : v.leste,
+        norte: temNorte ? p.norte : v.norte,
+        elevacao: temElev ? p.elevacao : v.elevacao,
+      },
+      distanciaM: melhorD,
+      pontoTxtIdx: melhorIdx,
+      motivo: partes.join('+') as CorrecaoPrecisao['motivo'],
+    });
+  }
+  return out;
+}
+
+/**
+ * Aplica um conjunto de correções aos vértices. Atualiza E/N (e opcionalmente a elevação)
+ * com o valor do TXT, e re-deriva lat/lon pela conversão UTM→geo pra manter consistência.
+ * NÃO recalcula o sentido, código SIGEF ou ordem — só os números.
+ */
+export function aplicarCorrecoesPrecisao(
+  vertices: Vertex[],
+  correcoes: CorrecaoPrecisao[],
+  zona: number,
+  hemisferio: 'N' | 'S'
+): Vertex[] {
+  if (correcoes.length === 0) return vertices;
+  const mapa = new Map(correcoes.map((c) => [c.verticeId, c.depois]));
+  return vertices.map((v) => {
+    const c = mapa.get(v.id);
+    if (!c) return v;
+    const { lat, lon } = utmParaGeo(c.leste, c.norte, zona, hemisferio);
+    return { ...v, leste: c.leste, norte: c.norte, elevacao: c.elevacao, lat, lon };
+  });
+}
+
 let _seq = 0;
 function uid(prefixo: string) {
   _seq += 1;

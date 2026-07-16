@@ -1638,6 +1638,17 @@ export default function EditorPage() {
     }
     return glebas.map((g) => (g.id === glebaAtivaId ? { ...g, vertices, confrontantes, confrontantePorLado, objetos } : g));
   }
+
+  // Recebe o array de vértices já com a precisão corrigida (vem do PlanilhaConferenciaModal
+  // após o usuário confirmar o preview) e propaga essa mudança pra gleba ativa + estado de
+  // trabalho. Tira foto do estado anterior pro usuário poder desfazer; marca o projeto como
+  // dirty pra o auto-save subir a versão corrigida.
+  function aplicarCorrecoesPrecisaoLocal(verticesCorrigidos: Vertex[]) {
+    snap();
+    setVertices(verticesCorrigidos);
+    setGlebas((gs) => gs.map((g) => (g.id === glebaAtivaId ? { ...g, vertices: verticesCorrigidos } : g)));
+    setSalvarLaranja(true);
+  }
   function carregarGleba(g: Gleba) {
     // o histórico NÃO atravessa glebas: um desfazer depois da troca restauraria os vértices da
     // OUTRA gleba dentro desta (corrupção silenciosa) — melhor recomeçar o histórico
@@ -7904,6 +7915,8 @@ export default function EditorPage() {
         vertices={vertices}
         onSave={salvarAlteracoesPlanilha}
         contadorSugerido={contadorSugerido}
+        zona={zona}
+        hemisferio={hemisferio}
       />
       <ModalImport
         isOpen={importModalAberto}
@@ -8065,6 +8078,7 @@ export default function EditorPage() {
         imovel={imovel} res={res} confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} tecnico={tecnico}
         onBaixar={() => { setPlanilhaConfAberta(false); exportarOds(); }}
         imoveisCadastrados={imoveisCadastrados}
+        onAplicarCorrecoes={aplicarCorrecoesPrecisaoLocal}
       />
       <ImportPreviewModal
         open={!!previewData}
