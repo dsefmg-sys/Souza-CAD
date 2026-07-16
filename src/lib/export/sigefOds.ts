@@ -67,8 +67,8 @@ function linhaVertice(
 ): string {
   const eLong = grausParaDMS(v.lon, { estilo: 'sigef', eixo: 'lon', casas: 3 });
   const nLat = grausParaDMS(v.lat, { estilo: 'sigef', eixo: 'lat', casas: 3 });
-  const cns = (conf?.cns || cnsImovel || '').trim();
   const mat = conf?.matricula ? formatMatricula(conf.matricula) : '';
+  const cns = mat ? (conf?.cns || cnsImovel || '').trim() : '';
   // altitude pode vir vazia/NaN de importação só-geográfica — sem isso o .toFixed derrubaria o ODS inteiro
   const elev = Number.isFinite(v.elevacao) ? v.elevacao : 0;
   const cels =
@@ -238,6 +238,7 @@ export function linhasConferencia(
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
   return res.vertices.map((v, i) => {
     const conf = confrontantePorLado[i] ? mapaC.get(confrontantePorLado[i]) : undefined;
+    const mat = conf?.matricula ? formatMatricula(conf.matricula) : '';
     return {
       codigo: v.codigoSigef,
       longitude: grausParaDMS(v.lon, { estilo: 'sigef', eixo: 'lon', casas: 3 }),
@@ -248,8 +249,8 @@ export function linhasConferencia(
       sigmaZ: sigmaBR(v.sigmaZ, '0,01'),
       metodo: v.metodo || tec.metodoPosicionamento || 'PG6',
       tipoLimite: obterTipoLimiteEfetivo(v, tec.tipoLimite),
-      cns: (conf?.cns || cnsImovel || '').trim(),
-      matricula: conf?.matricula ? formatMatricula(conf.matricula) : '',
+      cns: mat ? (conf?.cns || cnsImovel || '').trim() : '',
+      matricula: mat,
       confrontante: obterNomeConfrontanteFormatado(conf, imoveisCadastrados),
     };
   });
