@@ -10,7 +10,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
-  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Compass, Archive,
+  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Compass, Archive, BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -592,6 +592,7 @@ export default function EditorPage() {
   const [objetos, setObjetos] = useState<ObjetoDesenho[]>([]);
   const [desenhoBuffer, setDesenhoBuffer] = useState<PontoLL[]>([]);
   const [objetoSelId, setObjetoSelId] = useState<string | null>(null);
+  const [objPersonalizarId, setObjPersonalizarId] = useState<string | null>(null);
   const [vSplitInicioId, setVSplitInicioId] = useState<string | null>(null);
   const [vSplitFimId, setVSplitFimId] = useState<string | null>(null);
   const [areaAlvoHa, setAreaAlvoHa] = useState(''); // divisão por área alvo (ha)
@@ -1012,37 +1013,7 @@ export default function EditorPage() {
   const [msg, setMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [corCabecalho, setCorCabecalho] = useState('cinza');
-  const [mostrandoCoresHeader, setMostrandoCoresHeader] = useState(false);
-  const [mostrarEscalaToast, setMostrarEscalaToast] = useState(false);
-  const scaleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('metrica.corCabecalho');
-      if (saved) setCorCabecalho(saved);
-    } catch { /* ignore */ }
-  }, []);
-
-  const salvarCorCabecalho = (cor: string) => {
-    setCorCabecalho(cor);
-    try {
-      localStorage.setItem('metrica.corCabecalho', cor);
-    } catch { /* ignore */ }
-  };
-
-  useEffect(() => {
-    setMostrarEscalaToast(true);
-    if (scaleTimerRef.current) clearTimeout(scaleTimerRef.current);
-    scaleTimerRef.current = setTimeout(() => {
-      setMostrarEscalaToast(false);
-    }, 1500);
-    return () => {
-      if (scaleTimerRef.current) clearTimeout(scaleTimerRef.current);
-    };
-  }, [plantaConfig.escalaManual]);
-
-  const themeCabecalho = CORES_CABECALHO.find((c) => c.id === corCabecalho) ?? CORES_CABECALHO[0];
   const dxfRef = useRef<HTMLInputElement>(null);
   const kmlRef = useRef<HTMLInputElement>(null);
   const geojsonRef = useRef<HTMLInputElement>(null);
@@ -5292,11 +5263,7 @@ export default function EditorPage() {
           <span className="hidden flex-col text-[9px] font-black uppercase tracking-wider leading-none sm:flex">
             <span className={souMaster() ? 'text-amber-500 dark:text-amber-400' : 'text-primary'}>Souza</span>
             <span className={souMaster() ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground'}>CAD</span>
-            {souMaster() && (
-              <span className="mt-0.5 rounded-full bg-amber-500/10 px-0.5 py-px text-[7px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/20 text-center">
-                Master
-              </span>
-            )}
+
           </span>
         </div>
         <div className="flex flex-1 items-center gap-1 overflow-x-auto px-2 py-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] [&_button_svg]:size-3">
@@ -5503,43 +5470,12 @@ export default function EditorPage() {
                 {/* DADOS E AÇÕES DO PROJETO */}
                 {rotulo ? (
                   <div className="flex flex-col gap-2 text-xs">
-                    {/* Chave de Modo (Fácil / Médio / Completo) - Fica no topo da barra, acima de Gestão */}
-                    {chaveTopoVisivel && !introTocando && (
-                      <button type="button"
-                        onClick={() => trocarModoApp(proximoModo(modoApp))}
-                        title={completo
-                          ? 'Modo Completo: todas as ferramentas. Clique para o Fácil.'
-                          : medio
-                            ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
-                            : 'Modo Fácil: só o essencial. Clique para o Médio.'}
-                        className="flex w-full h-8 items-center justify-center gap-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors shadow-md shrink-0 text-[10px] font-bold border border-transparent">
-                        {completo ? <Briefcase className="size-3.5 text-sky-500" /> : medio ? <PencilRuler className="size-3.5 text-emerald-500" /> : <GraduationCap className="size-3.5 text-amber-500" />}
-                        <span>{completo ? 'MODO COMPLETO' : medio ? 'MODO MÉDIO' : 'MODO FÁCIL'}</span>
-                      </button>
-                    )}
 
-                    {/* CARD 1: GESTÃO DO PROJETO */}
+                     {/* CARD 1: GESTÃO DO PROJETO */}
                     <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
-                      <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
+                      <span className="text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b text-muted-foreground select-none flex items-center">
                         <span>Gestão do Projeto</span>
-                        <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                       </span>
-                      {mostrandoCoresHeader && (
-                        <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded-sm border border-dashed mb-1 animate-in fade-in duration-200">
-                          {CORES_CABECALHO.map((c) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              title={c.label}
-                              className={`size-3.5 rounded-full hover:scale-110 transition-transform ${c.bg} ${corCabecalho === c.id ? 'ring-2 ring-primary ring-offset-1' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                salvarCorCabecalho(c.id);
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
                       
 
 
@@ -5552,11 +5488,8 @@ export default function EditorPage() {
                         <Button size="sm" variant="secondary" onClick={salvar} disabled={processando} title="Salvar projeto atual (Ctrl+S)">
                           <Save className="text-emerald-500" /> <span>SALVAR</span>
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }} title="Extrair dados (coordenadas, proprietários, confrontantes, áreas) de PDFs, imagens e documentos com Inteligência Artificial">
-                          <Sparkles className="text-indigo-500" /> <span>IA</span>
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={() => setPrecoSugAberto(true)} title="Preço sugerido: quanto cobrar por este imóvel">
-                          <PencilRuler className="text-emerald-600" /> <span>Preço</span>
+                        <Button size="sm" variant="secondary" onClick={() => setPrecoSugAberto(true)} title="Precificação: quanto cobrar por este imóvel">
+                          <PencilRuler className="text-amber-400" /> <span>Precificação</span>
                         </Button>
                         {completo && (
                           <Button size="sm" variant="secondary" onClick={() => setPontosAberto(true)} title="Banco de pontos">
@@ -5565,7 +5498,7 @@ export default function EditorPage() {
                         )}
                         {completo && (
                           <Button size="sm" variant="secondary" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
-                            <Info className="text-sky-500" /> <span>Financ.</span>
+                            <BarChart3 className="text-sky-500" /> <span>Gestão</span>
                           </Button>
                         )}
                       </div>
@@ -5584,26 +5517,9 @@ export default function EditorPage() {
 
                     {/* CARD 2: VISUALIZAÇÃO & HISTÓRICO */}
                     <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
-                      <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
-                        <span>Visualização & Navegação</span>
-                        <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
+                      <span className="text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b text-muted-foreground select-none flex items-center">
+                        <span>Visualização &amp; Navegação</span>
                       </span>
-                      {mostrandoCoresHeader && (
-                        <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded-sm border border-dashed mb-1 animate-in fade-in duration-200">
-                          {CORES_CABECALHO.map((c) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              title={c.label}
-                              className={`size-3.5 rounded-full hover:scale-110 transition-transform ${c.bg} ${corCabecalho === c.id ? 'ring-2 ring-primary ring-offset-1' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                salvarCorCabecalho(c.id);
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
                       {vista === 'mapa' ? (
                         <>
                           {/* Grade de 3 colunas: [Desfazer+Refazer] + Mover + Orto */}
@@ -5620,8 +5536,9 @@ export default function EditorPage() {
                               <MousePointer2 /> <span>Mover</span>
                               <Atalho k="F2" />
                             </Button>
-                            <Button size="sm" variant={orto !== 'off' ? 'default' : 'secondary'} className={`relative ${orto !== 'off' ? COR_ATIVO : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
-                              <Compass /> <span>{orto === 'off' ? 'Orto Off' : orto === '90' ? 'Orto 90°' : 'Polar 15°'}</span>
+                            <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto: clique no mapa para adicionar texto (F9)" onClick={() => alternarModo('texto')}>
+                              <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span>Texto</span>
+                              <Atalho k="F9" />
                             </Button>
                           </div>
                           {/* Grade de 3 colunas: Travar + Ímã + Rótulos */}
@@ -5654,8 +5571,9 @@ export default function EditorPage() {
                             <MousePointer2 /> <span>Mover</span>
                             <Atalho k="F1" />
                           </Button>
-                          <Button size="sm" variant={orto !== 'off' ? 'default' : 'secondary'} className={`relative ${orto !== 'off' ? COR_ATIVO : ''}`} title="Trava de ângulo: ORTO 90° ou POLAR 15°" onClick={() => setOrto((o) => (o === 'off' ? '90' : o === '90' ? '15' : 'off'))}>
-                            <Compass /> <span>{orto === 'off' ? 'Orto Off' : orto === '90' ? 'Orto 90°' : 'Polar 15°'}</span>
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto: clique na planta para adicionar texto (F9)" onClick={() => alternarModo('texto')}>
+                            <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span>Texto</span>
+                            <Atalho k="F9" />
                           </Button>
                         </div>
                       )}
@@ -5664,26 +5582,9 @@ export default function EditorPage() {
                     {/* CARD 3: FERRAMENTAS DE DESENHO */}
                     {medioOuMais && (vista === 'mapa' || editarPlanta) && (
                       <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
-                        <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`} onClick={() => setMostrandoCoresHeader(v => !v)}>
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b text-muted-foreground select-none flex items-center">
                           <span>Desenho e Geometria</span>
-                          <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                         </span>
-                        {mostrandoCoresHeader && (
-                          <div className="flex flex-wrap gap-1 py-1 px-1 justify-between bg-muted/20 rounded-sm border border-dashed mb-1 animate-in fade-in duration-200">
-                            {CORES_CABECALHO.map((c) => (
-                              <button
-                                key={c.id}
-                                type="button"
-                                title={c.label}
-                                className={`size-3.5 rounded-full hover:scale-110 transition-transform ${c.bg} ${corCabecalho === c.id ? 'ring-2 ring-primary ring-offset-1' : ''}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  salvarCorCabecalho(c.id);
-                                }}
-                              />
-                            ))}
-                          </div>
-                        )}
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
                           <Button size="sm" variant={modo === 'linha' ? 'default' : 'secondary'} className={`relative ${modo === 'linha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('linha', true)} title="Linha reta: clique 2 pontos (F6)">
                             <PenTool className={modo === 'linha' ? 'text-white shrink-0' : 'text-amber-500 shrink-0'} /> <span className="truncate">Linha</span>
@@ -5697,10 +5598,7 @@ export default function EditorPage() {
                             <PenTool className={modo === 'tracejado' ? 'text-white shrink-0' : 'text-indigo-500 opacity-80 shrink-0'} /> <span className="truncate">Tracejado</span>
                             <Atalho k="F8" />
                           </Button>
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} onClick={() => alternarModo('texto')} title="Texto: clique para inserir (F9)">
-                            <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span className="truncate">Texto</span>
-                            <Atalho k="F9" />
-                          </Button>
+
                           <Button size="sm" variant={modo === 'cota' ? 'default' : 'secondary'} className={`relative ${modo === 'cota' ? COR_ATIVO : ''}`} onClick={() => alternarModo('cota', true)} title="Cotar: clique dois pontos para medir (F10)">
                             <IconeCota className={modo === 'cota' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Cota</span>
                             <Atalho k="F10" />
@@ -5999,11 +5897,9 @@ export default function EditorPage() {
                                       className="h-6 w-6 rounded-sm hover:bg-accent text-foreground font-bold transition-colors text-base flex items-center justify-center"
                                       title="Aumentar escala" onClick={() => alterarEscala(-250)}>+</button>
                                   </div>
-                                  {mostrarEscalaToast && (
-                                    <div className="flex items-center justify-center rounded-md bg-black text-white h-6 text-[10px] tracking-wider font-bold animate-in fade-in duration-200">
-                                      1 : {obterEscalaEfetiva()}
-                                    </div>
-                                  )}
+                                  <div className="flex items-center justify-center rounded-md bg-black text-white h-6 text-[10px] tracking-wider font-bold animate-in fade-in duration-200">
+                                    1 : {obterEscalaEfetiva()}
+                                  </div>
                                 </div>
                               )}
 
@@ -6148,9 +6044,8 @@ export default function EditorPage() {
                     {/* CARD 4: GERENCIADOR DE CAMADAS — escondido pelo interruptor GERENCIADOR_CAMADAS_VISIVEL */}
                     {GERENCIADOR_CAMADAS_VISIVEL && medioOuMais && vista === 'mapa' && (
                       <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm mt-1.5">
-                        <span className={`text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b cursor-pointer hover:opacity-80 select-none flex items-center justify-between ${themeCabecalho.text} ${themeCabecalho.border}`}>
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b select-none flex items-center text-muted-foreground">
                           <span>Gerenciador de Camadas</span>
-                          <span className={`size-1.5 rounded-full ${themeCabecalho.bg}`} />
                         </span>
                         
                         <div className="flex flex-col gap-1 text-[10px] text-foreground mt-1">
@@ -7049,6 +6944,7 @@ export default function EditorPage() {
                       mostrarRotulos={mostrarRotulos}
                       selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverObjeto={onMoverObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
+                       onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
                       onDblClick={async (lat, lon) => {
                         if (modo === 'polilinha' || modo === 'tracejado') {
                           if (desenhoBuffer.length >= 2) {
@@ -7074,7 +6970,7 @@ export default function EditorPage() {
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onToggleTravaFolha={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
                       onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} onCiclarEstilo={ciclarEstiloPlanta}
-                      onContextMenuVazio={() => setVista('mapa')} />
+                      onContextMenuVazio={() => { setVista(v => v === 'planta' ? 'mapa' : 'planta'); }} />
                     </ErrorBoundary>
                   </div>
                 )}

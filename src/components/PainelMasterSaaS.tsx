@@ -799,8 +799,15 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                             <div className="font-bold text-white leading-tight text-sm">{p.empresaNome || 'Sem Empresa'}</div>
                             <div className="text-xs text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
                           </td>
-                          <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">{p.email || '—'}</td>
-                          <td className="px-2 py-2.5 text-center font-bold text-emerald-400 text-sm">{p.totalProjetos ?? 0}</td>
+                          <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">
+                            <div>{p.email || '—'}</div>
+                            {p.ultimoAcessoEm ? (
+                              <div className="text-amber-400 font-semibold mt-0.5">login {dataBR(p.ultimoAcessoEm)}</div>
+                            ) : null}
+                          </td>
+                          <td className="px-2 py-2.5 text-center">
+                            <button type="button" title="Ver projetos deste cliente" onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)} className="font-bold text-emerald-400 hover:text-emerald-300 hover:underline text-sm">{p.totalProjetos ?? 0}</button>
+                          </td>
                           <td colSpan={3} className="px-4 py-2.5 text-center text-xs text-zinc-500 italic">
                             Membro — cobrança segue a empresa de {dono?.empresaNome || dono?.email || 'outra conta'}
                           </td>
@@ -865,8 +872,15 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                           <div className="font-bold text-white leading-tight text-sm">{p.empresaNome || 'Sem Empresa'}</div>
                           <div className="text-xs text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
                         </td>
-                        <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">{p.email || '—'}</td>
-                        <td className="px-2 py-2.5 text-center font-bold text-emerald-400 text-sm">{p.totalProjetos ?? 0}</td>
+                        <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">
+                          <div>{p.email || '—'}</div>
+                          {p.ultimoAcessoEm ? (
+                            <div className="text-amber-400 font-semibold mt-0.5">login {dataBR(p.ultimoAcessoEm)}</div>
+                          ) : null}
+                        </td>
+                        <td className="px-2 py-2.5 text-center">
+                          <button type="button" title="Ver projetos deste cliente" onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)} className="font-bold text-emerald-400 hover:text-emerald-300 hover:underline text-sm">{p.totalProjetos ?? 0}</button>
+                        </td>
                         
                         {/* CRM: Mensalidade */}
                         <td className="px-2 py-2.5 text-center">
