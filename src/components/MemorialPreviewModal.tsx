@@ -122,7 +122,6 @@ export default function MemorialPreviewModal({
         texto += `${tecnico.nome.toUpperCase()}\n`;
         texto += `${tecnico.formacao}\n`;
         texto += `${rot.registro}: ${tecnico.cft}\n`;
-        texto += `${rot.termo} nº ${imovel.numeroTrt || tecnico.art}\n`;
         texto += `Credenciamento INCRA: ${tecnico.credenciamentoIncra}\n`;
       }
       setCopiouTudo(true);
@@ -276,7 +275,6 @@ export default function MemorialPreviewModal({
                 <div className="text-neutral-500 text-[10px] space-y-0.5">
                   <div>{tecnico.formacao}</div>
                   <div>{rotulosProfissional(tecnico).registro}: {tecnico.cft}</div>
-                  <div>{rotulosProfissional(tecnico).termo} nº {imovel.numeroTrt || tecnico.art}</div>
                   <div>Credenciamento INCRA: {tecnico.credenciamentoIncra}</div>
                 </div>
               </div>
