@@ -78,6 +78,7 @@ import { PASSOS_BASE, PASSOS_AVANCADOS } from '@/lib/ajuda/passos';
 export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | string[]; rotulo: string; titulo: string; dourado?: boolean }) {
   const [tocando, setTocando] = useState(false);
   const [progresso, setProgresso] = useState(0);
+  const [duracao, setDuracao] = useState(0);
   const [currentIdx, setCurrentIdx] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -88,6 +89,7 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
   useEffect(() => {
     setCurrentIdx(0);
     setProgresso(0);
+    setDuracao(0);
     setTocando(false);
     if (audioRef.current) {
       audioRef.current.pause();
@@ -119,6 +121,7 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
     if (Array.isArray(src) && currentIdx + 1 < src.length) {
       const nextIdx = currentIdx + 1;
       setCurrentIdx(nextIdx);
+      setDuracao(0);
       setTimeout(() => {
         const nextAudio = audioRef.current;
         if (nextAudio) {
@@ -132,12 +135,19 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
     }
   }
 
+  // Tempo restante em MM:SS
+  const restante = duracao > 0 ? Math.max(0, Math.round(duracao * (1 - progresso))) : 0;
+  const restMin = Math.floor(restante / 60);
+  const restSeg = restante % 60;
+  const restStr = duracao > 0 ? `-${restMin}:${String(restSeg).padStart(2, '0')}` : '';
+
   return (
     <div className={`flex items-center gap-1 rounded-full border bg-background/95 pl-1.5 pr-1 py-0.5 shadow-xl ${dourado ? 'border-amber-500/60 bg-amber-500/10' : ''}`} title={titulo}>
       <audio
         ref={(el) => { audioRef.current = el; }}
         src={currentSrc}
         preload="metadata"
+        onLoadedMetadata={() => { const a = audioRef.current; if (a) setDuracao(a.duration); }}
         onPlay={() => setTocando(true)}
         onPause={() => setTocando(false)}
         onTimeUpdate={() => {
@@ -152,6 +162,12 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
       <div className="relative h-1 w-10 cursor-pointer rounded-full bg-border overflow-hidden shrink-0" onClick={seek} title="Clique para avançar">
         <div className={`absolute left-0 top-0 h-full rounded-full transition-all duration-150 ${dourado ? 'bg-amber-500' : 'bg-primary'}`} style={{ width: `${progresso * 100}%` }} />
       </div>
+      {/* Tempo restante — só aparece quando tocando ou pausado com duração conhecida */}
+      {restStr && (
+        <span className={`text-[9px] tabular-nums font-semibold select-none shrink-0 ${dourado ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
+          {restStr}
+        </span>
+      )}
       <button
         onClick={toggle}
         className={`flex size-5 shrink-0 items-center justify-center rounded-full transition-all ${
@@ -166,6 +182,7 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
     </div>
   );
 }
+
 
 /** Pill da introdução: toca o áudio salvo pelo admin no IndexedDB ou o padrão /introducao.mp3. */
 export function IntroAudioPill() {
