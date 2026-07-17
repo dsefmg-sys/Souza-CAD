@@ -74,7 +74,7 @@ export const PASSOS_AVANCADOS: Passo[] = [
   {
     icone: Sparkles,
     titulo: 'Desenho, hachuras e símbolos',
-    texto: 'No SOUZA CAD você enriquece a planta com linhas, cotas, textos livres e símbolos — poste, marco, árvore. Dá pra hachurar áreas de preservação ou servidão, em linhas a quarenta e cinco graus ou em grade, e organizar tudo por camadas, com cor e espessura do seu jeito.\n\n⚠️ Botão Folha Travada — essencial ao editar a planta:\nPra reposicionar rosa dos ventos, escala, título ou qualquer pedaço do carimbo, a folha precisa estar destravada. O botão fica na barra lateral esquerda, em Visualização e Navegação. Destrave, ajuste o layout, e trave de novo. Travado, nada se move sem querer — o ideal pro dia a dia.',
+    texto: 'No SOUZA CAD você enriquece a planta com linhas, cotas, textos livres e símbolos — poste, marco, árvore. Dá pra hachurar áreas de preservação ou servidão, em linhas a quarenta e cinco graus ou em grade, e organizar tudo por camadas, com cor e espessura do seu jeito.\n\nNa mesma região da barra lateral esquerda, em Visualização e Navegação, fica o botão Folha Travada. Pra reposicionar a rosa dos ventos, a escala, o título ou qualquer pedaço do carimbo, a folha precisa estar destravada. Destrave, ajuste o layout, e trave de novo. Travada, nada se move sem querer — o ideal pro dia a dia.',
   },
   {
     icone: Ruler,

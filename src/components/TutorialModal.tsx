@@ -49,6 +49,25 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   const avancarTemaAutoplayRef = useRef<() => void>(() => {});
   const falarTextoRef = useRef<(texto: string) => Promise<void>>(async () => {});
 
+  // Watchdog de áudio gravado: em alguns navegadores, um arquivo ausente (404) faz o play()
+  // resolver sem som e o onError NÃO disparar — a tela fica muda. A gente inicia um timer junto
+  // com o play; se em ~1,8s nenhum "playing" chegar, assume falha e cai na síntese de voz.
+  const audioWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelarWatchdog = useCallback(() => {
+    if (audioWatchdogRef.current) {
+      clearTimeout(audioWatchdogRef.current);
+      audioWatchdogRef.current = null;
+    }
+  }, []);
+  const agendarFallbackTts = useCallback((texto: string) => {
+    cancelarWatchdog();
+    audioWatchdogRef.current = setTimeout(() => {
+      console.warn('Áudio gravado não respondeu a tempo — usando síntese de voz.');
+      setTipoAudio('tts');
+      falarTextoRef.current(texto);
+    }, 1800);
+  }, [cancelarWatchdog]);
+
   const avancarPassoAutoplay = useCallback(() => {
     if (!ouvirTudoRef.current) return;
     setPasso((p) => {
@@ -63,11 +82,13 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             if (audio) {
               audio.src = proxP.audioUrl;
               audio.load();
+              agendarFallbackTts(proxP.texto);
               audio.play().then(() => {
                 setFalando(true);
                 setPausado(false);
               }).catch((e) => {
                 console.warn('Autoplay play failed, falling back to TTS:', e);
+                cancelarWatchdog();
                 falarTextoRef.current(proxP.texto);
               });
             }
@@ -82,7 +103,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
         return p;
       }
     });
-  }, [modo]);
+  }, [modo, agendarFallbackTts, cancelarWatchdog]);
 
   useEffect(() => {
     avancarPassoAutoplayRef.current = avancarPassoAutoplay;
@@ -116,6 +137,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
 
   function pararAudio() {
     audioSessaoRef.current += 1;
+    cancelarWatchdog();
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
@@ -227,12 +249,14 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
         if (audio) {
           audio.src = audioUrl;
           audio.load();
+          agendarFallbackTts(texto);
           audio.play().then(() => {
             setFalando(true);
             setPausado(false);
           }).catch((e) => {
             // Arquivo ausente/quebrado: cai na voz do navegador pra não ficar mudo.
             console.warn('Falha ao rodar áudio gravado, usando síntese:', e);
+            cancelarWatchdog();
             falarTextoRef.current(texto);
           });
         }
@@ -260,6 +284,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
+      if (audioWatchdogRef.current) clearTimeout(audioWatchdogRef.current);
     };
   }, []);
   useEffect(() => {
@@ -610,7 +635,14 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
         <audio
           ref={audioRef}
           preload="auto"
+          onPlaying={() => {
+            // Confirmou que o arquivo existe e está tocando de verdade: cancela o fallback.
+            cancelarWatchdog();
+            setFalando(true);
+            setPausado(false);
+          }}
           onEnded={() => {
+            cancelarWatchdog();
             setFalando(false);
             setPausado(false);
             if (ouvirTudoRef.current) {
@@ -621,6 +653,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
           }}
           onError={() => {
             console.warn('Erro ao carregar o áudio gravado.');
+            cancelarWatchdog();
             const txt = ultimoTextoRef.current;
             if (txt && txt.trim()) {
               setTipoAudio('tts');
