@@ -1324,9 +1324,10 @@ export default function Planta({
         return (
           <g key={`pc_cert_${idx}`}>
             {/* No modo planta apenas o contorno da parcela é exibido; vértices e rótulos são omitidos */}
-            <polygon points={ptsSvg} fill="#0284c7" fillOpacity={0.045} stroke="#0284c7" strokeWidth={0.7} strokeDasharray="3 3"
+            <polygon points={ptsSvg} fill={config.sigefCor || '#0284c7'} fillOpacity={config.sigefOpacidade ?? 0.045} stroke={config.sigefCor || '#0284c7'} strokeWidth={config.sigefEspessura ?? 0.7} strokeDasharray="3 3"
               style={editavel ? { cursor: 'pointer' } : undefined}
-              onClick={editavel ? (e) => { e.stopPropagation(); onSelecObjeto?.(`planta:poligono_sigef:${idx}`); } : undefined} />
+              onClick={editavel ? (e) => { e.stopPropagation(); onSelecObjeto?.(`planta:poligono_sigef:${idx}`); } : undefined}
+              onDoubleClick={editavel ? (e) => { e.stopPropagation(); onDblClickObjeto?.(`planta:poligono_sigef:${idx}`); } : undefined} />
           </g>
         );
       })}
@@ -2080,12 +2081,14 @@ export default function Planta({
         const h = 7; // altura da barra
         const bx = (DRAW.x0 + 22) + (offset.dx ?? 0);
         const by = (DRAW.y1 - 40) + (offset.dy ?? 0);
+        const escEscala = ovEscala.escala ?? 1.0;
         return (
           <g
             id={idEscala}
             x={DRAW.x0 + 22}
             y={DRAW.y1 - 40}
-            transform={`translate(${bx}, ${by})`}
+            transform={`translate(${bx}, ${by})${escEscala !== 1 ? ` scale(${escEscala})` : ''}`}
+            onDoubleClick={(e) => { e.stopPropagation(); onDblClickObjeto?.('planta:escala'); }}
             style={editavel ? { cursor: 'move' } : undefined}
             onContextMenu={editavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloEscala', 5); } : undefined}
             onPointerDown={editavel ? (e) => {
@@ -2191,6 +2194,7 @@ export default function Planta({
         const offsetRosa = getOverride(idRosa);
         const rcx = (DRAW.x1 - 72) + (offsetRosa.dx ?? 0);
         const rcy = (DRAW.y0 + 74) + (offsetRosa.dy ?? 0);
+        const escRosa = ovRosa.escala ?? 1.0;
         return (
           <g
             key="rosa-dos-ventos-g"
@@ -2199,6 +2203,7 @@ export default function Planta({
             y={DRAW.y0 + 74}
             style={editavel ? { cursor: 'move' } : undefined}
             onContextMenu={editavel && onCiclarEstilo ? (e) => { e.preventDefault(); e.stopPropagation(); onCiclarEstilo('estiloRosa', 6); } : undefined}
+            onDoubleClick={(e) => { e.stopPropagation(); onDblClickObjeto?.('planta:rosa'); }}
             onPointerDown={editavel ? (e) => {
               if (e.button === 2) return; // direito troca o estilo, não arrasta
               e.stopPropagation();
@@ -2209,7 +2214,9 @@ export default function Planta({
               captura(e);
             } : undefined}
           >
-            <RosaDosVentos cx={rcx} cy={rcy} fs={fs} variante={config.estiloRosa ?? 0} />
+            <g transform={escRosa !== 1 ? `translate(${rcx}, ${rcy}) scale(${escRosa}) translate(${-rcx}, ${-rcy})` : undefined}>
+              <RosaDosVentos cx={rcx} cy={rcy} fs={fs} variante={config.estiloRosa ?? 0} />
+            </g>
           </g>
         );
       })()}
@@ -2231,6 +2238,7 @@ export default function Planta({
         corCabecalho={corCabecalho} onHeaderContextMenu={onHeaderContextMenu}
         corVerticeP={config.corVerticeP} corVerticeM={config.corVerticeM}
         onSelecObjeto={onSelecObjeto}
+        onDblClickObjeto={onDblClickObjeto}
       />
 
       {/* ---------- CARIMBO (coluna direita - reformulada) ---------- */}
@@ -2244,6 +2252,7 @@ export default function Planta({
         requerente={requerente} transmitente={transmitente}
         corCabecalho={corCabecalho} onHeaderContextMenu={onHeaderContextMenu}
         onSelecObjeto={onSelecObjeto}
+        onDblClickObjeto={onDblClickObjeto}
         ed={{
           ativo: editavel,
           textos: new Proxy(textosOv, { get: (target, prop) => typeof prop === 'string' ? getOverride(prop) : undefined }),
@@ -2660,8 +2669,9 @@ function FaixaInferior(props: {
   corVerticeP?: string;
   corVerticeM?: string;
   onSelecObjeto?: (id: string | null) => void;
+  onDblClickObjeto?: (id: string) => void;
 }) {
-  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu, corVerticeP, corVerticeM, onSelecObjeto } = props;
+  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu, corVerticeP, corVerticeM, onSelecObjeto, onDblClickObjeto } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -2682,7 +2692,9 @@ function FaixaInferior(props: {
   return (
     <g>
       {/* --- BOX 1: SITUAÇÃO --- */}
-      <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:situacao'); }} style={{ cursor: 'pointer' }}>
+      <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:situacao'); }}
+         onDoubleClick={(e) => { e.stopPropagation(); onDblClickObjeto?.('planta:situacao'); }}
+         style={{ cursor: 'pointer' }}>
         <rect x={x1} y={y0} width={w1} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
         <rect x={x1} y={y0} width={w1} height={24} rx={6} ry={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
         <rect x={x1} y={y0 + 18} width={w1} height={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
@@ -3067,8 +3079,9 @@ function CarimboA3(props: {
     onTextoPatch?: (id: string, patch: { escala?: number; texto?: string; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) => void;
   };
   onSelecObjeto?: (id: string | null) => void;
+  onDblClickObjeto?: (id: string) => void;
 }) {
-  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, escalaDecl = 1, escalaConf = 1, ed, corCabecalho = '#475569', onHeaderContextMenu, onSelecObjeto } = props;
+  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, escalaDecl = 1, escalaConf = 1, ed, corCabecalho = '#475569', onHeaderContextMenu, onSelecObjeto, onDblClickObjeto } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const fsDecl = (n: number) => +(n * escala * escalaDecl).toFixed(2); // declarações (proprietário/laudo)
   const fsConf = (n: number) => +(n * escala * escalaConf).toFixed(2); // texto/assinatura dos confrontantes

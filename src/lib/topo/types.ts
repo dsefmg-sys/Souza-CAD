@@ -408,6 +408,7 @@ export interface PlantaConfig {
   situacaoEscala?: number;
   sigefCor?: string;
   sigefEspessura?: number;
+  sigefOpacidade?: number;
 }
 
 /** Dados fixos do escritório (carimbo da planta, cabeçalho de recibos/contratos). */

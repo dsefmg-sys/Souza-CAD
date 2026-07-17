@@ -629,6 +629,7 @@ export default function EditorPage() {
   const [mobileTela, setMobileTela] = useState<'home' | 'mapa'>('home');
   // barra de ferramentas (esquerda, fixa, largura redimensionável e salva por usuário)
   const [toolW, setToolW] = useState(270); // largura confortável pra não espremer os rótulos dos botões
+  const [asideDragging, setAsideDragging] = useState(false);
   // No celular a barra de ferramentas nasce OCULTA — no mobile ela quase não serve (não se desenha),
   // então o mapa ocupa a tela toda; o botão de expandir no cabeçalho revela ela quando precisar.
   // No celular a barra de ferramentas nasce oculta (largura 0). Como o mobile é só consulta/escritório
@@ -1359,6 +1360,19 @@ export default function EditorPage() {
 
   // salva posição/altura da barra de ferramentas
   useEffect(() => { try { localStorage.setItem('metrica.toolW', String(toolW)); } catch { /* ignore */ } }, [toolW]);
+  useEffect(() => {
+    if (!asideDragging) return;
+    const onMove = (e: MouseEvent) => {
+      setToolW(Math.max(54, Math.min(480, e.clientX)));
+    };
+    const onUp = () => setAsideDragging(false);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [asideDragging]);
   useEffect(() => {
     try {
       localStorage.setItem('metrica.tamNomes', String(tamNomes));
@@ -5612,7 +5626,7 @@ export default function EditorPage() {
           const rotulo = toolWEfetivo >= 104;
           return (
             <>
-              <aside style={{ width: toolWEfetivo }} className={`sidebar-lateral no-print scroll-fino flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-card p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
+              <aside style={{ width: toolWEfetivo }} className={`sidebar-lateral no-print scroll-fino relative flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-card p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
                 {/* DADOS E AÇÕES DO PROJETO */}
                 {rotulo ? (
                   <div className="flex flex-col gap-2 text-xs">
@@ -5628,6 +5642,9 @@ export default function EditorPage() {
                       {/* Botões de Gestão — grade de 2 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo
                           (sem botão de largura total; menos rolagem). */}
                       <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
+                        <Button size="sm" variant="secondary" className="col-span-2 bg-sky-600 hover:bg-sky-700 text-white" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
+                          <BarChart3 className="text-white" /> <span>Gestão</span>
+                        </Button>
                         <Button size="sm" variant="secondary" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
                           <Plus className="text-amber-500" /> <span>Novo</span>
                         </Button>
@@ -5640,11 +5657,6 @@ export default function EditorPage() {
                         {completo && (
                           <Button size="sm" variant="secondary" onClick={() => setPontosAberto(true)} title="Banco de pontos">
                             <Database className="text-emerald-500" /> <span>Pontos</span>
-                          </Button>
-                        )}
-                        {completo && (
-                          <Button size="sm" variant="secondary" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
-                            <BarChart3 className="text-sky-500" /> <span>Gestão</span>
                           </Button>
                         )}
                       </div>
@@ -5680,13 +5692,9 @@ export default function EditorPage() {
                             {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
                             <Atalho k="F4" />
                           </Button>
-                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'secondary'} className={`relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
+                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'secondary'} className={`col-span-2 relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
                             <MousePointer2 /> <span>Mover</span>
                             <Atalho k="F2" />
-                          </Button>
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto: clique no mapa para adicionar texto (F9)" onClick={() => alternarModo('texto')}>
-                            <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span>Texto</span>
-                            <Atalho k="F9" />
                           </Button>
                         </div>
                       ) : (
@@ -5703,10 +5711,7 @@ export default function EditorPage() {
                             <MousePointer2 /> <span>Mover</span>
                             <Atalho k="F1" />
                           </Button>
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`col-span-2 relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto: clique na planta para adicionar texto (F9)" onClick={() => alternarModo('texto')}>
-                            <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span>Texto</span>
-                            <Atalho k="F9" />
-                          </Button>
+
                         </div>
                       )}
                     </div>
@@ -5731,6 +5736,10 @@ export default function EditorPage() {
                             <Atalho k="F8" />
                           </Button>
 
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto (F9)" onClick={() => alternarModo('texto')}>
+                            <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span className="truncate">Texto</span>
+                            <Atalho k="F9" />
+                          </Button>
                           <Button size="sm" variant={modo === 'cota' ? 'default' : 'secondary'} className={`relative ${modo === 'cota' ? COR_ATIVO : ''}`} onClick={() => alternarModo('cota', true)} title="Cotar: clique dois pontos para medir (F10)">
                             <IconeCota className={modo === 'cota' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Cota</span>
                             <Atalho k="F10" />
@@ -6391,6 +6400,12 @@ export default function EditorPage() {
                     </button>
                   )}
                 </div>
+                {!telaEstreita && toolWEfetivo > 0 && (
+                  <div
+                    onMouseDown={(e) => { e.preventDefault(); setAsideDragging(true); }}
+                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 z-50 transition-colors"
+                  />
+                )}
               </aside>
               {vista === 'mapa' && !telaEstreita && (
                 <div onPointerDown={toolDown} onPointerMove={toolMove} onPointerUp={toolUp}
@@ -7073,7 +7088,7 @@ export default function EditorPage() {
                       editavel={editarPlanta && !telaEstreita} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       mostrarRotulos={mostrarRotulos}
                       selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
-                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverObjeto={onMoverObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
+                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={(id) => { setObjetoSelId(id); if (!id?.startsWith('planta:poligono_sigef')) setObjPersonalizarId(id); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverObjeto={onMoverObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
                        onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
                       onDblClick={async (lat, lon) => {
                         if (modo === 'polilinha' || modo === 'tracejado') {
@@ -8779,6 +8794,122 @@ export default function EditorPage() {
                         <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => setPlantaConfig((p) => ({ ...p, sigefEspessura: Math.max(0.5, (p.sigefEspessura ?? 1.5) - 0.5) }))}>-</button>
                         <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => setPlantaConfig((p) => ({ ...p, sigefEspessura: Math.min(8.0, (p.sigefEspessura ?? 1.5) + 0.5) }))}>+</button>
                       </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (tipoPlanta === 'rosa') {
+                const idRosa = 'planta.rosa';
+                const ovRosa = plantaConfig.textos?.[idRosa] || {};
+                const escRosa = (ovRosa as any).escala ?? 1.0;
+                return (
+                  <div className="space-y-4">
+                    <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Rosa dos Ventos</div>
+                    <label className="flex items-center gap-2 cursor-pointer py-1">
+                      <input type="checkbox" checked={plantaConfig.mostrarNortes !== false}
+                        onChange={(e) => setPlantaConfig((p) => ({ ...p, mostrarNortes: e.target.checked }))}
+                        className="rounded border-zinc-300 text-primary focus:ring-primary size-4" />
+                      <span className="font-semibold text-foreground">Mostrar rosa dos ventos</span>
+                    </label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Formato / Estilo</Label>
+                      <select value={plantaConfig.estiloRosa ?? 0}
+                        onChange={(e) => setPlantaConfig((p) => ({ ...p, estiloRosa: Number(e.target.value) }))}
+                        className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-primary focus:outline-none">
+                        <option value={0}>Clássica Dupla</option>
+                        <option value={1}>Estrela de 4 Pontas</option>
+                        <option value={2}>Seta Minimalista</option>
+                        <option value={3}>Anel Graduado</option>
+                        <option value={4}>Bússola Vintage</option>
+                        <option value={5}>Militar / Aeronáutico</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                        <span>Tamanho</span><span>{escRosa.toFixed(2)}x</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idRosa, { escala: Math.max(0.4, +(escRosa - 0.05).toFixed(2)) })}>A−</button>
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idRosa, { escala: Math.min(3.0, +(escRosa + 0.05).toFixed(2)) })}>A+</button>
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idRosa, { escala: 1.0 })}>Reset</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (tipoPlanta === 'escala') {
+                const idEscala = 'planta.escalaGrafica';
+                const ovEscala = plantaConfig.textos?.[idEscala] || {};
+                const escEscala = (ovEscala as any).escala ?? 1.0;
+                return (
+                  <div className="space-y-4">
+                    <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Barra de Escalas</div>
+                    <label className="flex items-center gap-2 cursor-pointer py-1">
+                      <input type="checkbox" checked={plantaConfig.mostrarEscalaGrafica !== false}
+                        onChange={(e) => setPlantaConfig((p) => ({ ...p, mostrarEscalaGrafica: e.target.checked }))}
+                        className="rounded border-zinc-300 text-primary focus:ring-primary size-4" />
+                      <span className="font-semibold text-foreground">Mostrar barra de escala</span>
+                    </label>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Formato / Estilo</Label>
+                      <select value={plantaConfig.estiloEscala ?? 0}
+                        onChange={(e) => setPlantaConfig((p) => ({ ...p, estiloEscala: Number(e.target.value) }))}
+                        className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-primary focus:outline-none">
+                        <option value={0}>Alternada (Preto/Branco)</option>
+                        <option value={1}>Dupla Alternada</option>
+                        <option value={2}>Linha com Tiques</option>
+                        <option value={3}>Barra Sólida</option>
+                        <option value={4}>Moderna Fina</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                        <span>Tamanho</span><span>{escEscala.toFixed(2)}x</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idEscala, { escala: Math.max(0.4, +(escEscala - 0.05).toFixed(2)) })}>A−</button>
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idEscala, { escala: Math.min(3.0, +(escEscala + 0.05).toFixed(2)) })}>A+</button>
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idEscala, { escala: 1.0 })}>Reset</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (tipoPlanta.startsWith('poligono_sigef')) {
+                return (
+                  <div className="space-y-4">
+                    <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Polígono SIGEF Importado</div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cor</Label>
+                      <div className="flex items-center gap-2">
+                        <input type="color" value={plantaConfig.sigefCor || '#0284c7'}
+                          onChange={(e) => setPlantaConfig((p) => ({ ...p, sigefCor: e.target.value }))}
+                          className="size-6 cursor-pointer border-none bg-transparent" />
+                        <input type="text" value={plantaConfig.sigefCor || '#0284c7'}
+                          onChange={(e) => setPlantaConfig((p) => ({ ...p, sigefCor: e.target.value }))}
+                          className="h-7 w-24 rounded border bg-background px-2 text-[10px] font-mono" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                        <span>Espessura da Borda</span><span>{(plantaConfig.sigefEspessura ?? 0.7).toFixed(1)} px</span>
+                      </div>
+                      <input type="range" min="0.3" max="4.0" step="0.1"
+                        value={plantaConfig.sigefEspessura ?? 0.7}
+                        onChange={(e) => setPlantaConfig((p) => ({ ...p, sigefEspessura: Number(e.target.value) }))}
+                        className="w-full h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                        <span>Opacidade do Preenchimento</span><span>{((plantaConfig.sigefOpacidade ?? 0.045) * 100).toFixed(0)}%</span>
+                      </div>
+                      <input type="range" min="0" max="0.3" step="0.005"
+                        value={plantaConfig.sigefOpacidade ?? 0.045}
+                        onChange={(e) => setPlantaConfig((p) => ({ ...p, sigefOpacidade: Number(e.target.value) }))}
+                        className="w-full h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-primary" />
                     </div>
                   </div>
                 );
