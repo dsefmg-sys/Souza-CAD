@@ -75,11 +75,13 @@ function pcmParaMp3(pcm: Buffer, sampleRate = 24000): Buffer {
 }
 
 async function gerarAudio(chave: string, texto: string, voz: string, tentativa = 1): Promise<Buffer> {
+  // Prefixo explícito evita a API cair em espanhol em frases cognatas ("Enriqueça", "área"...).
+  const textoFala = `Leia em português do Brasil, com pronúncia brasileira natural:\n\n${prepararTextoParaFala(texto)}`;
   const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-goog-api-key': chave },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prepararTextoParaFala(texto) }] }],
+      contents: [{ parts: [{ text: textoFala }] }],
       generationConfig: {
         responseModalities: ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voz } } },

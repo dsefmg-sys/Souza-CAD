@@ -5707,20 +5707,15 @@ export default function EditorPage() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                          <div className="flex gap-0.5 w-full">
-                            <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
-                              <Undo2 className="size-3.5" />
-                            </Button>
-                            <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
-                              <Redo2 className="size-3.5" />
-                            </Button>
-                          </div>
-                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'secondary'} className={`relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/editar: arrastar textos, rótulos e a folha (F1)" onClick={() => setModo('navegar')}>
-                            <MousePointer2 /> <span>Mover</span>
-                            <Atalho k="F1" />
+                          {/* Mover é implícito na planta: destravar a folha já entra no modo de arrastar */}
+                          <Button size="sm" variant="secondary" className="h-8 w-full px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
+                            <Undo2 className="size-3.5" />
+                          </Button>
+                          <Button size="sm" variant="secondary" className="h-8 w-full px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
+                            <Redo2 className="size-3.5" />
                           </Button>
 
-                          {/* Trava da folha — col-span-2 para ocupar linha inteira e ter destaque */}
+                          {/* Trava da folha — destravar = liberar edição do layout (mover implícito) */}
                           <button
                             type="button"
                             onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
@@ -5728,7 +5723,7 @@ export default function EditorPage() {
                             className={`col-span-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-md border-2 text-[9px] font-bold uppercase tracking-wide transition-colors ${
                               folhaTravada
                                 ? 'border-border bg-background text-foreground hover:bg-muted'
-                                : 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+                                : 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 animate-pulse'
                             }`}
                           >
                             {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}

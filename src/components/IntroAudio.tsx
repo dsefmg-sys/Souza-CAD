@@ -81,12 +81,15 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
   const [duracao, setDuracao] = useState(0);
   const [currentIdx, setCurrentIdx] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // true só enquanto o usuário pediu pra ouvir — evita loop infinito se a 1ª faixa 404 ao resetar índice
+  const sessaoAtivaRef = useRef(false);
 
   const playlist = Array.isArray(src) ? src : [src];
   const currentSrc = playlist[currentIdx] || '';
 
   // Sincroniza sempre que a playlist ou a faixa atual muda
   useEffect(() => {
+    sessaoAtivaRef.current = false;
     setCurrentIdx(0);
     setProgresso(0);
     setDuracao(0);
@@ -97,11 +100,36 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
     }
   }, [src]);
 
+  function avancarOuParar() {
+    if (Array.isArray(src) && currentIdx + 1 < src.length) {
+      const nextIdx = currentIdx + 1;
+      setCurrentIdx(nextIdx);
+      setDuracao(0);
+      setProgresso(0);
+      setTimeout(() => {
+        const nextAudio = audioRef.current;
+        if (nextAudio && sessaoAtivaRef.current) {
+          nextAudio.load();
+          nextAudio.play().catch((err) => console.warn('Falha no autoplay da playlist:', err));
+        }
+      }, 100);
+    } else {
+      sessaoAtivaRef.current = false;
+      setTocando(false);
+      setCurrentIdx(0);
+      setProgresso(0);
+    }
+  }
+
   function toggle() {
     const a = audioRef.current;
     if (!a) return;
-    if (a.paused) a.play().catch(() => {});
-    else a.pause();
+    if (a.paused) {
+      sessaoAtivaRef.current = true;
+      a.play().catch(() => {});
+    } else {
+      a.pause();
+    }
   }
 
   function seek(e: React.MouseEvent<HTMLDivElement>) {
@@ -114,25 +142,9 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
   }
 
   function handleEnded() {
-    setProgresso(0);
     const a = audioRef.current;
     if (a) a.currentTime = 0;
-
-    if (Array.isArray(src) && currentIdx + 1 < src.length) {
-      const nextIdx = currentIdx + 1;
-      setCurrentIdx(nextIdx);
-      setDuracao(0);
-      setTimeout(() => {
-        const nextAudio = audioRef.current;
-        if (nextAudio) {
-          nextAudio.load();
-          nextAudio.play().catch((err) => console.warn('Falha no autoplay da playlist:', err));
-        }
-      }, 100);
-    } else {
-      setTocando(false);
-      setCurrentIdx(0);
-    }
+    avancarOuParar();
   }
 
   // Tempo restante em MM:SS
@@ -155,6 +167,11 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
           if (a && a.duration) setProgresso(a.currentTime / a.duration);
         }}
         onEnded={handleEnded}
+        onError={() => {
+          if (!sessaoAtivaRef.current) return;
+          console.warn('Áudio da playlist falhou, pulando:', currentSrc);
+          avancarOuParar();
+        }}
       />
       <Volume2 className={`size-3 shrink-0 ${dourado ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} />
       <span className={`text-[10px] font-bold uppercase tracking-wide select-none shrink-0 ${dourado ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{rotulo}</span>

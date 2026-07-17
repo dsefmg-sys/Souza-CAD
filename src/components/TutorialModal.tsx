@@ -230,18 +230,26 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             setFalando(true);
             setPausado(false);
           }).catch((e) => {
-            console.warn('Falha ao rodar áudio gravado:', e);
-            setFalando(false);
-            setPausado(false);
-            setErroAudio('Erro ao reproduzir áudio gravado. Clique novamente para tentar.');
+            // Arquivo ausente/quebrado: cai na voz do navegador pra não ficar mudo.
+            console.warn('Falha ao rodar áudio gravado, usando síntese:', e);
+            falarTextoRef.current(texto);
           });
         }
+      } else {
+        falarTextoRef.current(texto);
       }
     }
   }
 
-  // Interrompe qualquer áudio sempre que fechar o modal ou mudar de passo/tela/nível
+  // Interrompe áudio ao fechar, ou ao navegar manualmente. Durante "Tutorial Completo" /
+  // autoplay de temas, o avanço de passo/tema NÃO deve cortar a narração (senão o play
+  // inicial morre no mesmo ciclo de render).
   useEffect(() => {
+    if (!open) {
+      pararAudio();
+      return;
+    }
+    if (ouvirTudoRef.current || ouvirTudoTemasRef.current) return;
     pararAudio();
   }, [open, tela, passo, temaId, nivel]);
 
@@ -391,12 +399,18 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
                       if (ouvirTudo) {
                         pararAudio();
                       } else {
-                        setTela('passos');
-                        setPasso(0);
+                        // Marca autoplay ANTES de trocar tela/passo — senão o effect de
+                        // "parar ao navegar" cancela o áudio no mesmo ciclo.
+                        const pFirst = passos[0];
                         ouvirTudoRef.current = true;
                         setOuvirTudo(true);
-                        const pFirst = passos[0];
-                        alternarAudio(pFirst.texto, pFirst.audioUrl);
+                        setPasso(0);
+                        setTela('passos');
+                        // play no próximo tick, depois do effect de navegação
+                        setTimeout(() => {
+                          if (!ouvirTudoRef.current) return;
+                          alternarAudio(pFirst.texto, pFirst.audioUrl);
+                        }, 50);
                       }
                     }}
                     title="Ouvir todos os áudios do tutorial em sequência automática (recomendado)"
@@ -447,20 +461,24 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
               <Icone className="size-5 text-primary" /> {p.titulo}
             </div>
             {audioControls(p.texto, p.audioUrl)}
-            {p.texto.includes('Trava da Folha') ? (
+            {p.texto.includes('Folha Travada') || p.texto.includes('Trava da Folha') ? (
               (() => {
-                // Separa o texto principal do bloco da Trava (marcado por \n\n⚠️ ou \n\n🔒 ou \n\nNa mesma)
-                const partes = p.texto.split(/\n\n(?=(?:⚠️|🔒|Na mesma Barra))/);
+                // Separa o texto principal do bloco da Trava
+                const partes = p.texto.split(/\n\n(?=(?:⚠️|🔒|Na mesma região|Na mesma Barra))/);
                 return (
                   <div className="space-y-2">
                     <p className="text-xs font-semibold leading-relaxed text-muted-foreground text-left whitespace-pre-line">{partes[0]}</p>
                     {partes.slice(1).map((parte, i) => (
                       <div key={i} className="rounded-xl border border-amber-500/40 bg-amber-500/8 dark:bg-amber-500/10 px-4 py-3 text-left space-y-1.5">
                         <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                          <span className="text-base">🔒</span> Botão Trava da Folha
+                          <span className="text-base">🔒</span> Botão Folha Travada
                         </div>
                         <p className="text-[11px] font-semibold leading-relaxed text-amber-900 dark:text-amber-200 whitespace-pre-line">
-                          {parte.replace(/^⚠️ Botão Trava da Folha — essencial ao editar a planta:\n/, '').replace(/^Na mesma Barra de Controle flutuante, você encontra o botão 🔒 Trava da Folha — um dos controles mais importantes do sistema.\n/, '')}
+                          {parte
+                            .replace(/^⚠️ Botão Folha Travada — essencial ao editar a planta:\n/, '')
+                            .replace(/^⚠️ Botão Trava da Folha — essencial ao editar a planta:\n/, '')
+                            .replace(/^Na mesma região da barra lateral esquerda, em Visualização e Navegação, fica o botão Folha Travada\. /, '')
+                            .replace(/^Na mesma Barra de Controle flutuante, você encontra o botão 🔒 Trava da Folha — um dos controles mais importantes do sistema\.\n/, '')}
                         </p>
                       </div>
                     ))}

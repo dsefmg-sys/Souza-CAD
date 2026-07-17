@@ -12,53 +12,54 @@ export interface Passo {
 }
 
 // PASSOS BÁSICOS — o caminho essencial de um projeto, na ordem em que a tela conduz.
+// Linguagem de conversa, amigável. O produto se chama SEMPRE "SOUZA CAD".
 export const PASSOS_BASE: Passo[] = [
   {
     icone: ToggleRight,
     titulo: 'A chave Fácil e Completo',
-    texto: 'Para proporcionar uma experiência de aprendizado adaptável e otimizar sua área de trabalho, o Souza-CAD dispõe de duas interfaces de trabalho. A alternância entre o modo Fácil (foco no fluxo básico essencial) e o modo Completo (todas as ferramentas CAD habilitadas) ocorre exclusivamente na Barra de Controle flutuante inferior, deixando a barra lateral esquerda livre e otimizada para as ferramentas de desenho e edição. Nenhum dado do projeto é perdido ao alternar de modo.\n\nNa mesma Barra de Controle flutuante, você encontra o botão 🔒 Trava da Folha — um dos controles mais importantes do sistema. Quando a folha está TRAVADA, nenhum elemento do carimbo (título, logotipo, escala, rosa dos ventos) pode ser movido acidentalmente. Antes de ajustar o layout da planta, clique em Destrava; ao terminar, clique em Trava novamente para proteger seu trabalho.',
+    texto: 'No SOUZA CAD você escolhe o tamanho da tela. Na barra flutuante embaixo tem uma chave: Fácil ou Completo. No Fácil aparece só o essencial — importar pontos, vizinhos, confrontantes e gerar as peças. No Completo entram desenho, cotas, hachuras e o resto das ferramentas. Pode trocar a qualquer hora: nada do projeto se perde.\n\nNa mesma região da barra lateral esquerda, em Visualização e Navegação, fica o botão Folha Travada. Com a folha travada, o carimbo e o layout ficam protegidos. Quer mover título, rosa dos ventos ou escala? Destrave, ajuste, e trave de novo. Assim você não arrasta nada sem querer.',
     audioUrl: '/audio/tutorial/passo-base-0.mp3',
   },
   {
     icone: Users,
-    titulo: 'Otimização Horizontal e Barra Flutuante',
-    texto: 'O Souza-CAD foi planejado sob o conceito de visualização panorâmica, organizando tabelas, formulários e o mapa lado a lado na horizontal para evitar rolagens desnecessárias. Para dar total liberdade de visualização, a Barra de Controle inferior é totalmente movível (arrastável): basta clicar e arrastá-la para qualquer área da tela, garantindo que ela não se sobreponha à barra de status inferior ou a outros componentes importantes.',
+    titulo: 'Tela larga e barra que se move',
+    texto: 'O SOUZA CAD foi pensado pra tela larga: dados, mapa e formulários lado a lado, sem ficar rolando pra cima e pra baixo o tempo todo. A barra de controle embaixo você pode arrastar pra onde quiser — é só clicar e puxar — pra ela não cobrir o que você está vendo.',
     audioUrl: '/audio/tutorial/passo-base-1.mp3',
   },
   {
     icone: Upload,
-    titulo: 'Importação Inteligente de Pontos',
-    texto: 'Inicie seu projeto carregando as coordenadas coletadas em campo. Ao clicar em Pontos, importe arquivos TXT/CSV de receptores GNSS. Se o seu equipamento exportar as colunas (Nome, Este, Norte, Altitude) em uma ordem diferente, você pode configurar o mapeador de colunas uma única vez. O sistema cria a poligonal de forma automatizada no fuso UTM ideal baseado na âncora da sua região.',
+    titulo: 'Trazer os pontos do campo',
+    texto: 'Comece pelos pontos. Clique em Pontos e importe o arquivo TXT ou CSV que saiu do seu GPS. Se as colunas vierem em outra ordem, configure o mapeador uma vez e o SOUZA CAD lembra. Ele monta a poligonal e escolhe o fuso UTM com base na sua região.',
     audioUrl: '/audio/tutorial/passo-base-2.mp3',
   },
   {
     icone: Search,
-    titulo: 'SIGEF e Confrontantes Certificados',
-    texto: 'Evite a rejeição de processos no INCRA consultando a base de dados oficial. O botão SIGEF localiza automaticamente imóveis certificados lindeiros e plota os limites no mapa. Você pode clicar diretamente nos vértices do vizinho para adotar a nomenclatura e códigos originais deles na sua divisa, garantindo perfeita integridade e eliminando divergências de limites.',
+    titulo: 'Vizinhos no SIGEF',
+    texto: 'Pra não levar rejeição no INCRA, use o botão SIGEF. O SOUZA CAD busca os imóveis certificados ao redor e desenha os limites no mapa. Dá pra clicar no vértice do vizinho e adotar o código oficial dele na sua divisa — assim os números batem e a divisa fica limpa.',
     audioUrl: '/audio/tutorial/passo-base-3.mp3',
   },
   {
     icone: BookUser,
-    titulo: 'Qualificação Jurídica do Requerimento',
-    texto: 'No painel de Dados, preencha os dados cadastrais do proprietário, do imóvel e do cartório. Ao gerar o Requerimento de Retificação, selecione o ato jurídico correspondente (como venda, doação, usucapião, desmembramento ou unificação). O app preenche automaticamente a fundamentação legal e as cláusulas específicas, preparando a peça técnica para o protocolo notarial.',
+    titulo: 'Dados do imóvel e do dono',
+    texto: 'No painel de Dados, preencha proprietário, imóvel e cartório. Na hora do Requerimento, escolha o tipo de ato — venda, doação, usucapião, desmembramento ou unificação. O SOUZA CAD monta o texto jurídico e as cláusulas certas pra aquele ato.',
     audioUrl: '/audio/tutorial/passo-base-4.mp3',
   },
   {
     icone: Brush,
-    titulo: 'Pintura de Confrontações e Divisas',
-    texto: 'Identifique graficamente as divisas e confrontantes do imóvel. Utilizando as ferramentas de pintura Confro (confrontantes) e Divisas (tipo de limite: cerca, muro, vala, etc.), basta clicar sobre as linhas do perímetro. O app colore cada divisa de acordo com seu respectivo confrontante e gera a legenda cartográfica automaticamente no mapa e na planta.',
+    titulo: 'Pintar confrontantes e divisas',
+    texto: 'Com as ferramentas Confro e Divisas, você pinta o perímetro: quem confronta de cada lado e se a divisa é cerca, muro, vala e por aí vai. O SOUZA CAD colore o mapa e monta a legenda sozinho, na planta e no memorial.',
     audioUrl: '/audio/tutorial/passo-base-5.mp3',
   },
   {
     icone: FileText,
-    titulo: 'Geração de Peças e Cartas de Anuência',
-    texto: 'Exporte o projeto completo para entrega. Com um clique, gere o memorial descritivo (.docx), a planilha SIGEF (.ods), o requerimento e a planta (PDF). As Cartas de Anuência agora anexam a lista de vértices e coordenadas em uma planilha tabular limpa, fornecendo todos os dados geodésicos necessários e eliminando o campo de endereço para evitar burocracia e agilizar as assinaturas.',
+    titulo: 'Gerar as peças pra entregar',
+    texto: 'Quando estiver pronto, exporte tudo: memorial em Word, planilha do SIGEF, requerimento e planta em PDF. As cartas de anuência já saem com a lista de vértices em tabela limpa, sem campo de endereço a mais — menos burocracia na assinatura.',
     audioUrl: '/audio/tutorial/passo-base-6.mp3',
   },
   {
     icone: Save,
-    titulo: 'Banco de Vértices e Salvamento Automático',
-    texto: 'Trabalhe com segurança absoluta. O app salva seu progresso continuamente de forma local (IndexedDB) e em nuvem. As coordenadas também são registradas no seu Banco de Pontos unificado, impedindo que o mesmo código de vértice seja reaproveitado incorretamente em projetos futuros da sua empresa, mantendo seu acervo profissional sempre organizado.',
+    titulo: 'Salvar e banco de pontos',
+    texto: 'O SOUZA CAD vai salvando sozinho, no computador e na nuvem quando você está logado. Os códigos de vértice entram no seu banco de pontos: o mesmo número não se repete em outro projeto da empresa. Seu acervo fica organizado sem esforço.',
     audioUrl: '/audio/tutorial/passo-base-7.mp3',
   },
 ];
@@ -67,44 +68,44 @@ export const PASSOS_BASE: Passo[] = [
 export const PASSOS_AVANCADOS: Passo[] = [
   {
     icone: UserCheck,
-    titulo: 'Casar Vértices dos Vizinhos',
-    texto: 'A sobreposição de vértices limítrofes é um erro crítico no SIGEF. No modo Completo, a ferramenta Casar identifica pontos fisicamente coincidentes com vizinhos certificados e unifica as nomenclaturas. Você também pode importar arquivos de coordenadas de outros agrimensores no painel de Vizinhos para conciliar as divisas comuns.',
+    titulo: 'Casar vértices com o vizinho',
+    texto: 'Dois códigos diferentes no mesmo canto físico é o erro que mais rejeita no SIGEF. No modo Completo, a ferramenta Casar acha pontos que coincidem com o vizinho certificado e unifica os nomes. Também dá pra importar o arquivo de outro agrimensor no painel de Vizinhos e alinhar a divisa comum.',
     audioUrl: '/audio/tutorial/passo-avancado-0.mp3',
   },
   {
     icone: Sparkles,
-    titulo: 'Desenho Livre, Achuras e Símbolos',
-    texto: 'Enriqueça graficamente sua planta com polilinhas, cotas, textos livres e símbolos cartográficos (postes, marcos, árvores). Você pode aplicar hachuras a 45° ou em grade para destacar áreas de preservação ou servidões, e gerenciar tudo por meio de Camadas (Layers) com espessuras e cores personalizadas.\n\n⚠️ Botão Trava da Folha — essencial ao editar a planta:\nPara reposicionar ou redimensionar qualquer elemento do carimbo (rosa dos ventos, barra de escalas, planta de situação, título), a folha precisa estar DESBLOQUEADA. Clique no botão 🔒 Trava (na barra flutuante inferior) para alternar entre travado e livre. Enquanto travado, nenhum elemento pode ser arrastado acidentalmente — ideal para o trabalho diário. Destrave apenas quando for ajustar o layout, e trave novamente ao terminar.',
+    titulo: 'Desenho, hachuras e símbolos',
+    texto: 'No SOUZA CAD você enriquece a planta com linhas, cotas, textos livres e símbolos — poste, marco, árvore. Dá pra hachurar áreas de preservação ou servidão, em linhas a quarenta e cinco graus ou em grade, e organizar tudo por camadas, com cor e espessura do seu jeito.\n\n⚠️ Botão Folha Travada — essencial ao editar a planta:\nPra reposicionar rosa dos ventos, escala, título ou qualquer pedaço do carimbo, a folha precisa estar destravada. O botão fica na barra lateral esquerda, em Visualização e Navegação. Destrave, ajuste o layout, e trave de novo. Travado, nada se move sem querer — o ideal pro dia a dia.',
     audioUrl: '/audio/tutorial/passo-avancado-1.mp3',
   },
   {
     icone: Ruler,
-    titulo: 'Vértices Virtuais e Ferramentas CAD',
-    texto: 'Calcule a posição de pontos inacessíveis em campo projetando vértices virtuais por meio de cruzamentos ou direções e distâncias. O Ímã Esperto (Snap) garante precisão milimétrica ao ancorar o cursor em cantos, meios e interseções. Use ferramentas clássicas como Paralela, Dividir e Prolongar para o refino final do desenho.',
+    titulo: 'Vértice virtual e ferramentas CAD',
+    texto: 'Tem canto que não dá pra ocupar no campo — meio de rio, dentro de uma construção. Aí entra o vértice virtual: o SOUZA CAD calcula a posição por distância e direção, ou pelo cruzamento de dois alinhamentos. O ímã gruda o cursor no canto certo. Paralela, Dividir e Prolongar fecham o acabamento do desenho.',
     audioUrl: '/audio/tutorial/passo-avancado-2.mp3',
   },
   {
     icone: FileText,
-    titulo: 'Retificações Múltiplas e Atos de Errata',
-    texto: 'Simplifique correções complexas de matrículas antigas. No painel de Errata, agrupe e detalhe múltiplas correções de naturezas distintas (como retificação de área, confrontações ou qualificação pessoal). O Souza-CAD organiza essas correções em uma narrativa única e coesa para o cartório de registro de imóveis.',
+    titulo: 'Retificações e errata',
+    texto: 'Matrícula antiga com vários erros? No painel de Errata você junta correções de tipos diferentes — área, confrontação, nome — e o SOUZA CAD organiza isso numa narrativa só, pronta pro cartório.',
     audioUrl: '/audio/tutorial/passo-avancado-3.mp3',
   },
   {
     icone: Ruler,
-    titulo: 'Precisão do Sistema Geodésico Local (SGL)',
-    texto: 'Cumpra com rigor as normas do INCRA realizando os cálculos de área e perímetro diretamente no Sistema Geodésico Local (SGL). Projetando no elipsoide SIRGAS2000, o app elimina o fator de escala UTM (distorção linear), garantindo que as dimensões representadas correspondam exatamente à realidade física medida no terreno.',
+    titulo: 'Área no sistema local (SGL)',
+    texto: 'O INCRA não aceita a área “plana” do UTM. O SOUZA CAD calcula área e perímetro no Sistema Geodésico Local, o mesmo critério do SIGEF. Assim o número da sua planta bate com o que o sistema federal confere.',
     audioUrl: '/audio/tutorial/passo-avancado-4.mp3',
   },
   {
     icone: Upload,
-    titulo: 'Mapeador Customizado de Arquivos',
-    texto: 'Importe arquivos de coordenadas de qualquer marca ou modelo de equipamento GPS/GNSS. Se o delimitador do seu arquivo for diferente (vírgula, ponto e vírgula, tabulação) ou as colunas estiverem fora de ordem, o Mapeador de Colunas permite associar os campos em segundos, salvando a configuração para as próximas importações.',
+    titulo: 'Qualquer arquivo de GPS',
+    texto: 'Seu equipamento manda vírgula, ponto e vírgula ou tabulação? Colunas em outra ordem? O mapeador de colunas do SOUZA CAD associa os campos em segundos e guarda a configuração pras próximas importações.',
     audioUrl: '/audio/tutorial/passo-avancado-5.mp3',
   },
   {
     icone: Save,
-    titulo: 'Contrato e Controle Financeiro',
-    texto: 'Gerencie a saúde financeira do serviço sem sair da tela de projeto. Registre o valor acordado, despesas e parcelas recebidas. A partir desses dados, o sistema gera contratos de prestação de serviços técnicos e recibos com o valor por extenso calculado automaticamente, prontos para impressão ou assinatura digital.',
+    titulo: 'Contrato e dinheiro do serviço',
+    texto: 'Sem sair do projeto: registre valor, despesas e parcelas. O SOUZA CAD gera contrato de prestação de serviço e recibo com valor por extenso, prontos pra imprimir ou assinar.',
     audioUrl: '/audio/tutorial/passo-avancado-6.mp3',
   },
 ];
