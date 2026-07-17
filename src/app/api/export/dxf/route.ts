@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
 import { exportarDxf } from '@/lib/io/dxf';
+import { verifySession } from '@/lib/apiAuth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const session = await verifySession(req);
+  if (!session) {
+    return NextResponse.json({ erro: 'Não autorizado.' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { vertices, opts } = body;
