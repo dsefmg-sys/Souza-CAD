@@ -671,7 +671,7 @@ export default function EditorPage() {
   const [desenhoBuffer, setDesenhoBuffer] = useState<PontoLL[]>([]);
   const [objetoSelId, setObjetoSelId] = useState<string | null>(null);
   const [objPersonalizarId, setObjPersonalizarId] = useState<string | null>(null);
-  const [copiaBuffer, setCopiaBuffer] = useState<any>(null);
+  const [copiaBuffer, setCopiaBuffer] = useState<ObjetoDesenho | null>(null);
   const [tutorialSimplificadoAberto, setTutorialSimplificadoAberto] = useState(false);
   const [vSplitInicioId, setVSplitInicioId] = useState<string | null>(null);
   const [vSplitFimId, setVSplitFimId] = useState<string | null>(null);
@@ -1047,7 +1047,7 @@ export default function EditorPage() {
       try {
         const key = rascunhoKey();
         localStorage.setItem(key, JSON.stringify(MOCK_PROJECT));
-        aplicarRascunho(MOCK_PROJECT as any);
+        aplicarRascunho(MOCK_PROJECT as unknown as ReturnType<typeof montarRascunho>);
       } catch { /* ignore */ }
     }
   }, []);
@@ -8833,8 +8833,8 @@ export default function EditorPage() {
 
               if (tipoPlanta === 'rosa') {
                 const idRosa = 'planta.rosa';
-                const ovRosa = plantaConfig.textos?.[idRosa] || {};
-                const escRosa = (ovRosa as any).escala ?? 1.0;
+                const ovRosa = plantaConfig.textos?.[idRosa];
+                const escRosa = ovRosa?.escala ?? 1.0;
                 return (
                   <div className="space-y-4">
                     <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Rosa dos Ventos</div>
@@ -8873,8 +8873,8 @@ export default function EditorPage() {
 
               if (tipoPlanta === 'escala') {
                 const idEscala = 'planta.escalaGrafica';
-                const ovEscala = plantaConfig.textos?.[idEscala] || {};
-                const escEscala = (ovEscala as any).escala ?? 1.0;
+                const ovEscala = plantaConfig.textos?.[idEscala];
+                const escEscala = ovEscala?.escala ?? 1.0;
                 return (
                   <div className="space-y-4">
                     <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Barra de Escalas</div>
@@ -8978,7 +8978,7 @@ export default function EditorPage() {
                       if (!copiaBuffer) return;
                       const novoId = `desenho_${Date.now()}`;
                       const offset = 20;
-                      let novoObj = { ...copiaBuffer, id: novoId };
+                      const novoObj = { ...copiaBuffer, id: novoId };
                       if (novoObj.tipo === 'texto' || novoObj.tipo === 'simbolo') {
                         novoObj.x = (novoObj.x ?? 0) + offset;
                         novoObj.y = (novoObj.y ?? 0) + offset;
@@ -8988,7 +8988,7 @@ export default function EditorPage() {
                         novoObj.xB = (novoObj.xB ?? 0) + offset;
                         novoObj.yB = (novoObj.yB ?? 0) + offset;
                       } else if (novoObj.tipo === 'polilinha') {
-                        novoObj.pontos = (novoObj.pontos ?? []).map((p: any) => ({ ...p, leste: p.leste + offset, norte: p.norte + offset }));
+                        novoObj.pontos = (novoObj.pontos ?? []).map((p) => ({ ...p, leste: p.leste + offset, norte: p.norte + offset }));
                       }
                       setObjetos((os) => [...os, novoObj]);
                       setObjetoSelId(novoId);
@@ -9071,7 +9071,7 @@ export default function EditorPage() {
                         <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alinhamento</Label>
                         <select
                           value={obj.alinhamento ?? 'left'}
-                          onChange={(e) => editarObjetoSel({ alinhamento: e.target.value as any })}
+                          onChange={(e) => editarObjetoSel({ alinhamento: e.target.value as 'left' | 'center' | 'right' })}
                           className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground bg-popover"
                         >
                           <option value="left">Esquerda</option>
@@ -9235,7 +9235,7 @@ export default function EditorPage() {
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Categoria CAR (Ambiental)</Label>
                       <select
                         value={obj.carTema ?? ''}
-                        onChange={(e) => editarObjetoSel({ carTema: (e.target.value || undefined) as any })}
+                        onChange={(e) => editarObjetoSel({ carTema: (e.target.value || undefined) as 'app' | 'reservaLegal' | 'vegetacao' | 'usoConsolidado' | undefined })}
                         className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground bg-popover"
                       >
                         <option value="">Nenhuma (Desenho Livre)</option>
@@ -9994,7 +9994,7 @@ function PainelConferencia({
           <CheckCircle2 className="size-4 text-amber-500" /> Reconciliação de Área/Perímetro com o SIGEF
         </h3>
         <p className="text-[11px] text-muted-foreground mb-3">
-          Por segurança jurídica, cole aqui a Área SGL e o Perímetro oficiais recalculados pelo SIGEF após processar a planilha ODS. Marque "Usar" para utilizá-los no memorial, planta e peças técnicas.
+          Por segurança jurídica, cole aqui a Área SGL e o Perímetro oficiais recalculados pelo SIGEF após processar a planilha ODS. Marque &quot;Usar&quot; para utilizá-los no memorial, planta e peças técnicas.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">

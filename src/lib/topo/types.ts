@@ -251,6 +251,12 @@ export interface ObjetoDesenho {
   corFonte?: string;          // cor da fonte do texto/cota
   posicaoTexto?: string;      // posição da cota (acima, centro, abaixo)
   negrito?: boolean;          // texto em negrito
+  x?: number;                 // posição do texto/símbolo na tela/planta
+  y?: number;
+  xA?: number;                // referência de cota A
+  yA?: number;
+  xB?: number;                // referência de cota B
+  yB?: number;
 }
 
 /** Um lado da poligonal (vértice i → vértice i+1). */

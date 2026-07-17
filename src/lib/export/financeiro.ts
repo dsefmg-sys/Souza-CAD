@@ -114,23 +114,37 @@ function statusFicticio(doc: jsPDF, imovel: ImovelData, larg: number, y: number)
 }
 
 function decorarDoc(doc: jsPDF) {
-  const originalText = doc.text;
-  doc.text = function (this: jsPDF, text: any, x: number, y: number, options?: any) {
+  const originalText = doc.text.bind(doc) as (
+    text: string | string[],
+    x: number,
+    y: number,
+    options?: Parameters<jsPDF['text']>[3],
+    transform?: Parameters<jsPDF['text']>[4],
+  ) => ReturnType<jsPDF['text']>;
+
+  doc.text = function (
+    this: jsPDF,
+    text: string | string[],
+    x: number,
+    y: number,
+    options?: Parameters<jsPDF['text']>[3],
+    transform?: Parameters<jsPDF['text']>[4],
+  ) {
     const hasDadoAusente = (t: string) => t.includes('DADO AUSENTE');
     let needsReset = false;
     if (typeof text === 'string' && hasDadoAusente(text)) {
       doc.setTextColor(220, 38, 38);
       needsReset = true;
-    } else if (Array.isArray(text) && text.some(t => typeof t === 'string' && hasDadoAusente(t))) {
+    } else if (Array.isArray(text) && text.some((t) => typeof t === 'string' && hasDadoAusente(t))) {
       doc.setTextColor(220, 38, 38);
       needsReset = true;
     }
-    const res = originalText.apply(this, arguments as any);
+    const res = originalText(text, x, y, options, transform);
     if (needsReset) {
       doc.setTextColor(0, 0, 0);
     }
     return res;
-  } as any;
+  } as unknown as typeof doc.text;
 }
 
 /** Recibo de pagamento do serviço, pronto para imprimir/assinar. */
