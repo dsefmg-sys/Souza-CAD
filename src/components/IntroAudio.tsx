@@ -69,14 +69,31 @@ export async function removerAudioIntroIdb(): Promise<void> {
   window.dispatchEvent(new CustomEvent('souzacad:intro-audio-updated'));
 }
 
+import { PASSOS_BASE, PASSOS_AVANCADOS } from '@/lib/ajuda/passos';
+
 /**
  * Player mini ("pill") genérico, pra viver dentro da barra flutuante ao lado da chave
- * Fácil/Completo. Cada pill toca um áudio e mostra um rótulo curto pra distinguir.
+ * Fácil/Completo. Cada pill toca um áudio (ou uma playlist) e mostra um rótulo curto pra distinguir.
  */
-export function AudioPill({ src, rotulo, titulo }: { src: string; rotulo: string; titulo: string }) {
+export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | string[]; rotulo: string; titulo: string; dourado?: boolean }) {
   const [tocando, setTocando] = useState(false);
   const [progresso, setProgresso] = useState(0);
+  const [currentIdx, setCurrentIdx] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const playlist = Array.isArray(src) ? src : [src];
+  const currentSrc = playlist[currentIdx] || '';
+
+  // Sincroniza sempre que a playlist ou a faixa atual muda
+  useEffect(() => {
+    setCurrentIdx(0);
+    setProgresso(0);
+    setTocando(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  }, [src]);
 
   function toggle() {
     const a = audioRef.current;
@@ -94,11 +111,32 @@ export function AudioPill({ src, rotulo, titulo }: { src: string; rotulo: string
     setProgresso(ratio);
   }
 
+  function handleEnded() {
+    setProgresso(0);
+    const a = audioRef.current;
+    if (a) a.currentTime = 0;
+
+    if (Array.isArray(src) && currentIdx + 1 < src.length) {
+      const nextIdx = currentIdx + 1;
+      setCurrentIdx(nextIdx);
+      setTimeout(() => {
+        const nextAudio = audioRef.current;
+        if (nextAudio) {
+          nextAudio.load();
+          nextAudio.play().catch((err) => console.warn('Falha no autoplay da playlist:', err));
+        }
+      }, 100);
+    } else {
+      setTocando(false);
+      setCurrentIdx(0);
+    }
+  }
+
   return (
-    <div className="flex items-center gap-1 rounded-full border bg-background/95 pl-1.5 pr-1 py-0.5 shadow-xl" title={titulo}>
+    <div className={`flex items-center gap-1 rounded-full border bg-background/95 pl-1.5 pr-1 py-0.5 shadow-xl ${dourado ? 'border-amber-500/60 bg-amber-500/10' : ''}`} title={titulo}>
       <audio
         ref={(el) => { audioRef.current = el; }}
-        src={src}
+        src={currentSrc}
         preload="metadata"
         onPlay={() => setTocando(true)}
         onPause={() => setTocando(false)}
@@ -106,21 +144,21 @@ export function AudioPill({ src, rotulo, titulo }: { src: string; rotulo: string
           const a = audioRef.current;
           if (a && a.duration) setProgresso(a.currentTime / a.duration);
         }}
-        onEnded={() => {
-          setProgresso(0);
-          const a = audioRef.current;
-          if (a) a.currentTime = 0;
-        }}
+        onEnded={handleEnded}
       />
-      <Volume2 className="size-3 text-muted-foreground shrink-0" />
-      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground select-none shrink-0">{rotulo}</span>
+      <Volume2 className={`size-3 shrink-0 ${dourado ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} />
+      <span className={`text-[10px] font-bold uppercase tracking-wide select-none shrink-0 ${dourado ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{rotulo}</span>
       {/* barra de progresso minúscula — clicável pra retomar de onde parou */}
       <div className="relative h-1 w-10 cursor-pointer rounded-full bg-border overflow-hidden shrink-0" onClick={seek} title="Clique para avançar">
-        <div className="absolute left-0 top-0 h-full rounded-full bg-primary transition-all duration-150" style={{ width: `${progresso * 100}%` }} />
+        <div className={`absolute left-0 top-0 h-full rounded-full transition-all duration-150 ${dourado ? 'bg-amber-500' : 'bg-primary'}`} style={{ width: `${progresso * 100}%` }} />
       </div>
       <button
         onClick={toggle}
-        className={`flex size-5 shrink-0 items-center justify-center rounded-full transition-all ${tocando ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
+        className={`flex size-5 shrink-0 items-center justify-center rounded-full transition-all ${
+          tocando 
+            ? (dourado ? 'bg-amber-500 text-white shadow-md' : 'bg-primary text-primary-foreground') 
+            : (dourado ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400 hover:bg-amber-500/30' : 'bg-primary/10 text-primary hover:bg-primary/20')
+        }`}
         title={tocando ? 'Pausar' : titulo}
       >
         {tocando ? <Pause className="size-2.5" /> : <Play className="size-2.5 translate-x-px" />}
@@ -142,9 +180,18 @@ export function IntroAudioPill() {
   return <AudioPill src={src} rotulo="INTRODUÇÃO" titulo="Áudio de introdução ao sistema" />;
 }
 
-/** Pill do tutorial: toca /tutorial.mp3 (estático em /public). */
-export function TutorialAudioPill() {
-  return <AudioPill src="/tutorial.mp3" rotulo="TUTORIAL" titulo="Áudio tutorial: como usar o sistema" />;
+/** Pill do tutorial: toca os áudios correspondentes ao modo atual em sequência. */
+export function TutorialAudioPill({ modo }: { modo: 'simples' | 'medio' | 'completo' }) {
+  const passos = modo === 'completo' ? [...PASSOS_BASE, ...PASSOS_AVANCADOS] : PASSOS_BASE;
+  const playlist = passos.map((p) => p.audioUrl).filter((url): url is string => !!url);
+  return (
+    <AudioPill
+      src={playlist}
+      rotulo="TUTORIAL COMPLETO"
+      titulo="Áudio tutorial completo em sequência automática"
+      dourado={true}
+    />
+  );
 }
 
 export default function IntroAudio() {

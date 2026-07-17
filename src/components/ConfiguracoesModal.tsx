@@ -33,7 +33,8 @@ import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENC
 import { carregarPadroes, salvarPadroes, PADROES_PADRAO, type PadroesProjeto } from '@/lib/store/padroes';
 import { carregarPrecos, salvarPrecos, type PrecoServico } from '@/lib/store/precos';
 import { exportarConfiguracoesJson, importarConfiguracoesJson } from '@/lib/store/backup';
-import { confirmar } from '@/lib/ui/dialogos';
+import { confirmar, avisar } from '@/lib/ui/dialogos';
+import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import ImportVerticesVizinhoConfigModal from '@/components/ImportVerticesVizinhoConfigModal';
 import { colegasCad } from '@/lib/store/cadastros';
@@ -293,6 +294,24 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     salvarEscritorio(updated);
     onConfigChange?.();
     flash('Salvo automaticamente');
+  };
+
+  const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    changeEsc('cnpj', formatarCpfCnpj(e.target.value));
+  };
+
+  const handleCnpjBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val) {
+      const clean = val.replace(/\D/g, '');
+      if (clean.length > 0 && !cpfOuCnpjValido(clean)) {
+        await avisar({
+          titulo: 'Documento Inválido',
+          mensagem: `O CNPJ / CPF informado ("${val}") é inválido. Por favor, digite um CPF ou CNPJ correto.`
+        });
+        changeEsc('cnpj', '');
+      }
+    }
   };
 
   const mudarPref = <K extends keyof PreferenciasApp>(k: K, val: PreferenciasApp[K]) => {
@@ -922,7 +941,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">CNPJ / CPF</Label>
-                        <Input value={esc.cnpj} onChange={(e) => changeEsc('cnpj', e.target.value)} placeholder="00.000.000/0001-00 ou CPF" title="CNPJ da empresa (ou seu CPF, se autônomo). Entra no cabeçalho e no requerimento." />
+                        <Input value={formatarCpfCnpj(esc.cnpj)} onChange={handleCnpjChange} onBlur={handleCnpjBlur} placeholder="00.000.000/0001-00 ou CPF" title="CNPJ da empresa (ou seu CPF, se autônomo). Entra no cabeçalho e no requerimento." />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">WhatsApp / Contato</Label>
@@ -949,7 +968,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">CNPJ / CPF</Label>
-                        <Input value={esc.cnpj} onChange={(e) => changeEsc('cnpj', e.target.value)} placeholder="00.000.000/0001-00 ou CPF" title="CNPJ da empresa (ou seu CPF, se autônomo). Entra no cabeçalho e no requerimento." />
+                        <Input value={formatarCpfCnpj(esc.cnpj)} onChange={handleCnpjChange} onBlur={handleCnpjBlur} placeholder="00.000.000/0001-00 ou CPF" title="CNPJ da empresa (ou seu CPF, se autônomo). Entra no cabeçalho e no requerimento." />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">WhatsApp / Contato</Label>

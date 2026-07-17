@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { FileSignature, UserPlus, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { confirmar, escolher } from '@/lib/ui/dialogos';
+import { confirmar, escolher, avisar } from '@/lib/ui/dialogos';
+import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -92,16 +93,40 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
     <div className="space-y-1.5 border rounded-lg bg-muted/10 p-2.5">
       {titulo && <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b pb-0.5 mb-1.5">{titulo}</h3>}
       <div className="grid grid-cols-6 gap-x-2 gap-y-1.5">
-        {CAMPOS.map((c) => (
-          <div key={c.k} className={`space-y-0.5 ${c.span}`}>
-            <Label className={`text-[10px] font-semibold leading-none ${c.importante ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-muted-foreground'}`}>
-              {c.label}{c.importante && ' *'}
-            </Label>
-            {c.k === 'nome'
-              ? <Input list="lista-pessoas" value={pessoa.nome} onChange={(e) => setNome(e.target.value)} className="h-7 text-[11px]" />
-              : <Input value={pessoa[c.k]} onChange={(e) => onChange({ ...pessoa, [c.k]: e.target.value })} className="h-7 text-[11px]" />}
-          </div>
-        ))}
+        {CAMPOS.map((c) => {
+          const isDoc = /cpf/i.test(c.k);
+          const val = pessoa[c.k] || '';
+          const formatado = isDoc ? formatarCpfCnpj(val) : val;
+
+          const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const raw = e.target.value;
+            onChange({ ...pessoa, [c.k]: isDoc ? formatarCpfCnpj(raw) : raw });
+          };
+
+          const handleBlur = async () => {
+            if (isDoc && val) {
+              const clean = val.replace(/\D/g, '');
+              if (clean.length > 0 && !cpfOuCnpjValido(clean)) {
+                await avisar({
+                  titulo: 'Documento Inválido',
+                  mensagem: `O ${c.label} informado ("${val}") é inválido. Por favor, digite um CPF ou CNPJ correto.`
+                });
+                onChange({ ...pessoa, [c.k]: '' });
+              }
+            }
+          };
+
+          return (
+            <div key={c.k} className={`space-y-0.5 ${c.span}`}>
+              <Label className={`text-[10px] font-semibold leading-none ${c.importante ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-muted-foreground'}`}>
+                {c.label}{c.importante && ' *'}
+              </Label>
+              {c.k === 'nome'
+                ? <Input list="lista-pessoas" value={pessoa.nome} onChange={(e) => setNome(e.target.value)} className="h-7 text-[11px]" />
+                : <Input value={formatado} onChange={handleChange} onBlur={handleBlur} className="h-7 text-[11px]" />}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

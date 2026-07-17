@@ -6639,11 +6639,11 @@ export default function EditorPage() {
                 <GripVertical className="size-3.5" />
               </div>
               <IntroAudioPill />
-              <TutorialAudioPill />
+              <TutorialAudioPill modo={modoApp} />
               <button type="button" onClick={() => setTutorialAberto(true)}
-                className="flex h-6 items-center gap-1 rounded-full border border-amber-500/60 bg-amber-500/10 px-2.5 text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+                className="flex h-6 items-center gap-1 rounded-full border bg-background px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 title="Tutorial em áudio e texto: passo a passo e temas de ajuda">
-                <HelpCircle className="size-3" /> Guia em Áudio
+                <HelpCircle className="size-3" /> Guias de Utilização
               </button>
               {(videosUrl || videosTutorial.length > 0) && (
                 <button type="button" onClick={() => setVideosListaAberta(true)}
@@ -9433,12 +9433,25 @@ function Campo({ label, value, onChange, placeholder, list, aviso, importante }:
     }
   };
 
+  const handleBlur = async () => {
+    if (/cpf|cnpj/i.test(label) && value) {
+      const clean = value.replace(/\D/g, '');
+      if (clean.length > 0 && !cpfOuCnpjValido(clean)) {
+        await avisar({
+          titulo: 'Documento Inválido',
+          mensagem: `O ${label} informado ("${value}") é inválido. Por favor, digite um CPF ou CNPJ correto.`
+        });
+        onChange('');
+      }
+    }
+  };
+
   return (
     <div className="space-y-0.5">
       <Label className={`text-[10px] uppercase tracking-wide ${importante ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-muted-foreground'}`}>
         {label}{importante && ' *'}
       </Label>
-      <Input list={list} value={formatado} placeholder={placeholder} onChange={handleChange} className={`h-8 text-sm${aviso ? ' border-amber-500' : ''}`} />
+      <Input list={list} value={formatado} placeholder={placeholder} onChange={handleChange} onBlur={handleBlur} className={`h-8 text-sm${aviso ? ' border-amber-500' : ''}`} />
       {aviso && <p className="text-[10px] leading-tight text-amber-600">{aviso}</p>}
     </div>
   );

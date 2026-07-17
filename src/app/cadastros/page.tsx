@@ -10,8 +10,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { ProprietarioCad, ConfrontanteCad, ImovelCad, CartorioCad } from '@/lib/topo/types';
 import { proprietarios, confrontantesCad, imoveisCad, cartoriosCad } from '@/lib/store/cadastros';
 import { carregarProjeto } from '@/lib/store/projects';
-import { cpfValido, cnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
+import { cpfValido, cnpjValido, formatarCpfCnpj, cpfOuCnpjValido } from '@/lib/topo/validation';
 import { useAuth } from '@/lib/firebase/auth';
+import { avisar } from '@/lib/ui/dialogos';
 
 type Aba = 'proprietarios' | 'confrontantes' | 'imoveis' | 'cartorios' | 'global';
 
@@ -247,6 +248,14 @@ function Proprietarios({
 
   async function salvar() {
     if (!form.nome) return;
+    const cleanCpf = form.cpf.replace(/\D/g, '');
+    if (cleanCpf && !cpfOuCnpjValido(cleanCpf)) {
+      await avisar({
+        titulo: 'Documento Inválido',
+        mensagem: 'O CPF ou CNPJ informado é inválido. Por favor, insira um documento correto antes de salvar.'
+      });
+      return;
+    }
     // Se o registro não tinha projetoId e estamos num projeto, associa
     const projetoIdSalvar = form.projetoId || projetoId || undefined;
     await proprietarios.salvar({ ...form, projetoId: projetoIdSalvar });
@@ -342,6 +351,38 @@ function Confrontantes({
 
   async function salvar() {
     if (!form.nome) return;
+    const cleanCpf = form.cpf.replace(/\D/g, '');
+    if (cleanCpf && !cpfOuCnpjValido(cleanCpf)) {
+      await avisar({
+        titulo: 'Documento Inválido',
+        mensagem: 'O CPF ou CNPJ informado é inválido. Por favor, insira um documento correto antes de salvar.'
+      });
+      return;
+    }
+    const cleanConj = (form.conjugeCpf || '').replace(/\D/g, '');
+    if (cleanConj && !cpfValido(cleanConj)) {
+      await avisar({
+        titulo: 'CPF do Cônjuge Inválido',
+        mensagem: 'O CPF do cônjuge informado é inválido. Por favor, corrija-o antes de salvar.'
+      });
+      return;
+    }
+    const cleanInv = (form.inventarianteCpf || '').replace(/\D/g, '');
+    if (cleanInv && !cpfValido(cleanInv)) {
+      await avisar({
+        titulo: 'CPF do Inventariante Inválido',
+        mensagem: 'O CPF do inventariante informado é inválido. Por favor, corrija-o antes de salvar.'
+      });
+      return;
+    }
+    const cleanNu = (form.nuProprietarioCpf || '').replace(/\D/g, '');
+    if (cleanNu && !cpfValido(cleanNu)) {
+      await avisar({
+        titulo: 'CPF do Nu-Proprietário Inválido',
+        mensagem: 'O CPF do nu-proprietário informado é inválido. Por favor, corrija-o antes de salvar.'
+      });
+      return;
+    }
     const projetoIdSalvar = form.projetoId || projetoId || undefined;
     await confrontantesCad.salvar({ ...form, projetoId: projetoIdSalvar });
     setForm(vazio);
