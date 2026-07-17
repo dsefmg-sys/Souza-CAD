@@ -88,6 +88,7 @@ interface Props {
   onTextoStartEdit?: () => void;
   onTextoPatch?: (id: string, patch: { escala?: number; texto?: string; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) => void;
   onDblClick?: (lat: number, lon: number) => void;
+  onDblClickObjeto?: (id: string) => void;
   onContextMenuVazio?: () => void;
 }
 
@@ -321,7 +322,7 @@ export default function Planta({
   onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onConfrontanteMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
-  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onContextMenuVazio,
+  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onDblClickObjeto, onContextMenuVazio,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
@@ -1645,7 +1646,7 @@ export default function Planta({
         if (o.tipo === 'simbolo' && sp[0]) {
           const tam = o.tamanho ?? 30;
           const esc = (tam / 20).toFixed(2);
-          return <g key={o.id} {...ctx} onClick={handlePlantaObjClick} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(${esc})`} style={isMultiSelected ? { filter: 'drop-shadow(0 0 4px #f59e0b)' } : undefined} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
+          return <g key={o.id} {...ctx} onClick={handlePlantaObjClick} onDoubleClick={(e) => { e.stopPropagation(); onDblClickObjeto?.(o.id); }} transform={`translate(${sp[0].x}, ${sp[0].y}) scale(${esc})`} style={isMultiSelected ? { filter: 'drop-shadow(0 0 4px #f59e0b)' } : undefined} dangerouslySetInnerHTML={{ __html: simboloSvgInterno(o.simbolo ?? '') }} />;
         }
         if (o.tipo === 'texto' && sp[0]) {
           const anchor = o.alinhamento === 'center' ? 'middle' : o.alinhamento === 'right' ? 'end' : 'start';
@@ -1681,7 +1682,7 @@ export default function Planta({
           const perpOff = o.posicaoTexto === 'centro' ? 0 : o.posicaoTexto === 'abaixo' ? (fsCota + 3) : -(fsCota * 0.5 + 3);
 
           return (
-            <g key={o.id} {...ctx} onClick={handlePlantaObjClick}>
+            <g key={o.id} {...ctx} onClick={handlePlantaObjClick} onDoubleClick={(e) => { e.stopPropagation(); onDblClickObjeto?.(o.id); }}>
               {/* Área de hit invisível larga para facilitar o clique */}
               <line x1={svgAOffset.x} y1={svgAOffset.y} x2={svgBOffset.x} y2={svgBOffset.y} stroke="transparent" strokeWidth={12} style={{ cursor: editavel ? 'pointer' : 'default' }} />
               {/* Linhas de extensão perpendiculares tracejadas */}
@@ -1721,12 +1722,12 @@ export default function Planta({
               fillOp = 0.95;
             }
             el = (
-              <polygon key={o.id} {...ctx} onClick={handlePlantaObjClick} points={pp} fill={fillVal} fillOpacity={fillOp} stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
+              <polygon key={o.id} {...ctx} onClick={handlePlantaObjClick} onDoubleClick={(e) => { e.stopPropagation(); onDblClickObjeto?.(o.id); }} points={pp} fill={fillVal} fillOpacity={fillOp} stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} />
             );
           } else {
             // Área de hit invisível larga (permite clicar/arrastar mesmo em linhas finas e tracejadas)
             el = (
-              <g key={o.id} {...ctx} onClick={handlePlantaObjClick} style={{ cursor: editavel && o.curvaNivel == null ? 'pointer' : 'default' }}>
+              <g key={o.id} {...ctx} onClick={handlePlantaObjClick} onDoubleClick={(e) => { e.stopPropagation(); onDblClickObjeto?.(o.id); }} style={{ cursor: editavel && o.curvaNivel == null ? 'pointer' : 'default' }}>
                 <polyline points={pp} fill="none" stroke="transparent" strokeWidth={12} style={{ pointerEvents: 'stroke' }} />
                 <polyline points={pp} fill="none" stroke={borderCor} strokeWidth={esp} strokeDasharray={dashArray} style={{ pointerEvents: 'none' }} />
               </g>
