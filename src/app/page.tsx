@@ -6,11 +6,11 @@ import Link from 'next/link';
 import { saveAs } from 'file-saver';
 import {
   Upload, FileText, Map as MapIcon, Plus, Trash2,
-  RotateCcw, Flag, Save, FolderOpen, MousePointer2,
+  RotateCcw, Flag, Save, FolderOpen,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
-  Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
-  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Compass, Archive, BarChart3,
+  Moon, Sun, Pencil, PenTool, Lock, LockOpen, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
+  Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
+  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -85,7 +85,7 @@ import { importarDxf, anelDeDxf } from '@/lib/io/dxf';
 import { gerarShapefileZip, importarShapefileZip, lerShp } from '@/lib/io/shapefile';
 import { gerarSituacao } from '@/lib/io/situacao';
 import { importarGeoJsonAneis } from '@/lib/io/geojson';
-import { parseParcelasSigef, parseGmlParcelas, parcelasParaReferencias, parcelasVizinhas, confrontantesDeVizinhas, parseVerticesSigefGml, parsePropriedadeSigefGml } from '@/lib/io/sigefVizinhos';
+import { parseParcelasSigef, parseGmlParcelas, parcelasParaReferencias, parcelasVizinhas, parseVerticesSigefGml, parsePropriedadeSigefGml } from '@/lib/io/sigefVizinhos';
 import { parseVerticesVizinho } from '@/lib/io/verticesVizinho';
 import { validarTamanhoArquivo } from '@/lib/io/validarArquivo';
 import { ufsNoBbox, temaIncra, TEMAS_CONFRONTANTE, INCRA_UFS } from '@/lib/io/incraTemas';
@@ -216,18 +216,6 @@ const MOCK_PROJECT = {
   gradeAltimetrica: [],
 };
 
-const CORES_CABECALHO = [
-  { id: 'cinza', label: 'Cinza', text: 'text-muted-foreground', border: 'border-muted', bg: 'bg-muted-foreground/30' },
-  { id: 'forest', label: 'Verde Floresta', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-600/30', bg: 'bg-emerald-500' },
-  { id: 'hydro', label: 'Azul Hidro', text: 'text-sky-600 dark:text-sky-400', border: 'border-sky-600/30', bg: 'bg-sky-500' },
-  { id: 'terra', label: 'Marrom Solo', text: 'text-amber-800 dark:text-amber-500', border: 'border-amber-800/30', bg: 'bg-amber-700' },
-  { id: 'olive', label: 'Verde Oliva', text: 'text-lime-700 dark:text-lime-500', border: 'border-lime-700/30', bg: 'bg-lime-600' },
-  { id: 'sigef', label: 'Ciano SIGEF', text: 'text-cyan-600 dark:text-cyan-400', border: 'border-cyan-600/30', bg: 'bg-cyan-500' },
-  { id: 'orange', label: 'Laranja Curvas', text: 'text-orange-600 dark:text-orange-400', border: 'border-orange-600/30', bg: 'bg-orange-500' },
-  { id: 'purple', label: 'Roxo Marcos', text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-600/30', bg: 'bg-indigo-500' },
-  { id: 'rose', label: 'Vermelho Divisas', text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-600/30', bg: 'bg-rose-500' },
-  { id: 'slate', label: 'Grafite Escuro', text: 'text-slate-700 dark:text-slate-300', border: 'border-slate-700/30', bg: 'bg-slate-500' },
-];
 
 function gerarTituloAutomatico(im: ImovelData): string {
   const partes: string[] = [];
@@ -264,7 +252,6 @@ const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-M
 const COR_IMPORT = 'bg-sky-500 hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-700 text-white border-transparent';       // entrada de dados
 const COR_VIZINHO = 'bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800 text-white border-transparent'; // vizinho certificado (SIGEF/INCRA)
 const COR_DADOS = 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-800 text-white border-transparent'; // cadastro e IA
-const COR_MARCAR = 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white border-transparent';    // marcar no mapa
 const COR_CONFRO = 'bg-blue-800 hover:bg-blue-900 text-white border-transparent';
 const COR_DIVISA = 'bg-slate-500 hover:bg-slate-600 text-white border-transparent';
 const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída — cor de ação principal (verde da marca)
