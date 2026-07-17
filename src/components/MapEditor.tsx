@@ -434,7 +434,7 @@ function CaixaSelecao({ ativo, vertices, objetos = [], onBoxSelect, onBoxSelectO
   );
 }
 
-function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblClick, onMouseMove, onMouseOut, hoverSnap, zona = 23, hemisferio = 'S', onConfirmarCopiaBase, onConfirmarCopiaDestino }: {
+function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblClick, onMouseMove, onMouseOut, hoverSnap, zona = 23, hemisferio = 'S', onConfirmarCopiaBase, onConfirmarCopiaDestino, onContextMenuMapa }: {
   modo: ModoEdicao;
   onInserir: (lat: number, lon: number) => void;
   onCliqueDesenho?: (lat: number, lon: number) => void;
@@ -447,6 +447,7 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
   hemisferio?: 'N' | 'S';
   onConfirmarCopiaBase?: (pt: PontoLL) => void;
   onConfirmarCopiaDestino?: (pt: PontoLL) => void;
+  onContextMenuMapa?: (lat: number, lon: number, x: number, y: number) => void;
 }) {
   useMapEvents({
     click(e) {
@@ -470,13 +471,15 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
       else if (modo === 'copiar_destino') onConfirmarCopiaDestino?.({ lat, lon, leste, norte });
     },
     dblclick(e) {
-      // duplo clique abre o editor de texto (não dá zoom — doubleClickZoom desligado)
-      onDblClick?.(e.latlng.lat, e.latlng.lng);
+      // Duplo clique não faz nada, apenas consome o evento para evitar doubleClickZoom padrão
     },
     contextmenu(e) {
       if (modo === 'linha' || modo === 'polilinha' || modo === 'tracejado' || modo === 'cota' || modo === 'texto' || modo === 'medir' || modo === 'retangulo' || modo === 'arco') {
         e.originalEvent.preventDefault();
         onCancelDesenho?.();
+      } else {
+        e.originalEvent.preventDefault();
+        onContextMenuMapa?.(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
       }
     },
     mousemove(e) {
@@ -1303,6 +1306,7 @@ export default function MapEditor(props: Props) {
     espessuraCert = 1.4,
     onContextMenuCert,
     onDblClickObjeto,
+    onContextMenuMapa,
   } = props;
 
   const [zoom, setZoom] = useState(16);
@@ -1500,7 +1504,7 @@ export default function MapEditor(props: Props) {
       <Centralizar sig={centralizarSig} vertices={vertices} />
       <VerZoom onZoom={setZoom} />
       <CaixaSelecao ativo={modo === 'multi'} vertices={[...validos, ...verticesIgnorados]} objetos={objetos} onBoxSelect={onBoxSelect} onBoxSelectObj={onBoxSelectObj} />
-      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} hoverSnap={hoverSnap} zona={zona} hemisferio={hemisferio} onConfirmarCopiaBase={onConfirmarCopiaBase} onConfirmarCopiaDestino={onConfirmarCopiaDestino} />
+      <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} hoverSnap={hoverSnap} zona={zona} hemisferio={hemisferio} onConfirmarCopiaBase={onConfirmarCopiaBase} onConfirmarCopiaDestino={onConfirmarCopiaDestino} onContextMenuMapa={onContextMenuMapa} />
       <FocoMap latLng={focoLatLng} />
 
       {/* referências certificadas (snap) */}

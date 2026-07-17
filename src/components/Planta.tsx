@@ -760,6 +760,7 @@ export default function Planta({
           onToggleMultiObj?.(selId);
         } else {
           setSelecionadoId(selId);
+          onSelecObjeto?.(selId);
         }
       }
     };
@@ -1173,20 +1174,15 @@ export default function Planta({
         style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : CURSOR_CROSSHAIR) : 'default', touchAction: editavel ? 'none' : undefined }}
         onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
         onContextMenu={(e) => {
-          if (e.target === svgRef.current || (e.target as HTMLElement).tagName === 'svg') {
+          const target = e.target as SVGElement;
+          const isBg = target === svgRef.current || target.tagName === 'svg' || (target.tagName === 'rect' && target.getAttribute('x') === '0' && target.getAttribute('y') === '0');
+          if (isBg) {
             e.preventDefault();
             if (modo === 'navegar') {
               onContextMenuVazio?.();
             }
           }
         }}
-        onDoubleClick={editavel ? (e) => {
-          const u = svgPonto(e);
-          if (u && onDblClick) {
-            const g = paraGeo(u);
-            onDblClick(g.lat, g.lon);
-          }
-        } : undefined}
         xmlns="http://www.w3.org/2000/svg">
       {/* padrões de hachura pro preenchimento do polígono (escolhidos no painel, na cor do perímetro) */}
       {(() => {
@@ -1317,7 +1313,9 @@ export default function Planta({
         return (
           <g key={`pc_cert_${idx}`}>
             {/* No modo planta apenas o contorno da parcela é exibido; vértices e rótulos são omitidos */}
-            <polygon points={ptsSvg} fill="#0284c7" fillOpacity={0.045} stroke="#0284c7" strokeWidth={0.7} strokeDasharray="3 3" />
+            <polygon points={ptsSvg} fill="#0284c7" fillOpacity={0.045} stroke="#0284c7" strokeWidth={0.7} strokeDasharray="3 3"
+              style={editavel ? { cursor: 'pointer' } : undefined}
+              onClick={editavel ? (e) => { e.stopPropagation(); onSelecObjeto?.(`planta:poligono_sigef:${idx}`); } : undefined} />
           </g>
         );
       })}
@@ -2221,6 +2219,7 @@ export default function Planta({
         situacaoStale={situacaoStale} onAtualizarSituacao={onAtualizarSituacao}
         corCabecalho={corCabecalho} onHeaderContextMenu={onHeaderContextMenu}
         corVerticeP={config.corVerticeP} corVerticeM={config.corVerticeM}
+        onSelecObjeto={onSelecObjeto}
       />
 
       {/* ---------- CARIMBO (coluna direita - reformulada) ---------- */}
@@ -2233,6 +2232,7 @@ export default function Planta({
         escalaConf={config.escalaConfront && config.escalaConfront > 0 ? config.escalaConfront : 1}
         requerente={requerente} transmitente={transmitente}
         corCabecalho={corCabecalho} onHeaderContextMenu={onHeaderContextMenu}
+        onSelecObjeto={onSelecObjeto}
         ed={{
           ativo: editavel,
           textos: new Proxy(textosOv, { get: (target, prop) => typeof prop === 'string' ? getOverride(prop) : undefined }),
@@ -2648,8 +2648,9 @@ function FaixaInferior(props: {
   onHeaderContextMenu?: (e: React.MouseEvent) => void;
   corVerticeP?: string;
   corVerticeM?: string;
+  onSelecObjeto?: (id: string | null) => void;
 }) {
-  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu, corVerticeP, corVerticeM } = props;
+  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu, corVerticeP, corVerticeM, onSelecObjeto } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -2670,7 +2671,7 @@ function FaixaInferior(props: {
   return (
     <g>
       {/* --- BOX 1: SITUAÇÃO --- */}
-      <g>
+      <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:situacao'); }} style={{ cursor: 'pointer' }}>
         <rect x={x1} y={y0} width={w1} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
         <rect x={x1} y={y0} width={w1} height={24} rx={6} ry={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
         <rect x={x1} y={y0 + 18} width={w1} height={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
@@ -2679,7 +2680,7 @@ function FaixaInferior(props: {
           <g>
             <image href={situacaoUrl} x={x1 + 6} y={y0 + 30} width={w1 - 12} height={hBox - 36} preserveAspectRatio="xMidYMid slice"
               style={coordEditavel ? { cursor: 'pointer' } : undefined}
-              onClick={coordEditavel && onSituacaoClick ? (e) => { e.stopPropagation(); onSituacaoClick(); } : undefined} />
+              onClick={coordEditavel && onSituacaoClick ? (e) => { e.stopPropagation(); onSituacaoClick(); onSelecObjeto?.('planta:situacao'); } : undefined} />
             {/* Overlay laranja "Atualizar" — aparece sobre a imagem quando o desenho mudou */}
             {coordEditavel && situacaoStale && (
               <g style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); onAtualizarSituacao?.(); }}
@@ -2725,10 +2726,12 @@ function FaixaInferior(props: {
         const colW = (w2 - 24) / 2;
         return (
           <g>
-            <rect x={x2} y={y0} width={w2} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-            <rect x={x2} y={y0} width={w2} height={24} rx={6} ry={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
-            <rect x={x2} y={y0 + 18} width={w2} height={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
-            <text x={x2 + w2 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">CONVENÇÕES</text>
+            <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:lateral_folha'); }} style={{ cursor: 'pointer' }}>
+              <rect x={x2} y={y0} width={w2} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
+              <rect x={x2} y={y0} width={w2} height={24} rx={6} ry={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
+              <rect x={x2} y={y0 + 18} width={w2} height={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
+              <text x={x2 + w2 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">CONVENÇÕES</text>
+            </g>
 
             <g transform={`translate(${x2 + 14}, ${y0 + 40})`} fontSize={fs(8.5)} fill="#0f172a">
               {verts.map((v, i) => (
@@ -2754,11 +2757,12 @@ function FaixaInferior(props: {
       })()}
 
       {/* --- BOX 3: INFORMAÇÕES DE COORDENADAS (quadro fixo; os BLOCOS internos é que se arrastam) --- */}
-      <g>
+      <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:lateral_folha'); }} style={{ cursor: 'pointer' }}>
         <rect x={x3} y={y0} width={w3} height={hBox} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
         <rect x={x3} y={y0} width={w3} height={24} rx={6} ry={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
         <rect x={x3} y={y0 + 18} width={w3} height={6} fill={corCabecalho} onContextMenu={onHeaderContextMenu} />
         <text x={x3 + w3 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">INFORMAÇÕES DE COORDENADAS</text>
+      </g>
 
         {(() => {
           // cada bloco interno vira um grupo arrastável com seu próprio deslocamento salvo
@@ -2827,7 +2831,6 @@ function FaixaInferior(props: {
             </>
           );
         })()}
-      </g>
     </g>
   );
 }
@@ -3052,8 +3055,9 @@ function CarimboA3(props: {
     onSelect?: (id: string | null) => void;
     onTextoPatch?: (id: string, patch: { escala?: number; texto?: string; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) => void;
   };
+  onSelecObjeto?: (id: string | null) => void;
 }) {
-  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, escalaDecl = 1, escalaConf = 1, ed, corCabecalho = '#475569', onHeaderContextMenu } = props;
+  const { imovel, ef, tecnico, escritorio, glebaNome, escalaDenom, dataExtenso, titulo, folha, textoLaudo, textoConfront, escala, escalaDecl = 1, escalaConf = 1, ed, corCabecalho = '#475569', onHeaderContextMenu, onSelecObjeto } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const fsDecl = (n: number) => +(n * escala * escalaDecl).toFixed(2); // declarações (proprietário/laudo)
   const fsConf = (n: number) => +(n * escala * escalaConf).toFixed(2); // texto/assinatura dos confrontantes
@@ -3063,7 +3067,7 @@ function CarimboA3(props: {
     <Ted id={id} base={base} x={o.x} y={o.y} size={o.size} bold={o.bold} anchor={o.anchor} fill={o.fill} slice={o.slice}
       ov={ed?.textos[id]} ed={ed?.ativo} onEditar={ed?.onEditar} onMenu={ed?.onMenu}
       editando={ed?.editandoId === id} onStartEdit={ed?.onStartEdit} onTerminarEditar={ed?.onTerminarEditar}
-      onDragStart={ed?.onDragStart} selecionadoId={ed?.selecionadoId} onSelect={ed?.onSelect} onTextoPatch={ed?.onTextoPatch} />
+      onDragStart={ed?.onDragStart} selecionadoId={ed?.selecionadoId} onSelect={(selId) => { ed?.onSelect?.(selId); onSelecObjeto?.(selId); }} onTextoPatch={ed?.onTextoPatch} />
   );
   const x0 = W - CARW; // 1117
   const padX = 10;
@@ -3227,7 +3231,8 @@ function CarimboA3(props: {
           return (
             <g
               style={ed?.ativo ? { cursor: 'pointer' } : undefined}
-              onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idT, titulo); } : undefined}
+              onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:titulo'); }}
+              onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); onSelecObjeto?.('planta:titulo'); } : undefined}
               onContextMenu={onHeaderContextMenu}
             >
               <rect x={lx} y={Y_DADOS} width={wBox} height={hCabTitulo} rx={6} ry={6} fill={corCabecalho} />
@@ -3264,12 +3269,14 @@ function CarimboA3(props: {
       {/* ── CARD A: DECLARAÇÃO DO(S) PROPRIETÁRIO(S) ──────────────────────── */}
       <g>
         <rect x={lx} y={Y_PROP} width={wBox} height={H_PROP} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-        {Cab(Y_PROP, imovel.regimeTerra === 'posse' ? 'DECLARAÇÃO DO(S) POSSUIDOR(ES)' : 'DECLARAÇÃO DO(S) PROPRIETÁRIO(S)', 'carimbo.tituloProp')}
+        <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:declaracoes'); }} style={{ cursor: 'pointer' }}>
+          {Cab(Y_PROP, imovel.regimeTerra === 'posse' ? 'DECLARAÇÃO DO(S) POSSUIDOR(ES)' : 'DECLARAÇÃO DO(S) PROPRIETÁRIO(S)', 'carimbo.tituloProp')}
+        </g>
 
         {(() => {
           const idProp = 'carimbo.declProprietario';
           const ovProp = ed?.textos[idProp] || {};
-          const txtProp = ovProp.texto || `Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta e no memorial anexo, e que indicamos em campo, de forma expressa, as divisas, limites e confrontações consideradas verdadeiras.`;
+          const txtProp = ovProp.texto || `Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta and no memorial anexo, e que indicamos em campo, de forma expressa, as divisas, limites e confrontações consideradas verdadeiras.`;
           const pxProp = cxc + (ovProp.dx ?? 0);
           const pyProp = (Y_PROP + 32) + (ovProp.dy ?? 0);
 
@@ -3297,7 +3304,8 @@ function CarimboA3(props: {
           return (
             <g key={idProp} id={idProp}
                style={ed?.ativo ? { cursor: 'move' } : undefined}
-               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idProp, txtProp); } : undefined}
+               onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:declaracoes'); }}
+               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); onSelecObjeto?.('planta:declaracoes'); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idProp, txtProp, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idProp, e); } : undefined}>
               <TextoQuebrado x={pxProp} y={pyProp} fontSize={fsDecl(8.5) * (ovProp.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovProp.escala ?? 1), ovProp.larguraChars ?? 68)} textAnchor="middle" texto={txtProp} lineHeight={1.35} maxHeight={100} centrarEmAltura={60} />
@@ -3311,7 +3319,9 @@ function CarimboA3(props: {
       {/* ── CARD B: LAUDO TÉCNICO / RESPONSÁVEL TÉCNICO ───────────────────── */}
       <g>
         <rect x={lx} y={Y_LAUDO} width={wBox} height={H_LAUDO} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-        {Cab(Y_LAUDO, 'LAUDO TÉCNICO', 'carimbo.tituloLaudo')}
+        <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:laudo'); }} style={{ cursor: 'pointer' }}>
+          {Cab(Y_LAUDO, 'LAUDO TÉCNICO', 'carimbo.tituloLaudo')}
+        </g>
 
         {(() => {
           const idLaudo = 'carimbo.laudoTécnico';
@@ -3344,7 +3354,8 @@ function CarimboA3(props: {
           return (
             <g key={idLaudo} id={idLaudo}
                style={ed?.ativo ? { cursor: 'move' } : undefined}
-               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idLaudo, txtLaudo); } : undefined}
+               onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:laudo'); }}
+               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); onSelecObjeto?.('planta:laudo'); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idLaudo, txtLaudo, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idLaudo, e); } : undefined}>
               <TextoQuebrado x={pxLaudo} y={pyLaudo} fontSize={fsDecl(8.5) * (ovLaudo.escala ?? 1)} larguraChars={capChars(fsDecl(8.5) * (ovLaudo.escala ?? 1), ovLaudo.larguraChars ?? 68)} textAnchor="middle" texto={txtLaudo} lineHeight={1.35} maxHeight={100} centrarEmAltura={60} />
@@ -3358,7 +3369,9 @@ function CarimboA3(props: {
       {/* ── CARD C: DECLARAÇÃO DOS CONFRONTANTES ──────────────────────────── */}
       <g>
         <rect x={lx} y={Y_CONF} width={wBox} height={110} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-        {Cab(Y_CONF, 'DECLARAÇÃO DOS CONFRONTANTES', 'carimbo.tituloConf')}
+        <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:confrontantes'); }} style={{ cursor: 'pointer' }}>
+          {Cab(Y_CONF, 'DECLARAÇÃO DOS CONFRONTANTES', 'carimbo.tituloConf')}
+        </g>
 
         {(() => {
           const idConf = 'carimbo.declConfrontantes';
@@ -3374,8 +3387,8 @@ function CarimboA3(props: {
               <foreignObject x={pxConf - curWidth / 2 - 6} y={pyConf - 15} width={curWidth + 12} height={70} style={{ overflow: 'visible' }}>
                 <textarea
                   autoFocus
-                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1.5 shadow-md rounded-sm text-center"
-                  style={{ resize: 'both', overflow: 'auto', fontSize: `${currentFontSize}px`, fontFamily: 'Arial, Helvetica, sans-serif' }}
+                  className="w-full h-full border border-blue-500 bg-white text-black outline-none p-1 shadow-md rounded-sm text-[9px]"
+                  style={{ resize: 'both', overflow: 'auto' }}
                   value={txtConf}
                   onChange={(e) => ed.onEditar?.(idConf, e.target.value)}
                   onBlur={(e) => {
@@ -3391,7 +3404,8 @@ function CarimboA3(props: {
           return (
             <g key={idConf} id={idConf}
                style={ed?.ativo ? { cursor: 'move' } : undefined}
-               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idConf, txtConf); } : undefined}
+               onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:confrontantes'); }}
+               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); onSelecObjeto?.('planta:confrontantes'); } : undefined}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idConf, e); } : undefined}>
               <TextoQuebrado x={pxConf} y={pyConf} fontSize={fsConf(8.5) * (ovConf.escala ?? 1)} larguraChars={capChars(fsConf(8.5) * (ovConf.escala ?? 1), ovConf.larguraChars ?? 68)} textAnchor="middle" texto={txtConf} lineHeight={1.35} maxHeight={70} centrarEmAltura={70} />
@@ -3418,11 +3432,11 @@ function CarimboA3(props: {
           const pxB = cxc + (ovB.dx ?? 0);
           const pyB = (Y_ESC + 10 + logoH + 20) + (ovB.dy ?? 0);
           return (
-            <g>
+            <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:empresa'); }}>
               {logoSel && <rect x={cxc - logoW / 2 - 2} y={Y_ESC + 8} width={logoW + 4} height={logoH + 4} fill="none" stroke="#3b82f6" strokeWidth={0.8} strokeDasharray="3 2" />}
               <image href={escritorio.logoDataUrl} x={cxc - logoW / 2} y={Y_ESC + 10} width={logoW} height={logoH} preserveAspectRatio="xMidYMid meet"
                 style={ed?.ativo ? { cursor: 'pointer' } : undefined}
-                onClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onSelect?.(ed.selecionadoId === 'esc.logo' ? null : 'esc.logo'); } : undefined}
+                onClick={ed?.ativo ? (e) => { e.stopPropagation(); onSelecObjeto?.('planta:empresa'); } : undefined}
                 onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ajustarLogo(0.1); } : undefined} />
               {logoSel && (
                 <g style={{ pointerEvents: 'all' }}>
@@ -3443,7 +3457,8 @@ function CarimboA3(props: {
                 </foreignObject>
               ) : (
                 <g style={ed?.ativo ? { cursor: 'move' } : undefined}
-                   onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); ed.onStartEdit?.(idBloco, txtB); } : undefined}
+                   onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:empresa'); }}
+                   onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); onSelecObjeto?.('planta:empresa'); } : undefined}
                    onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idBloco, txtB, e.clientX, e.clientY); } : undefined}
                    onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idBloco, e); } : undefined}>
                   {txtB.split('\n').map((l, k) => (

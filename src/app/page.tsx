@@ -142,6 +142,80 @@ const IMOVEL_VAZIO: ImovelData = {
   tipoImovel: 'rural', usarValoresSigef: true, inscricaoMunicipal: '', frenteM: undefined, fundosM: undefined, distanciaEsquinaM: undefined, esquinaRua: '',
 };
 
+const MOCK_PROJECT = {
+  v: 1,
+  projetoId: 'projeto_ficticio',
+  nome: 'Fazenda Rio das Pedras - Gleba A',
+  nomeProjetoManual: true,
+  zona: 22,
+  hemisferio: 'S' as const,
+  imovel: {
+    denominacao: 'Fazenda Rio das Pedras',
+    proprietario: 'José Francisco da Silva',
+    cpfProprietario: '123.456.789-00',
+    tipoPessoa: 'Física',
+    comprador: '',
+    cpfComprador: '',
+    matricula: '12.345',
+    cns: '01.234-5',
+    codigoImovelIncra: '950.123.456.789-0',
+    municipio: 'São João d\'Aliança-GO',
+    local: 'Zona Rural',
+    naturezaServico: 'Particular',
+    situacao: 'Imóvel Registrado',
+    naturezaArea: 'Particular',
+    tipoImovel: 'rural' as const,
+    usarValoresSigef: true,
+    inscricaoMunicipal: '',
+    frenteM: undefined,
+    fundosM: undefined,
+    distanciaEsquinaM: undefined,
+    esquinaRua: '',
+    regimeTerra: 'propriedade' as const,
+  },
+  glebas: [
+    {
+      id: 'gleba_ficticia',
+      denominacao: 'Gleba A',
+      parcela: '001',
+      vertices: [
+        { id: 'v1', nome: 'M-0001', tipo: 'M' as const, norte: 8400000, leste: 300000, altitude: 850.5, sigefStatus: 'ok' as const, isDivisa: true, codigoSigef: 'COIN-M-0001', latitude: -14.462153, longitude: -46.855018 },
+        { id: 'v2', nome: 'P-0002', tipo: 'P' as const, norte: 8400200, leste: 300150, altitude: 852.1, sigefStatus: 'ok' as const, isDivisa: false, codigoSigef: 'COIN-P-0002', latitude: -14.460341, longitude: -46.853632 },
+        { id: 'v3', nome: 'V-0003', tipo: 'V' as const, norte: 8400100, leste: 300300, altitude: 854.8, sigefStatus: 'ok' as const, isDivisa: false, codigoSigef: 'COIN-V-0003', latitude: -14.461241, longitude: -46.852232 },
+        { id: 'v4', nome: 'M-0004', tipo: 'M' as const, norte: 8399900, leste: 300100, altitude: 851.0, sigefStatus: 'ok' as const, isDivisa: true, codigoSigef: 'COIN-M-0004', latitude: -14.463053, longitude: -46.854098 },
+      ],
+      confrontantes: [
+        { id: 'c1', nome: 'Fazenda Santa Maria', matricula: '9.876', cns: '01.234-5', tipoPessoa: 'Física', cpf: '000.000.000-00', glebaId: 'gleba_ficticia', lado: 'M-0001 a P-0002' },
+        { id: 'c2', nome: 'Estrada Municipal', matricula: '', cns: '', tipoPessoa: 'Física', cpf: '', glebaId: 'gleba_ficticia', lado: 'P-0002 a V-0003' },
+        { id: 'c3', nome: 'Córrego Fundo', matricula: '', cns: '', tipoPessoa: 'Física', cpf: '', glebaId: 'gleba_ficticia', lado: 'V-0003 a M-0004' },
+        { id: 'c4', nome: 'Sítio Novo', matricula: '4.321', cns: '01.234-5', tipoPessoa: 'Física', cpf: '000.000.000-00', glebaId: 'gleba_ficticia', lado: 'M-0004 a M-0001' },
+      ],
+      confrontantePorLado: {
+        0: 'c1',
+        1: 'c2',
+        2: 'c3',
+        3: 'c4'
+      },
+      objetos: [
+        { id: 'obj1', tipo: 'texto' as const, x: 300150, y: 8400050, texto: 'Área da Gleba A', escala: 1.2, cor: '#d97706', angulo: 0, bold: true },
+      ],
+    }
+  ],
+  glebaAtivaId: 'gleba_ficticia',
+  requerente: { nome: 'José Francisco da Silva', cpf: '123.456.789-00', cns: '01.234-5', matricula: '12.345', tipoPessoa: 'Física' },
+  transmitente: { nome: 'Maria de Lourdes Silva', cpf: '987.654.321-00', tipoPessoa: 'Física' },
+  tipoAto: 'venda',
+  partesAdicionais: [],
+  correcoes: [],
+  plantaConfig: {
+    centroInfoPos: 'centro' as const,
+  },
+  parcelasCert: [],
+  verticesVizinho: [],
+  verticesIgnorados: [],
+  gradeAltimetrica: [],
+};
+
 const CORES_CABECALHO = [
   { id: 'cinza', label: 'Cinza', text: 'text-muted-foreground', border: 'border-muted', bg: 'bg-muted-foreground/30' },
   { id: 'forest', label: 'Verde Floresta', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-600/30', bg: 'bg-emerald-500' },
@@ -192,6 +266,7 @@ const COR_VIZINHO = 'bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:b
 const COR_DADOS = 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-800 text-white border-transparent'; // cadastro e IA
 const COR_MARCAR = 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white border-transparent';    // marcar no mapa
 const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída — cor de ação principal (verde da marca)
+const COR_PECA_OURO = 'bg-gradient-to-r from-amber-500 via-yellow-600 to-amber-600 hover:from-amber-600 hover:via-yellow-700 hover:to-amber-700 text-white border-transparent shadow font-extrabold hover:scale-[1.02] active:scale-95 transition-all duration-150';
 const COR_ATIVO = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent shadow-xs'; // botões ativos da lateral esquerda
 const PREM_BTN = 'shadow-xs hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 font-bold border rounded-lg';
 
@@ -593,6 +668,8 @@ export default function EditorPage() {
   const [desenhoBuffer, setDesenhoBuffer] = useState<PontoLL[]>([]);
   const [objetoSelId, setObjetoSelId] = useState<string | null>(null);
   const [objPersonalizarId, setObjPersonalizarId] = useState<string | null>(null);
+  const [copiaBuffer, setCopiaBuffer] = useState<any>(null);
+  const [tutorialSimplificadoAberto, setTutorialSimplificadoAberto] = useState(false);
   const [vSplitInicioId, setVSplitInicioId] = useState<string | null>(null);
   const [vSplitFimId, setVSplitFimId] = useState<string | null>(null);
   const [areaAlvoHa, setAreaAlvoHa] = useState(''); // divisão por área alvo (ha)
@@ -961,7 +1038,16 @@ export default function EditorPage() {
   // de 5 h acumuladas — antes disso ainda dá pra voltar fácil pelo topo.
   const chaveTopoVisivel = true;
   // primeira vez neste navegador: abre o tutorial sozinho (independe de login/rascunho).
-  useEffect(() => { if (!tutorialJaVisto()) setTutorialAberto(true); }, []);
+  useEffect(() => {
+    if (!tutorialJaVisto()) {
+      setTutorialAberto(true);
+      try {
+        const key = rascunhoKey();
+        localStorage.setItem(key, JSON.stringify(MOCK_PROJECT));
+        aplicarRascunho(MOCK_PROJECT as any);
+      } catch { /* ignore */ }
+    }
+  }, []);
   function fecharTutorial(o: boolean) { setTutorialAberto(o); if (!o) marcarTutorialVisto(); }
   const [pontosAberto, setPontosAberto] = useState(false);
   const [previewData, setPreviewData] = useState<{
@@ -5332,13 +5418,13 @@ export default function EditorPage() {
         {(
           <>
             <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}><Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
-            <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
+            <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA_OURO}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
             <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}><CheckCircle2 /> CONFERIR</Button>
             {/* Memorial, planta, requerimento, anuência e errata: reunidos num menu PEÇAS, pra não
                 disputar espaço no cabeçalho com um botão solto pra cada um (mesmo espírito do menu
                 PEÇAS que já existe no celular). */}
             <div ref={pecasBtnRef} className="relative shrink-0">
-              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
+              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
                 <Download /> PEÇAS <ChevronDown className="size-3" />
               </Button>
               {pecasMenuAberto && pecasMenuPos && (
@@ -6624,15 +6710,12 @@ export default function EditorPage() {
                       setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
                       aviso(modo === 'tracejado' ? 'Tracejado adicionado.' : 'Polilinha adicionada.');
                     }
-                    return;
                   }
-                  const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:', multiline: true });
-                  if (t) { snap(); setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }
                 }}
                 outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
-                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
+                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }} onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
                 conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={telaEstreita ? Math.min(tamNomes, 8) : tamNomes} tamCentro={telaEstreita ? Math.min(tamCentro, 9) : tamCentro}
                 verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
                 onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
@@ -6990,7 +7073,7 @@ export default function EditorPage() {
                       editavel={editarPlanta && !telaEstreita} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       mostrarRotulos={mostrarRotulos}
                       selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
-                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={setObjetoSelId} onMoverPontoObjeto={onMoverPontoObjeto} onMoverObjeto={onMoverObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
+                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverObjeto={onMoverObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
                        onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
                       onDblClick={async (lat, lon) => {
                         if (modo === 'polilinha' || modo === 'tracejado') {
@@ -7001,10 +7084,7 @@ export default function EditorPage() {
                             setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
                             aviso(modo === 'tracejado' ? 'Tracejado adicionado.' : 'Polilinha adicionada.');
                           }
-                          return;
                         }
-                        const t = await perguntar({ titulo: 'Inserir texto', mensagem: 'Texto a inserir:', multiline: true });
-                        if (t) { snap(); setObjetos((os) => [...os, novoTexto(pontoLL(lat, lon), t)]); }
                       }}
                       onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}
                       onExcluirObjeto={excluirObjetoPorId}
@@ -7831,15 +7911,7 @@ export default function EditorPage() {
                   onBlur={(e) => { snap(); editarVertice(vAtual.id, { elevacao: Number(e.target.value) || 0 }); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
               </label>
-              <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px]">
-                <span className="font-semibold text-muted-foreground">Tipo</span>
-                <div className="flex gap-0.5">
-                  {(['M', 'P', 'V'] as const).map((t) => (
-                    <button key={t} className={`h-6 w-7 rounded-sm border text-xs font-bold transition-colors ${vAtual.tipo === t ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                      onClick={() => { snap(); editarVertice(vAtual.id, { tipo: t, isDivisa: t === 'M' }); }}>{t}</button>
-                  ))}
-                </div>
-              </div>
+
               <div className="rounded-sm bg-muted/40 px-2 py-1 font-mono text-[10px] text-muted-foreground">
                 <div>E {vAtual.leste.toFixed(3)}</div>
                 <div>N {vAtual.norte.toFixed(3)}</div>
@@ -7973,19 +8045,7 @@ export default function EditorPage() {
                 <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded-sm hover:bg-accent text-destructive" onClick={() => { apagarVertice(menuContexto.vertice!.id); setMenuContexto(null); }}><Trash2 className="size-3.5" /> Excluir Vértice</button>
                 <button className="flex items-center gap-2 w-full px-2 py-1 text-left rounded-sm hover:bg-accent" onClick={() => { ignorarVertice(menuContexto.vertice!.id); setMenuContexto(null); }}><EyeOff className="size-3.5" /> Ignorar Vértice</button>
                 
-                <div className="border-t my-1" />
-                <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase">Tipo de Vértice</div>
-                <div className="flex gap-1 px-1 py-0.5">
-                  {['M', 'P', 'V'].map((t) => (
-                    <button
-                      key={t}
-                      className={`flex-1 text-center py-0.5 text-xs rounded-sm border ${menuContexto.vertice!.tipo === t ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted'}`}
-                      onClick={() => { editarVertice(menuContexto.vertice!.id, { tipo: t as Vertex['tipo'], isDivisa: t === 'M' }); setMenuContexto(null); }}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
+
               </div>
             )}
 
@@ -8382,20 +8442,400 @@ export default function EditorPage() {
         </defs>
       </svg>
 
-      <Dialog open={objPersonalizarId !== null} onOpenChange={(open) => { if (!open) setObjPersonalizarId(null); }}>
-        <DialogContent className="w-[90vw] max-w-[450px] p-5">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-1.5">
-              <Pencil className="size-4 text-amber-500" /> Personalizar Elemento
-            </DialogTitle>
-          </DialogHeader>
+      {/* ── PAINEL DE PROPRIEDADES FLUTUANTE (CANTO SUPERIOR DIREITO) ──────────────── */}
+      {objPersonalizarId && (
+        <div className="no-print absolute top-[70px] right-4 z-[990] w-80 max-h-[80vh] overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-background/95 p-4 shadow-2xl backdrop-blur animate-in slide-in-from-right-5 duration-200 text-xs">
+          <div className="mb-3 flex items-center justify-between border-b pb-2">
+            <h3 className="font-extrabold text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Palette className="size-3.5 text-amber-500" /> Propriedades do Elemento
+            </h3>
+            <button
+              type="button"
+              onClick={() => {
+                setObjPersonalizarId(null);
+                setObjetoSelId(null);
+              }}
+              className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
 
           {(() => {
+            // Se for um elemento especial da planta
+            if (objPersonalizarId.startsWith('planta:')) {
+              const tipoPlanta = objPersonalizarId.replace('planta:', '');
+
+              if (tipoPlanta === 'situacao') {
+                return (
+                  <div className="space-y-4">
+                    <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Planta de Situação</div>
+                    <label className="flex items-center gap-2 cursor-pointer py-1">
+                      <input
+                        type="checkbox"
+                        checked={!!plantaConfig.situacaoEscondida}
+                        onChange={(e) => setPlantaConfig((p) => ({ ...p, situacaoEscondida: e.target.checked }))}
+                        className="rounded border-zinc-300 text-primary focus:ring-primary size-4"
+                      />
+                      <span className="font-semibold text-foreground">Ocultar planta de situação</span>
+                    </label>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                        <span>Escala da Situação</span>
+                        <span>{plantaConfig.situacaoEscala ?? 1.0}x</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.5"
+                        max="3.0"
+                        step="0.1"
+                        value={plantaConfig.situacaoEscala ?? 1.0}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setPlantaConfig((p) => ({ ...p, situacaoEscala: val }));
+                        }}
+                        className="w-full h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
+
+                    <Button
+                      size="sm"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                      onClick={() => {
+                        aviso('Recapturando imagem de satélite da situação...');
+                        gerarSituacaoPlanta();
+                      }}
+                    >
+                      <RefreshCw className="size-3.5 mr-1 animate-spin-slow" /> Recapturar Satélite
+                    </Button>
+                  </div>
+                );
+              }
+
+              if (tipoPlanta === 'titulo') {
+                const idTit = 'carimbo.titulo';
+                const ovTit = plantaConfig.textos?.[idTit] || {};
+                const txtTit = ovTit.texto || nomeProjeto;
+                const escTit = ovTit.escala ?? 1.0;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Título do Projeto</div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Texto do Título</Label>
+                      <textarea
+                        value={txtTit}
+                        onChange={(e) => patchTextoPlanta(idTit, { texto: e.target.value })}
+                        className="w-full rounded border bg-background p-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none min-h-[50px]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                        <span>Tamanho do Texto</span>
+                        <span>{escTit.toFixed(2)}x</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idTit, { escala: Math.max(0.4, +(escTit - 0.05).toFixed(2)) })}>A−</button>
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idTit, { escala: Math.min(3.0, +(escTit + 0.05).toFixed(2)) })}>A+</button>
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idTit, { escala: 1.0 })}>Reset</button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cor do Cabeçalho dos Boxes</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={plantaConfig.corCabecalho || '#cbd5e1'}
+                          onChange={(e) => setPlantaConfig((p) => ({ ...p, corCabecalho: e.target.value }))}
+                          className="size-6 cursor-pointer border-none bg-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={plantaConfig.corCabecalho || '#cbd5e1'}
+                          onChange={(e) => setPlantaConfig((p) => ({ ...p, corCabecalho: e.target.value }))}
+                          className="h-7 w-24 rounded border bg-background px-2 text-[10px] font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (tipoPlanta === 'declaracoes') {
+                const idProp = 'carimbo.declProprietario';
+                const ovProp = plantaConfig.textos?.[idProp] || {};
+                const txtProp = ovProp.texto || 'Atestamos, sob as penas da lei, serem verdadeiras todas as informações apresentadas nesta planta...';
+                const escProp = ovProp.escala ?? 1.0;
+                const largProp = ovProp.larguraChars ?? 68;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Declaração do Proprietário</div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Conteúdo do Texto</Label>
+                      <textarea
+                        value={txtProp}
+                        onChange={(e) => patchTextoPlanta(idProp, { texto: e.target.value })}
+                        className="w-full rounded border bg-background p-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none min-h-[85px]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                          <span>Escala</span>
+                          <span>{escProp.toFixed(2)}x</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idProp, { escala: Math.max(0.4, +(escProp - 0.05).toFixed(2)) })}>−</button>
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idProp, { escala: Math.min(2.5, +(escProp + 0.05).toFixed(2)) })}>+</button>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                          <span>Largura</span>
+                          <span>{largProp} ch</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idProp, { larguraChars: Math.max(30, largProp - 4) })}>−</button>
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idProp, { larguraChars: Math.min(120, largProp + 4) })}>+</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (tipoPlanta === 'laudo') {
+                const idLaudo = 'carimbo.laudoTécnico';
+                const ovLaudo = plantaConfig.textos?.[idLaudo] || {};
+                const txtLaudo = ovLaudo.texto || '';
+                const escLaudo = ovLaudo.escala ?? 1.0;
+                const largLaudo = ovLaudo.larguraChars ?? 68;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Laudo Técnico</div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Conteúdo do Texto</Label>
+                      <textarea
+                        value={txtLaudo}
+                        onChange={(e) => patchTextoPlanta(idLaudo, { texto: e.target.value })}
+                        className="w-full rounded border bg-background p-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none min-h-[85px]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                          <span>Escala</span>
+                          <span>{escLaudo.toFixed(2)}x</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idLaudo, { escala: Math.max(0.4, +(escLaudo - 0.05).toFixed(2)) })}>−</button>
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idLaudo, { escala: Math.min(2.5, +(escLaudo + 0.05).toFixed(2)) })}>+</button>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                          <span>Largura</span>
+                          <span>{largLaudo} ch</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idLaudo, { larguraChars: Math.max(30, largLaudo - 4) })}>−</button>
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idLaudo, { larguraChars: Math.min(120, largLaudo + 4) })}>+</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (tipoPlanta === 'confrontantes') {
+                const idConf = 'carimbo.declConfrontantes';
+                const ovConf = plantaConfig.textos?.[idConf] || {};
+                const txtConf = ovConf.texto || '';
+                const escConf = ovConf.escala ?? 1.0;
+                const largConf = ovConf.larguraChars ?? 68;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Tabela de Confrontantes</div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Texto de Declaração</Label>
+                      <textarea
+                        value={txtConf}
+                        onChange={(e) => patchTextoPlanta(idConf, { texto: e.target.value })}
+                        className="w-full rounded border bg-background p-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none min-h-[50px]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                          <span>Escala</span>
+                          <span>{escConf.toFixed(2)}x</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idConf, { escala: Math.max(0.4, +(escConf - 0.05).toFixed(2)) })}>−</button>
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idConf, { escala: Math.min(2.5, +(escConf + 0.05).toFixed(2)) })}>+</button>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                          <span>Largura</span>
+                          <span>{largConf} ch</span>
+                        </div>
+                        <div className="flex gap-1">
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idConf, { larguraChars: Math.max(30, largConf - 4) })}>−</button>
+                          <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idConf, { larguraChars: Math.min(120, largConf + 4) })}>+</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (tipoPlanta === 'empresa') {
+                const idBloco = 'esc.bloco';
+                const ovBloco = plantaConfig.textos?.[idBloco] || {};
+                const txtBloco = ovBloco.texto || `${escritorio?.ramo ?? ''}\n${escritorio?.endereco ?? ''}\nTel./WhatsApp: ${escritorio?.telefone ?? ''}`;
+                const escBloco = ovBloco.escala ?? 1.0;
+
+                const idLogo = 'esc.logo';
+                const ovLogo = plantaConfig.textos?.[idLogo] || {};
+                const escLogo = ovLogo.escala ?? 1.0;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Dados da Empresa & Logo</div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                        <span>Escala da Logomarca</span>
+                        <span>{escLogo.toFixed(2)}x</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idLogo, { escala: Math.max(0.4, +(escLogo - 0.05).toFixed(2)) })}>A−</button>
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idLogo, { escala: Math.min(2.5, +(escLogo + 0.05).toFixed(2)) })}>A+</button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Texto de Contato / Endereço</Label>
+                      <textarea
+                        value={txtBloco}
+                        onChange={(e) => patchTextoPlanta(idBloco, { texto: e.target.value })}
+                        className="w-full rounded border bg-background p-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none min-h-[70px]"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                        <span>Tamanho Fonte Contatos</span>
+                        <span>{escBloco.toFixed(2)}x</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idBloco, { escala: Math.max(0.4, +(escBloco - 0.05).toFixed(2)) })}>A−</button>
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idBloco, { escala: Math.min(2.5, +(escBloco + 0.05).toFixed(2)) })}>A+</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (tipoPlanta === 'sigef') {
+                return (
+                  <div className="space-y-4">
+                    <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Confrontantes do SIGEF</div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cor do Polígono SIGEF</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={plantaConfig.sigefCor || '#3b82f6'}
+                          onChange={(e) => setPlantaConfig((p) => ({ ...p, sigefCor: e.target.value }))}
+                          className="size-6 cursor-pointer border-none bg-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={plantaConfig.sigefCor || '#3b82f6'}
+                          onChange={(e) => setPlantaConfig((p) => ({ ...p, sigefCor: e.target.value }))}
+                          className="h-7 w-24 rounded border bg-background px-2 text-[10px] font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                        <span>Espessura da Borda</span>
+                        <span>{(plantaConfig.sigefEspessura ?? 1.5).toFixed(1)} px</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => setPlantaConfig((p) => ({ ...p, sigefEspessura: Math.max(0.5, (p.sigefEspessura ?? 1.5) - 0.5) }))}>-</button>
+                        <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => setPlantaConfig((p) => ({ ...p, sigefEspessura: Math.min(8.0, (p.sigefEspessura ?? 1.5) + 0.5) }))}>+</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return null;
+            }
+
+            // Caso contrário, é um objeto de desenho livre
             const obj = objetos.find((o) => o.id === objPersonalizarId);
             if (!obj) return <div className="text-xs text-muted-foreground py-4 text-center">Elemento não encontrado ou removido.</div>;
 
             return (
               <div className="space-y-4 text-xs text-left">
+                {/* Copiar e colar para objetos de desenho */}
+                <div className="flex gap-1.5 border-b pb-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 font-semibold text-[10px]"
+                    onClick={() => {
+                      setCopiaBuffer({ ...obj, id: '' });
+                      aviso('Elemento copiado para a área de transferência fictícia.');
+                    }}
+                  >
+                    <Copy className="size-3 mr-1 text-blue-500" /> Copiar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 font-semibold text-[10px]"
+                    disabled={!copiaBuffer}
+                    onClick={() => {
+                      if (!copiaBuffer) return;
+                      const novoId = `desenho_${Date.now()}`;
+                      const offset = 20;
+                      let novoObj = { ...copiaBuffer, id: novoId };
+                      if (novoObj.tipo === 'texto' || novoObj.tipo === 'simbolo') {
+                        novoObj.x = (novoObj.x ?? 0) + offset;
+                        novoObj.y = (novoObj.y ?? 0) + offset;
+                      } else if (novoObj.tipo === 'cota') {
+                        novoObj.xA = (novoObj.xA ?? 0) + offset;
+                        novoObj.yA = (novoObj.yA ?? 0) + offset;
+                        novoObj.xB = (novoObj.xB ?? 0) + offset;
+                        novoObj.yB = (novoObj.yB ?? 0) + offset;
+                      } else if (novoObj.tipo === 'polilinha') {
+                        novoObj.pontos = (novoObj.pontos ?? []).map((p: any) => ({ ...p, leste: p.leste + offset, norte: p.norte + offset }));
+                      }
+                      setObjetos((os) => [...os, novoObj]);
+                      setObjetoSelId(novoId);
+                      setObjPersonalizarId(novoId);
+                      aviso('Elemento colado com sucesso.');
+                    }}
+                  >
+                    <Plus className="size-3 mr-1 text-emerald-500" /> Colar
+                  </Button>
+                </div>
+
                 {/* Cor do Elemento */}
                 <div className="space-y-1">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cor do Elemento</Label>
@@ -8688,19 +9128,12 @@ export default function EditorPage() {
                   >
                     <Trash2 className="size-3.5 mr-1" /> Excluir Elemento
                   </Button>
-                  <Button
-                    variant="secondary"
-                    className="flex-1 font-bold text-xs"
-                    onClick={() => setObjPersonalizarId(null)}
-                  >
-                    Fechar
-                  </Button>
                 </div>
               </div>
             );
           })()}
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       <ErrorBoundary onReset={() => setPlanilhaAberta(false)}>
         <ModalSpreadsheet

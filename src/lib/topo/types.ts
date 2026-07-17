@@ -404,6 +404,10 @@ export interface PlantaConfig {
   corCabecalho?: string;       // cor dos cabeçalhos das sessões, padrão "#475569"
   corVerticeP?: string;        // cor dos vértices tipo P na planta, padrão "#1e3a8a"
   corVerticeM?: string;        // cor dos vértices tipo M na planta, padrão "#f59e0b"
+  situacaoEscondida?: boolean;
+  situacaoEscala?: number;
+  sigefCor?: string;
+  sigefEspessura?: number;
 }
 
 /** Dados fixos do escritório (carimbo da planta, cabeçalho de recibos/contratos). */
