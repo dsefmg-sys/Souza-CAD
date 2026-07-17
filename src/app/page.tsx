@@ -5873,6 +5873,35 @@ export default function EditorPage() {
                               ) : (
                                 <span className="col-span-3 text-[9px] text-muted-foreground text-center py-1 font-semibold">Clique nos itens ou arraste uma caixa para selecioná-los.</span>
                               )}
+                              <div className="col-span-3 mt-1.5 flex flex-col gap-1 border-t pt-1.5">
+                                <div className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-wider text-left">Selecionar por Tipo:</div>
+                                <div className="grid grid-cols-2 gap-1 text-foreground">
+                                  <button type="button" className="h-6 rounded bg-background hover:bg-muted border text-[9px] font-bold transition-all" onClick={() => {
+                                    setObjSelMulti(new Set());
+                                    setSelMulti(new Set(vertices.map((v) => v.id)));
+                                  }}>Vértices ({vertices.length})</button>
+                                  <button type="button" className="h-6 rounded bg-background hover:bg-muted border text-[9px] font-bold transition-all" onClick={() => {
+                                    setSelMulti(new Set());
+                                    setObjSelMulti(new Set(objetos.filter((o) => o.tipo === 'polilinha').map((o) => o.id)));
+                                  }}>Linhas ({objetos.filter((o) => o.tipo === 'polilinha').length})</button>
+                                  <button type="button" className="h-6 rounded bg-background hover:bg-muted border text-[9px] font-bold transition-all" onClick={() => {
+                                    setSelMulti(new Set());
+                                    setObjSelMulti(new Set(objetos.filter((o) => o.tipo === 'texto').map((o) => o.id)));
+                                  }}>Textos ({objetos.filter((o) => o.tipo === 'texto').length})</button>
+                                  <button type="button" className="h-6 rounded bg-background hover:bg-muted border text-[9px] font-bold transition-all" onClick={() => {
+                                    setSelMulti(new Set());
+                                    setObjSelMulti(new Set(objetos.filter((o) => o.tipo === 'cota').map((o) => o.id)));
+                                  }}>Cotas ({objetos.filter((o) => o.tipo === 'cota').length})</button>
+                                  <button type="button" className="h-6 rounded bg-background hover:bg-muted border text-[9px] font-bold transition-all" onClick={() => {
+                                    setSelMulti(new Set());
+                                    setObjSelMulti(new Set(objetos.filter((o) => o.tipo === 'simbolo').map((o) => o.id)));
+                                  }}>Símbolos ({objetos.filter((o) => o.tipo === 'simbolo').length})</button>
+                                  <button type="button" className="h-6 rounded bg-background hover:bg-muted border text-[9px] font-bold text-rose-500 hover:text-rose-600 transition-all" onClick={() => {
+                                    setSelMulti(new Set());
+                                    setObjSelMulti(new Set());
+                                  }}>Limpar</button>
+                                </div>
+                              </div>
                             </div>
                           )}
                           {modo === 'copiar_base' && (
