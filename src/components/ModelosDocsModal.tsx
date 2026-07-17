@@ -26,6 +26,7 @@ const CAMPOS: { chave: keyof ModelosDocs; titulo: string; grupo: string; tipo: '
   { tipo: 'principais', grupo: 'Requerimento', chave: 'requerimentoUnificacao', titulo: 'Requerimento ao oficial: Unificação' },
   { tipo: 'principais', grupo: 'Requerimento', chave: 'requerimentoDesmembramento', titulo: 'Requerimento ao oficial: Desmembramento' },
   { tipo: 'principais', grupo: 'Requerimento', chave: 'requerimentoUsucapiao', titulo: 'Requerimento ao oficial: Usucapião' },
+  { tipo: 'principais', grupo: 'Requerimento', chave: 'requerimentoRetificacao', titulo: 'Requerimento ao oficial: Retificação / Regularização Simples' },
   { tipo: 'principais', grupo: 'Errata', chave: 'errataRatificacao', titulo: 'Considerações finais e ratificação' },
   { tipo: 'principais', grupo: 'Anuência', chave: 'anuenciaFecho', titulo: 'Parágrafo de fecho da carta de anuência' },
   { tipo: 'principais', grupo: 'Servidão', chave: 'servidaoIntro', titulo: 'Abertura do memorial de servidão' },

@@ -25,6 +25,7 @@ export interface ModelosDocs {
   requerimentoUnificacao: string;     // requerimento tipo: unificação
   requerimentoDesmembramento: string; // requerimento tipo: desmembramento
   requerimentoUsucapiao: string;      // requerimento tipo: usucapião
+  requerimentoRetificacao: string;    // requerimento tipo: retificação simples
   errataRatificacao: string;      // parágrafo de ratificação (considerações finais) da errata
   anuenciaFecho: string;          // parágrafo de fecho da carta de anuência
   // Variantes urbanas do memorial (usadas quando o imóvel é urbano):
@@ -132,6 +133,13 @@ export const MODELOS_PADRAO: ModelosDocs = {
     'Decreto nº 4.449/02, requerer a averbação do georreferenciamento com retificação da área e ' +
     'da descrição do imóvel rural, visando a adequação da descrição tabular à realidade física ' +
     'do imóvel, considerando que o requerente busca o reconhecimento da usucapião sobre o imóvel.',
+  requerimentoRetificacao:
+    'O requerente, na qualidade de proprietário/possuidor do imóvel rural acima qualificado, vem, ' +
+    'respeitosamente, à presença de Vossa Senhoria, com fundamento no art. 176, §3º e §4º, e ' +
+    'art. 213, inciso II, da Lei nº 6.015/73, com redação dada pela Lei nº 10.931/04, c/c o ' +
+    'Decreto nº 4.449/02, requerer a averbação do georreferenciamento com retificação da área e ' +
+    'da descrição do imóvel rural, visando a adequação da descrição tabular à realidade física ' +
+    'do imóvel.',
   errataRatificacao:
     'Esta errata visa sanar apenas os erros materiais de digitação referentes às matrículas dos ' +
     'confrontantes e à inclusão de registro profissional, mantendo-se inalterados os limites físicos, ' +

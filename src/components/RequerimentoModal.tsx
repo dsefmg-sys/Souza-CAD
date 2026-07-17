@@ -8,7 +8,7 @@ import { confirmar } from '@/lib/ui/dialogos';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad, CorrecaoErrata } from '@/lib/topo/types';
+import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad, CorrecaoErrata, ProprietarioParte } from '@/lib/topo/types';
 import type { TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { numBR } from '@/lib/topo/geometry';
@@ -17,6 +17,10 @@ import { carregarPadroes } from '@/lib/store/padroes';
 import NotaLegal from '@/components/NotaLegal';
 
 const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string; explicacao: string }[] = [
+  {
+    valor: 'retificacao', rotulo: 'Retificação Simples',
+    explicacao: 'Requerimento padrão feito pelo proprietário/possuidor para georreferenciamento e retificação de área. O cônjuge ou coproprietário é opcional.',
+  },
   {
     valor: 'venda', rotulo: 'Compra e venda',
     explicacao: 'O imóvel está sendo vendido e o comprador (requerente) pede a retificação da área já em nome dele. Precisa do CPF/RG de quem vende and de quem compra.',
@@ -62,20 +66,20 @@ interface Props {
   onBaixar?: () => void;
 }
 
-const CAMPOS: { k: keyof PessoaQualificada; label: string; span: string }[] = [
-  { k: 'nome', label: 'Nome', span: 'col-span-6 md:col-span-4' },
+const CAMPOS: { k: keyof PessoaQualificada; label: string; span: string; importante?: boolean }[] = [
+  { k: 'nome', label: 'Nome', span: 'col-span-6 md:col-span-4', importante: true },
   { k: 'rg', label: 'RG', span: 'col-span-3 md:col-span-1' },
-  { k: 'cpf', label: 'CPF/CNPJ', span: 'col-span-3 md:col-span-1' },
+  { k: 'cpf', label: 'CPF/CNPJ', span: 'col-span-3 md:col-span-1', importante: true },
   { k: 'nacionalidade', label: 'Nacionalidade', span: 'col-span-2' },
   { k: 'naturalidade', label: 'Naturalidade', span: 'col-span-2' },
   { k: 'dataNascimento', label: 'Data Nasc.', span: 'col-span-2' },
   { k: 'profissao', label: 'Profissão', span: 'col-span-3' },
-  { k: 'estadoCivil', label: 'Estado Civil', span: 'col-span-3' },
+  { k: 'estadoCivil', label: 'Estado Civil', span: 'col-span-3', importante: true },
   { k: 'conjugeNome', label: 'Cônjuge (se houver)', span: 'col-span-4' },
   { k: 'conjugeCpf', label: 'CPF Cônjuge', span: 'col-span-2' },
   { k: 'filiacao', label: 'Filiação (mãe / pai)', span: 'col-span-6' },
-  { k: 'endereco', label: 'Residente e domiciliado(a) em (Endereço)', span: 'col-span-6' },
-  { k: 'cidadeUf', label: 'Cidade/UF', span: 'col-span-4' },
+  { k: 'endereco', label: 'Residente e domiciliado(a) em (Endereço)', span: 'col-span-6', importante: true },
+  { k: 'cidadeUf', label: 'Cidade/UF', span: 'col-span-4', importante: true },
   { k: 'cep', label: 'CEP', span: 'col-span-2' },
 ];
 
@@ -90,7 +94,9 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
       <div className="grid grid-cols-6 gap-x-2 gap-y-1.5">
         {CAMPOS.map((c) => (
           <div key={c.k} className={`space-y-0.5 ${c.span}`}>
-            <Label className="text-[10px] text-muted-foreground font-semibold leading-none">{c.label}</Label>
+            <Label className={`text-[10px] font-semibold leading-none ${c.importante ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-muted-foreground'}`}>
+              {c.label}{c.importante && ' *'}
+            </Label>
             {c.k === 'nome'
               ? <Input list="lista-pessoas" value={pessoa.nome} onChange={(e) => setNome(e.target.value)} className="h-7 text-[11px]" />
               : <Input value={pessoa[c.k]} onChange={(e) => onChange({ ...pessoa, [c.k]: e.target.value })} className="h-7 text-[11px]" />}
@@ -112,14 +118,13 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   const [localPartesAdicionais, setLocalPartesAdicionais] = useState<PessoaQualificada[]>(partesAdicionais);
   const [msg, setMsg] = useState('');
   const [mostrarDicas, setMostrarDicas] = useState(true);
-  // Partes adicionais = mais de uma pessoa do lado do REQUERENTE (ex.: casal de compradores que não
-  // são cônjuges, herdeiros comprando juntos, mais de um donatário, coproprietários no remembramento).
-  const permiteVariasPartes = localTipoAto === 'venda' || localTipoAto === 'doacao' || localTipoAto === 'unificacao';
-  const rotuloParteAdicional = localTipoAto === 'venda' ? 'comprador' : localTipoAto === 'doacao' ? 'donatário' : 'coproprietário';
+  // Partes adicionais = mais de uma pessoa do lado do REQUERENTE ou TRANSMITENTE (ex.: cônjuges, coproprietários).
+  const permiteVariasPartes = localTipoAto === 'venda' || localTipoAto === 'doacao' || localTipoAto === 'unificacao' || localTipoAto === 'retificacao';
+  const rotuloParteAdicional = localTipoAto === 'venda' ? 'comprador/vendedor' : localTipoAto === 'doacao' ? 'donatário/doador' : 'proprietário';
 
   useEffect(() => { setMostrarDicas(carregarPreferencias().mostrarDicasEducativas); }, []);
 
-  function addParte() { setLocalPartesAdicionais((ps) => [...ps, { ...PESSOA_VAZIA }]); }
+  function addParte() { setLocalPartesAdicionais((ps) => [...ps, { ...PESSOA_VAZIA, papel: 'requerente' }]); }
   function setParte(i: number, p: PessoaQualificada) { setLocalPartesAdicionais((ps) => ps.map((x, k) => (k === i ? p : x))); }
   function rmParte(i: number) { setLocalPartesAdicionais((ps) => ps.filter((_, k) => k !== i)); }
 
@@ -129,14 +134,27 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     unificacao: { req: 'Requerente (proprietário)', trans: 'Coproprietário / cônjuge (se houver)' },
     desmembramento: { req: 'Requerente (proprietário)', trans: 'Coproprietário / cônjuge (se houver)' },
     usucapiao: { req: 'Requerente (usucapiente)', trans: 'Titular registral / confrontante (se houver)' },
-  }[localTipoAto];
+    retificacao: { req: 'Requerente (proprietário / possuidor)', trans: 'Cônjuge / Coproprietário (se houver - opcional)' },
+  }[localTipoAto] ?? { req: 'Requerente', trans: 'Coproprietário (se houver)' };
 
   useEffect(() => {
     if (open) {
       setReq(requerente ?? PESSOA_VAZIA);
       setTrans(transmitente ?? transVazio(imovel));
-      setLocalTipoAto(tipoAto || 'venda');
-      setLocalPartesAdicionais(partesAdicionais ?? []);
+      setLocalTipoAto(tipoAto || 'retificacao');
+      
+      let iniciais = partesAdicionais ?? [];
+      if (iniciais.length === 0 && imovel.proprietariosAdicionais && imovel.proprietariosAdicionais.length > 0) {
+        iniciais = imovel.proprietariosAdicionais.map((p) => ({
+          ...PESSOA_VAZIA,
+          nome: p.nome,
+          cpf: p.cpf,
+          conjugeNome: p.conjugeNome || '',
+          conjugeCpf: p.conjugeCpf || '',
+          papel: 'transmitente' as const
+        }));
+      }
+      setLocalPartesAdicionais(iniciais);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -160,9 +178,13 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   }
 
   async function gerar() {
-    if (!tecnico) { setMsg('Configure o técnico primeiro.'); return; }
-    if (!req.nome?.trim() || !trans.nome?.trim()) { setMsg('Preencha o nome do requerente e do transmitente.'); return; }
-    if (!req.cpf?.trim() || !trans.cpf?.trim()) { setMsg('Preencha o CPF/CNPJ do requerente e do transmitente.'); return; }
+    if (!req.nome?.trim()) { setMsg('Preencha o nome do requerente.'); return; }
+    if (!req.cpf?.trim()) { setMsg('Preencha o CPF/CNPJ do requerente.'); return; }
+    const precisaTransmitente = localTipoAto !== 'retificacao' || !!trans.nome?.trim() || !!trans.cpf?.trim();
+    if (precisaTransmitente) {
+      if (!trans.nome?.trim()) { setMsg('Preencha o nome do transmitente / cônjuge.'); return; }
+      if (!trans.cpf?.trim()) { setMsg('Preencha o CPF/CNPJ do transmitente / cônjuge.'); return; }
+    }
     onChangePessoas(req, trans, localTipoAto, localPartesAdicionais);
     const padroes = carregarPadroes();
     const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
@@ -222,12 +244,13 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                   ))}
                 </div>
                 {mostrarDicas && (
-                  <p className="rounded-sm border border-dashed bg-muted/30 p-2 text-[10px] text-muted-foreground leading-snug">
+                  <p className="rounded-lg border border-dashed border-amber-500/20 bg-amber-500/5 p-2.5 text-[10px] text-muted-foreground leading-relaxed">
+                    <strong className="text-amber-700 dark:text-amber-400 font-bold block mb-0.5">O que implica este tipo de ato:</strong>
                     {OPCOES_ATO.find((o) => o.valor === localTipoAto)?.explicacao}
                   </p>
                 )}
                 <NotaLegal chave={localTipoAto === 'usucapiao' ? 'usucapiao' : 'requerimento'} />
-                {localTipoAto !== 'venda' && (
+                {localTipoAto !== 'venda' && localTipoAto !== 'retificacao' && (
                   <p className="text-[10px] text-amber-500 font-semibold leading-snug">
                     Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.
                   </p>
@@ -248,17 +271,28 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                   <span className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider block">Valor do imóvel</span>
                   <span className="font-semibold text-foreground text-[11px]">{imovel.valorImovel ? `R$ ${numBR(imovel.valorImovel, 2)}` : '—'}</span>
                 </div>
-                <div className="space-y-0.5 col-span-2">
-                  <Label className="text-[10px] text-muted-foreground font-semibold">Área anterior na matrícula (ha)</Label>
-                  <Input type="number" step="0.0001" value={imovel.areaAnterior ?? ''} onChange={(e) => onChangeImovel({ ...imovel, areaAnterior: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
+                <div className="space-y-1 col-span-2">
+                  <div>
+                    <Label className="text-[10px] text-amber-600 dark:text-amber-400 font-extrabold flex items-center gap-1 leading-none">
+                      Área anterior na matrícula (ha) *
+                    </Label>
+                    <span className="text-[9px] text-muted-foreground block leading-tight mt-0.5">Área antiga registrada no cartório, necessária para o cálculo da diferença de retificação.</span>
+                  </div>
+                  <Input type="number" step="0.0001" placeholder="ex.: 15,4320" value={imovel.areaAnterior ?? ''} onChange={(e) => onChangeImovel({ ...imovel, areaAnterior: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
                 </div>
-                <div className="space-y-0.5 col-span-2">
-                  <Label className="text-[10px] text-muted-foreground font-semibold">Valor para custas (R$)</Label>
-                  <Input type="number" step="0.01" value={imovel.valorImovel ?? ''} onChange={(e) => onChangeImovel({ ...imovel, valorImovel: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
+                <div className="space-y-1 col-span-2">
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground font-semibold block leading-none">Valor do imóvel para custas (R$)</Label>
+                    <span className="text-[9px] text-muted-foreground block leading-tight mt-0.5">Opcional. Usado pelo oficial do registro para estipular a faixa de emolumentos cartoriais.</span>
+                  </div>
+                  <Input type="number" step="0.01" placeholder="ex.: 150000" value={imovel.valorImovel ?? ''} onChange={(e) => onChangeImovel({ ...imovel, valorImovel: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
                 </div>
                 {localTipoAto === 'unificacao' && (
-                  <div className="col-span-2 space-y-0.5">
-                    <Label className="text-[10px] text-muted-foreground font-semibold">Matrículas de origem (separadas por vírgula)</Label>
+                  <div className="col-span-2 space-y-1">
+                    <div>
+                      <Label className="text-[10px] text-amber-600 dark:text-amber-400 font-extrabold flex items-center gap-1 leading-none">Matrículas de origem *</Label>
+                      <span className="text-[9px] text-muted-foreground block leading-tight mt-0.5">Matrículas antigas que serão unificadas (separadas por vírgula).</span>
+                    </div>
                     <Input
                       placeholder="ex.: 1234, 5678, 9012"
                       value={(imovel.matriculasOrigem ?? []).join(', ')}
@@ -285,13 +319,30 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           {permiteVariasPartes && (
             <div className="space-y-3 rounded-lg border border-dashed p-3 bg-muted/5">
               <div className="flex items-center justify-between border-b pb-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Partes adicionais (mais de um {rotuloParteAdicional})</span>
-                <Button type="button" size="sm" variant="outline" onClick={addParte} className="h-7 text-xs"><UserPlus className="size-3 mr-1" /> Adicionar parte</Button>
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block leading-none">Partes adicionais</span>
+                  <span className="text-[9px] text-muted-foreground block leading-tight mt-1">Para conjugar mais proprietários/vendedores ou compradores no documento.</span>
+                </div>
+                <Button type="button" size="sm" variant="outline" onClick={addParte} className="h-7 text-xs"><UserPlus className="size-3 mr-1" /> Adicionar pessoa</Button>
               </div>
               {localPartesAdicionais.map((p, i) => (
                 <div key={i} className="space-y-1 rounded-lg border p-3 bg-background/50">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-muted-foreground">Parte adicional {i + 1}</span>
+                  <div className="flex items-center justify-between border-b pb-1 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-extrabold text-foreground uppercase">Pessoa {i + 1} - papel:</span>
+                      <select
+                        value={p.papel || 'requerente'}
+                        onChange={(e) => setParte(i, { ...p, papel: e.target.value as 'requerente' | 'transmitente' })}
+                        className="h-6 rounded border bg-background px-1.5 text-[10px] font-semibold text-foreground focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="requerente">
+                          {localTipoAto === 'venda' ? 'Comprador / Requerente' : localTipoAto === 'doacao' ? 'Donatário' : 'Requerente / Proprietário'}
+                        </option>
+                        <option value="transmitente">
+                          {localTipoAto === 'venda' ? 'Vendedor / Proprietário Registral' : localTipoAto === 'doacao' ? 'Doador' : 'Coproprietário / Cônjuge'}
+                        </option>
+                      </select>
+                    </div>
                     <Button type="button" size="sm" variant="ghost" title="Remover esta parte" className="h-6 px-1 hover:bg-destructive/10" onClick={() => rmParte(i)}><Trash2 className="size-3.5 text-destructive" /></Button>
                   </div>
                   <Bloco titulo="" pessoa={p} onChange={(np) => setParte(i, np)} sugProp={sugProp} />

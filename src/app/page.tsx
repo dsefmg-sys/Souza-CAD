@@ -8926,7 +8926,7 @@ function avisoDoc(v?: string): string | undefined {
   return v?.trim() && !cpfOuCnpjValido(v) ? 'CPF/CNPJ inválido (dígitos verificadores incorretos).' : undefined;
 }
 
-function Campo({ label, value, onChange, placeholder, list, aviso }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; list?: string; aviso?: string }) {
+function Campo({ label, value, onChange, placeholder, list, aviso, importante }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; list?: string; aviso?: string; importante?: boolean }) {
   const formatado = /cpf|cnpj/i.test(label) ? formatarCpfCnpj(value) : value;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -8940,7 +8940,9 @@ function Campo({ label, value, onChange, placeholder, list, aviso }: { label: st
 
   return (
     <div className="space-y-0.5">
-      <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Label>
+      <Label className={`text-[10px] uppercase tracking-wide ${importante ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-muted-foreground'}`}>
+        {label}{importante && ' *'}
+      </Label>
       <Input list={list} value={formatado} placeholder={placeholder} onChange={handleChange} className={`h-8 text-sm${aviso ? ' border-amber-500' : ''}`} />
       {aviso && <p className="text-[10px] leading-tight text-amber-600">{aviso}</p>}
     </div>
@@ -9009,12 +9011,12 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
       )}
 
       <SecaoTitulo>Identificação do imóvel</SecaoTitulo>
-      <Campo label="Nome do projeto" value={nome} onChange={onNome} />
-      <Campo label="Denominação do imóvel" value={imovel.denominacao} onChange={(v) => set('denominacao', v)} placeholder={imovel.tipoImovel === 'urbano' ? "Lote / Residencial..." : "Fazenda..."} />
+      <Campo label="Nome do projeto" value={nome} onChange={onNome} importante />
+      <Campo label="Denominação do imóvel" value={imovel.denominacao} onChange={(v) => set('denominacao', v)} placeholder={imovel.tipoImovel === 'urbano' ? "Lote / Residencial..." : "Fazenda..."} importante />
       <div className="grid grid-cols-2 gap-2">
-        <Campo label="Matrícula" value={imovel.matricula} onChange={(v) => set('matricula', v)} />
+        <Campo label="Matrícula" value={imovel.matricula} onChange={(v) => set('matricula', v)} importante={imovel.cns !== 'não informar'} />
         <div>
-          <Campo label="Cartório (CNS)" value={imovel.cns} onChange={(v) => set('cns', v)} list="lista-cns" />
+          <Campo label="Cartório (CNS)" value={imovel.cns} onChange={(v) => set('cns', v)} list="lista-cns" importante={imovel.cns !== 'não informar'} />
           {(() => {
             const cart = sugCartorios.find(x => x.cns === imovel.cns);
             return cart ? (
@@ -9078,7 +9080,10 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         </>
       ) : (
         <>
-          <Campo label="Código do Imóvel (SNCR/INCRA)" value={imovel.codigoImovelIncra} onChange={(v) => set('codigoImovelIncra', v)} />
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="Código do Imóvel (SNCR/INCRA)" value={imovel.codigoImovelIncra} onChange={(v) => set('codigoImovelIncra', v)} importante />
+            <Campo label="Área anterior na matrícula (ha)" value={imovel.areaAnterior != null ? String(imovel.areaAnterior) : ''} onChange={(v) => onChange({ ...imovel, areaAnterior: v === '' ? undefined : Number(v) })} placeholder="0.0000" importante />
+          </div>
           {/* Padrão do memorial: só oferecido quando o imóvel é de Mato Grosso (INTERMAT). */}
           {ufDoMunicipio(imovel.municipio) === 'MT' && (
             <div className="space-y-1">
@@ -9109,15 +9114,15 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
       <SecaoTitulo>Proprietário e partes</SecaoTitulo>
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Proprietário</Label>
+          <Label className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 font-extrabold">Proprietário *</Label>
           <button className="text-[10px] text-primary hover:underline" onClick={onSalvarProp}>salvar no cadastro</button>
         </div>
-        <Input list="lista-proprietarios" value={imovel.proprietario} onChange={(e) => setProprietario(e.target.value)} className="h-8 text-sm" />
+        <Input list="lista-proprietarios" value={imovel.proprietario} onChange={(e) => setProprietario(e.target.value)} className="h-8 text-sm border-amber-600/30" />
         <datalist id="lista-proprietarios">
           {sugProp.map((p) => <option key={p.id} value={p.nome} />)}
         </datalist>
       </div>
-      <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} aviso={avisoDoc(imovel.cpfProprietario)} />
+      <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} aviso={avisoDoc(imovel.cpfProprietario)} importante />
       <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
       <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} aviso={avisoDoc(imovel.cpfConjugeProprietario)} />
 

@@ -137,6 +137,7 @@ export interface PessoaQualificada {
   endereco: string;        // residente e domiciliado em
   cidadeUf: string;
   cep: string;
+  papel?: 'requerente' | 'transmitente';
 }
 
 export interface ProprietarioCad extends Partial<PessoaQualificada> {
@@ -513,7 +514,7 @@ export interface Projeto {
   // Requerimento cartorial (opcional)
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
-  tipoAto?: 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao';
+  tipoAto?: 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao' | 'retificacao';
   partesAdicionais?: PessoaQualificada[];
   // Configuração editável da planta (opcional)
   plantaConfig?: PlantaConfig;

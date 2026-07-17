@@ -7,7 +7,7 @@ import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo, preencherModeloParagrafos } from '../store/modelos';
 import { compatibilizarWord2007 } from './compatWord2007';
 
-export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao';
+export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao' | 'retificacao';
 
 export interface RequerimentoInput {
   imovel: ImovelData;
@@ -54,6 +54,12 @@ const ROTULOS_ATO: Record<TipoAtoRequerimento, { requerente: string; transmitent
     transmitente: 'TITULAR REGISTRAL / CONFRONTANTE (SE HOUVER)',
     assinaReq: '(Requerente / Usucapiente)',
     assinaTrans: '(Titular registral / Confrontante)',
+  },
+  retificacao: {
+    requerente: 'REQUERENTE (PROPRIETÁRIO)',
+    transmitente: 'CÔNJUGE / COPROPRIETÁRIO (SE HOUVER)',
+    assinaReq: '(Requerente / Proprietário)',
+    assinaTrans: '(Cônjuge / Coproprietário)',
   },
 };
 
@@ -139,15 +145,25 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   c.push(par('(Art. 176, §3º e §4º, e Art. 213, II, da Lei 6.015/73 c/c Decreto 4.449/02)', AlignmentType.CENTER));
   c.push(par(`Ilustríssimo Senhor(a) Oficial do Cartório de Registro de Imóveis da Comarca de ${comarca},`));
 
+  const mostrarTransmitente = tipo !== 'retificacao' || !!transmitente.nome?.trim();
+
   c.push(titulo(rot.requerente));
   blocoPessoa(requerente).forEach((x) => c.push(x));
 
-  c.push(titulo(rot.transmitente));
-  blocoPessoa(transmitente).forEach((x) => c.push(x));
+  if (mostrarTransmitente) {
+    c.push(titulo(rot.transmitente));
+    blocoPessoa(transmitente).forEach((x) => c.push(x));
+  }
 
   const partesAdicionais = (input.partesAdicionais ?? []).filter((p) => p.nome?.trim());
   partesAdicionais.forEach((p, i) => {
-    c.push(titulo(`PARTE ADICIONAL ${i + 1}`));
+    let papelRotulo = `PARTE ADICIONAL ${i + 1}`;
+    if (p.papel === 'requerente') {
+      papelRotulo = tipo === 'venda' ? 'COMPRADOR / ADQUIRENTE ADICIONAL' : tipo === 'doacao' ? 'DONATÁRIO ADICIONAL' : 'REQUERENTE / COPROPRIETÁRIO ADICIONAL';
+    } else if (p.papel === 'transmitente') {
+      papelRotulo = tipo === 'venda' ? 'VENDEDOR / TRANSMITENTE ADICIONAL' : tipo === 'doacao' ? 'DOADOR ADICIONAL' : 'COPROPRIETÁRIO / TRANSMITENTE ADICIONAL';
+    }
+    c.push(titulo(papelRotulo));
     blocoPessoa(p).forEach((x) => c.push(x));
   });
 
@@ -157,18 +173,23 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   else if (tipo === 'unificacao') reqTextoRaw = modelos.requerimentoUnificacao;
   else if (tipo === 'desmembramento') reqTextoRaw = modelos.requerimentoDesmembramento;
   else if (tipo === 'usucapiao') reqTextoRaw = modelos.requerimentoUsucapiao;
+  else if (tipo === 'retificacao') reqTextoRaw = modelos.requerimentoRetificacao;
   else reqTextoRaw = modelos.requerimentoVenda;
 
   c.push(par(preencherModelo(reqTextoRaw, varsModelo)));
 
   c.push(titulo('DA IDENTIFICAÇÃO DO IMÓVEL'));
   const origens = (imovel.matriculasOrigem ?? []).filter((m) => m.trim());
+  const donoNome = (tipo === 'retificacao' && !transmitente.nome?.trim())
+    ? (requerente.nome || imovel.proprietario || '—')
+    : (transmitente.nome || imovel.proprietario || '—');
+
   if (tipo === 'unificacao' && origens.length > 0) {
-    c.push(par(`O imóvel resulta da unificação das matrículas nº ${origens.join(', nº ')}, situado no município de ${imovel.municipio || '—'}, passando a constituir uma só matrícula sob nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${transmitente.nome || imovel.proprietario || '—'}.`));
+    c.push(par(`O imóvel resulta da unificação das matrículas nº ${origens.join(', nº ')}, situado no município de ${imovel.municipio || '—'}, passando a constituir uma só matrícula sob nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${donoNome}.`));
   } else if (imovel.regimeTerra === 'posse') {
-    c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, é detido sob regime de posse por ${transmitente.nome || imovel.proprietario || '—'}${imovel.matricula ? `, com referência ao registro/transcrição nº ${imovel.matricula}` : ' (sem matrícula registrada)'}.`));
+    c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, é detido sob regime de posse por ${donoNome}${imovel.matricula ? `, com referência ao registro/transcrição nº ${imovel.matricula}` : ' (sem matrícula registrada)'}.`));
   } else {
-    c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, encontra-se registrado neste Cartório sob a matrícula nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${transmitente.nome || imovel.proprietario || '—'}.`));
+    c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, encontra-se registrado neste Cartório sob a matrícula nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${donoNome}.`));
   }
 
   c.push(titulo('DO LEVANTAMENTO E DA RETIFICAÇÃO'));
@@ -257,8 +278,18 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     linhas.forEach((l) => c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, keepLines: true, children: [new TextRun({ text: l, size: 22 })] })));
   };
   assina([requerente.nome, rot.assinaReq]);
-  assina([transmitente.nome, rot.assinaTrans]);
-  partesAdicionais.forEach((p) => assina([p.nome, '(Parte adicional)']));
+  if (mostrarTransmitente) {
+    assina([transmitente.nome, rot.assinaTrans]);
+  }
+  partesAdicionais.forEach((p) => {
+    let papelAssinatura = '(Parte adicional)';
+    if (p.papel === 'requerente') {
+      papelAssinatura = tipo === 'venda' ? '(Adquirente / Comprador Adicional)' : tipo === 'doacao' ? '(Donatário Adicional)' : '(Requerente Adicional)';
+    } else if (p.papel === 'transmitente') {
+      papelAssinatura = tipo === 'venda' ? '(Transmitente / Vendedor Adicional)' : tipo === 'doacao' ? '(Doador Adicional)' : '(Transmitente Adicional)';
+    }
+    assina([p.nome, papelAssinatura]);
+  });
   assina([tecnico.nome, `${rotProf.registro} ${tecnico.cft} - INCRA: ${tecnico.credenciamentoIncra}`]);
 
   const doc = new Document({
