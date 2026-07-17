@@ -3315,13 +3315,26 @@ export default function EditorPage() {
     const prefs = carregarPreferencias();
     const { ok, problemas, graves } = conferirProntoParaExportar(imovel, vertices, confrontantes, tecnico, confrontantePorLado, { exigirConjuge: prefs.exigirConjuge, exigirCns: prefs.exigirCns });
     if (ok) return true;
-    // Trava de verdade só quando o usuário mantém "bloquear exportação incompleta" ligado (padrão).
-    // Desligado nos Ajustes, um problema grave vira aviso e ele pode prosseguir por conta própria.
-    if (graves.length > 0 && prefs.bloquearExportacaoIncompleta) {
-      await avisar({ titulo: 'Não dá para exportar ainda', mensagem: `Há um problema grave que o SIGEF rejeitaria:\n\n• ${graves.join('\n• ')}\n\nCorrija antes de tentar de novo.` });
+
+    const primeiro = problemas[0] || graves[0] || 'Dados incompletos no projeto';
+
+    if (primeiro.includes('técnico') || primeiro.includes('Técnico') || primeiro.includes('CFT') || primeiro.includes('profissional') || primeiro.includes('RT')) {
+      await avisar({
+        titulo: 'Dados do Técnico Incompletos',
+        mensagem: `${primeiro}\n\nVamos abrir a tela de Ajustes Pessoais para você completar os dados obrigatórios.`
+      });
+      setConfigAba('pessoal');
+      setConfigAberta(true);
       return false;
     }
-    return confirmar({ titulo: 'Faltam dados — exportar assim mesmo?', mensagem: `Antes de exportar, notei que faltam:\n\n• ${problemas.join('\n• ')}`, okLabel: 'Exportar assim mesmo', cancelLabel: 'Voltar e completar' });
+
+    // Qualquer outro problema (denominação, proprietário, município, confrontantes, CNS)
+    await avisar({
+      titulo: 'Cadastro Incompleto',
+      mensagem: `${primeiro}\n\nVamos abrir a tela de Conferência do Projeto para você completar os dados obrigatórios.`
+    });
+    setConferirAberto(true);
+    return false;
   }
 
   async function exportarMemorial(modo: 'normal' | 'servidao' = 'normal') {
@@ -8693,6 +8706,8 @@ export default function EditorPage() {
           tecnico={tecnico}
           escritorio={escritorio}
           dataExtenso={dataPorExtenso()}
+          onAbrirAjustes={(aba) => { setGestaoAberta(false); setConfigAba(aba); setConfigAberta(true); }}
+          onAbrirConferir={() => { setGestaoAberta(false); setConferirAberto(true); }}
         />
       )}
       <Dialog open={avisoReconciliarAberto} onOpenChange={(open) => {
