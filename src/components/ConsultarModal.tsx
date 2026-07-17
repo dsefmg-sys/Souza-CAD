@@ -30,10 +30,10 @@ export default function ConsultarModal({ open, onOpenChange, onInserirProprietar
   useEffect(() => {
     if (!open) return;
     setBusca(''); setMsg('');
-    proprietarios.listar().then(setProps).catch(() => {});
-    confrontantesCad.listar().then(setConfs).catch(() => {});
-    imoveisCad.listar().then(setImoveis).catch(() => {});
-    cartoriosCad.listar().then(setCartorios).catch(() => {});
+    proprietarios.listar().then(setProps).catch((e) => console.warn('[ConsultarModal] proprietarios:', e));
+    confrontantesCad.listar().then(setConfs).catch((e) => console.warn('[ConsultarModal] confrontantes:', e));
+    imoveisCad.listar().then(setImoveis).catch((e) => console.warn('[ConsultarModal] imoveis:', e));
+    cartoriosCad.listar().then(setCartorios).catch((e) => { console.warn('[ConsultarModal] cartorios:', e); setMsg('Nuvem indisponível — dados locais ativos.'); });
   }, [open]);
 
   const q = normalizar(busca);

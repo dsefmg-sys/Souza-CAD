@@ -54,7 +54,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
   const [projetos, setProjetos] = useState<Projeto[] | null>(null);
   const [precos, setPrecos] = useState<PrecoServico[]>([]);
   useEffect(() => { if (!open) { setProjetos(null); setAba('projeto'); } else { setPrecos(carregarPrecos()); } }, [open]);
-  useEffect(() => { if (open && aba === 'empresa' && projetos === null) listarProjetos().then(setProjetos).catch(() => setProjetos([])); }, [open, aba, projetos]);
+  useEffect(() => { if (open && aba === 'empresa' && projetos === null) listarProjetos().then(setProjetos).catch((e) => { console.warn('[GestaoProjetoModal] listarProjetos:', e); setProjetos([]); }); }, [open, aba, projetos]);
 
   const patch = (p: Partial<FinanceiroProjeto>) => onChange({ ...financeiro, ...p });
 

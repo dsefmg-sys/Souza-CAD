@@ -158,7 +158,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     try {
       await criarConvite(paraEmail, esc.nome);
       setEmailConviteInput('');
-      listarConvitesEnviados().then(setConvitesEnviados).catch(() => {});
+      listarConvitesEnviados().then(setConvitesEnviados).catch((e) => console.warn('[ConfigModal] listarConvites (enviarConvite):', e));
       // O convite já funciona sem isso (a pessoa entra sozinha ao logar com esse e-mail) — o
       // e-mail é só o aviso pra ela saber que precisa entrar. Por isso não trava o fluxo se falhar.
       try {
@@ -190,7 +190,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     try {
       await aprovarSolicitacao(sol.solicitanteEmail, esc.nome);
       setSolicitacoesRecebidas((ss) => ss.filter((s) => s.solicitanteEmail !== sol.solicitanteEmail));
-      listarConvitesEnviados().then(setConvitesEnviados).catch(() => {});
+      listarConvitesEnviados().then(setConvitesEnviados).catch((e) => console.warn('[ConfigModal] listarConvites (aprovarSol):', e));
       flash('Pedido aprovado! A pessoa entra vinculada ao logar de novo com esse e-mail.');
     } catch (e) {
       flash((e as Error).message || 'Erro ao aprovar o pedido.');
@@ -223,25 +223,25 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     if (open) {
       setT(carregarTecnico());
       setEsc(carregarEscritorio());
-      temModeloSigefProprio().then(setModeloProprio).catch(() => {});
+      temModeloSigefProprio().then(setModeloProprio).catch((e) => console.warn('[ConfigModal] temModeloSigefProprio:', e));
       setPrefs(carregarPreferencias());
       setPadroes(carregarPadroes());
       setPrecos(carregarPrecos());
       setReciboSeq(proximoNumeroReciboSeq());
-      colegasCad.listar().then(setColegas).catch(() => {});
+      colegasCad.listar().then(setColegas).catch((e) => { console.warn('[ConfigModal] listarColegas:', e); flash('Nuvem indisponível — dados locais ativos.'); });
       if (souMaster()) {
-        carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
-        carregarGeminiApiKey().then(setGeminiKey).catch(() => {});
+        carregarWhatsappSuporte().then(setZapSuporte).catch((e) => console.warn('[ConfigModal] carregarWhatsappSuporte:', e));
+        carregarGeminiApiKey().then(setGeminiKey).catch((e) => console.warn('[ConfigModal] carregarGeminiApiKey:', e));
       }
       obterPerfilUsuario().then((p) => {
         if (p) {
           setWorkspaceUid(p.workspaceUid || p.uid);
         }
-      }).catch(() => {});
-      listarConvitesEnviados().then(setConvitesEnviados).catch(() => {});
-      listarMembrosDoWorkspace().then(setMembrosWorkspace).catch(() => {});
-      listarSolicitacoesRecebidas().then(setSolicitacoesRecebidas).catch(() => {});
-      minhaEmpresa().then(setEmpresaVinculo).catch(() => {});
+      }).catch((e) => console.warn('[ConfigModal] obterPerfilUsuario:', e));
+      listarConvitesEnviados().then(setConvitesEnviados).catch((e) => console.warn('[ConfigModal] listarConvites (init):', e));
+      listarMembrosDoWorkspace().then(setMembrosWorkspace).catch((e) => console.warn('[ConfigModal] listarMembros:', e));
+      listarSolicitacoesRecebidas().then(setSolicitacoesRecebidas).catch((e) => console.warn('[ConfigModal] listarSolicitacoes:', e));
+      minhaEmpresa().then(setEmpresaVinculo).catch((e) => console.warn('[ConfigModal] minhaEmpresa:', e));
     }
   }, [open]);
 
