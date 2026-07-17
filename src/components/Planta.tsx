@@ -90,6 +90,7 @@ interface Props {
   onDblClick?: (lat: number, lon: number) => void;
   onDblClickObjeto?: (id: string) => void;
   onContextMenuVazio?: () => void;
+  onDblClickMalha?: () => void;
 }
 
 /** Ajuste salvo de um texto (conteúdo/escala/negrito/deslocamento). */
@@ -322,7 +323,7 @@ export default function Planta({
   onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onConfrontanteMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
-  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onDblClickObjeto, onContextMenuVazio,
+  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onDblClickObjeto, onContextMenuVazio, onDblClickMalha,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
@@ -1175,12 +1176,22 @@ export default function Planta({
         onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
         onContextMenu={(e) => {
           const target = e.target as SVGElement;
-          const isBg = target === svgRef.current || target.tagName === 'svg' || (target.tagName === 'rect' && target.getAttribute('x') === '0' && target.getAttribute('y') === '0');
+          const isBg = target === svgRef.current || target.tagName === 'svg' || 
+            (target.tagName === 'rect' && target.getAttribute('x') === '0' && target.getAttribute('y') === '0') ||
+            (target.tagName === 'rect' && target.getAttribute('fill') === 'transparent');
           if (isBg) {
             e.preventDefault();
-            if (modo === 'navegar') {
-              onContextMenuVazio?.();
-            }
+            onContextMenuVazio?.();
+          }
+        }}
+        onDoubleClick={(e) => {
+          const target = e.target as SVGElement;
+          const isBg = target === svgRef.current || target.tagName === 'svg' || 
+            (target.tagName === 'rect' && target.getAttribute('x') === '0' && target.getAttribute('y') === '0') ||
+            (target.tagName === 'rect' && target.getAttribute('fill') === 'transparent');
+          if (isBg) {
+            e.stopPropagation();
+            onDblClickMalha?.();
           }
         }}
         xmlns="http://www.w3.org/2000/svg">
@@ -3437,7 +3448,7 @@ function CarimboA3(props: {
               <image href={escritorio.logoDataUrl} x={cxc - logoW / 2} y={Y_ESC + 10} width={logoW} height={logoH} preserveAspectRatio="xMidYMid meet"
                 style={ed?.ativo ? { cursor: 'pointer' } : undefined}
                 onClick={ed?.ativo ? (e) => { e.stopPropagation(); onSelecObjeto?.('planta:empresa'); } : undefined}
-                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ajustarLogo(0.1); } : undefined} />
+                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); } : undefined} />
               {logoSel && (
                 <g style={{ pointerEvents: 'all' }}>
                   <g onClick={(e) => { e.stopPropagation(); ajustarLogo(-0.05); }} style={{ cursor: 'pointer' }}>

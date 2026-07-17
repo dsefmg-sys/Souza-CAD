@@ -5594,7 +5594,7 @@ export default function EditorPage() {
           </button>
           <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
             title="Alternar entre mapa e planta"
-            className="flex shrink-0 items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-amber-500 hover:text-amber-600 dark:text-amber-400 hover:bg-muted/40">
+            className="flex shrink-0 items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-yellow-500 hover:text-yellow-600 dark:text-yellow-400 hover:bg-muted/40">
             {vista === 'mapa' ? <Eye className="size-4" /> : <MapIcon className="size-4" />}
             {vista === 'mapa' ? 'PLANTA' : 'MAPA'}
           </button>
@@ -6029,7 +6029,7 @@ export default function EditorPage() {
                                       className="h-6 w-6 rounded-sm hover:bg-accent text-foreground font-bold transition-colors text-base flex items-center justify-center"
                                       title="Aumentar escala" onClick={() => alterarEscala(-250)}>+</button>
                                   </div>
-                                  <div className="flex items-center justify-center rounded-md bg-black text-white h-6 text-[10px] tracking-wider font-bold animate-in fade-in duration-200">
+                                  <div className="flex items-center justify-center rounded-md bg-black text-white h-6 text-[10px] tracking-wider font-bold animate-in fade-in duration-200" onDoubleClick={() => setAba('planta')}>
                                     1 : {obterEscalaEfetiva()}
                                   </div>
                                 </div>
@@ -6454,10 +6454,10 @@ export default function EditorPage() {
                   sumir). Atalho ESC em dourado. */}
               <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
                 title="Alternar entre mapa e planta (Esc)"
-                className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 px-2.5 text-[10px] font-bold text-white shadow-sm transition hover:brightness-110">
+                className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 px-2.5 text-[10px] font-bold text-white shadow-sm transition hover:brightness-110">
                 {vista === 'mapa' ? <Eye className="size-3.5" /> : <MapIcon className="size-3.5" />}
                 <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
-                <span className="rounded-sm bg-black/20 px-1 font-mono text-[8px] font-semibold text-amber-300">ESC</span>
+                <span className="rounded-sm bg-black/20 px-1 font-mono text-[8px] font-semibold text-yellow-300">ESC</span>
               </button>
 
               {/* Pintar Divisas/Confrontantes — ao lado do botão Mapa/Planta, dentro da mesma barra
@@ -7097,7 +7097,8 @@ export default function EditorPage() {
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onToggleTravaFolha={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
                       onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} onCiclarEstilo={ciclarEstiloPlanta}
-                      onContextMenuVazio={() => { setVista(v => v === 'planta' ? 'mapa' : 'planta'); }} />
+                      onContextMenuVazio={() => { setVista(v => v === 'planta' ? 'mapa' : 'planta'); }}
+                      onDblClickMalha={() => setAba('planta')} />
                     </ErrorBoundary>
                   </div>
                 )}
