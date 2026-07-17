@@ -8,7 +8,7 @@ import {
   Upload, FileText, Map as MapIcon, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen, MousePointer2,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
-  Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
+  Moon, Sun, Pencil, PenTool, Magnet, Lock, LockOpen, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, ImagePlus, Info, UserCheck, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
   Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Compass, Archive, BarChart3,
 } from 'lucide-react';
@@ -265,6 +265,8 @@ const COR_IMPORT = 'bg-sky-500 hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sk
 const COR_VIZINHO = 'bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800 text-white border-transparent'; // vizinho certificado (SIGEF/INCRA)
 const COR_DADOS = 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-800 text-white border-transparent'; // cadastro e IA
 const COR_MARCAR = 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white border-transparent';    // marcar no mapa
+const COR_CONFRO = 'bg-blue-800 hover:bg-blue-900 text-white border-transparent';
+const COR_DIVISA = 'bg-slate-500 hover:bg-slate-600 text-white border-transparent';
 const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída — cor de ação principal (verde da marca)
 const COR_PECA_OURO = 'bg-gradient-to-r from-amber-500 via-yellow-600 to-amber-600 hover:from-amber-600 hover:via-yellow-700 hover:to-amber-700 text-white border-transparent shadow font-extrabold hover:scale-[1.02] active:scale-95 transition-all duration-150';
 const COR_ATIVO = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent shadow-xs'; // botões ativos da lateral esquerda
@@ -5429,8 +5431,8 @@ export default function EditorPage() {
             celular ficam escondidas: mobile é pra consultar, preencher e baixar, não pra desenhar. */}
         {!telaEstreita && (
           <>
-            <Etapa st={etapas.confro}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>CONFRO</Button></Etapa>
-            <Etapa st={etapas.divisas}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_MARCAR} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''}`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>DIVISAS</Button></Etapa>
+            <Etapa st={etapas.confro}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_CONFRO} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Paintbrush className="size-3 shrink-0" /> CONFRO</Button></Etapa>
+            <Etapa st={etapas.divisas}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DIVISA} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Paintbrush className="size-3 shrink-0" /> DIVISAS</Button></Etapa>
             <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
           </>
         )}
@@ -6756,6 +6758,32 @@ export default function EditorPage() {
               <button className="flex items-center gap-2 rounded-full border border-red-500/40 bg-background/95 px-4 py-1.5 text-sm font-semibold text-red-600 shadow-lg backdrop-blur hover:bg-red-500 hover:text-white" onClick={apagarMultiSelecionados}>
                 <Trash2 className="size-4" /> Apagar {[selMulti.size ? `${selMulti.size} vértice(s)` : '', objSelMulti.size ? `${objSelMulti.size} elemento(s)` : ''].filter(Boolean).join(' + ')}
               </button>
+            </div>
+          )}
+
+          {/* DICA DE PINTURA (DIVISAS E CONFRONTANTES) */}
+          {vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante') && (
+            <div className={`absolute left-1/2 top-3 z-[1000] -translate-x-1/2 rounded-full border px-4 py-1.5 shadow-lg backdrop-blur-md transition-all duration-300 ${
+              modo === 'divisa'
+                ? 'border-slate-500/50 bg-slate-900/90 text-white dark:border-slate-800'
+                : 'border-blue-500/50 bg-blue-900/90 text-white dark:border-blue-800'
+            }`}>
+              <div className="flex gap-2 items-center text-[11px] font-bold">
+                <Paintbrush className={`size-3.5 shrink-0 animate-pulse ${modo === 'divisa' ? 'text-slate-300' : 'text-blue-300'}`} />
+                <span>
+                  {modo === 'divisa' ? (
+                    !pincelInicioId
+                      ? 'Clique no vértice onde o trecho de divisa começa.'
+                      : 'Clique no vértice final para colorir (siga o sentido horário do perímetro).'
+                  ) : (
+                    !confrontantePincelId
+                      ? 'Escolha ou crie um confrontante na barra inferior antes de pintar.'
+                      : !pincelInicioId
+                        ? 'Clique no vértice onde o confrontante começa.'
+                        : 'Clique no vértice final para colorir (siga o sentido horário do perímetro).'
+                  )}
+                </span>
+              </div>
             </div>
           )}
 
