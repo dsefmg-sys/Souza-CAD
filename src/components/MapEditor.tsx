@@ -125,6 +125,15 @@ function valido(v: Vertex): boolean {
   return Number.isFinite(v.lat) && Number.isFinite(v.lon) && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180;
 }
 
+function htmlEscape(text?: string) {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // símbolo do vértice por tipo, igual ao da legenda da planta: M = losango, P = círculo, V = triângulo
 function iconeVertice(v: Vertex, selecionado: boolean) {
   const cor = v.tipo === 'M' ? '#f59e0b' : v.tipo === 'V' ? '#a855f7' : '#1e3a8a';
@@ -180,7 +189,7 @@ function pontoGuiaMaisPerto(map: L.Map, vertice: [number, number], centroRotulo:
 // baixo), a uma folga que nunca cobre o ponto. Se dir=(0,0) (rótulo arrastado à mão), fica centrado.
 function iconeNomeVertice(texto: string, tam: number, dirx = 0, diry = 0) {
   const fs = tam && tam > 0 ? tam : 11;
-  const txt = (texto || '').replace(/</g, '&lt;');
+  const txt = htmlEscape(texto);
   const { w: estW, h: estH } = estimarCaixaRotulo(texto, tam);
   let ax = estW / 2, ay = estH / 2; // padrão: centrado (rótulo manual)
   if (dirx !== 0 || diry !== 0) {
@@ -199,7 +208,7 @@ function iconeNomeVertice(texto: string, tam: number, dirx = 0, diry = 0) {
 
 function iconeNomeVerticeVizinho(texto: string, tam: number) {
   const fs = tam && tam > 0 ? tam : 11;
-  const txt = (texto || '').replace(/</g, '&lt;');
+  const txt = htmlEscape(texto);
   const { w: estW, h: estH } = estimarCaixaRotulo(texto, fs);
   const shadow = '-1px -1px 2px #2563eb,1px -1px 2px #2563eb,-1px 1px 2px #2563eb,1px 1px 2px #2563eb,0 0 4px #2563eb';
   return L.divIcon({
@@ -245,7 +254,7 @@ function iconeTexto(o: ObjetoDesenho, sel: boolean, corDefault?: string) {
   const corText = o.cor ?? corDefault ?? '#000';
   return L.divIcon({
     className: 'objeto-texto',
-    html: `<div style="font-size:${o.tamanho ?? 12}px;color:${corText};background:#fff;border:1px solid #ccc;border-radius:3px;padding:2px 5px;white-space:nowrap;text-align:${al};box-shadow:0 1px 3px rgba(0,0,0,0.3);width:max-content;display:inline-block;${sel ? 'outline:1px dashed #ef4444;' : ''}">${(o.texto ?? '').replace(/</g, '&lt;')}</div>`,
+    html: `<div style="font-size:${o.tamanho ?? 12}px;color:${corText};background:#fff;border:1px solid #ccc;border-radius:3px;padding:2px 5px;white-space:nowrap;text-align:${al};box-shadow:0 1px 3px rgba(0,0,0,0.3);width:max-content;display:inline-block;${sel ? 'outline:1px dashed #ef4444;' : ''}">${htmlEscape(o.texto)}</div>`,
     iconSize: [1, 1], iconAnchor: [0, 8],
   });
 }
@@ -253,14 +262,13 @@ function iconeTexto(o: ObjetoDesenho, sel: boolean, corDefault?: string) {
 // multilinha (Nome/CPF/Matrícula…) e uma linha de assinatura embaixo. Movível e redimensionável.
 const iconeRotulo = (r: RotuloMapa, fator = 1) => {
   const fs = Math.round((r.tam && r.tam > 0 ? r.tam : 11) * fator);
-  const linhas = r.linhas.map((l) => `<div>${(l || '').replace(/</g, '&lt;')}</div>`).join('');
+  const linhas = r.linhas.map((l) => `<div>${htmlEscape(l)}</div>`).join('');
   return L.divIcon({
     className: 'objeto-rotulo',
     html: `<div style="font-size:${fs}px;line-height:1.3;color:#000;background:#fff;border:1.5px solid #222;border-radius:4px;padding:3px 7px;white-space:nowrap;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.5);width:max-content;display:inline-block">${linhas}</div>`,
     iconSize: [1, 1], iconAnchor: [0, 8],
   });
 };
-
 // rótulo central da gleba: dados-chave (denominação, proprietário, matrícula, área) no meio do
 // polígono. Texto branco sem fundo, com halo escuro pra legibilidade — mesmo tratamento do nome do
 // vértice, pra ficar consistente e limpo no modo mapa. Não captura clique (pointer-events:none) para
@@ -268,7 +276,7 @@ const iconeRotulo = (r: RotuloMapa, fator = 1) => {
 // rodapé); o halo aqui é mais suave que o do nome do vértice — em textos grandes (título + 2-3 linhas)
 // o halo forte de 4 camadas 100% opacas ficava com cara de "sombra preta" pesada demais.
 const iconeCentro = (linhas: string[], tamBase = 13, fator = 1, arrastavel = false) => {
-  const corpo = linhas.map((l, i) => `<div style="font-weight:${i === 0 ? 700 : 600};font-size:${Math.round((i === 0 ? tamBase : Math.max(8, tamBase - 2)) * fator)}px">${(l || '').replace(/</g, '&lt;')}</div>`).join('');
+  const corpo = linhas.map((l, i) => `<div style="font-weight:${i === 0 ? 700 : 600};font-size:${Math.round((i === 0 ? tamBase : Math.max(8, tamBase - 2)) * fator)}px">${htmlEscape(l)}</div>`).join('');
   // Quando arrastável (modo navegar), captura o clique e mostra o cursor de mover; senão, deixa o
   // clique passar pro mapa.
   const eventos = arrastavel ? 'pointer-events:auto;cursor:move' : 'pointer-events:none';
