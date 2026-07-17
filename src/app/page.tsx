@@ -1686,6 +1686,8 @@ export default function EditorPage() {
   // roda 2x em dev e dobrava o deslocamento (dava a impressão de a planta escorregar de lado).
   function onPlantaWheel(e: ReactWheelEvent) {
     if (e.ctrlKey) return;
+    if (!(e.target instanceof Node) || !e.currentTarget.contains(e.target)) return;
+    e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
