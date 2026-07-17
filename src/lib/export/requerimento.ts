@@ -22,6 +22,7 @@ export interface RequerimentoInput {
   /** Partes adicionais (mais de um donatário/coproprietário) além de requerente/transmitente. */
   partesAdicionais?: PessoaQualificada[];
   correcoes?: CorrecaoErrata[];
+  permitirIncompleto?: boolean;
 }
 
 const ROTULOS_ATO: Record<TipoAtoRequerimento, { requerente: string; transmitente: string; assinaReq: string; assinaTrans: string }> = {
@@ -83,13 +84,33 @@ function titulo(t: string) {
   return new Paragraph({ spacing: { before: 200, after: 80 }, children: [new TextRun({ text: t, bold: true, size: 22 })] });
 }
 function par(t: string, align: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.JUSTIFIED) {
-  return new Paragraph({ alignment: align, spacing: { after: 100 }, children: [new TextRun({ text: t, size: 22 })] });
+  const children: TextRun[] = [];
+  const parts = (t || '').split(/(DADO AUSENTE)/g);
+  parts.forEach(p => {
+    if (p === 'DADO AUSENTE') {
+      children.push(new TextRun({ text: p, size: 22, color: 'FF0000', bold: true }));
+    } else {
+      children.push(new TextRun({ text: p, size: 22 }));
+    }
+  });
+  return new Paragraph({ alignment: align, spacing: { after: 100 }, children });
 }
 function campo(rotulo: string, valor: string) {
-  return new Paragraph({ spacing: { after: 20 }, children: [
-    new TextRun({ text: `${rotulo} `, bold: true, size: 22 }),
-    new TextRun({ text: valor || '—', size: 22 }),
-  ] });
+  const v = valor || '—';
+  const children = [new TextRun({ text: `${rotulo} `, bold: true, size: 22 })];
+  if (v.includes('DADO AUSENTE')) {
+    const parts = v.split(/(DADO AUSENTE)/g);
+    parts.forEach(p => {
+      if (p === 'DADO AUSENTE') {
+        children.push(new TextRun({ text: p, size: 22, color: 'FF0000', bold: true }));
+      } else {
+        children.push(new TextRun({ text: p, size: 22 }));
+      }
+    });
+  } else {
+    children.push(new TextRun({ text: v, size: 22 }));
+  }
+  return new Paragraph({ spacing: { after: 20 }, children });
 }
 
 function blocoPessoa(p: PessoaQualificada): Paragraph[] {
@@ -116,7 +137,38 @@ function blocoPessoa(p: PessoaQualificada): Paragraph[] {
 
 export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Promise<Blob> {
   const input = sanitizarProfundo(inputBruto);
-  const { imovel, tecnico, requerente, transmitente, areaRealHa } = input;
+  const { imovel, tecnico, requerente, transmitente, areaRealHa, permitirIncompleto } = input;
+  
+  const f = (val?: string) => {
+    if (permitirIncompleto && (!val || !val.trim() || val === '—')) return 'DADO AUSENTE';
+    return val || '';
+  };
+
+  const fPessoa = (p: PessoaQualificada): PessoaQualificada => {
+    if (!permitirIncompleto) return p;
+    return {
+      ...p,
+      nome: f(p.nome),
+      rg: f(p.rg),
+      cpf: f(p.cpf),
+      nacionalidade: f(p.nacionalidade || 'Brasileira'),
+      naturalidade: f(p.naturalidade),
+      dataNascimento: f(p.dataNascimento),
+      filiacao: f(p.filiacao),
+      profissao: f(p.profissao),
+      estadoCivil: f(p.estadoCivil),
+      endereco: f(p.endereco),
+      cidadeUf: f(p.cidadeUf),
+      cep: f(p.cep),
+      conjugeNome: p.conjugeNome || p.conjugeCpf ? f(p.conjugeNome) : '',
+      conjugeCpf: p.conjugeNome || p.conjugeCpf ? f(p.conjugeCpf) : '',
+    };
+  };
+
+  const reqClonado = fPessoa(requerente);
+  const transClonado = fPessoa(transmitente);
+  const partesAdicionais = (input.partesAdicionais ?? []).map(fPessoa).filter((p) => p.nome?.trim());
+
   const tipo = input.tipoAto ?? 'venda';
   const rotOriginal = ROTULOS_ATO[tipo];
   const rot = imovel.regimeTerra === 'posse' ? {
@@ -131,11 +183,11 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   // Modelos de texto editáveis (declarações e responsabilidade). {variáveis} trocadas pelos dados reais.
   const modelos = carregarModelos();
   const varsModelo: Record<string, string> = {
-    proprietario: imovel.proprietario || '', cpf: imovel.cpfProprietario || '', denominacao: imovel.denominacao || '',
-    matricula: imovel.matricula || '', cns: imovel.cns || '', municipio: imovel.municipio || '', comarca,
-    area: `${numBR(areaRealHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : '',
-    codigoIncra: imovel.codigoImovelIncra || '', tecnico: tecnico.nome || '', cft: tecnico.cft || '',
-    numeroTrt: imovel.numeroTrt || tecnico.art || '', cidade: imovel.municipio || tecnico.cidadeAssinatura || '', data: input.dataExtenso || '',
+    proprietario: f(imovel.proprietario), cpf: f(imovel.cpfProprietario), denominacao: f(imovel.denominacao),
+    matricula: f(imovel.matricula), cns: f(imovel.cns), municipio: f(imovel.municipio), comarca,
+    area: `${numBR(areaRealHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : (permitirIncompleto ? 'DADO AUSENTE' : ''),
+    codigoIncra: f(imovel.codigoImovelIncra), tecnico: f(tecnico.nome), cft: f(tecnico.cft),
+    numeroTrt: f(imovel.numeroTrt || tecnico.art), cidade: f(imovel.municipio || tecnico.cidadeAssinatura), data: f(input.dataExtenso),
   };
 
   if (imovel.ficticio) {
@@ -145,17 +197,16 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   c.push(par('(Art. 176, §3º e §4º, e Art. 213, II, da Lei 6.015/73 c/c Decreto 4.449/02)', AlignmentType.CENTER));
   c.push(par(`Ilustríssimo Senhor(a) Oficial do Cartório de Registro de Imóveis da Comarca de ${comarca},`));
 
-  const mostrarTransmitente = tipo !== 'retificacao' || !!transmitente.nome?.trim();
+  const mostrarTransmitente = tipo !== 'retificacao' || !!transmitente.nome?.trim() || permitirIncompleto;
 
   c.push(titulo(rot.requerente));
-  blocoPessoa(requerente).forEach((x) => c.push(x));
+  blocoPessoa(reqClonado).forEach((x) => c.push(x));
 
   if (mostrarTransmitente) {
     c.push(titulo(rot.transmitente));
-    blocoPessoa(transmitente).forEach((x) => c.push(x));
+    blocoPessoa(transClonado).forEach((x) => c.push(x));
   }
 
-  const partesAdicionais = (input.partesAdicionais ?? []).filter((p) => p.nome?.trim());
   partesAdicionais.forEach((p, i) => {
     let papelRotulo = `PARTE ADICIONAL ${i + 1}`;
     if (p.papel === 'requerente') {
@@ -180,24 +231,24 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
 
   c.push(titulo('DA IDENTIFICAÇÃO DO IMÓVEL'));
   const origens = (imovel.matriculasOrigem ?? []).filter((m) => m.trim());
-  const donoNome = (tipo === 'retificacao' && !transmitente.nome?.trim())
-    ? (requerente.nome || imovel.proprietario || '—')
-    : (transmitente.nome || imovel.proprietario || '—');
+  const donoNome = (tipo === 'retificacao' && !transmitente.nome?.trim() && !permitirIncompleto)
+    ? (reqClonado.nome || f(imovel.proprietario))
+    : (transClonado.nome || f(imovel.proprietario));
 
   if (tipo === 'unificacao' && origens.length > 0) {
-    c.push(par(`O imóvel resulta da unificação das matrículas nº ${origens.join(', nº ')}, situado no município de ${imovel.municipio || '—'}, passando a constituir uma só matrícula sob nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${donoNome}.`));
+    c.push(par(`O imóvel resulta da unificação das matrículas nº ${origens.join(', nº ')}, situado no município de ${varsModelo.municipio}, passando a constituir uma só matrícula sob nº ${varsModelo.matricula}, Livro nº 2, em nome de ${donoNome}.`));
   } else if (imovel.regimeTerra === 'posse') {
-    c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, é detido sob regime de posse por ${donoNome}${imovel.matricula ? `, com referência ao registro/transcrição nº ${imovel.matricula}` : ' (sem matrícula registrada)'}.`));
+    c.push(par(`O imóvel rural denominado ${varsModelo.denominacao}, situado no município de ${varsModelo.municipio}, é detido sob regime de posse por ${donoNome}${varsModelo.matricula && varsModelo.matricula !== 'DADO AUSENTE' ? `, com referência ao registro/transcrição nº ${varsModelo.matricula}` : ' (sem matrícula registrada)'}.`));
   } else {
-    c.push(par(`O imóvel rural denominado ${imovel.denominacao || '—'}, situado no município de ${imovel.municipio || '—'}, encontra-se registrado neste Cartório sob a matrícula nº ${imovel.matricula || '—'}, Livro nº 2, em nome de ${donoNome}.`));
+    c.push(par(`O imóvel rural denominado ${varsModelo.denominacao}, situado no município de ${varsModelo.municipio}, encontra-se registrado neste Cartório sob a matrícula nº ${varsModelo.matricula}, Livro nº 2, em nome de ${donoNome}.`));
   }
 
   c.push(titulo('DO LEVANTAMENTO E DA RETIFICAÇÃO'));
-  const areaAnt = imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)}` : '—';
+  const areaAnt = imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)}` : (permitirIncompleto ? 'DADO AUSENTE' : '—');
   c.push(par(`O imóvel possui, conforme registro anterior, área de ${areaAnt} hectares. Após a realização de levantamento topográfico georreferenciado, executado pelo profissional habilitado:`));
   const rotProf = rotulosProfissional(tecnico);
-  c.push(campo('Nome:', tecnico.nome));
-  c.push(campo(`${rotProf.registro}:`, `${tecnico.cft} - Código INCRA (SIGEF): ${tecnico.credenciamentoIncra}`));
+  c.push(campo('Nome:', f(tecnico.nome)));
+  c.push(campo(`${rotProf.registro}:`, `${f(tecnico.cft)} - Código INCRA (SIGEF): ${f(tecnico.credenciamentoIncra)}`));
   c.push(par(`apurou-se que a área real do imóvel corresponde a ${numBR(areaRealHa, 4)} hectares, divergindo da área constante na matrícula, razão pela qual se requer a devida retificação.`));
 
   c.push(titulo('DOS CONFRONTANTES'));
@@ -256,7 +307,8 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   if (imovel.valorImovel != null && imovel.valorImovel > 0) {
     c.push(par(`Declaram, para fins fiscais e de cálculo dos emolumentos, que o valor do imóvel é de: R$ ${numBRmilhar(imovel.valorImovel)} (${valorPorExtenso(imovel.valorImovel)}).`));
   } else {
-    c.push(par('Declaram, para fins fiscais e de cálculo dos emolumentos, que o valor do imóvel é de: R$ _______ (____________).'));
+    const valImovelStr = permitirIncompleto ? 'DADO AUSENTE' : '_______';
+    c.push(par(`Declaram, para fins fiscais e de cálculo dos emolumentos, que o valor do imóvel é de: R$ ${valImovelStr} (${valImovelStr === 'DADO AUSENTE' ? 'DADO AUSENTE' : '____________'}).`));
   }
 
   const finalidadePedido = tipo === 'venda' || tipo === 'doacao'
@@ -272,14 +324,26 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   c.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 200 }, children: [new TextRun({ text: data, size: 22 })] }));
 
   c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 60 }, children: [new TextRun({ text: 'ASSINATURAS', bold: true, size: 22 })] }));
-  // keepNext/keepLines: impede o Word de cortar a página entre o traço de assinatura e o nome.
+  
   const assina = (linhas: string[]) => {
     c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300 }, keepNext: true, keepLines: true, children: [new TextRun({ text: '____________________________________', size: 22 })] }));
-    linhas.forEach((l) => c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, keepLines: true, children: [new TextRun({ text: l, size: 22 })] })));
+    linhas.forEach((l) => {
+      const runs: TextRun[] = [];
+      const parts = (l || '').split(/(DADO AUSENTE)/g);
+      parts.forEach(p => {
+        if (p === 'DADO AUSENTE') {
+          runs.push(new TextRun({ text: p, size: 22, color: 'FF0000', bold: true }));
+        } else {
+          runs.push(new TextRun({ text: p, size: 22 }));
+        }
+      });
+      c.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, keepLines: true, children: runs }));
+    });
   };
-  assina([requerente.nome, rot.assinaReq]);
+
+  assina([reqClonado.nome, rot.assinaReq]);
   if (mostrarTransmitente) {
-    assina([transmitente.nome, rot.assinaTrans]);
+    assina([transClonado.nome, rot.assinaTrans]);
   }
   partesAdicionais.forEach((p) => {
     let papelAssinatura = '(Parte adicional)';
@@ -290,7 +354,7 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     }
     assina([p.nome, papelAssinatura]);
   });
-  assina([tecnico.nome, `${rotProf.registro} ${tecnico.cft} - INCRA: ${tecnico.credenciamentoIncra}`]);
+  assina([f(tecnico.nome), `${rotProf.registro} ${f(tecnico.cft)} - INCRA: ${f(tecnico.credenciamentoIncra)}`]);
 
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial' } } } },

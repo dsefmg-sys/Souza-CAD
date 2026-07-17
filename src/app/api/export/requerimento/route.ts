@@ -17,7 +17,8 @@ export async function POST(req: Request) {
       tipoAto,
       partesAdicionais,
       comarca,
-      correcoes
+      correcoes,
+      permitirIncompleto
     } = body;
 
     const blob = await gerarRequerimentoDocx({
@@ -30,7 +31,8 @@ export async function POST(req: Request) {
       tipoAto,
       partesAdicionais,
       comarca,
-      correcoes
+      correcoes,
+      permitirIncompleto
     });
 
     const buffer = Buffer.from(await blob.arrayBuffer());

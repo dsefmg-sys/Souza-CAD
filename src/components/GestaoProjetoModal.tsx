@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { escolher } from '@/lib/ui/dialogos';
 import type { ImovelData, EscritorioData, TecnicoData, FinanceiroProjeto, LancamentoFinanceiro, Projeto } from '@/lib/topo/types';
 import { rotulosProfissional } from '@/lib/topo/profissional';
 import { saveAs } from 'file-saver';
@@ -77,71 +78,81 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
     });
   };
 
-  function validarDadosFinanceiro(tipoDoc: 'recibo' | 'contrato' | 'proposta' | 'declPosse' | 'declSobreposicao') {
+  async function validarDadosFinanceiro(tipoDoc: 'recibo' | 'contrato' | 'proposta' | 'declPosse' | 'declSobreposicao'): Promise<'ok' | 'gerar' | 'cadastro' | 'voltar'> {
+    let msgFalta = '';
+    let destinoCadastro: 'escritorio' | 'pessoal' | 'conferir' = 'escritorio';
+
     // 1. Validar Escritório
     if (['recibo', 'contrato', 'proposta'].includes(tipoDoc)) {
       if (!escritorio.nome?.trim()) {
-        alert("O nome do escritório está em branco. Por favor, preencha-o nas configurações.");
-        onAbrirAjustes?.('escritorio');
-        return false;
+        msgFalta = "O nome do escritório está em branco nas configurações.";
+        destinoCadastro = 'escritorio';
       }
-      if (!escritorio.cnpj?.trim()) {
-        alert("O CNPJ/CPF do escritório está em branco. Por favor, preencha-o nas configurações.");
-        onAbrirAjustes?.('escritorio');
-        return false;
+      else if (!escritorio.cnpj?.trim()) {
+        msgFalta = "O CNPJ/CPF do escritório está em branco nas configurações.";
+        destinoCadastro = 'escritorio';
       }
-      if (!escritorio.endereco?.trim()) {
-        alert("O endereço do escritório está em branco. Por favor, preencha-o nas configurações.");
-        onAbrirAjustes?.('escritorio');
-        return false;
+      else if (!escritorio.endereco?.trim()) {
+        msgFalta = "O endereço do escritório está em branco nas configurações.";
+        destinoCadastro = 'escritorio';
       }
-      if (!escritorio.cidade?.trim() || !escritorio.uf?.trim()) {
-        alert("A cidade/UF do escritório está em branco. Por favor, preencha-a nas configurações.");
-        onAbrirAjustes?.('escritorio');
-        return false;
+      else if (!escritorio.cidade?.trim() || !escritorio.uf?.trim()) {
+        msgFalta = "A cidade/UF do escritório está em branco nas configurações.";
+        destinoCadastro = 'escritorio';
       }
     }
 
     // 2. Validar Técnico
-    if (!tecnico.nome?.trim()) {
-      alert("O nome do responsável técnico está em branco. Por favor, preencha-o nos dados pessoais.");
-      onAbrirAjustes?.('pessoal');
-      return false;
-    }
-    if (!tecnico.cft?.trim()) {
-      alert("O registro profissional (CFT/CREA) do técnico está em branco. Por favor, preencha-o nos dados pessoais.");
-      onAbrirAjustes?.('pessoal');
-      return false;
-    }
-    if (tipoDoc === 'declSobreposicao' && !tecnico.credenciamentoIncra?.trim()) {
-      alert("O código de credenciamento do INCRA do técnico está em branco. Por favor, preencha-o nos dados pessoais.");
-      onAbrirAjustes?.('pessoal');
-      return false;
+    if (!msgFalta) {
+      if (!tecnico.nome?.trim()) {
+        msgFalta = "O nome do responsável técnico está em branco.";
+        destinoCadastro = 'pessoal';
+      }
+      else if (!tecnico.cft?.trim()) {
+        msgFalta = "O registro profissional (CFT/CREA) do técnico está em branco.";
+        destinoCadastro = 'pessoal';
+      }
+      else if (tipoDoc === 'declSobreposicao' && !tecnico.credenciamentoIncra?.trim()) {
+        msgFalta = "O código de credenciamento do INCRA do técnico está em branco.";
+        destinoCadastro = 'pessoal';
+      }
     }
 
     // 3. Validar Imóvel
-    if (!imovel.denominacao?.trim()) {
-      alert("A denominação do imóvel está em branco. Por favor, preencha-a nos dados do imóvel.");
-      onAbrirConferir?.();
-      return false;
-    }
-    if (!imovel.proprietario?.trim()) {
-      alert("O proprietário do imóvel está em branco. Por favor, preencha-o nos dados do imóvel.");
-      onAbrirConferir?.();
-      return false;
-    }
-    if (!imovel.cpfProprietario?.trim()) {
-      alert("O CPF/CNPJ do proprietário está em branco. Por favor, preencha-o nos dados do imóvel.");
-      onAbrirConferir?.();
-      return false;
-    }
-    if (['contrato', 'proposta'].includes(tipoDoc) && imovel.cns !== 'não informar' && !imovel.matricula?.trim()) {
-      alert("A matrícula do imóvel está em branco. Por favor, preencha-a nos dados do imóvel.");
-      onAbrirConferir?.();
-      return false;
+    if (!msgFalta) {
+      if (!imovel.denominacao?.trim()) {
+        msgFalta = "A denominação do imóvel está em branco nos dados do imóvel.";
+        destinoCadastro = 'conferir';
+      }
+      else if (!imovel.proprietario?.trim()) {
+        msgFalta = "O proprietário do imóvel está em branco nos dados do imóvel.";
+        destinoCadastro = 'conferir';
+      }
+      else if (!imovel.cpfProprietario?.trim()) {
+        msgFalta = "O CPF/CNPJ do proprietário está em branco nos dados do imóvel.";
+        destinoCadastro = 'conferir';
+      }
+      else if (['contrato', 'proposta'].includes(tipoDoc) && imovel.cns !== 'não informar' && !imovel.matricula?.trim()) {
+        msgFalta = "A matrícula do imóvel está em branco nos dados do imóvel.";
+        destinoCadastro = 'conferir';
+      }
     }
 
-    return true;
+    if (!msgFalta) return 'ok';
+
+    const opcao = await escolher({
+      titulo: 'Faltam Dados Importantes',
+      mensagem: `${msgFalta}\n\nComo deseja prosseguir?`,
+      opcoes: [
+        { chave: 'cadastro', label: 'Ir para o cadastro completar', variant: 'default' },
+        { chave: 'gerar', label: 'Gerar com DADO AUSENTE', variant: 'destructive' }
+      ],
+      cancelLabel: 'Voltar e ajustar'
+    });
+
+    if (opcao === 'cadastro') return 'cadastro';
+    if (opcao === 'gerar') return 'gerar';
+    return 'voltar';
   }
 
   const baseArgs = { imovel, escritorio, tecnico, dataExtenso, areaHa, perimetro };
@@ -205,9 +216,15 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                         </div>
                         <Button
                           className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs font-bold shrink-0 border-transparent gap-1.5"
-                          onClick={() => {
-                            if (!validarDadosFinanceiro('recibo')) return;
-                            gerarReciboPdf({ ...baseArgs, valor: Number(reciboValor.replace(',', '.')) || valorCobrado || recebido, numero: consumirNumeroRecibo(new Date().getFullYear()) });
+                          onClick={async () => {
+                            const status = await validarDadosFinanceiro('recibo');
+                            if (status === 'voltar') return;
+                            if (status === 'cadastro') {
+                              onAbrirAjustes?.('escritorio');
+                              return;
+                            }
+                            const permitirIncompleto = status === 'gerar';
+                            gerarReciboPdf({ ...baseArgs, permitirIncompleto, valor: Number(reciboValor.replace(',', '.')) || valorCobrado || recebido, numero: consumirNumeroRecibo(new Date().getFullYear()) });
                           }}
                         >
                           <Receipt className="size-3.5" /> Emitir Recibo (PDF)
@@ -250,18 +267,30 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                       <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 pt-1.5">
                         <Button
                           className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs font-bold border-transparent gap-1.5"
-                          onClick={() => {
-                            if (!validarDadosFinanceiro('contrato')) return;
-                            gerarContratoPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined });
+                          onClick={async () => {
+                            const status = await validarDadosFinanceiro('contrato');
+                            if (status === 'voltar') return;
+                            if (status === 'cadastro') {
+                              onAbrirAjustes?.('escritorio');
+                              return;
+                            }
+                            const permitirIncompleto = status === 'gerar';
+                            gerarContratoPdf({ ...baseArgs, permitirIncompleto, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined });
                           }}
                         >
                           <FileText className="size-3.5" /> Emitir Contrato
                         </Button>
                         <Button
                           className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs font-bold border-transparent gap-1.5"
-                          onClick={() => {
-                            if (!validarDadosFinanceiro('proposta')) return;
-                            gerarPropostaPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined });
+                          onClick={async () => {
+                            const status = await validarDadosFinanceiro('proposta');
+                            if (status === 'voltar') return;
+                            if (status === 'cadastro') {
+                              onAbrirAjustes?.('escritorio');
+                              return;
+                            }
+                            const permitirIncompleto = status === 'gerar';
+                            gerarPropostaPdf({ ...baseArgs, permitirIncompleto, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined });
                           }}
                         >
                           <FileText className="size-3.5" /> Emitir Proposta
@@ -274,14 +303,26 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                   <h3 className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted-foreground">Declarações avulsas</h3>
                   <div className="flex flex-wrap items-center gap-2.5 rounded-xl border p-3 bg-muted/5">
                     <Button variant="outline" className="h-8 text-xs gap-1.5 border-border hover:bg-muted" onClick={async () => {
-                      if (!validarDadosFinanceiro('declPosse')) return;
-                      saveAs(await gerarDeclaracaoPosseDocx({ imovel, tecnico, dataExtenso }), `Declaracao de posse - ${imovel.denominacao || 'imovel'}.docx`);
+                      const status = await validarDadosFinanceiro('declPosse');
+                      if (status === 'voltar') return;
+                      if (status === 'cadastro') {
+                        onAbrirConferir?.();
+                        return;
+                      }
+                      const permitirIncompleto = status === 'gerar';
+                      saveAs(await gerarDeclaracaoPosseDocx({ imovel, tecnico, dataExtenso, permitirIncompleto }), `Declaracao de posse - ${imovel.denominacao || 'imovel'}.docx`);
                     }}>
                       <FileText className="size-3.5 text-zinc-500" /> Declaração de posse
                     </Button>
                     <Button variant="outline" className="h-8 text-xs gap-1.5 border-border hover:bg-muted" onClick={async () => {
-                      if (!validarDadosFinanceiro('declSobreposicao')) return;
-                      saveAs(await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico, dataExtenso }), `Declaracao de inexistencia de sobreposicao - ${imovel.denominacao || 'imovel'}.docx`);
+                      const status = await validarDadosFinanceiro('declSobreposicao');
+                      if (status === 'voltar') return;
+                      if (status === 'cadastro') {
+                        onAbrirAjustes?.('pessoal');
+                        return;
+                      }
+                      const permitirIncompleto = status === 'gerar';
+                      saveAs(await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico, dataExtenso, permitirIncompleto }), `Declaracao de inexistencia de sobreposicao - ${imovel.denominacao || 'imovel'}.docx`);
                     }}>
                       <FileText className="size-3.5 text-zinc-500" /> Inexistência de sobreposição
                     </Button>

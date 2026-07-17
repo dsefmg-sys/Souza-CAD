@@ -14,31 +14,38 @@ function varsFinanceiro(a: {
   formaPagamento?: string;
   prazoDias?: number | string;
   escritorio?: EscritorioData;
+  permitirIncompleto?: boolean;
 }): Record<string, string> {
+  const f = (val?: string) => {
+    if (a.permitirIncompleto && (!val || !val.trim() || val === '—')) return 'DADO AUSENTE';
+    return val || '';
+  };
+
   const v = a.valor ?? 0;
   const prazo = a.prazoDias ?? '';
   const fp = a.formaPagamento ?? '';
   const esc = a.escritorio ?? {} as EscritorioData;
   const rep = [a.tecnico.nome, a.tecnico.formacao, a.tecnico.cft && `${rotulosProfissional(a.tecnico).registro} ${a.tecnico.cft}`].filter(Boolean).join(', ');
+  
   return {
-    proprietario: a.imovel.proprietario || '',
-    cpfProprietario: a.imovel.cpfProprietario || '',
-    cpf: a.imovel.cpfProprietario || '',
-    denominacao: a.imovel.denominacao || '',
-    matricula: a.imovel.matricula || '',
-    municipio: a.imovel.municipio || '',
+    proprietario: f(a.imovel.proprietario),
+    cpfProprietario: f(a.imovel.cpfProprietario),
+    cpf: f(a.imovel.cpfProprietario),
+    denominacao: f(a.imovel.denominacao),
+    matricula: f(a.imovel.matricula),
+    municipio: f(a.imovel.municipio),
     area: `${a.areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha`,
     perimetro: a.perimetro != null ? `${a.perimetro.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m` : '',
-    tecnico: a.tecnico.nome || '',
-    cft: a.tecnico.cft || '',
-    cidade: a.imovel.municipio || a.tecnico.cidadeAssinatura || '',
-    escritorio: esc.nome || '',
-    cnpjEscritorio: esc.cnpj || '',
-    responsavelTecnico: rep || a.tecnico.nome || '',
+    tecnico: f(a.tecnico.nome),
+    cft: f(a.tecnico.cft),
+    cidade: f(a.imovel.municipio || a.tecnico.cidadeAssinatura),
+    escritorio: f(esc.nome),
+    cnpjEscritorio: f(esc.cnpj),
+    responsavelTecnico: a.permitirIncompleto && (!rep || !rep.trim()) ? 'DADO AUSENTE' : (rep || a.tecnico.nome || ''),
     valor: moedaBR(v),
     valorExtenso: extensoReais(v),
-    formaPagamento: fp,
-    prazoDias: String(prazo),
+    formaPagamento: f(fp),
+    prazoDias: f(String(prazo)),
   };
 }
 
@@ -59,6 +66,7 @@ interface BaseArgs {
   dataExtenso: string;     // ex.: "30 de junho de 2026"
   areaHa: number;
   perimetro?: number;      // usado no {perimetro} do contrato/proposta
+  permitirIncompleto?: boolean;
 }
 
 function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, larg: number): number {
@@ -96,7 +104,7 @@ function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, la
 }
 
 /** Faixa de aviso quando o projeto é fictício (demonstração). Devolve o novo y. */
-function avisoFicticio(doc: jsPDF, imovel: ImovelData, larg: number, y: number): number {
+function statusFicticio(doc: jsPDF, imovel: ImovelData, larg: number, y: number): number {
   if (!imovel.ficticio) return y;
   doc.setTextColor(185, 28, 28);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
@@ -105,13 +113,34 @@ function avisoFicticio(doc: jsPDF, imovel: ImovelData, larg: number, y: number):
   return y + 7;
 }
 
+function decorarDoc(doc: jsPDF) {
+  const originalText = doc.text;
+  doc.text = function (this: jsPDF, text: any, x: number, y: number, options?: any) {
+    const hasDadoAusente = (t: string) => t.includes('DADO AUSENTE');
+    let needsReset = false;
+    if (typeof text === 'string' && hasDadoAusente(text)) {
+      doc.setTextColor(220, 38, 38);
+      needsReset = true;
+    } else if (Array.isArray(text) && text.some(t => typeof t === 'string' && hasDadoAusente(t))) {
+      doc.setTextColor(220, 38, 38);
+      needsReset = true;
+    }
+    const res = originalText.apply(this, arguments as any);
+    if (needsReset) {
+      doc.setTextColor(0, 0, 0);
+    }
+    return res;
+  } as any;
+}
+
 /** Recibo de pagamento do serviço, pronto para imprimir/assinar. */
 export function gerarReciboPdf(a: BaseArgs & { valor: number; referente?: string; numero?: string }): void {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  decorarDoc(doc);
   const larg = doc.internal.pageSize.getWidth();
   const margem = 18;
   let y = cabecalhoEscritorio(doc, a.escritorio, margem, larg);
-  y = avisoFicticio(doc, a.imovel, larg, y);
+  y = statusFicticio(doc, a.imovel, larg, y);
 
   // título + caixa de valor
   doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
@@ -123,15 +152,16 @@ export function gerarReciboPdf(a: BaseArgs & { valor: number; referente?: string
   doc.text(moedaBR(a.valor), larg - margem - 30, y + 6, { align: 'center' });
   y += 22;
 
-  const refer = a.referente || preencherModelo(carregarModelos().reciboReferente, varsFinanceiro(a));
-  const corpo = `Recebi(emos) de ${a.imovel.proprietario || '—'}${a.imovel.cpfProprietario ? `, inscrito(a) no CPF sob o nº ${a.imovel.cpfProprietario}` : ''}, a importância de ${moedaBR(a.valor)} (${extensoReais(a.valor)}), referente a ${refer}.`;
+  const vars = varsFinanceiro({ ...a, permitirIncompleto: a.permitirIncompleto });
+  const refer = a.referente || preencherModelo(carregarModelos().reciboReferente, vars);
+  const corpo = `Recebi(emos) de ${vars.proprietario}${vars.cpfProprietario && vars.cpfProprietario !== 'DADO AUSENTE' ? `, inscrito(a) no CPF sob o nº ${vars.cpfProprietario}` : ''}, a importância de ${moedaBR(a.valor)} (${extensoReais(a.valor)}), referente a ${refer}.`;
   doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
   doc.text(doc.splitTextToSize(corpo, larg - margem * 2), margem, y, { lineHeightFactor: 1.5 });
   y += Math.ceil(doc.splitTextToSize(corpo, larg - margem * 2).length) * 6.6 + 6;
   doc.text('Para clareza, firmo(amos) o presente recibo, dando plena e geral quitação do valor recebido.', margem, y, { maxWidth: larg - margem * 2 });
   y += 16;
 
-  doc.text(`${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'}, ${a.dataExtenso}.`, margem, y);
+  doc.text(`${vars.municipio || vars.cidade || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 26;
   if (a.escritorio.autoAssinar && a.escritorio.assinaturaDataUrl) {
     try {
@@ -142,8 +172,8 @@ export function gerarReciboPdf(a: BaseArgs & { valor: number; referente?: string
   }
   doc.setLineWidth(0.3); doc.line(larg / 2 - 45, y, larg / 2 + 45, y);
   doc.setFontSize(10);
-  doc.text(a.escritorio.nome || a.tecnico.nome || '', larg / 2, y + 5, { align: 'center' });
-  const sub = [a.tecnico.nome, a.tecnico.cft && `CFT ${a.tecnico.cft}`].filter(Boolean).join('  ·  ');
+  doc.text(vars.escritorio || vars.tecnico || '', larg / 2, y + 5, { align: 'center' });
+  const sub = [vars.tecnico, vars.cft && `CFT ${vars.cft}`].filter(v => v && v !== 'DADO AUSENTE').join('  ·  ');
   if (sub) doc.text(sub, larg / 2, y + 10, { align: 'center' });
 
   doc.save(`Recibo - ${a.imovel.denominacao || 'cliente'}.pdf`);
@@ -152,17 +182,18 @@ export function gerarReciboPdf(a: BaseArgs & { valor: number; referente?: string
 /** Contrato de prestação de serviços de georreferenciamento, pronto para ajustar e assinar. */
 export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?: string; prazoDias?: number }): void {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  decorarDoc(doc);
   const larg = doc.internal.pageSize.getWidth();
   const alt = doc.internal.pageSize.getHeight();
   const margem = 18;
   let y = cabecalhoEscritorio(doc, a.escritorio, margem, larg);
-  y = avisoFicticio(doc, a.imovel, larg, y);
+  y = statusFicticio(doc, a.imovel, larg, y);
 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
   doc.text('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE GEORREFERENCIAMENTO', larg / 2, y, { align: 'center', maxWidth: larg - margem * 2 });
   y += 12;
 
-  const vVars = varsFinanceiro({ ...a, valor: a.valor, formaPagamento: a.formaPagamento, prazoDias: a.prazoDias, escritorio: a.escritorio });
+  const vVars = varsFinanceiro({ ...a, valor: a.valor, formaPagamento: a.formaPagamento, prazoDias: a.prazoDias, escritorio: a.escritorio, permitirIncompleto: a.permitirIncompleto });
   const md = carregarModelos();
   const clausulas: [string, string][] = [
     ['CONTRATANTE', preencherModelo(md.contratoContratante, vVars)],
@@ -186,7 +217,7 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
 
   if (y > alt - 60) { doc.addPage(); y = margem; }
   y += 6;
-  doc.text(`${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'}, ${a.dataExtenso}.`, margem, y);
+  doc.text(`${vVars.municipio || vVars.cidade || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 24;
   if (a.escritorio.autoAssinar && a.escritorio.assinaturaDataUrl) {
     try {
@@ -200,9 +231,9 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
   doc.line(larg - margem - 70, y, larg - margem, y);
   doc.setFontSize(9.5);
   doc.text('CONTRATANTE', margem + 35, y + 5, { align: 'center' });
-  doc.text(a.imovel.proprietario || '', margem + 35, y + 10, { align: 'center' });
+  doc.text(vVars.proprietario, margem + 35, y + 10, { align: 'center' });
   doc.text('CONTRATADO', larg - margem - 35, y + 5, { align: 'center' });
-  doc.text(a.escritorio.nome || '', larg - margem - 35, y + 10, { align: 'center' });
+  doc.text(vVars.escritorio, larg - margem - 35, y + 10, { align: 'center' });
 
   doc.save(`Contrato - ${a.imovel.denominacao || 'cliente'}.pdf`);
 }
@@ -210,28 +241,31 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
 /** Proposta comercial / orçamento do serviço, pronta para enviar ao cliente. */
 export function gerarPropostaPdf(a: BaseArgs & { valor: number; prazoDias?: number; formaPagamento?: string }): void {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  decorarDoc(doc);
   const larg = doc.internal.pageSize.getWidth();
   const alt = doc.internal.pageSize.getHeight();
   const margem = 18;
   let y = cabecalhoEscritorio(doc, a.escritorio, margem, larg);
-  y = avisoFicticio(doc, a.imovel, larg, y);
+  y = statusFicticio(doc, a.imovel, larg, y);
 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
   doc.text('PROPOSTA DE PRESTAÇÃO DE SERVIÇOS', larg / 2, y, { align: 'center', maxWidth: larg - margem * 2 });
   y += 10;
 
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
-  doc.text(`A/C: ${a.imovel.proprietario || '—'}`, margem, y); y += 6;
+  const vars = varsFinanceiro({ ...a, valor: a.valor, formaPagamento: a.formaPagamento, prazoDias: a.prazoDias, escritorio: a.escritorio, permitirIncompleto: a.permitirIncompleto });
 
-  const corpo = preencherModelo(carregarModelos().propostaTexto, varsFinanceiro(a));
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
+  doc.text(`A/C: ${vars.proprietario}`, margem, y); y += 6;
+
+  const corpo = preencherModelo(carregarModelos().propostaTexto, vars);
   const linhas = doc.splitTextToSize(corpo, larg - margem * 2);
   doc.text(linhas, margem, y, { lineHeightFactor: 1.45 });
   y += linhas.length * 5.3 + 6;
 
   const itens: [string, string][] = [
     ['Valor do serviço', `${moedaBR(a.valor)} (${extensoReais(a.valor)})`],
-    ['Forma de pagamento', a.formaPagamento || 'a combinar entre as partes'],
-    ['Prazo estimado', `${a.prazoDias ?? '____'} dias, ressalvadas as etapas que dependem de terceiros (cartório, INCRA, confrontantes) e das condições de campo`],
+    ['Forma de pagamento', vars.formaPagamento || 'a combinar entre as partes'],
+    ['Prazo estimado', `${vars.prazoDias} dias, ressalvadas as etapas que dependem de terceiros (cartório, INCRA, confrontantes) e das condições de campo`],
     ['Validade da proposta', '30 dias a contar desta data'],
   ];
   doc.setFontSize(10.5);
@@ -246,7 +280,7 @@ export function gerarPropostaPdf(a: BaseArgs & { valor: number; prazoDias?: numb
 
   y += 6;
   if (y > alt - 40) { doc.addPage(); y = margem; }
-  doc.text(`${a.imovel.municipio || a.tecnico.cidadeAssinatura || '—'}, ${a.dataExtenso}.`, margem, y);
+  doc.text(`${vars.municipio || vars.cidade || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 22;
   if (a.escritorio.autoAssinar && a.escritorio.assinaturaDataUrl) {
     try {
@@ -257,8 +291,8 @@ export function gerarPropostaPdf(a: BaseArgs & { valor: number; prazoDias?: numb
   }
   doc.setLineWidth(0.3); doc.line(larg / 2 - 45, y, larg / 2 + 45, y);
   doc.setFontSize(10);
-  doc.text(a.escritorio.nome || a.tecnico.nome || '', larg / 2, y + 5, { align: 'center' });
-  const sub = [a.tecnico.nome, a.tecnico.cft && `${rotulosProfissional(a.tecnico).registro} ${a.tecnico.cft}`].filter(Boolean).join('  ·  ');
+  doc.text(vars.escritorio || vars.tecnico || '', larg / 2, y + 5, { align: 'center' });
+  const sub = [vars.tecnico, vars.cft && `CFT ${vars.cft}`].filter(v => v && v !== 'DADO AUSENTE').join('  ·  ');
   if (sub) doc.text(sub, larg / 2, y + 10, { align: 'center' });
 
   doc.save(`Proposta - ${a.imovel.denominacao || 'cliente'}.pdf`);

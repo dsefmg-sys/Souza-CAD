@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { FileSignature, UserPlus, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { confirmar } from '@/lib/ui/dialogos';
+import { confirmar, escolher } from '@/lib/ui/dialogos';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -178,13 +178,37 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   }
 
   async function gerar() {
-    if (!req.nome?.trim()) { setMsg('Preencha o nome do requerente.'); return; }
-    if (!req.cpf?.trim()) { setMsg('Preencha o CPF/CNPJ do requerente.'); return; }
+    let dadosIncompletos = false;
+    let msgFalta = '';
+
+    if (!req.nome?.trim()) { msgFalta = 'Nome do requerente está em branco.'; dadosIncompletos = true; }
+    else if (!req.cpf?.trim()) { msgFalta = 'CPF/CNPJ do requerente está em branco.'; dadosIncompletos = true; }
+    
     const precisaTransmitente = localTipoAto !== 'retificacao' || !!trans.nome?.trim() || !!trans.cpf?.trim();
-    if (precisaTransmitente) {
-      if (!trans.nome?.trim()) { setMsg('Preencha o nome do transmitente / cônjuge.'); return; }
-      if (!trans.cpf?.trim()) { setMsg('Preencha o CPF/CNPJ do transmitente / cônjuge.'); return; }
+    if (!dadosIncompletos && precisaTransmitente) {
+      if (!trans.nome?.trim()) { msgFalta = 'Nome do transmitente / cônjuge está em branco.'; dadosIncompletos = true; }
+      else if (!trans.cpf?.trim()) { msgFalta = 'CPF/CNPJ do transmitente / cônjuge está em branco.'; dadosIncompletos = true; }
     }
+
+    let permitirIncompleto = false;
+
+    if (dadosIncompletos) {
+      const opcao = await escolher({
+        titulo: 'Faltam Dados Básicos',
+        mensagem: `${msgFalta}\n\nDeseja voltar para preencher ou prefere gerar o documento com lacunas (os campos em branco serão marcados com a palavra "DADO AUSENTE" em vermelho)?`,
+        opcoes: [
+          { chave: 'gerar', label: 'Gerar com DADO AUSENTE', variant: 'destructive' },
+        ],
+        cancelLabel: 'Voltar e completar'
+      });
+
+      if (opcao === 'gerar') {
+        permitirIncompleto = true;
+      } else {
+        return;
+      }
+    }
+
     onChangePessoas(req, trans, localTipoAto, localPartesAdicionais);
     const padroes = carregarPadroes();
     const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
@@ -202,7 +226,8 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           tipoAto: localTipoAto,
           partesAdicionais: localPartesAdicionais,
           comarca,
-          correcoes: correcoes || []
+          correcoes: correcoes || [],
+          permitirIncompleto
         })
       });
       if (!response.ok) {
@@ -213,7 +238,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
       const blob = await compatibilizarWord2007(blobBruto);
       saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);
       onBaixar?.();
-      setMsg('Requerimento gerado.');
+      setMsg(permitirIncompleto ? 'Requerimento gerado (incompleto).' : 'Requerimento gerado.');
     } catch (e: unknown) {
       console.error(e);
       setMsg((e as Error).message || 'Erro ao gerar requerimento.');

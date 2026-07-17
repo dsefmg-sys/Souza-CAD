@@ -82,17 +82,17 @@ export default function CarModal({ open, onOpenChange, areaHa, areasCamadas, onE
             )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5 text-left">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-[#87a992]">Área do imóvel (ha)</label>
+                <label className="text-[11px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-extrabold">Área do imóvel (ha) *</label>
                 <div className="rounded-lg border border-border/80 bg-background dark:bg-[#05140b]/80 px-3 py-2.5 text-sm font-black text-foreground">{num(areaHa, 4)} ha</div>
               </div>
               <div className="space-y-1.5 text-left">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-[#87a992]">Bioma / localização</label>
+                <label className="text-[11px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-extrabold">Bioma / localização *</label>
                 <select className="w-full h-11 rounded-lg border bg-background dark:bg-[#05140b] border-border/80 px-3 text-sm text-foreground focus:border-emerald-500 focus:outline-none" value={bioma} onChange={(e) => setBioma(e.target.value as Bioma)}>
                   {BIOMAS.map((b) => <option key={b.v} value={b.v}>{b.rot}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5 text-left">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-[#87a992]">Módulo fiscal (ha) — INCRA</label>
+                <label className="text-[11px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-extrabold">Módulo fiscal (ha) — INCRA *</label>
                 <input className="w-full h-11 rounded-lg border bg-background dark:bg-[#05140b] border-border/80 px-3 text-sm text-foreground focus:border-emerald-500 focus:outline-none font-mono" placeholder="ex.: 20" value={moduloFiscal} onChange={(e) => setModuloFiscal(e.target.value)} />
               </div>
               <div className="space-y-1.5 text-left">
