@@ -5720,6 +5720,20 @@ export default function EditorPage() {
                             <Atalho k="F1" />
                           </Button>
 
+                          {/* Trava da folha — col-span-2 para ocupar linha inteira e ter destaque */}
+                          <button
+                            type="button"
+                            onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
+                            title={folhaTravada ? 'Moldura travada — clique para destravar e editar o layout' : 'Moldura destravada — clique para travar e proteger o layout'}
+                            className={`col-span-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-md border-2 text-[9px] font-bold uppercase tracking-wide transition-colors ${
+                              folhaTravada
+                                ? 'border-border bg-background text-foreground hover:bg-muted'
+                                : 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+                            }`}
+                          >
+                            {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
+                            <span>{folhaTravada ? 'Folha Travada' : 'Folha Destravada'}</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -6621,14 +6635,6 @@ export default function EditorPage() {
 
 
 
-                  {/* Travar / destravar folha */}
-                  <button type="button"
-                    onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
-                    title={folhaTravada ? 'Moldura travada — clique para destravar e arrastar a prancha' : 'Moldura destravada — clique para travar o layout da folha'}
-                    className={`flex h-7 items-center gap-1 rounded-full border-2 px-2.5 text-[10px] font-bold transition-colors ${folhaTravada ? 'border-border bg-background/95 text-foreground hover:bg-muted' : 'border-amber-500 bg-background/95 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'}`}>
-                    {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
-                    <span>{folhaTravada ? 'TRAVADA' : 'DESTRAVADA'}</span>
-                  </button>
 
                   {/* Tema da prancha */}
                   <button type="button" onClick={() => setPlantaDark((v) => !v)}
