@@ -238,7 +238,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                 <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Tipo de ato</Label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {OPCOES_ATO.map((o) => (
-                    <Button key={o.valor} type="button" size="sm" variant={localTipoAto === o.valor ? 'default' : 'outline'} onClick={() => setLocalTipoAto(o.valor)} className={`h-8 text-xs ${localTipoAto === o.valor ? '' : 'bg-background hover:bg-muted'} ${o.valor === 'usucapiao' ? 'col-span-2' : ''}`}>
+                    <Button key={o.valor} type="button" size="sm" variant={localTipoAto === o.valor ? 'default' : 'outline'} onClick={() => setLocalTipoAto(o.valor)} className={`h-8 text-xs ${localTipoAto === o.valor ? '' : 'bg-background hover:bg-muted'}`}>
                       {o.rotulo}
                     </Button>
                   ))}
