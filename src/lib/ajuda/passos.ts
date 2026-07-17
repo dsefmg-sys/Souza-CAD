@@ -16,8 +16,8 @@ export const PASSOS_BASE: Passo[] = [
   {
     icone: ToggleRight,
     titulo: 'A chave Fácil e Completo',
-    texto: 'Para proporcionar uma experiência de aprendizado adaptável e otimizar sua área de trabalho, o Souza-CAD dispõe de duas interfaces de trabalho. A alternância entre o modo Fácil (foco no fluxo básico essencial) e o modo Completo (todas as ferramentas CAD habilitadas) ocorre exclusivamente na Barra de Controle flutuante inferior, deixando a barra lateral esquerda livre e otimizada para as ferramentas de desenho e edição. Nenhum dado do projeto é perdido ao alternar de modo.',
-    audioUrl: '/introducao.mp3',
+    texto: 'Para proporcionar uma experiência de aprendizado adaptável e otimizar sua área de trabalho, o Souza-CAD dispõe de duas interfaces de trabalho. A alternância entre o modo Fácil (foco no fluxo básico essencial) e o modo Completo (todas as ferramentas CAD habilitadas) ocorre exclusivamente na Barra de Controle flutuante inferior, deixando a barra lateral esquerda livre e otimizada para as ferramentas de desenho e edição. Nenhum dado do projeto é perdido ao alternar de modo.\n\nNa mesma Barra de Controle flutuante, você encontra o botão 🔒 Trava da Folha — um dos controles mais importantes do sistema. Quando a folha está TRAVADA, nenhum elemento do carimbo (título, logotipo, escala, rosa dos ventos) pode ser movido acidentalmente. Antes de ajustar o layout da planta, clique em Destrava; ao terminar, clique em Trava novamente para proteger seu trabalho.',
+    audioUrl: '/audio/tutorial/passo-base-0.mp3',
   },
   {
     icone: Users,
@@ -74,7 +74,7 @@ export const PASSOS_AVANCADOS: Passo[] = [
   {
     icone: Sparkles,
     titulo: 'Desenho Livre, Achuras e Símbolos',
-    texto: 'Enriqueça graficamente sua planta com polilinhas, cotas, textos livres e símbolos cartográficos (postes, marcos, árvores). Você pode aplicar hachuras a 45° ou em grade para destacar áreas de preservação ou servidões, e gerenciar tudo por meio de Camadas (Layers) com espessuras e cores personalizadas.',
+    texto: 'Enriqueça graficamente sua planta com polilinhas, cotas, textos livres e símbolos cartográficos (postes, marcos, árvores). Você pode aplicar hachuras a 45° ou em grade para destacar áreas de preservação ou servidões, e gerenciar tudo por meio de Camadas (Layers) com espessuras e cores personalizadas.\n\n⚠️ Botão Trava da Folha — essencial ao editar a planta:\nPara reposicionar ou redimensionar qualquer elemento do carimbo (rosa dos ventos, barra de escalas, planta de situação, título), a folha precisa estar DESBLOQUEADA. Clique no botão 🔒 Trava (na barra flutuante inferior) para alternar entre travado e livre. Enquanto travado, nenhum elemento pode ser arrastado acidentalmente — ideal para o trabalho diário. Destrave apenas quando for ajustar o layout, e trave novamente ao terminar.',
     audioUrl: '/audio/tutorial/passo-avancado-1.mp3',
   },
   {

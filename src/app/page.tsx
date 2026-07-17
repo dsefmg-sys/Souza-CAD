@@ -1597,6 +1597,14 @@ export default function EditorPage() {
 
   // ao sair do modo "triângulo", esvazia a seleção múltipla
   useEffect(() => { if (modo !== 'multi') setSelMulti((s) => (s.size ? new Set() : s)); }, [modo]);
+  // ao sair do modo "medir", sempre limpa o buffer — medições nunca devem gerar linhas persistentes
+  const modoAnteriorRef = useRef<string>(modo);
+  useEffect(() => {
+    if (modoAnteriorRef.current === 'medir' && modo !== 'medir') {
+      setDesenhoBuffer([]);
+    }
+    modoAnteriorRef.current = modo;
+  }, [modo]);
 
   const res = useMemo(() => (vertices.length >= 3 ? calcular(vertices, confrontantePorLado) : null), [vertices, confrontantePorLado]);
 

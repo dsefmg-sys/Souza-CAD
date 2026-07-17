@@ -1895,9 +1895,9 @@ export default function MapEditor(props: Props) {
         );
       })}
 
-      {/* desenho em andamento */}
-      {desenhoAtual.length >= 2 && <Polyline positions={desenhoAtual} pathOptions={{ color: '#2563eb', weight: 1.5, dashArray: '4 3' }} />}
-      {desenhoAtual.map((p, i) => <CircleMarker key={`da${i}`} center={p} radius={3} pathOptions={{ color: '#2563eb', fillColor: '#fff', fillOpacity: 1 }} />)}
+      {/* desenho em andamento (não aplica no modo medir — ele tem seu próprio visual âmbar) */}
+      {desenhoAtual.length >= 2 && modo !== 'medir' && <Polyline positions={desenhoAtual} pathOptions={{ color: '#2563eb', weight: 1.5, dashArray: '4 3' }} />}
+      {modo !== 'medir' && desenhoAtual.map((p, i) => <CircleMarker key={`da${i}`} center={p} radius={3} pathOptions={{ color: '#2563eb', fillColor: '#fff', fillOpacity: 1 }} />)}
       {/* linha elástica com distância/azimute ao vivo, do último ponto até o cursor */}
       {['linha', 'polilinha', 'tracejado', 'cota', 'medir'].includes(modo) && desenhoAtual.length >= 1 && (
         <MedidaDinamica base={desenhoAtual[desenhoAtual.length - 1]} orto={orto} zona={zona} hemisferio={hemisferio} />

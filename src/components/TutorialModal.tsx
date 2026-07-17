@@ -447,7 +447,30 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
               <Icone className="size-5 text-primary" /> {p.titulo}
             </div>
             {audioControls(p.texto, p.audioUrl)}
-            <p className="text-xs font-semibold leading-relaxed text-muted-foreground text-left whitespace-pre-line">{p.texto}</p>
+            {p.texto.includes('Trava da Folha') ? (
+              (() => {
+                // Separa o texto principal do bloco da Trava (marcado por \n\n⚠️ ou \n\n🔒 ou \n\nNa mesma)
+                const partes = p.texto.split(/\n\n(?=(?:⚠️|🔒|Na mesma Barra))/);
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold leading-relaxed text-muted-foreground text-left whitespace-pre-line">{partes[0]}</p>
+                    {partes.slice(1).map((parte, i) => (
+                      <div key={i} className="rounded-xl border border-amber-500/40 bg-amber-500/8 dark:bg-amber-500/10 px-4 py-3 text-left space-y-1.5">
+                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                          <span className="text-base">🔒</span> Botão Trava da Folha
+                        </div>
+                        <p className="text-[11px] font-semibold leading-relaxed text-amber-900 dark:text-amber-200 whitespace-pre-line">
+                          {parte.replace(/^⚠️ Botão Trava da Folha — essencial ao editar a planta:\n/, '').replace(/^Na mesma Barra de Controle flutuante, você encontra o botão 🔒 Trava da Folha — um dos controles mais importantes do sistema.\n/, '')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
+            ) : (
+              <p className="text-xs font-semibold leading-relaxed text-muted-foreground text-left whitespace-pre-line">{p.texto}</p>
+            )}
+
             {modo === 'simples' && noFimDoBasico && (
               <button type="button" onClick={irParaCompleto}
                 className="flex items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3.5 text-left text-xs text-muted-foreground hover:bg-primary/10">
