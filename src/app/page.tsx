@@ -4306,7 +4306,7 @@ export default function EditorPage() {
       const latsStr = candidatos.map(c => c.lat.toFixed(6)).join(',');
       const lonsStr = candidatos.map(c => c.lon.toFixed(6)).join(',');
 
-      const resApi = await fetch(`https://elevation-api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}`);
+      const resApi = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}`);
       if (!resApi.ok) throw new Error('Falha na resposta do servidor Open-Meteo.');
       const data = await resApi.json();
 
