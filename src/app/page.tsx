@@ -1434,6 +1434,18 @@ export default function EditorPage() {
       else if (k === 'F10') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
       else if (k === 'F11') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
       else if (k === 'F12') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
+      else if ((e.ctrlKey || e.metaKey) && e.altKey && (k === '+' || k === '=')) {
+        e.preventDefault();
+        setEscalaInterface((prev) => Math.min(1.25, Number((prev + 0.05).toFixed(2))));
+      }
+      else if ((e.ctrlKey || e.metaKey) && e.altKey && k === '-') {
+        e.preventDefault();
+        setEscalaInterface((prev) => Math.max(0.9, Number((prev - 0.05).toFixed(2))));
+      }
+      else if ((e.ctrlKey || e.metaKey) && e.altKey && k.toLowerCase() === '0') {
+        e.preventDefault();
+        setEscalaInterface(1);
+      }
       else if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'z') {
         e.preventDefault();
         desfazer();
@@ -5423,10 +5435,45 @@ export default function EditorPage() {
                     <LogIn className="size-4" /> Fazer login
                   </button>
                 )}
-                <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
+                 <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
                   <Settings className="size-4 text-muted-foreground" /> Ajustes
                 </button>
+                <div className="flex items-center justify-between border-t border-b py-2 px-3 my-1">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Tamanho do texto</span>
+                  <div className="flex items-center gap-1">
+                    <button type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEscalaInterface((prev) => Math.max(0.9, Number((prev - 0.05).toFixed(2))));
+                      }}
+                      className="flex size-6 items-center justify-center rounded border bg-muted/50 text-xs font-bold hover:bg-muted"
+                      title="Diminuir texto (Ctrl + Alt + -)"
+                    >
+                      A-
+                    </button>
+                    <button type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEscalaInterface(1);
+                      }}
+                      className="flex h-6 px-1.5 items-center justify-center rounded border bg-muted/50 text-[10px] font-bold hover:bg-muted"
+                      title="Tamanho padrão"
+                    >
+                      100%
+                    </button>
+                    <button type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEscalaInterface((prev) => Math.min(1.25, Number((prev + 0.05).toFixed(2))));
+                      }}
+                      className="flex size-6 items-center justify-center rounded border bg-muted/50 text-xs font-bold hover:bg-muted"
+                      title="Aumentar texto (Ctrl + Alt + +)"
+                    >
+                      A+
+                    </button>
+                  </div>
+                </div>
                 {souMaster() && user && !entrouSemLogin && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); setModoMaster('gerir'); }}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">

@@ -151,3 +151,20 @@
   background-color: #334155 !important;
 }
 
+/* Accessibility: Map arbitrary font-size utility classes of Tailwind to rem so they scale proportionally */
+.text-\[8px\] {
+  font-size: 0.5rem !important;
+}
+.text-\[9px\] {
+  font-size: 0.5625rem !important;
+}
+.text-\[10px\] {
+  font-size: 0.625rem !important;
+}
+.text-\[11px\] {
+  font-size: 0.6875rem !important;
+}
+.text-\[13px\] {
+  font-size: 0.8125rem !important;
+}
+
