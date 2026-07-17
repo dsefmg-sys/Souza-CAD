@@ -380,24 +380,10 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
                     <span>Audioguia e Autoplay</span>
                   </div>
                   <p className="mt-1 text-[11px] text-muted-foreground leading-normal font-semibold">
-                    Narração gravada em alta qualidade com as principais orientações técnicas.
+                    Cada seção do tutorial tem narração própria. Use <b>Tutorial Completo</b> para ouvir todos os passos em sequência automática.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => alternarAudio('', '/tutorial.mp3')}
-                    title="Ouvir áudio explicativo único de 10 minutos"
-                    className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors hover:bg-muted"
-                  >
-                    {falando && tipoAudio === 'gravado' && !pausado && !ouvirTudo ? (
-                      <><Pause className="size-3 text-amber-500 fill-amber-500" /> Pausar Guia</>
-                    ) : (
-                      <><Play className="size-3 text-emerald-500 fill-emerald-500" /> Guia de Áudio</>
-                    )}
-                  </Button>
                   <Button
                     type="button"
                     size="sm"
@@ -419,7 +405,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
                     {ouvirTudo ? (
                       <><Pause className="size-3 text-white fill-white animate-pulse" /> Parar</>
                     ) : (
-                      <><Play className="size-3 text-white fill-white" /> Autoplay</>
+                      <><Play className="size-3 text-white fill-white" /> Tutorial Completo</>
                     )}
                   </Button>
                 </div>

@@ -53,7 +53,7 @@ import MobileHome from '@/components/MobileHome';
 import AssinaturaModal from '@/components/AssinaturaModal';
 import { rotulosProfissional } from '@/lib/topo/profissional';
 import IntroVideo from '@/components/IntroVideo';
-import { IntroAudioPill, TutorialAudioPill } from '@/components/IntroAudio';
+import { TutorialAudioPill } from '@/components/IntroAudio';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
 import CalculadoraModal from '@/components/CalculadoraModal';
 import VerticeVirtualModal, { type DadosVerticeVirtual } from '@/components/VerticeVirtualModal';
@@ -6653,7 +6653,6 @@ export default function EditorPage() {
               >
                 <GripVertical className="size-3.5" />
               </div>
-              <IntroAudioPill />
               <TutorialAudioPill modo={modoApp} />
               <button type="button" onClick={() => setTutorialAberto(true)}
                 className="flex h-6 items-center gap-1 rounded-full border bg-background px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
