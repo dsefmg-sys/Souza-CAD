@@ -67,11 +67,12 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
                 setFalando(true);
                 setPausado(false);
               }).catch((e) => {
-                console.warn('Autoplay play failed:', e);
-                setFalando(false);
-                setPausado(false);
+                console.warn('Autoplay play failed, falling back to TTS:', e);
+                falarTextoRef.current(proxP.texto);
               });
             }
+          } else {
+            falarTextoRef.current(proxP.texto);
           }
         }, 1000);
         return proximo;

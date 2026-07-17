@@ -5696,13 +5696,9 @@ export default function EditorPage() {
                               <Redo2 className="size-3.5" />
                             </Button>
                           </div>
-                          <Button size="sm" variant={mostrarRotulos ? 'default' : 'secondary'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
+                          <Button size="sm" variant={mostrarRotulos ? 'default' : 'secondary'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vertices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
                             {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
                             <Atalho k="F4" />
-                          </Button>
-                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'secondary'} className={`col-span-2 relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
-                            <MousePointer2 /> <span>Mover</span>
-                            <Atalho k="F2" />
                           </Button>
                         </div>
                       ) : (
