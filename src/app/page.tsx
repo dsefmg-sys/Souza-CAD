@@ -5448,7 +5448,7 @@ export default function EditorPage() {
           </button>
           <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
             title="Alternar entre mapa e planta"
-            className="flex shrink-0 items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-muted/40">
+            className="flex shrink-0 items-center gap-1 px-3 py-1.5 text-[11px] font-bold text-amber-500 hover:text-amber-600 dark:text-amber-400 hover:bg-muted/40">
             {vista === 'mapa' ? <Eye className="size-4" /> : <MapIcon className="size-4" />}
             {vista === 'mapa' ? 'PLANTA' : 'MAPA'}
           </button>
@@ -5521,44 +5521,30 @@ export default function EditorPage() {
                         <span>Visualização &amp; Navegação</span>
                       </span>
                       {vista === 'mapa' ? (
-                        <>
-                          {/* Grade de 3 colunas: [Desfazer+Refazer] + Mover + Orto */}
-                          <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none mb-1">
-                            <div className="flex gap-0.5 w-full">
-                              <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
-                                <Undo2 className="size-3.5" />
-                              </Button>
-                              <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
-                                <Redo2 className="size-3.5" />
-                              </Button>
-                            </div>
-                            <Button size="sm" variant={modo === 'navegar' ? 'default' : 'secondary'} className={`relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
-                              <MousePointer2 /> <span>Mover</span>
-                              <Atalho k="F2" />
+                        <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
+                          <div className="flex gap-0.5 w-full">
+                            <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
+                              <Undo2 className="size-3.5" />
                             </Button>
-                            <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto: clique no mapa para adicionar texto (F9)" onClick={() => alternarModo('texto')}>
-                              <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span>Texto</span>
-                              <Atalho k="F9" />
+                            <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
+                              <Redo2 className="size-3.5" />
                             </Button>
                           </div>
-                          {/* Grade de 3 colunas: Travar + Ímã + Rótulos */}
-                          <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                            <Button size="sm" variant={bloqueado ? 'secondary' : 'default'} className={`relative ${bloqueado ? 'text-emerald-600 border border-emerald-600/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'bg-red-500 hover:bg-red-600 text-white'}`} title={bloqueado ? 'Vértices travados — F5 (clique para liberar)' : 'ATENÇÃO: vértices liberados (podem mover) — F5 para travar'} onClick={() => setBloqueado((b) => !b)}>
-                              {bloqueado ? <Lock /> : <LockOpen />} <span>{bloqueado ? 'TRAVADO' : 'SOLTO'}</span>
-                              <Atalho k="F5" />
-                            </Button>
-                            <Button size="sm" variant={snapAtivo ? 'default' : 'secondary'} title={`Ímã (F3) — ${snapAtivo ? 'LIGADO' : 'desligado'}. Quando ligado, o ponto que você clicar ao desenhar GRUDA no vértice mais próximo do imóvel (2 m). Bom para cotar de vértice a vértice ou fechar polilinha bem no canto. Se você não desenha perto dos vértices, deixe desligado.`} onClick={() => setSnapAtivo((s) => !s)} className={`relative ${snapAtivo ? COR_ATIVO : ''}`}>
-                              <Magnet /> <span>Ímã</span>
-                              <Atalho k="F3" />
-                            </Button>
-                            <Button size="sm" variant={mostrarRotulos ? 'default' : 'secondary'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
-                              {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
-                              <Atalho k="F4" />
-                            </Button>
-                          </div>
-                        </>
+                          <Button size="sm" variant={mostrarRotulos ? 'default' : 'secondary'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
+                            {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
+                            <Atalho k="F4" />
+                          </Button>
+                          <Button size="sm" variant={modo === 'navegar' ? 'default' : 'secondary'} className={`relative ${modo === 'navegar' ? COR_ATIVO : ''}`} title="Mover/navegar: arrastar elementos (F2)" onClick={() => setModo('navegar')}>
+                            <MousePointer2 /> <span>Mover</span>
+                            <Atalho k="F2" />
+                          </Button>
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto: clique no mapa para adicionar texto (F9)" onClick={() => alternarModo('texto')}>
+                            <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span>Texto</span>
+                            <Atalho k="F9" />
+                          </Button>
+                        </div>
                       ) : (
-                        <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
+                        <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
                           <div className="flex gap-0.5 w-full">
                             <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
                               <Undo2 className="size-3.5" />
@@ -5571,7 +5557,7 @@ export default function EditorPage() {
                             <MousePointer2 /> <span>Mover</span>
                             <Atalho k="F1" />
                           </Button>
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto: clique na planta para adicionar texto (F9)" onClick={() => alternarModo('texto')}>
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`col-span-2 relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto: clique na planta para adicionar texto (F9)" onClick={() => alternarModo('texto')}>
                             <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span>Texto</span>
                             <Atalho k="F9" />
                           </Button>
@@ -6322,7 +6308,7 @@ export default function EditorPage() {
                   sumir). Atalho ESC em dourado. */}
               <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
                 title="Alternar entre mapa e planta (Esc)"
-                className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-primary px-2.5 text-[10px] font-bold text-primary-foreground shadow-sm hover:brightness-110 transition">
+                className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 px-2.5 text-[10px] font-bold text-white shadow-sm transition hover:brightness-110">
                 {vista === 'mapa' ? <Eye className="size-3.5" /> : <MapIcon className="size-3.5" />}
                 <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
                 <span className="rounded-sm bg-black/20 px-1 font-mono text-[8px] font-semibold text-amber-300">ESC</span>
@@ -6558,6 +6544,7 @@ export default function EditorPage() {
           ) : vista === 'mapa' ? (
             <ErrorBoundary onReset={() => setVista('planta')}>
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
+                 onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
                  centroPadrao={entradaMapa.centro} zoomPadrao={entradaMapa.zoom}
                  onAtivar3D={modo3dAtivado ? () => setVista('3d') : undefined}
                 confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
@@ -8334,6 +8321,326 @@ export default function EditorPage() {
           })}
         </defs>
       </svg>
+
+      <Dialog open={objPersonalizarId !== null} onOpenChange={(open) => { if (!open) setObjPersonalizarId(null); }}>
+        <DialogContent className="w-[90vw] max-w-[450px] p-5">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-1.5">
+              <Pencil className="size-4 text-amber-500" /> Personalizar Elemento
+            </DialogTitle>
+          </DialogHeader>
+
+          {(() => {
+            const obj = objetos.find((o) => o.id === objPersonalizarId);
+            if (!obj) return <div className="text-xs text-muted-foreground py-4 text-center">Elemento não encontrado ou removido.</div>;
+
+            return (
+              <div className="space-y-4 text-xs text-left">
+                {/* Cor do Elemento */}
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cor do Elemento</Label>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {[
+                      { nome: 'Azul', hex: '#2563eb' },
+                      { nome: 'Verde', hex: '#16a34a' },
+                      { nome: 'Vermelho', hex: '#dc2626' },
+                      { nome: 'Dourado', hex: '#d97706' },
+                      { nome: 'Roxo', hex: '#7c3aed' },
+                      { nome: 'Cinza', hex: '#4b5563' },
+                      { nome: 'Branco', hex: '#ffffff' },
+                      { nome: 'Preto', hex: '#000000' }
+                    ].map((c) => (
+                      <button
+                        key={c.hex}
+                        type="button"
+                        onClick={() => editarObjetoSel({ cor: c.hex })}
+                        title={c.nome}
+                        className={`size-6 rounded-md border border-zinc-200 dark:border-zinc-800 transition ${
+                          obj.cor === c.hex ? 'ring-2 ring-amber-500 ring-offset-1 dark:ring-offset-zinc-950' : 'hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: c.hex }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground font-semibold">Personalizada:</span>
+                    <input
+                      type="color"
+                      value={obj.cor && obj.cor.startsWith('#') && obj.cor.length === 7 ? obj.cor : '#2563eb'}
+                      onChange={(e) => editarObjetoSel({ cor: e.target.value })}
+                      className="size-6 cursor-pointer border-none bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={obj.cor ?? ''}
+                      placeholder="#2563eb"
+                      onChange={(e) => editarObjetoSel({ cor: e.target.value })}
+                      className="h-7 w-24 rounded border bg-background px-2 text-[10px] font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Campos específicos por Tipo de Objeto */}
+                {obj.tipo === 'texto' && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Conteúdo do Texto</Label>
+                      <textarea
+                        value={obj.texto ?? ''}
+                        onChange={(e) => editarObjetoSel({ texto: e.target.value })}
+                        className="w-full rounded border bg-background p-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none min-h-[60px]"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tamanho da Fonte (pt)</Label>
+                        <input
+                          type="number"
+                          min="4"
+                          max="120"
+                          value={obj.tamanho ?? 12}
+                          onChange={(e) => editarObjetoSel({ tamanho: Number(e.target.value) })}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alinhamento</Label>
+                        <select
+                          value={obj.alinhamento ?? 'left'}
+                          onChange={(e) => editarObjetoSel({ alinhamento: e.target.value as any })}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground bg-popover"
+                        >
+                          <option value="left">Esquerda</option>
+                          <option value="center">Centro</option>
+                          <option value="right">Direita</option>
+                        </select>
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={!!obj.negrito}
+                        onChange={(e) => editarObjetoSel({ negrito: e.target.checked })}
+                        className="rounded text-amber-500 focus:ring-amber-500"
+                      />
+                      <span className="font-bold text-foreground">Texto em Negrito</span>
+                    </label>
+                  </div>
+                )}
+
+                {obj.tipo === 'cota' && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tamanho do Offset (m)</Label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={obj.tamanho ?? 5}
+                          onChange={(e) => editarObjetoSel({ tamanho: Number(e.target.value) })}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Espessura da Cota</Label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.5"
+                          max="10"
+                          value={obj.espessura ?? 1.2}
+                          onChange={(e) => editarObjetoSel({ espessura: Number(e.target.value) })}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tamanho da Fonte (pt)</Label>
+                        <input
+                          type="number"
+                          min="4"
+                          max="72"
+                          value={obj.tamanhoFonte ?? 10}
+                          onChange={(e) => editarObjetoSel({ tamanhoFonte: Number(e.target.value) })}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Posição do Texto</Label>
+                        <select
+                          value={obj.posicaoTexto ?? 'acima'}
+                          onChange={(e) => editarObjetoSel({ posicaoTexto: e.target.value })}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground bg-popover"
+                        >
+                          <option value="acima">Acima da Linha</option>
+                          <option value="centro">No Centro</option>
+                          <option value="abaixo">Abaixo da Linha</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {obj.tipo === 'polilinha' && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Espessura (px)</Label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0.5"
+                          max="20"
+                          value={obj.espessura ?? 1.5}
+                          onChange={(e) => editarObjetoSel({ espessura: Number(e.target.value) })}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Estilo da Linha</Label>
+                        <select
+                          value={obj.estiloLinha ?? (obj.tracejado ? 'tracejado' : 'solido')}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            editarObjetoSel({
+                              estiloLinha: val,
+                              tracejado: val === 'tracejado'
+                            });
+                          }}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground bg-popover"
+                        >
+                          <option value="solido">Sólido</option>
+                          <option value="tracejado">Tracejado</option>
+                          <option value="pontilhado">Pontilhado</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Preenchimento Polígono</Label>
+                        <select
+                          value={obj.preenchido ? 'sim' : 'nao'}
+                          onChange={(e) => editarObjetoSel({ preenchido: e.target.value === 'sim' })}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground bg-popover"
+                        >
+                          <option value="nao">Sem Preenchimento</option>
+                          <option value="sim">Preenchido</option>
+                        </select>
+                      </div>
+                      {obj.preenchido && (
+                        <div className="space-y-1">
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Estilo Achura</Label>
+                          <select
+                            value={obj.achura ?? 'nenhuma'}
+                            onChange={(e) => editarObjetoSel({ achura: e.target.value })}
+                            className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground bg-popover"
+                          >
+                            <option value="nenhuma">Cor Sólida</option>
+                            <option value="linhas">Linhas Paralelas</option>
+                            <option value="cruzado">Linhas Cruzadas</option>
+                            <option value="pontos">Pontos Dispersos</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    {obj.preenchido && (
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cor do Preenchimento</Label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={obj.corPreenchimento ?? obj.cor ?? '#2563eb'}
+                            onChange={(e) => editarObjetoSel({ corPreenchimento: e.target.value })}
+                            className="size-6 cursor-pointer border-none bg-transparent"
+                          />
+                          <input
+                            type="text"
+                            value={obj.corPreenchimento ?? ''}
+                            placeholder="#2563eb"
+                            onChange={(e) => editarObjetoSel({ corPreenchimento: e.target.value })}
+                            className="h-7 w-full rounded border bg-background px-2 text-[10px] font-mono"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Categoria CAR (Ambiental)</Label>
+                      <select
+                        value={obj.carTema ?? ''}
+                        onChange={(e) => editarObjetoSel({ carTema: (e.target.value || undefined) as any })}
+                        className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground bg-popover"
+                      >
+                        <option value="">Nenhuma (Desenho Livre)</option>
+                        <option value="app">Preservação Permanente (APP)</option>
+                        <option value="reservaLegal">Reserva Legal</option>
+                        <option value="vegetacao">Uso Alternativo do Solo / Vegetação</option>
+                        <option value="usoConsolidado">Área de Uso Consolidado</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {obj.tipo === 'simbolo' && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tipo de Símbolo</Label>
+                        <select
+                          value={obj.simbolo ?? 'arvore'}
+                          onChange={(e) => editarObjetoSel({ simbolo: e.target.value })}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs text-foreground bg-popover"
+                        >
+                          <option value="arvore">Árvore</option>
+                          <option value="arbusto">Arbusto</option>
+                          <option value="casa">Construção / Casa</option>
+                          <option value="poste">Poste de Energia</option>
+                          <option value="pedra">Afloramento de Pedra</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tamanho (px)</Label>
+                        <input
+                          type="number"
+                          min="10"
+                          max="200"
+                          value={obj.tamanho ?? 30}
+                          onChange={(e) => editarObjetoSel({ tamanho: Number(e.target.value) })}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Ações */}
+                <div className="flex gap-2 pt-2 border-t mt-4">
+                  <Button
+                    variant="destructive"
+                    className="flex-1 font-bold text-xs"
+                    onClick={() => {
+                      apagarObjetoSel();
+                      setObjPersonalizarId(null);
+                    }}
+                  >
+                    <Trash2 className="size-3.5 mr-1" /> Excluir Elemento
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="flex-1 font-bold text-xs"
+                    onClick={() => setObjPersonalizarId(null)}
+                  >
+                    Fechar
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       <ErrorBoundary onReset={() => setPlanilhaAberta(false)}>
         <ModalSpreadsheet

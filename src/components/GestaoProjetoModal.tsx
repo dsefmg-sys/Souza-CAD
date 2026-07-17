@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Receipt, FileText, Plus, Trash2, Wallet, Building2 } from 'lucide-react';
+import { Receipt, FileText, Plus, Trash2, Wallet, Building2, TrendingUp, TrendingDown, Clock, BarChart3 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,48 +111,98 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
 
                 {/* ---- Documentos ---- */}
                 <section>
-                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Documentos para o cliente</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-md border p-3 bg-muted/10">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Valor do recibo (R$)</Label>
-                      <Input type="number" placeholder={String(valorCobrado || '0,00')} value={reciboValor} onChange={(e) => setReciboValor(e.target.value)} />
+                  <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Documentos para o cliente</h3>
+                  <div className="space-y-3">
+                    {/* Bloco 1: Recibo */}
+                    <div className="rounded-xl border p-4 space-y-3 bg-muted/5 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <Receipt className="size-5 text-emerald-500 shrink-0 mt-0.5" />
+                        <div className="space-y-0.5">
+                          <div className="font-bold text-sm text-foreground">Recibo de Pagamento</div>
+                          <div className="text-[11px] text-muted-foreground leading-snug">
+                            Gera um recibo de quitação formal em PDF para entregar ao cliente
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex-1">
+                          <Input
+                            type="number"
+                            placeholder={`Valor do recibo (padrão: ${moedaBR(valorCobrado || recebido || 0)})`}
+                            value={reciboValor}
+                            onChange={(e) => setReciboValor(e.target.value)}
+                            className="h-8 text-xs w-full bg-background"
+                          />
+                        </div>
+                        <Button
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs font-bold shrink-0 border-transparent gap-1.5"
+                          onClick={() => gerarReciboPdf({ ...baseArgs, valor: Number(reciboValor.replace(',', '.')) || valorCobrado || recebido, numero: consumirNumeroRecibo(new Date().getFullYear()) })}
+                        >
+                          <Receipt className="size-3.5" /> Emitir Recibo (PDF)
+                        </Button>
+                      </div>
                     </div>
-                    <div className="space-y-1 flex items-end">
-                      <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold border-transparent" onClick={() => gerarReciboPdf({ ...baseArgs, valor: Number(reciboValor.replace(',', '.')) || valorCobrado || recebido, numero: consumirNumeroRecibo(new Date().getFullYear()) })}>
-                        <Receipt className="size-4 mr-1.5" /> Emitir recibo (PDF)
-                      </Button>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Forma de pagamento (contrato)</Label>
-                      <Input placeholder="ex.: 50% na entrada, 50% na entrega" value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Prazo de execução (dias)</Label>
-                      <Input type="number" placeholder="30" value={prazoDias} onChange={(e) => setPrazoDias(e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold border-transparent" onClick={() => gerarContratoPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined })}>
-                        <FileText className="size-4 mr-1.5" /> Emitir contrato (PDF)
-                      </Button>
-                    </div>
-                    <div className="space-y-1">
-                      <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold border-transparent" onClick={() => gerarPropostaPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined })}>
-                        <FileText className="size-4 mr-1.5" /> Emitir proposta (PDF)
-                      </Button>
+
+                    {/* Bloco 2: Contrato e Proposta */}
+                    <div className="rounded-xl border p-4 space-y-3 bg-muted/5 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <FileText className="size-5 text-blue-500 shrink-0 mt-0.5" />
+                        <div className="space-y-0.5">
+                          <div className="font-bold text-sm text-foreground">Contrato e Proposta de Serviço</div>
+                          <div className="text-[11px] text-muted-foreground leading-snug">
+                            Gere o contrato de prestação de serviços ou a proposta comercial formal
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase font-bold text-muted-foreground">Forma de pagamento</Label>
+                          <Input
+                            placeholder="ex.: 50% na entrada, 50% na entrega"
+                            value={formaPagamento}
+                            onChange={(e) => setFormaPagamento(e.target.value)}
+                            className="h-8 text-xs bg-background"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase font-bold text-muted-foreground">Prazo de execução (dias)</Label>
+                          <Input
+                            type="number"
+                            placeholder="30"
+                            value={prazoDias}
+                            onChange={(e) => setPrazoDias(e.target.value)}
+                            className="h-8 text-xs bg-background"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2 pt-1.5">
+                        <Button
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs font-bold border-transparent gap-1.5"
+                          onClick={() => gerarContratoPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined })}
+                        >
+                          <FileText className="size-3.5" /> Emitir Contrato
+                        </Button>
+                        <Button
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs font-bold border-transparent gap-1.5"
+                          onClick={() => gerarPropostaPdf({ ...baseArgs, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined })}
+                        >
+                          <FileText className="size-3.5" /> Emitir Proposta
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <p className="mt-2 text-[11px] text-muted-foreground">O contrato e a proposta usam o valor cobrado e prazo informados acima.</p>
+                  <p className="mt-2 text-[10px] text-muted-foreground">O contrato e a proposta usam o valor cobrado e prazo informados ao lado.</p>
 
                   <h3 className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted-foreground">Declarações avulsas</h3>
-                  <div className="flex flex-wrap items-center gap-3 rounded-md border p-3">
-                    <Button variant="outline" onClick={async () => saveAs(await gerarDeclaracaoPosseDocx({ imovel, tecnico, dataExtenso }), `Declaracao de posse - ${imovel.denominacao || 'imovel'}.docx`)}>
-                      <FileText className="size-4" /> Declaração de posse
+                  <div className="flex flex-wrap items-center gap-2.5 rounded-xl border p-3 bg-muted/5">
+                    <Button variant="outline" className="h-8 text-xs gap-1.5 border-border hover:bg-muted" onClick={async () => saveAs(await gerarDeclaracaoPosseDocx({ imovel, tecnico, dataExtenso }), `Declaracao de posse - ${imovel.denominacao || 'imovel'}.docx`)}>
+                      <FileText className="size-3.5 text-zinc-500" /> Declaração de posse
                     </Button>
-                    <Button variant="outline" onClick={async () => saveAs(await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico, dataExtenso }), `Declaracao de inexistencia de sobreposicao - ${imovel.denominacao || 'imovel'}.docx`)}>
-                      <FileText className="size-4" /> Inexistência de sobreposição
+                    <Button variant="outline" className="h-8 text-xs gap-1.5 border-border hover:bg-muted" onClick={async () => saveAs(await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico, dataExtenso }), `Declaracao de inexistencia de sobreposicao - ${imovel.denominacao || 'imovel'}.docx`)}>
+                      <FileText className="size-3.5 text-zinc-500" /> Inexistência de sobreposição
                     </Button>
-                    <p className="text-[11px] text-muted-foreground">A de posse é assinada pelo possuidor; a de sobreposição, pelo responsável técnico. Os textos são editáveis nos modelos.</p>
                   </div>
+                  <p className="mt-2 text-[10px] text-muted-foreground">A de posse é assinada pelo possuidor; a de sobreposição, pelo responsável técnico. Os textos são editáveis nos modelos.</p>
                 </section>
               </div>
 
@@ -170,7 +220,7 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                     {precos.some((p) => p.valor > 0) && (
                       <div className="space-y-1">
                         <Label className="text-xs">Puxar da tabela de preços</Label>
-                        <select className="h-9 w-56 rounded-md border bg-background px-2 text-xs" value=""
+                        <select className="h-9 w-56 rounded-md border bg-background px-2 text-xs text-foreground bg-popover" value=""
                           onChange={(e) => { const p = precos.find((x) => x.id === e.target.value); if (p) patch({ valorCobrado: p.valor }); }}>
                           <option value="">Escolher serviço…</option>
                           {precos.filter((p) => p.valor > 0).map((p) => (
@@ -179,12 +229,12 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                         </select>
                       </div>
                     )}
-                    <div className="flex flex-wrap gap-2 w-full">
-                      <Cartao titulo="Recebido" valor={recebido} cor="text-emerald-600" />
-                      <Cartao titulo="Gastos" valor={gasto} cor="text-red-600" />
-                      <Cartao titulo="Saldo em caixa" valor={saldoCaixa} cor={saldoCaixa >= 0 ? 'text-emerald-700' : 'text-red-700'} />
-                      <Cartao titulo="A receber" valor={aReceber} cor={aReceber > 0 ? 'text-amber-600' : 'text-muted-foreground'} />
-                      <Cartao titulo="Lucro do serviço" valor={lucro} cor={lucro >= 0 ? 'text-emerald-700' : 'text-red-700'} sub={valorCobrado > 0 ? `margem ${margem.toFixed(0)}%` : 'informe o valor cobrado'} />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
+                      <Cartao titulo="Recebido" valor={recebido} cor="text-emerald-600 dark:text-emerald-400" icone={<TrendingUp className="size-4" />} />
+                      <Cartao titulo="Gastos" valor={gasto} cor="text-red-600 dark:text-red-400" icone={<TrendingDown className="size-4" />} />
+                      <Cartao titulo="Saldo em caixa" valor={saldoCaixa} cor={saldoCaixa >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'} icone={<Wallet className="size-4" />} />
+                      <Cartao titulo="A receber" valor={aReceber} cor={aReceber > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'} icone={<Clock className="size-4" />} />
+                      <Cartao titulo="Lucro do serviço" valor={lucro} cor={lucro >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'} sub={valorCobrado > 0 ? `margem ${margem.toFixed(0)}%` : 'informe o valor cobrado'} icone={<BarChart3 className="size-4" />} />
                     </div>
                   </div>
 
@@ -272,11 +322,31 @@ function EmpresaResumo({ projetos, isAdmin }: { projetos: Projeto[] | null; isAd
     return timeB - timeA;
   });
 
+  // Calcular estatísticas globais consolidadas
+  const totalGlobal = projetos.reduce((s, p) => {
+    const r = resumoFin(p.imovel?.financeiro);
+    return {
+      cobrado: s.cobrado + r.cobrado,
+      recebido: s.recebido + r.recebido,
+      gasto: s.gasto + r.gasto,
+      aReceber: s.aReceber + r.aReceber,
+      saldo: s.saldo + r.saldo
+    };
+  }, { cobrado: 0, recebido: 0, gasto: 0, aReceber: 0, saldo: 0 });
+
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Visão geral consolidada por mês</h3>
         <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Administrador</span>
+      </div>
+
+      {/* Cartões de Resumo Histórico Consolidado da Empresa */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-muted/10 p-3 rounded-xl border">
+        <Cartao titulo="Total Cobrado" valor={totalGlobal.cobrado} cor="text-zinc-700 dark:text-zinc-300" icone={<BarChart3 className="size-4" />} />
+        <Cartao titulo="Total Recebido" valor={totalGlobal.recebido} cor="text-emerald-600 dark:text-emerald-400" icone={<TrendingUp className="size-4" />} />
+        <Cartao titulo="Total Gasto" valor={totalGlobal.gasto} cor="text-red-600 dark:text-red-400" icone={<TrendingDown className="size-4" />} />
+        <Cartao titulo="Saldo Acumulado" valor={totalGlobal.saldo} cor={totalGlobal.saldo >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'} icone={<Wallet className="size-4" />} />
       </div>
 
       {mesesOrdenados.map((mes) => {
@@ -344,12 +414,15 @@ function Info({ rotulo, valor }: { rotulo: string; valor: string }) {
   );
 }
 
-function Cartao({ titulo, valor, cor, sub }: { titulo: string; valor: number; cor: string; sub?: string }) {
+function Cartao({ titulo, valor, cor, sub, icone }: { titulo: string; valor: number; cor: string; sub?: string; icone?: React.ReactNode }) {
   return (
-    <div className="rounded-md border bg-background px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{titulo}</div>
-      <div className={`text-sm font-bold ${cor}`}>{moedaBR(valor)}</div>
-      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
+    <div className="flex items-center gap-3 rounded-xl border bg-background px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+      {icone && <div className={`text-xl p-2 rounded-lg bg-muted/50 ${cor}`}>{icone}</div>}
+      <div className="min-w-0">
+        <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-black leading-none mb-1">{titulo}</div>
+        <div className={`text-sm font-black tracking-tight leading-none ${cor}`}>{moedaBR(valor)}</div>
+        {sub && <div className="text-[9px] text-muted-foreground mt-1 truncate leading-none">{sub}</div>}
+      </div>
     </div>
   );
 }

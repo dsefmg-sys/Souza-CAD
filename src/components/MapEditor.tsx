@@ -82,6 +82,7 @@ interface Props {
   onDblClickVertice?: (v: Vertex, x: number, y: number) => void;
   onDblClickDivisa?: (v: Vertex, idx: number, x: number, y: number) => void;
   onContextMenuMapa?: (lat: number, lon: number, x: number, y: number) => void;
+  onDblClickObjeto?: (id: string) => void;
   confrontantes?: Confrontante[];
   confrontantePorLado?: Record<number, string>;
   onEditarConfrontante?: (id: string) => void;
@@ -1301,6 +1302,7 @@ export default function MapEditor(props: Props) {
     corBordaCert = '#0891b2',
     espessuraCert = 1.4,
     onContextMenuCert,
+    onDblClickObjeto,
   } = props;
 
   const [zoom, setZoom] = useState(16);
@@ -1794,11 +1796,11 @@ export default function MapEditor(props: Props) {
                   </Polyline>
                 )
                 : fechado
-                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor, fillOpacity }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+                ? <Polygon positions={pos} pathOptions={{ ...comum, fillColor, fillOpacity }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, dblclick: () => { if (!bloqueada) onDblClickObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
                 : (
                   <>
-                    <Polyline positions={pos} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
-                    <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+                    <Polyline positions={pos} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, dblclick: () => { if (!bloqueada) onDblClickObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+                    <Polyline positions={pos} pathOptions={comum} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, dblclick: () => { if (!bloqueada) onDblClickObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
                   </>
                 )}
               {sel && !bloqueada && pos.map((p, idx) => (
@@ -1850,10 +1852,10 @@ export default function MapEditor(props: Props) {
             <Fragment key={o.id}>
               <Polyline positions={[[p0.lat, p0.lon], [g0.lat, g0.lon]]} pathOptions={{ color: corCota, weight: 0.8, dashArray: '2 3' }} />
               <Polyline positions={[[p1.lat, p1.lon], [g1.lat, g1.lon]]} pathOptions={{ color: corCota, weight: 0.8, dashArray: '2 3' }} />
-              <Polyline positions={posOffset} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
-              <Polyline positions={posOffset} pathOptions={{ color: corCota, weight: espessuraCota + (sel ? 0.8 : 0) }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+              <Polyline positions={posOffset} pathOptions={{ color: '#000', opacity: 0, weight: 16 }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, dblclick: () => { if (!bloqueada) onDblClickObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+              <Polyline positions={posOffset} pathOptions={{ color: corCota, weight: espessuraCota + (sel ? 0.8 : 0) }} eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, dblclick: () => { if (!bloqueada) onDblClickObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
               <Marker position={mid} icon={L.divIcon({ className: 'cota-label', html: labelHtml, iconSize: [1, 1], iconAnchor: [0, 0] })}
-                eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
+                eventHandlers={{ click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } }, dblclick: () => { if (!bloqueada) onDblClickObjeto?.(o.id); }, contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); } }} />
               {sel && !bloqueada && pos.map((p, idx) => (
                 <Marker key={`hc${idx}`} position={p} draggable opacity={0}
                   eventHandlers={{
@@ -1871,6 +1873,7 @@ export default function MapEditor(props: Props) {
               icon={L.divIcon({ className: 'simbolo-obj', html, iconSize: [tam, tam], iconAnchor: [tam / 2, tam / 2] })}
               eventHandlers={{
                 click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } },
+                dblclick: () => { if (!bloqueada) onDblClickObjeto?.(o.id); },
                 contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); },
                 dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
               }} />
@@ -1881,6 +1884,7 @@ export default function MapEditor(props: Props) {
           <Marker key={o.id} position={[o.pontos[0].lat, o.pontos[0].lon]} draggable={modo === 'navegar' && !bloqueada} icon={iconeTexto(o, sel, estiloCamada?.cor)}
             eventHandlers={{
               click: () => { if (!bloqueada) { if (modo === 'multi') onToggleMultiObj?.(o.id); else onSelecObjeto?.(o.id); } },
+              dblclick: () => { if (!bloqueada) onDblClickObjeto?.(o.id); },
               contextmenu: (e) => { if (!bloqueada) onContextMenuObjeto?.(o.id, o.tipo, e.originalEvent.clientX, e.originalEvent.clientY); },
               dragend: (e) => { const ll = (e.target as L.Marker).getLatLng(); onMoverPontoObjeto?.(o.id, 0, ll.lat, ll.lng); }
             }} />
