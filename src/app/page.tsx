@@ -4234,6 +4234,7 @@ export default function EditorPage() {
   const [curvaEspessura, setCurvaEspessura] = useState<'fina' | 'media' | 'grossa'>('media');
   const [curvaConfigAberta, setCurvaConfigAberta] = useState(false);
   const [ajusteAltCm, setAjusteAltCm] = useState('');
+  const [adensarOnlineAtivo, setAdensarOnlineAtivo] = useState(true);
 
   function ajustarAltitudesGlobais(cm: number) {
     if (!cm || isNaN(cm)) return;
@@ -4251,18 +4252,19 @@ export default function EditorPage() {
         elevacao: +((v.elevacao ?? 0) + deltaMeters).toFixed(4),
       }))
     );
-    aviso(`Ajuste de ${cm > 0 ? '+' : ''}${cm}cm aplicado a todos os pontos.`);
+    aviso(`Ajuste de ${cm > 0 ? '+' : ''}${cm}cm applied to all points.`);
   }
 
   // Espessura (mm de tela) da curva normal e da mestra, por nível de nitidez escolhido.
   const ESP_CURVA = { fina: { normal: 0.5, mestra: 1.1 }, media: { normal: 0.7, mestra: 1.5 }, grossa: { normal: 1.0, mestra: 2.1 } } as const;
 
   // Junta os pontos com altitude (perímetro + ignorados/internos + grade digital online) no plano UTM — base pra sugerir e gerar.
-  function pontos3dCurvas(): Ponto3D[] {
+  function pontos3dCurvas(gradeOverride?: typeof gradeAltimetrica): Ponto3D[] {
     const pts = [...vertices, ...verticesIgnorados]
       .filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte) && Number.isFinite(v.elevacao))
       .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }));
-    const ptsGrade = gradeAltimetrica.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
+    const activeGrade = gradeOverride || gradeAltimetrica;
+    const ptsGrade = activeGrade.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
     const total = [...pts, ...ptsGrade];
     const vistos = new Set<string>();
     return total.filter((p) => {
@@ -4281,7 +4283,124 @@ export default function EditorPage() {
   // Gera as CURVAS DE NÍVEL: triangula os pontos medidos, extrai as isolinhas no intervalo escolhido,
   // recorta ao polígono do imóvel e aplica os ajustes da engrenagem (cor, espessura, mestra a cada N).
   async function gerarCurvasNivel() {
-    const pts3d = pontos3dCurvas();
+    let activeGrade = gradeAltimetrica;
+    if (adensarOnlineAtivo && gradeAltimetrica.length === 0 && vertices.length >= 3) {
+      setProcessando(true);
+      aviso('Buscando grade de altitudes oficiais do terreno (Copernicus DEM)...');
+      try {
+        const lats = vertices.map(v => v.lat);
+        const lons = vertices.map(v => v.lon);
+        const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+        const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+
+        // Grid 8x8 com jitter de 15% para quebrar colinearidades
+        const GRID_SIZE = 8;
+        const candidatos: { lat: number; lon: number }[] = [];
+        const poly = vertices.map(v => ({ x: v.lon, y: v.lat }));
+        const stepLat = (maxLat - minLat) / (GRID_SIZE - 1);
+        const stepLon = (maxLon - minLon) / (GRID_SIZE - 1);
+
+        for (let i = 0; i < GRID_SIZE; i++) {
+          const baseLat = minLat + stepLat * i;
+          for (let j = 0; j < GRID_SIZE; j++) {
+            const baseLon = minLon + stepLon * j;
+            const jitterLat = (Math.random() - 0.5) * stepLat * 0.15;
+            const jitterLon = (Math.random() - 0.5) * stepLon * 0.15;
+            const lat = baseLat + jitterLat;
+            const lon = baseLon + jitterLon;
+            if (pontoNoPoligono(lon, lat, poly)) {
+              candidatos.push({ lat, lon });
+            }
+          }
+        }
+
+        if (candidatos.length === 0) {
+          const cLat = lats.reduce((a, b) => a + b, 0) / vertices.length;
+          const cLon = lons.reduce((a, b) => a + b, 0) / vertices.length;
+          candidatos.push({ lat: cLat, lon: cLon });
+        }
+
+        // Também busca altitudes para os vértices do perímetro sem cota para evitar efeito serrilhado na borda
+        const queryPoints = [...candidatos];
+        const startIndexVertices = queryPoints.length;
+        vertices.forEach(v => {
+          if (!v.elevacao) {
+            queryPoints.push({ lat: v.lat, lon: v.lon });
+          }
+        });
+        const startIndexIgnorados = queryPoints.length;
+        verticesIgnorados.forEach(v => {
+          if (!v.elevacao) {
+            queryPoints.push({ lat: v.lat, lon: v.lon });
+          }
+        });
+
+        const latsStr = queryPoints.map(c => c.lat.toFixed(6)).join(',');
+        const lonsStr = queryPoints.map(c => c.lon.toFixed(6)).join(',');
+
+        const resApi = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}`);
+        if (resApi.ok) {
+          const data = await resApi.json();
+          if (data && Array.isArray(data.elevation)) {
+            const pontosObtidos: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[] = [];
+            for (let k = 0; k < candidatos.length; k++) {
+              const elev = data.elevation[k];
+              if (Number.isFinite(elev)) {
+                const cand = candidatos[k];
+                const u = geoParaUtm(cand.lat, cand.lon, zona, hemisferio);
+                pontosObtidos.push({
+                  lat: cand.lat,
+                  lon: cand.lon,
+                  leste: u.leste,
+                  norte: u.norte,
+                  elevacao: elev
+                });
+              }
+            }
+            if (pontosObtidos.length > 0) {
+              setGradeAltimetrica(pontosObtidos);
+              activeGrade = pontosObtidos;
+            }
+
+            // Atualiza os vértices sem altitude
+            let mudouVertice = false;
+            const novosVertices = vertices.map((v, idx) => {
+              const indexNoLote = startIndexVertices + vertices.filter((x, i) => i < idx && !x.elevacao).length;
+              if (!v.elevacao && indexNoLote < startIndexIgnorados) {
+                const elev = data.elevation[indexNoLote];
+                if (Number.isFinite(elev)) {
+                  mudouVertice = true;
+                  return { ...v, elevacao: +elev.toFixed(4) };
+                }
+              }
+              return v;
+            });
+            if (mudouVertice) setVertices(novosVertices);
+
+            // Atualiza os ignorados
+            let mudouIgnorados = false;
+            const novosIgnorados = verticesIgnorados.map((v, idx) => {
+              const indexNoLote = startIndexIgnorados + verticesIgnorados.filter((x, i) => i < idx && !x.elevacao).length;
+              if (!v.elevacao && indexNoLote < queryPoints.length) {
+                const elev = data.elevation[indexNoLote];
+                if (Number.isFinite(elev)) {
+                  mudouIgnorados = true;
+                  return { ...v, elevacao: +elev.toFixed(4) };
+                }
+              }
+              return v;
+            });
+            if (mudouIgnorados) setVerticesIgnorados(novosIgnorados);
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao adensar relevo automaticamente:', e);
+      } finally {
+        setProcessando(false);
+      }
+    }
+
+    const pts3d = pontos3dCurvas(activeGrade);
     if (pts3d.length < 4) {
       await avisar({
         titulo: 'Curvas de nível',
@@ -4345,15 +4464,21 @@ export default function EditorPage() {
       const minLat = Math.min(...lats), maxLat = Math.max(...lats);
       const minLon = Math.min(...lons), maxLon = Math.max(...lons);
 
-      // Gera um grid de 8x8 pontos (suficientemente denso e rápido)
+      // Gera um grid de 8x8 pontos (suficientemente denso e rápido) com jitter
       const GRID_SIZE = 8;
       const candidatos: { lat: number; lon: number }[] = [];
       const poly = vertices.map(v => ({ x: v.lon, y: v.lat })); // verificação em coordenadas geográficas
+      const stepLat = (maxLat - minLat) / (GRID_SIZE - 1);
+      const stepLon = (maxLon - minLon) / (GRID_SIZE - 1);
 
       for (let i = 0; i < GRID_SIZE; i++) {
-        const lat = minLat + (maxLat - minLat) * (i / (GRID_SIZE - 1));
+        const baseLat = minLat + stepLat * i;
         for (let j = 0; j < GRID_SIZE; j++) {
-          const lon = minLon + (maxLon - minLon) * (j / (GRID_SIZE - 1));
+          const baseLon = minLon + stepLon * j;
+          const jitterLat = (Math.random() - 0.5) * stepLat * 0.15;
+          const jitterLon = (Math.random() - 0.5) * stepLon * 0.15;
+          const lat = baseLat + jitterLat;
+          const lon = baseLon + jitterLon;
           if (pontoNoPoligono(lon, lat, poly)) {
             candidatos.push({ lat, lon });
           }
@@ -4367,10 +4492,23 @@ export default function EditorPage() {
         candidatos.push({ lat: cLat, lon: cLon });
       }
 
-      // Adiciona também os próprios vértices do perímetro no lote para recalibrar a altitude se vierem zerados
-      // Mas com menor peso ou opcional. Vamos buscar apenas a grade interna para adensar.
-      const latsStr = candidatos.map(c => c.lat.toFixed(6)).join(',');
-      const lonsStr = candidatos.map(c => c.lon.toFixed(6)).join(',');
+      // Adiciona também os próprios vértices do perímetro no lote para obter altitudes se vierem zerados
+      const queryPoints = [...candidatos];
+      const startIndexVertices = queryPoints.length;
+      vertices.forEach(v => {
+        if (!v.elevacao) {
+          queryPoints.push({ lat: v.lat, lon: v.lon });
+        }
+      });
+      const startIndexIgnorados = queryPoints.length;
+      verticesIgnorados.forEach(v => {
+        if (!v.elevacao) {
+          queryPoints.push({ lat: v.lat, lon: v.lon });
+        }
+      });
+
+      const latsStr = queryPoints.map(c => c.lat.toFixed(6)).join(',');
+      const lonsStr = queryPoints.map(c => c.lon.toFixed(6)).join(',');
 
       const resApi = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}`);
       if (!resApi.ok) throw new Error('Falha na resposta do servidor Open-Meteo.');
@@ -4400,6 +4538,37 @@ export default function EditorPage() {
         aviso('Não foi possível obter altitudes válidas para a região.');
       } else {
         setGradeAltimetrica(pontosObtidos);
+
+        // Atualiza os vértices sem altitude
+        let mudouVertice = false;
+        const novosVertices = vertices.map((v, idx) => {
+          const indexNoLote = startIndexVertices + vertices.filter((x, i) => i < idx && !x.elevacao).length;
+          if (!v.elevacao && indexNoLote < startIndexIgnorados) {
+            const elev = data.elevation[indexNoLote];
+            if (Number.isFinite(elev)) {
+              mudouVertice = true;
+              return { ...v, elevacao: +elev.toFixed(4) };
+            }
+          }
+          return v;
+        });
+        if (mudouVertice) setVertices(novosVertices);
+
+        // Atualiza os ignorados
+        let mudouIgnorados = false;
+        const novosIgnorados = verticesIgnorados.map((v, idx) => {
+          const indexNoLote = startIndexIgnorados + verticesIgnorados.filter((x, i) => i < idx && !x.elevacao).length;
+          if (!v.elevacao && indexNoLote < queryPoints.length) {
+            const elev = data.elevation[indexNoLote];
+            if (Number.isFinite(elev)) {
+              mudouIgnorados = true;
+              return { ...v, elevacao: +elev.toFixed(4) };
+            }
+          }
+          return v;
+        });
+        if (mudouIgnorados) setVerticesIgnorados(novosIgnorados);
+
         aviso(`Grade de relevo ativada com ${pontosObtidos.length} pontos de altitude online. Clique em [Gerar] para traçar as curvas.`);
       }
     } catch (e) {
@@ -6275,6 +6444,15 @@ export default function EditorPage() {
                                       </label>
                                     </div>
                                   )}
+                                </div>
+                              </div>
+
+                              <div className="space-y-1 mt-1">
+                                <div className="rounded-md bg-muted/20 p-1.5">
+                                  <label className="flex items-center justify-between text-[10px] font-medium cursor-pointer" title="Se ativado, busca altitudes online automaticamente ao clicar em Gerar se a grade estiver vazia">
+                                    <span>Adensar relevo automaticamente</span>
+                                    <input type="checkbox" checked={adensarOnlineAtivo} onChange={(e) => setAdensarOnlineAtivo(e.target.checked)} className="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-primary" />
+                                  </label>
                                 </div>
                               </div>
 

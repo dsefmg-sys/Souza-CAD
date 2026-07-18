@@ -125,12 +125,39 @@ export function conferir(
     }
   }
 
+  // Vértices sem altitude (zero, nulo ou não-finito)
+  for (let i = 0; i < vertices.length; i++) {
+    const v = vertices[i];
+    const nomeV = v.codigoSigef || v.nome || `Vértice ${i + 1}`;
+    if (v.elevacao === 0 || v.elevacao == null || !Number.isFinite(v.elevacao)) {
+      out.push({
+        nivel: 'aviso',
+        campo: 'altitude',
+        msg: `Vértice ${nomeV} está sem altitude (valor é zero ou inválido).`
+      });
+    }
+  }
+
   // vértices duplicados / muito próximos (< 5 cm)
   for (let i = 0; i < vertices.length; i++) {
     for (let j = i + 1; j < vertices.length; j++) {
       const d = Math.hypot(vertices[i].leste - vertices[j].leste, vertices[i].norte - vertices[j].norte);
       if (d < 0.05) {
-        out.push({ nivel: 'erro', campo: 'vértices', msg: `Vértices ${vertices[i].codigoSigef || i + 1} e ${vertices[j].codigoSigef || j + 1} estão sobrepostos (${d.toFixed(3)} m).` });
+        const z1 = vertices[i].elevacao ?? 0;
+        const z2 = vertices[j].elevacao ?? 0;
+        if (Math.abs(z1 - z2) < 0.01) {
+          out.push({
+            nivel: 'erro',
+            campo: 'vértices',
+            msg: `Vértices ${vertices[i].codigoSigef || vertices[i].nome || i + 1} e ${vertices[j].codigoSigef || vertices[j].nome || j + 1} possuem coordenadas e altitude idênticas, indicando possíveis erros ou duplicidade.`
+          });
+        } else {
+          out.push({
+            nivel: 'erro',
+            campo: 'vértices',
+            msg: `Vértices ${vertices[i].codigoSigef || vertices[i].nome || i + 1} e ${vertices[j].codigoSigef || vertices[j].nome || j + 1} estão sobrepostos (${d.toFixed(3)} m).`
+          });
+        }
       }
     }
   }

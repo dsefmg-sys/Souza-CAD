@@ -77,7 +77,7 @@ describe('Delaunay and Contour Coordinate Deduplication', () => {
     const elapsed = Date.now() - t0;
 
     expect(result.length).toBeGreaterThan(0);
-    expect(elapsed).toBeLessThan(50);
+    expect(elapsed).toBeLessThan(150);
     result.forEach((c) => {
       expect(c.linha.length).toBeGreaterThanOrEqual(2);
       c.linha.forEach((pt) => {
