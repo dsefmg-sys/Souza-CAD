@@ -48,6 +48,7 @@ interface Map3DViewerProps {
   imovel: ImovelData;
   onVoltar2D: () => void;
   onCapture?: (dataUrl: string, meta?: { volCorte?: number; volAterro?: number; zRef?: number }) => void;
+  gradeAltimetrica?: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[];
 }
 
 export default function Map3DViewer({
@@ -58,7 +59,8 @@ export default function Map3DViewer({
   onCompletarAltitudes,
   imovel,
   onVoltar2D,
-  onCapture
+  onCapture,
+  gradeAltimetrica = []
 }: Map3DViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Câmera em REFS (não em state): o laço de desenho lê direto a cada quadro, então girar/arrastar/zoom
@@ -598,6 +600,29 @@ export default function Map3DViewer({
         }
       });
 
+      // 4b. Desenha os pontos da grade altimétrica em 3D
+      if (gradeAltimetrica && gradeAltimetrica.length > 0) {
+        gradeAltimetrica.forEach((g) => {
+          const proj = project(g.leste, g.norte, g.elevacao);
+          
+          // Desenha bolinha amarela pequena
+          ctx.beginPath();
+          ctx.arc(proj.x, proj.y, 3.5, 0, 2 * Math.PI);
+          ctx.fillStyle = '#facc15';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.0;
+          ctx.stroke();
+
+          // Desenha rótulo de altitude
+          if (mostrarLabels3D) {
+            ctx.fillStyle = '#fde68a';
+            ctx.font = 'bold 7.5px monospace';
+            ctx.fillText(`${g.elevacao.toFixed(1)}m`, proj.x + 5, proj.y - 2);
+          }
+        });
+      }
+
       // 5. Bússola 3D no canto superior esquerdo
       const compassProj = (x: number, y: number, z: number) => {
         const x1 = x * cosY - y * sinY;
@@ -634,7 +659,7 @@ export default function Map3DViewer({
     loop();
 
     return () => cancelAnimationFrame(animFrame);
-  }, [vertices, objetos, exagero, stats, hasZ, finitePts, superficie, temSuperficie, mostrarParedes, mostrarTin, destacarErros, calcVolumeAtivo, zRef, fatorEmpolamento, mostrarLabels3D]);
+  }, [vertices, objetos, exagero, stats, hasZ, finitePts, superficie, temSuperficie, mostrarParedes, mostrarTin, destacarErros, calcVolumeAtivo, zRef, fatorEmpolamento, mostrarLabels3D, gradeAltimetrica]);
 
   // Redimensionamento automático do canvas
   useEffect(() => {

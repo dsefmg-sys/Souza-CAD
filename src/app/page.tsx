@@ -4468,7 +4468,7 @@ export default function EditorPage() {
     const activeIgnorados = ignoradosOverride || verticesIgnorados;
     const pts = [...activeVertices, ...activeIgnorados]
           .map((v) => {
-            const z = desconsiderarVerticesLevantados ? (verticesOnlineElev[v.id] ?? v.elevacao) : v.elevacao;
+            const z = desconsiderarVerticesLevantados ? (verticesOnlineElev[`${modeloElevacao}:${v.id}`] ?? verticesOnlineElev[v.id] ?? v.elevacao) : v.elevacao;
             return { x: v.leste, y: v.norte, z };
           })
           .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && p.z !== 0);
@@ -4548,22 +4548,23 @@ export default function EditorPage() {
 
   async function obterAltitudesLote(pontos: { lat: number; lon: number }[]): Promise<Record<string, number>> {
     const localCache: Record<string, number> = {};
-    const aBuscar: { lat: number; lon: number; key: string }[] = [];
+    const aBuscar: { lat: number; lon: number; key: string; cacheKey: string }[] = [];
 
     for (const p of pontos) {
       const key = `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`;
-      if (verticesOnlineElev[key] !== undefined) {
-        localCache[key] = verticesOnlineElev[key];
+      const cacheKey = `${modeloElevacao}:${key}`;
+      if (verticesOnlineElev[cacheKey] !== undefined) {
+        localCache[key] = verticesOnlineElev[cacheKey];
       } else {
         if (!aBuscar.some(x => x.key === key)) {
-          aBuscar.push({ lat: p.lat, lon: p.lon, key });
+          aBuscar.push({ lat: p.lat, lon: p.lon, key, cacheKey });
         }
       }
     }
 
     if (aBuscar.length > 0) {
-      // Reduzido para 150 pontos para evitar 414 Request-URI Too Large (limitação de tamanho de URL)
       const BATCH_SIZE = 150;
+      const globalUpdates: Record<string, number> = {};
       for (let i = 0; i < aBuscar.length; i += BATCH_SIZE) {
         const batch = aBuscar.slice(i, i + BATCH_SIZE);
         const latsStr = batch.map(c => c.lat.toFixed(6)).join(',');
@@ -4580,12 +4581,13 @@ export default function EditorPage() {
           const elev = data.elevation[idx];
           if (Number.isFinite(elev)) {
             localCache[c.key] = elev;
+            globalUpdates[c.cacheKey] = elev;
           }
         });
       }
 
       // Atualiza o cache global
-      setVerticesOnlineElev(prev => ({ ...prev, ...localCache }));
+      setVerticesOnlineElev(prev => ({ ...prev, ...globalUpdates }));
     }
 
     return localCache;
@@ -4675,6 +4677,7 @@ export default function EditorPage() {
           const elev = resAltitudes[key];
           if (elev !== undefined) {
             mapOnline[v.id] = +elev.toFixed(4);
+            mapOnline[`${modeloElevacao}:${v.id}`] = +elev.toFixed(4);
           }
         });
         novosIgnorados.forEach(v => {
@@ -4682,6 +4685,7 @@ export default function EditorPage() {
           const elev = resAltitudes[key];
           if (elev !== undefined) {
             mapOnline[v.id] = +elev.toFixed(4);
+            mapOnline[`${modeloElevacao}:${v.id}`] = +elev.toFixed(4);
           }
         });
         setVerticesOnlineElev(prev => ({ ...prev, ...mapOnline }));
@@ -7183,6 +7187,7 @@ export default function EditorPage() {
                 hemisferio={hemisferio}
                 imovel={imovel}
                 onVoltar2D={() => setVista('mapa')}
+                gradeAltimetrica={gradeAltimetrica}
                 onCapture={(dataUrl, meta) => {
                   atualizarPlantaConfig((c) => ({
                     ...c,
