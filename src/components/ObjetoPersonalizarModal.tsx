@@ -508,6 +508,7 @@ export function ObjetoPersonalizarModal({
           if (tipoPlanta === 'print3d') {
             const id3D = 'planta.print3d';
             const ov3D = plantaConfig.textos?.[id3D] || {};
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const esc3D = (ov3D as any).escala ?? 1.0;
             const temTerrap = plantaConfig.print3dVolumeCorte != null || plantaConfig.print3dVolumeAterro != null;
             return (

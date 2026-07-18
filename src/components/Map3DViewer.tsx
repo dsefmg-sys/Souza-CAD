@@ -914,7 +914,7 @@ export default function Map3DViewer({
                       <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Enquadramento da Captura</span>
                       <select
                         value={modoEnquadramentoCapture}
-                        onChange={(e) => setModoEnquadramentoCapture(e.target.value as any)}
+                        onChange={(e) => setModoEnquadramentoCapture(e.target.value as 'camera' | 'imovel_completo')}
                         className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
                       >
                         <option value="imovel_completo">Enquadrar Imóvel Completo (Visão Geral de Cima)</option>

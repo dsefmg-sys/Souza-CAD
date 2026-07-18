@@ -220,6 +220,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
       campos.push({ label: 'CPF do Transmitente/Cônjuge', ausente: !trans.cpf?.trim() });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const resultado = await perguntarTratamentoAusentes(campos, (config) => escolher(config as any) as any);
     if (resultado === 'cancelar') return;
 

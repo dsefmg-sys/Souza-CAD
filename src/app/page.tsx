@@ -1675,20 +1675,89 @@ export default function EditorPage() {
 
   // ---------- desfazer / refazer (histórico de vértices + confrontantes + DESENHOS) ----------
   // Os desenhos (cota/linha/texto/símbolo) e cadastros de confrontantes entram no histórico.
-  type FotoHist = { v: Vertex[]; conf: Confrontante[]; cpl: Record<number, string>; obj: ObjetoDesenho[]; ig: Vertex[]; pc: PlantaConfig };
+  type FotoHist = { v: Vertex[]; conf: Confrontante[]; cpl: Record<number, string>; obj: ObjetoDesenho[]; ig: Vertex[]; pc: PlantaConfig; desc?: string };
   const histRef = useRef<FotoHist[]>([]);
   const redoRef = useRef<FotoHist[]>([]);
   const [histCount, setHistCount] = useState(0);
   const [redoCount, setRedoCount] = useState(0);
 
-  function snap() {
-    // guarda-duplicata por referência: o StrictMode (dev) roda atualizadores de estado 2x, e um
-    // snap chamado lá dentro empilharia a mesma foto duas vezes (desfazer pediria 2 cliques)
+  function obterDescricaoDiferenca(s1: FotoHist, s2: FotoHist): string {
+    if (!s1 || !s2) return 'Ação no projeto';
+    
+    // 1. Diferença de vértices
+    if (s1.v.length !== s2.v.length) {
+      const diff = Math.abs(s1.v.length - s2.v.length);
+      return s1.v.length > s2.v.length ? `${diff} vértice(s) removido(s)` : `${diff} vértice(s) adicionado(s)`;
+    }
+    
+    // 2. Movimentação de vértices
+    let coordsMudaram = false;
+    for (let i = 0; i < Math.min(s1.v.length, s2.v.length); i++) {
+      if (s1.v[i].lat !== s2.v[i].lat || s1.v[i].lon !== s2.v[i].lon) {
+        coordsMudaram = true;
+        break;
+      }
+    }
+    if (coordsMudaram) return 'Movimentação de vértice';
+
+    // 3. Modificação de altitudes de vértices
+    let altMudou = false;
+    for (let i = 0; i < Math.min(s1.v.length, s2.v.length); i++) {
+      if (s1.v[i].elevacao !== s2.v[i].elevacao) {
+        altMudou = true;
+        break;
+      }
+    }
+    if (altMudou) return 'Altitude de vértice alterada';
+
+    // 4. Diferença de objetos de desenho (linhas, cotas, textos, etc)
+    if (s1.obj.length !== s2.obj.length) {
+      const diff = Math.abs(s1.obj.length - s2.obj.length);
+      const maior = s1.obj.length > s2.obj.length ? s1.obj : s2.obj;
+      const menor = s1.obj.length > s2.obj.length ? s2.obj : s1.obj;
+      const diferente = maior.find(o => !menor.some(m => m.id === o.id));
+      const tipoLabel = diferente 
+        ? (diferente.tipo === 'polilinha' ? (diferente.tracejado ? 'Linha tracejada' : 'Polilinha')
+          : diferente.tipo === 'cota' ? 'Cota'
+          : diferente.tipo === 'texto' ? 'Texto'
+          : diferente.tipo === 'simbolo' ? 'Símbolo'
+          : diferente.tipo === 'retangulo' ? 'Retângulo'
+          : diferente.tipo === 'arco' ? 'Arco'
+          : diferente.tipo)
+        : 'Desenho';
+
+      return s1.obj.length > s2.obj.length ? `${tipoLabel} removido` : `${tipoLabel} adicionado`;
+    }
+
+    // 5. Modificações em propriedades de objetos existentes
+    if (JSON.stringify(s1.obj) !== JSON.stringify(s2.obj)) {
+      return 'Propriedades do desenho alteradas';
+    }
+
+    // 6. Confrontantes ou divisas
+    if (JSON.stringify(s1.conf) !== JSON.stringify(s2.conf) || JSON.stringify(s1.cpl) !== JSON.stringify(s2.cpl)) {
+      return 'Confrontantes / Divisas alteradas';
+    }
+
+    // 7. Configuração da prancha
+    if (JSON.stringify(s1.pc) !== JSON.stringify(s2.pc)) {
+      return 'Layout da prancha alterado';
+    }
+
+    // 8. Vértices ignorados
+    if (s1.ig.length !== s2.ig.length) {
+      return 'Vértices desconsiderados alterados';
+    }
+
+    return 'Alterações';
+  }
+
+  function snap(desc?: string) {
     const ult = histRef.current[histRef.current.length - 1];
     if (ult && ult.v === vertices && ult.conf === confrontantes && ult.cpl === confrontantePorLado && ult.obj === objetos && ult.ig === verticesIgnorados && ult.pc === plantaConfig) return;
-    histRef.current.push({ v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
+    histRef.current.push({ v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig, desc });
     if (histRef.current.length > 60) histRef.current.shift();
-    redoRef.current = []; // uma ação nova invalida o que havia para refazer
+    redoRef.current = [];
     setHistCount(histRef.current.length);
     setRedoCount(0);
   }
@@ -1699,27 +1768,35 @@ export default function EditorPage() {
     setConfrontantePorLado(s.cpl);
     setObjetos(s.obj);
     setVerticesIgnorados(s.ig);
-    setPlantaConfig(s.pc); // posições/tamanhos/textos das caixas da planta (declarações, laudo, etc.)
+    setPlantaConfig(s.pc);
   }
 
   function desfazer() {
     const s = histRef.current.pop();
     if (!s) { aviso('Nada para desfazer.'); return; }
-    redoRef.current.push({ v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
+    
+    const estadoAtual: FotoHist = { v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig };
+    const acaoDesc = s.desc || obterDescricaoDiferenca(estadoAtual, s);
+    
+    redoRef.current.push({ ...estadoAtual, desc: acaoDesc });
     aplicarFoto(s);
     setHistCount(histRef.current.length);
     setRedoCount(redoRef.current.length);
-    aviso(`Última ação desfeita (${histRef.current.length} no histórico).`);
+    aviso(`Desfeito: ${acaoDesc}`);
   }
 
   function refazer() {
     const s = redoRef.current.pop();
     if (!s) { aviso('Nada para refazer.'); return; }
-    histRef.current.push({ v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
+    
+    const estadoAtual: FotoHist = { v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig };
+    const acaoDesc = s.desc || obterDescricaoDiferenca(estadoAtual, s);
+    
+    histRef.current.push({ ...estadoAtual, desc: acaoDesc });
     aplicarFoto(s);
     setHistCount(histRef.current.length);
     setRedoCount(redoRef.current.length);
-    aviso(`Ação refeita (${redoRef.current.length} para refazer).`);
+    aviso(`Refeito: ${acaoDesc}`);
   }
 
   // redimensionar a barra de ferramentas (largura, arrastando a borda direita)
@@ -4242,7 +4319,6 @@ export default function EditorPage() {
   const [curvaEspessura, setCurvaEspessura] = useState<'fina' | 'media' | 'grossa'>('media');
   const [curvaConfigAberta, setCurvaConfigAberta] = useState(false);
   const [ajusteAltCm, setAjusteAltCm] = useState('');
-  const [adensarOnlineAtivo, setAdensarOnlineAtivo] = useState(true);
   const [desconsiderarVerticesLevantados, setDesconsiderarVerticesLevantados] = useState(false);
   const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState<number>(0); // 0 = Auto
   const [modeloElevacao, setModeloElevacao] = useState<'copernicus_dem_30' | 'alos_dem_30' | 'srtm_gld3'>('copernicus_dem_30');
@@ -4408,7 +4484,7 @@ export default function EditorPage() {
     let activeGrade = gradeAltimetrica;
     let activeVertices = vertices;
     let activeIgnorados = verticesIgnorados;
-    if (adensarOnlineAtivo && gradeAltimetrica.length === 0 && vertices.length >= 3) {
+    if (gradeAltimetrica.length === 0 && vertices.length >= 3) {
       setProcessando(true);
       aviso('Buscando grade de altitudes oficiais do terreno (Copernicus DEM)...');
       try {
@@ -6595,11 +6671,7 @@ export default function EditorPage() {
 
                               <div className="space-y-1 mt-1">
                                 <div className="rounded-md bg-muted/20 p-1.5 space-y-1.5">
-                                  <label className="flex items-center justify-between text-[10px] font-medium cursor-pointer" title="Se ativado, busca altitudes online automaticamente ao clicar em Gerar se a grade estiver vazia">
-                                    <span>Adensar relevo automaticamente</span>
-                                    <input type="checkbox" checked={adensarOnlineAtivo} onChange={(e) => setAdensarOnlineAtivo(e.target.checked)} className="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-primary" />
-                                  </label>
-                                  <label className="flex items-center justify-between text-[10px] font-medium cursor-pointer border-t border-border/20 pt-1.5" title="Ignora as altitudes dos vértices do perímetro e utiliza apenas altitudes obtidas online">
+                                  <label className="flex items-center justify-between text-[10px] font-medium cursor-pointer" title="Ignora as altitudes dos vértices do perímetro e utiliza apenas altitudes obtidas online">
                                     <span>Desconsiderar altitude dos vértices</span>
                                     <input type="checkbox" checked={desconsiderarVerticesLevantados} onChange={(e) => setDesconsiderarVerticesLevantados(e.target.checked)} className="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-primary" />
                                   </label>
@@ -6608,7 +6680,7 @@ export default function EditorPage() {
                                     <select
                                       value={modeloElevacao}
                                       onChange={(e) => {
-                                        setModeloElevacao(e.target.value as any);
+                                        setModeloElevacao(e.target.value as 'copernicus_dem_30' | 'alos_dem_30' | 'srtm_gld3');
                                         setGradeAltimetrica([]); // limpa para forçar busca nova com a nova fonte
                                       }}
                                       className="h-6 rounded border bg-background px-1 text-[9px] focus:ring-1 focus:ring-primary focus:outline-none w-28"
@@ -6654,12 +6726,6 @@ export default function EditorPage() {
                                   <Trash2 className="size-3.5" /> Apagar
                                 </Button>
                               </div>
-
-                              <Button type="button" onClick={buscarGradeAltitudesOnline} disabled={vertices.length < 3 || processando}
-                                className="mt-1.5 w-full h-7 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-600/40 text-white font-bold border-0 shadow-xs rounded-md flex items-center justify-center gap-1 text-[10px]"
-                                title="Gera uma grade digital dentro do imóvel e busca altitudes oficiais do Copernicus DEM (via Open-Meteo) para traçar curvas de nível realistas">
-                                <Database className="size-3.5" /> Adensar Relevo (Altitudes Online)
-                              </Button>
 
                               <div className="space-y-1 border-t border-border/40 pt-2">
                                 <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Ajustar Altitude Global dos Vértices</span>
@@ -9060,25 +9126,90 @@ export default function EditorPage() {
         </div>
       )}
 
-      {/* Barra de Notificação/Alerta unificada na parte inferior */}
-      {(msg || imovel.ficticio) && (
-        <div
-          className="no-print fixed bottom-0 right-0 z-[2000] flex h-7 items-center justify-center bg-slate-900 text-white text-[11px] font-semibold border-t border-slate-800 shadow-lg animate-in slide-in-from-bottom duration-200"
-          style={{ left: toolWEfetivo }}
-        >
+      {/* Barra de Status e Notificações Inteligente (sempre visível no rodapé do palco) */}
+      <div
+        className="no-print fixed bottom-0 right-0 z-[2000] flex h-7 items-center justify-between bg-slate-950 text-slate-300 text-[10px] font-medium border-t border-slate-800 shadow-lg px-3 select-none"
+        style={{ left: toolWEfetivo }}
+      >
+        {/* Lado Esquerdo: Mensagem de Status Ativa / Alerta ou Modo Atual */}
+        <div className="flex items-center gap-2 min-w-0">
           {msg ? (
-            <div className="flex items-center gap-1.5 text-amber-400">
-              <span className="inline-block size-2 rounded-full bg-amber-400 animate-pulse" />
+            <div className="flex items-center gap-1.5 text-amber-400 font-bold animate-pulse">
+              <span className="inline-block size-1.5 rounded-full bg-amber-400" />
               <span>{msg}</span>
             </div>
+          ) : imovel.ficticio ? (
+            <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+              <span className="inline-block size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>DADOS FICTÍCIOS — Sem validade legal</span>
+            </div>
           ) : (
-            <div className="flex items-center gap-1.5 text-emerald-400">
-              <span className="inline-block size-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>DADOS FICTÍCIOS — projeto de demonstração (as peças geradas saem sem validade legal)</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 uppercase tracking-wider text-[9px] font-bold">Ferramenta:</span>
+              <span className="text-slate-200 font-semibold">
+                {modo === 'navegar' ? '✋ Mover/Editar Vértices' :
+                 modo === 'polilinha' ? '✏️ Desenhar Polilinha' :
+                 modo === 'tracejado' ? '✏️ Desenhar Linha Tracejada' :
+                 modo === 'cota' ? '📐 Inserir Cota de Distância' :
+                 modo === 'texto' ? '🔤 Inserir Bloco de Texto' :
+                 modo === 'medir' ? '📏 Régua de Medição' :
+                 modo === 'simbolo' ? '📍 Inserir Símbolo/Marcador' :
+                 '🖱️ Seleção e Navegação'}
+              </span>
             </div>
           )}
         </div>
-      )}
+
+        {/* Lado Direito: Estatísticas em tempo real & Status de Salvamento */}
+        <div className="flex items-center gap-4 shrink-0 divide-x divide-slate-800 text-slate-400 text-[9px] font-mono">
+          {/* Seleção Atual */}
+          {objetoSelId && (
+            <div className="pl-4 text-amber-300 font-semibold">
+              Selecionado: {
+                objetoSelId.startsWith('planta:situacao') ? 'Desenho de Situação' :
+                objetoSelId.startsWith('planta:rosa') ? 'Rosa dos Ventos' :
+                objetoSelId.startsWith('planta:escala') ? 'Barra de Escala' :
+                objetoSelId.startsWith('planta:poligono_sigef') ? 'Polígono SIGEF' :
+                objetoSelId.startsWith('planta:laudo') ? 'Laudo Técnico' :
+                objetoSelId.startsWith('planta:declaracoes') ? 'Declarações' :
+                objetoSelId.startsWith('planta:convençoes') ? 'Convenções' :
+                objetoSelId.startsWith('planta:coordenadas') ? 'Tabela de Coordenadas' :
+                objetoSelId.startsWith('planta:carimbo') ? 'Carimbo da Prancha' :
+                'Elemento Vetorial'
+              }
+            </div>
+          )}
+          {selecionadoId && (
+            <div className="pl-4 text-sky-400 font-semibold">
+              Vértice: {vertices.find(v => v.id === selecionadoId)?.nome || 'Selecionado'}
+            </div>
+          )}
+
+          {/* Estatísticas Físicas */}
+          {vertices.length >= 3 && res && (
+            <div className="flex items-center gap-3 pl-4">
+              <span>{vertices.length} Vértices</span>
+              <span>Área: {(valoresEfetivos(res, imovel).areaHa).toFixed(4)} ha</span>
+              <span>Perímetro: {(valoresEfetivos(res, imovel).perimetro).toFixed(2)} m</span>
+            </div>
+          )}
+
+          {/* Status do Banco de Dados */}
+          <div className="pl-4 flex items-center gap-1.5">
+            {salvarLaranja ? (
+              <span className="text-amber-500 font-bold flex items-center gap-1">
+                <span className="size-1.5 rounded-full bg-amber-500 animate-ping" />
+                Modificações locais pendentes
+              </span>
+            ) : (
+              <span className="text-emerald-500 flex items-center gap-1">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                Sincronizado na Nuvem
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
     </div>
   );

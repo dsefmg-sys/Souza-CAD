@@ -2054,11 +2054,12 @@ export default function MapEditor(props: Props) {
         <CircleMarker
           key={`grade-alt-${idx}`}
           center={[g.lat, g.lon]}
-          radius={3.5}
-          pathOptions={{ color: '#4f46e5', fillColor: '#a5b4fc', fillOpacity: 0.9, weight: 1.2 }}
+          radius={4.5}
+          pane="markerPane"
+          pathOptions={{ color: '#ffffff', fillColor: '#facc15', fillOpacity: 0.95, weight: 1.5 }}
           interactive={true}
         >
-          <Tooltip permanent direction="top" className="bg-background/95 text-foreground border border-indigo-500/30 text-[8px] font-mono px-1 py-0.5 rounded shadow-xs" offset={[0, -2]}>
+          <Tooltip permanent direction="top" className="bg-background/95 text-foreground border border-yellow-500/55 text-[8px] font-mono px-1 py-0.5 rounded shadow-xs" offset={[0, -2]}>
             <span>{g.elevacao.toFixed(1)}m</span>
           </Tooltip>
         </CircleMarker>
