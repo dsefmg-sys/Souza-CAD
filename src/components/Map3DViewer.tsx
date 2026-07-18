@@ -290,7 +290,39 @@ export default function Map3DViewer({
       const cosP = Math.cos(pitch);
       const sinP = Math.sin(pitch);
 
-      const baseScale = (Math.min(w, h) * 0.45) / stats.maxDist;
+      // Calcula o enquadramento ao tamanho do imóvel na rotação atual (Yaw e Pitch)
+      let minRx = Infinity, maxRx = -Infinity;
+      let minRz = Infinity, maxRz = -Infinity;
+      finitePts.forEach((v) => {
+        const x = v.leste - stats.avgX;
+        const y = v.norte - stats.avgY;
+        const z = ((v.elevacao || 0) - stats.avgZ) * exagero;
+
+        const x1 = x * cosY - y * sinY;
+        const y1 = x * sinY + y * cosY;
+        const z1 = z;
+
+        const x2 = x1;
+        const y2 = y1 * cosP + z1 * sinP;
+        const z2 = y1 * sinP - z1 * cosP;
+
+        const dist = stats.maxDist * 1.5;
+        const pers = dist / (dist + z2 > 0.1 ? dist + z2 : 0.1);
+
+        const px = x2 * pers;
+        const py = y2 * pers;
+
+        if (px < minRx) minRx = px;
+        if (px > maxRx) maxRx = px;
+        if (py < minRz) minRz = py;
+        if (py > maxRz) maxRz = py;
+      });
+
+      const spanX = maxRx - minRx || 10;
+      const spanY = maxRz - minRz || 10;
+
+      // Enquadra o tamanho do imóvel em 80% da tela do canvas
+      const baseScale = Math.min((w * 0.8) / spanX, (h * 0.8) / spanY);
       const finalScale = baseScale * zoom;
 
       const project = (leste: number, norte: number, elev: number) => {

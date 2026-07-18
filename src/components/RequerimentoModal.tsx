@@ -46,6 +46,37 @@ const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string; explicacao: stri
   },
 ];
 
+const CONFIG_BOTOES_ATO: Record<
+  TipoAtoRequerimento,
+  { active: string; inactive: string }
+> = {
+  retificacao: {
+    active: 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600',
+    inactive: 'border-indigo-200/60 dark:border-indigo-900/40 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 bg-background'
+  },
+  venda: {
+    active: 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600',
+    inactive: 'border-emerald-200/60 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 bg-background'
+  },
+  doacao: {
+    active: 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600',
+    inactive: 'border-purple-200/60 dark:border-purple-900/40 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 bg-background'
+  },
+  unificacao: {
+    active: 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600',
+    inactive: 'border-amber-200/60 dark:border-amber-900/40 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 bg-background'
+  },
+  desmembramento: {
+    active: 'bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600',
+    inactive: 'border-cyan-200/60 dark:border-cyan-900/40 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/20 bg-background'
+  },
+  usucapiao: {
+    active: 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600',
+    inactive: 'border-rose-200/60 dark:border-rose-900/40 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 bg-background'
+  }
+};
+
+
 export const PESSOA_VAZIA: PessoaQualificada = {
   nome: '', rg: '', cpf: '', nacionalidade: 'Brasileira', naturalidade: '', dataNascimento: '',
   filiacao: '', profissao: '', estadoCivil: '', conjugeNome: '', conjugeRg: '', conjugeCpf: '',
@@ -288,11 +319,21 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
               <div className="space-y-1.5 border rounded-lg bg-muted/10 p-3">
                 <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Tipo de ato</Label>
                 <div className="grid grid-cols-2 gap-1.5">
-                  {OPCOES_ATO.map((o) => (
-                    <Button key={o.valor} type="button" size="sm" variant={localTipoAto === o.valor ? 'default' : 'outline'} onClick={() => setLocalTipoAto(o.valor)} className={`h-8 text-xs ${localTipoAto === o.valor ? '' : 'bg-background hover:bg-muted'}`}>
-                      {o.rotulo}
-                    </Button>
-                  ))}
+                  {OPCOES_ATO.map((o) => {
+                    const cfg = CONFIG_BOTOES_ATO[o.valor];
+                    const ativo = localTipoAto === o.valor;
+                    return (
+                      <Button
+                        key={o.valor}
+                        type="button"
+                        size="sm"
+                        onClick={() => setLocalTipoAto(o.valor)}
+                        className={`h-8 text-xs font-bold transition-all shadow-sm ${ativo ? cfg.active : cfg.inactive}`}
+                      >
+                        {o.rotulo}
+                      </Button>
+                    );
+                  })}
                 </div>
                 {mostrarDicas && (
                   <p className="rounded-lg border border-dashed border-amber-500/20 bg-amber-500/5 p-2.5 text-[10px] text-muted-foreground leading-relaxed">

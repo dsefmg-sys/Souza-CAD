@@ -3568,23 +3568,34 @@ export default function EditorPage() {
     const { ok, problemas, graves } = conferirProntoParaExportar(imovel, vertices, confrontantes, tecnico, confrontantePorLado, { exigirConjuge: prefs.exigirConjuge, exigirCns: prefs.exigirCns });
     if (ok) return true;
 
-    const primeiro = problemas[0] || graves[0] || 'Dados incompletos no projeto';
+    // Se houver problemas graves de geometria, bloqueia de verdade
+    if (graves.length > 0) {
+      await avisar({
+        titulo: 'Erro Geométrico Grave',
+        mensagem: `${graves[0]}\n\nPor favor, corrija a geometria da poligonal antes de exportar.`
+      });
+      return false;
+    }
+
+    // Se houver apenas avisos de dados incompletos/ausentes, exibe confirmação
+    const primeiro = problemas[0] || 'Dados incompletos no projeto';
+    const prosseguir = await confirmar({
+      titulo: 'Cadastro Incompleto (Aviso)',
+      mensagem: `${primeiro}\n\nDeseja gerar o arquivo/planilha com dados ausentes/incompletos mesmo assim?`,
+      okLabel: 'Baixar assim mesmo',
+      cancelLabel: 'Corrigir dados'
+    });
+
+    if (prosseguir) {
+      return true;
+    }
 
     if (primeiro.includes('técnico') || primeiro.includes('Técnico') || primeiro.includes('CFT') || primeiro.includes('profissional') || primeiro.includes('RT')) {
-      await avisar({
-        titulo: 'Dados do Técnico Incompletos',
-        mensagem: `${primeiro}\n\nVamos abrir a tela de Ajustes Pessoais para você completar os dados obrigatórios.`
-      });
       setConfigAba('pessoal');
       setConfigAberta(true);
       return false;
     }
 
-    // Qualquer outro problema (denominação, proprietário, município, confrontantes, CNS)
-    await avisar({
-      titulo: 'Cadastro Incompleto',
-      mensagem: `${primeiro}\n\nVamos abrir a tela de Conferência do Projeto para você completar os dados obrigatórios.`
-    });
     setConferirAberto(true);
     return false;
   }
@@ -9326,18 +9337,18 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
   return (
     <div className="space-y-2">
       {/* Seletor Deslizante Rural / Urbano */}
-      <div className="flex rounded-md bg-secondary p-0.5 text-xs font-medium">
+      <div className="flex rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700">
         <button
           type="button"
           onClick={() => onChange({ ...imovel, tipoImovel: 'rural' })}
-          className={`flex-1 rounded-sm py-1 text-center transition-all ${imovel.tipoImovel !== 'urbano' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`flex-1 rounded-md py-1.5 text-center transition-all ${imovel.tipoImovel !== 'urbano' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
         >
           Rural
         </button>
         <button
           type="button"
           onClick={() => onChange({ ...imovel, tipoImovel: 'urbano' })}
-          className={`flex-1 rounded-sm py-1 text-center transition-all ${imovel.tipoImovel === 'urbano' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`flex-1 rounded-md py-1.5 text-center transition-all ${imovel.tipoImovel === 'urbano' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
         >
           Urbano
         </button>
@@ -9403,19 +9414,19 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         </div>
       </div>
       <div className="space-y-1">
-        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Regime de terra</Label>
-        <div className="flex rounded-md bg-secondary p-0.5 text-xs font-medium">
+        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Regime de terra</Label>
+        <div className="flex rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700">
           <button
             type="button"
             onClick={() => onChange({ ...imovel, regimeTerra: 'propriedade' })}
-            className={`flex-1 rounded-sm py-1 text-center transition-all ${(imovel.regimeTerra ?? 'propriedade') === 'propriedade' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex-1 rounded-md py-1.5 text-center transition-all ${(imovel.regimeTerra ?? 'propriedade') === 'propriedade' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
           >
             Propriedade
           </button>
           <button
             type="button"
             onClick={() => onChange({ ...imovel, regimeTerra: 'posse' })}
-            className={`flex-1 rounded-sm py-1 text-center transition-all ${imovel.regimeTerra === 'posse' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex-1 rounded-md py-1.5 text-center transition-all ${imovel.regimeTerra === 'posse' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
           >
             Posse
           </button>
@@ -9444,18 +9455,18 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
           {ufDoMunicipio(imovel.municipio) === 'MT' && (
             <div className="space-y-1">
               <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Padrão do memorial</Label>
-              <div className="flex rounded-md bg-secondary p-0.5 text-xs font-medium">
+              <div className="flex rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700">
                 <button
                   type="button"
                   onClick={() => onChange({ ...imovel, padraoMemorial: 'incra' })}
-                  className={`flex-1 rounded-sm py-1 text-center transition-all ${(imovel.padraoMemorial ?? 'incra') === 'incra' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`flex-1 rounded-md py-1.5 text-center transition-all ${(imovel.padraoMemorial ?? 'incra') === 'incra' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
                 >
                   INCRA / SIGEF
                 </button>
                 <button
                   type="button"
                   onClick={() => onChange({ ...imovel, padraoMemorial: 'intermat' })}
-                  className={`flex-1 rounded-sm py-1 text-center transition-all ${imovel.padraoMemorial === 'intermat' ? 'bg-background shadow-sm text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`flex-1 rounded-md py-1.5 text-center transition-all ${imovel.padraoMemorial === 'intermat' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
                 >
                   INTERMAT (MT)
                 </button>

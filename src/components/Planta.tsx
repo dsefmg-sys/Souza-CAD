@@ -1124,6 +1124,21 @@ export default function Planta({
     coordenadasTableBox = { left: bx, top: by, width: wBox, height: hr };
   }
 
+  let mdrBox: { left: number; top: number; width: number; height: number } | null = null;
+  if (print3dUrl && config.mostrarPrint3D !== false) {
+    const id3D = 'planta.print3d';
+    const ov3D = textosOv[id3D] || {};
+    const offset3D = getOverride(id3D);
+    const esc3D = ov3D.escala ?? 1.0;
+    const temTerrap = config.print3dMostrarTerraplanagem && (config.print3dVolumeCorte != null || config.print3dVolumeAterro != null);
+    const extraH = temTerrap ? 36 : 0;
+    const baseX = (DRAW.x0 + 40) + (offset3D.dx ?? 0);
+    const baseY = (DRAW.y1 - 220 - extraH) + (offset3D.dy ?? 0);
+    const w3D = 240 * esc3D;
+    const h3D = 160 * esc3D;
+    mdrBox = { left: baseX - 3, top: baseY - 3, width: w3D + 6, height: h3D + extraH + 6 };
+  }
+
   const signatureBoxes = rotulosConf.map((r) => {
     if (!r.c || !r.c.nome) return null;
     const c = r.c;
@@ -1228,6 +1243,9 @@ export default function Planta({
               )}
               {coordenadasTableBox && (
                 <rect x={coordenadasTableBox.left} y={coordenadasTableBox.top} width={coordenadasTableBox.width} height={coordenadasTableBox.height} fill="#000000" />
+              )}
+              {mdrBox && (
+                <rect x={mdrBox.left} y={mdrBox.top} width={mdrBox.width} height={mdrBox.height} fill="#000000" />
               )}
             </mask>
           </defs>
@@ -2272,6 +2290,7 @@ export default function Planta({
                 rx={4}
                 ry={4}
               />
+              {/* Retângulo principal */}
               <rect
                 x={baseX}
                 y={baseY}
@@ -2285,14 +2304,42 @@ export default function Planta({
                 ry={2}
               />
 
-              {/* Reticulado/Quadriculado cartográfico suave de fundo */}
+              {/* Cabeçalho do MDR interno */}
+              <rect
+                x={baseX}
+                y={baseY}
+                width={w3D}
+                height={15}
+                fill="#f1f5f9"
+                stroke={objetoSelId === id3D ? '#f59e0b' : '#64748b'}
+                strokeWidth={0.8}
+              />
+              <line
+                x1={baseX}
+                y1={baseY + 15}
+                x2={baseX + w3D}
+                y2={baseY + 15}
+                stroke={objetoSelId === id3D ? '#f59e0b' : '#64748b'}
+                strokeWidth={0.8}
+              />
+              <text
+                x={baseX + 6}
+                y={baseY + 10.5}
+                fontSize={fs(6.5)}
+                fontWeight="bold"
+                fill="#334155"
+              >
+                Modelo Digital de Relevo (MDR 3D)
+              </text>
+
+              {/* Reticulado/Quadriculado cartográfico suave de fundo (só na área do relevo, abaixo do cabeçalho) */}
               {Array.from({ length: 6 }).map((_, i) => {
                 const gx = baseX + ((i + 1) * w3D) / 7;
                 return (
                   <line
                     key={`mdr-gx-${i}`}
                     x1={gx}
-                    y1={baseY}
+                    y1={baseY + 15}
                     x2={gx}
                     y2={baseY + h3D}
                     stroke="#94a3b8"
@@ -2303,7 +2350,7 @@ export default function Planta({
                 );
               })}
               {Array.from({ length: 4 }).map((_, i) => {
-                const gy = baseY + ((i + 1) * h3D) / 5;
+                const gy = baseY + 15 + ((i + 1) * (h3D - 15)) / 5;
                 return (
                   <line
                     key={`mdr-gy-${i}`}
@@ -2320,26 +2367,15 @@ export default function Planta({
               })}
             </g>
 
-            {/* Imagem do relevo 3D — fundo transparente via PNG */}
+            {/* Imagem do relevo 3D — fundo transparente via PNG, deslocada abaixo do cabeçalho */}
             <image
               href={print3dUrl}
               x={baseX + 2}
-              y={baseY + 2}
+              y={baseY + 17}
               width={w3D - 4}
-              height={h3D - 4}
+              height={h3D - 19}
               preserveAspectRatio="xMidYMid meet"
             />
-
-            {/* Texto auxiliar / Rótulo do Quadro */}
-            <text
-              x={baseX + 6}
-              y={baseY - 4}
-              fontSize={fs(6.5)}
-              fontWeight="bold"
-              fill="#475569"
-            >
-              Modelo Digital de Relevo (MDR 3D)
-            </text>
 
             {/* Bloco de dados de terraplanagem abaixo da imagem */}
             {temTerrap && (
@@ -2362,6 +2398,16 @@ export default function Planta({
                 )}
               </g>
             )}
+
+            {/* Retângulo invisível por cima de tudo para garantir captação confiável de cliques e double click */}
+            <rect
+              x={baseX}
+              y={baseY}
+              width={w3D}
+              height={h3D + extraH}
+              fill="transparent"
+              style={{ pointerEvents: 'all' }}
+            />
 
             {editavel && objetoSelId === id3D && onRemoverPrint3D && (
               <g
@@ -2914,15 +2960,38 @@ function FaixaInferior(props: {
           { tipo: 'M', r: 3.6 }, { tipo: 'P', r: 2.6 },
           ...(temV ? [{ tipo: 'V' as const, r: 3 }] : []),
         ];
-        const divs = ['linha-ideal', ...represUsadas.filter((r) => r !== 'linha-ideal')];
+        // Sempre adiciona 'imovel-certificado' para a convenção
+        const divs = ['linha-ideal', ...represUsadas.filter((r) => r !== 'linha-ideal'), 'imovel-certificado'];
         // divisas em DUAS colunas quando não caberiam confortavelmente numa só (textos curtos:
         // cerca, córrego, estrada... cabem lado a lado). Vértices sempre em coluna única (texto maior).
-        const duasColunas = verts.length + divs.length > 6;
+        const duasColunas = verts.length + divs.length > 5;
         const nDivLin = duasColunas ? Math.ceil(divs.length / 2) : divs.length;
         const totalLin = verts.length + 0.4 + nDivLin; // 0.4 = respiro entre seções
         // espaçamento adaptável pra nunca estourar a caixa
         const lh = Math.min(22, Math.max(12.5, (hBox - 52) / totalLin));
-        const colW = (w2 - 24) / 2;
+        const colW = (w2 - 20) / 2; // um pouco mais largo para dar espaço
+        const fontSizeEfetivo = duasColunas ? fs(7.8) : fs(8.5);
+
+        const obterRotuloLegenda = (d: string) => {
+          if (d === 'imovel-certificado') {
+            return duasColunas ? 'Imóvel Cert.' : 'Imóvel certificado';
+          }
+          if (duasColunas) {
+            const curtos: Record<string, string> = {
+              'linha-ideal': 'L. ideal',
+              cerca: 'Cerca',
+              estrada: 'Estrada',
+              corrego: 'Córrego',
+              rio: 'Rio',
+              acude: 'Açude',
+              muro: 'Muro',
+              vala: 'Vala',
+            };
+            return curtos[d] || d;
+          }
+          return REPRES_LABEL[d] || d;
+        };
+
         return (
           <g>
             <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:lateral_folha'); }} style={{ cursor: 'pointer' }}>
@@ -2932,7 +3001,7 @@ function FaixaInferior(props: {
               <text x={x2 + w2 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">CONVENÇÕES</text>
             </g>
 
-            <g transform={`translate(${x2 + 14}, ${y0 + 40})`} fontSize={fs(8.5)} fill="#0f172a">
+            <g transform={`translate(${x2 + 10}, ${y0 + 40})`} fontSize={fontSizeEfetivo} fill="#0f172a">
               {verts.map((v, i) => (
                 <g key={v.tipo} transform={`translate(0, ${i * lh})`}>
                   <SimboloVertice tipo={v.tipo} cx={5} cy={5} r={v.r} corCustom={v.tipo === 'M' ? corVerticeM : v.tipo === 'P' ? corVerticeP : undefined} />
@@ -2946,7 +3015,7 @@ function FaixaInferior(props: {
                 return (
                   <g key={d} transform={`translate(${col * colW}, ${y})`}>
                     <SimboloDivisa tipo={d} x={0} y={5} />
-                    <text x={16} y={8}>{REPRES_LABEL[d] || d}</text>
+                    <text x={16} y={8}>{obterRotuloLegenda(d)}</text>
                   </g>
                 );
               })}
@@ -3703,6 +3772,9 @@ function obterTipoDeNome(nome: string): 'M' | 'P' | 'V' {
 
 function SimboloDivisa({ tipo, x, y }: { tipo: string; x: number; y: number }) {
   const w = 12;
+  if (tipo === 'imovel-certificado') {
+    return <line x1={x} y1={y} x2={x + w} y2={y} stroke="#0284c7" strokeWidth={1.2} strokeDasharray="3 3" />;
+  }
   const cor = corDivisa(tipo);
   if (cor) return <line x1={x} y1={y} x2={x + w} y2={y} stroke={cor} strokeWidth={3} strokeLinecap="round" />;
   if (tipo === 'cerca') return <g><line x1={x} y1={y} x2={x + w} y2={y} stroke="#000" strokeWidth={1} />{[0, 4, 8, 12].map((d) => <line key={d} x1={x + d} y1={y - 3} x2={x + d} y2={y + 3} stroke="#000" strokeWidth={0.7} />)}</g>;

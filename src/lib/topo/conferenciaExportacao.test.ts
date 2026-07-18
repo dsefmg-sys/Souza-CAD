@@ -24,7 +24,7 @@ function tresVertices(): Vertex[] {
 }
 
 const tecnico: TecnicoData = {
-  nome: 'Fulano', formacao: '', cft: '', art: '', credenciamentoIncra: 'COIN',
+  nome: 'Fulano', formacao: '', cft: '', art: 'TRT-12345', credenciamentoIncra: 'COIN',
   cidadeAssinatura: '', metodoPosicionamento: 'PG6', tipoLimite: 'LA6',
   contadorMarco: 1, contadorPonto: 1,
 };

@@ -62,6 +62,12 @@ function conferirCadastro(imovel: ImovelData, tecnico: TecnicoData | null, acc: 
     acc.avisa('O cônjuge do proprietário está preenchido, mas falta o CPF dele(a).');
   }
 
+  // TRT/ART — necessário para o requerimento e memorial descritivo.
+  const temTrt = !!(imovel.numeroTrt?.trim() || tecnico?.art?.trim());
+  if (!temTrt) {
+    acc.avisa('Número da TRT/ART do projeto não foi informado — preencha na seção TRT do imóvel ou nos dados do técnico (ART).');
+  }
+
   // Regras opcionais, ligadas nos Ajustes (aba Comportamento).
   if (acc.opcoes.exigirConjuge && imovel.proprietario?.trim() && !imovel.conjugeProprietario?.trim()) {
     acc.avisa('Falta o nome do cônjuge do proprietário (exigência ligada nos Ajustes).');
