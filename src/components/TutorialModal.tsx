@@ -9,6 +9,7 @@ import { TEMAS_AJUDA } from '@/lib/ajuda/temas';
 import { PASSOS_BASE, PASSOS_AVANCADOS } from '@/lib/ajuda/passos';
 import { carregarPreferencias, salvarModo, salvarNivelExperiencia } from '@/lib/store/preferencias';
 import { prepararTextoParaFala, dividirEmFrases, melhorVozPt } from '@/lib/ajuda/voz';
+import { Z_CLASSES } from '@/lib/ui/zlayers';
 
 interface Props {
   open: boolean;
@@ -388,7 +389,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   if (!open) return null;
 
   return (
-    <div className="no-print fixed bottom-16 right-4 z-[1250] w-[380px] md:w-[440px] flex flex-col bg-white dark:bg-zinc-950 shadow-2xl rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 transition-all duration-300 max-h-[80vh] overflow-y-auto scroll-fino text-foreground">
+    <div className={`no-print fixed bottom-16 right-4 ${Z_CLASSES.TUTORIAL_PILL} w-[380px] md:w-[440px] flex flex-col bg-white dark:bg-zinc-950 shadow-2xl rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 transition-all duration-300 max-h-[80vh] overflow-y-auto scroll-fino text-foreground`}>
       {/* Botão fechar flutuante */}
       <button type="button" onClick={() => onOpenChange(false)} className="absolute top-4 right-4 z-20 rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors" title="Fechar tutorial">
         <X className="size-4.5" />

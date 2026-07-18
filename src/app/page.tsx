@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { confirmar, avisar, perguntar, escolher } from '@/lib/ui/dialogos';
+import { Z_INDEX, Z_CLASSES } from '@/lib/ui/zlayers';
 import { Input } from '@/components/ui/input';
 import ModalSpreadsheet from '@/components/ModalSpreadsheet';
 import { Logo, FundoRedeMarca } from '@/components/Logo';
@@ -5441,8 +5442,8 @@ export default function EditorPage() {
               </Button>
               {pecasMenuAberto && pecasMenuPos && (
                 <>
-                  <div className="fixed inset-0 z-[1290]" onClick={() => setPecasMenuAberto(false)} />
-                  <div style={{ position: 'fixed', top: pecasMenuPos.top, right: pecasMenuPos.right }} className="z-[1300] w-64 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1.5 shadow-2xl backdrop-blur-xl space-y-1">
+                  <div className={`fixed inset-0 ${Z_CLASSES.BACKDROP_DROPDOWN}`} onClick={() => setPecasMenuAberto(false)} />
+                  <div style={{ position: 'fixed', top: pecasMenuPos.top, right: pecasMenuPos.right }} className={`${Z_CLASSES.DROPDOWN_MENU} w-64 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1.5 shadow-2xl backdrop-blur-xl space-y-1`}>
                     {/* Botão Baixar Tudo no topo do dropdown desktop */}
                     <button type="button" disabled={processando} onClick={() => { baixarPacoteEntrega(); }}
                       className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 px-3 py-2 text-center text-xs font-bold text-amber-700 dark:text-amber-400 border border-amber-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -5525,7 +5526,7 @@ export default function EditorPage() {
             )}
           </button>
           {perfilMenuAberto && (
-            <div className="absolute right-0 top-full pt-1.5 z-[1300]">
+            <div className={`absolute right-0 top-full pt-1.5 ${Z_CLASSES.DROPDOWN_MENU}`}>
               <div className="w-52 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
                 {nuvemDisponivel && !user && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); definirModoEntrada('login'); }}
@@ -6477,7 +6478,7 @@ export default function EditorPage() {
           {(vista === 'mapa' || vista === 'planta') && !telaEstreita && (
             <div
               style={telaEstreita ? undefined : { left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)' }}
-              className={`no-print pointer-events-auto z-[1160] flex items-center gap-x-1.5 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1.5 shadow-xl select-none ${
+              className={`no-print pointer-events-auto ${Z_CLASSES.FLOATING_TOOLBAR} flex items-center gap-x-1.5 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1.5 shadow-xl select-none ${
                 telaEstreita ? 'fixed inset-x-1 bottom-1 rounded-xl' : 'absolute rounded-2xl'
               }`}
             >
@@ -6529,7 +6530,7 @@ export default function EditorPage() {
                           <Palette className="size-3.5 text-muted-foreground" />
                         </button>
                         {corPickerAberto && (
-                          <div className="absolute left-0 top-9 z-[1300] w-56 rounded-xl border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-left" data-cor-bump={corBump}>
+                          <div className={`absolute left-0 top-9 ${Z_CLASSES.DROPDOWN_MENU} w-56 rounded-xl border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-left`} data-cor-bump={corBump}>
                             <div className="mb-2 text-[9px] font-black uppercase text-muted-foreground tracking-wider">Cores das Divisas</div>
                             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scroll-fino">
                               {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
@@ -6665,7 +6666,7 @@ export default function EditorPage() {
           {(vista === 'mapa' || vista === 'planta') && !telaEstreita && !introTocando && barraAudiosAberta && (
             <div
               style={{ left: `${posAudioBarra.x}px`, top: `${posAudioBarra.y}px` }}
-              className="no-print pointer-events-auto fixed z-[1160] flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 p-1.5 shadow-xl backdrop-blur-sm select-none"
+              className={`no-print pointer-events-auto fixed ${Z_CLASSES.FLOATING_TOOLBAR} flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 p-1.5 shadow-xl backdrop-blur-sm select-none`}
             >
               <div
                 className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
@@ -6771,7 +6772,7 @@ export default function EditorPage() {
 
           {/* MULTI-SELEÇÃO: ação flutuante para apagar os vértices marcados */}
           {vista === 'mapa' && modo === 'multi' && (selMulti.size > 0 || objSelMulti.size > 0) && (
-            <div className="absolute left-1/2 top-3 z-[1000] -translate-x-1/2">
+            <div className={`absolute left-1/2 top-3 ${Z_CLASSES.MAP_CONTROLS} -translate-x-1/2`}>
               <button className="flex items-center gap-2 rounded-full border border-red-500/40 bg-background/95 px-4 py-1.5 text-sm font-semibold text-red-600 shadow-lg backdrop-blur hover:bg-red-500 hover:text-white" onClick={apagarMultiSelecionados}>
                 <Trash2 className="size-4" /> Apagar {[selMulti.size ? `${selMulti.size} vértice(s)` : '', objSelMulti.size ? `${objSelMulti.size} elemento(s)` : ''].filter(Boolean).join(' + ')}
               </button>
@@ -6780,7 +6781,7 @@ export default function EditorPage() {
 
           {/* DICA DE PINTURA (DIVISAS E CONFRONTANTES) */}
           {vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante') && (
-            <div className={`absolute left-1/2 top-3 z-[1000] -translate-x-1/2 rounded-full border px-4 py-1.5 shadow-lg backdrop-blur-md transition-all duration-300 ${
+            <div className={`absolute left-1/2 top-3 ${Z_CLASSES.MAP_HINTS} -translate-x-1/2 rounded-full border px-4 py-1.5 shadow-lg backdrop-blur-md transition-all duration-300 ${
               modo === 'divisa'
                 ? 'border-slate-500/50 bg-slate-900/90 text-white dark:border-slate-800'
                 : 'border-blue-500/50 bg-blue-900/90 text-white dark:border-blue-800'
@@ -6806,7 +6807,7 @@ export default function EditorPage() {
 
           {/* PAINEL FLUTUANTE DE PROPRIEDADES DO ELEMENTO SELECIONADO (Canto Superior Direito) */}
           {objSel && (
-            <div className="absolute right-3 top-16 z-[1100] w-80 rounded-xl border border-indigo-500/20 bg-background/98 p-4 text-xs shadow-2xl backdrop-blur">
+            <div className={`absolute right-3 top-16 ${Z_CLASSES.PANEL_OBJECT_PROPERTIES} w-80 rounded-xl border border-indigo-500/20 bg-background/98 p-4 text-xs shadow-2xl backdrop-blur`}>
               <div className="mb-3 flex items-center justify-between border-b pb-2">
                 <span className="font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider text-[10px]">Editar Elemento Selecionado</span>
                 <button className="rounded-full p-1 hover:bg-muted text-muted-foreground transition-colors" onClick={() => setObjetoSelId(null)} title="Fechar"><X className="size-4" /></button>

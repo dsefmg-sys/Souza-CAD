@@ -18,6 +18,7 @@ import { aplicarOrto, type ModoOrto } from '@/lib/topo/orto';
 import { snapUtm, type SegmentoSnap, type AlvoSnap, type SnapResult } from '@/lib/topo/snap';
 import { intersecaoRetasUtm } from '@/lib/topo/editing';
 import { avisar } from '@/lib/ui/dialogos';
+import { Z_CLASSES } from '@/lib/ui/zlayers';
 
 export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir' | 'paralela' | 'dividir' | 'trim' | 'extend' | 'retangulo' | 'arco' | 'copiar_base' | 'copiar_destino';
 
@@ -2132,7 +2133,7 @@ export default function MapEditor(props: Props) {
         }
 
         return (
-          <div className="absolute bottom-6 left-2 z-[1000] w-64 rounded-xl border border-blue-500/30 bg-background/95 p-3 text-xs shadow-2xl backdrop-blur">
+          <div className={`absolute bottom-6 left-2 ${Z_CLASSES.MAP_CONTROLS} w-64 rounded-xl border border-blue-500/30 bg-background/95 p-3 text-xs shadow-2xl backdrop-blur`}>
             <div className="flex items-center justify-between border-b pb-1.5 mb-2">
               <span className="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
                 <Ruler className="size-4" /> Régua de Medição
@@ -2170,7 +2171,7 @@ export default function MapEditor(props: Props) {
         if (!lista.length) return null;
         return (
           <div
-            className="absolute bottom-6 right-2 z-[1000] max-h-40 max-w-56 overflow-y-auto rounded-sm border bg-background/90 px-2 py-1.5 text-[11px] shadow backdrop-blur"
+            className={`absolute bottom-6 right-2 ${Z_CLASSES.MAP_CONTROLS} max-h-40 max-w-56 overflow-y-auto rounded-sm border bg-background/90 px-2 py-1.5 text-[11px] shadow backdrop-blur`}
             onWheel={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
@@ -2265,7 +2266,7 @@ export default function MapEditor(props: Props) {
       )}
 
       {onAtivar3D && (
-        <div className={`absolute left-2 z-[1000] transition-all duration-200 ${modo === 'medir' ? 'bottom-40' : 'bottom-6'}`}>
+        <div className={`absolute left-2 ${Z_CLASSES.MAP_CONTROLS} transition-all duration-200 ${modo === 'medir' ? 'bottom-40' : 'bottom-6'}`}>
           <Button
             type="button"
             size="sm"

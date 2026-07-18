@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Play, Pause, Volume2, VolumeX, X } from 'lucide-react';
+import { Z_CLASSES } from '@/lib/ui/zlayers';
 
 /**
  * Botão flutuante de áudio de introdução (canto superior direito).
@@ -328,7 +329,7 @@ export default function IntroAudio() {
       {/* Player flutuante no canto superior direito */}
       <div
         className={`
-          no-print fixed top-3 right-3 z-[1200]
+          no-print fixed top-3 right-3 ${Z_CLASSES.CONTEXT_MENU}
           flex items-center gap-2
           rounded-2xl border border-border/60
           bg-background/95 backdrop-blur shadow-xl
