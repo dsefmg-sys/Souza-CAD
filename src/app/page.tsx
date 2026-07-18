@@ -4259,9 +4259,15 @@ export default function EditorPage() {
   const ESP_CURVA = { fina: { normal: 0.5, mestra: 1.1 }, media: { normal: 0.7, mestra: 1.5 }, grossa: { normal: 1.0, mestra: 2.1 } } as const;
 
   // Junta os pontos com altitude (perímetro + ignorados/internos + grade digital online) no plano UTM — base pra sugerir e gerar.
-  function pontos3dCurvas(gradeOverride?: typeof gradeAltimetrica): Ponto3D[] {
-    const pts = [...vertices, ...verticesIgnorados]
-      .filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte) && Number.isFinite(v.elevacao))
+  function pontos3dCurvas(
+    gradeOverride?: typeof gradeAltimetrica,
+    verticesOverride?: typeof vertices,
+    ignoradosOverride?: typeof verticesIgnorados
+  ): Ponto3D[] {
+    const activeVertices = verticesOverride || vertices;
+    const activeIgnorados = ignoradosOverride || verticesIgnorados;
+    const pts = [...activeVertices, ...activeIgnorados]
+      .filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte) && Number.isFinite(v.elevacao) && v.elevacao !== 0)
       .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }));
     const activeGrade = gradeOverride || gradeAltimetrica;
     const ptsGrade = activeGrade.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
@@ -4284,6 +4290,8 @@ export default function EditorPage() {
   // recorta ao polígono do imóvel e aplica os ajustes da engrenagem (cor, espessura, mestra a cada N).
   async function gerarCurvasNivel() {
     let activeGrade = gradeAltimetrica;
+    let activeVertices = vertices;
+    let activeIgnorados = verticesIgnorados;
     if (adensarOnlineAtivo && gradeAltimetrica.length === 0 && vertices.length >= 3) {
       setProcessando(true);
       aviso('Buscando grade de altitudes oficiais do terreno (Copernicus DEM)...');
@@ -4407,6 +4415,9 @@ export default function EditorPage() {
               } else {
                 aviso('Altitudes não foram salvas nos vértices, mas serão usadas temporariamente para traçar as curvas.');
               }
+              // Sempre usa as novas altitudes calculadas para a triangulação do terreno nesta execução!
+              activeVertices = mudouVertice ? novosVertices : vertices;
+              activeIgnorados = mudouIgnorados ? novosIgnorados : verticesIgnorados;
             }
           }
         }
@@ -4417,7 +4428,7 @@ export default function EditorPage() {
       }
     }
 
-    const pts3d = pontos3dCurvas(activeGrade);
+    const pts3d = pontos3dCurvas(activeGrade, activeVertices, activeIgnorados);
     if (pts3d.length < 4) {
       await avisar({
         titulo: 'Curvas de nível',
