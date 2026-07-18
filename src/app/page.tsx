@@ -4235,6 +4235,7 @@ export default function EditorPage() {
   const [curvaConfigAberta, setCurvaConfigAberta] = useState(false);
   const [ajusteAltCm, setAjusteAltCm] = useState('');
   const [adensarOnlineAtivo, setAdensarOnlineAtivo] = useState(true);
+  const [desconsiderarVerticesLevantados, setDesconsiderarVerticesLevantados] = useState(false);
 
   function ajustarAltitudesGlobais(cm: number) {
     if (!cm || isNaN(cm)) return;
@@ -4266,9 +4267,11 @@ export default function EditorPage() {
   ): Ponto3D[] {
     const activeVertices = verticesOverride || vertices;
     const activeIgnorados = ignoradosOverride || verticesIgnorados;
-    const pts = [...activeVertices, ...activeIgnorados]
-      .filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte) && Number.isFinite(v.elevacao) && v.elevacao !== 0)
-      .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }));
+    const pts = desconsiderarVerticesLevantados
+      ? []
+      : [...activeVertices, ...activeIgnorados]
+          .filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte) && Number.isFinite(v.elevacao) && v.elevacao !== 0)
+          .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }));
     const activeGrade = gradeOverride || gradeAltimetrica;
     const ptsGrade = activeGrade.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
     const total = [...pts, ...ptsGrade];
@@ -6493,10 +6496,14 @@ export default function EditorPage() {
                               </div>
 
                               <div className="space-y-1 mt-1">
-                                <div className="rounded-md bg-muted/20 p-1.5">
+                                <div className="rounded-md bg-muted/20 p-1.5 space-y-1.5">
                                   <label className="flex items-center justify-between text-[10px] font-medium cursor-pointer" title="Se ativado, busca altitudes online automaticamente ao clicar em Gerar se a grade estiver vazia">
                                     <span>Adensar relevo automaticamente</span>
                                     <input type="checkbox" checked={adensarOnlineAtivo} onChange={(e) => setAdensarOnlineAtivo(e.target.checked)} className="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-primary" />
+                                  </label>
+                                  <label className="flex items-center justify-between text-[10px] font-medium cursor-pointer border-t border-border/20 pt-1.5" title="Ignora as altitudes dos vértices do perímetro e utiliza apenas altitudes obtidas online">
+                                    <span>Desconsiderar altitude dos vértices</span>
+                                    <input type="checkbox" checked={desconsiderarVerticesLevantados} onChange={(e) => setDesconsiderarVerticesLevantados(e.target.checked)} className="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-primary" />
                                   </label>
                                 </div>
                               </div>
