@@ -1118,7 +1118,9 @@ export default function EditorPage() {
   const setSalvoOk = autoSave.setSalvoOk;
   const salvarLaranja = autoSave.salvarLaranja;
   const setSalvarLaranja = autoSave.setSalvarLaranja;
+  const salvoNuvem = autoSave.salvoNuvem;
   const setSalvoNuvem = autoSave.setSalvoNuvem;
+  const naoEstaNaNuvem = salvarLaranja || !salvoNuvem;
   // Aliases curtos pros callsites existentes
   const ultimoSalvoSig = { current: '' }; // mantido só pra não quebrar os 6 callsites; valor é gerenciado pelo hook
   const acabouDeSalvar = { current: false };
@@ -4238,6 +4240,7 @@ export default function EditorPage() {
   const [adensarOnlineAtivo, setAdensarOnlineAtivo] = useState(true);
   const [desconsiderarVerticesLevantados, setDesconsiderarVerticesLevantados] = useState(false);
   const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState<number>(0); // 0 = Auto
+  const [modeloElevacao, setModeloElevacao] = useState<'copernicus_dem_30' | 'alos_dem_30' | 'srtm_gld3'>('copernicus_dem_30');
 
   function ajustarAltitudesGlobais(cm: number) {
     if (!cm || isNaN(cm)) return;
@@ -4365,14 +4368,14 @@ export default function EditorPage() {
     }
 
     if (aBuscar.length > 0) {
-      // Chunking em lotes de no máximo 800 pontos
-      const BATCH_SIZE = 800;
+      // Reduzido para 150 pontos para evitar 414 Request-URI Too Large (limitação de tamanho de URL)
+      const BATCH_SIZE = 150;
       for (let i = 0; i < aBuscar.length; i += BATCH_SIZE) {
         const batch = aBuscar.slice(i, i + BATCH_SIZE);
         const latsStr = batch.map(c => c.lat.toFixed(6)).join(',');
         const lonsStr = batch.map(c => c.lon.toFixed(6)).join(',');
         
-        const resApi = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}`);
+        const resApi = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}&model=${modeloElevacao}`);
         if (!resApi.ok) throw new Error('Falha na resposta do servidor Open-Meteo.');
         const data = await resApi.json();
         if (!data || !Array.isArray(data.elevation)) {
@@ -5697,6 +5700,22 @@ export default function EditorPage() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes gold-pulse {
+          0%, 100% {
+            box-shadow: 0 0 3px #d97706, 0 0 8px #d97706;
+            border-color: #f59e0b !important;
+          }
+          50% {
+            box-shadow: 0 0 8px #fbbf24, 0 0 18px #fbbf24;
+            border-color: #fbbf24 !important;
+          }
+        }
+        .neon-gold-pulse {
+          animation: gold-pulse 2s infinite ease-in-out;
+          border-width: 2px !important;
+        }
+      `}} />
       {readonlyPorFaturamento && (
         <div className="bg-red-950/90 border-b border-red-500/20 px-4 py-2.5 text-center text-xs text-red-200 flex items-center justify-center gap-2 backdrop-blur-sm z-[9999]">
           <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 animate-pulse" />
@@ -6004,8 +6023,15 @@ export default function EditorPage() {
                         <Button size="sm" variant="secondary" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
                           <Plus className="text-amber-500" /> <span>Novo</span>
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={salvar} disabled={processando} title="Salvar projeto atual (Ctrl+S)">
-                          <Save className="text-emerald-500" /> <span>SALVAR</span>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={salvar}
+                          disabled={processando}
+                          title={naoEstaNaNuvem ? "Salvar projeto atual na nuvem (Ctrl+S) - Modificações pendentes de salvamento online!" : "Projeto salvo e sincronizado na nuvem (Ctrl+S)"}
+                          className={`relative transition-all duration-300 ${naoEstaNaNuvem ? 'neon-gold-pulse text-amber-500 bg-amber-500/10 hover:bg-amber-500/20' : ''}`}
+                        >
+                          <Save className={naoEstaNaNuvem ? 'text-amber-500' : 'text-emerald-500'} /> <span>SALVAR</span>
                         </Button>
                         <Button size="sm" variant="secondary" onClick={() => setPrecoSugAberto(true)} title="Precificação: quanto cobrar por este imóvel">
                           <PencilRuler className="text-amber-400" /> <span>Precificação</span>
@@ -6569,6 +6595,21 @@ export default function EditorPage() {
                                     <input type="checkbox" checked={desconsiderarVerticesLevantados} onChange={(e) => setDesconsiderarVerticesLevantados(e.target.checked)} className="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-primary" />
                                   </label>
                                   <div className="flex items-center justify-between text-[10px] font-medium border-t border-border/20 pt-1.5">
+                                    <span title="Escolha a fonte dos dados de altitude para o relevo">Fonte de Altitudes</span>
+                                    <select
+                                      value={modeloElevacao}
+                                      onChange={(e) => {
+                                        setModeloElevacao(e.target.value as any);
+                                        setGradeAltimetrica([]); // limpa para forçar busca nova com a nova fonte
+                                      }}
+                                      className="h-6 rounded border bg-background px-1 text-[9px] focus:ring-1 focus:ring-primary focus:outline-none w-28"
+                                    >
+                                      <option value="copernicus_dem_30">Copernicus 30m</option>
+                                      <option value="alos_dem_30">ALOS 3D 30m</option>
+                                      <option value="srtm_gld3">SRTM 30m (NASA)</option>
+                                    </select>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10px] font-medium border-t border-border/20 pt-1.5">
                                     <span title="Distância em metros entre os pontos de altitude da grade online. Menor = curvas mais realistas, porém exige mais processamento.">Espaçamento da Grade</span>
                                     <select
                                       value={gradeDensidadeMetros}
@@ -6937,255 +6978,6 @@ export default function EditorPage() {
               {/* BARRA FLUTUANTE ÚNICA (só desktop) — alternar Mapa/Planta, chave de modo, área e
               perímetro, glebas, controles da planta e áudios. NO CELULAR ela é extinta: o alternar
               Mapa/Planta vai pro cabeçalho, área/glebas ficam no painel de Dados, e os áudios saem. */}
-          {(vista === 'mapa' || vista === 'planta') && !telaEstreita && (
-            <div
-              style={telaEstreita ? undefined : { left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)' }}
-              className={`no-print pointer-events-auto ${Z_CLASSES.FLOATING_TOOLBAR} flex items-center gap-x-1.5 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1.5 shadow-xl select-none ${
-                telaEstreita ? 'fixed inset-x-1 bottom-1 rounded-xl' : 'absolute rounded-2xl'
-              }`}
-            >
-              {/* Alça de arrasto — no celular a barra é fixa na base, então não precisa arrastar */}
-              {!telaEstreita && (
-                <div
-                  className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    setArrastandoArea({ startX: e.clientX, startY: e.clientY, startPosX: posArea.x, startPosY: posArea.y });
-                  }}
-                  title="Arraste para mover a barra"
-                >
-                  <GripVertical className="size-3.5" />
-                </div>
-              )}
-
-              {/* Alternar Mapa/Planta */}
-              {/* Botão cheio na cor da marca: texto e ícone em `primary-foreground` (branco quando a
-                  marca é escura, o caso normal; vira escuro só se a marca for clara demais, pra não
-                  sumir). Atalho ESC em dourado. */}
-              <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
-                title="Alternar entre mapa e planta (Esc)"
-                className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 px-2.5 text-[10px] font-bold text-white shadow-sm transition hover:brightness-110">
-                {vista === 'mapa' ? <Eye className="size-3.5" /> : <MapIcon className="size-3.5" />}
-                <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
-                <span className="rounded-sm bg-black/20 px-1 font-mono text-[8px] font-semibold text-yellow-300">ESC</span>
-              </button>
-
-              {/* Pintar Divisas/Confrontantes — ao lado do botão Mapa/Planta, dentro da mesma barra
-                  (antes era uma barra separada no topo do mapa). */}
-              {vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante') && (
-                <>
-                  <div className="h-4 w-px bg-border" />
-                  <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wider ${
-                    modo === 'divisa' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                  }`}>
-                    {modo === 'divisa' ? 'Divisas' : 'Confro.'}
-                  </span>
-
-                  {modo === 'divisa' && (
-                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-700 ${
-                      pincelInicioId
-                        ? 'ring-1 ring-amber-500/50 bg-amber-500/10'
-                        : 'ring-1.5 ring-amber-500/70 shadow-[0_0_12px_rgba(245,158,11,0.35)] animate-pulse-lento bg-amber-500/10'
-                    }`}>
-                      <span className="relative inline-flex">
-                        <button type="button"
-                          className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2 hover:bg-muted transition-colors"
-                          title="Ajustar as cores das divisas (salvo nas plantas)"
-                          onClick={() => setCorPickerAberto((v) => !v)}>
-                          <span className="inline-block h-1 w-4 rounded-full" style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }} />
-                          <Palette className="size-3.5 text-muted-foreground" />
-                        </button>
-                        {corPickerAberto && (
-                          <div className={`absolute left-0 top-9 ${Z_CLASSES.DROPDOWN_MENU} w-56 rounded-xl border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-left`} data-cor-bump={corBump}>
-                            <div className="mb-2 text-[9px] font-black uppercase text-muted-foreground tracking-wider">Cores das Divisas</div>
-                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scroll-fino">
-                              {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
-                                <label key={tipo} className="flex items-center gap-2 text-[11px] text-foreground">
-                                  <input type="color" value={cor || '#9ca3af'}
-                                    className="h-6 w-8 shrink-0 cursor-pointer rounded border bg-transparent p-0"
-                                    onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }} />
-                                  <span className="truncate">{rotuloDivisaTipo(tipo)}</span>
-                                </label>
-                              ))}
-                            </div>
-                            <Button type="button" size="sm" variant="outline" className="mt-3 w-full h-8 text-[10px]" onClick={() => setCorPickerAberto(false)}>
-                              Fechar
-                            </Button>
-                          </div>
-                        )}
-                      </span>
-                      <select className="h-7 max-w-[220px] rounded-full border border-amber-500/40 bg-background/95 px-2 text-[10px] font-bold outline-none ring-1 ring-amber-400/30"
-                        value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
-                        {opcoesDivisaTipo.map((r) => (
-                          <option key={r} value={r} className="bg-background text-foreground">{rotuloDivisaTipo(r)}</option>
-                        ))}
-                      </select>
-                      <button type="button" className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        onClick={novoTipoDivisaPincel} title="Cadastrar novo tipo de divisa">
-                        <Plus className="size-3.5" />
-                      </button>
-                    </div>
-                  )}
-
-                  {modo === 'confrontante' && (
-                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-700 ${
-                      pincelInicioId
-                        ? 'ring-1 ring-emerald-500/50 bg-emerald-500/10'
-                        : 'ring-1.5 ring-emerald-500/70 shadow-[0_0_12px_rgba(16,185,129,0.35)] animate-pulse-lento bg-emerald-500/10'
-                    }`}>
-                      {confrontantePincelId && (() => {
-                        const pincelConf = confrontantes.find((x) => x.id === confrontantePincelId);
-                        const corConf = corPorConfrontante(confrontantePincelId, pincelConf);
-                        return (
-                          <label className="relative cursor-pointer inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-border hover:scale-110 transition-transform"
-                            style={{ backgroundColor: corConf }} title="Clique para mudar a cor deste confrontante">
-                            <input
-                              type="color"
-                              className="sr-only"
-                              value={corConf}
-                              onChange={(e) => {
-                                const novaCor = e.target.value;
-                                setConfrontantes((cs) => cs.map((x) => (x.id === confrontantePincelId ? { ...x, cor: novaCor } : x)));
-                              }}
-                            />
-                          </label>
-                        );
-                      })()}
-                      <select className={`h-7 max-w-[220px] rounded-full border bg-background/95 px-2 text-[10px] font-bold outline-none transition-all ${
-                        !confrontantePincelId ? 'border-emerald-500/60 ring-1.5 ring-emerald-400/40 text-emerald-700 dark:text-emerald-300' : 'border-border'
-                      }`}
-                        value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
-                        <option value="" className="bg-background text-muted-foreground">— Escolha ou Crie um —</option>
-                        {confrontantes.map((c) => (
-                          <option key={c.id} value={c.id} className="bg-background" style={{ color: corPorConfrontante(c.id, c) }}>{c.nome || '(sem nome)'}</option>
-                        ))}
-                      </select>
-                      {confrontantePincelId && (
-                        <button type="button" className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => excluirConfrontante(confrontantePincelId)} title="Excluir este confrontante do projeto">
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      )}
-                      <Button size="sm" className={`h-7 shrink-0 gap-1 rounded-full bg-emerald-600 px-2 text-[9px] font-black uppercase text-white hover:bg-emerald-700 transition-all ${
-                        !confrontantePincelId ? 'ring-1.5 ring-emerald-300 shadow-sm animate-pulse-lento' : ''
-                      }`}
-                        onClick={novoConfrontantePincel} title="Novo confrontante">
-                        <Plus className="size-3.5" /> Novo
-                      </Button>
-                    </div>
-                  )}
-
-                  <button type="button" className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    onClick={() => setModo('navegar')} title="Sair do modo de pintura">
-                    <X className="size-3.5" />
-                  </button>
-                </>
-              )}
-              {glebas.length > 1 && (
-                <>
-                  <div className="h-4 w-px bg-border" />
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground">
-                    <Waypoints className="size-3.5 text-primary shrink-0" />
-                    <select
-                      value={glebaAtivaId}
-                      onChange={(e) => trocarGleba(e.target.value)}
-                      className="bg-transparent border-0 outline-none text-xs font-bold font-sans cursor-pointer text-foreground pr-1 focus:ring-0 max-w-[120px] truncate"
-                    >
-                      {glebas.map((g, idx) => (
-                        <option key={g.id} value={g.id} className="text-foreground bg-background">
-                          {g.denominacao || `Gleba ${idx + 1}`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </>
-              )}
-
-              {/* Controles específicos do modo PLANTA */}
-              {vista === 'planta' && (
-                <>
-                  <div className="h-4 w-px bg-border" />
-                  {/* Botão de captura da Situação: só aparece quando ainda não há imagem.
-                      Quando já existe e o desenho mudou, o overlay laranja na própria
-                      imagem (Planta.tsx) avisa e atualiza sem poluir a barra. */}
-                  {!situacaoUrl && (
-                    <button type="button" onClick={gerarSituacaoPlanta}
-                      title="Capturar a planta de situação (satélite)"
-                      className="flex h-7 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400 px-2.5 text-[10px] font-bold transition-colors">
-                      <Camera className="size-3.5" />
-                      Situação
-                    </button>
-                  )}
-
-
-
-
-
-                  {/* Tema da prancha */}
-                  <button type="button" onClick={() => setPlantaDark((v) => !v)}
-                    title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
-                    className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-background/95 px-2.5 text-[10px] font-bold text-foreground hover:bg-muted transition-colors">
-                    {plantaDark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
-                    <span>{plantaDark ? 'ESCURA' : 'CLARA'}</span>
-                  </button>
-                </>
-              )}
-
-            </div>
-          )}
-
-          {/* Segunda barra flutuante: áudios de Introdução e Tutorial, na parte INFERIOR da tela
-              (a barra principal, com Mapa/Planta etc., fica na parte de cima). Abre por padrão ao
-              abrir o app; tem botão pra fechar, já que nem todo mundo quer ouvir toda vez. */}
-          {(vista === 'mapa' || vista === 'planta') && !telaEstreita && !introTocando && barraAudiosAberta && (
-            <div
-              style={{ left: `${posAudioBarra.x}px`, top: `${posAudioBarra.y}px` }}
-              className={`no-print pointer-events-auto fixed ${Z_CLASSES.FLOATING_TOOLBAR} flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 p-1.5 shadow-xl backdrop-blur-sm select-none`}
-            >
-              <div
-                className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setArrastandoAudioBarra({ startX: e.clientX, startY: e.clientY, startPosX: posAudioBarra.x, startPosY: posAudioBarra.y });
-                }}
-                title="Arraste para mover a barra de áudio"
-              >
-                <GripVertical className="size-3.5" />
-              </div>
-              <TutorialAudioPill modo={modoApp} />
-              <button type="button" onClick={() => setTutorialAberto(true)}
-                className="flex h-6 items-center gap-1 rounded-full border bg-background px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                title="Tutorial em áudio e texto: passo a passo e temas de ajuda">
-                <HelpCircle className="size-3" /> Guias de Utilização
-              </button>
-              {(videosUrl || videosTutorial.length > 0) && (
-                <button type="button" onClick={() => setVideosListaAberta(true)}
-                  className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
-                  title="Vídeos tutoriais por tema, ou o curso completo em playlist">
-                  <Youtube className="size-3" /> Vídeos
-                </button>
-              )}
-              <div className="mx-0.5 h-4 w-px bg-border" />
-              <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
-                title={completo
-                  ? 'Modo Completo: todas as ferramentas. Clique para o Fácil.'
-                  : medio
-                    ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
-                    : 'Modo Fácil: só o essencial. Clique para o Médio.'}
-                className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                {completo ? <Briefcase className="size-3 text-sky-500" /> : medio ? <PencilRuler className="size-3 text-emerald-500" /> : <GraduationCap className="size-3 text-amber-500" />}
-                {completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}
-              </button>
-              <button type="button" onClick={() => setBarraAudiosAberta(false)}
-                className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                title="Fechar">
-                <X className="size-3.5" />
-              </button>
-            </div>
-          )}
-
-
-
           {vista === '3d' ? (
             <ErrorBoundary onReset={() => setVista('mapa')}>
               <Map3DViewer
@@ -7645,6 +7437,255 @@ export default function EditorPage() {
               </div>
             </div>
           )}
+          {(vista === 'mapa' || vista === 'planta') && !telaEstreita && (
+            <div
+              style={telaEstreita ? undefined : { left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)' }}
+              className={`no-print pointer-events-auto ${Z_CLASSES.FLOATING_TOOLBAR} flex items-center gap-x-1.5 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1.5 shadow-xl select-none ${
+                telaEstreita ? 'fixed inset-x-1 bottom-1 rounded-xl' : 'absolute rounded-2xl'
+              }`}
+            >
+              {/* Alça de arrasto — no celular a barra é fixa na base, então não precisa arrastar */}
+              {!telaEstreita && (
+                <div
+                  className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setArrastandoArea({ startX: e.clientX, startY: e.clientY, startPosX: posArea.x, startPosY: posArea.y });
+                  }}
+                  title="Arraste para mover a barra"
+                >
+                  <GripVertical className="size-3.5" />
+                </div>
+              )}
+
+              {/* Alternar Mapa/Planta */}
+              {/* Botão cheio na cor da marca: texto e ícone em `primary-foreground` (branco quando a
+                  marca é escura, o caso normal; vira escuro só se a marca for clara demais, pra não
+                  sumir). Atalho ESC em dourado. */}
+              <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
+                title="Alternar entre mapa e planta (Esc)"
+                className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 px-2.5 text-[10px] font-bold text-white shadow-sm transition hover:brightness-110">
+                {vista === 'mapa' ? <Eye className="size-3.5" /> : <MapIcon className="size-3.5" />}
+                <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
+                <span className="rounded-sm bg-black/20 px-1 font-mono text-[8px] font-semibold text-yellow-300">ESC</span>
+              </button>
+
+              {/* Pintar Divisas/Confrontantes — ao lado do botão Mapa/Planta, dentro da mesma barra
+                  (antes era uma barra separada no topo do mapa). */}
+              {vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante') && (
+                <>
+                  <div className="h-4 w-px bg-border" />
+                  <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wider ${
+                    modo === 'divisa' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                  }`}>
+                    {modo === 'divisa' ? 'Divisas' : 'Confro.'}
+                  </span>
+
+                  {modo === 'divisa' && (
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-700 ${
+                      pincelInicioId
+                        ? 'ring-1 ring-amber-500/50 bg-amber-500/10'
+                        : 'ring-1.5 ring-amber-500/70 shadow-[0_0_12px_rgba(245,158,11,0.35)] animate-pulse-lento bg-amber-500/10'
+                    }`}>
+                      <span className="relative inline-flex">
+                        <button type="button"
+                          className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2 hover:bg-muted transition-colors"
+                          title="Ajustar as cores das divisas (salvo nas plantas)"
+                          onClick={() => setCorPickerAberto((v) => !v)}>
+                          <span className="inline-block h-1 w-4 rounded-full" style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }} />
+                          <Palette className="size-3.5 text-muted-foreground" />
+                        </button>
+                        {corPickerAberto && (
+                          <div className={`absolute left-0 top-9 ${Z_CLASSES.DROPDOWN_MENU} w-56 rounded-xl border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-left`} data-cor-bump={corBump}>
+                            <div className="mb-2 text-[9px] font-black uppercase text-muted-foreground tracking-wider">Cores das Divisas</div>
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scroll-fino">
+                              {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
+                                <label key={tipo} className="flex items-center gap-2 text-[11px] text-foreground">
+                                  <input type="color" value={cor || '#9ca3af'}
+                                    className="h-6 w-8 shrink-0 cursor-pointer rounded border bg-transparent p-0"
+                                    onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }} />
+                                  <span className="truncate">{rotuloDivisaTipo(tipo)}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <Button type="button" size="sm" variant="outline" className="mt-3 w-full h-8 text-[10px]" onClick={() => setCorPickerAberto(false)}>
+                              Fechar
+                            </Button>
+                          </div>
+                        )}
+                      </span>
+                      <select className="h-7 max-w-[220px] rounded-full border border-amber-500/40 bg-background/95 px-2 text-[10px] font-bold outline-none ring-1 ring-amber-400/30"
+                        value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
+                        {opcoesDivisaTipo.map((r) => (
+                          <option key={r} value={r} className="bg-background text-foreground">{rotuloDivisaTipo(r)}</option>
+                        ))}
+                      </select>
+                      <button type="button" className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        onClick={novoTipoDivisaPincel} title="Cadastrar novo tipo de divisa">
+                        <Plus className="size-3.5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {modo === 'confrontante' && (
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-700 ${
+                      pincelInicioId
+                        ? 'ring-1 ring-emerald-500/50 bg-emerald-500/10'
+                        : 'ring-1.5 ring-emerald-500/70 shadow-[0_0_12px_rgba(16,185,129,0.35)] animate-pulse-lento bg-emerald-500/10'
+                    }`}>
+                      {confrontantePincelId && (() => {
+                        const pincelConf = confrontantes.find((x) => x.id === confrontantePincelId);
+                        const corConf = corPorConfrontante(confrontantePincelId, pincelConf);
+                        return (
+                          <label className="relative cursor-pointer inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-border hover:scale-110 transition-transform"
+                            style={{ backgroundColor: corConf }} title="Clique para mudar a cor deste confrontante">
+                            <input
+                              type="color"
+                              className="sr-only"
+                              value={corConf}
+                              onChange={(e) => {
+                                const novaCor = e.target.value;
+                                setConfrontantes((cs) => cs.map((x) => (x.id === confrontantePincelId ? { ...x, cor: novaCor } : x)));
+                              }}
+                            />
+                          </label>
+                        );
+                      })()}
+                      <select className={`h-7 max-w-[220px] rounded-full border bg-background/95 px-2 text-[10px] font-bold outline-none transition-all ${
+                        !confrontantePincelId ? 'border-emerald-500/60 ring-1.5 ring-emerald-400/40 text-emerald-700 dark:text-emerald-300' : 'border-border'
+                      }`}
+                        value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
+                        <option value="" className="bg-background text-muted-foreground">— Escolha ou Crie um —</option>
+                        {confrontantes.map((c) => (
+                          <option key={c.id} value={c.id} className="bg-background" style={{ color: corPorConfrontante(c.id, c) }}>{c.nome || '(sem nome)'}</option>
+                        ))}
+                      </select>
+                      {confrontantePincelId && (
+                        <button type="button" className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => excluirConfrontante(confrontantePincelId)} title="Excluir este confrontante do projeto">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                      <Button size="sm" className={`h-7 shrink-0 gap-1 rounded-full bg-emerald-600 px-2 text-[9px] font-black uppercase text-white hover:bg-emerald-700 transition-all ${
+                        !confrontantePincelId ? 'ring-1.5 ring-emerald-300 shadow-sm animate-pulse-lento' : ''
+                      }`}
+                        onClick={novoConfrontantePincel} title="Novo confrontante">
+                        <Plus className="size-3.5" /> Novo
+                      </Button>
+                    </div>
+                  )}
+
+                  <button type="button" className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    onClick={() => setModo('navegar')} title="Sair do modo de pintura">
+                    <X className="size-3.5" />
+                  </button>
+                </>
+              )}
+              {glebas.length > 1 && (
+                <>
+                  <div className="h-4 w-px bg-border" />
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground">
+                    <Waypoints className="size-3.5 text-primary shrink-0" />
+                    <select
+                      value={glebaAtivaId}
+                      onChange={(e) => trocarGleba(e.target.value)}
+                      className="bg-transparent border-0 outline-none text-xs font-bold font-sans cursor-pointer text-foreground pr-1 focus:ring-0 max-w-[120px] truncate"
+                    >
+                      {glebas.map((g, idx) => (
+                        <option key={g.id} value={g.id} className="text-foreground bg-background">
+                          {g.denominacao || `Gleba ${idx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* Controles específicos do modo PLANTA */}
+              {vista === 'planta' && (
+                <>
+                  <div className="h-4 w-px bg-border" />
+                  {/* Botão de captura da Situação: só aparece quando ainda não há imagem.
+                      Quando já existe e o desenho mudou, o overlay laranja na própria
+                      imagem (Planta.tsx) avisa e atualiza sem poluir a barra. */}
+                  {!situacaoUrl && (
+                    <button type="button" onClick={gerarSituacaoPlanta}
+                      title="Capturar a planta de situação (satélite)"
+                      className="flex h-7 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400 px-2.5 text-[10px] font-bold transition-colors">
+                      <Camera className="size-3.5" />
+                      Situação
+                    </button>
+                  )}
+
+
+
+
+
+                  {/* Tema da prancha */}
+                  <button type="button" onClick={() => setPlantaDark((v) => !v)}
+                    title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
+                    className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-background/95 px-2.5 text-[10px] font-bold text-foreground hover:bg-muted transition-colors">
+                    {plantaDark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
+                    <span>{plantaDark ? 'ESCURA' : 'CLARA'}</span>
+                  </button>
+                </>
+              )}
+
+            </div>
+          )}
+
+          {/* Segunda barra flutuante: áudios de Introdução e Tutorial, na parte INFERIOR da tela
+              (a barra principal, com Mapa/Planta etc., fica na parte de cima). Abre por padrão ao
+              abrir o app; tem botão pra fechar, já que nem todo mundo quer ouvir toda vez. */}
+          {(vista === 'mapa' || vista === 'planta') && !telaEstreita && !introTocando && barraAudiosAberta && (
+            <div
+              style={{ left: `${posAudioBarra.x}px`, top: `${posAudioBarra.y}px` }}
+              className={`no-print pointer-events-auto fixed ${Z_CLASSES.FLOATING_TOOLBAR} flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 p-1.5 shadow-xl backdrop-blur-sm select-none`}
+            >
+              <div
+                className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setArrastandoAudioBarra({ startX: e.clientX, startY: e.clientY, startPosX: posAudioBarra.x, startPosY: posAudioBarra.y });
+                }}
+                title="Arraste para mover a barra de áudio"
+              >
+                <GripVertical className="size-3.5" />
+              </div>
+              <TutorialAudioPill modo={modoApp} />
+              <button type="button" onClick={() => setTutorialAberto(true)}
+                className="flex h-6 items-center gap-1 rounded-full border bg-background px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                title="Tutorial em áudio e texto: passo a passo e temas de ajuda">
+                <HelpCircle className="size-3" /> Guias de Utilização
+              </button>
+              {(videosUrl || videosTutorial.length > 0) && (
+                <button type="button" onClick={() => setVideosListaAberta(true)}
+                  className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
+                  title="Vídeos tutoriais por tema, ou o curso completo em playlist">
+                  <Youtube className="size-3" /> Vídeos
+                </button>
+              )}
+              <div className="mx-0.5 h-4 w-px bg-border" />
+              <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
+                title={completo
+                  ? 'Modo Completo: todas as ferramentas. Clique para o Fácil.'
+                  : medio
+                    ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
+                    : 'Modo Fácil: só o essencial. Clique para o Médio.'}
+                className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                {completo ? <Briefcase className="size-3 text-sky-500" /> : medio ? <PencilRuler className="size-3 text-emerald-500" /> : <GraduationCap className="size-3 text-amber-500" />}
+                {completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}
+              </button>
+              <button type="button" onClick={() => setBarraAudiosAberta(false)}
+                className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                title="Fechar">
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
+
+
+
             </>
           )}
         </main>

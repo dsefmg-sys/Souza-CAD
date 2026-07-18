@@ -99,7 +99,7 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
   // useEffect reiniciar os arrays) — só usa índices que existem em `ll`/`pontos`.
   const importadosNaOrdem = ordem.filter((i) => i < n && ll[i] && pontos[i] && importar[i]);
   const poligono = importadosNaOrdem.filter((i) => noPoligono[i]).map((i) => ll[i]);
-  const marcadores = importadosNaOrdem.map((i) => ({ lat: ll[i][0], lon: ll[i][1], ativo: i === destaque, noPoligono: noPoligono[i], rotulo: nomes[i] || pontos[i].nome }));
+  const marcadores = importadosNaOrdem.map((i) => ({ idx: i, lat: ll[i][0], lon: ll[i][1], ativo: i === destaque, noPoligono: noPoligono[i], rotulo: nomes[i] || pontos[i].nome }));
   const destaqueLL = destaque != null && ll[destaque] ? ll[destaque] : null;
 
   const qtdImportar = importar.filter(Boolean).length;

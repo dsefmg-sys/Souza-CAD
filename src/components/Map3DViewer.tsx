@@ -195,12 +195,14 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
 
         // Rotação vertical (Pitch)
         const x2 = x1;
-        const y2 = y1 * cosP - z1 * sinP;
-        const z2 = y1 * sinP + z1 * cosP;
+        // Inversão corrigida: altitudes mais altas devem subir no canvas (-y no canvas 2D, logo +y2)
+        // e ter menor profundidade (ficam mais próximas do observador)
+        const y2 = y1 * cosP + z1 * sinP;
+        const z2 = y1 * sinP - z1 * cosP;
 
         // Perspectiva simples
         const dist = stats.maxDist * 1.5;
-        const pers = dist / (dist + z2);
+        const pers = dist / (dist + z2 > 0.1 ? dist + z2 : 0.1);
 
         const screenX = w / 2 + x2 * finalScale * pers;
         const screenY = h / 2 - y2 * finalScale * pers;

@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Polygon, CircleMarker, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
-interface Marcador { lat: number; lon: number; ativo?: boolean; noPoligono?: boolean; rotulo?: string }
+interface Marcador { idx: number; lat: number; lon: number; ativo?: boolean; noPoligono?: boolean; rotulo?: string }
 
 function Enquadrar({ pts, destaque }: { pts: [number, number][]; destaque: [number, number] | null }) {
   const map = useMap();
@@ -32,11 +32,29 @@ export default function PreviaSatelite({ poligono, marcadores, destaque }: { pol
   return (
     <MapContainer center={centro} zoom={15} maxZoom={22} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
       <TileLayer attribution="Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" maxZoom={22} maxNativeZoom={20} subdomains={['mt0', 'mt1', 'mt2', 'mt3']} />
-      {poligono.length >= 3 && <Polygon positions={poligono} pathOptions={{ color: '#3b82f6', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.12 }} />}
-      {validos.map((m, i) => {
+      {poligono.length >= 3 && (
+        <Polygon
+          key={`poly-${poligono.map(p => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join('|')}`}
+          positions={poligono}
+          pathOptions={{ color: '#3b82f6', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.12 }}
+        />
+      )}
+      {poligono.length === 2 && (
+        <Polyline
+          key={`line-${poligono.map(p => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join('|')}`}
+          positions={poligono}
+          pathOptions={{ color: '#3b82f6', weight: 2, dashArray: '4 4' }}
+        />
+      )}
+      {validos.map((m) => {
         const cor = m.ativo ? '#f59e0b' : m.noPoligono ? '#1d4ed8' : '#9ca3af';
         return (
-          <CircleMarker key={i} center={[m.lat, m.lon]} radius={m.ativo ? 7 : 4} pathOptions={{ color: cor, fillColor: m.ativo ? '#fde047' : '#fff', fillOpacity: 1, weight: m.ativo ? 3 : 1.5 }}>
+          <CircleMarker
+            key={`marker-${m.idx}-${m.noPoligono}-${m.ativo}-${m.lat.toFixed(6)}-${m.lon.toFixed(6)}`}
+            center={[m.lat, m.lon]}
+            radius={m.ativo ? 7 : 4}
+            pathOptions={{ color: cor, fillColor: m.ativo ? '#fde047' : '#fff', fillOpacity: 1, weight: m.ativo ? 3 : 1.5 }}
+          >
             {m.ativo && m.rotulo && <Tooltip permanent direction="top" offset={[0, -6]}>{m.rotulo}</Tooltip>}
           </CircleMarker>
         );
