@@ -74,6 +74,24 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
   // Pinça de dois dedos (zoom no toque): distância e zoom no início do gesto.
   const pinchRef = useRef({ active: false, startDist: 0, startZoom: 1 });
 
+  // Configurações visuais adicionais
+  const [mostrarParedes, setMostrarParedes] = useState(false); // desativada por padrão conforme pedido do usuário
+  const [mostrarTin, setMostrarTin] = useState(false);
+  const [destacarErros, setDestacarErros] = useState(true); // ativada por padrão para ajudar a encontrar erros de cota zero
+
+  // Estados de cálculo de terraplenagem (volume de corte/aterro)
+  const [calcVolumeAtivo, setCalcVolumeAtivo] = useState(false);
+  const [zRefMode, setZRefMode] = useState<'alto' | 'baixo' | 'manual'>('baixo');
+  const [zRefManual, setZRefManual] = useState<string>('');
+  const [fatorEmpolamento, setFatorEmpolamento] = useState<number>(1.4);
+  const [vtxAtivos, setVtxAtivos] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const act: Record<string, boolean> = {};
+    vertices.forEach((v) => { act[v.id] = true; });
+    setVtxAtivos(act);
+  }, [vertices]);
+
   // Centralização e escala automática
   const finitePts = vertices.filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte));
   const hasZ = finitePts.some((v) => (v.elevacao || 0) !== 0);
@@ -108,6 +126,18 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
     return { avgX, avgY, avgZ, maxDist };
   })();
 
+  // Altitudes de referência para o cálculo de volumes
+  const vtxComAltitude = vertices.filter((v) => Number.isFinite(v.elevacao) && v.elevacao !== 0 && vtxAtivos[v.id] !== false);
+  const maxElev = vtxComAltitude.length > 0 ? Math.max(...vtxComAltitude.map((v) => v.elevacao)) : 0;
+  const minElev = vtxComAltitude.length > 0 ? Math.min(...vtxComAltitude.map((v) => v.elevacao)) : 0;
+
+  const zRef = (() => {
+    if (zRefMode === 'alto') return maxElev;
+    if (zRefMode === 'baixo') return minElev;
+    const manualVal = parseFloat(zRefManual);
+    return Number.isFinite(manualVal) ? manualVal : minElev;
+  })();
+
   // Superfície do relevo (malha TIN). Reaproveita a MESMA triangulação de Delaunay que as curvas de
   // nível usam. Triangula a nuvem de pontos com altitude, recorta ao perímetro do imóvel (triângulo
   // entra só se o centro cai dentro) e guarda o intervalo de altitude para a escala de cores.
@@ -136,6 +166,61 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
   }, [pontos3D, vertices]);
 
   const temSuperficie = superficie.tris.length > 0;
+
+  // Lógica matemática avançada e exata de cubagem por prismas triangulares
+  const volumes = useMemo(() => {
+    if (!calcVolumeAtivo || superficie.tris.length === 0) return { corte: 0, aterro: 0, area: 0 };
+
+    let totalCorte = 0;
+    let totalAterro = 0;
+    let totalArea = 0;
+
+    const { pts, tris } = superficie;
+
+    for (const t of tris) {
+      const p1 = pts[t[0]];
+      const p2 = pts[t[1]];
+      const p3 = pts[t[2]];
+
+      // Área do triângulo projetado em 2D
+      const area = 0.5 * Math.abs(p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
+      if (area < 1e-5) continue;
+
+      totalArea += area;
+
+      const h1 = p1.z - zRef;
+      const h2 = p2.z - zRef;
+      const h3 = p3.z - zRef;
+
+      // Ordena as cotas relativas: h_min <= h_mid <= h_max
+      const hs = [h1, h2, h3].sort((a, b) => a - b);
+      const [h_min, h_mid, h_max] = hs;
+
+      const vNet = area * (h1 + h2 + h3) / 3;
+
+      if (h_min >= 0) {
+        // Todo acima da referência: corte puro
+        totalCorte += vNet;
+      } else if (h_max <= 0) {
+        // Todo abaixo da referência: aterro puro
+        totalAterro += -vNet;
+      } else if (h_mid < 0) {
+        // Dois negativos, um positivo: o corte é uma pirâmide triangular acima da referência
+        const vCorte = area * (h_max * h_max * h_max) / (3 * (h_max - h_min) * (h_max - h_mid));
+        const vAterro = vCorte - vNet;
+        totalCorte += vCorte;
+        totalAterro += vAterro;
+      } else {
+        // Um negativo, dois positivos: o aterro é uma pirâmide triangular abaixo da referência
+        const vAterro = area * (-h_min * h_min * h_min) / (3 * (h_min - h_max) * (h_min - h_mid));
+        const vCorte = vNet + vAterro;
+        totalCorte += vCorte;
+        totalAterro += vAterro;
+      }
+    }
+
+    return { corte: totalCorte, aterro: totalAterro, area: totalArea };
+  }, [calcVolumeAtivo, superficie, zRef]);
 
   // Render do Loop 3D via Canvas 2D adaptado com Projeção Ortográfica / Perspectiva Simples
   useEffect(() => {
@@ -239,16 +324,38 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
           if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; } // face voltada pra cima
           const nlen = Math.hypot(nx, ny, nz) || 1;
           const fator = ambiente + (1 - ambiente) * Math.max(0, (nx * Lx + ny * Ly + nz * Lz) / nlen);
-          const zMed = (A.z + B.z + C.z) / 3;
-          const t01 = dz > 1e-6 ? (zMed - minZ) / dz : 0.5;
-          const [r, g, b] = corHipsometrica(t01);
-          faces.push({ pts: [pA, pB, pC], depth: (pA.depth + pB.depth + pC.depth) / 3, cor: `rgb(${Math.round(r * fator)},${Math.round(g * fator)},${Math.round(b * fator)})` });
+          
+          let rgbColor: [number, number, number];
+          if (calcVolumeAtivo) {
+            const hAvg = (A.z + B.z + C.z) / 3 - zRef;
+            if (hAvg > 0) {
+              // Vermelho/Rosa para Corte
+              const factor = Math.min(1, hAvg / (superficie.maxZ - zRef || 1));
+              rgbColor = [
+                Math.round(239 - (239 - 180) * factor),
+                Math.round(68 - (68 - 30) * factor),
+                Math.round(68 - (68 - 30) * factor),
+              ];
+            } else {
+              // Azul/Ciano para Aterro
+              const factor = Math.min(1, -hAvg / (zRef - superficie.minZ || 1));
+              rgbColor = [
+                Math.round(59 - (59 - 30) * factor),
+                Math.round(130 - (130 - 80) * factor),
+                Math.round(246 - (246 - 200) * factor),
+              ];
+            }
+          } else {
+            const zMed = (A.z + B.z + C.z) / 3;
+            const t01 = dz > 1e-6 ? (zMed - minZ) / dz : 0.5;
+            rgbColor = corHipsometrica(t01);
+          }
+          
+          faces.push({ pts: [pA, pB, pC], depth: (pA.depth + pB.depth + pC.depth) / 3, cor: `rgb(${Math.round(rgbColor[0] * fator)},${Math.round(rgbColor[1] * fator)},${Math.round(rgbColor[2] * fator)})` });
         }
 
-        // Paredes laterais do perímetro: cada aresta vira um quadrilátero do topo (altitude real do
-        // vértice) até a base do bloco (piso comum, abaixo do ponto mais baixo). Cor de terra/barranco
-        // com sombra pela orientação da parede.
-        if (finitePts.length >= 3) {
+        // Paredes laterais do perímetro
+        if (mostrarParedes && finitePts.length >= 3) {
           const pisoZ = minZ - stats.maxDist * 0.12; // base proporcional ao tamanho do imóvel
           const n = finitePts.length;
           for (let i = 0; i < n; i++) {
@@ -281,15 +388,13 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
           ctx.closePath();
           ctx.fillStyle = f.cor;
           ctx.fill();
-          ctx.strokeStyle = f.cor; // fecha a fresta de antialias entre faces vizinhas
+          ctx.strokeStyle = mostrarTin ? 'rgba(255, 255, 255, 0.15)' : f.cor; // destaca a malha TIN se habilitado
           ctx.lineWidth = 0.75;
           ctx.stroke();
         });
       }
 
-      // 1. Curvas de nível DRAPEJADAS no relevo: cada curva é desenhada na SUA altitude real (o `nivel`),
-      //    então já assenta colada na superfície 3D, como as isolinhas de uma carta topográfica sobre a
-      //    maquete. Sobre o relevo sólido usa a cor/espessura reais da curva; sem relevo, fica discreta.
+      // 1. Curvas de nível DRAPEJADAS no relevo
       const curvasNivel = objetos.filter((o) => o.tipo === 'polilinha' && o.curvaNivel !== undefined);
       if (curvasNivel.length > 0) {
         ctx.lineJoin = 'round';
@@ -316,7 +421,6 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
       }
 
       // 2. Base tracejada e cortinado vertical: só como FALLBACK quando não há superfície sólida.
-      //    Com a maquete preenchida por baixo, esses fios viram ruído, então os pulamos.
       if (!temSuperficie) {
         // Base (projeção 2D de referência no chão)
         ctx.beginPath();
@@ -347,6 +451,24 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
         });
       }
 
+      // 2b. Plano de Referência 3D (Terraplenagem)
+      if (calcVolumeAtivo) {
+        const planoProjetado = finitePts.map((v) => project(v.leste, v.norte, zRef));
+        ctx.beginPath();
+        planoProjetado.forEach((proj, idx) => {
+          if (idx === 0) ctx.moveTo(proj.x, proj.y);
+          else ctx.lineTo(proj.x, proj.y);
+        });
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.2)'; // azul translúcido
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.65)';
+        ctx.lineWidth = 2.0;
+        ctx.setLineDash([6, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
       // 3. Desenha o polígono principal em 3D
       const projetados = finitePts.map((v) => project(v.leste, v.norte, v.elevacao || 0));
 
@@ -365,15 +487,17 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
       // 4. Desenha os vértices em 3D
       projetados.forEach((proj, idx) => {
         const v = finitePts[idx];
-        const r = 5;
+        const temErroElev = !v.elevacao || v.elevacao === 0 || !Number.isFinite(v.elevacao);
+        const destacar = destacarErros && temErroElev;
+        const r = destacar ? 7 : 5;
 
         // Marcador circular com brilho
         ctx.beginPath();
         ctx.arc(proj.x, proj.y, r, 0, 2 * Math.PI);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = destacar ? '#ef4444' : '#ffffff';
         ctx.fill();
-        ctx.strokeStyle = '#059669';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = destacar ? '#991b1b' : '#059669';
+        ctx.lineWidth = destacar ? 2.5 : 1.5;
         ctx.stroke();
 
         // Rótulos de nome e cota z
@@ -382,7 +506,11 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
         const label = `${v.codigoSigef || v.nome || `V${v.ordem}`}`;
         ctx.fillText(label, proj.x + 8, proj.y - 2);
 
-        if (hasZ && v.elevacao) {
+        if (destacar) {
+          ctx.fillStyle = '#fca5a5';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.fillText('Cota zero!', proj.x + 8, proj.y - 12);
+        } else if (hasZ && v.elevacao) {
           // "~" antes da cota = altitude CALCULADA (interpolada), não medida; cor âmbar pra destacar.
           const calc = v.elevacaoInterpolada;
           ctx.fillStyle = calc ? '#d9a441' : '#87a992';
@@ -427,7 +555,7 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
     loop();
 
     return () => cancelAnimationFrame(animFrame);
-  }, [vertices, objetos, exagero, stats, hasZ, finitePts, superficie, temSuperficie]);
+  }, [vertices, objetos, exagero, stats, hasZ, finitePts, superficie, temSuperficie, mostrarParedes, mostrarTin, destacarErros, calcVolumeAtivo, zRef, fatorEmpolamento]);
 
   // Redimensionamento automático do canvas
   useEffect(() => {
@@ -533,12 +661,165 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
         className="w-full h-full flex-grow cursor-grab active:cursor-grabbing touch-none"
       />
 
+      {/* Painel de Terraplenagem (Canto Esquerdo) */}
+      {calcVolumeAtivo && (
+        <div className="absolute top-4 left-4 bottom-16 w-80 bg-background/95 backdrop-blur border border-border/80 shadow-2xl rounded-2xl p-4 flex flex-col gap-4 overflow-y-auto text-xs text-muted-foreground z-50 animate-in fade-in slide-in-from-left duration-200">
+          <div className="flex items-center justify-between border-b pb-2">
+            <span className="font-extrabold text-foreground uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+              Cálculo de Terraplenagem
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-5 px-1.5 text-[9px]"
+              onClick={() => setCalcVolumeAtivo(false)}
+            >
+              Fechar
+            </Button>
+          </div>
+
+          {/* Cota de Referência / Altitude Planejada */}
+          <div className="space-y-2">
+            <span className="font-bold text-foreground block text-[9px] uppercase">Cota de Referência (Platô)</span>
+            <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-muted/45 border">
+              <button
+                type="button"
+                className={`py-1 rounded text-[9px] font-bold transition-all ${zRefMode === 'baixo' ? 'bg-primary text-primary-foreground shadow-xs' : 'hover:bg-muted'}`}
+                onClick={() => setZRefMode('baixo')}
+              >
+                Mínimo
+              </button>
+              <button
+                type="button"
+                className={`py-1 rounded text-[9px] font-bold transition-all ${zRefMode === 'alto' ? 'bg-primary text-primary-foreground shadow-xs' : 'hover:bg-muted'}`}
+                onClick={() => setZRefMode('alto')}
+              >
+                Máximo
+              </button>
+              <button
+                type="button"
+                className={`py-1 rounded text-[9px] font-bold transition-all ${zRefMode === 'manual' ? 'bg-primary text-primary-foreground shadow-xs' : 'hover:bg-muted'}`}
+                onClick={() => {
+                  setZRefMode('manual');
+                  if (!zRefManual) setZRefManual(minElev.toFixed(2));
+                }}
+              >
+                Manual
+              </button>
+            </div>
+
+            {zRefMode === 'manual' ? (
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={zRefManual}
+                  onChange={(e) => setZRefManual(e.target.value)}
+                  className="h-7 flex-1 rounded border border-input bg-background px-2 text-xs focus:ring-1 focus:ring-primary focus:outline-none font-semibold text-foreground"
+                  placeholder="Ex: 820.50"
+                />
+                <span className="text-[10px] font-bold text-foreground">m</span>
+              </div>
+            ) : (
+              <div className="p-1.5 rounded bg-muted/30 text-[10px] font-mono text-foreground flex justify-between">
+                <span>Cota do Platô:</span>
+                <span className="font-bold">{zRef.toFixed(2)} m</span>
+              </div>
+            )}
+          </div>
+
+          {/* Fator de Empolamento */}
+          <div className="space-y-1">
+            <div className="flex justify-between">
+              <span className="font-bold text-foreground block text-[9px] uppercase">Fator de Empolamento</span>
+              <span className="font-mono font-bold text-foreground">{fatorEmpolamento.toFixed(2)}x</span>
+            </div>
+            <input
+              type="range"
+              min="1.0"
+              max="2.0"
+              step="0.05"
+              value={fatorEmpolamento}
+              onChange={(e) => setFatorEmpolamento(Number(e.target.value))}
+              className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+            <p className="text-[9px] text-muted-foreground/80 leading-relaxed">
+              Média brasileira para solo comum solto é de 1.30 a 1.50x. Indica a expansão volumétrica da terra escavada para fins de transporte.
+            </p>
+          </div>
+
+          {/* Seleção de Vértices Influentes */}
+          <div className="space-y-2 flex-grow flex flex-col min-h-0">
+            <span className="font-bold text-foreground block text-[9px] uppercase">Vértices da Referência</span>
+            <div className="border rounded-lg overflow-hidden flex flex-col flex-grow min-h-[100px] bg-muted/10">
+              <div className="divide-y overflow-y-auto max-h-[180px]">
+                {vertices.map((v) => {
+                  const label = v.codigoSigef || v.nome || `V${v.ordem}`;
+                  const ativo = vtxAtivos[v.id] !== false;
+                  return (
+                    <label key={v.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 cursor-pointer text-[10px]">
+                      <input
+                        type="checkbox"
+                        checked={ativo}
+                        onChange={(e) => setVtxAtivos((prev) => ({ ...prev, [v.id]: e.target.checked }))}
+                        className="rounded border-muted text-primary focus:ring-primary size-3.5"
+                      />
+                      <span className="font-semibold text-foreground flex-1 truncate">{label}</span>
+                      {v.elevacao ? (
+                        <span className="font-mono text-muted-foreground">{v.elevacao.toFixed(1)}m</span>
+                      ) : (
+                        <span className="text-red-500 font-bold text-[8px] uppercase">cota 0</span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Resultados de Cubagem */}
+          <div className="space-y-2 border-t pt-3 mt-auto bg-background">
+            <span className="font-bold text-foreground block text-[9px] uppercase">Resultados</span>
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center rounded-md bg-muted/20 p-2 border border-border/30">
+                <span>Área Planificada:</span>
+                <span className="font-bold text-foreground text-[10px]">{volumes.area.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m²</span>
+              </div>
+              <div className="flex justify-between items-center rounded-md bg-red-500/5 p-2 border border-red-500/10">
+                <span className="text-red-600 dark:text-red-400 font-semibold">Volume de Corte:</span>
+                <div className="text-right">
+                  <div className="font-bold text-red-600 dark:text-red-400 text-[11px]">{volumes.corte.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m³</div>
+                  <div className="text-[9px] text-red-500/70 font-mono">({(volumes.corte * fatorEmpolamento).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m³ Solto)</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center rounded-md bg-blue-500/5 p-2 border border-blue-500/10">
+                <span className="text-blue-600 dark:text-blue-400 font-semibold">Volume de Aterro:</span>
+                <div className="text-right">
+                  <div className="font-bold text-blue-600 dark:text-blue-400 text-[11px]">{volumes.aterro.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m³</div>
+                  <div className="text-[9px] text-blue-500/70 font-mono">(Solo Compactado)</div>
+                </div>
+              </div>
+              <div className={`flex justify-between items-center rounded-md p-2 border ${volumes.corte - volumes.aterro >= 0 ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/5 border-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+                <span className="font-bold">Balanço Líquido:</span>
+                <span className="font-bold text-[10px]">
+                  {Math.abs(volumes.corte - volumes.aterro).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} m³
+                  {volumes.corte - volumes.aterro >= 0 ? ' (Sobra)' : ' (Falta)'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Controles de overlay superior direito */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2.5 p-3 rounded-xl bg-background/90 backdrop-blur border border-border/80 shadow-lg max-w-xs text-xs text-muted-foreground">
-        <span className="font-extrabold text-foreground uppercase tracking-wider text-[10px] block">Modelo de Relevo 3D</span>
+      <div className="absolute top-4 right-4 flex flex-col gap-2.5 p-3 rounded-xl bg-background/90 backdrop-blur border border-border/80 shadow-lg max-w-xs text-xs text-muted-foreground z-40">
+        <span className="font-extrabold text-foreground uppercase tracking-wider text-[10px] block border-b pb-1">Controles do Relevo 3D</span>
+        
         <div className="space-y-1">
           <p>• Arraste (ou um dedo) para girar</p>
-          <p>• Rolagem do mouse ou pinça para zoom</p>
+          <p>• Rolagem ou pinça para zoom</p>
         </div>
 
         <button
@@ -547,8 +828,51 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
           className={`flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold transition-colors border ${autoGirar ? 'bg-emerald-600 text-white border-transparent' : 'text-muted-foreground border-border/60 hover:bg-muted/60'}`}
           title="Gira o modelo sozinho quando você não está mexendo"
         >
-          <RefreshCw className={`size-3 ${autoGirar ? 'animate-spin [animation-duration:3s]' : ''}`} /> Girar sozinho: {autoGirar ? 'ligado' : 'desligado'}
+          <RefreshCw className={`size-3 ${autoGirar ? 'animate-spin [animation-duration:3s]' : ''}`} /> Rotação Automática
         </button>
+
+        <button
+          type="button"
+          onClick={() => { setCalcVolumeAtivo((v) => !v); marcarInteracao(); }}
+          className={`flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold transition-colors border ${calcVolumeAtivo ? 'bg-blue-600 text-white border-transparent' : 'text-blue-500 border-blue-500/30 hover:bg-blue-500/10'}`}
+          title="Ativa o cálculo e visualização de volumes de terraplenagem"
+        >
+          <Wand2 className="size-3" /> Cubagem (Terraplenagem)
+        </button>
+
+        {/* Visualização & Diagnósticos */}
+        <div className="space-y-1.5 pt-2 border-t border-border/60">
+          <span className="font-bold text-[9px] uppercase tracking-wider text-muted-foreground">Exibição & Diagnóstico</span>
+          <div className="space-y-1.5">
+            <label className="flex items-center justify-between gap-2 cursor-pointer">
+              <span>Paredes Laterais</span>
+              <input
+                type="checkbox"
+                checked={mostrarParedes}
+                onChange={(e) => setMostrarParedes(e.target.checked)}
+                className="rounded border-muted text-primary focus:ring-primary size-3.5"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-2 cursor-pointer">
+              <span>Malha TIN (Wireframe)</span>
+              <input
+                type="checkbox"
+                checked={mostrarTin}
+                onChange={(e) => setMostrarTin(e.target.checked)}
+                className="rounded border-muted text-primary focus:ring-primary size-3.5"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-2 cursor-pointer" title="Destaca vértices que estão com altitude zero no desenho">
+              <span>Destacar Cota Zero</span>
+              <input
+                type="checkbox"
+                checked={destacarErros}
+                onChange={(e) => setDestacarErros(e.target.checked)}
+                className="rounded border-muted text-primary focus:ring-primary size-3.5"
+              />
+            </label>
+          </div>
+        </div>
 
         {hasZ && (
           <div className="space-y-1.5 pt-2 border-t border-border/60">
@@ -612,7 +936,7 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
       </div>
 
       {/* Legenda de altitude (canto inferior direito) */}
-      {temEscalaZ && (
+      {temEscalaZ && !calcVolumeAtivo && (
         <div className="absolute bottom-4 right-4 flex items-stretch gap-2 p-2.5 rounded-xl bg-background/90 backdrop-blur border border-border/80 shadow-lg">
           <div className="flex flex-col justify-between items-start">
             <span className="font-extrabold text-foreground uppercase tracking-wider text-[9px] leading-none mb-1.5">Altitude</span>
@@ -627,6 +951,21 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
                 <span>{superficie.minZ.toFixed(1)} m</span>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Legenda de terraplenagem quando ativo */}
+      {calcVolumeAtivo && (
+        <div className="absolute bottom-4 right-4 flex flex-col gap-1.5 p-2.5 rounded-xl bg-background/90 backdrop-blur border border-border/80 shadow-lg text-[9px]">
+          <span className="font-extrabold text-foreground uppercase tracking-wider leading-none mb-1">Legenda Relevo</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-red-500 border border-red-600/35" />
+            <span className="text-muted-foreground font-semibold">Corte (Solo Acima do Platô)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-blue-500 border border-blue-600/35" />
+            <span className="text-muted-foreground font-semibold">Aterro (Solo Abaixo do Platô)</span>
           </div>
         </div>
       )}
