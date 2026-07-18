@@ -8851,16 +8851,17 @@ function MiniSelect({ label, value, options, onChange }: { label: string; value:
 // o texto (ex.: "Texto Central" virava "Texto C..."). Agora os dois ficam colados num único bloco
 // fino, com só uma linha divisória entre eles — libera bastante largura pro nome sem perder o toque.
 function AjusteTamanho({ label, titulo, negrito = true, onDec, onInc }: { label: string; titulo?: string; negrito?: boolean; onDec: () => void; onInc: () => void }) {
-  // Rótulo EM CIMA, botões −/+ embaixo ocupando a largura toda. Antes era tudo na mesma linha, então
-  // rótulos longos ("Texto Central", "Declarações") cortavam e os botões ficavam espremidos. Agora o
-  // rótulo tem a célula inteira pra ele e os botões respiram.
   return (
     <div className={`flex flex-col gap-0.5 rounded-sm bg-muted/30 px-1 py-0.5 text-[10px] text-foreground ${negrito ? 'font-bold' : 'font-medium'}`} title={titulo}>
       <span className="truncate text-center leading-tight">{label}</span>
       <div className="flex h-5 overflow-hidden rounded-sm border border-border/70">
-        <button type="button" aria-label={`Diminuir ${label}`} className="flex flex-1 items-center justify-center text-xs font-extrabold leading-none hover:bg-muted" onClick={onDec}>−</button>
+        <button type="button" aria-label={`Diminuir ${label}`} className="flex flex-1 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" onClick={onDec}>
+          <Minus className="size-3 shrink-0" />
+        </button>
         <div className="w-px bg-border/70" />
-        <button type="button" aria-label={`Aumentar ${label}`} className="flex flex-1 items-center justify-center text-xs font-extrabold leading-none hover:bg-muted" onClick={onInc}>+</button>
+        <button type="button" aria-label={`Aumentar ${label}`} className="flex flex-1 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" onClick={onInc}>
+          <Plus className="size-3 shrink-0" />
+        </button>
       </div>
     </div>
   );
