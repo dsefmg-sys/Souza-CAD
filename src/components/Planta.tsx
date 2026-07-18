@@ -2274,7 +2274,8 @@ export default function Planta({
             key="relevo-3d-print-g"
             id={id3D}
             style={editavel ? { cursor: 'move' } : undefined}
-            onDoubleClick={(e) => { e.stopPropagation(); onDblClickObjeto?.('planta:print3d'); }}
+            onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:print3d'); }}
+            onDoubleClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:print3d'); onDblClickObjeto?.('planta:print3d'); }}
             onPointerDown={editavel ? (e) => {
               if (e.button === 2) return;
               e.stopPropagation();

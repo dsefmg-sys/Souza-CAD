@@ -7743,13 +7743,14 @@ export default function EditorPage() {
           )}
           {(vista === 'mapa' || vista === 'planta') && !telaEstreita && (
             <div
-              style={telaEstreita ? undefined : {
-                left: `${Math.max(toolWEfetivo + 12, Math.min(typeof window !== 'undefined' ? window.innerWidth - 200 : 800, posArea.x))}px`,
-                top: `${Math.max(12, Math.min(typeof window !== 'undefined' ? window.innerHeight - 80 : 600, posArea.y))}px`,
+              style={{
+                position: 'fixed',
+                left: `${Math.max(toolWEfetivo + 12, Math.min(typeof window !== 'undefined' ? window.innerWidth - 200 : 800, Number.isFinite(posArea?.x) ? posArea.x : toolWEfetivo + 12))}px`,
+                top: `${Math.max(12, Math.min(typeof window !== 'undefined' ? window.innerHeight - 80 : 600, Number.isFinite(posArea?.y) ? posArea.y : 12))}px`,
                 maxWidth: `calc(100vw - ${toolWEfetivo + 24}px)`,
                 zIndex: 1160
               }}
-              className={`no-print pointer-events-auto ${Z_CLASSES.FLOATING_TOOLBAR} flex flex-wrap items-center gap-1 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1 shadow-xl select-none rounded-2xl`}
+              className={`fixed no-print pointer-events-auto ${Z_CLASSES.FLOATING_TOOLBAR} flex flex-wrap items-center gap-1 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1 shadow-xl select-none rounded-2xl`}
             >
               {/* Alça de arrasto */}
               {!telaEstreita && (
