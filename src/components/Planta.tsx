@@ -91,6 +91,7 @@ interface Props {
   onDblClickObjeto?: (id: string) => void;
   onContextMenuVazio?: () => void;
   onDblClickMalha?: () => void;
+  onCentralizarPlanta?: () => void;
   print3dUrl?: string;
   onRemoverPrint3D?: () => void;
 }
@@ -325,7 +326,7 @@ export default function Planta({
   onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onConfrontanteMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
-  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onDblClickObjeto, onContextMenuVazio, onDblClickMalha,
+  editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onDblClickObjeto, onContextMenuVazio, onDblClickMalha, onCentralizarPlanta,
   print3dUrl, onRemoverPrint3D,
 }: Props) {
   // hooks antes de qualquer retorno condicional
@@ -787,9 +788,8 @@ export default function Planta({
     if (!editavel) return;
     if (e.button === 1) {
       e.preventDefault(); // Impede o auto-scroll nativo do botão do meio do mouse
-      // Clique do botão central ALTERNA a trava da folha (destrava; outro clique trava de novo).
-      // O arraste com o botão central foi removido — não estava funcionando bem.
-      onToggleTravaFolha?.();
+      // Clique do botão central centraliza a prancha A3/A0
+      onCentralizarPlanta?.();
       return;
     }
     if (e.button !== 0) return; // botão do meio/direito não arrasta itens

@@ -1028,6 +1028,7 @@ export default function Map3DViewer({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
+        onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); onVoltar2D(); } }}
         className="w-full h-full flex-grow cursor-grab active:cursor-grabbing touch-none"
       />
 

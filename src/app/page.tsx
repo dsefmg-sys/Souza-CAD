@@ -7678,9 +7678,6 @@ export default function EditorPage() {
                 title={editarPlanta ? 'Modo edição: arraste itens; botão do meio do mouse dá pan; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
                 {plantaDark && <style>{`#planta-print .a3-dark{filter:invert(1) hue-rotate(180deg)}#planta-print .a3-dark image{filter:invert(1) hue-rotate(180deg)}`}</style>}
                 {res && tecnico && escritorio && (
-                  // folha com tamanho FIXO 1587x1123 (A3): o zoom/pan cuida do enquadramento. Sem
-                  // isso, quando a área era mais estreita que 1587 a folha já nascia menor e o Foco
-                  // encolhia demais (não enchia a tela).
                   <div className={`bg-white shadow ${plantaDark ? 'a3-dark' : ''}`} style={{ width: 1587, height: 1123, transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'left top' }}>
                     <ErrorBoundary onReset={() => setVista('mapa')}>
                     <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
@@ -7693,31 +7690,8 @@ export default function EditorPage() {
                       mostrarRotulos={mostrarRotulos}
                       selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
                       onCliquePlanta={onCliqueDesenho} onSelecObjeto={(id) => { setObjetoSelId(id); if (!id?.startsWith('planta:poligono_sigef')) setObjPersonalizarId(id); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverObjeto={onMoverObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
-                       onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
-                      onDblClick={async (lat, lon) => {
-                        if (modo === 'polilinha' || modo === 'tracejado') {
-                          if (desenhoBuffer.length >= 2) {
-                            snap();
-                            const buf = desenhoBuffer;
-                            setDesenhoBuffer([]);
-                            setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
-                            aviso(modo === 'tracejado' ? 'Tracejado adicionado.' : 'Polilinha adicionada.');
-                          }
-                        }
-                      }}
-                      onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }}
-                      onExcluirObjeto={excluirObjetoPorId}
-                      onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
-                      onRemoverSituacao={() => { setSituacaoUrl(undefined); setPlantaConfig((c) => ({ ...c, situacaoDataUrl: undefined })); }}
-                      situacaoStale={!!situacaoUrl && situacaoVersSnapshot !== snapshotDesenho}
-                      print3dUrl={print3dUrl}
-                      onRemoverPrint3D={() => { setPrint3dUrl(undefined); setPlantaConfig((c) => ({ ...c, print3dDataUrl: undefined })); }}
-                      onAtualizarSituacao={gerarSituacaoPlanta}
-                      onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
-                      onConfrontanteMenu={(id, nome, x, y) => setMenuContexto({ tipo: 'confrontante', id, atual: nome, x, y })}
-                      onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
+                      onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onToggleTravaFolha={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
-                      onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} onCiclarEstilo={ciclarEstiloPlanta}
                       onContextMenuVazio={() => {
                         if (modo !== 'navegar') {
                           if (desenhoBuffer.length >= 2) {
@@ -7725,7 +7699,7 @@ export default function EditorPage() {
                             const buf = desenhoBuffer;
                             setDesenhoBuffer([]);
                             setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
-                            aviso(modo === 'tracejado' ? 'Tracejado concluído.' : 'Polilinha concluída.');
+                            aviso(modo === 'tracejado' ? 'Tracejado adicionado.' : 'Polilinha adicionada.');
                           } else {
                             setDesenhoBuffer([]);
                           }
@@ -7734,7 +7708,14 @@ export default function EditorPage() {
                         }
                         setVista((v) => (v === 'planta' ? 'mapa' : 'planta'));
                       }}
-                      onDblClickMalha={() => setAba('planta')} />
+                      onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} onCiclarEstilo={ciclarEstiloPlanta} onCentralizarPlanta={ajustarPlanta}
+                      onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
+                      onDblClickMalha={() => setAba('planta')}
+                      situacaoStale={!!situacaoUrl && situacaoVersSnapshot !== snapshotDesenho}
+                      print3dUrl={print3dUrl}
+                      onRemoverPrint3D={() => { setPrint3dUrl(undefined); setPlantaConfig((c) => ({ ...c, print3dDataUrl: undefined })); }}
+                      onAtualizarSituacao={gerarSituacaoPlanta}
+                      onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf} />
                     </ErrorBoundary>
                   </div>
                 )}
