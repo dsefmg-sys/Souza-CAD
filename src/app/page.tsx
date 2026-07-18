@@ -6037,10 +6037,10 @@ export default function EditorPage() {
                           variant="secondary"
                           onClick={salvar}
                           disabled={processando}
-                          title={naoEstaNaNuvem ? "Salvar projeto atual na nuvem (Ctrl+S) - Modificações pendentes de salvamento online!" : "Projeto salvo e sincronizado na nuvem (Ctrl+S)"}
-                          className={`relative transition-all duration-300 ${naoEstaNaNuvem ? 'neon-gold-pulse text-amber-500 bg-amber-500/10 hover:bg-amber-500/20' : ''}`}
+                          title={salvarLaranja ? "Salvar projeto atual (Ctrl+S) - Modificações pendentes de salvamento!" : "Projeto salvo e sincronizado (Ctrl+S)"}
+                          className={`relative transition-all duration-300 ${salvarLaranja ? 'neon-gold-pulse text-amber-500 bg-amber-500/10 hover:bg-amber-500/20' : ''}`}
                         >
-                          <Save className={naoEstaNaNuvem ? 'text-amber-500' : 'text-emerald-500'} /> <span>SALVAR</span>
+                          <Save className={salvarLaranja ? 'text-amber-500' : 'text-emerald-500'} /> <span>SALVAR</span>
                         </Button>
                         <Button size="sm" variant="secondary" onClick={() => setPrecoSugAberto(true)} title="Precificação: quanto cobrar por este imóvel">
                           <PencilRuler className="text-amber-400" /> <span>Precificação</span>
