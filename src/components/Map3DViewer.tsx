@@ -1217,7 +1217,7 @@ export default function Map3DViewer({
       )}
 
       {/* Botão de voltar no canto inferior esquerdo */}
-      <div className="absolute bottom-4 left-4 flex gap-2">
+      <div className="absolute bottom-14 left-4 z-[2500] flex gap-2">
         <Button
           size="sm"
           className="h-9 px-4 gap-1.5 font-bold shadow-md bg-[#10b981] hover:bg-[#059669] text-white"

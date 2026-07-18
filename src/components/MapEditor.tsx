@@ -20,7 +20,7 @@ import { intersecaoRetasUtm } from '@/lib/topo/editing';
 import { avisar } from '@/lib/ui/dialogos';
 import { Z_CLASSES } from '@/lib/ui/zlayers';
 
-export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir' | 'paralela' | 'dividir' | 'trim' | 'extend' | 'retangulo' | 'arco' | 'copiar_base' | 'copiar_destino';
+export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir' | 'paralela' | 'dividir' | 'trim' | 'extend' | 'retangulo' | 'circulo' | 'arco' | 'copiar_base' | 'copiar_destino';
 
 export interface RotuloMapa { id: string; lat: number; lon: number; linhas: string[]; tam?: number; }
 
@@ -2284,7 +2284,7 @@ export default function MapEditor(props: Props) {
       )}
 
       {onAtivar3D && (
-        <div className={`absolute left-2 ${Z_CLASSES.MAP_CONTROLS} transition-all duration-200 ${modo === 'medir' ? 'bottom-40' : 'bottom-6'}`}>
+        <div className={`absolute left-2 z-[2500] transition-all duration-200 ${modo === 'medir' ? 'bottom-44' : 'bottom-14'}`}>
           <button
             type="button"
             onClick={onAtivar3D}

@@ -10,7 +10,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
-  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale,
+  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -3206,6 +3206,17 @@ export default function EditorPage() {
         }
         return nb;
       });
+    } else if (modo === 'circulo') {
+      // círculo = 2 cliques: 1º clique é o centro, 2º clique define o raio
+      setDesenhoBuffer((buf) => {
+        const nb = [...buf, p];
+        if (nb.length >= 2) {
+          snap();
+          setObjetos((os) => [...os, novaPolilinha(circuloCentroRaio(nb[0], nb[1]))]);
+          return [];
+        }
+        return nb;
+      });
     } else if (modo === 'arco') {
       // arco = 3 cliques: início, um ponto POR ONDE o arco passa, e fim; fecha sozinho no 3º clique
       setDesenhoBuffer((buf) => {
@@ -3218,6 +3229,23 @@ export default function EditorPage() {
         return nb;
       });
     }
+  }
+
+  function circuloCentroRaio(centro: PontoLL, borda: PontoLL): PontoLL[] {
+    const cx = centro.leste, cy = centro.norte;
+    const dx = borda.leste - cx, dy = borda.norte - cy;
+    const r = Math.hypot(dx, dy);
+    if (r < 1e-4) return [centro];
+    const pts: PontoLL[] = [];
+    const numSegs = 48;
+    for (let i = 0; i <= numSegs; i++) {
+      const ang = (i / numSegs) * 2 * Math.PI;
+      const qx = cx + r * Math.cos(ang);
+      const qy = cy + r * Math.sin(ang);
+      const g = utmParaGeo(qx, qy, zona, hemisferio);
+      pts.push({ lat: g.lat, lon: g.lon, leste: qx, norte: qy });
+    }
+    return pts;
   }
   // Arco que passa por 3 pontos (início, meio, fim): acha o círculo pelos 3 e varre no sentido que
   // contém o ponto do meio, devolvendo uma polilinha densa (curva de verdade). Colinear → traço reto.
@@ -6396,8 +6424,17 @@ export default function EditorPage() {
                           <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'secondary'} className={modo === 'retangulo' ? COR_ATIVO : ''} onClick={() => alternarModo('retangulo', true)} title="Retângulo: clique em dois cantos opostos no mapa para desenhar a caixa.">
                             <Square className={modo === 'retangulo' ? 'text-white shrink-0' : 'text-orange-500 shrink-0'} /> <span className="truncate">Retângulo</span>
                           </Button>
+                          <Button size="sm" variant={modo === 'circulo' ? 'default' : 'secondary'} className={modo === 'circulo' ? COR_ATIVO : ''} onClick={() => alternarModo('circulo', true)} title="Círculo: clique no centro e depois na borda para desenhar o círculo.">
+                            <Circle className={modo === 'circulo' ? 'text-white shrink-0' : 'text-amber-400 shrink-0'} /> <span className="truncate">Círculo</span>
+                          </Button>
                           <Button size="sm" variant={modo === 'arco' ? 'default' : 'secondary'} className={modo === 'arco' ? COR_ATIVO : ''} onClick={() => alternarModo('arco', true)} title="Arco Curvo: clique 3 pontos (início, meio e fim) para traçar o arco.">
                             <Spline className={modo === 'arco' ? 'text-white shrink-0' : 'text-teal-500 shrink-0'} /> <span className="truncate">Arco</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'secondary'} className={modo === 'multi' ? COR_ATIVO : ''} onClick={() => { alternarModo('multi'); }} title="Seleção Múltipla: clique em elementos ou abra uma caixa de seleção para selecionar vários vértices/objetos de uma vez.">
+                            <span className="truncate text-[10px] font-bold">Sel. Vários</span>
+                          </Button>
+                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'secondary'} className={modo === 'medir' ? COR_ATIVO : ''} onClick={() => alternarModo('medir', true)} title="Régua de Medição: meça distâncias e azimutes entre pontos no mapa com alta precisão.">
+                            <Ruler className={modo === 'medir' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'} /> <span className="truncate">Medir</span>
                           </Button>
                           {/* Geometria avançada de CAD — só no Completo (o Médio fica com o desenho do dia a dia) */}
                           {completo && (<>
@@ -6462,31 +6499,6 @@ export default function EditorPage() {
                                 : '1) Clique em qualquer linha para usar como limite de extensão.'}
                             </div>
                           )}
-                        </div>
-
-                        {/* Vértices e geometria — mesmo cartão, separados por um traço fino (economiza espaço) */}
-                        <div className="my-0.5 h-px bg-border/50" />
-                        <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
-                          <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { alternarModo('inserir'); }} title="Inserir Vértice: clique sobre uma aresta perimétrica para adicionar um nó.">
-                            <Plus className="text-emerald-500 shrink-0" /> <span className="truncate">Inserir</span>
-                          </Button>
-                          <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { alternarModo('apagar'); }} title="Remover Vértice: clique sobre um vértice perimétrico para excluí-lo.">
-                            <Trash2 className="text-rose-500 shrink-0" /> <span className="truncate">Apagar</span>
-                          </Button>
-                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'outline'} onClick={() => { alternarModo('multi'); }} title="Seleção Múltipla: clique em elementos ou abra uma caixa de seleção para selecionar vários vértices/objetos de uma vez.">
-                            <span className="truncate text-[11px] font-semibold">Sel. Vários</span>
-                          </Button>
-                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} className="relative" onClick={() => { alternarModo('considerar'); }} title="Considerar Vértice (F11): inclui o vértice no cálculo oficial do perímetro.">
-                            <Plus className="text-cyan-500 shrink-0" /> <span className="truncate">Considerar</span>
-                            <Atalho k="F11" />
-                          </Button>
-                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} className="relative" onClick={() => { setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar Vértice (F12): oculta o vértice do perímetro oficial sem excluí-lo.">
-                            <EyeOff className="text-amber-500 shrink-0" /> <span className="truncate">Ignorar</span>
-                            <Atalho k="F12" />
-                          </Button>
-                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'outline'} onClick={() => alternarModo('medir', true)} title="Régua de Medição: meça distâncias e azimutes entre pontos no mapa com alta precisão.">
-                            <Ruler className="text-sky-500 shrink-0" /> <span className="truncate">Medir</span>
-                          </Button>
                           {modo === 'multi' && (
                             <div className="col-span-3 grid grid-cols-3 gap-1 rounded-sm border bg-muted/40 p-1">
                               {selMulti.size > 0 || objSelMulti.size > 0 ? (
@@ -6544,16 +6556,15 @@ export default function EditorPage() {
                               2) Mova o cursor e clique no mapa para colar a cópia transladada.
                             </div>
                           )}
-                          {modo === 'considerar' && verticesIgnorados.length === 0 && <span className="col-span-2 px-1 text-[10px] text-muted-foreground text-center">Nenhum vértice ignorado.</span>}
                           {objSel?.tipo === 'texto' && (
-                            <div className="col-span-2 grid grid-cols-3 gap-1 mt-1">
+                            <div className="col-span-3 grid grid-cols-3 gap-1 mt-1">
                               <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold font-mono">A-</span></Button>
                               <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold font-mono">A+</span></Button>
                               <Button size="sm" variant="outline" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: objSel.texto ?? '', multiline: true }); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5 text-cyan-500" /></Button>
                             </div>
                           )}
                           {objSel?.tipo === 'simbolo' && (
-                            <div className="col-span-2 grid grid-cols-2 gap-1 mt-1">
+                            <div className="col-span-3 grid grid-cols-2 gap-1 mt-1">
                               <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: Math.max(10, (objSel.tamanho ?? 30) - 5) })} title="Diminuir símbolo"><span className="font-bold font-mono">S-</span></Button>
                               <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: Math.min(150, (objSel.tamanho ?? 30) + 5) })} title="Aumentar símbolo"><span className="font-bold font-mono">S+</span></Button>
                             </div>
@@ -7712,7 +7723,12 @@ export default function EditorPage() {
           )}
           {(vista === 'mapa' || vista === 'planta') && !telaEstreita && (
             <div
-              style={telaEstreita ? undefined : { left: `${Math.max(posArea.x, toolWEfetivo + 12)}px`, top: `${posArea.y}px`, maxWidth: `calc(100vw - ${toolWEfetivo + 24}px)`, zIndex: 1160 }}
+              style={telaEstreita ? undefined : {
+                left: `${Math.max(toolWEfetivo + 12, Math.min(typeof window !== 'undefined' ? window.innerWidth - 200 : 800, posArea.x))}px`,
+                top: `${Math.max(12, Math.min(typeof window !== 'undefined' ? window.innerHeight - 80 : 600, posArea.y))}px`,
+                maxWidth: `calc(100vw - ${toolWEfetivo + 24}px)`,
+                zIndex: 1160
+              }}
               className={`no-print pointer-events-auto ${Z_CLASSES.FLOATING_TOOLBAR} flex flex-wrap items-center gap-1 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1 shadow-xl select-none rounded-2xl`}
             >
               {/* Alça de arrasto */}
@@ -9391,28 +9407,33 @@ export default function EditorPage() {
           )}
 
           {/* Estatísticas Físicas */}
-          {vertices.length >= 3 && res && (
-            <div className="flex items-center gap-3 pl-4">
-              <span>{vertices.length} Vértices</span>
-              <button
-                type="button"
-                onClick={() => setConferirAberto(true)}
-                className="hover:text-amber-400 transition-colors flex items-center gap-1 cursor-pointer font-medium border-0 bg-transparent text-slate-400 outline-none text-[9px]"
-                title="Conciliação de área: clique para reconciliar com o SIGEF"
-              >
-                <Scale className="size-3 text-amber-500 shrink-0" />
-                <span>Área: {(valoresEfetivos(res, imovel).areaHa).toFixed(4)} ha</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setConferirAberto(true)}
-                className="hover:text-amber-400 transition-colors flex items-center gap-1 cursor-pointer font-medium border-0 bg-transparent text-slate-400 outline-none text-[9px]"
-                title="Conciliação de área: clique para reconciliar com o SIGEF"
-              >
-                <span>Perímetro: {(valoresEfetivos(res, imovel).perimetro).toFixed(2)} m</span>
-              </button>
-            </div>
-          )}
+          {vertices.length >= 3 && res && (() => {
+            const sigefConciliado = imovel.areaSigefHa != null && imovel.areaSigefHa > 0 && imovel.usarValoresSigef !== false;
+            return (
+              <div className="flex items-center gap-3 pl-4">
+                <span>{vertices.length} Vértices</span>
+                <button
+                  type="button"
+                  onClick={() => setConferirAberto(true)}
+                  className="hover:opacity-80 transition-colors flex items-center gap-1 cursor-pointer font-medium border-0 bg-transparent text-slate-400 outline-none text-[9px]"
+                  title={sigefConciliado ? "Área conciliada com o SIGEF (oficial)" : "Área calculada pelo app: clique para reconciliar com o SIGEF"}
+                >
+                  <Scale className={`size-3 shrink-0 ${sigefConciliado ? 'text-emerald-500' : 'text-amber-500'}`} />
+                  <span className={sigefConciliado ? 'text-emerald-400 font-semibold' : ''}>
+                    Área: {(valoresEfetivos(res, imovel).areaHa).toFixed(4)} ha
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConferirAberto(true)}
+                  className="hover:opacity-80 transition-colors flex items-center gap-1 cursor-pointer font-medium border-0 bg-transparent text-slate-400 outline-none text-[9px]"
+                  title="Conciliação de perímetro: clique para reconciliar com o SIGEF"
+                >
+                  <span>Perímetro: {(valoresEfetivos(res, imovel).perimetro).toFixed(2)} m</span>
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Status do Banco de Dados */}
           <div className="pl-4 flex items-center gap-1.5">
