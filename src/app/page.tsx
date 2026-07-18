@@ -4375,7 +4375,6 @@ export default function EditorPage() {
               }
               return v;
             });
-            if (mudouVertice) setVertices(novosVertices);
 
             // Atualiza os ignorados
             let mudouIgnorados = false;
@@ -4390,7 +4389,25 @@ export default function EditorPage() {
               }
               return v;
             });
-            if (mudouIgnorados) setVerticesIgnorados(novosIgnorados);
+
+            const totalMudados = (mudouVertice ? novosVertices.filter((v, idx) => v.elevacao !== vertices[idx].elevacao).length : 0) +
+                                 (mudouIgnorados ? novosIgnorados.filter((v, idx) => v.elevacao !== verticesIgnorados[idx].elevacao).length : 0);
+
+            if (totalMudados > 0) {
+              const aceitou = await confirmar({
+                titulo: 'Atualizar altitudes dos vértices',
+                mensagem: `Encontramos altitudes oficiais online para ${totalMudados} vértice(s) da divisa que estavam sem altitude. Deseja salvar essas altitudes nos vértices do seu projeto?`,
+                okLabel: 'Sim, salvar nos vértices',
+                cancelLabel: 'Não, usar apenas para as curvas'
+              });
+              if (aceitou) {
+                if (mudouVertice) setVertices(novosVertices);
+                if (mudouIgnorados) setVerticesIgnorados(novosIgnorados);
+                aviso(`Altitudes de ${totalMudados} vértice(s) atualizadas e salvas com sucesso.`);
+              } else {
+                aviso('Altitudes não foram salvas nos vértices, mas serão usadas temporariamente para traçar as curvas.');
+              }
+            }
           }
         }
       } catch (e) {
@@ -4552,7 +4569,6 @@ export default function EditorPage() {
           }
           return v;
         });
-        if (mudouVertice) setVertices(novosVertices);
 
         // Atualiza os ignorados
         let mudouIgnorados = false;
@@ -4567,7 +4583,25 @@ export default function EditorPage() {
           }
           return v;
         });
-        if (mudouIgnorados) setVerticesIgnorados(novosIgnorados);
+
+        const totalMudados = (mudouVertice ? novosVertices.filter((v, idx) => v.elevacao !== vertices[idx].elevacao).length : 0) +
+                             (mudouIgnorados ? novosIgnorados.filter((v, idx) => v.elevacao !== verticesIgnorados[idx].elevacao).length : 0);
+
+        if (totalMudados > 0) {
+          const aceitou = await confirmar({
+            titulo: 'Atualizar altitudes dos vértices',
+            mensagem: `Encontramos altitudes oficiais online para ${totalMudados} vértice(s) da divisa que estavam sem altitude. Deseja salvar essas altitudes nos vértices do seu projeto?`,
+            okLabel: 'Sim, salvar nos vértices',
+            cancelLabel: 'Não, manter os vértices zerados'
+          });
+          if (aceitou) {
+            if (mudouVertice) setVertices(novosVertices);
+            if (mudouIgnorados) setVerticesIgnorados(novosIgnorados);
+            aviso(`Altitudes de ${totalMudados} vértice(s) salvas com sucesso.`);
+          } else {
+            aviso('Vértices mantidos com altitude zerada. A grade de relevo foi ativada com os pontos do adensamento.');
+          }
+        }
 
         aviso(`Grade de relevo ativada com ${pontosObtidos.length} pontos de altitude online. Clique em [Gerar] para traçar as curvas.`);
       }
