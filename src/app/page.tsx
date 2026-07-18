@@ -9469,6 +9469,18 @@ export default function EditorPage() {
               </span>
             )}
           </div>
+
+          {/* Botão de Ajustes e Configurações no fim da Barra de Status */}
+          <div className="pl-3 border-l border-slate-800 flex items-center">
+            <button
+              type="button"
+              onClick={() => setConfigAberta(true)}
+              className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors flex items-center gap-1 cursor-pointer outline-none"
+              title="Ajustes e Configurações Gerais do App (F12)"
+            >
+              <Settings className="size-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

@@ -26,6 +26,21 @@ function interpolarCor(a: [number, number, number], b: [number, number, number],
   ];
 }
 
+function drawRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+}
+
 function recortaCanvasVisivel(canvas: HTMLCanvasElement, padding = 16): string {
   try {
     if (!canvas.width || !canvas.height) return canvas.toDataURL('image/png');
@@ -620,7 +635,7 @@ export default function Map3DViewer({
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // 4. Desenha os vértices em 3D
+      // 4. Desenha os vértices em 3D (Marcadores circulares)
       projetados.forEach((proj, idx) => {
         const v = finitePts[idx];
         const temErroElev = !v.elevacao || v.elevacao === 0 || !Number.isFinite(v.elevacao);
@@ -635,27 +650,186 @@ export default function Map3DViewer({
         ctx.strokeStyle = destacar ? '#991b1b' : '#059669';
         ctx.lineWidth = destacar ? 2.5 : 1.5;
         ctx.stroke();
+      });
 
-        // Rótulos de nome e cota z
-        if (mostrarLabels3D) {
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 9px sans-serif';
-          const label = `${v.codigoSigef || v.nome || `V${v.ordem}`}`;
-          ctx.fillText(label, proj.x + 8, proj.y - 2);
+      // 4a. Rótulos inteligentes auto-organizados (com prevenção de sobreposição e placas de alta legibilidade)
+      if (mostrarLabels3D && finitePts.length > 0) {
+        const nVtx = finitePts.length;
+        type LabelPill = {
+          idx: number;
+          projX: number;
+          projY: number;
+          boxX: number;
+          boxY: number;
+          boxW: number;
+          boxH: number;
+          name: string;
+          altText: string;
+          isCalc: boolean;
+          isErro: boolean;
+          dirX: number;
+          dirY: number;
+        };
 
+        const pills: LabelPill[] = [];
+        ctx.font = 'bold 9.5px sans-serif';
+
+        for (let i = 0; i < nVtx; i++) {
+          const v = finitePts[i];
+          const proj = projetados[i];
+          const temErroElev = !v.elevacao || v.elevacao === 0 || !Number.isFinite(v.elevacao);
+          const destacar = destacarErros && temErroElev;
+          const calc = !!v.elevacaoInterpolada;
+
+          const name = `${v.codigoSigef || v.nome || `V${v.ordem}`}`;
+          let altText = '';
           if (destacar) {
-            ctx.fillStyle = '#fca5a5';
-            ctx.font = 'bold 9px sans-serif';
-            ctx.fillText('Cota zero!', proj.x + 8, proj.y - 12);
+            altText = 'Cota Zero!';
           } else if (hasZ && v.elevacao) {
-            // "~" antes da cota = altitude CALCULADA (interpolada), não medida; cor âmbar pra destacar.
-            const calc = v.elevacaoInterpolada;
-            ctx.fillStyle = calc ? '#d9a441' : '#87a992';
-            ctx.font = '8px monospace';
-            ctx.fillText(`${calc ? '~' : ''}${v.elevacao.toFixed(1)}m`, proj.x + 8, proj.y + 7);
+            altText = `${calc ? '~' : ''}${v.elevacao.toFixed(1)}m`;
+          }
+
+          // Vetor normal externo 2D do polígono para empurrar o rótulo para FORA do imóvel
+          const prev = finitePts[(i - 1 + nVtx) % nVtx];
+          const next = finitePts[(i + 1) % nVtx];
+
+          const tx = next.leste - prev.leste;
+          const ty = next.norte - prev.norte;
+          let nx = -ty;
+          let ny = tx;
+
+          const cx = v.leste - stats.avgX;
+          const cy = v.norte - stats.avgY;
+          if (nx * cx + ny * cy < 0) {
+            nx = -nx;
+            ny = -ny;
+          }
+
+          const nLen = Math.hypot(nx, ny) || 1;
+          nx /= nLen;
+          ny /= nLen;
+
+          // Projeta o vetor normal no espaço de tela para obter direção 2D
+          const projOut = project(v.leste + nx * 8, v.norte + ny * 8, v.elevacao || 0);
+          let sDx = projOut.x - proj.x;
+          let sDy = projOut.y - proj.y;
+          let sLen = Math.hypot(sDx, sDy);
+
+          if (sLen < 0.1) {
+            sDx = 1;
+            sDy = -1;
+            sLen = Math.hypot(1, -1);
+          }
+          const dirX = sDx / sLen;
+          const dirY = sDy / sLen;
+
+          // Dimensões da placa de rótulo
+          const wName = ctx.measureText(name).width;
+          const wAlt = altText ? ctx.measureText(altText).width : 0;
+          const boxW = Math.max(wName, wAlt) + 14;
+          const boxH = altText ? 24 : 14;
+
+          const distOffset = 22;
+          let boxX = proj.x + dirX * distOffset;
+          let boxY = proj.y + dirY * distOffset;
+
+          // Alinhamento inteligente do centro da placa
+          if (dirX < -0.2) boxX -= boxW;
+          else if (dirX <= 0.2) boxX -= boxW / 2;
+
+          if (dirY < -0.2) boxY -= boxH;
+          else if (dirY <= 0.2) boxY -= boxH / 2;
+
+          pills.push({
+            idx: i,
+            projX: proj.x,
+            projY: proj.y,
+            boxX,
+            boxY,
+            boxW,
+            boxH,
+            name,
+            altText,
+            isCalc: calc,
+            isErro: destacar,
+            dirX,
+            dirY,
+          });
+        }
+
+        // Passagem de desobstrução (Staggering para vértices muito próximos)
+        for (let i = 0; i < pills.length; i++) {
+          for (let j = i + 1; j < pills.length; j++) {
+            const p1 = pills[i];
+            const p2 = pills[j];
+
+            const ovX = (p1.boxW + p2.boxW) / 2 + 4 - Math.abs((p1.boxX + p1.boxW / 2) - (p2.boxX + p2.boxW / 2));
+            const ovY = (p1.boxH + p2.boxH) / 2 + 4 - Math.abs((p1.boxY + p1.boxH / 2) - (p2.boxY + p2.boxH / 2));
+
+            if (ovX > 0 && ovY > 0) {
+              const shift = ovY + 3;
+              if (p2.dirY >= 0) p2.boxY += shift;
+              else p2.boxY -= shift;
+            }
           }
         }
-      });
+
+        // Renderização dos rótulos (Linha de chamada + Placa escura de alto contraste)
+        pills.forEach((p) => {
+          const boxCX = p.boxX + p.boxW / 2;
+          const boxCY = p.boxY + p.boxH / 2;
+          const distChamada = Math.hypot(boxCX - p.projX, boxCY - p.projY);
+
+          // Linha de chamada se o rótulo foi deslocado do ponto
+          if (distChamada > 16) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(p.projX, p.projY);
+            ctx.lineTo(boxCX, boxCY);
+            ctx.strokeStyle = p.isErro ? 'rgba(239, 68, 68, 0.7)' : 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Placa escura de fundo com brilho/borda colorida
+          ctx.save();
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+          ctx.shadowBlur = 6;
+
+          drawRoundRect(ctx, p.boxX, p.boxY, p.boxW, p.boxH, 4);
+          ctx.fillStyle = captureModeRef.current ? 'rgba(8, 20, 15, 0.95)' : 'rgba(6, 18, 14, 0.90)';
+          ctx.fill();
+
+          ctx.strokeStyle = p.isErro ? '#ef4444' : p.isCalc ? '#f59e0b' : '#10b981';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+          ctx.restore();
+
+          // Textos do rótulo
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          if (p.altText) {
+            // Nome do Vértice em Branco Brilhante
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9.5px sans-serif';
+            ctx.fillText(p.name, boxCX, p.boxY + 7);
+
+            // Altitude em Menta/Amarelo de alto contraste
+            ctx.font = 'bold 9px monospace';
+            ctx.fillStyle = p.isErro ? '#fca5a5' : p.isCalc ? '#fde047' : '#6ee7b7';
+            ctx.fillText(p.altText, boxCX, p.boxY + 17);
+          } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 9.5px sans-serif';
+            ctx.fillText(p.name, boxCX, p.boxY + p.boxH / 2);
+          }
+          ctx.restore();
+        });
+      }
 
       // 4b. Desenha os pontos da grade altimétrica em 3D
       if (gradeAltimetrica && gradeAltimetrica.length > 0) {
@@ -671,11 +845,23 @@ export default function Map3DViewer({
           ctx.lineWidth = 1.0;
           ctx.stroke();
 
-          // Desenha rótulo de altitude
+          // Placa de altitude para pontos de grade
           if (mostrarLabels3D) {
+            const altText = `${g.elevacao.toFixed(1)}m`;
+            ctx.save();
+            ctx.font = 'bold 8.5px monospace';
+            const tw = ctx.measureText(altText).width + 8;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+            drawRoundRect(ctx, proj.x + 5, proj.y - 7, tw, 14, 3);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(250, 204, 21, 0.7)';
+            ctx.lineWidth = 1.0;
+            ctx.stroke();
             ctx.fillStyle = '#fde68a';
-            ctx.font = 'bold 7.5px monospace';
-            ctx.fillText(`${g.elevacao.toFixed(1)}m`, proj.x + 5, proj.y - 2);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(altText, proj.x + 5 + tw / 2, proj.y);
+            ctx.restore();
           }
         });
       }
@@ -981,6 +1167,37 @@ export default function Map3DViewer({
         <div className="space-y-1">
           <p>• Arraste (ou um dedo) para girar</p>
           <p>• Rolagem ou pinça para zoom</p>
+        </div>
+
+        {/* Presets de Câmera */}
+        <div className="space-y-1 pt-1.5 border-t border-border/60">
+          <span className="font-bold text-[9px] uppercase tracking-wider text-muted-foreground block">Ângulos de Câmera</span>
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              type="button"
+              onClick={() => { yawRef.current = 0; pitchRef.current = 0.05; zoomRef.current = 1.0; marcarInteracao(); }}
+              className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50"
+              title="Visão Geral Superior (Planta 3D)"
+            >
+              Superior
+            </button>
+            <button
+              type="button"
+              onClick={() => { yawRef.current = -0.7; pitchRef.current = 0.75; zoomRef.current = 1.0; marcarInteracao(); }}
+              className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50"
+              title="Visão Isométrica 3D"
+            >
+              Isométrica
+            </button>
+            <button
+              type="button"
+              onClick={() => { yawRef.current = 0; pitchRef.current = 1.45; zoomRef.current = 1.0; marcarInteracao(); }}
+              className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50"
+              title="Visão de Perfil do Relevo"
+            >
+              Perfil
+            </button>
+          </div>
         </div>
 
         <button
