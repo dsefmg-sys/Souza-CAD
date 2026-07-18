@@ -6368,49 +6368,49 @@ export default function EditorPage() {
                           <span>Desenho e Geometria</span>
                         </span>
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
-                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'secondary'} className={`relative ${modo === 'linha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('linha', true)} title="Linha reta: clique 2 pontos (F6)">
+                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'secondary'} className={`relative ${modo === 'linha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('linha', true)} title="Linha Reta (F6): clique 2 pontos para criar uma linha simples. Botão direito cancela.">
                             <PenTool className={modo === 'linha' ? 'text-white shrink-0' : 'text-amber-500 shrink-0'} /> <span className="truncate">Linha</span>
                             <Atalho k="F6" />
                           </Button>
-                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'secondary'} className={`relative ${modo === 'polilinha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('polilinha', true)} title="Polilinha: clique vários pontos; fecha virando polígono (F7)">
+                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'secondary'} className={`relative ${modo === 'polilinha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('polilinha', true)} title="Polilinha (F7): clique vários pontos. Clique com botão direito conclui e insere a polilinha.">
                             <PenTool className={modo === 'polilinha' ? 'text-white shrink-0' : 'text-cyan-500 shrink-0'} /> <span className="truncate">Polilinha</span>
                             <Atalho k="F7" />
                           </Button>
-                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'secondary'} className={`relative ${modo === 'tracejado' ? COR_ATIVO : ''}`} onClick={() => alternarModo('tracejado', true)} title="Tracejado: linha tracejada aberta (F8)">
+                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'secondary'} className={`relative ${modo === 'tracejado' ? COR_ATIVO : ''}`} onClick={() => alternarModo('tracejado', true)} title="Tracejado / Servidão (F8): clique vários pontos. Botão direito conclui o desenho.">
                             <PenTool className={modo === 'tracejado' ? 'text-white shrink-0' : 'text-indigo-500 opacity-80 shrink-0'} /> <span className="truncate">Tracejado</span>
                             <Atalho k="F8" />
                           </Button>
 
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto (F9)" onClick={() => alternarModo('texto')}>
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto (F9): clique em qualquer posição para adicionar anotação ou rótulo." onClick={() => alternarModo('texto')}>
                             <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span className="truncate">Texto</span>
                             <Atalho k="F9" />
                           </Button>
-                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'secondary'} className={`relative ${modo === 'cota' ? COR_ATIVO : ''}`} onClick={() => alternarModo('cota', true)} title="Cotar: clique dois pontos para medir (F10)">
+                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'secondary'} className={`relative ${modo === 'cota' ? COR_ATIVO : ''}`} onClick={() => alternarModo('cota', true)} title="Cota de Dimensão (F10): clique dois pontos para medir e exibir a cota.">
                             <IconeCota className={modo === 'cota' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Cota</span>
                             <Atalho k="F10" />
                           </Button>
-                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'secondary'} className={modo === 'simbolo' ? COR_ATIVO : ''} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos: inserir poste, árvore...">
+                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'secondary'} className={modo === 'simbolo' ? COR_ATIVO : ''} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos Topográficos: selecione e clique no mapa para posicionar poste, árvore, casa...">
                             <div className={modo === 'simbolo' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'}><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
                             <span className="truncate">Símbolos</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'secondary'} className={modo === 'retangulo' ? COR_ATIVO : ''} onClick={() => alternarModo('retangulo', true)} title="Retângulo: clique dois cantos opostos">
+                          <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'secondary'} className={modo === 'retangulo' ? COR_ATIVO : ''} onClick={() => alternarModo('retangulo', true)} title="Retângulo: clique em dois cantos opostos no mapa para desenhar a caixa.">
                             <Square className={modo === 'retangulo' ? 'text-white shrink-0' : 'text-orange-500 shrink-0'} /> <span className="truncate">Retângulo</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'arco' ? 'default' : 'secondary'} className={modo === 'arco' ? COR_ATIVO : ''} onClick={() => alternarModo('arco', true)} title="Arco: clique início, um ponto por onde passa e o fim">
+                          <Button size="sm" variant={modo === 'arco' ? 'default' : 'secondary'} className={modo === 'arco' ? COR_ATIVO : ''} onClick={() => alternarModo('arco', true)} title="Arco Curvo: clique 3 pontos (início, meio e fim) para traçar o arco.">
                             <Spline className={modo === 'arco' ? 'text-white shrink-0' : 'text-teal-500 shrink-0'} /> <span className="truncate">Arco</span>
                           </Button>
                           {/* Geometria avançada de CAD — só no Completo (o Médio fica com o desenho do dia a dia) */}
                           {completo && (<>
-                          <Button size="sm" variant={modo === 'paralela' ? 'default' : 'secondary'} className={modo === 'paralela' ? COR_ATIVO : ''} onClick={() => alternarModo('paralela', true)} title="Paralela: criar linha paralela a uma divisa">
+                          <Button size="sm" variant={modo === 'paralela' ? 'default' : 'secondary'} className={modo === 'paralela' ? COR_ATIVO : ''} onClick={() => alternarModo('paralela', true)} title="Linha Paralela (Offset): clique numa linha e informe a distância de afastamento.">
                             <Waypoints className={modo === 'paralela' ? 'text-white shrink-0' : 'text-violet-500 shrink-0'} /> <span className="truncate">Paralela</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'dividir' ? 'default' : 'secondary'} className={modo === 'dividir' ? COR_ATIVO : ''} onClick={() => alternarModo('dividir')} title="Dividir: dividir um segmento de divisa em N partes iguais">
+                          <Button size="sm" variant={modo === 'dividir' ? 'default' : 'secondary'} className={modo === 'dividir' ? COR_ATIVO : ''} onClick={() => alternarModo('dividir')} title="Dividir Divisa: clique num segmento de divisa para dividi-lo em partes iguais.">
                             <GitCommit className={modo === 'dividir' ? 'text-white shrink-0' : 'text-purple-500 shrink-0'} /> <span className="truncate">Dividir</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'trim' ? 'default' : 'secondary'} className={modo === 'trim' ? COR_ATIVO : ''} onClick={() => alternarModo('trim')} title="Aparar (Trim): cortar linhas no cruzamento de um limite">
+                          <Button size="sm" variant={modo === 'trim' ? 'default' : 'secondary'} className={modo === 'trim' ? COR_ATIVO : ''} onClick={() => alternarModo('trim')} title="Aparar (Trim): corte pontas de polilinhas no limite de interseção.">
                             <Scissors className={modo === 'trim' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Aparar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'extend' ? 'default' : 'secondary'} className={modo === 'extend' ? COR_ATIVO : ''} onClick={() => alternarModo('extend')} title="Prolongar (Extend): estender uma linha até encontrar um limite">
+                          <Button size="sm" variant={modo === 'extend' ? 'default' : 'secondary'} className={modo === 'extend' ? COR_ATIVO : ''} onClick={() => alternarModo('extend')} title="Prolongar (Extend): estenda uma polilinha até atingir o limite selecionado.">
                             <Expand className={modo === 'extend' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'} /> <span className="truncate">Prolongar</span>
                           </Button>
                           </>)}
@@ -6467,24 +6467,24 @@ export default function EditorPage() {
                         {/* Vértices e geometria — mesmo cartão, separados por um traço fino (economiza espaço) */}
                         <div className="my-0.5 h-px bg-border/50" />
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
-                          <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { alternarModo('inserir'); }} title="Inserir vértice: clique numa aresta">
+                          <Button size="sm" variant={modo === 'inserir' ? 'default' : 'outline'} onClick={() => { alternarModo('inserir'); }} title="Inserir Vértice: clique sobre uma aresta perimétrica para adicionar um nó.">
                             <Plus className="text-emerald-500 shrink-0" /> <span className="truncate">Inserir</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { alternarModo('apagar'); }} title="Apagar vértice">
+                          <Button size="sm" variant={modo === 'apagar' ? 'default' : 'outline'} onClick={() => { alternarModo('apagar'); }} title="Remover Vértice: clique sobre um vértice perimétrico para excluí-lo.">
                             <Trash2 className="text-rose-500 shrink-0" /> <span className="truncate">Apagar</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'outline'} onClick={() => { alternarModo('multi'); }} title="Selecionar vários vértices ou objetos">
+                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'outline'} onClick={() => { alternarModo('multi'); }} title="Seleção Múltipla: clique em elementos ou abra uma caixa de seleção para selecionar vários vértices/objetos de uma vez.">
                             <span className="truncate text-[11px] font-semibold">Sel. Vários</span>
                           </Button>
-                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} className="relative" onClick={() => { alternarModo('considerar'); }} title="Considerar vértice (F11)">
+                          <Button size="sm" variant={modo === 'considerar' ? 'default' : 'outline'} className="relative" onClick={() => { alternarModo('considerar'); }} title="Considerar Vértice (F11): inclui o vértice no cálculo oficial do perímetro.">
                             <Plus className="text-cyan-500 shrink-0" /> <span className="truncate">Considerar</span>
                             <Atalho k="F11" />
                           </Button>
-                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} className="relative" onClick={() => { setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar vértice (F12)">
+                          <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'outline'} className="relative" onClick={() => { setModo(modo === 'ignorar' ? 'navegar' : 'ignorar'); }} title="Ignorar Vértice (F12): oculta o vértice do perímetro oficial sem excluí-lo.">
                             <EyeOff className="text-amber-500 shrink-0" /> <span className="truncate">Ignorar</span>
                             <Atalho k="F12" />
                           </Button>
-                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'outline'} onClick={() => alternarModo('medir', true)} title="Régua: medir distância e azimute no mapa">
+                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'outline'} onClick={() => alternarModo('medir', true)} title="Régua de Medição: meça distâncias e azimutes entre pontos no mapa com alta precisão.">
                             <Ruler className="text-sky-500 shrink-0" /> <span className="truncate">Medir</span>
                           </Button>
                           {modo === 'multi' && (

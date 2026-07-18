@@ -105,11 +105,11 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
           <Button size="sm" className="gap-1" onClick={copiarTudo}>{copiado === '__tudo__' ? <CheckCheck className="size-4" /> : <Copy className="size-4" />} Copiar tudo</Button>
         </div>
         {/* Nº do TRT emitido — no FIM; vira dado do projeto e aparece na planta na hora */}
-        <div className="mt-3 flex items-center gap-2 rounded-sm border p-3 bg-background">
-          <label className="text-sm font-semibold whitespace-nowrap">Nº do {rot.termo} emitido</label>
+        <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-2 rounded-lg border p-3 bg-muted/10 shadow-sm">
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Nº do {rot.termo} emitido:</label>
           <input
-            className="flex-1 rounded-sm border bg-background px-2 py-1 text-sm"
-            placeholder={`Depois de emitir, cole aqui o número — conclui a etapa ${rot.termo} e aparece na planta`}
+            className="flex-1 w-full rounded-md border bg-background px-3 py-1.5 text-xs font-mono font-bold focus:ring-1 focus:ring-primary"
+            placeholder={`ex.: BR2026123456 (TRT) ou MG202698765 (ART). Cole aqui para vincular à planta e peças`}
             value={imovel.numeroTrt ?? ''}
             onChange={(e) => onChangeImovel?.({ ...imovel, numeroTrt: e.target.value })}
           />

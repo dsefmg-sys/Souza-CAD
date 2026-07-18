@@ -117,6 +117,25 @@ const CAMPOS: { k: keyof PessoaQualificada; label: string; span: string; importa
   { k: 'cep', label: 'CEP', span: 'col-span-2' },
 ];
 
+const PLACEHOLDERS_QUALIFICACAO: Record<keyof PessoaQualificada, string> = {
+  nome: 'ex.: João da Silva',
+  rg: 'ex.: MG-12.345.678',
+  cpf: '000.000.000-00',
+  nacionalidade: 'ex.: Brasileira',
+  naturalidade: 'ex.: Manhuaçu - MG',
+  dataNascimento: 'dd/mm/aaaa',
+  profissao: 'ex.: Produtor Rural',
+  estadoCivil: 'Selecione...',
+  conjugeNome: 'ex.: Maria da Silva',
+  conjugeRg: 'ex.: MG-98.765.432',
+  conjugeCpf: '000.000.000-00',
+  filiacao: 'ex.: Mãe: Ana Maria da Silva / Pai: José da Silva',
+  endereco: 'ex.: Córrego do Sossego, s/nº, Zona Rural',
+  cidadeUf: 'ex.: Manhuaçu - MG',
+  cep: '36900-000',
+  papel: '',
+};
+
 function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: PessoaQualificada; onChange: (p: PessoaQualificada) => void; sugProp: ProprietarioCad[] }) {
   function setNome(v: string) {
     const m = sugProp.find((s) => s.nome === v);
@@ -131,7 +150,7 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           const val = pessoa[c.k] || '';
           const formatado = isDoc ? formatarCpfCnpj(val) : val;
 
-          const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+          const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
             const raw = e.target.value;
             onChange({ ...pessoa, [c.k]: isDoc ? formatarCpfCnpj(raw) : raw });
           };
@@ -154,9 +173,39 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
               <Label className={`text-[10px] font-semibold leading-none ${c.importante ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-muted-foreground'}`}>
                 {c.label}{c.importante && ' *'}
               </Label>
-              {c.k === 'nome'
-                ? <Input list="lista-pessoas" value={pessoa.nome} onChange={(e) => setNome(e.target.value)} className="h-7 text-[11px]" />
-                : <Input value={formatado} onChange={handleChange} onBlur={handleBlur} className="h-7 text-[11px]" />}
+              {c.k === 'estadoCivil' ? (
+                <select
+                  value={pessoa.estadoCivil || ''}
+                  onChange={handleChange}
+                  className="h-7 w-full rounded border bg-background px-1.5 text-[11px] font-medium text-foreground focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">Selecione o Estado Civil...</option>
+                  <option value="Solteiro(a)">Solteiro(a)</option>
+                  <option value="Casado(a) - Comunhão Parcial de Bens">Casado(a) - Comunhão Parcial</option>
+                  <option value="Casado(a) - Comunhão Universal de Bens">Casado(a) - Comunhão Universal</option>
+                  <option value="Casado(a) - Separação Total de Bens">Casado(a) - Separação Total</option>
+                  <option value="Casado(a) - Participação Final nos Aquestos">Casado(a) - Participação nos Aquestos</option>
+                  <option value="Divorciado(a)">Divorciado(a)</option>
+                  <option value="Viúvo(a)">Viúvo(a)</option>
+                  <option value="União Estável">União Estável</option>
+                </select>
+              ) : c.k === 'nome' ? (
+                <Input
+                  list="lista-pessoas"
+                  value={pessoa.nome}
+                  placeholder={PLACEHOLDERS_QUALIFICACAO.nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  className="h-7 text-[11px]"
+                />
+              ) : (
+                <Input
+                  value={formatado}
+                  placeholder={PLACEHOLDERS_QUALIFICACAO[c.k] || ''}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className="h-7 text-[11px]"
+                />
+              )}
             </div>
           );
         })}
