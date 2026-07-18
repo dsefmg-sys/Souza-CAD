@@ -2292,6 +2292,22 @@ export default function EditorPage() {
   async function concluirImportacao(gerarPoligono: boolean, zonaEscolhida: number | undefined, selecao?: ImportSelecao) {
     if (!previewData) return;
     const { vs: vs0, numGlebas, municipio, z: z0, novoImovel, contM, contP, prefixo } = previewData;
+
+    let destino: 'atual' | 'novo' = 'novo';
+    if (vertices.length > 0 || projetoId !== null) {
+      const escolha = await escolher({
+        titulo: 'Destino da Importação',
+        mensagem: 'Deseja importar estes pontos para o projeto atual (preservando dados de cadastro e substituindo a geometria) ou criar um Novo Projeto do zero?',
+        opcoes: [
+          { chave: 'atual', label: 'Importar no projeto atual', variant: 'default' },
+          { chave: 'novo', label: 'Criar novo projeto', variant: 'outline' }
+        ],
+        cancelLabel: 'Cancelar'
+      });
+      if (!escolha) return;
+      destino = escolha as 'atual' | 'novo';
+    }
+
     // se o usuário corrigiu o fuso na prévia, reprojeta os vértices (E/N iguais, lat/lon novos)
     const z = (zonaEscolhida && zonaEscolhida !== z0) ? zonaEscolhida : z0;
     const vsRepro: Vertex[] = z !== z0 ? reprojetar(vs0, z, hemisferio) : vs0;
@@ -2373,27 +2389,97 @@ export default function EditorPage() {
       }
     }
 
-    setImovel(novoImovel);
+    if (destino === 'novo') {
+      // Limpa os estados do projeto anterior para evitar vazamento de dados
+      setProjetoId(null);
+      setNomeProjeto('');
+      setNomeProjetoManual(false);
+      setRequerente(undefined);
+      setTransmitente(undefined);
+      setTipoAto('venda');
+      setPartesAdicionais([]);
+      setConfrontantes([]);
+      setConfrontantePorLado({});
+      setReferencias([]);
+      setParcelasCert([]);
+      setVerticesVizinho([]);
+      setSituacaoUrl(undefined);
+      setPrint3dUrl(undefined);
+      setObjetos([]);
+      setPlantaConfig({});
+      setObjetoSelId(null);
+      histRef.current = [];
+      redoRef.current = [];
+      localStorage.removeItem(rascunhoKey());
+
+      const pad = carregarPadroes();
+      const imovelLimpo: ImovelData = {
+        denominacao: novoImovel.denominacao || '',
+        proprietario: novoImovel.proprietario || '',
+        cpfProprietario: '',
+        tipoPessoa: 'Física',
+        municipio: novoImovel.municipio || '',
+        local: novoImovel.local || '',
+        matricula: novoImovel.matricula || '',
+        cns: '',
+        codigoImovelIncra: novoImovel.codigoImovelIncra || '',
+        naturezaServico: pad.naturezaServico || 'Georreferenciamento',
+        situacao: 'Imóvel Registrado',
+        naturezaArea: 'Particular',
+        tipoImovel: pad.tipoImovel,
+        tipoAzimute: pad.tipoAzimute,
+        areaSigefHa: undefined,
+        perimetroSigef: undefined,
+      };
+      setImovel(imovelLimpo);
+      
+      const auto = gerarTituloAutomatico(imovelLimpo);
+      setNomeProjeto(auto || importPendingFile?.name.replace(/\.[^.]+$/, '') || '');
+    } else {
+      // Importar no projeto atual: preserva todos os cadastros
+      setImovel({
+        ...imovel,
+        municipio: novoImovel.municipio || imovel.municipio,
+        local: novoImovel.local || imovel.local,
+        denominacao: novoImovel.denominacao || imovel.denominacao,
+        proprietario: novoImovel.proprietario || imovel.proprietario,
+        codigoImovelIncra: novoImovel.codigoImovelIncra || imovel.codigoImovelIncra,
+        matricula: novoImovel.matricula || imovel.matricula,
+      });
+    }
+
     setZona(z);
 
     const gs: Gleba[] = [];
     const { confrontantes: cs, confrontantePorLado: mapa } = gerarPoligono && vs.length >= 3
       ? montarConfrontantes(vs)
       : { confrontantes: [], confrontantePorLado: {} };
-    for (let i = 1; i <= numGlebas; i++) {
-      gs.push(i === 1 ? glebaDe(1, vs, cs, mapa, 'Parcela 1') : novaGlebaVazia(i));
-    }
 
-    setProjetoId(null); // importar um TXT começa um projeto novo (não sobrescreve o salvo anterior)
-    setReferencias([]); // não deixa mais referência tracejada de importação anterior
-    setGlebas(gs);
-    carregarGleba(gs[0]);
-    // carregarGleba zera os ignorados; reaplica os que o usuário tirou do polígono
-    setVerticesIgnorados(finalIgnorados); // sempre substitui: importar TXT começa projeto novo (sem sobras do anterior)
-
-    if (!nomeProjeto || !nomeProjetoManual) {
-      const auto = gerarTituloAutomatico(novoImovel);
-      setNomeProjeto(auto || importPendingFile?.name.replace(/\.[^.]+$/, '') || '');
+    if (destino === 'novo') {
+      for (let i = 1; i <= numGlebas; i++) {
+        gs.push(i === 1 ? glebaDe(1, vs, cs, mapa, 'Parcela 1') : novaGlebaVazia(i));
+      }
+      setGlebas(gs);
+      carregarGleba(gs[0]);
+      setVerticesIgnorados(finalIgnorados);
+    } else {
+      // Importando no atual: atualiza os vértices e confrontantes da gleba ativa
+      const novasGlebas = glebas.map((g) => {
+        if (g.id === glebaAtivaId) {
+          return {
+            ...g,
+            vertices: vs,
+            confrontantes: cs,
+            confrontantePorLado: mapa
+          };
+        }
+        return g;
+      });
+      setGlebas(novasGlebas);
+      setVertices(vs);
+      setConfrontantes(cs);
+      setConfrontantePorLado(mapa);
+      setVerticesIgnorados(finalIgnorados);
     }
     if (gerarPoligono) {
       const extra = ignorados.length ? ` (${ignorados.length} fora do polígono)` : '';
@@ -3600,6 +3686,14 @@ export default function EditorPage() {
     return false;
   }
 
+  async function getAuthHeaders() {
+    const token = user ? await user.getIdToken() : '';
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+  }
+
   async function exportarMemorial(modo: 'normal' | 'servidao' = 'normal') {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     if (!(await verificarConciliacaoSigef())) return;
@@ -3607,9 +3701,10 @@ export default function EditorPage() {
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
+      const headers = await getAuthHeaders();
       const response = await fetch('/api/export/memorial', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           res: r,
           imovel,
@@ -3689,9 +3784,10 @@ export default function EditorPage() {
           okLabel: 'Planilha única', cancelLabel: 'Separadas (.zip)',
         });
 
+        const headers = await getAuthHeaders();
         const response = await fetch('/api/export/ods', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             tipo: unica ? 'unica' : 'separadas',
             imovel,
@@ -3716,9 +3812,10 @@ export default function EditorPage() {
         const r = calcular(vs, confrontantePorLado);
         const ativa = glebas.find((g) => g.id === glebaAtivaId);
         
+        const headers = await getAuthHeaders();
         const response = await fetch('/api/export/ods', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             tipo: 'unica',
             res: r,
@@ -3773,22 +3870,24 @@ export default function EditorPage() {
         URL.revokeObjectURL(url);
         
         const pngBase64 = canvas.toDataURL('image/png');
-        fetch('/api/export/pdf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pngBase64 })
-        })
-        .then((res) => {
-          if (!res.ok) throw new Error();
-          return res.blob();
-        })
-        .then((blob) => {
-          const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
-          saveAs(blob, limparNomeArquivo(`Planta - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.pdf`));
-          setBaixou((b) => ({ ...b, planta: true }));
-          aviso('PDF da planta gerado.');
-        })
-        .catch(() => aviso('Erro ao compilar o PDF da planta no servidor.'));
+        getAuthHeaders().then((headers) => {
+          fetch('/api/export/pdf', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ pngBase64 })
+          })
+          .then((res) => {
+            if (!res.ok) throw new Error();
+            return res.blob();
+          })
+          .then((blob) => {
+            const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
+            saveAs(blob, limparNomeArquivo(`Planta - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.pdf`));
+            setBaixou((b) => ({ ...b, planta: true }));
+            aviso('PDF da planta gerado.');
+          })
+          .catch(() => aviso('Erro ao compilar o PDF da planta no servidor.'));
+        });
       };
       img.onerror = () => { URL.revokeObjectURL(url); aviso('Não consegui rasterizar a planta.'); };
       img.src = url;
@@ -3810,9 +3909,10 @@ export default function EditorPage() {
     }
     setProcessando(true);
     try {
+      const headers = await getAuthHeaders();
       const resReq = await fetch('/api/export/requerimento', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           imovel, tecnico, requerente, transmitente, tipoAto, partesAdicionais, correcoes,
           areaRealHa: res ? valoresEfetivos(res, imovel).areaHa : 0,
@@ -3875,9 +3975,10 @@ export default function EditorPage() {
     try {
       const padroes = carregarPadroes();
       const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
+      const headers = await getAuthHeaders();
       const response = await fetch('/api/export/errata', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           imovel,
           tecnico,
@@ -3972,9 +4073,10 @@ export default function EditorPage() {
         return window.btoa(binary);
       };
 
+      const headers = await getAuthHeaders();
       const resMemorial = await fetch('/api/export/memorial', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           res: r,
           imovel,
@@ -3997,7 +4099,7 @@ export default function EditorPage() {
       
       const resOds = await fetch('/api/export/ods', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           tipo: 'unica',
           res: r,
@@ -4024,7 +4126,7 @@ export default function EditorPage() {
       
       const resReq = await fetch('/api/export/requerimento', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           imovel,
           tecnico,
@@ -4926,9 +5028,10 @@ export default function EditorPage() {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     try {
       const vs = await comCodigos();
+      const headers = await getAuthHeaders();
       const response = await fetch('/api/export/dxf', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           vertices: vs.map((v) => ({ leste: v.leste, norte: v.norte, codigoSigef: v.codigoSigef, tipo: v.tipo })),
           opts: { zona, hemisferio, titulo: imovel.denominacao || nomeProjeto }
@@ -4953,9 +5056,10 @@ export default function EditorPage() {
         const u = geoParaUtm(lat, lon, zona, hemisferio);
         return { leste: u.leste, norte: u.norte, codigoSigef: `V${String(i + 1).padStart(2, '0')}`, tipo: 'M' as const };
       });
+      const headers = await getAuthHeaders();
       const response = await fetch('/api/export/dxf', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           vertices: vs,
           opts: { zona, hemisferio, titulo: pc.info.titulo }
@@ -6125,9 +6229,9 @@ export default function EditorPage() {
                           onClick={salvar}
                           disabled={processando}
                           title={salvarLaranja ? "Salvar projeto atual (Ctrl+S) - Modificações pendentes de salvamento!" : "Projeto salvo e sincronizado (Ctrl+S)"}
-                          className={`relative transition-all duration-300 ${salvarLaranja ? 'neon-gold-pulse text-amber-500 bg-amber-500/10 hover:bg-amber-500/20' : ''}`}
+                          className={`relative transition-all duration-300 ${salvarLaranja ? 'bg-orange-500 hover:bg-orange-600 text-white font-bold border-transparent' : ''}`}
                         >
-                          <Save className={salvarLaranja ? 'text-amber-500' : 'text-emerald-500'} /> <span>SALVAR</span>
+                          <Save className={salvarLaranja ? 'text-white' : 'text-emerald-500'} /> <span>SALVAR</span>
                         </Button>
                         <Button size="sm" variant="secondary" onClick={() => setPrecoSugAberto(true)} title="Precificação: quanto cobrar por este imóvel">
                           <PencilRuler className="text-amber-400" /> <span>Precificação</span>

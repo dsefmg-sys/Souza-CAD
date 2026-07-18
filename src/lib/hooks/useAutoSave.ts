@@ -77,7 +77,16 @@ export function useAutoSave(deps: DepsAutoSave): EstadoAutoSave {
   // "versão salva" sem acender o disquete (porque o salvar mudou os vértices/códigos).
   const acabouDeSalvar = useRef<boolean>(false);
 
+  const justReseted = useRef<boolean>(false);
+
   useEffect(() => {
+    if (justReseted.current) {
+      justReseted.current = false;
+      ultimoSalvoSig.current = projSig;
+      setSalvarLaranja(false);
+      setSalvoOk(true);
+      return;
+    }
     if (ultimoSalvoSig.current === '') {
       // primeira montagem: baseline = estado atual, sem disquete
       ultimoSalvoSig.current = projSig;
@@ -112,7 +121,7 @@ export function useAutoSave(deps: DepsAutoSave): EstadoAutoSave {
       acabouDeSalvar.current = true;
     },
     resetBaseline: () => {
-      ultimoSalvoSig.current = projSig;
+      justReseted.current = true;
       setSalvarLaranja(false);
     },
   };
