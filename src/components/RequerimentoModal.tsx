@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
-import { FileSignature, UserPlus, Trash2 } from 'lucide-react';
+import { FileSignature, UserPlus, Trash2, Scale } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { confirmar, escolher, avisar } from '@/lib/ui/dialogos';
 import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
@@ -265,6 +265,13 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   }
 
 
+  const areaAnt = imovel.areaAnterior ?? 0;
+  const temAreaAnt = imovel.areaAnterior != null && imovel.areaAnterior > 0;
+  const diffHa = temAreaAnt ? areaRealHa - areaAnt : 0;
+  const diffM2 = temAreaAnt ? Math.round(diffHa * 10000) : 0;
+  const diffPct = temAreaAnt ? (diffHa / areaAnt) * 100 : 0;
+  const temDivergencia = temAreaAnt && Math.abs(diffHa) > 0.0001;
+
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
       <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] flex flex-col p-6" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
@@ -323,6 +330,71 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                     <span className="text-[9px] text-muted-foreground block leading-tight mt-0.5">Área antiga registrada no cartório, necessária para o cálculo da diferença de retificação.</span>
                   </div>
                   <Input type="number" step="0.0001" placeholder="ex.: 15,4320" value={imovel.areaAnterior ?? ''} onChange={(e) => onChangeImovel({ ...imovel, areaAnterior: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-[11px]" />
+                </div>
+
+                {/* Painel de Análise de Divergência Registral x Levantamento Real */}
+                <div className={`col-span-2 rounded-lg border p-2.5 text-xs transition-all ${
+                  temDivergencia
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+                    : temAreaAnt
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200'
+                      : 'border-border bg-background/50 text-muted-foreground'
+                }`}>
+                  <div className="flex items-center justify-between font-bold text-[11px] mb-1">
+                    <span className="flex items-center gap-1.5">
+                      <Scale className="size-3.5" />
+                      <span>Retificação e Divergência Métricas</span>
+                    </span>
+                    {temAreaAnt && (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                        temDivergencia
+                          ? 'bg-amber-500 text-white dark:bg-amber-600'
+                          : 'bg-emerald-600 text-white'
+                      }`}>
+                        {temDivergencia
+                          ? `${diffPct >= 0 ? '+' : ''}${numBR(diffPct, 2)}% de divergência`
+                          : 'Áreas Coincidentes'}
+                      </span>
+                    )}
+                  </div>
+
+                  {temAreaAnt ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-2 text-[10px] my-1 font-mono border-t border-b border-black/10 dark:border-white/10 py-1">
+                        <div>
+                          <span className="text-muted-foreground block text-[9px] uppercase font-sans font-semibold">Área Registrada</span>
+                          <span className="font-bold">{numBR(areaAnt, 4)} ha</span>
+                          <span className="block text-[9px] opacity-75">({numBR(areaAnt * 10000, 0)} m²)</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block text-[9px] uppercase font-sans font-semibold">Área Levada</span>
+                          <span className="font-bold">{numBR(areaRealHa, 4)} ha</span>
+                          <span className="block text-[9px] opacity-75">({numBR(areaRealHa * 10000, 0)} m²)</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block text-[9px] uppercase font-sans font-semibold">Diferença</span>
+                          <span className={`font-bold ${diffHa > 0 ? 'text-amber-600 dark:text-amber-400' : diffHa < 0 ? 'text-rose-600 dark:text-rose-400' : ''}`}>
+                            {diffHa > 0 ? '+' : ''}{numBR(diffHa, 4)} ha
+                          </span>
+                          <span className="block text-[9px] opacity-75">({diffM2 > 0 ? '+' : ''}{numBR(diffM2, 0)} m²)</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] leading-tight mt-1 opacity-90">
+                        {temDivergencia ? (
+                          <>
+                            <strong>Aviso Registral:</strong> Divergência de <strong>{diffPct >= 0 ? '+' : ''}{numBR(diffPct, 2)}%</strong> ({diffHa > 0 ? 'aumento' : 'redução'} de {numBR(Math.abs(diffHa), 4)} ha). A justificativa legal de <strong>Retificação de Área (Art. 213, II da Lei 6.015/73)</strong> será inserida automaticamente na minuta deste requerimento.
+                          </>
+                        ) : (
+                          <>A área apurada pelo georreferenciamento coincide exatamente com a área da matrícula constante no cartório.</>
+                        )}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-[10px] leading-tight opacity-75">
+                      Preencha o campo <em>Área anterior na matrícula</em> acima para calcular a porcentagem exata de divergência e incluir a fundamentação de retificação no documento.
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1 col-span-2">
                   <div>

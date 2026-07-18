@@ -198,12 +198,26 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   const comarca = input.comarca || imovel.municipio || '—';
   const c: Paragraph[] = [];
 
+  // Cálculo de divergência de área entre registro antigo e medição apurada
+  const areaAntVal = imovel.areaAnterior != null ? imovel.areaAnterior : null;
+  const diffHa = areaAntVal != null ? areaRealHa - areaAntVal : 0;
+  const diffM2 = diffHa * 10000;
+  const diffPct = (areaAntVal != null && areaAntVal > 0) ? (diffHa / areaAntVal) * 100 : 0;
+
+  const strDiffHa = `${diffHa >= 0 ? '+' : ''}${numBR(diffHa, 4)} ha`;
+  const strDiffM2 = `${diffM2 >= 0 ? '+' : ''}${numBR(diffM2, 2)} m²`;
+  const strDiffPct = `${diffPct >= 0 ? '+' : ''}${numBR(diffPct, 2)}%`;
+
   // Modelos de texto editáveis (declarações e responsabilidade). {variáveis} trocadas pelos dados reais.
   const modelos = carregarModelos();
   const varsModelo: Record<string, string> = {
     proprietario: f(imovel.proprietario), cpf: f(imovel.cpfProprietario), denominacao: f(imovel.denominacao),
     matricula: f(imovel.matricula), cns: f(imovel.cns), municipio: f(imovel.municipio), comarca,
-    area: `${numBR(areaRealHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : (permitirIncompleto ? 'DADO AUSENTE' : ''),
+    area: `${numBR(areaRealHa, 4)} ha`,
+    areaAnterior: areaAntVal != null ? `${numBR(areaAntVal, 4)} ha` : (permitirIncompleto ? 'DADO AUSENTE' : ''),
+    areaDiferenca: strDiffHa,
+    areaDiferencaM2: strDiffM2,
+    areaDiferencaPct: strDiffPct,
     codigoIncra: f(imovel.codigoImovelIncra), tecnico: f(tecnico.nome), cft: f(tecnico.cft),
     numeroTrt: f(imovel.numeroTrt || tecnico.art), cidade: f(imovel.municipio || tecnico.cidadeAssinatura), data: f(input.dataExtenso),
   };
@@ -261,13 +275,28 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     c.push(par(`O imóvel rural denominado ${varsModelo.denominacao}, situado no município de ${varsModelo.municipio}, encontra-se registrado neste Cartório sob a matrícula nº ${varsModelo.matricula}, Livro nº 2, em nome de ${donoNome}.`));
   }
 
-  c.push(titulo('DO LEVANTAMENTO E DA RETIFICAÇÃO'));
-  const areaAnt = imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)}` : (permitirIncompleto ? 'DADO AUSENTE' : '—');
-  c.push(par(`O imóvel possui, conforme registro anterior, área de ${areaAnt} hectares. Após a realização de levantamento topográfico georreferenciado, executado pelo profissional habilitado:`));
+  c.push(titulo('DO LEVANTAMENTO E DA RETIFICAÇÃO DE ÁREA'));
+  const areaAntStr = areaAntVal != null ? `${numBR(areaAntVal, 4)}` : (permitirIncompleto ? 'DADO AUSENTE' : '—');
+  c.push(par(`O imóvel possui, conforme registro constante na matrícula/transcrição nº ${varsModelo.matricula}, a área descrita de ${areaAntStr} hectares. Após a realização de levantamento topográfico georreferenciado ao Sistema Geodésico Brasileiro (SIRGAS 2000), executado pelo profissional credenciado:`));
   const rotProf = rotulosProfissional(tecnico);
   c.push(campo('Nome:', f(tecnico.nome)));
   c.push(campo(`${rotProf.registro}:`, `${f(tecnico.cft)} - Código INCRA (SIGEF): ${f(tecnico.credenciamentoIncra)}`));
-  c.push(par(`apurou-se que a área real do imóvel corresponde a ${numBR(areaRealHa, 4)} hectares, divergindo da área constante na matrícula, razão pela qual se requer a devida retificação.`));
+
+  if (areaAntVal != null && Math.abs(diffHa) > 0.0001) {
+    const tipoDivergencia = diffHa > 0 ? 'aumento' : 'redução';
+    c.push(par(
+      `apurou-se que a área real apurada do imóvel corresponde a ${numBR(areaRealHa, 4)} hectares (${numBR(areaRealHa * 10000, 2)} m²), ` +
+      `apresentando uma divergência métrica de ${strDiffHa} (${strDiffM2}, correspondente a uma variação de ${strDiffPct}) ` +
+      `em relação à área anteriormente registrada (${numBR(areaAntVal, 4)} ha), ocorrendo um ${tipoDivergencia} decorrente do aprimoramento das técnicas de medição geodésica e precisão de limites perimétricos.\n\n` +
+      `Diante do exposto e comprovado pelas peças técnicas anexas (Planta, Memorial Descritivo e Certificação SIGEF/INCRA), ` +
+      `requer-se a Vossa Senhoria a devida averbação dos novos limites perimétricos e a RETIFICAÇÃO DA ÁREA do imóvel, ` +
+      `nos termos do Art. 213, inciso II, da Lei nº 6.015/1973 (Lei de Registros Públicos).`
+    ));
+  } else {
+    c.push(par(
+      `apurou-se que a área real apurada do imóvel corresponde a ${numBR(areaRealHa, 4)} hectares, a qual requer a devida averbação e retificação dos limites perimétricos georreferenciados nos termos do Art. 213, II, da Lei nº 6.015/1973.`
+    ));
+  }
 
   c.push(titulo('DOS CONFRONTANTES'));
   preencherModeloParagrafos(modelos.requerimentoConfrontantes, varsModelo).forEach((t) => c.push(par(t)));
