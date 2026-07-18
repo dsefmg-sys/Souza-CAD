@@ -4301,10 +4301,11 @@ export default function EditorPage() {
     const dx = maxLeste - minLeste;
     const dy = maxNorte - minNorte;
     const diagonal = Math.hypot(dx, dy); // diagonal do imóvel em metros
-    if (diagonal < 150) return 10;
-    if (diagonal < 500) return 20;
-    if (diagonal < 1500) return 30;
-    return Math.round(diagonal / 50); // ex: diagonal de 3000m -> espaçamento de 60m
+    if (diagonal < 100) return 2;
+    if (diagonal < 250) return 5;
+    if (diagonal < 600) return 10;
+    if (diagonal < 1500) return 20;
+    return Math.max(30, Math.round(diagonal / 75)); // ex: diagonal de 3000m -> espaçamento de 40m
   }
 
   function gerarGradePontosUTM(vs: typeof vertices, spacing: number): { lat: number; lon: number; leste: number; norte: number }[] {
@@ -4319,9 +4320,10 @@ export default function EditorPage() {
     let numX = Math.ceil((maxLeste - minLeste) / currentSpacing);
     let numY = Math.ceil((maxNorte - minNorte) / currentSpacing);
     while (numX * numY > 1500) {
-      currentSpacing += 5;
+      currentSpacing += 1;
       numX = Math.ceil((maxLeste - minLeste) / currentSpacing);
       numY = Math.ceil((maxNorte - minNorte) / currentSpacing);
+      if (currentSpacing > 10000) break;
     }
 
     const candidatos: { lat: number; lon: number; leste: number; norte: number }[] = [];
@@ -6578,8 +6580,11 @@ export default function EditorPage() {
                                       className="h-6 rounded border bg-background px-1 text-[9px] focus:ring-1 focus:ring-primary focus:outline-none"
                                     >
                                       <option value={0}>Auto ({calcularEspacamentoGradeAuto(vertices)}m)</option>
-                                      <option value={10}>Muito Denso (10m)</option>
-                                      <option value={15}>Denso (15m)</option>
+                                      <option value={1}>Ultra Denso (1m)</option>
+                                      <option value={2}>Super Denso (2m)</option>
+                                      <option value={5}>Muito Denso (5m)</option>
+                                      <option value={10}>Denso (10m)</option>
+                                      <option value={15}>Médio-Denso (15m)</option>
                                       <option value={25}>Médio (25m)</option>
                                       <option value={50}>Esparso (50m)</option>
                                       <option value={100}>Muito Esparso (100m)</option>
