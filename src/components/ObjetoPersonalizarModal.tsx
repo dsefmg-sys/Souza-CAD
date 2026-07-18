@@ -5,7 +5,7 @@ import { Palette, X, RefreshCw, Copy, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Z_CLASSES } from '@/lib/ui/zlayers';
-import type { ObjetoDesenho, PlantaConfig, EscritorioData } from '@/lib/topo/types';
+import type { ObjetoDesenho, PlantaConfig, EscritorioData, ImovelData } from '@/lib/topo/types';
 
 type ItemTextoOverride = { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number };
 
@@ -27,6 +27,8 @@ interface ObjetoPersonalizarModalProps {
   copiaBuffer: ObjetoDesenho | null;
   setCopiaBuffer: (obj: ObjetoDesenho | null) => void;
   onRemoverPrint3D?: () => void;
+  imovel?: ImovelData;
+  setImovel?: React.Dispatch<React.SetStateAction<ImovelData>>;
 }
 
 export function ObjetoPersonalizarModal({
@@ -47,6 +49,8 @@ export function ObjetoPersonalizarModal({
   copiaBuffer,
   setCopiaBuffer,
   onRemoverPrint3D,
+  imovel,
+  setImovel,
 }: ObjetoPersonalizarModalProps) {
   if (!objPersonalizarId) return null;
 
@@ -181,6 +185,100 @@ export function ObjetoPersonalizarModal({
             return (
               <div className="space-y-4">
                 <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Declaração do Proprietário</div>
+                
+                {imovel && setImovel && (
+                  <div className="space-y-3 border-b pb-3 mb-3 border-dashed">
+                    <div className="font-bold text-foreground text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400">Qualificação do Proprietário</div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nome (ou De Cujus)</Label>
+                      <input
+                        type="text"
+                        value={imovel.proprietario || ''}
+                        onChange={(e) => setImovel((im) => ({ ...im, proprietario: e.target.value }))}
+                        className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CPF/CNPJ</Label>
+                        <input
+                          type="text"
+                          value={imovel.cpfProprietario || ''}
+                          onChange={(e) => setImovel((im) => ({ ...im, cpfProprietario: e.target.value }))}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Tipo</Label>
+                        <select
+                          value={imovel.tipoPessoa || 'Física'}
+                          onChange={(e) => setImovel((im) => ({ ...im, tipoPessoa: e.target.value as 'Física' | 'Jurídica' | 'Espólio' }))}
+                          className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                        >
+                          <option value="Física">Física</option>
+                          <option value="Jurídica">Jurídica</option>
+                          <option value="Espólio">Espólio</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {imovel.tipoPessoa === 'Espólio' && (
+                      <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 mt-2">
+                        <div className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400">Dados do Inventariante</div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nome do Inventariante</Label>
+                          <input
+                            type="text"
+                            value={imovel.inventarianteNome ?? ''}
+                            onChange={(e) => setImovel((im) => ({ ...im, inventarianteNome: e.target.value }))}
+                            className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CPF</Label>
+                            <input
+                              type="text"
+                              value={imovel.inventarianteCpf ?? ''}
+                              onChange={(e) => setImovel((im) => ({ ...im, inventarianteCpf: e.target.value }))}
+                              className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">RG</Label>
+                            <input
+                              type="text"
+                              value={imovel.inventarianteRg ?? ''}
+                              onChange={(e) => setImovel((im) => ({ ...im, inventarianteRg: e.target.value }))}
+                              className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Estado Civil</Label>
+                            <input
+                              type="text"
+                              value={imovel.inventarianteEstadoCivil ?? ''}
+                              onChange={(e) => setImovel((im) => ({ ...im, inventarianteEstadoCivil: e.target.value }))}
+                              className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nacionalidade</Label>
+                            <input
+                              type="text"
+                              value={imovel.inventarianteNacionalidade ?? ''}
+                              onChange={(e) => setImovel((im) => ({ ...im, inventarianteNacionalidade: e.target.value }))}
+                              className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Conteúdo do Texto</Label>
                   <textarea

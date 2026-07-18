@@ -346,7 +346,13 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   }
   const modelos = carregarModelos();
   const varsModelo: Record<string, string> = {
-    proprietario: imovel.proprietario || '', cpf: imovel.cpfProprietario || '', denominacao: imovel.denominacao || '',
+    proprietario: imovel.tipoPessoa === 'Espólio' && imovel.inventarianteNome
+      ? `Espólio de ${imovel.proprietario}, representado por seu inventariante ${imovel.inventarianteNome}`
+      : (imovel.proprietario || ''),
+    cpf: imovel.tipoPessoa === 'Espólio' && imovel.inventarianteCpf
+      ? `${imovel.cpfProprietario || '—'} (De Cujus) e CPF do Inventariante: ${imovel.inventarianteCpf}`
+      : (imovel.cpfProprietario || ''),
+    denominacao: imovel.denominacao || '',
     matricula: imovel.matricula || '', cns: imovel.cns || '', municipio: imovel.municipio || '', comarca: imovel.municipio || '',
     area: `${numBR(efMod.areaHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : '',
     perimetro: `${numBR(efMod.perimetro)} m`, codigoIncra: imovel.codigoImovelIncra || '',
@@ -411,12 +417,18 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 360, after: 80 }, children: [new TextRun({ text: tituloBloco, bold: true, size: 24 })] }));
   children.push(p(mod('declProprietario')));
   
-  const propLinhas = [
-    `Nome: ${imovel.proprietario}`,
-    `CPF: ${imovel.cpfProprietario}`,
-  ];
-  if (transmitente?.rg) {
-    propLinhas.push(`RG: ${transmitente.rg}`);
+  const propLinhas = [];
+  if (imovel.tipoPessoa === 'Espólio') {
+    propLinhas.push(`Espólio de ${imovel.proprietario}`);
+    propLinhas.push(`Representado por seu inventariante: ${imovel.inventarianteNome || 'DADO AUSENTE'}`);
+    propLinhas.push(`CPF do Inventariante: ${imovel.inventarianteCpf || 'DADO AUSENTE'}`);
+    if (imovel.inventarianteRg) propLinhas.push(`RG do Inventariante: ${imovel.inventarianteRg}`);
+  } else {
+    propLinhas.push(`Nome: ${imovel.proprietario}`);
+    propLinhas.push(`CPF: ${imovel.cpfProprietario}`);
+    if (transmitente?.rg) {
+      propLinhas.push(`RG: ${transmitente.rg}`);
+    }
   }
   propLinhas.push(imovel.matricula ? `Imóvel de Matrícula: ${imovel.matricula}` : 'Imóvel de Posse (sem matrícula)');
   const qualifPrincipal = qualificacaoPapelProprietario(imovel.papelProprietario);

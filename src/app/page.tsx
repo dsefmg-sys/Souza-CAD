@@ -10,7 +10,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
-  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3,
+  Scissors, Expand, GitCommit, Copy, Square, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -45,6 +45,7 @@ import {
   gerarDeclaracaoRespeitoLimitesDocx
 } from '@/lib/export/declaracoes';
 import { confrontanteAssina } from '@/lib/export/confrontanteTexto';
+import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import AnuenciaModal from '@/components/AnuenciaModal';
@@ -716,6 +717,7 @@ export default function EditorPage() {
   const [modalSobreposicaoAberto, setModalSobreposicaoAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
   const [conferirAberto, setConferirAberto] = useState(false);
+  const [menuFerramentasAberto, setMenuFerramentasAberto] = useState(false);
   const [calcAberta, setCalcAberta] = useState(false);
   const [vvAberto, setVvAberto] = useState(false);
   const [vvBase, setVvBase] = useState<{ leste: number; norte: number; elevacao?: number } | null>(null);
@@ -827,7 +829,7 @@ export default function EditorPage() {
         } catch {}
       }
     }
-    return { x: 300, y: 680 };
+    return { x: 300, y: 16 };
   });
 
   const [arrastandoArea, setArrastandoArea] = useState<{
@@ -843,8 +845,8 @@ export default function EditorPage() {
       const dx = e.clientX - arrastandoArea.startX;
       const dy = e.clientY - arrastandoArea.startY;
       setPosArea({
-        x: Math.max(0, Math.min(window.innerWidth - 180, arrastandoArea.startPosX + dx)),
-        y: Math.max(0, Math.min(window.innerHeight - 40, arrastandoArea.startPosY + dy)),
+        x: Math.max(toolWEfetivo + 12, Math.min(window.innerWidth - 180, arrastandoArea.startPosX + dx)),
+        y: Math.max(5, Math.min(window.innerHeight - 40, arrastandoArea.startPosY + dy)),
       });
     };
     const handleMouseUp = () => {
@@ -858,7 +860,7 @@ export default function EditorPage() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [arrastandoArea, posArea]);
+  }, [arrastandoArea, posArea, toolWEfetivo]);
 
   const [posAudioBarra, setPosAudioBarra] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -3737,22 +3739,17 @@ export default function EditorPage() {
     if (!(await verificarProntoParaExportar())) return;
     const tec = tecnico;
     try {
+      setProcessando(true);
       const modeloProprio = await carregarModeloSigef();
-      
-      const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
-        let binary = '';
-        const bytes = new Uint8Array(buffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        return window.btoa(binary);
+
+      const obterTemplateBytes = async (): Promise<Uint8Array> => {
+        if (modeloProprio) return new Uint8Array(modeloProprio);
+        const resTpl = await fetch('/templates/sigef.ods');
+        if (!resTpl.ok) throw new Error('Template sigef.ods não encontrado.');
+        return new Uint8Array(await resTpl.arrayBuffer());
       };
 
-      const modeloProprioBase64 = modeloProprio ? arrayBufferToBase64(modeloProprio) : undefined;
-
       if (glebas.length > 1) {
-        setProcessando(true);
         const id = projetoId ?? novoId();
         const gs = sincronizarGlebas();
         const registradas: Gleba[] = [];
@@ -3776,6 +3773,7 @@ export default function EditorPage() {
           res: calcular(g.vertices, g.confrontantePorLado),
           confrontantes: g.confrontantes, confrontantePorLado: g.confrontantePorLado,
           denominacao: g.denominacao, parcela: g.parcela,
+          imoveisCadastrados,
         }));
         const nome = limparNomeArquivo(imovel.denominacao || nomeProjeto || 'imovel');
         const unica = await confirmar({
@@ -3784,24 +3782,35 @@ export default function EditorPage() {
           okLabel: 'Planilha única', cancelLabel: 'Separadas (.zip)',
         });
 
-        const headers = await getAuthHeaders();
-        const response = await fetch('/api/export/ods', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            tipo: unica ? 'unica' : 'separadas',
-            imovel,
-            tecnico: tec,
-            glebas: glebasSigef,
-            modeloProprioBase64,
-            imoveisCadastrados
-          })
-        });
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.erro || 'Falha ao gerar planilha no servidor.');
+        let blob: Blob;
+        try {
+          const headers = await getAuthHeaders();
+          const response = await fetch('/api/export/ods', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              tipo: unica ? 'unica' : 'separadas',
+              imovel,
+              tecnico: tec,
+              glebas: glebasSigef,
+              imoveisCadastrados
+            })
+          });
+          if (response.ok) {
+            blob = await response.blob();
+          } else {
+            throw new Error('API indisponível');
+          }
+        } catch {
+          // Fallback cliente 100% offline/local sem 401/403
+          const templateBytes = await obterTemplateBytes();
+          if (unica) {
+            blob = await gerarSigefOds({ templateBytes, imovel, tecnico: tec, glebas: glebasSigef, imoveisCadastrados });
+          } else {
+            blob = await gerarSigefOdsSeparadas(templateBytes, imovel, tec, glebasSigef);
+          }
         }
-        const blob = await response.blob();
+
         if (unica) {
           saveAs(blob, `SIGEF - ${nome} (${glebasSigef.length} glebas).ods`);
         } else {
@@ -3811,34 +3820,51 @@ export default function EditorPage() {
         const vs = await comCodigos();
         const r = calcular(vs, confrontantePorLado);
         const ativa = glebas.find((g) => g.id === glebaAtivaId);
-        
-        const headers = await getAuthHeaders();
-        const response = await fetch('/api/export/ods', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            tipo: 'unica',
+        const glebasList = ativa ? [{
+          res: r,
+          confrontantes,
+          confrontantePorLado,
+          denominacao: ativa.denominacao || 'Parcela 1',
+          parcela: ativa.parcela || '001'
+        }] : undefined;
+
+        let blob: Blob;
+        try {
+          const headers = await getAuthHeaders();
+          const response = await fetch('/api/export/ods', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              tipo: 'unica',
+              res: r,
+              imovel,
+              tecnico: tec,
+              confrontantes,
+              confrontantePorLado,
+              glebas: glebasList,
+              imoveisCadastrados
+            })
+          });
+          if (response.ok) {
+            blob = await response.blob();
+          } else {
+            throw new Error('API indisponível');
+          }
+        } catch {
+          // Fallback cliente 100% offline/local sem 401/403
+          const templateBytes = await obterTemplateBytes();
+          blob = await gerarSigefOds({
+            templateBytes,
             res: r,
             imovel,
             tecnico: tec,
             confrontantes,
             confrontantePorLado,
-            glebas: ativa ? [{
-              res: r,
-              confrontantes,
-              confrontantePorLado,
-              denominacao: ativa.denominacao || 'Parcela 1',
-              parcela: ativa.parcela || '001'
-            }] : undefined,
-            modeloProprioBase64,
+            glebas: glebasList,
             imoveisCadastrados
-          })
-        });
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.erro || 'Falha ao gerar planilha no servidor.');
+          });
         }
-        const blob = await response.blob();
+
         saveAs(blob, `SIGEF - ${limparNomeArquivo(imovel.denominacao || nomeProjeto || 'imovel')}.ods`);
       }
       setBaixou((b) => ({ ...b, ods: true }));
@@ -6637,13 +6663,17 @@ export default function EditorPage() {
                                   <div className="grid grid-cols-2 gap-1.5">
                                     <div className="flex flex-col items-center justify-center rounded-lg bg-muted/40 border border-border/50 py-2 px-1">
                                       <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Área (Sistema)</span>
-                                      <span className="text-[13px] font-black text-foreground leading-tight tracking-tight mt-0.5">{numBR(res.areaHa, casasTela(4))}</span>
-                                      <span className="text-[8px] font-semibold text-muted-foreground">ha</span>
+                                      <div className="flex items-baseline justify-center gap-1 mt-0.5">
+                                        <span className="text-[13px] font-black text-foreground leading-tight tracking-tight">{numBR(res.areaHa, casasTela(4))}</span>
+                                        <span className="text-[10px] font-bold text-muted-foreground">ha</span>
+                                      </div>
                                     </div>
                                     <div className="flex flex-col items-center justify-center rounded-lg bg-muted/40 border border-border/50 py-2 px-1">
                                       <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Perímetro (Sistema)</span>
-                                      <span className="text-[13px] font-black text-foreground leading-tight tracking-tight mt-0.5">{numBR(res.perimetro)}</span>
-                                      <span className="text-[8px] font-semibold text-muted-foreground">m</span>
+                                      <div className="flex items-baseline justify-center gap-1 mt-0.5">
+                                        <span className="text-[13px] font-black text-foreground leading-tight tracking-tight">{numBR(res.perimetro)}</span>
+                                        <span className="text-[10px] font-bold text-muted-foreground">m</span>
+                                      </div>
                                     </div>
                                   </div>
 
@@ -6652,17 +6682,21 @@ export default function EditorPage() {
                                     <div className="grid grid-cols-2 gap-1.5 border-t border-dashed border-border/60 pt-1.5">
                                       <div className={`flex flex-col items-center justify-center rounded-lg py-2 px-1 transition-all ${imovel.usarValoresSigef ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-muted/30 border border-border/50 opacity-75'}`}>
                                         <span className="text-[8px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Área (SIGEF)</span>
-                                        <span className="text-[13px] font-black text-foreground leading-tight tracking-tight mt-0.5">
-                                          {imovel.areaSigefHa ? numBR(imovel.areaSigefHa, 4) : '—'}
-                                        </span>
-                                        <span className="text-[8px] font-semibold text-muted-foreground">ha</span>
+                                        <div className="flex items-baseline justify-center gap-1 mt-0.5">
+                                          <span className="text-[13px] font-black text-foreground leading-tight tracking-tight">
+                                            {imovel.areaSigefHa ? numBR(imovel.areaSigefHa, 4) : '—'}
+                                          </span>
+                                          <span className="text-[10px] font-bold text-muted-foreground">ha</span>
+                                        </div>
                                       </div>
                                       <div className={`flex flex-col items-center justify-center rounded-lg py-2 px-1 transition-all ${imovel.usarValoresSigef ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-muted/30 border border-border/50 opacity-75'}`}>
                                         <span className="text-[8px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Perímetro (SIGEF)</span>
-                                        <span className="text-[13px] font-black text-foreground leading-tight tracking-tight mt-0.5">
-                                          {imovel.perimetroSigef ? numBR(imovel.perimetroSigef) : '—'}
-                                        </span>
-                                        <span className="text-[8px] font-semibold text-muted-foreground">m</span>
+                                        <div className="flex items-baseline justify-center gap-1 mt-0.5">
+                                          <span className="text-[13px] font-black text-foreground leading-tight tracking-tight">
+                                            {imovel.perimetroSigef ? numBR(imovel.perimetroSigef) : '—'}
+                                          </span>
+                                          <span className="text-[10px] font-bold text-muted-foreground">m</span>
+                                        </div>
                                       </div>
                                     </div>
                                   )}
@@ -6883,27 +6917,27 @@ export default function EditorPage() {
                           )}
                         </div>
 
-                        {/* DXF e KML lado a lado (design leve e moderno) */}
+                        {/* DXF e KML lado a lado (no mesmo padrão de altura h-8 dos botões principais) */}
                         <div className="grid grid-cols-2 gap-1.5 mt-2">
-                          <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 transition-all hover:border-emerald-500/50">
+                          <div className="flex h-8 items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 transition-all hover:border-emerald-500/50 shadow-2xs">
                             <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 tracking-wider">DXF</span>
-                            <div className="flex items-center gap-1">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" title="Exportar arquivo CAD (.dxf)" onClick={exportarDxf}>
+                            <div className="flex items-center gap-0.5">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" title="Exportar arquivo CAD (.dxf)" onClick={exportarDxf}>
                                 <Download className="size-3.5" />
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" disabled={processando} title="Importar arquivo CAD (.dxf)" onClick={() => dxfRef.current?.click()}>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" disabled={processando} title="Importar arquivo CAD (.dxf)" onClick={() => dxfRef.current?.click()}>
                                 <Upload className="size-3.5" />
                               </Button>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between rounded-lg border border-teal-500/30 bg-teal-500/10 px-2 py-1 transition-all hover:border-teal-500/50">
+                          <div className="flex h-8 items-center justify-between rounded-lg border border-teal-500/30 bg-teal-500/10 px-2.5 transition-all hover:border-teal-500/50 shadow-2xs">
                             <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 tracking-wider">KML</span>
-                            <div className="flex items-center gap-1">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" title="Exportar Google Earth (.kml)" onClick={() => exportarKML(vertices, imovel)}>
+                            <div className="flex items-center gap-0.5">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" title="Exportar Google Earth (.kml)" onClick={() => exportarKML(vertices, imovel)}>
                                 <Download className="size-3.5" />
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" disabled={processando} title="Importar Google Earth (.kml)" onClick={() => kmlRef.current?.click()}>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" disabled={processando} title="Importar Google Earth (.kml)" onClick={() => kmlRef.current?.click()}>
                                 <Upload className="size-3.5" />
                               </Button>
                             </div>
@@ -7241,9 +7275,19 @@ export default function EditorPage() {
                 onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
                 onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
                 onContextMenuMapa={(lat, lon, x, y) => {
-                  // Com ferramenta ativa, botão direito LARGA a ferramenta (praxe de CAD) em vez
-                  // de alternar; desenho pela metade é descartado. No navegar, alterna entre mapa e planta.
-                  if (modo !== 'navegar') { setModo('navegar'); setDesenhoBuffer([]); return; }
+                  if (modo !== 'navegar') {
+                    if (desenhoBuffer.length >= 2) {
+                      snap();
+                      const buf = desenhoBuffer;
+                      setDesenhoBuffer([]);
+                      setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
+                      aviso(modo === 'tracejado' ? 'Tracejado concluído.' : 'Polilinha concluída.');
+                    } else {
+                      setDesenhoBuffer([]);
+                    }
+                    setModo('navegar');
+                    return;
+                  }
                   setVista('planta');
                 }} />
             </ErrorBoundary>
@@ -7643,7 +7687,22 @@ export default function EditorPage() {
                       onTextoEditar={editarTextoPlanta} onTextoMenu={(id, atual, x, y) => setMenuContexto({ tipo: 'texto', id, atual, x, y })}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onToggleTravaFolha={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
                       onConfigPatch={(patch) => setPlantaConfig((c) => ({ ...c, ...patch }))} onAlternarTipoVertice={alternarTipo} onRenomearVertice={renomearVertice} onIgnorarVertice={ignorarVertice} onCiclarEstilo={ciclarEstiloPlanta}
-                      onContextMenuVazio={() => { setVista(v => v === 'planta' ? 'mapa' : 'planta'); }}
+                      onContextMenuVazio={() => {
+                        if (modo !== 'navegar') {
+                          if (desenhoBuffer.length >= 2) {
+                            snap();
+                            const buf = desenhoBuffer;
+                            setDesenhoBuffer([]);
+                            setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
+                            aviso(modo === 'tracejado' ? 'Tracejado concluído.' : 'Polilinha concluída.');
+                          } else {
+                            setDesenhoBuffer([]);
+                          }
+                          setModo('navegar');
+                          return;
+                        }
+                        setVista((v) => (v === 'planta' ? 'mapa' : 'planta'));
+                      }}
                       onDblClickMalha={() => setAba('planta')} />
                     </ErrorBoundary>
                   </div>
@@ -7653,12 +7712,10 @@ export default function EditorPage() {
           )}
           {(vista === 'mapa' || vista === 'planta') && !telaEstreita && (
             <div
-              style={telaEstreita ? undefined : { left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)', zIndex: 1160 }}
-              className={`no-print pointer-events-auto ${Z_CLASSES.FLOATING_TOOLBAR} flex items-center gap-x-1.5 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1.5 shadow-xl select-none ${
-                telaEstreita ? 'fixed inset-x-1 bottom-1 rounded-xl' : 'fixed rounded-2xl'
-              }`}
+              style={telaEstreita ? undefined : { left: `${Math.max(posArea.x, toolWEfetivo + 12)}px`, top: `${posArea.y}px`, maxWidth: `calc(100vw - ${toolWEfetivo + 24}px)`, zIndex: 1160 }}
+              className={`no-print pointer-events-auto ${Z_CLASSES.FLOATING_TOOLBAR} flex flex-wrap items-center gap-1 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1 shadow-xl select-none rounded-2xl`}
             >
-              {/* Alça de arrasto — no celular a barra é fixa na base, então não precisa arrastar */}
+              {/* Alça de arrasto */}
               {!telaEstreita && (
                 <div
                   className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
@@ -7673,41 +7730,37 @@ export default function EditorPage() {
               )}
 
               {/* Alternar Mapa/Planta */}
-              {/* Botão cheio na cor da marca: texto e ícone em `primary-foreground` (branco quando a
-                  marca é escura, o caso normal; vira escuro só se a marca for clara demais, pra não
-                  sumir). Atalho ESC em dourado. */}
               <button type="button" onClick={() => setVista((v) => (v === 'mapa' ? 'planta' : 'mapa'))}
                 title="Alternar entre mapa e planta (Esc)"
-                className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 px-2.5 text-[10px] font-bold text-white shadow-sm transition hover:brightness-110">
+                className="flex h-7 items-center gap-1 rounded-full border border-yellow-500/20 bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 px-2 text-[10px] font-bold text-white shadow-sm transition hover:brightness-110 shrink-0">
                 {vista === 'mapa' ? <Eye className="size-3.5" /> : <MapIcon className="size-3.5" />}
                 <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
                 <span className="rounded-sm bg-black/20 px-1 font-mono text-[8px] font-semibold text-yellow-300">ESC</span>
               </button>
 
-              {/* Pintar Divisas/Confrontantes — ao lado do botão Mapa/Planta, dentro da mesma barra
-                  (antes era uma barra separada no topo do mapa). */}
+              {/* Pintar Divisas/Confrontantes */}
               {vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante') && (
                 <>
-                  <div className="h-4 w-px bg-border" />
-                  <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wider ${
+                  <div className="h-4 w-px bg-border shrink-0" />
+                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider shrink-0 ${
                     modo === 'divisa' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
                   }`}>
                     {modo === 'divisa' ? 'Divisas' : 'Confro.'}
                   </span>
 
                   {modo === 'divisa' && (
-                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-700 ${
+                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full transition-all duration-700 shrink-0 ${
                       pincelInicioId
                         ? 'ring-1 ring-amber-500/50 bg-amber-500/10'
                         : 'ring-1.5 ring-amber-500/70 shadow-[0_0_12px_rgba(245,158,11,0.35)] animate-pulse-lento bg-amber-500/10'
                     }`}>
-                      <span className="relative inline-flex">
+                      <span className="relative inline-flex shrink-0">
                         <button type="button"
-                          className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2 hover:bg-muted transition-colors"
-                          title="Ajustar as cores das divisas (salvo nas plantas)"
+                          className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-1.5 hover:bg-muted transition-colors"
+                          title="Ajustar as cores das divisas"
                           onClick={() => setCorPickerAberto((v) => !v)}>
-                          <span className="inline-block h-1 w-4 rounded-full" style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }} />
-                          <Palette className="size-3.5 text-muted-foreground" />
+                          <span className="inline-block h-1 w-3 rounded-full" style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }} />
+                          <Palette className="size-3 text-muted-foreground" />
                         </button>
                         {corPickerAberto && (
                           <div className={`absolute left-0 top-9 ${Z_CLASSES.DROPDOWN_MENU} w-56 rounded-xl border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-left`} data-cor-bump={corBump}>
@@ -7728,21 +7781,21 @@ export default function EditorPage() {
                           </div>
                         )}
                       </span>
-                      <select className="h-7 max-w-[220px] rounded-full border border-amber-500/40 bg-background/95 px-2 text-[10px] font-bold outline-none ring-1 ring-amber-400/30"
+                      <select className="h-7 max-w-[140px] rounded-full border border-amber-500/40 bg-background/95 px-1.5 text-[10px] font-bold outline-none ring-1 ring-amber-400/30 shrink-0"
                         value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
                         {opcoesDivisaTipo.map((r) => (
-                          <option key={r} value={r} className="bg-background text-foreground">{rotuloDivisaTipo(r)}</option>
+                          <option key={r} value={r} className="bg-background text-foreground text-[10px]">{rotuloDivisaTipo(r)}</option>
                         ))}
                       </select>
-                      <button type="button" className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      <button type="button" className="shrink-0 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         onClick={novoTipoDivisaPincel} title="Cadastrar novo tipo de divisa">
-                        <Plus className="size-3.5" />
+                        <Plus className="size-3" />
                       </button>
                     </div>
                   )}
 
                   {modo === 'confrontante' && (
-                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-700 ${
+                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full transition-all duration-700 shrink-0 ${
                       pincelInicioId
                         ? 'ring-1 ring-emerald-500/50 bg-emerald-500/10'
                         : 'ring-1.5 ring-emerald-500/70 shadow-[0_0_12px_rgba(16,185,129,0.35)] animate-pulse-lento bg-emerald-500/10'
@@ -7751,8 +7804,8 @@ export default function EditorPage() {
                         const pincelConf = confrontantes.find((x) => x.id === confrontantePincelId);
                         const corConf = corPorConfrontante(confrontantePincelId, pincelConf);
                         return (
-                          <label className="relative cursor-pointer inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-border hover:scale-110 transition-transform"
-                            style={{ backgroundColor: corConf }} title="Clique para mudar a cor deste confrontante">
+                          <label className="relative cursor-pointer inline-block h-3 w-3 shrink-0 rounded-full border border-border hover:scale-110 transition-transform"
+                            style={{ backgroundColor: corConf }} title="Mudar a cor deste confrontante">
                             <input
                               type="color"
                               className="sr-only"
@@ -7765,45 +7818,45 @@ export default function EditorPage() {
                           </label>
                         );
                       })()}
-                      <select className={`h-7 max-w-[220px] rounded-full border bg-background/95 px-2 text-[10px] font-bold outline-none transition-all ${
+                      <select className={`h-7 max-w-[140px] rounded-full border bg-background/95 px-1.5 text-[10px] font-bold outline-none transition-all shrink-0 ${
                         !confrontantePincelId ? 'border-emerald-500/60 ring-1.5 ring-emerald-400/40 text-emerald-700 dark:text-emerald-300' : 'border-border'
                       }`}
                         value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
-                        <option value="" className="bg-background text-muted-foreground">— Escolha ou Crie um —</option>
+                        <option value="" className="bg-background text-muted-foreground text-[10px]">— Escolha ou Crie —</option>
                         {confrontantes.map((c) => (
-                          <option key={c.id} value={c.id} className="bg-background" style={{ color: corPorConfrontante(c.id, c) }}>{c.nome || '(sem nome)'}</option>
+                          <option key={c.id} value={c.id} className="bg-background text-[10px]" style={{ color: corPorConfrontante(c.id, c) }}>{c.nome || '(sem nome)'}</option>
                         ))}
                       </select>
                       {confrontantePincelId && (
-                        <button type="button" className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => excluirConfrontante(confrontantePincelId)} title="Excluir este confrontante do projeto">
-                          <Trash2 className="size-3.5" />
+                        <button type="button" className="shrink-0 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => excluirConfrontante(confrontantePincelId)} title="Excluir este confrontante">
+                          <Trash2 className="size-3" />
                         </button>
                       )}
-                      <Button size="sm" className={`h-7 shrink-0 gap-1 rounded-full bg-emerald-600 px-2 text-[9px] font-black uppercase text-white hover:bg-emerald-700 transition-all ${
+                      <Button size="sm" className={`h-6 shrink-0 gap-1 rounded-full bg-emerald-600 px-2 text-[9px] font-black uppercase text-white hover:bg-emerald-700 transition-all ${
                         !confrontantePincelId ? 'ring-1.5 ring-emerald-300 shadow-sm animate-pulse-lento' : ''
                       }`}
                         onClick={novoConfrontantePincel} title="Novo confrontante">
-                        <Plus className="size-3.5" /> Novo
+                        <Plus className="size-3" /> Novo
                       </Button>
                     </div>
                   )}
 
-                  <button type="button" className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  <button type="button" className="rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
                     onClick={() => setModo('navegar')} title="Sair do modo de pintura">
-                    <X className="size-3.5" />
+                    <X className="size-3" />
                   </button>
                 </>
               )}
               {glebas.length > 1 && (
                 <>
-                  <div className="h-4 w-px bg-border" />
-                  <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground">
+                  <div className="h-4 w-px bg-border shrink-0" />
+                  <div className="flex items-center gap-1 text-[10px] font-semibold text-foreground shrink-0">
                     <Waypoints className="size-3.5 text-primary shrink-0" />
                     <select
                       value={glebaAtivaId}
                       onChange={(e) => trocarGleba(e.target.value)}
-                      className="bg-transparent border-0 outline-none text-xs font-bold font-sans cursor-pointer text-foreground pr-1 focus:ring-0 max-w-[120px] truncate"
+                      className="bg-transparent border-0 outline-none text-[10px] font-bold font-sans cursor-pointer text-foreground pr-1 focus:ring-0 max-w-[100px] truncate"
                     >
                       {glebas.map((g, idx) => (
                         <option key={g.id} value={g.id} className="text-foreground bg-background">
@@ -7818,83 +7871,75 @@ export default function EditorPage() {
               {/* Controles específicos do modo PLANTA */}
               {vista === 'planta' && (
                 <>
-                  <div className="h-4 w-px bg-border" />
-                  {/* Botão de captura da Situação: só aparece quando ainda não há imagem.
-                      Quando já existe e o desenho mudou, o overlay laranja na própria
-                      imagem (Planta.tsx) avisa e atualiza sem poluir a barra. */}
+                  <div className="h-4 w-px bg-border shrink-0" />
                   {!situacaoUrl && (
                     <button type="button" onClick={gerarSituacaoPlanta}
                       title="Capturar a planta de situação (satélite)"
-                      className="flex h-7 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400 px-2.5 text-[10px] font-bold transition-colors">
+                      className="flex h-7 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 dark:text-amber-400 px-2 text-[10px] font-bold transition-colors shrink-0">
                       <Camera className="size-3.5" />
                       Situação
                     </button>
                   )}
 
-
-
-
-
                   {/* Tema da prancha */}
                   <button type="button" onClick={() => setPlantaDark((v) => !v)}
                     title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
-                    className="flex h-7 items-center gap-1 rounded-full border-2 border-white/80 bg-background/95 px-2.5 text-[10px] font-bold text-foreground hover:bg-muted transition-colors">
+                    className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2 text-[10px] font-bold text-foreground hover:bg-muted transition-colors shrink-0">
                     {plantaDark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
                     <span>{plantaDark ? 'ESCURA' : 'CLARA'}</span>
                   </button>
                 </>
               )}
 
-            </div>
-          )}
-
-          {/* Segunda barra flutuante: áudios de Introdução e Tutorial, na parte INFERIOR da tela
-              (a barra principal, com Mapa/Planta etc., fica na parte de cima). Abre por padrão ao
-              abrir o app; tem botão pra fechar, já que nem todo mundo quer ouvir toda vez. */}
-          {(vista === 'mapa' || vista === 'planta') && !telaEstreita && !introTocando && barraAudiosAberta && (
-            <div
-              style={{ left: `${posAudioBarra.x}px`, top: `${posAudioBarra.y}px`, zIndex: 1160 }}
-              className={`no-print pointer-events-auto fixed ${Z_CLASSES.FLOATING_TOOLBAR} flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 p-1.5 shadow-xl backdrop-blur-sm select-none`}
-            >
-              <div
-                className="cursor-grab active:cursor-grabbing text-muted-foreground/60 hover:text-muted-foreground mr-0.5"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setArrastandoAudioBarra({ startX: e.clientX, startY: e.clientY, startPosX: posAudioBarra.x, startPosY: posAudioBarra.y });
-                }}
-                title="Arraste para mover a barra de áudio"
-              >
-                <GripVertical className="size-3.5" />
-              </div>
-              <TutorialAudioPill modo={modoApp} />
-              <button type="button" onClick={() => setTutorialAberto(true)}
-                className="flex h-6 items-center gap-1 rounded-full border bg-background px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                title="Tutorial em áudio e texto: passo a passo e temas de ajuda">
-                <HelpCircle className="size-3" /> Guias de Utilização
-              </button>
-              {(videosUrl || videosTutorial.length > 0) && (
-                <button type="button" onClick={() => setVideosListaAberta(true)}
-                  className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
-                  title="Vídeos tutoriais por tema, ou o curso completo em playlist">
-                  <Youtube className="size-3" /> Vídeos
-                </button>
+              {/* Controles de tutoriais e áudios de ajuda */}
+              {barraAudiosAberta && !introTocando && (
+                <>
+                  <div className="h-4 w-px bg-border shrink-0" />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <TutorialAudioPill modo={modoApp} />
+                    <button type="button" onClick={() => setTutorialAberto(true)}
+                      className="flex h-6 items-center gap-1 rounded-full border bg-background px-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      title="Tutorial em áudio e texto">
+                      <HelpCircle className="size-3 shrink-0" /> Guias
+                    </button>
+                    {(videosUrl || videosTutorial.length > 0) && (
+                      <button type="button" onClick={() => setVideosListaAberta(true)}
+                        className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
+                        title="Vídeos tutoriais por tema">
+                        <Youtube className="size-3 shrink-0" /> Vídeos
+                      </button>
+                    )}
+                    <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
+                      title={completo
+                        ? 'Modo Completo. Clique para o Fácil.'
+                        : medio
+                          ? 'Modo Médio. Clique para o Completo.'
+                          : 'Modo Fácil. Clique para o Médio.'}
+                      className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                      {completo ? <Briefcase className="size-3 text-sky-500 shrink-0" /> : medio ? <PencilRuler className="size-3 text-emerald-500 shrink-0" /> : <GraduationCap className="size-3 text-amber-500 shrink-0" />}
+                      <span>{completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}</span>
+                    </button>
+                    <button type="button" onClick={() => setBarraAudiosAberta(false)}
+                      className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+                      title="Ocultar painel de ajuda">
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                </>
               )}
-              <div className="mx-0.5 h-4 w-px bg-border" />
-              <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
-                title={completo
-                  ? 'Modo Completo: todas as ferramentas. Clique para o Fácil.'
-                  : medio
-                    ? 'Modo Médio: ferramentas do dia a dia. Clique para o Completo.'
-                    : 'Modo Fácil: só o essencial. Clique para o Médio.'}
-                className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                {completo ? <Briefcase className="size-3 text-sky-500" /> : medio ? <PencilRuler className="size-3 text-emerald-500" /> : <GraduationCap className="size-3 text-amber-500" />}
-                {completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}
-              </button>
-              <button type="button" onClick={() => setBarraAudiosAberta(false)}
-                className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                title="Fechar">
-                <X className="size-3.5" />
-              </button>
+
+              {/* Botão de reabrir painel de tutoriais se estiver oculto */}
+              {!barraAudiosAberta && !introTocando && (
+                <>
+                  <div className="h-4 w-px bg-border shrink-0" />
+                  <button type="button" onClick={() => setBarraAudiosAberta(true)}
+                    className="flex h-7 items-center gap-1 rounded-full border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 px-2 text-[10px] font-bold transition-colors shrink-0"
+                    title="Mostrar painel de tutoriais e áudios de ajuda">
+                    <HelpCircle className="size-3.5 text-sky-400 shrink-0" />
+                    <span>Ajuda</span>
+                  </button>
+                </>
+              )}
             </div>
           )}
 
@@ -9025,6 +9070,8 @@ export default function EditorPage() {
         aviso={aviso}
         copiaBuffer={copiaBuffer}
         setCopiaBuffer={setCopiaBuffer}
+        imovel={imovel}
+        setImovel={setImovel}
         onRemoverPrint3D={() => { setPrint3dUrl(undefined); setPlantaConfig((c) => ({ ...c, print3dDataUrl: undefined, print3dVolumeCorte: undefined, print3dVolumeAterro: undefined, print3dZRef: undefined, print3dMostrarTerraplanagem: undefined })); }}
       />
 
@@ -9264,18 +9311,56 @@ export default function EditorPage() {
               <span>DADOS FICTÍCIOS — Sem validade legal</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5">
+            <div className="relative flex items-center gap-1.5 select-none">
               <span className="text-slate-500 uppercase tracking-wider text-[9px] font-bold">Ferramenta:</span>
-              <span className="text-slate-200 font-semibold">
-                {modo === 'navegar' ? 'Mover/Editar Vértices' :
-                 modo === 'polilinha' ? 'Desenhar Polilinha' :
-                 modo === 'tracejado' ? 'Desenhar Linha Tracejada' :
-                 modo === 'cota' ? 'Inserir Cota de Distância' :
-                 modo === 'texto' ? 'Inserir Bloco de Texto' :
-                 modo === 'medir' ? 'Régua de Medição' :
-                 modo === 'simbolo' ? 'Inserir Símbolo/Marcador' :
-                 'Seleção e Navegação'}
-              </span>
+              <button
+                type="button"
+                onClick={() => setMenuFerramentasAberto(v => !v)}
+                className="text-slate-200 hover:text-white font-semibold flex items-center gap-1 cursor-pointer bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded transition-colors text-xs"
+              >
+                <span>
+                  {modo === 'navegar' ? 'Mover/Editar Vértices' :
+                   modo === 'polilinha' ? 'Desenhar Polilinha' :
+                   modo === 'tracejado' ? 'Desenhar Linha Tracejada' :
+                   modo === 'cota' ? 'Inserir Cota de Distância' :
+                   modo === 'texto' ? 'Inserir Bloco de Texto' :
+                   modo === 'medir' ? 'Régua de Medição' :
+                   modo === 'simbolo' ? 'Inserir Símbolo/Marcador' :
+                   'Seleção e Navegação'}
+                </span>
+                <ChevronUp className="size-3 shrink-0 text-slate-400" />
+              </button>
+              {menuFerramentasAberto && (
+                <>
+                  <div className="fixed inset-0 z-[1200]" onClick={() => setMenuFerramentasAberto(false)} />
+                  <div className="absolute bottom-full left-0 mb-1 z-[1201] w-48 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl p-1 text-[11px] text-slate-200">
+                    <div className="px-2 py-1 text-[9px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800/80 mb-1">Escolher Ferramenta</div>
+                    {[
+                      { val: 'navegar', label: 'Mover/Editar Vértices' },
+                      { val: 'polilinha', label: 'Desenhar Polilinha' },
+                      { val: 'tracejado', label: 'Desenhar Linha Tracejada' },
+                      { val: 'cota', label: 'Inserir Cota de Distância' },
+                      { val: 'texto', label: 'Inserir Bloco de Texto' },
+                      { val: 'medir', label: 'Régua de Medição' },
+                      { val: 'simbolo', label: 'Inserir Símbolo/Marcador' }
+                    ].map((item) => (
+                      <button
+                        key={item.val}
+                        type="button"
+                        onClick={() => {
+                          alternarModo(item.val as ModoEdicao);
+                          setMenuFerramentasAberto(false);
+                        }}
+                        className={`w-full text-left px-2 py-1 rounded hover:bg-slate-800 hover:text-white transition-colors ${
+                          modo === item.val ? 'bg-primary/20 text-primary font-bold' : ''
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -9309,8 +9394,23 @@ export default function EditorPage() {
           {vertices.length >= 3 && res && (
             <div className="flex items-center gap-3 pl-4">
               <span>{vertices.length} Vértices</span>
-              <span>Área: {(valoresEfetivos(res, imovel).areaHa).toFixed(4)} ha</span>
-              <span>Perímetro: {(valoresEfetivos(res, imovel).perimetro).toFixed(2)} m</span>
+              <button
+                type="button"
+                onClick={() => setConferirAberto(true)}
+                className="hover:text-amber-400 transition-colors flex items-center gap-1 cursor-pointer font-medium border-0 bg-transparent text-slate-400 outline-none text-[9px]"
+                title="Conciliação de área: clique para reconciliar com o SIGEF"
+              >
+                <Scale className="size-3 text-amber-500 shrink-0" />
+                <span>Área: {(valoresEfetivos(res, imovel).areaHa).toFixed(4)} ha</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setConferirAberto(true)}
+                className="hover:text-amber-400 transition-colors flex items-center gap-1 cursor-pointer font-medium border-0 bg-transparent text-slate-400 outline-none text-[9px]"
+                title="Conciliação de área: clique para reconciliar com o SIGEF"
+              >
+                <span>Perímetro: {(valoresEfetivos(res, imovel).perimetro).toFixed(2)} m</span>
+              </button>
             </div>
           )}
 
@@ -9355,23 +9455,23 @@ function AjusteTamanho({ label, valor, titulo, negrito = true, onDec, onInc }: {
         <span className="truncate text-[9.5px] font-bold text-foreground/90">{label}</span>
         {valor && <span className="text-[9px] font-mono font-black text-primary shrink-0">{valor}</span>}
       </div>
-      <div className="flex h-5 items-stretch overflow-hidden rounded border border-border/90 bg-background shadow-2xs">
+      <div className="flex h-[22px] items-stretch overflow-hidden rounded border border-border/90 bg-background shadow-2xs">
         <button
           type="button"
           aria-label={`Diminuir ${label}`}
-          className="flex flex-1 items-center justify-center font-black text-xs text-foreground bg-secondary/80 hover:bg-primary hover:text-white active:scale-95 transition-all"
+          className="flex flex-1 items-center justify-center text-foreground bg-secondary/80 hover:bg-primary hover:text-white active:scale-95 transition-all"
           onClick={onDec}
         >
-          −
+          <Minus className="size-2.5 shrink-0" />
         </button>
         <div className="w-px bg-border/80" />
         <button
           type="button"
           aria-label={`Aumentar ${label}`}
-          className="flex flex-1 items-center justify-center font-black text-xs text-foreground bg-secondary/80 hover:bg-primary hover:text-white active:scale-95 transition-all"
+          className="flex flex-1 items-center justify-center text-foreground bg-secondary/80 hover:bg-primary hover:text-white active:scale-95 transition-all"
           onClick={onInc}
         >
-          +
+          <Plus className="size-2.5 shrink-0" />
         </button>
       </div>
     </div>
@@ -9599,6 +9699,35 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
         </datalist>
       </div>
       <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} aviso={avisoDoc(imovel.cpfProprietario)} importante />
+      
+      <div className="space-y-1">
+        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Tipo de Proprietário</Label>
+        <select
+          value={imovel.tipoPessoa || 'Física'}
+          onChange={(e) => set('tipoPessoa', e.target.value)}
+          className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+        >
+          <option value="Física">Pessoa Física</option>
+          <option value="Jurídica">Pessoa Jurídica</option>
+          <option value="Espólio">Espólio (Sucessão)</option>
+        </select>
+      </div>
+
+      {imovel.tipoPessoa === 'Espólio' && (
+        <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 animate-in fade-in duration-200">
+          <div className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400">Dados do Inventariante</div>
+          <Campo label="Nome do Inventariante" value={imovel.inventarianteNome ?? ''} onChange={(v) => set('inventarianteNome', v)} importante />
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="CPF do Inventariante" value={imovel.inventarianteCpf ?? ''} onChange={(v) => set('inventarianteCpf', v)} aviso={avisoDoc(imovel.inventarianteCpf)} importante />
+            <Campo label="RG do Inventariante" value={imovel.inventarianteRg ?? ''} onChange={(v) => set('inventarianteRg', v)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="Estado Civil" value={imovel.inventarianteEstadoCivil ?? ''} onChange={(v) => set('inventarianteEstadoCivil', v)} />
+            <Campo label="Nacionalidade" value={imovel.inventarianteNacionalidade ?? ''} onChange={(v) => set('inventarianteNacionalidade', v)} />
+          </div>
+        </div>
+      )}
+
       <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
       <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} aviso={avisoDoc(imovel.cpfConjugeProprietario)} />
 

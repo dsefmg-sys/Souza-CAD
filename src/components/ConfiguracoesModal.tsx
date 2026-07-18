@@ -572,23 +572,6 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 <div className="p-2.5 rounded-sm bg-muted/40 text-[11px] leading-tight text-muted-foreground border">
                   Estes dados são <strong>pessoais</strong>: cada técnico da empresa assina as peças com os seus. O escritório, a numeração, o fuso e os modelos são da empresa (abas Globais).
                 </div>
-                {/* Ícones do cabeçalho: liga/desliga por botão (fica mais limpo com só o texto) */}
-                <div className="space-y-1.5 rounded-sm border p-2.5">
-                  <Label className="text-xs font-semibold">Ícones dos botões do cabeçalho</Label>
-                  <p className="text-[11px] leading-tight text-muted-foreground">Desligado = o botão mostra só o texto (cabeçalho mais limpo).</p>
-                  {([['analise', 'Análise / SIGEF'], ['dados', 'Dados'], ['trt', 'TRT']] as [string, string][]).map(([chave, rotulo]) => (
-                    <label key={chave} className="flex items-center gap-2 text-xs">
-                      <input type="checkbox" checked={!prefs.iconesCabecalhoOcultos.includes(chave)}
-                        onChange={(e) => {
-                          const ocultos = new Set(prefs.iconesCabecalhoOcultos);
-                          if (e.target.checked) ocultos.delete(chave); else ocultos.add(chave);
-                          const np = { ...prefs, iconesCabecalhoOcultos: [...ocultos] };
-                          setPrefs(np); salvarPreferencias(np); onConfigChange?.();
-                        }} />
-                      Mostrar ícone em &quot;{rotulo}&quot;
-                    </label>
-                  ))}
-                </div>
               </div>
             </div>
           )}

@@ -90,3 +90,51 @@ export function valorPorExtenso(valor: number, opts: ExtensoOptions = {}): strin
   }
   return out;
 }
+
+/**
+ * Converte de forma inteligente strings contendo números com ponto ou vírgula para number.
+ * Suporta teclados internacionais (ponto como separador decimal, ex: "3.23"),
+ * formato brasileiro ("3,23" ou "1.234,56"), e valores inteiros ("1000").
+ * Evita o bug de transformar "3.23" em 323.
+ */
+export function parseNumberBR(input: string | number | null | undefined): number {
+  if (input == null || input === '') return 0;
+  if (typeof input === 'number') return Number.isFinite(input) ? input : 0;
+
+  let str = String(input).trim();
+  if (!str) return 0;
+
+  // Remove caracteres invisíveis e espaços
+  str = str.replace(/\s+/g, '');
+
+  const hasComma = str.includes(',');
+  const hasDot = str.includes('.');
+
+  if (hasComma && hasDot) {
+    const lastComma = str.lastIndexOf(',');
+    const lastDot = str.lastIndexOf('.');
+    if (lastDot < lastComma) {
+      // Formato BR: 1.234,56 -> 1234.56
+      str = str.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Formato US: 1,234.56 -> 1234.56
+      str = str.replace(/,/g, '');
+    }
+  } else if (hasComma) {
+    // Apenas vírgula: 3,23 -> 3.23
+    str = str.replace(',', '.');
+  } else if (hasDot) {
+    // Apenas ponto: pode ser 3.23 (decimal teclado internacional) ou 1.000 (mil)
+    const parts = str.split('.');
+    if (parts.length === 2) {
+      // Único ponto (ex: 3.23): mantém o ponto como separador decimal
+      str = str;
+    } else if (parts.length > 2) {
+      // Múltiplos pontos: 1.000.000 -> 1000000
+      str = parts.join('');
+    }
+  }
+
+  const num = Number(str);
+  return Number.isFinite(num) ? num : 0;
+}

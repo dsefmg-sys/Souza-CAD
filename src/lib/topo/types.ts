@@ -144,7 +144,7 @@ export interface ProprietarioCad extends Partial<PessoaQualificada> {
   id: string;
   nome: string;
   cpf: string;
-  tipoPessoa: 'Física' | 'Jurídica';
+  tipoPessoa: 'Física' | 'Jurídica' | 'Espólio';
   projetoId?: string;
 }
 
@@ -295,7 +295,12 @@ export interface ImovelData {
   codigoImovelIncra: string;  // SNCR/INCRA "9501143617043"
   proprietario: string;       // "Juraci Francisco de Sales"
   cpfProprietario: string;
-  tipoPessoa: 'Física' | 'Jurídica';
+  tipoPessoa: 'Física' | 'Jurídica' | 'Espólio';
+  inventarianteNome?: string;
+  inventarianteCpf?: string;
+  inventarianteRg?: string;
+  inventarianteEstadoCivil?: string;
+  inventarianteNacionalidade?: string;
   comprador?: string;
   cpfComprador?: string;
   // cônjuge do proprietário — qualifica e assina junto nas peças

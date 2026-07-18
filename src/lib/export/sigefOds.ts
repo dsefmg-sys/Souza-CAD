@@ -308,8 +308,14 @@ export function montarContentXml(xml: string, dados: DadosSigef): string {
   }]);
 }
 
-export interface SigefInput extends DadosSigef {
+export interface SigefInput {
   templateBytes: ArrayBuffer | Uint8Array;
+  imovel: ImovelData;
+  tecnico: TecnicoData;
+  res?: ResultadoCalculo;
+  confrontantes?: Confrontante[];
+  confrontantePorLado?: Record<number, string>;
+  imoveisCadastrados?: ImovelCad[];
   glebas?: GlebaSigef[]; // se presente, gera multi-gleba (uma aba perimetro_N por gleba)
 }
 
@@ -350,7 +356,14 @@ export async function gerarSigefOds(input: SigefInput): Promise<Blob> {
 
   const novoXml = glebas && glebas.length
     ? montarContentXmlGlebas(xml, dados.imovel, dados.tecnico, glebas)
-    : montarContentXml(xml, dados);
+    : montarContentXml(xml, {
+        imovel: dados.imovel,
+        tecnico: dados.tecnico,
+        res: dados.res!,
+        confrontantes: dados.confrontantes || [],
+        confrontantePorLado: dados.confrontantePorLado || {},
+        imoveisCadastrados: dados.imoveisCadastrados,
+      });
   zip.file('content.xml', novoXml);
   // mimetype deve permanecer STORED (sem compressão) — preserva validade do ODF
   const mime = zip.file('mimetype');

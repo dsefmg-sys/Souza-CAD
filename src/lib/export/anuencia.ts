@@ -83,7 +83,13 @@ function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
       }),
       new TextRun({ text: imovel.denominacao || '________________', bold: true, size: 22 }),
       new TextRun({ text: imovel.regimeTerra === 'posse' ? `, sob a posse de ` : `, de propriedade de `, size: 22 }),
-      new TextRun({ text: imovel.proprietario || '________________', bold: true, size: 22 }),
+      new TextRun({
+        text: imovel.tipoPessoa === 'Espólio' && imovel.inventarianteNome
+          ? `Espólio de ${imovel.proprietario}, representado por seu inventariante ${imovel.inventarianteNome}`
+          : (imovel.proprietario || '________________'),
+        bold: true,
+        size: 22
+      }),
       new TextRun({ text: `, executado sob a responsabilidade técnica do profissional `, size: 22 }),
       new TextRun({ text: tecnico.nome || '________________', bold: true, size: 22 }),
       new TextRun({ text: `, credenciado junto ao INCRA sob o código `, size: 22 }),
@@ -287,7 +293,11 @@ function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
 
   // Proprietário do Imóvel (requerente) + demais titulares, se houver.
   const rotuloAssinaturaRequerente = imovel.regimeTerra === 'posse' ? 'Possuidor(a) Requerente' : `Proprietário Requerente${rotuloPapelProprietario(imovel.papelProprietario) !== 'Proprietário(a)' ? ` (${rotuloPapelProprietario(imovel.papelProprietario)})` : ''}`;
-  addAssinatura(imovel.proprietario || '_______________________', rotuloAssinaturaRequerente);
+  if (imovel.tipoPessoa === 'Espólio') {
+    addAssinatura(`Espólio de ${imovel.proprietario}`, `Representado pelo Inventariante: ${imovel.inventarianteNome || 'DADO AUSENTE'}`);
+  } else {
+    addAssinatura(imovel.proprietario || '_______________________', rotuloAssinaturaRequerente);
+  }
   for (const parte of imovel.proprietariosAdicionais ?? []) {
     if (parte.nome?.trim()) addAssinatura(parte.nome, `Titular do imóvel (${rotuloPapelProprietario(parte.papel)})`);
   }

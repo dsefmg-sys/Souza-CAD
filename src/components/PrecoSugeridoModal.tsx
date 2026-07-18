@@ -14,6 +14,8 @@ import {
   MULTIPLICADORES_DIFICULDADE,
 } from '@/lib/topo/precoSugerido';
 import { carregarFatorBase, salvarFatorBase, carregarDescontoPct, salvarDescontoPct, SALARIO_MINIMO_REFERENCIA } from '@/lib/store/fatorPreco';
+import { parseNumberBR } from '@/lib/topo/extenso';
+import { carregarEscritorio } from '@/lib/store/settings';
 
 interface Props {
   open: boolean;
@@ -28,7 +30,7 @@ function reais(v: number): string {
 }
 
 function num(v: string): number {
-  return Number(String(v).replace(/\./g, '').replace(',', '.').trim());
+  return parseNumberBR(v);
 }
 
 // Escala de cor verde (fácil) -> âmbar (difícil), igual à tabela de campo. Fundo suave por nível.
@@ -79,60 +81,91 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
     return Number.isFinite(f) && f > 0 ? f : SALARIO_MINIMO_REFERENCIA;
   }, [fatorStr]);
 
-  const area = useMemo(() => {
+  const areaCalc = useMemo(() => {
     const a = num(areaStr);
-    return Number.isFinite(a) && a > 0 ? a : 0;
+    return Math.max(AREA_MINIMA_HA, Number.isFinite(a) && a > 0 ? a : AREA_MINIMA_HA);
   }, [areaStr]);
 
-  // Preços cheios (base) e com o desconto aplicado, para mostrar os dois lado a lado quando houver.
-  const precosCheios = useMemo(() => precosPorDificuldade(area, fatorBase), [area, fatorBase]);
-  const precos = useMemo(() => precosCheios.map((p) => comDesconto(p, descontoPct)), [precosCheios, descontoPct]);
-  const tabela = useMemo(
-    () => tabelaCompleta(fatorBase).map((r) => ({ areaHa: r.areaHa, precos: r.precos.map((p) => comDesconto(p, descontoPct)) })),
-    [fatorBase, descontoPct],
-  );
-
   function salvarFator() {
-    salvarFatorBase(fatorBase);
+    const f = num(fatorStr);
+    if (Number.isFinite(f) && f > 0) {
+      salvarFatorBase(f);
+    } else {
+      setFatorStr(String(carregarFatorBase()));
+    }
   }
 
-  async function copiar(valor: number, nivel: number) {
-    try {
-      await navigator.clipboard.writeText(String(valor));
-      setCopiado(nivel);
-      setTimeout(() => setCopiado((c) => (c === nivel ? null : c)), 1500);
-    } catch {
-      /* clipboard bloqueado — ignora */
-    }
+  const precosCheios = useMemo(() => precosPorDificuldade(areaCalc, fatorBase), [areaCalc, fatorBase]);
+  const precos = useMemo(() => precosCheios.map((p) => comDesconto(p, descontoPct)), [precosCheios, descontoPct]);
+  const tabela = useMemo(() => tabelaCompleta(fatorBase), [fatorBase]);
+
+  function copiar(valor: number, idx: number) {
+    navigator.clipboard?.writeText(reais(valor));
+    setCopiado(idx);
+    setTimeout(() => setCopiado(null), 2000);
   }
 
   // Impressão da tabela completa numa janela própria, sem mexer na tela do app.
   function imprimirTabela() {
-    const win = window.open('', '_blank', 'width=820,height=1000');
+    const win = window.open('', '_blank', 'width=880,height=1000');
     if (!win) return;
-    const cabec = ['Área', ...NIVEIS_DIFICULDADE.map((_, i) => '•'.repeat(i + 1))];
+    const esc = carregarEscritorio();
+
+    const coresCabecalho = ['#059669', '#16a34a', '#65a30d', '#ca8a04', '#d97706', '#ea580c'];
+    const cabec = ['Área', ...NIVEIS_DIFICULDADE.map((n, i) => `<th style="background:${coresCabecalho[i]};color:#fff;font-weight:bold;">${'•'.repeat(i + 1)}<br><span style="font-size:10px;font-weight:normal;">${n.titulo}</span></th>`)].join('');
+
     const linhas = tabela
-      .map((r) => `<tr><th>${r.areaHa} ha</th>${r.precos.map((p) => `<td>${reais(p)}</td>`).join('')}</tr>`)
+      .map((r, rIdx) => {
+        const bgRow = rIdx % 2 === 0 ? '#f8fafc' : '#ffffff';
+        return `<tr style="background:${bgRow};"><th style="text-align:left;font-weight:bold;background:#e2e8f0;color:#1e293b;padding:6px 10px;">${r.areaHa} ha</th>${r.precos.map((p) => `<td style="font-weight:bold;color:#0f172a;">${reais(p)}</td>`).join('')}</tr>`;
+      })
       .join('');
-    const formula = MULTIPLICADORES_DIFICULDADE.map((m) => `√área × ${comDesconto(fatorBase * m, descontoPct)}`).join('</td><td>');
-    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Dificuldade e Custos</title>
+
+    const logoHtml = esc.logoDataUrl
+      ? `<img src="${esc.logoDataUrl}" style="max-height:55px;max-width:180px;object-fit:contain;" />`
+      : `<div style="font-size:18px;font-weight:900;color:#059669;letter-spacing:-0.5px;">${esc.nome || 'SOUZA CAD'}</div>`;
+
+    const infoEmpresa = `
+      <div style="font-size:14px;font-weight:bold;color:#0f172a;">${esc.nome || 'Escritório de Topografia & Georreferenciamento'}</div>
+      ${esc.cnpj ? `<div style="font-size:11px;color:#64748b;">CNPJ/CPF: ${esc.cnpj}</div>` : ''}
+      ${esc.telefone || esc.email ? `<div style="font-size:11px;color:#64748b;">${[esc.telefone, esc.email].filter(Boolean).join(' • ')}</div>` : ''}
+      ${esc.cidade ? `<div style="font-size:11px;color:#64748b;">${esc.cidade}${esc.uf ? ` - ${esc.uf}` : ''}</div>` : ''}
+    `;
+
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Precificação e Tabela de Orçamentos — ${esc.nome || 'Souza CAD'}</title>
       <style>
-        body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px}
-        h1{text-align:center;font-size:18px;margin:0 0 12px}
-        table{border-collapse:collapse;width:100%;font-size:12px}
-        th,td{border:1px solid #999;padding:6px 8px;text-align:center}
-        thead th{background:#f0f0f0}
-        tbody th{text-align:left;font-weight:bold}
-        tfoot td,tfoot th{font-size:10px;color:#333;background:#fafafa}
-        .nota{margin-top:10px;font-size:10px;color:#555;text-align:center}
+        @page { size: A4 landscape; margin: 15mm; }
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#0f172a;margin:0;padding:20px;background:#fff;}
+        .header-container{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #10b981;padding-bottom:12px;margin-bottom:16px;}
+        .title-box{text-align:right;}
+        .title-box h1{font-size:18px;margin:0;color:#065f46;text-transform:uppercase;letter-spacing:0.5px;}
+        .title-box p{font-size:11px;color:#64748b;margin:2px 0 0;}
+        table{border-collapse:collapse;width:100%;font-size:11px;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;}
+        th,td{border:1px solid #cbd5e1;padding:7px 10px;text-align:center;}
+        thead th{padding:8px 6px;}
+        tbody th{text-align:left;font-weight:bold;}
+        .nota{margin-top:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;font-size:10.5px;color:#166534;line-height:1.4;}
+        .footer-stamp{margin-top:20px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;}
       </style></head><body>
-      <h1>Dificuldade e Custos — preço sugerido</h1>
+      <div class="header-container">
+        <div>${logoHtml}</div>
+        <div style="margin-left:16px;flex:1;">${infoEmpresa}</div>
+        <div class="title-box">
+          <h1>Tabela de Preços e Serviços</h1>
+          <p>Levantamentos Topográficos & Georreferenciamento</p>
+        </div>
+      </div>
       <table>
-        <thead><tr>${cabec.map((c) => `<th>${c}</th>`).join('')}</tr></thead>
+        <thead><tr>${cabec}</tr></thead>
         <tbody>${linhas}</tbody>
-        <tfoot><tr><th>Fórmula</th><td>${formula}</td></tr></tfoot>
       </table>
-      <p class="nota">Referência amigável para orçamento — não é tabela oficial. Fator base ${reais(fatorBase)}. Área abaixo de ${AREA_MINIMA_HA} ha conta como ${AREA_MINIMA_HA} ha.${descontoPct > 0 ? ` Valores já com desconto de ${descontoPct}%.` : ''}</p>
+      <div class="nota">
+        <strong>Nota de Referência:</strong> Tabela estimativa com base no Grau de Dificuldade de Campo. Fator Base: <strong>${reais(fatorBase)}</strong>.${descontoPct > 0 ? ` Desconto aplicado: <strong>${descontoPct}%</strong>.` : ''} Áreas abaixo de ${AREA_MINIMA_HA} ha contam como ${AREA_MINIMA_HA} ha mínimo operacional.
+      </div>
+      <div class="footer-stamp">
+        <span>Gerado via Souza-CAD • Sistema Profissional de Engenharia Topográfica</span>
+        <span>Data: ${new Date().toLocaleDateString('pt-BR')}</span>
+      </div>
       <script>window.onload=function(){window.print()}<\/script>
       </body></html>`);
     win.document.close();
@@ -244,12 +277,12 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
                     placeholder="ex.: 12,5"
                     onChange={(e) => setAreaStr(e.target.value)}
                   />
-                  {area > 0 && area < AREA_MINIMA_HA && (
+                  {num(areaStr) > 0 && num(areaStr) < AREA_MINIMA_HA && (
                     <span className="text-[10px] text-amber-600 dark:text-amber-400">conta como {AREA_MINIMA_HA} ha</span>
                   )}
                 </label>
 
-                {area > 0 ? (
+                {num(areaStr) > 0 ? (
                   <div className="grid gap-1.5 sm:grid-cols-2">
                     {NIVEIS_DIFICULDADE.map((n, i) => (
                       <button
@@ -273,7 +306,7 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
                       </button>
                     ))}
                     <p className="text-center text-[10px] text-muted-foreground sm:col-span-2">
-                      Área usada no cálculo: {areaEfetiva(area).toLocaleString('pt-BR')} ha
+                      Área usada no cálculo: {areaEfetiva(num(areaStr)).toLocaleString('pt-BR')} ha
                       {descontoPct > 0 ? ` · valores já com ${descontoPct}% de desconto` : ''}. Toque num valor para copiar.
                     </p>
                   </div>

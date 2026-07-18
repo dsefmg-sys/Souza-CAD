@@ -116,9 +116,26 @@ function campo(rotulo: string, valor: string) {
   return new Paragraph({ spacing: { after: 20 }, children });
 }
 
-function blocoPessoa(p: PessoaQualificada, modo: ModoTratamentoAusente = 'dado_ausente'): Paragraph[] {
+function blocoPessoa(p: PessoaQualificada, modo: ModoTratamentoAusente = 'dado_ausente', imovel?: ImovelData): Paragraph[] {
   const tem = (v?: string) => !!(v && v.trim() && v !== '—' && v !== 'DADO AUSENTE');
   const out: Paragraph[] = [];
+
+  if (imovel && imovel.tipoPessoa === 'Espólio' && imovel.proprietario && p.nome === imovel.proprietario) {
+    const invNome = imovel.inventarianteNome || 'DADO AUSENTE';
+    const invCpf = imovel.inventarianteCpf || 'DADO AUSENTE';
+    const invRg = imovel.inventarianteRg || 'DADO AUSENTE';
+    const invNac = imovel.inventarianteNacionalidade || 'Brasileira';
+    const invEst = imovel.inventarianteEstadoCivil || 'DADO AUSENTE';
+    out.push(campo('Nome:', `Espólio de ${imovel.proprietario}, representado por seu inventariante ${invNome}`));
+    out.push(campo('Qualificação do Representante:', `Portador do RG nº ${invRg} e inscrito no CPF nº ${invCpf}, de nacionalidade ${invNac.toLowerCase()}, estado civil ${invEst.toLowerCase()}`));
+    if (p.cpf) {
+      out.push(campo('CPF do De Cujus:', p.cpf));
+    }
+    if (tem(p.endereco) || modo === 'dado_ausente') out.push(campo('Residente e domiciliado em:', p.endereco));
+    if (tem(p.cidadeUf) || modo === 'dado_ausente') out.push(campo('Cidade/UF:', p.cidadeUf));
+    if (tem(p.cep) || modo === 'dado_ausente') out.push(campo('CEP:', p.cep));
+    return out;
+  }
 
   if (tem(p.nome) || modo === 'dado_ausente') out.push(campo('Nome:', p.nome || 'DADO AUSENTE'));
 
@@ -211,7 +228,13 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   // Modelos de texto editáveis (declarações e responsabilidade). {variáveis} trocadas pelos dados reais.
   const modelos = carregarModelos();
   const varsModelo: Record<string, string> = {
-    proprietario: f(imovel.proprietario), cpf: f(imovel.cpfProprietario), denominacao: f(imovel.denominacao),
+    proprietario: imovel.tipoPessoa === 'Espólio' && imovel.inventarianteNome
+      ? `Espólio de ${f(imovel.proprietario)}, representado por seu inventariante ${f(imovel.inventarianteNome)}`
+      : f(imovel.proprietario),
+    cpf: imovel.tipoPessoa === 'Espólio' && imovel.inventarianteCpf
+      ? `${f(imovel.cpfProprietario)} (De Cujus) e CPF do Inventariante: ${f(imovel.inventarianteCpf)}`
+      : f(imovel.cpfProprietario),
+    denominacao: f(imovel.denominacao),
     matricula: f(imovel.matricula), cns: f(imovel.cns), municipio: f(imovel.municipio), comarca,
     area: `${numBR(areaRealHa, 4)} ha`,
     areaAnterior: areaAntVal != null ? `${numBR(areaAntVal, 4)} ha` : (permitirIncompleto ? 'DADO AUSENTE' : ''),
@@ -232,11 +255,11 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   const mostrarTransmitente = tipo !== 'retificacao' || !!transmitente.nome?.trim() || permitirIncompleto;
 
   c.push(titulo(rot.requerente));
-  blocoPessoa(reqClonado, modo).forEach((x) => c.push(x));
+  blocoPessoa(reqClonado, modo, imovel).forEach((x) => c.push(x));
 
   if (mostrarTransmitente) {
     c.push(titulo(rot.transmitente));
-    blocoPessoa(transClonado, modo).forEach((x) => c.push(x));
+    blocoPessoa(transClonado, modo, imovel).forEach((x) => c.push(x));
   }
 
   partesAdicionais.forEach((p, i) => {
@@ -247,7 +270,7 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
       papelRotulo = tipo === 'venda' ? 'VENDEDOR / TRANSMITENTE ADICIONAL' : tipo === 'doacao' ? 'DOADOR ADICIONAL' : 'COPROPRIETÁRIO / TRANSMITENTE ADICIONAL';
     }
     c.push(titulo(papelRotulo));
-    blocoPessoa(p, modo).forEach((x) => c.push(x));
+    blocoPessoa(p, modo, imovel).forEach((x) => c.push(x));
   });
 
   c.push(titulo('DO REQUERIMENTO'));
@@ -388,9 +411,21 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     });
   };
 
-  assina([reqClonado.nome, rot.assinaReq]);
+  const assinaPessoa = (p: PessoaQualificada, rotuloPapel: string) => {
+    if (imovel.tipoPessoa === 'Espólio' && imovel.proprietario && p.nome === imovel.proprietario) {
+      assina([
+        `Espólio de ${imovel.proprietario}`,
+        `Representado pelo Inventariante: ${imovel.inventarianteNome || 'DADO AUSENTE'}`,
+        rotuloPapel
+      ]);
+    } else {
+      assina([p.nome, rotuloPapel]);
+    }
+  };
+
+  assinaPessoa(reqClonado, rot.assinaReq);
   if (mostrarTransmitente) {
-    assina([transClonado.nome, rot.assinaTrans]);
+    assinaPessoa(transClonado, rot.assinaTrans);
   }
   partesAdicionais.forEach((p) => {
     let papelAssinatura = '(Parte adicional)';
