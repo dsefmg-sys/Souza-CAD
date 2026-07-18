@@ -148,7 +148,7 @@ async def main():
     texto_tutorial_geral = TEXTO_INTRODUCAO + " " + " ".join([t[1] for t in PASSOS_BASE])
     await gerar_audio("tutorial.mp3", texto_tutorial_geral, dest_dir=PUBLIC_DIR)
 
-    print("✅ Todos os áudios foram gerados com sucesso na pasta public/audio/tutorial/!")
+    print("[OK] Todos os audios foram gerados com sucesso na pasta public/audio/tutorial/!")
 
 if __name__ == "__main__":
     asyncio.run(main())
