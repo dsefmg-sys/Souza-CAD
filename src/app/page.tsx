@@ -647,6 +647,7 @@ export default function EditorPage() {
   const [comandoInput, setComandoInput] = useState('');
   const comandoInputRef = useRef<HTMLInputElement>(null);
   const [menuFerramentasAberto, setMenuFerramentasAberto] = useState(false);
+  const [simuladorResolucao, setSimuladorResolucao] = useState<'off' | 'comum' | 'fullhd' | 'ultrawide' | 'celular'>('off');
 
   // Onde o mapa ABRE num projeto vazio: a última localização em que o próprio cliente trabalhou
   // (guardada abaixo). Sem histórico, cai no centro do país — não em Espera Feliz, que é só a minha
@@ -1572,7 +1573,7 @@ export default function EditorPage() {
   function executarAcao(acao: string) {
     switch (acao) {
       case 'tutorial':
-        setTutorialF1Aberto(true);
+        setTutorialAberto(true);
         break;
       case 'pontos':
         iniciarImportTxt();
@@ -4647,8 +4648,11 @@ export default function EditorPage() {
   const [curvaConfigAberta, setCurvaConfigAberta] = useState(false);
   const [ajusteAltCm, setAjusteAltCm] = useState('');
   const [desconsiderarVerticesLevantados, setDesconsiderarVerticesLevantados] = useState(false);
-  const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState<number>(0); // 0 = Auto
+  const [incluirDivisaNasCurvas, setIncluirDivisaNasCurvas] = useState(true);
+  const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState(15);
   const [modeloElevacao, setModeloElevacao] = useState<'copernicus_dem_30' | 'alos_dem_30' | 'srtm_gld3'>('copernicus_dem_30');
+  const [glebaCurvaAlvo, setGlebaCurvaAlvo] = useState<string>('todas');
+  const [curvaUsarTriangulacao, setCurvaUsarTriangulacao] = useState<boolean>(true);
 
   function ajustarAltitudesGlobais(cm: number) {
     if (!cm || isNaN(cm)) return;
@@ -4678,16 +4682,19 @@ export default function EditorPage() {
     verticesOverride?: typeof vertices,
     ignoradosOverride?: typeof verticesIgnorados
   ): Ponto3D[] {
+    const activeGrade = gradeOverride || gradeAltimetrica;
+    const ptsGrade = activeGrade.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
+
     const activeVertices = verticesOverride || vertices;
     const activeIgnorados = ignoradosOverride || verticesIgnorados;
-    const pts = [...activeVertices, ...activeIgnorados]
+    const pts = [...(incluirDivisaNasCurvas ? activeVertices : []), ...activeIgnorados]
           .map((v) => {
-            const z = desconsiderarVerticesLevantados ? (verticesOnlineElev[`${modeloElevacao}:${v.id}`] ?? verticesOnlineElev[v.id] ?? v.elevacao) : v.elevacao;
+            const z = (desconsiderarVerticesLevantados || !v.elevacao)
+              ? (verticesOnlineElev[`${modeloElevacao}:${v.id}`] ?? verticesOnlineElev[v.id] ?? v.elevacao)
+              : v.elevacao;
             return { x: v.leste, y: v.norte, z };
           })
           .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && p.z !== 0);
-    const activeGrade = gradeOverride || gradeAltimetrica;
-    const ptsGrade = activeGrade.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
     const total = [...pts, ...ptsGrade];
     const vistos = new Set<string>();
     return total.filter((p) => {
@@ -4963,8 +4970,25 @@ export default function EditorPage() {
     if (Math.max(...zs) - Math.min(...zs) < 0.01) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Os pontos não têm variação de altitude — não há relevo para desenhar curvas.' }); return; }
     if (!(intervaloCurva > 0)) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Escolha um intervalo maior que zero (ex.: 1 m ou 5 m).' }); return; }
 
-    const poligono = vertices.length >= 3 ? vertices.map((v) => ({ x: v.leste, y: v.norte })) : undefined;
-    const curvas = gerarCurvasDeNivel(pts3d, { intervalo: intervaloCurva, poligono });
+    let poligono: { x: number; y: number }[] | undefined = undefined;
+    let poligonos: { x: number; y: number }[][] | undefined = undefined;
+
+    if (glebaCurvaAlvo === 'ativa') {
+      poligono = vertices.length >= 3 ? vertices.map((v) => ({ x: v.leste, y: v.norte })) : undefined;
+    } else if (glebaCurvaAlvo === 'todas') {
+      const listaG = glebas.length ? glebas : [{ id: glebaAtivaId, vertices }];
+      poligonos = listaG
+        .map((g) => (g.id === glebaAtivaId ? vertices : g.vertices))
+        .filter((vs) => vs && vs.length >= 3)
+        .map((vs) => vs.map((v) => ({ x: v.leste, y: v.norte })));
+    }
+
+    const curvas = gerarCurvasDeNivel(pts3d, {
+      intervalo: intervaloCurva,
+      poligono,
+      poligonos,
+      usarTriangulacao: curvaUsarTriangulacao,
+    });
     if (!curvas.length) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Não consegui traçar curvas com esses pontos e intervalo. Tente um intervalo menor ou traga mais pontos internos.' }); return; }
 
     const cadaN = Math.max(1, Math.round(curvaMestraCada));
@@ -5063,6 +5087,7 @@ export default function EditorPage() {
           const elev = resAltitudes[key];
           if (elev !== undefined) {
             mapOnline[v.id] = +elev.toFixed(4);
+            mapOnline[`${modeloElevacao}:${v.id}`] = +elev.toFixed(4);
           }
         });
         novosIgnorados.forEach(v => {
@@ -5070,6 +5095,7 @@ export default function EditorPage() {
           const elev = resAltitudes[key];
           if (elev !== undefined) {
             mapOnline[v.id] = +elev.toFixed(4);
+            mapOnline[`${modeloElevacao}:${v.id}`] = +elev.toFixed(4);
           }
         });
         setVerticesOnlineElev(prev => ({ ...prev, ...mapOnline }));
@@ -6438,7 +6464,7 @@ export default function EditorPage() {
                       {/* Botões de Gestão — grade de 2 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo
                           (sem botão de largura total; menos rolagem). */}
                       <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                        <Button size="sm" variant="secondary" className="col-span-2 bg-sky-600 hover:bg-sky-700 text-white" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
+                        <Button size="sm" variant="secondary" className="col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
                           <BarChart3 className="text-white" /> <span>Gestão</span>
                         </Button>
                         <Button size="sm" variant="secondary" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
@@ -6925,12 +6951,20 @@ export default function EditorPage() {
                               <div className="space-y-1">
                                 <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Parâmetros do Relevo</span>
                                 <div className="flex items-center justify-between gap-2 rounded-md bg-muted/20 p-1.5">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[10px] font-medium">Intervalo:</span>
-                                    <input type="number" min={0.1} step={0.5} value={intervaloCurva}
-                                      onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))}
-                                      className="h-6 w-11 rounded-sm border border-input bg-background px-1 text-center text-[10px] font-bold"
-                                      title="Intervalo entre as curvas de nível (metros)" />
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-medium shrink-0">Intervalo:</span>
+                                    <div className="flex items-center gap-0.5">
+                                      <button type="button"
+                                        onClick={() => setIntervaloCurva((c) => Math.max(0.1, +(c - 1).toFixed(2)))}
+                                        className="h-6 w-6 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none">-</button>
+                                      <input type="number" min={0.1} step={1} value={intervaloCurva}
+                                        onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))}
+                                        className="h-6 w-11 rounded-sm border border-input bg-background px-1 text-center text-[10px] font-bold"
+                                        title="Intervalo entre as curvas de nível (metros)" />
+                                      <button type="button"
+                                        onClick={() => setIntervaloCurva((c) => +(c + 1).toFixed(2))}
+                                        className="h-6 w-6 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none">+</button>
+                                    </div>
                                     <span className="text-[10px] text-muted-foreground">m</span>
                                   </div>
                                   <button type="button" onClick={sugerirIntervaloCurva}
@@ -6946,13 +6980,19 @@ export default function EditorPage() {
                                 <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Destaque de Curvas</span>
                                 <div className="flex items-center justify-between gap-2 rounded-md bg-muted/20 p-1.5">
                                   <span className="text-[10px] font-medium">Linha mestra a cada:</span>
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-0.5">
+                                    <button type="button"
+                                      onClick={() => setCurvaMestraCada((c) => Math.max(1, c - 1))}
+                                      className="h-6 w-6 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none">-</button>
                                     <input type="number" min={1} step={1} value={curvaMestraCada}
                                       onChange={(e) => setCurvaMestraCada(Math.max(1, Math.round(Number(e.target.value) || 5)))}
                                       className="h-6 w-9 rounded-sm border border-input bg-background text-center text-[10px] font-bold"
                                       title="Curva mestra (mais grossa e destacada) a cada N curvas" />
-                                    <span className="text-[10px] text-muted-foreground">curvas</span>
+                                    <button type="button"
+                                      onClick={() => setCurvaMestraCada((c) => c + 1)}
+                                      className="h-6 w-6 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none">+</button>
                                   </div>
+                                  <span className="text-[10px] text-muted-foreground">curvas</span>
                                 </div>
                               </div>
 
@@ -6964,7 +7004,7 @@ export default function EditorPage() {
                                   <div className="flex gap-0.5">
                                     {(['fina', 'media', 'grossa'] as const).map((e) => (
                                       <button key={e} type="button" onClick={() => setCurvaEspessura(e)}
-                                        className={`h-6 rounded-sm border px-2 text-[9px] font-bold transition-colors ${curvaEspessura === e ? 'bg-primary text-primary-foreground border-transparent' : 'bg-background hover:bg-muted text-foreground'}`}>
+                                        className={`h-6 rounded-sm border px-2 text-[9px] font-bold transition-colors ${curvaEspessura === e ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900 border-transparent' : 'bg-background hover:bg-muted text-foreground'}`}>
                                         {e === 'fina' ? 'Fina' : e === 'media' ? 'Média' : 'Grossa'}
                                       </button>
                                     ))}

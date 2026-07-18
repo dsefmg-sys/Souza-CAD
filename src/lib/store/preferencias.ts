@@ -85,7 +85,7 @@ export const ATALHOS_F_PADRAO: Record<string, string> = {
 export const ATALHOS_COMANDO_PADRAO: Record<string, string> = {
   ln: 'linha',
   pl: 'polilinha',
-  tc: 'tracejado',
+  tr: 'tracejado',
   tt: 'texto',
   ct: 'cota',
   sb: 'simbolo',

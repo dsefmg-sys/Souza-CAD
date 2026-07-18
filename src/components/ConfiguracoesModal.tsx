@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music, Shield, Crown, Phone } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music, Shield, Crown, Phone, Building2, Users, User, Sliders, Binary, Settings, Coins, Keyboard } from 'lucide-react';
 import ModelosDocsModal from './ModelosDocsModal';
 import PontosBancoModal from './PontosBancoModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
@@ -29,7 +29,7 @@ import {
 import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte, carregarWhatsappSuporteNome, salvarWhatsappSuporteNome, carregarGeminiApiKey, salvarGeminiApiKey } from '@/lib/store/suporte';
 import { minhaEmpresa, type Empresa } from '@/lib/store/empresas';
 import { carregarModelos, salvarModelos, MODELOS_PADRAO } from '@/lib/store/modelos';
-import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
+import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENCIAS_PADRAO, ATALHOS_F_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes, salvarPadroes, PADROES_PADRAO, type PadroesProjeto } from '@/lib/store/padroes';
 import { carregarPrecos, salvarPrecos, type PrecoServico } from '@/lib/store/precos';
 import { exportarConfiguracoesJson, importarConfiguracoesJson } from '@/lib/store/backup';
@@ -50,8 +50,47 @@ const TEXTO_TECNICO_RTK_NTRIP =
   'aplicável. As distâncias, perímetro e área do imóvel foram calculados a partir das ' +
   'coordenadas dos vértices levantados, em sistema de referência adequado ao levantamento realizado.';
 
-// Pessoal = só do usuário (assinatura técnica). Global = da empresa (todos usam o mesmo).
-type AbaConfig = 'pessoal' | 'comportamento' | 'escritorio' | 'numeracao' | 'modelos' | 'padroes' | 'equipe' | 'colegas';
+const ACOES_ATALHOS: Record<string, string> = {
+  tutorial: 'Tutorial Interativo',
+  pontos: 'Importar Pontos (TXT/CSV)',
+  sigef: 'Importar SIGEF/INCRA',
+  dados: 'Dados do Imóvel/Dono',
+  confro: 'Confrontações / Proprietários',
+  divisas: 'Tipo de Divisa / Limite',
+  trt: 'Emitir TRT / RT',
+  ods: 'Planilha SIGEF (ODS)',
+  conferir: 'Conferência Geral',
+  pecas: 'Peças Técnicas / Documentos',
+  cert: 'Login SIGEF/INCRA',
+  car: 'Consulta CAR / Área Ambiental',
+  navegar: 'Navegar / Modo Mover',
+  linha: 'Desenhar Linha',
+  polilinha: 'Desenhar Polilinha',
+  tracejado: 'Desenhar Linha Tracejada',
+  texto: 'Inserir Texto',
+  cota: 'Inserir Cota / Medida',
+  simbolo: 'Inserir Símbolo',
+  retangulo: 'Desenhar Retângulo',
+  circulo: 'Desenhar Círculo',
+  arco: 'Desenhar Arco',
+  selecao_varios: 'Selecionar Vários',
+  medir: 'Medir Distância',
+  paralela: 'Criar Paralela',
+  dividir: 'Dividir Linha',
+  aparar: 'Aparar Linha (Trim)',
+  prolongar: 'Prolongar Linha (Extend)',
+};
+
+type AbaConfig =
+  | 'escritorio'
+  | 'equipe'
+  | 'pessoal'
+  | 'comportamento'
+  | 'atalhos'
+  | 'numeracao'
+  | 'modelos'
+  | 'padroes'
+  | 'colegas';
 
 interface Props {
   open: boolean;
@@ -420,83 +459,129 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     r.readAsDataURL(file);
   }
 
+  const getTabIcon = (a: AbaConfig) => {
+    switch (a) {
+      case 'escritorio': return <Building2 className="size-4" />;
+      case 'equipe': return <Users className="size-4" />;
+      case 'pessoal': return <User className="size-4" />;
+      case 'comportamento': return <Sliders className="size-4" />;
+      case 'atalhos': return <Keyboard className="size-4" />;
+      case 'numeracao': return <Binary className="size-4" />;
+      case 'modelos': return <FileCog className="size-4" />;
+      case 'padroes': return <Settings className="size-4" />;
+      case 'colegas': return <UserCheck className="size-4" />;
+      default: return <Settings className="size-4" />;
+    }
+  };
+
   const Tb = ({ a, rotulo, titulo }: { a: AbaConfig; rotulo: string; titulo?: string }) => {
     if (prefs.modo === 'simples' && (a === 'numeracao' || a === 'modelos')) {
       return null;
     }
     const ativo = aba === a;
+    
+    const getActiveStyles = (abaName: AbaConfig) => {
+      if (['escritorio', 'equipe'].includes(abaName)) {
+        return 'bg-amber-500/5 text-amber-600 dark:text-amber-400 font-extrabold border-amber-500/20 shadow-[0_2px_8px_rgba(245,158,11,0.05)]';
+      }
+      if (['pessoal', 'comportamento', 'atalhos'].includes(abaName)) {
+        return 'bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 font-extrabold border-indigo-500/20 shadow-[0_2px_8px_rgba(99,102,241,0.05)]';
+      }
+      return 'bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 font-extrabold border-emerald-500/20 shadow-[0_2px_8px_rgba(16,185,129,0.05)]';
+    };
+
     return (
       <button onClick={() => setAba(a)} title={titulo}
-        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-150 flex items-center justify-between border ${
+        className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold tracking-wide transition-all duration-150 flex items-center justify-between border group ${
           ativo
-            ? 'bg-emerald-600/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm shadow-emerald-500/5'
-            : 'bg-zinc-50/50 hover:bg-zinc-100 dark:bg-zinc-900/40 dark:hover:bg-zinc-900/80 border-border/40 text-muted-foreground hover:text-foreground'
+            ? getActiveStyles(a)
+            : 'bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
         }`}>
-        <span>{rotulo}</span>
-        {ativo && <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className={`transition-transform duration-200 group-hover:scale-110 ${ativo ? 'text-current' : 'text-muted-foreground/75 group-hover:text-foreground'}`}>
+            {getTabIcon(a)}
+          </span>
+          <span className="truncate">{rotulo}</span>
+        </div>
+        {ativo ? (
+          <span className={`size-1.5 rounded-full animate-pulse ${
+            ['escritorio', 'equipe'].includes(a) ? 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' :
+            ['pessoal', 'comportamento', 'atalhos'].includes(a) ? 'bg-indigo-500 shadow-[0_0_8px_#6366f1]' :
+            'bg-emerald-500 shadow-[0_0_8px_#10b981]'
+          }`} />
+        ) : (
+          <span className="size-1 rounded-full bg-zinc-300 dark:bg-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+        )}
       </button>
     );
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* h-[92vh] (não max-h): a janela sempre ocupa o mesmo tamanho, do maior conteúdo possível,
-          então trocar de aba não redimensiona a janela — só o conteúdo interno rola. */}
-      <DialogContent className="max-w-5xl h-[92vh] flex flex-col bg-background/95 backdrop-blur-md shadow-2xl p-3 sm:p-6 rounded-lg text-foreground">
-        <DialogHeader className="border-b pb-4">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              Configurações do Sistema
-            </DialogTitle>
-            {msg && (
-              <span className="text-xs bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded-sm flex items-center gap-1 font-semibold animate-pulse">
-                <Check className="size-3" /> {msg}
-              </span>
-            )}
+      <DialogContent className="max-w-5xl h-[92vh] flex flex-col bg-background/95 backdrop-blur-md shadow-2xl p-0 overflow-hidden rounded-xl text-foreground border border-border/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <Settings className="size-5 text-indigo-500" />
+            <div>
+              <DialogTitle className="text-sm font-bold tracking-tight">
+                Configurações do Sistema
+              </DialogTitle>
+              <p className="text-[11px] text-muted-foreground">Gerencie preferências pessoais, dados da empresa e parâmetros do projeto.</p>
+            </div>
           </div>
-          {/* visual de cards/sub-grupos limpos e bem organizados */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          {msg && (
+            <span className="text-xs bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded-full flex items-center gap-1.5 font-semibold animate-pulse shadow-sm">
+              <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+              {msg}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-1 overflow-hidden min-h-0">
+          {/* Menu Lateral de Navegação */}
+          <div className="w-60 border-r border-border/40 bg-zinc-50/50 dark:bg-zinc-950/20 flex flex-col gap-4 p-4 shrink-0 overflow-y-auto select-none">
             {/* Grupo 1: Empresa */}
-            <div className="rounded-xl border border-border/50 bg-zinc-50/30 dark:bg-zinc-900/10 p-3 space-y-2 flex flex-col">
-              <div className="flex items-center gap-1.5 px-1">
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 px-2 mb-1">
                 <span className="size-1.5 rounded-full bg-amber-500" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Configurações da Empresa</span>
+                <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/80">Empresa</span>
               </div>
-              <div className="grid grid-cols-1 gap-1.5 flex-1 justify-start">
-                <Tb a="escritorio" rotulo="Dados da Empresa" titulo="Identificação, contato, endereço, logotipo e cores da marca" />
+              <div className="space-y-0.5">
+                <Tb a="escritorio" rotulo="Dados da Empresa" titulo="Identificação, contato, endereço, logotipo e cores" />
                 <Tb a="equipe" rotulo="Ajudantes / Equipe" titulo="Convidar colaboradores e gerenciar permissões" />
               </div>
             </div>
 
             {/* Grupo 2: Pessoais */}
-            <div className="rounded-xl border border-border/50 bg-zinc-50/30 dark:bg-zinc-900/10 p-3 space-y-2 flex flex-col">
-              <div className="flex items-center gap-1.5 px-1">
-                <span className="size-1.5 rounded-full bg-indigo-550" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Preferências Pessoais</span>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 px-2 mb-1">
+                <span className="size-1.5 rounded-full bg-indigo-500" />
+                <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/80">Pessoal</span>
               </div>
-              <div className="grid grid-cols-1 gap-1.5 flex-1 justify-start">
-                <Tb a="pessoal" rotulo="Responsável Técnico" titulo="Seu nome, formação, conselho (CFT/CREA) e registros" />
-                <Tb a="comportamento" rotulo="Comportamento" titulo="Tema, tamanho da fonte e preferências do editor" />
+              <div className="space-y-0.5">
+                <Tb a="pessoal" rotulo="Responsável Técnico" titulo="Seu nome, formação, conselho e registros" />
+                <Tb a="comportamento" rotulo="Comportamento" titulo="Tema, tamanho da fonte e preferências" />
+                <Tb a="atalhos" rotulo="Atalhos" titulo="Teclas de atalho do teclado" />
               </div>
             </div>
 
             {/* Grupo 3: Workspace */}
-            <div className="rounded-xl border border-border/50 bg-zinc-50/30 dark:bg-zinc-900/10 p-3 space-y-2 flex flex-col">
-              <div className="flex items-center gap-1.5 px-1">
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 px-2 mb-1">
                 <span className="size-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Parâmetros do Workspace</span>
+                <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/80">Workspace</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-1.5 flex-1 justify-start">
-                <Tb a="numeracao" rotulo="Numeração e Fuso" titulo="Contador de marcos, fuso e hemisfério do projeto" />
+              <div className="space-y-0.5">
+                <Tb a="numeracao" rotulo="Numeração e Fuso" titulo="Contador de marcos, fuso e hemisfério" />
                 <Tb a="modelos" rotulo="Importação e Modelos" titulo="Modelos de memorial, layout TXT e vizinhos" />
-                <Tb a="padroes" rotulo="Padrões & Backup" titulo="Valores padrão, tabela de preços e exportação de backup" />
+                <Tb a="padroes" rotulo="Padrões & Backup" titulo="Valores padrão, tabela de preços e backup" />
                 <Tb a="colegas" rotulo="Colegas" titulo="Lista de agrimensores credenciados confrontantes" />
               </div>
             </div>
           </div>
-        </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto pr-1 py-3 text-sm">
+          {/* Área de Conteúdo Principal */}
+          <div className="flex-1 overflow-y-auto p-6 bg-background">
           {aba === 'pessoal' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3.5">
@@ -935,7 +1020,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold">E-mail</Label>
-                      <Input type="email" value={esc.email ?? ''} onChange={(e) => changeEsc('email', e.target.value)} placeholder="contato@exemplo.com" />
+                      <Input type="email" value={esc.email ?? ''} onChange={(e) => changeEsc('email', e.target.value)} placeholder="contato@exemplo.com (Opcional)" />
                     </div>
                   </>
                 ) : (
@@ -991,7 +1076,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">E-mail</Label>
-                        <Input type="email" value={esc.email ?? ''} onChange={(e) => changeEsc('email', e.target.value)} placeholder="contato@exemplo.com" />
+                        <Input type="email" value={esc.email ?? ''} onChange={(e) => changeEsc('email', e.target.value)} placeholder="contato@exemplo.com (Opcional)" />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold">Site / Rede Social</Label>
@@ -1499,12 +1584,14 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
               </div>
             </div>
           )}
+          </div>
         </div>
 
-        <div className="border-t pt-3 flex justify-between items-center text-xs text-muted-foreground">
+        <div className="border-t border-border/50 px-6 py-4 flex justify-between items-center text-[11px] text-muted-foreground shrink-0 bg-zinc-50/50 dark:bg-zinc-950/20">
           <span>Pressione <kbd className="font-semibold">ESC</kbd> para fechar</span>
-          <span className="font-medium text-emerald-500 flex items-center gap-1">
-            <Check className="size-3.5" /> Salvamento automático habilitado
+          <span className="font-medium text-emerald-500 dark:text-emerald-400 flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+            Salvamento automático habilitado
           </span>
         </div>
       </DialogContent>

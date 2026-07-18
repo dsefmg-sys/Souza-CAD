@@ -1539,7 +1539,7 @@ export default function Map3DViewer({
           size="sm"
           className="h-9 px-4 gap-1.5 font-bold shadow-md bg-[#10b981] hover:bg-[#059669] text-white"
           onClick={onVoltar2D}
-          title="Voltar ao modo Mapa 2D"
+          title="Voltar ao modo Mapa 2D (Botão Central do Mouse)"
         >
           <Map className="size-4" /> 2D
         </Button>

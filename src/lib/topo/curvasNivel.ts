@@ -197,10 +197,14 @@ export interface OpcoesCurvas {
   intervalo: number;
   /** Polígono do imóvel (Leste/Norte) para recortar; opcional. */
   poligono?: Ponto2D[];
+  /** Múltiplos polígonos (todas as glebas) para recortar; opcional. */
+  poligonos?: Ponto2D[][];
   /** Suaviza as curvas (Chaikin) para saírem como curvas de verdade, não zigue-zague. Padrão: true. */
   suavizar?: boolean;
   /** Passos de suavização (mais = mais lisa, mais pontos). Padrão: 2. */
   passosSuavizacao?: number;
+  /** Se false, remove triângulos com arestas muito longas que distorcem o terreno nas bordas. Padrão: true. */
+  usarTriangulacao?: boolean;
 }
 
 /**
@@ -227,16 +231,52 @@ export function gerarCurvasDeNivel(pontos: Ponto3D[], opcoes: OpcoesCurvas): Cur
   const tris = triangularDelaunay(dedup);
   if (!tris.length) return [];
 
-  const poly = opcoes.poligono;
+  const listaPoligonos: Ponto2D[][] = [];
+  if (opcoes.poligono && opcoes.poligono.length >= 3) listaPoligonos.push(opcoes.poligono);
+  if (opcoes.poligonos) {
+    for (const p of opcoes.poligonos) {
+      if (p && p.length >= 3) listaPoligonos.push(p);
+    }
+  }
+
+  // Se a triangulação perimétrica estiver desativada ou restrita, calcula o tamanho máximo permitido da aresta
+  let maxAresta2 = Infinity;
+  if (opcoes.usarTriangulacao === false) {
+    // Calcula a distância média entre pontos vizinhos para filtrar arestas espúrias
+    let distSoma = 0, distCont = 0;
+    for (let i = 0; i < Math.min(dedup.length, 50); i++) {
+      let minDist = Infinity;
+      for (let j = 0; j < dedup.length; j++) {
+        if (i === j) continue;
+        const d2 = (dedup[i].x - dedup[j].x) ** 2 + (dedup[i].y - dedup[j].y) ** 2;
+        if (d2 < minDist) minDist = d2;
+      }
+      if (minDist < Infinity) { distSoma += Math.sqrt(minDist); distCont++; }
+    }
+    const distMedia = distCont > 0 ? distSoma / distCont : 30;
+    maxAresta2 = (distMedia * 3.5) ** 2; // descarta arestas que cruzam grandes áreas vazias
+  }
+
   const segsPorNivel = new Map<number, [Ponto2D, Ponto2D][]>();
 
   for (const t of tris) {
     const A = dedup[t[0]], B = dedup[t[1]], C = dedup[t[2]];
-    // recorte ao polígono: só triângulos com centro dentro da área levantada
-    if (poly && poly.length >= 3) {
-      const cx = (A.x + B.x + C.x) / 3, cy = (A.y + B.y + C.y) / 3;
-      if (!pontoNoPoligono(cx, cy, poly)) continue;
+
+    // Filtra arestas excessivamente longas se triangulação estiver desativada/restringida
+    if (maxAresta2 < Infinity) {
+      const dAB2 = (A.x - B.x) ** 2 + (A.y - B.y) ** 2;
+      const dBC2 = (B.x - C.x) ** 2 + (B.y - C.y) ** 2;
+      const dCA2 = (C.x - A.x) ** 2 + (C.y - A.y) ** 2;
+      if (dAB2 > maxAresta2 || dBC2 > maxAresta2 || dCA2 > maxAresta2) continue;
     }
+
+    // Recorte ao(s) polígono(s) do imóvel: só triângulos com centro dentro da área levantada
+    if (listaPoligonos.length > 0) {
+      const cx = (A.x + B.x + C.x) / 3, cy = (A.y + B.y + C.y) / 3;
+      const dentro = listaPoligonos.some(poly => pontoNoPoligono(cx, cy, poly));
+      if (!dentro) continue;
+    }
+
     const zlo = Math.min(A.z, B.z, C.z);
     const zhi = Math.max(A.z, B.z, C.z);
     if (zhi - zlo < 1e-9) continue; // triângulo plano — nenhuma curva passa

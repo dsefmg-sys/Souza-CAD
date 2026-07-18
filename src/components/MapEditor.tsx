@@ -1486,10 +1486,17 @@ export default function MapEditor(props: Props) {
     });
   }, [validos]);
 
-  // maxZoom 24: além do nível nativo das imagens (20) o satélite é só ampliado — fica borrado,
-  // mas permite posicionar vértice com muito mais precisão (pedido do dono, 05/07/2026)
   return (
-    <MapContainer center={centro} zoom={validos.length ? 16 : zoomPadrao} maxZoom={28} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
+    <div
+      style={{ width: '100%', height: '100%', position: 'relative' }}
+      onAuxClick={(e) => {
+        if (e.button === 1 && onAtivar3D) {
+          e.preventDefault();
+          onAtivar3D();
+        }
+      }}
+    >
+      <MapContainer center={centro} zoom={validos.length ? 16 : zoomPadrao} maxZoom={28} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
       <CursorMapa ativo={modo !== 'navegar' && !bloqueado} />
       {isDesenho && (
         <style dangerouslySetInnerHTML={{ __html: `
@@ -2289,12 +2296,13 @@ export default function MapEditor(props: Props) {
             type="button"
             onClick={onAtivar3D}
             className="h-10 px-4 gap-1.5 text-xs font-black uppercase tracking-wider flex items-center justify-center bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-[0_4px_0_#92400e] active:shadow-none border-b-4 border-amber-800 active:border-b-0 active:translate-y-[4px] rounded-xl transition-all duration-75 select-none"
-            title="Alternar para visualização 3D do terreno e polígono"
+            title="Alternar para visualização 3D do terreno e polígono (Botão Central do Mouse)"
           >
             <Box className="size-4 shrink-0" /> <span>3D</span>
           </button>
         </div>
       )}
     </MapContainer>
+    </div>
   );
 }
