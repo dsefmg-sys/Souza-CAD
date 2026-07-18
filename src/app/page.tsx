@@ -6049,9 +6049,11 @@ export default function EditorPage() {
                         {/* MÉTRICAS DO LEVANTAMENTO: Área, Perímetro, Modo e Escala — exibidos
                             abaixo de Desenho e Geometria e acima de Curvas de Nível */}
                         {(res || chaveTopoVisivel || vista === 'planta') && (
-                          <div className="mt-1.5 rounded-md border border-border/60 bg-muted/5 overflow-hidden">
-                            <div className="flex items-center justify-between bg-muted/20 px-2 py-1.5">
-                              <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Métricas</span>
+                          <div className="mt-1.5 rounded-lg border border-border/80 bg-background/50 overflow-hidden shadow-xs">
+                            <div className="flex items-center justify-between bg-muted/30 px-2.5 py-1.5 border-b border-border/60">
+                              <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                <BarChart3 className="size-3 text-primary" /> Métricas
+                              </span>
                             </div>
                             <div className="p-2 space-y-2">
 
@@ -6060,34 +6062,34 @@ export default function EditorPage() {
                                 <div className="space-y-1.5">
                                   {/* Valores Calculados pelo Sistema */}
                                   <div className="grid grid-cols-2 gap-1.5">
-                                    <div className="flex flex-col items-center justify-center rounded-md bg-muted/30 py-1.5 px-1">
+                                    <div className="flex flex-col items-center justify-center rounded-lg bg-muted/40 border border-border/50 py-2 px-1">
                                       <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Área (Sistema)</span>
-                                      <span className="text-[12px] font-bold text-foreground leading-tight">{numBR(res.areaHa, casasTela(4))}</span>
-                                      <span className="text-[8px] text-muted-foreground">ha</span>
+                                      <span className="text-[13px] font-black text-foreground leading-tight tracking-tight mt-0.5">{numBR(res.areaHa, casasTela(4))}</span>
+                                      <span className="text-[8px] font-semibold text-muted-foreground">ha</span>
                                     </div>
-                                    <div className="flex flex-col items-center justify-center rounded-md bg-muted/30 py-1.5 px-1">
+                                    <div className="flex flex-col items-center justify-center rounded-lg bg-muted/40 border border-border/50 py-2 px-1">
                                       <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Perímetro (Sistema)</span>
-                                      <span className="text-[12px] font-bold text-foreground leading-tight">{numBR(res.perimetro)}</span>
-                                      <span className="text-[8px] text-muted-foreground">m</span>
+                                      <span className="text-[13px] font-black text-foreground leading-tight tracking-tight mt-0.5">{numBR(res.perimetro)}</span>
+                                      <span className="text-[8px] font-semibold text-muted-foreground">m</span>
                                     </div>
                                   </div>
 
                                   {/* Valores Oficiais Conciliados com o SIGEF (se existirem) */}
                                   {((imovel.areaSigefHa != null && imovel.areaSigefHa > 0) || (imovel.perimetroSigef != null && imovel.perimetroSigef > 0)) && (
                                     <div className="grid grid-cols-2 gap-1.5 border-t border-dashed border-border/60 pt-1.5">
-                                      <div className={`flex flex-col items-center justify-center rounded-md py-1.5 px-1 ${imovel.usarValoresSigef ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-muted/20 opacity-70'}`}>
+                                      <div className={`flex flex-col items-center justify-center rounded-lg py-2 px-1 transition-all ${imovel.usarValoresSigef ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-muted/30 border border-border/50 opacity-75'}`}>
                                         <span className="text-[8px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Área (SIGEF)</span>
-                                        <span className="text-[12px] font-bold text-foreground leading-tight">
+                                        <span className="text-[13px] font-black text-foreground leading-tight tracking-tight mt-0.5">
                                           {imovel.areaSigefHa ? numBR(imovel.areaSigefHa, 4) : '—'}
                                         </span>
-                                        <span className="text-[8px] text-muted-foreground">ha</span>
+                                        <span className="text-[8px] font-semibold text-muted-foreground">ha</span>
                                       </div>
-                                      <div className={`flex flex-col items-center justify-center rounded-md py-1.5 px-1 ${imovel.usarValoresSigef ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-muted/20 opacity-70'}`}>
+                                      <div className={`flex flex-col items-center justify-center rounded-lg py-2 px-1 transition-all ${imovel.usarValoresSigef ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-muted/30 border border-border/50 opacity-75'}`}>
                                         <span className="text-[8px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Perímetro (SIGEF)</span>
-                                        <span className="text-[12px] font-bold text-foreground leading-tight">
+                                        <span className="text-[13px] font-black text-foreground leading-tight tracking-tight mt-0.5">
                                           {imovel.perimetroSigef ? numBR(imovel.perimetroSigef) : '—'}
                                         </span>
-                                        <span className="text-[8px] text-muted-foreground">m</span>
+                                        <span className="text-[8px] font-semibold text-muted-foreground">m</span>
                                       </div>
                                     </div>
                                   )}
@@ -6124,10 +6126,10 @@ export default function EditorPage() {
                         )}
 
                         {/* Curvas de nível (planialtimétrico): triangula os pontos com altitude e traça as isolinhas */}
-                        <div className="mt-1.5 rounded-md border border-border/60 overflow-hidden">
+                        <div className="mt-1.5 rounded-lg border border-border/80 bg-background/50 overflow-hidden shadow-xs">
                           <button type="button"
                             onClick={() => setCurvaConfigAberta((v) => !v)}
-                            className="flex w-full items-center justify-between bg-muted/20 px-2 py-1.5 text-[10px] font-extrabold uppercase text-foreground hover:bg-muted/40 transition-colors">
+                            className="flex w-full items-center justify-between bg-muted/20 px-2.5 py-1.5 text-[10px] font-extrabold uppercase text-foreground hover:bg-muted/40 transition-colors">
                             <span className="flex items-center gap-1.5">
                               <Waypoints className="size-3.5 text-indigo-500" />
                               Curvas de nível
@@ -6152,7 +6154,7 @@ export default function EditorPage() {
                                   </div>
                                   <button type="button" onClick={sugerirIntervaloCurva}
                                     title="Sugerir intervalo pelo desnível (mira ~12 curvas)"
-                                    className="h-6 rounded-sm bg-indigo-500 hover:bg-indigo-600 text-white px-2 text-[9px] font-bold shadow-sm transition-colors">
+                                    className="h-6 rounded-sm bg-indigo-500 hover:bg-indigo-600 text-white px-2 text-[9px] font-bold shadow-xs transition-colors">
                                     Sugerir
                                   </button>
                                 </div>
@@ -6216,17 +6218,17 @@ export default function EditorPage() {
                               {/* Ações */}
                               <div className="grid grid-cols-2 gap-1 pt-1">
                                 <Button type="button" onClick={gerarCurvasNivel}
-                                  className="h-7 bg-primary text-primary-foreground hover:bg-primary/90 font-bold border-0 shadow-sm rounded-md flex items-center justify-center gap-1 text-[10px]">
+                                  className="h-7 bg-primary text-primary-foreground hover:bg-primary/90 font-bold border-0 shadow-xs rounded-md flex items-center justify-center gap-1 text-[10px]">
                                   <Waypoints className="size-3.5" /> Gerar
                                 </Button>
                                 <Button type="button" disabled={!temCurvas} onClick={limparCurvasNivel}
-                                  className="h-7 bg-red-600 hover:bg-red-700 text-white disabled:bg-gray-400 disabled:opacity-40 disabled:cursor-not-allowed font-bold border-0 shadow-sm rounded-md flex items-center justify-center gap-1 text-[10px]">
+                                  className="h-7 bg-red-600 hover:bg-red-700 text-white disabled:bg-gray-400 disabled:opacity-40 disabled:cursor-not-allowed font-bold border-0 shadow-xs rounded-md flex items-center justify-center gap-1 text-[10px]">
                                   <Trash2 className="size-3.5" /> Apagar
                                 </Button>
                               </div>
 
                               <Button type="button" onClick={buscarGradeAltitudesOnline} disabled={vertices.length < 3 || processando}
-                                className="mt-1.5 w-full h-7 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-600/40 text-white font-bold border-0 shadow-sm rounded-md flex items-center justify-center gap-1 text-[10px]"
+                                className="mt-1.5 w-full h-7 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-600/40 text-white font-bold border-0 shadow-xs rounded-md flex items-center justify-center gap-1 text-[10px]"
                                 title="Gera uma grade digital dentro do imóvel e busca altitudes oficiais do Copernicus DEM (via Open-Meteo) para traçar curvas de nível realistas">
                                 <Database className="size-3.5" /> Adensar Relevo (Altitudes Online)
                               </Button>
@@ -6235,31 +6237,39 @@ export default function EditorPage() {
                           )}
                         </div>
 
-                        {/* DXF e KML lado a lado */}
-                        <div className="grid grid-cols-2 gap-1 mt-1.5">
-                          <div className={`flex items-center justify-between rounded-md border px-1.5 py-0.5 ${COR_PECA}`}>
-                            <span className="text-[9px] font-bold shrink-0">DXF</span>
-                            <div className="flex gap-0.5">
-                              <Button size="sm" variant="ghost" className="size-7 p-0 hover:bg-emerald-700 hover:text-white" title="Exportar DXF" onClick={exportarDxf}><Download className="size-3.5" /></Button>
-                              <Button size="sm" variant="ghost" className="size-7 p-0 hover:bg-emerald-700 hover:text-white" disabled={processando} title="Importar DXF" onClick={() => dxfRef.current?.click()}><Upload className="size-3.5" /></Button>
+                        {/* DXF e KML lado a lado (design leve e moderno) */}
+                        <div className="grid grid-cols-2 gap-1.5 mt-2">
+                          <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 transition-all hover:border-emerald-500/50">
+                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 tracking-wider">DXF</span>
+                            <div className="flex items-center gap-1">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" title="Exportar arquivo CAD (.dxf)" onClick={exportarDxf}>
+                                <Download className="size-3.5" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" disabled={processando} title="Importar arquivo CAD (.dxf)" onClick={() => dxfRef.current?.click()}>
+                                <Upload className="size-3.5" />
+                              </Button>
                             </div>
                           </div>
-                          <div className={`flex items-center justify-between rounded-md border px-1.5 py-0.5 ${COR_PECA}`}>
-                            <span className="text-[9px] font-bold shrink-0">KML</span>
-                            <div className="flex gap-0.5">
-                              <Button size="sm" variant="ghost" className="size-7 p-0 hover:bg-emerald-700 hover:text-white" title="Exportar KML" onClick={() => exportarKML(vertices, imovel)}><Download className="size-3.5" /></Button>
-                              <Button size="sm" variant="ghost" className="size-7 p-0 hover:bg-emerald-700 hover:text-white" disabled={processando} title="Importar KML" onClick={() => kmlRef.current?.click()}><Upload className="size-3.5" /></Button>
+
+                          <div className="flex items-center justify-between rounded-lg border border-teal-500/30 bg-teal-500/10 px-2 py-1 transition-all hover:border-teal-500/50">
+                            <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 tracking-wider">KML</span>
+                            <div className="flex items-center gap-1">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" title="Exportar Google Earth (.kml)" onClick={() => exportarKML(vertices, imovel)}>
+                                <Download className="size-3.5" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" disabled={processando} title="Importar Google Earth (.kml)" onClick={() => kmlRef.current?.click()}>
+                                <Upload className="size-3.5" />
+                              </Button>
                             </div>
                           </div>
                         </div>
 
-                        {/* A situação foi movida SÓ para a barra flutuante da planta (evita duplicar aqui). */}
                       </div>
                     )}
 
                     {/* CARD 4: GERENCIADOR DE CAMADAS — escondido pelo interruptor GERENCIADOR_CAMADAS_VISIVEL */}
                     {GERENCIADOR_CAMADAS_VISIVEL && medioOuMais && vista === 'mapa' && (
-                      <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm mt-1.5">
+                      <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-xs mt-1.5">
                         <span className="text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b select-none flex items-center text-muted-foreground">
                           <span>Gerenciador de Camadas</span>
                         </span>
@@ -6451,7 +6461,6 @@ export default function EditorPage() {
                       ...(!ocultarCobranca || souMaster() ? [['Planos', souMaster() ? 'Cobrança do app: planos, preços e nível de cada cliente (admin)' : 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400']] : []),
 
                       ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400']] : []),
-                      ...(nuvemDisponivel ? [['Sair', user ? `Sair (${user.email ?? ''})` : 'Voltar ao Início', <LogOut key="i" className="size-4" />, () => { limparConfigLocalNaSaida(); sair(); definirModoEntrada('boasVindas'); }, 'text-red-600 dark:text-red-400']] : []),
                     ] as [string, string, React.ReactNode, () => void, string][]).map(([rotuloBtn, dica, icone, acao, cor]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline"
                         className={`h-11 min-w-0 flex-col gap-0.5 overflow-hidden p-0.5 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:${cor} [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
