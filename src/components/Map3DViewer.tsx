@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { RotateCcw, Download, Navigation, Wand2, RefreshCw } from 'lucide-react';
+import { RotateCcw, Download, Navigation, Wand2, RefreshCw, Camera } from 'lucide-react';
 import { type Vertex, type ObjetoDesenho, type ImovelData } from '@/lib/topo/types';
 import { triangularDelaunay, pontoNoPoligono, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { exportarKML } from '@/lib/export/kml';
@@ -47,9 +47,19 @@ interface Map3DViewerProps {
   hemisferio: 'N' | 'S';
   imovel: ImovelData;
   onVoltar2D: () => void;
+  onCapture?: (dataUrl: string) => void;
 }
 
-export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCota = 0, onCompletarAltitudes, imovel, onVoltar2D }: Map3DViewerProps) {
+export default function Map3DViewer({
+  vertices,
+  objetos,
+  pontos3D,
+  verticesSemCota = 0,
+  onCompletarAltitudes,
+  imovel,
+  onVoltar2D,
+  onCapture
+}: Map3DViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Câmera em REFS (não em state): o laço de desenho lê direto a cada quadro, então girar/arrastar/zoom
   // e a rotação automática são suaves e NÃO disparam re-render do React a cada frame.
@@ -78,6 +88,7 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
   const [mostrarParedes, setMostrarParedes] = useState(false); // desativada por padrão conforme pedido do usuário
   const [mostrarTin, setMostrarTin] = useState(false);
   const [destacarErros, setDestacarErros] = useState(true); // ativada por padrão para ajudar a encontrar erros de cota zero
+  const [mostrarLabels3D, setMostrarLabels3D] = useState(true);
 
   // Estados de cálculo de terraplenagem (volume de corte/aterro)
   const [calcVolumeAtivo, setCalcVolumeAtivo] = useState(false);
@@ -501,21 +512,23 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
         ctx.stroke();
 
         // Rótulos de nome e cota z
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 9px sans-serif';
-        const label = `${v.codigoSigef || v.nome || `V${v.ordem}`}`;
-        ctx.fillText(label, proj.x + 8, proj.y - 2);
-
-        if (destacar) {
-          ctx.fillStyle = '#fca5a5';
+        if (mostrarLabels3D) {
+          ctx.fillStyle = '#ffffff';
           ctx.font = 'bold 9px sans-serif';
-          ctx.fillText('Cota zero!', proj.x + 8, proj.y - 12);
-        } else if (hasZ && v.elevacao) {
-          // "~" antes da cota = altitude CALCULADA (interpolada), não medida; cor âmbar pra destacar.
-          const calc = v.elevacaoInterpolada;
-          ctx.fillStyle = calc ? '#d9a441' : '#87a992';
-          ctx.font = '8px monospace';
-          ctx.fillText(`${calc ? '~' : ''}${v.elevacao.toFixed(1)}m`, proj.x + 8, proj.y + 7);
+          const label = `${v.codigoSigef || v.nome || `V${v.ordem}`}`;
+          ctx.fillText(label, proj.x + 8, proj.y - 2);
+
+          if (destacar) {
+            ctx.fillStyle = '#fca5a5';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillText('Cota zero!', proj.x + 8, proj.y - 12);
+          } else if (hasZ && v.elevacao) {
+            // "~" antes da cota = altitude CALCULADA (interpolada), não medida; cor âmbar pra destacar.
+            const calc = v.elevacaoInterpolada;
+            ctx.fillStyle = calc ? '#d9a441' : '#87a992';
+            ctx.font = '8px monospace';
+            ctx.fillText(`${calc ? '~' : ''}${v.elevacao.toFixed(1)}m`, proj.x + 8, proj.y + 7);
+          }
         }
       });
 
@@ -555,7 +568,7 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
     loop();
 
     return () => cancelAnimationFrame(animFrame);
-  }, [vertices, objetos, exagero, stats, hasZ, finitePts, superficie, temSuperficie, mostrarParedes, mostrarTin, destacarErros, calcVolumeAtivo, zRef, fatorEmpolamento]);
+  }, [vertices, objetos, exagero, stats, hasZ, finitePts, superficie, temSuperficie, mostrarParedes, mostrarTin, destacarErros, calcVolumeAtivo, zRef, fatorEmpolamento, mostrarLabels3D]);
 
   // Redimensionamento automático do canvas
   useEffect(() => {
@@ -840,6 +853,23 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
           <Wand2 className="size-3" /> Cubagem (Terraplenagem)
         </button>
 
+        {onCapture && (
+          <button
+            type="button"
+            onClick={() => {
+              const canvas = canvasRef.current;
+              if (canvas) {
+                const dataUrl = canvas.toDataURL('image/png');
+                onCapture(dataUrl);
+              }
+            }}
+            className="flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold transition-colors border text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+            title="Captura o estado atual do modelo 3D e insere como um quadro móvel na planta"
+          >
+            <Camera className="size-3" /> Inserir Print na Planta
+          </button>
+        )}
+
         {/* Visualização & Diagnósticos */}
         <div className="space-y-1.5 pt-2 border-t border-border/60">
           <span className="font-bold text-[9px] uppercase tracking-wider text-muted-foreground">Exibição & Diagnóstico</span>
@@ -868,6 +898,15 @@ export default function Map3DViewer({ vertices, objetos, pontos3D, verticesSemCo
                 type="checkbox"
                 checked={destacarErros}
                 onChange={(e) => setDestacarErros(e.target.checked)}
+                className="rounded border-muted text-primary focus:ring-primary size-3.5"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-2 cursor-pointer" title="Mostra os rótulos de nome e cota dos vértices no modelo 3D">
+              <span>Mostrar Rótulos</span>
+              <input
+                type="checkbox"
+                checked={mostrarLabels3D}
+                onChange={(e) => setMostrarLabels3D(e.target.checked)}
                 className="rounded border-muted text-primary focus:ring-primary size-3.5"
               />
             </label>

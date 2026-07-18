@@ -91,6 +91,8 @@ interface Props {
   onDblClickObjeto?: (id: string) => void;
   onContextMenuVazio?: () => void;
   onDblClickMalha?: () => void;
+  print3dUrl?: string;
+  onRemoverPrint3D?: () => void;
 }
 
 /** Ajuste salvo de um texto (conteúdo/escala/negrito/deslocamento). */
@@ -324,6 +326,7 @@ export default function Planta({
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onConfrontanteMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onDblClickObjeto, onContextMenuVazio, onDblClickMalha,
+  print3dUrl, onRemoverPrint3D,
 }: Props) {
   // hooks antes de qualquer retorno condicional
   const svgRef = useRef<SVGSVGElement>(null);
@@ -2217,6 +2220,86 @@ export default function Planta({
             <g transform={escRosa !== 1 ? `translate(${rcx}, ${rcy}) scale(${escRosa}) translate(${-rcx}, ${-rcy})` : undefined}>
               <RosaDosVentos cx={rcx} cy={rcy} fs={fs} variante={config.estiloRosa ?? 0} />
             </g>
+          </g>
+        );
+      })()}
+
+      {/* ---------- RELEVO 3D CAPTURADO (MÓVEL) ---------- */}
+      {print3dUrl && config.mostrarPrint3D !== false && (() => {
+        const id3D = 'planta.print3d';
+        const ov3D = textosOv[id3D] || {};
+        const offset3D = getOverride(id3D);
+        const esc3D = ov3D.escala ?? 1.0;
+        
+        // Coordenada base do quadro 3D: no lado esquerdo do desenho, acima da barra de escala
+        const baseX = (DRAW.x0 + 40) + (offset3D.dx ?? 0);
+        const baseY = (DRAW.y1 - 220) + (offset3D.dy ?? 0);
+        
+        const w3D = 240 * esc3D;
+        const h3D = 160 * esc3D;
+
+        return (
+          <g
+            key="relevo-3d-print-g"
+            id={id3D}
+            style={editavel ? { cursor: 'move' } : undefined}
+            onDoubleClick={(e) => { e.stopPropagation(); onDblClickObjeto?.('planta:print3d'); }}
+            onPointerDown={editavel ? (e) => {
+              if (e.button === 2) return;
+              e.stopPropagation();
+              const u = svgPonto(e); if (!u) return;
+              dragRef.current = { kind: 'ted', id: id3D, dx: 0, dy: 0, baseX: ov3D.dx ?? 0, baseY: ov3D.dy ?? 0 };
+              setDragTemp({ kind: 'ted', id: id3D, dx: 0, dy: 0, baseX: ov3D.dx ?? 0, baseY: ov3D.dy ?? 0 });
+              folhaLast.current = u;
+              captura(e);
+            } : undefined}
+          >
+            {/* Fundo do quadro */}
+            <rect
+              x={baseX}
+              y={baseY}
+              width={w3D}
+              height={h3D}
+              fill="#ffffff"
+              fillOpacity={0.9}
+              stroke={objetoSelId === id3D ? '#f59e0b' : '#cbd5e1'}
+              strokeWidth={objetoSelId === id3D ? 2 : 1}
+              strokeDasharray={objetoSelId === id3D ? undefined : '3 3'}
+              rx={6}
+              ry={6}
+            />
+            {/* Imagem do relevo 3D */}
+            <image
+              href={print3dUrl}
+              x={baseX + 3}
+              y={baseY + 3}
+              width={w3D - 6}
+              height={h3D - 6}
+              preserveAspectRatio="xMidYMid meet"
+            />
+            
+            {/* Texto auxiliar / Rótulo do Quadro */}
+            <text
+              x={baseX + 6}
+              y={baseY - 4}
+              fontSize={fs(6.5)}
+              fontWeight="bold"
+              fill="#475569"
+            >
+              Modelo Digital de Relevo (MDR 3D)
+            </text>
+
+            {editavel && objetoSelId === id3D && onRemoverPrint3D && (
+              <g
+                transform={`translate(${baseX + w3D - 8}, ${baseY + 8})`}
+                className="cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); onRemoverPrint3D(); }}
+              >
+                <circle r={7} fill="#ef4444" />
+                <line x1={-3.5} y1={-3.5} x2={3.5} y2={3.5} stroke="#ffffff" strokeWidth={1.5} />
+                <line x1={3.5} y1={-3.5} x2={-3.5} y2={3.5} stroke="#ffffff" strokeWidth={1.5} />
+              </g>
+            )}
           </g>
         );
       })()}

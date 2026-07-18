@@ -412,6 +412,8 @@ export interface PlantaConfig {
   corVerticeM?: string;        // cor dos vértices tipo M na planta, padrão "#f59e0b"
   situacaoEscondida?: boolean;
   situacaoEscala?: number;
+  print3dDataUrl?: string;
+  mostrarPrint3D?: boolean;
   sigefCor?: string;
   sigefEspessura?: number;
   sigefOpacidade?: number;

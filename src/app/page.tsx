@@ -667,6 +667,7 @@ export default function EditorPage() {
   const [focoLatLng, setFocoLatLng] = useState<[number, number] | null>(null);
   const [dragVtxIdx, setDragVtxIdx] = useState<number | null>(null);
   const [situacaoUrl, setSituacaoUrl] = useState<string | undefined>(undefined);
+  const [print3dUrl, setPrint3dUrl] = useState<string | undefined>(undefined);
   // referências (confrontantes certificados importados de GeoJSON) — desenho + alvos de snap
   const [referencias, setReferencias] = useState<{ lat: number; lon: number; leste: number; norte: number }[][]>([]);
   const [parcelasCert, setParcelasCert] = useState<{ anel: [number, number][]; info: { titulo: string; linhas: string[] }; codigoImovel?: string }[]>([]);
@@ -1812,6 +1813,7 @@ export default function EditorPage() {
               'carimbo.titulo': { ...(proximo.textos?.['carimbo.titulo'] ?? {}), texto: proximo.titulo || template.titulo || titNovo }
             },
             situacaoDataUrl: proximo.situacaoDataUrl || atual.situacaoDataUrl,
+            print3dDataUrl: proximo.print3dDataUrl || atual.print3dDataUrl,
             offsetX: proximo.offsetX !== undefined ? proximo.offsetX : atual.offsetX,
             offsetY: proximo.offsetY !== undefined ? proximo.offsetY : atual.offsetY,
             centroInfoPos: proximo.centroInfoPos || atual.centroInfoPos,
@@ -5078,6 +5080,7 @@ export default function EditorPage() {
     if (d.plantaConfig?.situacaoDataUrl) {
       setSituacaoVersSnapshot(montarSnapshotDesenho(d.glebas));
     }
+    setPrint3dUrl(d.plantaConfig?.print3dDataUrl);
     const pc = d.parcelasCert ?? [];
     setParcelasCert(pc);
     setReferencias(referenciasDeParcelasCert(pc, d.zona, d.hemisferio));
@@ -5132,6 +5135,7 @@ export default function EditorPage() {
     setParcelasCert([]);
     setVerticesVizinho([]);
     setSituacaoUrl(undefined);
+    setPrint3dUrl(undefined);
     setObjetos([]);
     setPlantaConfig({});
     setObjetoSelId(null);
@@ -5161,7 +5165,7 @@ export default function EditorPage() {
     setZona(f.zona); setHemisferio(f.hemisferio);
     setRequerente(undefined); setTransmitente(undefined);
     setTipoAto('venda'); setPartesAdicionais([]);
-    setParcelasCert([]); setReferencias([]); setVerticesVizinho([]); setSituacaoUrl(undefined);
+    setParcelasCert([]); setReferencias([]); setVerticesVizinho([]); setSituacaoUrl(undefined); setPrint3dUrl(undefined);
     setPlantaConfig({});
     setVerticesIgnorados([]);
     setSigefStatus('idle'); setBaixou({}); setSalvoOk(false);
@@ -5232,6 +5236,7 @@ export default function EditorPage() {
     // restaura a planta de situação salva (não precisa recapturar o satélite)
     setSituacaoUrl(p.plantaConfig?.situacaoDataUrl);
     if (p.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(montarSnapshotDesenho(p.glebas));
+    setPrint3dUrl(p.plantaConfig?.print3dDataUrl);
     const pc = p.parcelasCert ?? [];
     setParcelasCert(pc);
     setReferencias(referenciasDeParcelasCert(pc, p.zonaUtm, p.hemisferio));
@@ -5333,6 +5338,7 @@ export default function EditorPage() {
         carregarGleba(proj.glebas[0]);
         setSituacaoUrl(proj.plantaConfig?.situacaoDataUrl);
         if (proj.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(montarSnapshotDesenho(proj.glebas));
+        setPrint3dUrl(proj.plantaConfig?.print3dDataUrl);
         const pc = proj.parcelasCert ?? [];
         setParcelasCert(pc);
         setReferencias(referenciasDeParcelasCert(pc, proj.zonaUtm, proj.hemisferio));
@@ -6990,6 +6996,12 @@ export default function EditorPage() {
                 hemisferio={hemisferio}
                 imovel={imovel}
                 onVoltar2D={() => setVista('mapa')}
+                onCapture={(dataUrl) => {
+                  atualizarPlantaConfig((c) => ({ ...c, print3dDataUrl: dataUrl, mostrarPrint3D: true }));
+                  setPrint3dUrl(dataUrl);
+                  aviso('Print do modelo 3D inserido na planta.');
+                  setVista('planta');
+                }}
               />
             </ErrorBoundary>
           ) : vista === 'mapa' ? (
@@ -7423,6 +7435,8 @@ export default function EditorPage() {
                       onMoverRotuloConf={onMoverRotulo} onMoverRotuloVertice={onMoverRotuloVertice}
                       onRemoverSituacao={() => { setSituacaoUrl(undefined); setPlantaConfig((c) => ({ ...c, situacaoDataUrl: undefined })); }}
                       situacaoStale={!!situacaoUrl && situacaoVersSnapshot !== snapshotDesenho}
+                      print3dUrl={print3dUrl}
+                      onRemoverPrint3D={() => { setPrint3dUrl(undefined); setPlantaConfig((c) => ({ ...c, print3dDataUrl: undefined })); }}
                       onAtualizarSituacao={gerarSituacaoPlanta}
                       onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf}
                       onConfrontanteMenu={(id, nome, x, y) => setMenuContexto({ tipo: 'confrontante', id, atual: nome, x, y })}
@@ -9887,7 +9901,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
   useEffect(() => { setTitulos(carregarTitulos()); }, []);
   const tituloAtual = (config.titulo ?? '').trim();
   const podeSalvarTitulo = tituloAtual.length > 0 && !titulos.includes(tituloAtual);
-  type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao' | 'mostrarDivisaConf' | 'mostrarVerticesVizinho';
+  type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao' | 'mostrarDivisaConf' | 'mostrarVerticesVizinho' | 'mostrarPrint3D';
   const chk = (label: string, key: BoolKey) => (
     <label className="flex items-center gap-2 text-xs">
       <input type="checkbox" checked={config[key] !== false} onChange={(e) => set({ [key]: e.target.checked } as Partial<PlantaConfig>)} />
@@ -9962,6 +9976,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
         {chk('Convenções (legenda)', 'mostrarConvencoes')}
         {chk('Escala gráfica', 'mostrarEscalaGrafica')}
         {chk('Planta de situação', 'mostrarSituacao')}
+        {chk('Print do Modelo 3D', 'mostrarPrint3D')}
         {chk('Tiques de troca de confrontante (marcos M)', 'mostrarDivisaConf')}
         {chk('Vértices de vizinhos certificados', 'mostrarVerticesVizinho')}
         {/* quadro de áreas e roteiro: padrão DESLIGADO (por isso não usam o chk, que assume ligado) */}

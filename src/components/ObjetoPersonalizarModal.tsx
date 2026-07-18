@@ -503,6 +503,32 @@ export function ObjetoPersonalizarModal({
               </div>
             );
           }
+          if (tipoPlanta === 'print3d') {
+            const id3D = 'planta.print3d';
+            const ov3D = plantaConfig.textos?.[id3D] || {};
+            const esc3D = (ov3D as any).escala ?? 1.0;
+            return (
+              <div className="space-y-4">
+                <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Modelo de Relevo 3D (Captura)</div>
+                <label className="flex items-center gap-2 cursor-pointer py-1">
+                  <input type="checkbox" checked={plantaConfig.mostrarPrint3D !== false}
+                    onChange={(e) => setPlantaConfig((p: PlantaConfig) => ({ ...p, mostrarPrint3D: e.target.checked }))}
+                    className="rounded border-zinc-300 text-primary focus:ring-primary size-4" />
+                  <span className="font-semibold text-foreground">Mostrar na planta</span>
+                </label>
+                <div className="space-y-1">
+                  <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                    <span>Tamanho</span><span>{esc3D.toFixed(2)}x</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: Math.max(0.4, +(esc3D - 0.05).toFixed(2)) })}>A−</button>
+                    <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: Math.min(3.0, +(esc3D + 0.05).toFixed(2)) })}>A+</button>
+                    <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: 1.0 })}>Reset</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           return null;
         }
