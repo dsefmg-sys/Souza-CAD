@@ -88,9 +88,34 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
   const playlist = Array.isArray(src) ? src : [src];
   const currentSrc = playlist[currentIdx] || '';
 
+  const playlistString = Array.isArray(src) ? src.join(',') : src;
+
   // Sincroniza sempre que a playlist ou a faixa atual muda
   useEffect(() => {
     sessaoAtivaRef.current = false;
+    
+    // Tenta restaurar do localStorage
+    const saved = localStorage.getItem(`metrica:audio:${rotulo}`);
+    if (saved) {
+      try {
+        const { currentIdx: savedIdx, currentTime: savedTime } = JSON.parse(saved);
+        if (typeof savedIdx === 'number' && savedIdx < playlist.length) {
+          setCurrentIdx(savedIdx);
+          setProgresso(0);
+          setDuracao(0);
+          setTocando(false);
+          setTimeout(() => {
+            const a = audioRef.current;
+            if (a) {
+              a.currentTime = savedTime || 0;
+              if (a.duration) setProgresso(a.currentTime / a.duration);
+            }
+          }, 150);
+          return;
+        }
+      } catch {}
+    }
+
     setCurrentIdx(0);
     setProgresso(0);
     setDuracao(0);
@@ -99,7 +124,7 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
-  }, [src]);
+  }, [playlistString]);
 
   function avancarOuParar() {
     if (Array.isArray(src) && currentIdx + 1 < src.length) {
@@ -107,6 +132,7 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
       setCurrentIdx(nextIdx);
       setDuracao(0);
       setProgresso(0);
+      localStorage.setItem(`metrica:audio:${rotulo}`, JSON.stringify({ currentIdx: nextIdx, currentTime: 0 }));
       setTimeout(() => {
         const nextAudio = audioRef.current;
         if (nextAudio && sessaoAtivaRef.current) {
@@ -119,6 +145,7 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
       setTocando(false);
       setCurrentIdx(0);
       setProgresso(0);
+      localStorage.removeItem(`metrica:audio:${rotulo}`);
     }
   }
 
@@ -140,11 +167,13 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
     const ratio = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
     a.currentTime = ratio * a.duration;
     setProgresso(ratio);
+    localStorage.setItem(`metrica:audio:${rotulo}`, JSON.stringify({ currentIdx, currentTime: a.currentTime }));
   }
 
   function handleEnded() {
     const a = audioRef.current;
     if (a) a.currentTime = 0;
+    localStorage.removeItem(`metrica:audio:${rotulo}`);
     avancarOuParar();
   }
 
@@ -160,12 +189,22 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
         ref={(el) => { audioRef.current = el; }}
         src={currentSrc}
         preload="metadata"
-        onLoadedMetadata={() => { const a = audioRef.current; if (a) setDuracao(a.duration); }}
+        onLoadedMetadata={() => {
+          const a = audioRef.current;
+          if (a) {
+            setDuracao(a.duration);
+            // se fomos restaurados com currentTime e a duração carregou, atualiza progresso
+            if (a.currentTime) setProgresso(a.currentTime / a.duration);
+          }
+        }}
         onPlay={() => setTocando(true)}
         onPause={() => setTocando(false)}
         onTimeUpdate={() => {
           const a = audioRef.current;
-          if (a && a.duration) setProgresso(a.currentTime / a.duration);
+          if (a && a.duration) {
+            setProgresso(a.currentTime / a.duration);
+            localStorage.setItem(`metrica:audio:${rotulo}`, JSON.stringify({ currentIdx, currentTime: a.currentTime }));
+          }
         }}
         onEnded={handleEnded}
         onError={() => {

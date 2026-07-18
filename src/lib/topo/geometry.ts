@@ -50,3 +50,25 @@ export function formatMatricula(m: string): string {
   if (/^\d+$/.test(so)) return so.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return so;
 }
+
+/**
+ * Retorna o índice do vértice mais ao Norte (maior coordenada Y / Norte).
+ * Em caso de empate na coordenada Norte, utiliza a maior coordenada Leste (X) como desempate.
+ */
+export function encontrarVerticeMaisNorteIndex<T extends { norte?: number; leste?: number; lat?: number; lon?: number }>(vertices: T[]): number {
+  if (!vertices || vertices.length === 0) return 0;
+  let maxIdx = 0;
+  let maxN = -Infinity;
+  let maxE = -Infinity;
+  vertices.forEach((v, i) => {
+    const n = Number.isFinite(v.norte) ? (v.norte as number) : (v.lat ?? -Infinity);
+    const e = Number.isFinite(v.leste) ? (v.leste as number) : (v.lon ?? -Infinity);
+    if (n > maxN || (n === maxN && e > maxE)) {
+      maxN = n;
+      maxE = e;
+      maxIdx = i;
+    }
+  });
+  return maxIdx;
+}
+

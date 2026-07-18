@@ -15,6 +15,8 @@ import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { numBR } from '@/lib/topo/geometry';
 import { carregarPreferencias } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
+import { perguntarTratamentoAusentes, type CampoFaltante } from '@/lib/export/confirmarAusentes';
+
 import NotaLegal from '@/components/NotaLegal';
 
 const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string; explicacao: string }[] = [
@@ -203,36 +205,26 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   }
 
   async function gerar() {
-    let dadosIncompletos = false;
-    let msgFalta = '';
-
-    if (!req.nome?.trim()) { msgFalta = 'Nome do requerente está em branco.'; dadosIncompletos = true; }
-    else if (!req.cpf?.trim()) { msgFalta = 'CPF/CNPJ do requerente está em branco.'; dadosIncompletos = true; }
-    
     const precisaTransmitente = localTipoAto !== 'retificacao' || !!trans.nome?.trim() || !!trans.cpf?.trim();
-    if (!dadosIncompletos && precisaTransmitente) {
-      if (!trans.nome?.trim()) { msgFalta = 'Nome do transmitente / cônjuge está em branco.'; dadosIncompletos = true; }
-      else if (!trans.cpf?.trim()) { msgFalta = 'CPF/CNPJ do transmitente / cônjuge está em branco.'; dadosIncompletos = true; }
+    const campos: CampoFaltante[] = [
+      { label: 'Nome do Requerente', ausente: !req.nome?.trim() },
+      { label: 'CPF do Requerente', ausente: !req.cpf?.trim() },
+      { label: 'RG do Requerente', ausente: !req.rg?.trim() },
+      { label: 'Profissão do Requerente', ausente: !req.profissao?.trim() },
+      { label: 'Estado Civil do Requerente', ausente: !req.estadoCivil?.trim() },
+      { label: 'Endereço do Requerente', ausente: !req.endereco?.trim() },
+    ];
+
+    if (precisaTransmitente) {
+      campos.push({ label: 'Nome do Transmitente/Cônjuge', ausente: !trans.nome?.trim() });
+      campos.push({ label: 'CPF do Transmitente/Cônjuge', ausente: !trans.cpf?.trim() });
     }
 
-    let permitirIncompleto = false;
+    const resultado = await perguntarTratamentoAusentes(campos, (config) => escolher(config as any) as any);
+    if (resultado === 'cancelar') return;
 
-    if (dadosIncompletos) {
-      const opcao = await escolher({
-        titulo: 'Faltam Dados Básicos',
-        mensagem: `${msgFalta}\n\nDeseja voltar para preencher ou prefere gerar o documento com lacunas (os campos em branco serão marcados com a palavra "DADO AUSENTE" em vermelho)?`,
-        opcoes: [
-          { chave: 'gerar', label: 'Gerar com DADO AUSENTE', variant: 'destructive' },
-        ],
-        cancelLabel: 'Voltar e completar'
-      });
-
-      if (opcao === 'gerar') {
-        permitirIncompleto = true;
-      } else {
-        return;
-      }
-    }
+    const modoTratamentoAusente = resultado;
+    const permitirIncompleto = modoTratamentoAusente === 'dado_ausente';
 
     onChangePessoas(req, trans, localTipoAto, localPartesAdicionais);
     const padroes = carregarPadroes();
@@ -252,7 +244,8 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           partesAdicionais: localPartesAdicionais,
           comarca,
           correcoes: correcoes || [],
-          permitirIncompleto
+          permitirIncompleto,
+          modoTratamentoAusente,
         })
       });
       if (!response.ok) {

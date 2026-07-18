@@ -9,6 +9,8 @@ import { compatibilizarWord2007 } from './compatWord2007';
 
 export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao' | 'retificacao';
 
+import type { ModoTratamentoAusente } from '../topo/types';
+
 export interface RequerimentoInput {
   imovel: ImovelData;
   tecnico: TecnicoData;
@@ -23,6 +25,7 @@ export interface RequerimentoInput {
   partesAdicionais?: PessoaQualificada[];
   correcoes?: CorrecaoErrata[];
   permitirIncompleto?: boolean;
+  modoTratamentoAusente?: ModoTratamentoAusente;
 }
 
 const ROTULOS_ATO: Record<TipoAtoRequerimento, { requerente: string; transmitente: string; assinaReq: string; assinaTrans: string }> = {
@@ -113,24 +116,37 @@ function campo(rotulo: string, valor: string) {
   return new Paragraph({ spacing: { after: 20 }, children });
 }
 
-function blocoPessoa(p: PessoaQualificada): Paragraph[] {
-  const out = [
-    campo('Nome:', p.nome),
-    campo('RG:', `${p.rg || '—'}   CPF: ${p.cpf || '—'}`),
-    campo('Nacionalidade:', p.nacionalidade || 'Brasileira'),
-    campo('Naturalidade:', p.naturalidade),
-    campo('Data de Nascimento:', p.dataNascimento),
-    campo('Filiação:', p.filiacao),
-    campo('Profissão:', p.profissao),
-    campo('Estado Civil:', p.estadoCivil),
-  ];
-  if (p.conjugeNome || p.conjugeCpf) {
-    out.push(campo('Cônjuge:', p.conjugeNome));
-    out.push(campo('RG:', `${p.conjugeRg || '—'}   CPF: ${p.conjugeCpf || '—'}`));
+function blocoPessoa(p: PessoaQualificada, modo: ModoTratamentoAusente = 'dado_ausente'): Paragraph[] {
+  const tem = (v?: string) => !!(v && v.trim() && v !== '—' && v !== 'DADO AUSENTE');
+  const out: Paragraph[] = [];
+
+  if (tem(p.nome) || modo === 'dado_ausente') out.push(campo('Nome:', p.nome || 'DADO AUSENTE'));
+
+  if (modo === 'dado_ausente') {
+    out.push(campo('RG:', `${p.rg || '—'}   CPF: ${p.cpf || '—'}`));
+  } else {
+    if (tem(p.rg) && tem(p.cpf)) out.push(campo('RG:', `${p.rg}   CPF: ${p.cpf}`));
+    else if (tem(p.cpf)) out.push(campo('CPF:', p.cpf!));
+    else if (tem(p.rg)) out.push(campo('RG:', p.rg!));
   }
-  out.push(campo('Residente e domiciliado em:', p.endereco));
-  out.push(campo('Cidade/UF:', p.cidadeUf));
-  out.push(campo('CEP:', p.cep));
+
+  if (tem(p.nacionalidade) || modo === 'dado_ausente') out.push(campo('Nacionalidade:', p.nacionalidade || 'Brasileira'));
+  if (tem(p.naturalidade) || modo === 'dado_ausente') out.push(campo('Naturalidade:', p.naturalidade));
+  if (tem(p.dataNascimento) || modo === 'dado_ausente') out.push(campo('Data de Nascimento:', p.dataNascimento));
+  if (tem(p.filiacao) || modo === 'dado_ausente') out.push(campo('Filiação:', p.filiacao));
+  if (tem(p.profissao) || modo === 'dado_ausente') out.push(campo('Profissão:', p.profissao));
+  if (tem(p.estadoCivil) || modo === 'dado_ausente') out.push(campo('Estado Civil:', p.estadoCivil));
+
+  if (tem(p.conjugeNome) || tem(p.conjugeCpf) || (modo === 'dado_ausente' && (p.conjugeNome || p.conjugeCpf))) {
+    out.push(campo('Cônjuge:', p.conjugeNome || 'DADO AUSENTE'));
+    if (modo === 'dado_ausente') out.push(campo('RG:', `${p.conjugeRg || '—'}   CPF: ${p.conjugeCpf || '—'}`));
+    else if (tem(p.conjugeCpf)) out.push(campo('CPF Cônjuge:', p.conjugeCpf!));
+  }
+
+  if (tem(p.endereco) || modo === 'dado_ausente') out.push(campo('Residente e domiciliado em:', p.endereco));
+  if (tem(p.cidadeUf) || modo === 'dado_ausente') out.push(campo('Cidade/UF:', p.cidadeUf));
+  if (tem(p.cep) || modo === 'dado_ausente') out.push(campo('CEP:', p.cep));
+
   return out;
 }
 
@@ -138,14 +154,15 @@ function blocoPessoa(p: PessoaQualificada): Paragraph[] {
 export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Promise<Blob> {
   const input = sanitizarProfundo(inputBruto);
   const { imovel, tecnico, requerente, transmitente, areaRealHa, permitirIncompleto } = input;
+  const modo: ModoTratamentoAusente = input.modoTratamentoAusente ?? (permitirIncompleto ? 'dado_ausente' : 'omitir');
   
   const f = (val?: string) => {
-    if (permitirIncompleto && (!val || !val.trim() || val === '—')) return 'DADO AUSENTE';
+    if (modo === 'dado_ausente' && (!val || !val.trim() || val === '—')) return 'DADO AUSENTE';
     return val || '';
   };
 
   const fPessoa = (p: PessoaQualificada): PessoaQualificada => {
-    if (!permitirIncompleto) return p;
+    if (modo !== 'dado_ausente') return p;
     return {
       ...p,
       nome: f(p.nome),
@@ -164,6 +181,7 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
       conjugeCpf: p.conjugeNome || p.conjugeCpf ? f(p.conjugeCpf) : '',
     };
   };
+
 
   const reqClonado = fPessoa(requerente);
   const transClonado = fPessoa(transmitente);
@@ -200,11 +218,11 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   const mostrarTransmitente = tipo !== 'retificacao' || !!transmitente.nome?.trim() || permitirIncompleto;
 
   c.push(titulo(rot.requerente));
-  blocoPessoa(reqClonado).forEach((x) => c.push(x));
+  blocoPessoa(reqClonado, modo).forEach((x) => c.push(x));
 
   if (mostrarTransmitente) {
     c.push(titulo(rot.transmitente));
-    blocoPessoa(transClonado).forEach((x) => c.push(x));
+    blocoPessoa(transClonado, modo).forEach((x) => c.push(x));
   }
 
   partesAdicionais.forEach((p, i) => {
@@ -215,7 +233,7 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
       papelRotulo = tipo === 'venda' ? 'VENDEDOR / TRANSMITENTE ADICIONAL' : tipo === 'doacao' ? 'DOADOR ADICIONAL' : 'COPROPRIETÁRIO / TRANSMITENTE ADICIONAL';
     }
     c.push(titulo(papelRotulo));
-    blocoPessoa(p).forEach((x) => c.push(x));
+    blocoPessoa(p, modo).forEach((x) => c.push(x));
   });
 
   c.push(titulo('DO REQUERIMENTO'));

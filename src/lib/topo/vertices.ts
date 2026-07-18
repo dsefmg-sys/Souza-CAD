@@ -275,16 +275,15 @@ export function iniciarDoNorteHorario(vertices: Vertex[]): Vertex[] {
   let anel = area2 > 0 ? [...vertices].reverse() : [...vertices];
   
   // O SIGEF exige iniciar pelo vértice mais ao norte e a oeste nas coordenadas geodésicas (latitude/longitude).
-  // Comparamos com a precisão oficial do SIGEF (3 casas decimais de segundos, ou seja, 1/3600000 graus).
-  const latNorteVal = (val: number) => Math.round(val * 3600000);
-  const lonOesteVal = (val: number) => Math.round(val * 3600000);
-
+  // Comparamos os floats diretamente: maior latitude = mais ao norte (funciona para o hemisfério sul).
+  // Se a diferença for microscópica (<= 1e-9 graus, ou ~0.1mm), o desempate é pelo mais a oeste (menor longitude).
   let idx = 0;
   for (let i = 1; i < anel.length; i++) {
     const v = anel[i], m = anel[idx];
-    const vLat = latNorteVal(v.lat);
-    const mLat = latNorteVal(m.lat);
-    if (vLat > mLat || (vLat === mLat && lonOesteVal(v.lon) < lonOesteVal(m.lon))) {
+    const diffLat = v.lat - m.lat;
+    if (diffLat > 1e-9) {
+      idx = i;
+    } else if (Math.abs(diffLat) <= 1e-9 && v.lon < m.lon) {
       idx = i;
     }
   }

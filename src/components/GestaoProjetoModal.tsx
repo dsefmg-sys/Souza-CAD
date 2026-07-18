@@ -78,26 +78,22 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
     });
   };
 
-  async function validarDadosFinanceiro(tipoDoc: 'recibo' | 'contrato' | 'proposta' | 'declPosse' | 'declSobreposicao'): Promise<'ok' | 'gerar' | 'cadastro' | 'voltar'> {
+  async function validarDadosFinanceiro(tipoDoc: 'recibo' | 'contrato' | 'proposta' | 'declPosse' | 'declSobreposicao'): Promise<'ok' | 'gerar' | 'omitir' | 'cadastro' | 'voltar'> {
     let msgFalta = '';
     let destinoCadastro: 'escritorio' | 'pessoal' | 'conferir' = 'escritorio';
 
     // 1. Validar Escritório
     if (['recibo', 'contrato', 'proposta'].includes(tipoDoc)) {
       if (!escritorio.nome?.trim()) {
-        msgFalta = "O nome do escritório está em branco nas configurações.";
+        msgFalta = "O nome do escritório/empresa está em branco nas configurações.";
         destinoCadastro = 'escritorio';
       }
       else if (!escritorio.cnpj?.trim()) {
         msgFalta = "O CNPJ/CPF do escritório está em branco nas configurações.";
         destinoCadastro = 'escritorio';
       }
-      else if (!escritorio.endereco?.trim()) {
-        msgFalta = "O endereço do escritório está em branco nas configurações.";
-        destinoCadastro = 'escritorio';
-      }
-      else if (!escritorio.cidade?.trim() || !escritorio.uf?.trim()) {
-        msgFalta = "A cidade/UF do escritório está em branco nas configurações.";
+      else if (!escritorio.cidade?.trim()) {
+        msgFalta = "A cidade do escritório está em branco nas configurações.";
         destinoCadastro = 'escritorio';
       }
     }
@@ -141,17 +137,19 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
     if (!msgFalta) return 'ok';
 
     const opcao = await escolher({
-      titulo: 'Faltam Dados Importantes',
-      mensagem: `${msgFalta}\n\nComo deseja prosseguir?`,
+      titulo: 'Campos Não Preenchidos no Cadastro',
+      mensagem: `${msgFalta}\n\nPosso marcar os campos faltantes com "DADO AUSENTE" em vermelho, ou prefere omiti-los e ajustar o texto de forma fluida sem deixar lacunas?`,
       opcoes: [
-        { chave: 'cadastro', label: 'Ir para o cadastro completar', variant: 'default' },
-        { chave: 'gerar', label: 'Gerar com DADO AUSENTE', variant: 'destructive' }
+        { chave: 'gerar', label: 'Sim, marcar com DADO AUSENTE (vermelho)', variant: 'destructive' },
+        { chave: 'omitir', label: 'Não, omitir dados e ajustar o texto', variant: 'default' },
+        { chave: 'cadastro', label: 'Ir para o cadastro completar', variant: 'outline' },
       ],
       cancelLabel: 'Voltar e ajustar'
     });
 
     if (opcao === 'cadastro') return 'cadastro';
     if (opcao === 'gerar') return 'gerar';
+    if (opcao === 'omitir') return 'omitir';
     return 'voltar';
   }
 
@@ -223,8 +221,9 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                               onAbrirAjustes?.('escritorio');
                               return;
                             }
+                            const modoTratamentoAusente = status === 'gerar' ? 'dado_ausente' : status === 'omitir' ? 'omitir' : undefined;
                             const permitirIncompleto = status === 'gerar';
-                            gerarReciboPdf({ ...baseArgs, permitirIncompleto, valor: Number(reciboValor.replace(',', '.')) || valorCobrado || recebido, numero: consumirNumeroRecibo(new Date().getFullYear()) });
+                            gerarReciboPdf({ ...baseArgs, permitirIncompleto, modoTratamentoAusente, valor: Number(reciboValor.replace(',', '.')) || valorCobrado || recebido, numero: consumirNumeroRecibo(new Date().getFullYear()) });
                           }}
                         >
                           <Receipt className="size-3.5" /> Emitir Recibo (PDF)
@@ -274,8 +273,9 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                               onAbrirAjustes?.('escritorio');
                               return;
                             }
+                            const modoTratamentoAusente = status === 'gerar' ? 'dado_ausente' : status === 'omitir' ? 'omitir' : undefined;
                             const permitirIncompleto = status === 'gerar';
-                            gerarContratoPdf({ ...baseArgs, permitirIncompleto, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined });
+                            gerarContratoPdf({ ...baseArgs, permitirIncompleto, modoTratamentoAusente, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined });
                           }}
                         >
                           <FileText className="size-3.5" /> Emitir Contrato
@@ -289,8 +289,9 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                               onAbrirAjustes?.('escritorio');
                               return;
                             }
+                            const modoTratamentoAusente = status === 'gerar' ? 'dado_ausente' : status === 'omitir' ? 'omitir' : undefined;
                             const permitirIncompleto = status === 'gerar';
-                            gerarPropostaPdf({ ...baseArgs, permitirIncompleto, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined });
+                            gerarPropostaPdf({ ...baseArgs, permitirIncompleto, modoTratamentoAusente, valor: valorCobrado, formaPagamento: formaPagamento || undefined, prazoDias: Number(prazoDias) || undefined });
                           }}
                         >
                           <FileText className="size-3.5" /> Emitir Proposta
@@ -309,10 +310,12 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                         onAbrirConferir?.();
                         return;
                       }
+                      const modoTratamentoAusente = status === 'gerar' ? 'dado_ausente' : status === 'omitir' ? 'omitir' : undefined;
                       const permitirIncompleto = status === 'gerar';
-                      saveAs(await gerarDeclaracaoPosseDocx({ imovel, tecnico, dataExtenso, permitirIncompleto }), `Declaracao de posse - ${imovel.denominacao || 'imovel'}.docx`);
+                      const b = await gerarDeclaracaoPosseDocx({ imovel, tecnico, dataExtenso, permitirIncompleto, modoTratamentoAusente });
+                      saveAs(b, `Declaracao_Posse_${imovel.proprietario || 'Imovel'}.docx`);
                     }}>
-                      <FileText className="size-3.5 text-zinc-500" /> Declaração de posse
+                      <FileText className="size-3.5 text-emerald-500" /> Posse
                     </Button>
                     <Button variant="outline" className="h-8 text-xs gap-1.5 border-border hover:bg-muted" onClick={async () => {
                       const status = await validarDadosFinanceiro('declSobreposicao');
@@ -321,10 +324,12 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                         onAbrirAjustes?.('pessoal');
                         return;
                       }
+                      const modoTratamentoAusente = status === 'gerar' ? 'dado_ausente' : status === 'omitir' ? 'omitir' : undefined;
                       const permitirIncompleto = status === 'gerar';
-                      saveAs(await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico, dataExtenso, permitirIncompleto }), `Declaracao de inexistencia de sobreposicao - ${imovel.denominacao || 'imovel'}.docx`);
+                      const b = await gerarDeclaracaoSobreposicaoDocx({ imovel, tecnico, dataExtenso, permitirIncompleto, modoTratamentoAusente });
+                      saveAs(b, `Declaracao_Inexistencia_Sobreposicao_${imovel.denominacao || 'Imovel'}.docx`);
                     }}>
-                      <FileText className="size-3.5 text-zinc-500" /> Inexistência de sobreposição
+                      <FileText className="size-3.5 text-blue-500" /> Sobreposição
                     </Button>
                   </div>
                   <p className="mt-2 text-[10px] text-muted-foreground">A de posse é assinada pelo possuidor; a de sobreposição, pelo responsável técnico. Os textos são editáveis nos modelos.</p>

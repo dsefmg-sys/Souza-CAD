@@ -15,9 +15,11 @@ function varsFinanceiro(a: {
   prazoDias?: number | string;
   escritorio?: EscritorioData;
   permitirIncompleto?: boolean;
+  modoTratamentoAusente?: ModoTratamentoAusente;
 }): Record<string, string> {
+  const modo = a.modoTratamentoAusente ?? (a.permitirIncompleto ? 'dado_ausente' : 'omitir');
   const f = (val?: string) => {
-    if (a.permitirIncompleto && (!val || !val.trim() || val === '—')) return 'DADO AUSENTE';
+    if (modo === 'dado_ausente' && (!val || !val.trim() || val === '—')) return 'DADO AUSENTE';
     return val || '';
   };
 
@@ -59,6 +61,8 @@ export function extensoReais(v: number): string {
   return valorPorExtenso(v, { estilo: 'conjuncao', capitalizar: true });
 }
 
+import type { ModoTratamentoAusente } from '../topo/types';
+
 interface BaseArgs {
   imovel: ImovelData;
   escritorio: EscritorioData;
@@ -67,6 +71,7 @@ interface BaseArgs {
   areaHa: number;
   perimetro?: number;      // usado no {perimetro} do contrato/proposta
   permitirIncompleto?: boolean;
+  modoTratamentoAusente?: ModoTratamentoAusente;
 }
 
 function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, larg: number): number {

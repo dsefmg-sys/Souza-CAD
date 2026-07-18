@@ -557,7 +557,8 @@ export default function EditorPage() {
     polilinhas: true,
     textos: true,
     cotas: true,
-    simbolos: true
+    simbolos: true,
+    curvas: true
   });
   const [camadasBloqueadas, setCamadasBloqueadas] = useState<Record<string, boolean>>({
     divisas: false,
@@ -565,7 +566,8 @@ export default function EditorPage() {
     polilinhas: false,
     textos: false,
     cotas: false,
-    simbolos: false
+    simbolos: false,
+    curvas: false
   });
   const [estilosCamadas, setEstilosCamadas] = useState<Record<string, EstiloCamada>>({
     divisas: { cor: '#facc15', espessura: 2 },
@@ -573,7 +575,8 @@ export default function EditorPage() {
     polilinhas: { cor: '#2563eb', espessura: 1.5 },
     textos: { cor: '#000000', espessura: 1 },
     cotas: { cor: '#b91c1c', espessura: 1.2 },
-    simbolos: { cor: '#06b6d4', espessura: 1 }
+    simbolos: { cor: '#06b6d4', espessura: 1 },
+    curvas: { cor: '#854d0e', espessura: 1.0 }
   });
   useEffect(() => {
     setSegmentoSelecionado(null);
@@ -6659,7 +6662,7 @@ export default function EditorPage() {
                               </Button>
 
                               <div className="space-y-1 border-t border-border/40 pt-2">
-                                <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Ajustar Altitude Global</span>
+                                <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Ajustar Altitude Global dos Vértices</span>
                                 <div className="flex items-center justify-between gap-1.5 rounded-md bg-muted/20 p-1.5">
                                   <div className="flex items-center gap-1">
                                     <input
@@ -6739,7 +6742,8 @@ export default function EditorPage() {
                               key === 'ambientais' ? 'Áreas Ambientais (CAR)' :
                               key === 'polilinhas' ? 'Polilinhas / Linhas' :
                               key === 'textos' ? 'Textos' :
-                              key === 'cotas' ? 'Cotas / Medidas' : 'Símbolos';
+                              key === 'cotas' ? 'Cotas / Medidas' :
+                              key === 'curvas' ? 'Curvas de Nível / Altimetria' : 'Símbolos';
                             
                             const estilo = estilosCamadas[key];
                             const visivel = camadasVisiveis[key];
@@ -6874,11 +6878,11 @@ export default function EditorPage() {
                     <div className="flex flex-col gap-1 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
                       <span className="text-[10px] font-bold uppercase text-foreground px-1 mb-0.5">Ajuste de Tamanhos</span>
                       <div className="grid grid-cols-2 gap-1">
-                        <AjusteTamanho label="Rótulos" titulo="Tamanho dos nomes/códigos que aparecem nos vértices"
+                        <AjusteTamanho label="Rótulos" valor={`${tamNomes}pt`} titulo="Tamanho dos nomes/códigos que aparecem nos vértices"
                           onDec={() => setTamNomes((n) => Math.max(7, n - 1))} onInc={() => setTamNomes((n) => Math.min(22, n + 1))} />
-                        <AjusteTamanho label="Texto Central" titulo="Tamanho do texto central da gleba (denominação/área/perímetro no meio do polígono)"
+                        <AjusteTamanho label="Texto Central" valor={`${tamCentro}pt`} titulo="Tamanho do texto central da gleba (denominação/área/perímetro no meio do polígono)"
                           onDec={() => setTamCentro((n) => Math.max(7, n - 1))} onInc={() => setTamCentro((n) => Math.min(22, n + 1))} />
-                        <AjusteTamanho label="Interface" titulo="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos"
+                        <AjusteTamanho label="Interface" valor={`${Math.round(escalaInterface * 100)}%`} titulo="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos"
                           onDec={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.1).toFixed(2))))} onInc={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.1).toFixed(2))))} />
                       </div>
                     </div>
@@ -6886,7 +6890,7 @@ export default function EditorPage() {
                     <div className="grid grid-cols-3 gap-x-1 gap-y-1 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
                       <span className="text-[10px] font-bold uppercase text-foreground col-span-3 px-1 mb-0.5">Ajuste de Tamanhos</span>
                       
-                      <AjusteTamanho label="Interface" titulo="Tamanho das letras da interface"
+                      <AjusteTamanho label="Interface" valor={`${Math.round(escalaInterface * 100)}%`} titulo="Tamanho das letras da interface"
                         onDec={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.1).toFixed(2))))} onInc={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.1).toFixed(2))))} />
 
                       {([
@@ -6897,8 +6901,10 @@ export default function EditorPage() {
                         ['Confront.', 'escalaConfront', 1, 0.05, 0.4, 3, undefined],
                       ] as [string, keyof PlantaConfig, number, number, number, number, string | undefined][]).map(([rot, campo, base, passo, min, max, titulo]) => {
                         const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[campo] as number | undefined) ?? base; return { ...c, [campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
+                        const valAtual = (plantaConfig[campo] as number | undefined) ?? base;
+                        const valStr = campo === 'fonteRotulos' ? `${valAtual.toFixed(1)}pt` : `${Math.round(valAtual * 100)}%`;
                         return (
-                          <AjusteTamanho key={campo} label={rot} titulo={titulo} negrito={rot === 'Tabelas'}
+                          <AjusteTamanho key={campo} label={rot} valor={valStr} titulo={titulo} negrito={rot === 'Tabelas'}
                             onDec={() => aj(-passo)} onInc={() => aj(passo)} />
                         );
                       })}
@@ -6996,8 +7002,16 @@ export default function EditorPage() {
                 hemisferio={hemisferio}
                 imovel={imovel}
                 onVoltar2D={() => setVista('mapa')}
-                onCapture={(dataUrl) => {
-                  atualizarPlantaConfig((c) => ({ ...c, print3dDataUrl: dataUrl, mostrarPrint3D: true }));
+                onCapture={(dataUrl, meta) => {
+                  atualizarPlantaConfig((c) => ({
+                    ...c,
+                    print3dDataUrl: dataUrl,
+                    mostrarPrint3D: true,
+                    print3dVolumeCorte: meta?.volCorte,
+                    print3dVolumeAterro: meta?.volAterro,
+                    print3dZRef: meta?.zRef,
+                    print3dMostrarTerraplanagem: meta != null,
+                  }));
                   setPrint3dUrl(dataUrl);
                   aviso('Print do modelo 3D inserido na planta.');
                   setVista('planta');
@@ -7453,9 +7467,9 @@ export default function EditorPage() {
           )}
           {(vista === 'mapa' || vista === 'planta') && !telaEstreita && (
             <div
-              style={telaEstreita ? undefined : { left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)' }}
+              style={telaEstreita ? undefined : { left: `${posArea.x}px`, top: `${posArea.y}px`, maxWidth: 'calc(100vw - 1rem)', zIndex: 1160 }}
               className={`no-print pointer-events-auto ${Z_CLASSES.FLOATING_TOOLBAR} flex items-center gap-x-1.5 overflow-visible border border-border/80 bg-background/95 backdrop-blur-sm p-1.5 shadow-xl select-none ${
-                telaEstreita ? 'fixed inset-x-1 bottom-1 rounded-xl' : 'absolute rounded-2xl'
+                telaEstreita ? 'fixed inset-x-1 bottom-1 rounded-xl' : 'fixed rounded-2xl'
               }`}
             >
               {/* Alça de arrasto — no celular a barra é fixa na base, então não precisa arrastar */}
@@ -7653,7 +7667,7 @@ export default function EditorPage() {
               abrir o app; tem botão pra fechar, já que nem todo mundo quer ouvir toda vez. */}
           {(vista === 'mapa' || vista === 'planta') && !telaEstreita && !introTocando && barraAudiosAberta && (
             <div
-              style={{ left: `${posAudioBarra.x}px`, top: `${posAudioBarra.y}px` }}
+              style={{ left: `${posAudioBarra.x}px`, top: `${posAudioBarra.y}px`, zIndex: 1160 }}
               className={`no-print pointer-events-auto fixed ${Z_CLASSES.FLOATING_TOOLBAR} flex items-center gap-1.5 rounded-full border border-border/80 bg-background/95 p-1.5 shadow-xl backdrop-blur-sm select-none`}
             >
               <div
@@ -8825,6 +8839,7 @@ export default function EditorPage() {
         aviso={aviso}
         copiaBuffer={copiaBuffer}
         setCopiaBuffer={setCopiaBuffer}
+        onRemoverPrint3D={() => { setPrint3dUrl(undefined); setPlantaConfig((c) => ({ ...c, print3dDataUrl: undefined, print3dVolumeCorte: undefined, print3dVolumeAterro: undefined, print3dZRef: undefined, print3dMostrarTerraplanagem: undefined })); }}
       />
 
       <ErrorBoundary onReset={() => setPlanilhaAberta(false)}>
@@ -9082,36 +9097,30 @@ function MiniSelect({ label, value, options, onChange }: { label: string; value:
   );
 }
 
-// Linha de "Ajuste de Tamanhos" (rótulo + par -/+ compacto). Antes cada -/+ era um botão quadrado de
-// 20px com espaço entre os dois; num cartão estreito isso sobrava pouco espaço pro rótulo e cortava
-// o texto (ex.: "Texto Central" virava "Texto C..."). Agora os dois ficam colados num único bloco
-// fino, com só uma linha divisória entre eles — libera bastante largura pro nome sem perder o toque.
-function AjusteTamanho({ label, titulo, negrito = true, onDec, onInc }: { label: string; titulo?: string; negrito?: boolean; onDec: () => void; onInc: () => void }) {
+function AjusteTamanho({ label, valor, titulo, negrito = true, onDec, onInc }: { label: string; valor?: string; titulo?: string; negrito?: boolean; onDec: () => void; onInc: () => void }) {
   return (
-    <div className={`flex flex-col gap-0.5 rounded-md bg-muted/20 border border-border/40 px-1 py-1 text-[10px] text-foreground ${negrito ? 'font-bold' : 'font-medium'}`} title={titulo}>
-      <span className="truncate text-center leading-none text-[9.5px] text-muted-foreground font-bold mb-0.5">{label}</span>
-      <div className="flex h-5 overflow-hidden rounded border border-border/80 bg-background/80 shadow-xs">
+    <div className={`flex flex-col justify-between gap-1 rounded-lg bg-muted/40 border border-border/80 p-1.5 text-[10px] text-foreground shadow-2xs ${negrito ? 'font-bold' : 'font-medium'}`} title={titulo}>
+      <div className="flex items-center justify-between gap-1 px-0.5">
+        <span className="truncate text-[9.5px] font-bold text-foreground/90">{label}</span>
+        {valor && <span className="text-[9px] font-mono font-black text-primary shrink-0">{valor}</span>}
+      </div>
+      <div className="flex h-5 items-stretch overflow-hidden rounded border border-border/90 bg-background shadow-2xs">
         <button
           type="button"
           aria-label={`Diminuir ${label}`}
-          className="flex flex-1 items-center justify-center text-foreground/80 hover:bg-primary/10 hover:text-primary active:scale-95 transition-all"
+          className="flex flex-1 items-center justify-center font-black text-xs text-foreground bg-secondary/80 hover:bg-primary hover:text-white active:scale-95 transition-all"
           onClick={onDec}
         >
-          <svg viewBox="0 0 24 24" width="12" height="12" className="block shrink-0 stroke-current" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          −
         </button>
         <div className="w-px bg-border/80" />
         <button
           type="button"
           aria-label={`Aumentar ${label}`}
-          className="flex flex-1 items-center justify-center text-foreground/80 hover:bg-primary/10 hover:text-primary active:scale-95 transition-all"
+          className="flex flex-1 items-center justify-center font-black text-xs text-foreground bg-secondary/80 hover:bg-primary hover:text-white active:scale-95 transition-all"
           onClick={onInc}
         >
-          <svg viewBox="0 0 24 24" width="12" height="12" className="block shrink-0 stroke-current" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          +
         </button>
       </div>
     </div>

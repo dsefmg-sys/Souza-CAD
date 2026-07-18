@@ -2230,11 +2230,15 @@ export default function Planta({
         const ov3D = textosOv[id3D] || {};
         const offset3D = getOverride(id3D);
         const esc3D = ov3D.escala ?? 1.0;
-        
+
+        const temTerrap = config.print3dMostrarTerraplanagem &&
+          (config.print3dVolumeCorte != null || config.print3dVolumeAterro != null);
+        const extraH = temTerrap ? 36 : 0; // altura extra para bloco de dados
+
         // Coordenada base do quadro 3D: no lado esquerdo do desenho, acima da barra de escala
         const baseX = (DRAW.x0 + 40) + (offset3D.dx ?? 0);
-        const baseY = (DRAW.y1 - 220) + (offset3D.dy ?? 0);
-        
+        const baseY = (DRAW.y1 - 220 - extraH) + (offset3D.dy ?? 0);
+
         const w3D = 240 * esc3D;
         const h3D = 160 * esc3D;
 
@@ -2254,30 +2258,78 @@ export default function Planta({
               captura(e);
             } : undefined}
           >
-            {/* Fundo do quadro */}
-            <rect
-              x={baseX}
-              y={baseY}
-              width={w3D}
-              height={h3D}
-              fill="#ffffff"
-              fillOpacity={0.9}
-              stroke={objetoSelId === id3D ? '#f59e0b' : '#cbd5e1'}
-              strokeWidth={objetoSelId === id3D ? 2 : 1}
-              strokeDasharray={objetoSelId === id3D ? undefined : '3 3'}
-              rx={6}
-              ry={6}
-            />
-            {/* Imagem do relevo 3D */}
+            {/* Moldura Cartográfica e Quadriculado de Fundo */}
+            <g key="mdr-cartographic-grid">
+              {/* Moldura dupla externa */}
+              <rect
+                x={baseX - 3}
+                y={baseY - 3}
+                width={w3D + 6}
+                height={h3D + extraH + 6}
+                fill="none"
+                stroke="#94a3b8"
+                strokeWidth={0.75}
+                rx={4}
+                ry={4}
+              />
+              <rect
+                x={baseX}
+                y={baseY}
+                width={w3D}
+                height={h3D + extraH}
+                fill="#f8fafc"
+                fillOpacity={0.25}
+                stroke={objetoSelId === id3D ? '#f59e0b' : '#64748b'}
+                strokeWidth={objetoSelId === id3D ? 2 : 1}
+                rx={2}
+                ry={2}
+              />
+
+              {/* Reticulado/Quadriculado cartográfico suave de fundo */}
+              {Array.from({ length: 6 }).map((_, i) => {
+                const gx = baseX + ((i + 1) * w3D) / 7;
+                return (
+                  <line
+                    key={`mdr-gx-${i}`}
+                    x1={gx}
+                    y1={baseY}
+                    x2={gx}
+                    y2={baseY + h3D}
+                    stroke="#94a3b8"
+                    strokeWidth={0.4}
+                    strokeDasharray="2 2"
+                    opacity={0.5}
+                  />
+                );
+              })}
+              {Array.from({ length: 4 }).map((_, i) => {
+                const gy = baseY + ((i + 1) * h3D) / 5;
+                return (
+                  <line
+                    key={`mdr-gy-${i}`}
+                    x1={baseX}
+                    y1={gy}
+                    x2={baseX + w3D}
+                    y2={gy}
+                    stroke="#94a3b8"
+                    strokeWidth={0.4}
+                    strokeDasharray="2 2"
+                    opacity={0.5}
+                  />
+                );
+              })}
+            </g>
+
+            {/* Imagem do relevo 3D — fundo transparente via PNG */}
             <image
               href={print3dUrl}
-              x={baseX + 3}
-              y={baseY + 3}
-              width={w3D - 6}
-              height={h3D - 6}
+              x={baseX + 2}
+              y={baseY + 2}
+              width={w3D - 4}
+              height={h3D - 4}
               preserveAspectRatio="xMidYMid meet"
             />
-            
+
             {/* Texto auxiliar / Rótulo do Quadro */}
             <text
               x={baseX + 6}
@@ -2288,6 +2340,28 @@ export default function Planta({
             >
               Modelo Digital de Relevo (MDR 3D)
             </text>
+
+            {/* Bloco de dados de terraplanagem abaixo da imagem */}
+            {temTerrap && (
+              <g transform={`translate(${baseX}, ${baseY + h3D})`}>
+                <rect x={0} y={0} width={w3D} height={extraH} fill="#f8fafc" fillOpacity={0.92} rx={0} ry={0} />
+                <rect x={0} y={0} width={w3D} height={1} fill="#e2e8f0" />
+                <text x={8} y={12} fontSize={fs(6)} fontWeight="bold" fill="#64748b">TERRAPLANAGEM (Prisma Triangular)</text>
+                {config.print3dZRef != null && (
+                  <text x={8} y={22} fontSize={fs(5.5)} fill="#94a3b8">Platô: {config.print3dZRef.toFixed(2)} m</text>
+                )}
+                {config.print3dVolumeCorte != null && (
+                  <text x={8} y={31} fontSize={fs(6)} fill="#dc2626" fontWeight="bold">
+                    ✂ Corte: {config.print3dVolumeCorte.toFixed(1)} m³
+                  </text>
+                )}
+                {config.print3dVolumeAterro != null && (
+                  <text x={w3D / 2 + 4} y={31} fontSize={fs(6)} fill="#2563eb" fontWeight="bold">
+                    ⬇ Aterro: {config.print3dVolumeAterro.toFixed(1)} m³
+                  </text>
+                )}
+              </g>
+            )}
 
             {editavel && objetoSelId === id3D && onRemoverPrint3D && (
               <g
@@ -2304,6 +2378,7 @@ export default function Planta({
         );
       })()}
 
+
       {/* O diagrama técnico de convergência (NV/NQ/NM) agora vive DENTRO da seção
           "Informações de Coordenadas" (FaixaInferior), seu lugar natural. */}
 
@@ -2312,6 +2387,7 @@ export default function Planta({
         imovel={imovel} res={res} ef={ef} tecnico={tecnico} zona={zona} hemisferio={hemisferio}
         vref={vref} conv={conv} decl={decl} represUsadas={represUsadas} fatorK={fatorK}
         verConv={verConv} verNortes={verNortes} escala={escTxt} situacaoUrl={situacaoUrl} verSituacao={verSituacao}
+        situacaoEscala={config.situacaoEscala ?? 1.0}
         estiloDiagrama={config.estiloDiagrama ?? 0} onCiclarEstilo={onCiclarEstilo}
         coordEditavel={editavel} coordGetOv={getOverride}
         onCoordItemDown={(id, e) => { e.stopPropagation(); tedComum.onDragStart(id, e); }}
@@ -2743,6 +2819,8 @@ function FaixaInferior(props: {
   imovel: ImovelData; res: ResultadoCalculo; ef: ReturnType<typeof valoresEfetivos>; tecnico: TecnicoData;
   zona: number; hemisferio: 'N' | 'S'; vref: Vertex; conv: number; decl: number; represUsadas: string[]; fatorK: number;
   verConv: boolean; verNortes: boolean; escala: number; situacaoUrl?: string; verSituacao: boolean;
+  /** Fator de escala da imagem de situação dentro do box (1.0 = padrão). */
+  situacaoEscala?: number;
   estiloDiagrama?: number; onCiclarEstilo?: (campo: 'estiloRosa' | 'estiloEscala' | 'estiloDiagrama', total: number) => void;
   coordEditavel?: boolean; coordGetOv?: (id: string) => TextoOverride; onCoordItemDown?: (id: string, e: ReactPointerEvent) => void;
   situacaoSel?: boolean; onSituacaoClick?: () => void; onRemoverSituacao?: () => void;
@@ -2754,7 +2832,7 @@ function FaixaInferior(props: {
   onSelecObjeto?: (id: string | null) => void;
   onDblClickObjeto?: (id: string) => void;
 }) {
-  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu, corVerticeP, corVerticeM, onSelecObjeto, onDblClickObjeto } = props;
+  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, situacaoEscala = 1.0, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu, corVerticeP, corVerticeM, onSelecObjeto, onDblClickObjeto } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -2784,9 +2862,24 @@ function FaixaInferior(props: {
         <text x={x1 + w1 / 2} y={y0 + 16} fontSize={fs(9.5)} fontWeight="bold" fill="#fff" textAnchor="middle">SITUAÇÃO</text>
         {situacaoUrl && verSituacao ? (
           <g>
-            <image href={situacaoUrl} x={x1 + 6} y={y0 + 30} width={w1 - 12} height={hBox - 36} preserveAspectRatio="xMidYMid slice"
-              style={coordEditavel ? { cursor: 'pointer' } : undefined}
-              onClick={coordEditavel && onSituacaoClick ? (e) => { e.stopPropagation(); onSituacaoClick(); onSelecObjeto?.('planta:situacao'); } : undefined} />
+            {/* clipPath para não sair do box */}
+            <defs>
+              <clipPath id="sit-clip">
+                <rect x={x1 + 6} y={y0 + 30} width={w1 - 12} height={hBox - 36} />
+              </clipPath>
+            </defs>
+            {/* Imagem com escala centralizada no box */}
+            <g clipPath="url(#sit-clip)">
+              <image
+                href={situacaoUrl}
+                x={x1 + 6 + (w1 - 12) * (1 - situacaoEscala) / 2}
+                y={y0 + 30 + (hBox - 36) * (1 - situacaoEscala) / 2}
+                width={(w1 - 12) * situacaoEscala}
+                height={(hBox - 36) * situacaoEscala}
+                preserveAspectRatio="xMidYMid slice"
+                style={coordEditavel ? { cursor: 'pointer' } : undefined}
+                onClick={coordEditavel && onSituacaoClick ? (e) => { e.stopPropagation(); onSituacaoClick(); onSelecObjeto?.('planta:situacao'); } : undefined} />
+            </g>
             {/* Overlay laranja "Atualizar" — aparece sobre a imagem quando o desenho mudou */}
             {coordEditavel && situacaoStale && (
               <g style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); onAtualizarSituacao?.(); }}

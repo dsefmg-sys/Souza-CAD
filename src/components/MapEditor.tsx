@@ -2284,15 +2284,14 @@ export default function MapEditor(props: Props) {
 
       {onAtivar3D && (
         <div className={`absolute left-2 ${Z_CLASSES.MAP_CONTROLS} transition-all duration-200 ${modo === 'medir' ? 'bottom-40' : 'bottom-6'}`}>
-          <Button
+          <button
             type="button"
-            size="sm"
             onClick={onAtivar3D}
-            className="h-9 px-3 gap-1.5 font-bold shadow-2xl bg-amber-600 hover:bg-amber-500 text-white border-transparent"
+            className="h-10 px-4 gap-1.5 text-xs font-black uppercase tracking-wider flex items-center justify-center bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-[0_4px_0_#92400e] active:shadow-none border-b-4 border-amber-800 active:border-b-0 active:translate-y-[4px] rounded-xl transition-all duration-75 select-none"
             title="Alternar para visualização 3D do terreno e polígono"
           >
-            <Box className="size-4" /> 3D
-          </Button>
+            <Box className="size-4 shrink-0" /> <span>3D</span>
+          </button>
         </div>
       )}
     </MapContainer>

@@ -414,10 +414,25 @@ export interface PlantaConfig {
   situacaoEscala?: number;
   print3dDataUrl?: string;
   mostrarPrint3D?: boolean;
+  /** Volume de corte (m³) calculado na terraplanagem ao capturar o MDR. */
+  print3dVolumeCorte?: number;
+  /** Volume de aterro (m³) calculado na terraplanagem ao capturar o MDR. */
+  print3dVolumeAterro?: number;
+  /** Cota de referência (platô, m) usada no cálculo de terraplanagem. */
+  print3dZRef?: number;
+  /** Exibir dados de corte/aterro abaixo da imagem MDR na planta. */
+  print3dMostrarTerraplanagem?: boolean;
+  /** Exibir altitude nas curvas de nível na planta. Padrão: true (apenas nas mestras). */
+  mostrarCotasCurvas?: boolean;
   sigefCor?: string;
   sigefEspessura?: number;
   sigefOpacidade?: number;
 }
+
+/** Como os dados ausentes/não preenchidos no cadastro devem ser tratados na geração de documentos. */
+export type ModoTratamentoAusente = 'dado_ausente' | 'omitir' | 'linhas';
+
+
 
 /** Dados fixos do escritório (carimbo da planta, cabeçalho de recibos/contratos). */
 export interface EscritorioData {

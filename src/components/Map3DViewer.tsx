@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { RotateCcw, Download, Navigation, Wand2, RefreshCw, Camera } from 'lucide-react';
+import { RotateCcw, Download, Navigation, Wand2, RefreshCw, Camera, X, Map, Layers, Shovel, Pickaxe } from 'lucide-react';
 import { type Vertex, type ObjetoDesenho, type ImovelData } from '@/lib/topo/types';
 import { triangularDelaunay, pontoNoPoligono, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { exportarKML } from '@/lib/export/kml';
@@ -47,7 +47,7 @@ interface Map3DViewerProps {
   hemisferio: 'N' | 'S';
   imovel: ImovelData;
   onVoltar2D: () => void;
-  onCapture?: (dataUrl: string) => void;
+  onCapture?: (dataUrl: string, meta?: { volCorte?: number; volAterro?: number; zRef?: number }) => void;
 }
 
 export default function Map3DViewer({
@@ -74,8 +74,13 @@ export default function Map3DViewer({
 
   // Girar sozinho quando ninguém mexe. `autoGirar` (state) controla o botão; `autoGirarRef` é lido pelo
   // laço sem reiniciá-lo. `ultimaInteracao` marca quando o usuário mexeu pela última vez (pra pausar).
-  const [autoGirar, setAutoGirar] = useState(true);
-  const autoGirarRef = useRef(true);
+  // Por padrão DESATIVADO para não causar confusão ao entrar na view 3D.
+  const [autoGirar, setAutoGirar] = useState(false);
+  const autoGirarRef = useRef(false);
+
+  // Dialog de configuração antes de inserir o print do MDR na planta
+  const [captureDialogAberto, setCaptureDialogAberto] = useState(false);
+  const [captureIncluirTerraplanagem, setCaptureIncluirTerraplanagem] = useState(true);
   useEffect(() => { autoGirarRef.current = autoGirar; }, [autoGirar]);
   const ultimaInteracao = useRef(0);
   const marcarInteracao = () => { ultimaInteracao.current = performance.now(); };
@@ -86,9 +91,14 @@ export default function Map3DViewer({
 
   // Configurações visuais adicionais
   const [mostrarParedes, setMostrarParedes] = useState(false); // desativada por padrão conforme pedido do usuário
-  const [mostrarTin, setMostrarTin] = useState(false);
+  const [mostrarTin, setMostrarTin] = useState(true); // wireframe ativo por padrão para visualizar a malha
   const [destacarErros, setDestacarErros] = useState(true); // ativada por padrão para ajudar a encontrar erros de cota zero
   const [mostrarLabels3D, setMostrarLabels3D] = useState(true);
+  const [mostrarCurvas3D, setMostrarCurvas3D] = useState(true); // Exibição de curvas de nível no 3D
+  const [mostrarAltitudesCurvas, setMostrarAltitudesCurvas] = useState(true); // Exibir cotas de nível (valores de altitude)
+  const [mostrarCurvasNoCapture, setMostrarCurvasNoCapture] = useState(true); // inclui curvas de nível no print MDR
+  const [mostrarAltitudesNoCapture, setMostrarAltitudesNoCapture] = useState(true); // inclui valores de altitude no print MDR
+  const [modoEnquadramentoCapture, setModoEnquadramentoCapture] = useState<'camera' | 'imovel_completo'>('imovel_completo');
 
   // Estados de cálculo de terraplenagem (volume de corte/aterro)
   const [calcVolumeAtivo, setCalcVolumeAtivo] = useState(false);
@@ -233,6 +243,9 @@ export default function Map3DViewer({
     return { corte: totalCorte, aterro: totalAterro, area: totalArea };
   }, [calcVolumeAtivo, superficie, zRef]);
 
+  // Ref para indicar que o próximo frame deve renderizar sem fundo (captura transparente)
+  const captureModeRef = useRef(false);
+
   // Render do Loop 3D via Canvas 2D adaptado com Projeção Ortográfica / Perspectiva Simples
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -252,19 +265,21 @@ export default function Map3DViewer({
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
 
-      // Fundo escuro profissional com grid discreto
-      ctx.fillStyle = '#060f0a';
-      ctx.fillRect(0, 0, w, h);
+      if (!captureModeRef.current) {
+        // Fundo escuro profissional com grid discreto
+        ctx.fillStyle = '#060f0a';
+        ctx.fillRect(0, 0, w, h);
 
-      // Desenha grade de fundo
-      ctx.strokeStyle = '#102e1c';
-      ctx.lineWidth = 0.5;
-      const step = 40;
-      for (let x = 0; x < w; x += step) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-      }
-      for (let y = 0; y < h; y += step) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        // Desenha grade de fundo
+        ctx.strokeStyle = '#102e1c';
+        ctx.lineWidth = 0.5;
+        const step = 40;
+        for (let x = 0; x < w; x += step) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for (let y = 0; y < h; y += step) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
       }
 
       if (finitePts.length === 0) return;
@@ -406,29 +421,48 @@ export default function Map3DViewer({
       }
 
       // 1. Curvas de nível DRAPEJADAS no relevo
-      const curvasNivel = objetos.filter((o) => o.tipo === 'polilinha' && o.curvaNivel !== undefined);
-      if (curvasNivel.length > 0) {
-        ctx.lineJoin = 'round';
-        curvasNivel.forEach((obj) => {
-          if (obj.pontos.length < 2) return;
-          ctx.beginPath();
-          obj.pontos.forEach((p, idx) => {
-            const proj = project(p.leste, p.norte, obj.curvaNivel || 0);
-            if (idx === 0) ctx.moveTo(proj.x, proj.y);
-            else ctx.lineTo(proj.x, proj.y);
+      const desenharCurvas = captureModeRef.current ? mostrarCurvasNoCapture : mostrarCurvas3D;
+      const desenharAltitudes = captureModeRef.current ? mostrarAltitudesNoCapture : mostrarAltitudesCurvas;
+
+      if (desenharCurvas) {
+        const curvasNivel = objetos.filter((o) => o.tipo === 'polilinha' && o.curvaNivel !== undefined);
+        if (curvasNivel.length > 0) {
+          ctx.lineJoin = 'round';
+          curvasNivel.forEach((obj) => {
+            if (obj.pontos.length < 2) return;
+            ctx.beginPath();
+            obj.pontos.forEach((p, idx) => {
+              const proj = project(p.leste, p.norte, obj.curvaNivel || 0);
+              if (idx === 0) ctx.moveTo(proj.x, proj.y);
+              else ctx.lineTo(proj.x, proj.y);
+            });
+            if (temSuperficie) {
+              ctx.strokeStyle = obj.cor || '#8a6d3b';
+              ctx.globalAlpha = 0.85;
+              ctx.lineWidth = Math.max(0.7, (obj.espessura ?? 0.6) * 1.4);
+            } else {
+              ctx.strokeStyle = 'rgba(135, 169, 146, 0.35)';
+              ctx.globalAlpha = 1;
+              ctx.lineWidth = 1;
+            }
+            ctx.stroke();
+
+            if (desenharAltitudes && obj.curvaNivel !== undefined && obj.pontos.length >= 2) {
+              const pMid = obj.pontos[Math.floor(obj.pontos.length / 2)];
+              const projMid = project(pMid.leste, pMid.norte, obj.curvaNivel);
+              ctx.save();
+              ctx.font = 'bold 9.5px monospace';
+              ctx.fillStyle = '#fde68a';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.shadowColor = 'rgba(0,0,0,0.85)';
+              ctx.shadowBlur = 4;
+              ctx.fillText(`${obj.curvaNivel.toFixed(1)}m`, projMid.x, projMid.y);
+              ctx.restore();
+            }
           });
-          if (temSuperficie) {
-            ctx.strokeStyle = obj.cor || '#8a6d3b';
-            ctx.globalAlpha = 0.85;
-            ctx.lineWidth = Math.max(0.7, (obj.espessura ?? 0.6) * 1.4);
-          } else {
-            ctx.strokeStyle = 'rgba(135, 169, 146, 0.35)';
-            ctx.globalAlpha = 1;
-            ctx.lineWidth = 1;
-          }
-          ctx.stroke();
-        });
-        ctx.globalAlpha = 1;
+          ctx.globalAlpha = 1;
+        }
       }
 
       // 2. Base tracejada e cortinado vertical: só como FALLBACK quando não há superfície sólida.
@@ -850,31 +884,127 @@ export default function Map3DViewer({
           className={`flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold transition-colors border ${calcVolumeAtivo ? 'bg-blue-600 text-white border-transparent' : 'text-blue-500 border-blue-500/30 hover:bg-blue-500/10'}`}
           title="Ativa o cálculo e visualização de volumes de terraplenagem"
         >
-          <Wand2 className="size-3" /> Cubagem (Terraplenagem)
+          <Shovel className="size-3" /> Terraplenagem (Cubagem)
         </button>
 
         {onCapture && (
-          <button
-            type="button"
-            onClick={() => {
-              const canvas = canvasRef.current;
-              if (canvas) {
-                const dataUrl = canvas.toDataURL('image/png');
-                onCapture(dataUrl);
-              }
-            }}
-            className="flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold transition-colors border text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
-            title="Captura o estado atual do modelo 3D e insere como um quadro móvel na planta"
-          >
-            <Camera className="size-3" /> Inserir Print na Planta
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setCaptureDialogAberto(true)}
+              className="flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold transition-colors border text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+              title="Captura o estado atual do modelo 3D e insere como um quadro móvel na planta"
+            >
+              <Camera className="size-3" /> Inserir Print na Planta
+            </button>
+
+            {/* Dialog de configuração do capture MDR */}
+            {captureDialogAberto && (
+              <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150" onClick={() => setCaptureDialogAberto(false)}>
+                <div className="bg-background border border-border rounded-2xl shadow-2xl p-5 w-84 space-y-4 animate-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-sm text-foreground">Inserir Modelo 3D na Planta</h3>
+                    <button type="button" onClick={() => setCaptureDialogAberto(false)} className="text-muted-foreground hover:text-foreground rounded-full p-1"><X className="size-4" /></button>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">A captura do modelo 3D será gerada com fundo transparente e inserida como imagem móvel na prancha.</p>
+
+                  <div className="space-y-2.5 rounded-xl bg-muted/30 p-3">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Enquadramento da Captura</span>
+                      <select
+                        value={modoEnquadramentoCapture}
+                        onChange={(e) => setModoEnquadramentoCapture(e.target.value as any)}
+                        className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                      >
+                        <option value="imovel_completo">Enquadrar Imóvel Completo (Visão Geral de Cima)</option>
+                        <option value="camera">Manter Ângulo Atual da Câmera</option>
+                      </select>
+                    </div>
+
+                    <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium border-t border-border/30 pt-2">
+                      <span>Incluir curvas de nível</span>
+                      <input type="checkbox" checked={mostrarCurvasNoCapture} onChange={(e) => setMostrarCurvasNoCapture(e.target.checked)} className="size-3.5 accent-primary" />
+                    </label>
+
+                    {mostrarCurvasNoCapture && (
+                      <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium pl-2">
+                        <span className="text-muted-foreground">Exibir altitudes nas curvas</span>
+                        <input type="checkbox" checked={mostrarAltitudesNoCapture} onChange={(e) => setMostrarAltitudesNoCapture(e.target.checked)} className="size-3.5 accent-primary" />
+                      </label>
+                    )}
+
+                    {calcVolumeAtivo && (volumes.corte + volumes.aterro) > 0 && (
+                      <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium border-t border-border/30 pt-2">
+                        <span>Incluir dados de terraplanagem</span>
+                        <input type="checkbox" checked={captureIncluirTerraplanagem} onChange={(e) => setCaptureIncluirTerraplanagem(e.target.checked)} className="size-3.5 accent-primary" />
+                      </label>
+                    )}
+                  </div>
+
+                  {calcVolumeAtivo && captureIncluirTerraplanagem && (volumes.corte + volumes.aterro) > 0 && (
+                    <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-2.5 text-[10px] space-y-0.5">
+                      <div className="flex justify-between"><span className="text-red-500 font-bold">✂ Corte</span><span className="font-mono">{(volumes.corte * fatorEmpolamento).toFixed(1)} m³</span></div>
+                      <div className="flex justify-between"><span className="text-blue-500 font-bold">⬇ Aterro</span><span className="font-mono">{volumes.aterro.toFixed(1)} m³</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Platô</span><span className="font-mono">{zRef.toFixed(2)} m</span></div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setCaptureDialogAberto(false)}
+                      className="flex-1 h-8 rounded-lg border text-[11px] font-bold hover:bg-muted transition-colors">
+                      Cancelar
+                    </button>
+                    <button type="button"
+                      onClick={() => {
+                        const canvas = canvasRef.current;
+                        if (!canvas) return;
+
+                        const yawOld = yawRef.current;
+                        const pitchOld = pitchRef.current;
+                        const zoomOld = zoomRef.current;
+
+                        if (modoEnquadramentoCapture === 'imovel_completo') {
+                          yawRef.current = 0;
+                          pitchRef.current = 0.85;
+                          zoomRef.current = 0.95;
+                        }
+
+                        captureModeRef.current = true;
+                        marcarInteracao();
+
+                        requestAnimationFrame(() => {
+                          requestAnimationFrame(() => {
+                            const dataUrl = canvas.toDataURL('image/png');
+                            captureModeRef.current = false;
+                            yawRef.current = yawOld;
+                            pitchRef.current = pitchOld;
+                            zoomRef.current = zoomOld;
+                            marcarInteracao();
+
+                            const meta = (calcVolumeAtivo && captureIncluirTerraplanagem && (volumes.corte + volumes.aterro) > 0)
+                              ? { volCorte: +(volumes.corte * fatorEmpolamento).toFixed(2), volAterro: +volumes.aterro.toFixed(2), zRef: +zRef.toFixed(2) }
+                              : undefined;
+                            onCapture!(dataUrl, meta);
+                            setCaptureDialogAberto(false);
+                          });
+                        });
+                      }}
+                      className="flex-1 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors flex items-center justify-center gap-1.5">
+                      <Camera className="size-3.5" /> Capturar e Inserir
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Visualização & Diagnósticos */}
         <div className="space-y-1.5 pt-2 border-t border-border/60">
           <span className="font-bold text-[9px] uppercase tracking-wider text-muted-foreground">Exibição & Diagnóstico</span>
           <div className="space-y-1.5">
-            <label className="flex items-center justify-between gap-2 cursor-pointer">
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-xs">
               <span>Paredes Laterais</span>
               <input
                 type="checkbox"
@@ -883,7 +1013,7 @@ export default function Map3DViewer({
                 className="rounded border-muted text-primary focus:ring-primary size-3.5"
               />
             </label>
-            <label className="flex items-center justify-between gap-2 cursor-pointer">
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-xs">
               <span>Malha TIN (Wireframe)</span>
               <input
                 type="checkbox"
@@ -892,7 +1022,27 @@ export default function Map3DViewer({
                 className="rounded border-muted text-primary focus:ring-primary size-3.5"
               />
             </label>
-            <label className="flex items-center justify-between gap-2 cursor-pointer" title="Destaca vértices que estão com altitude zero no desenho">
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-xs">
+              <span>Curvas de Nível 3D</span>
+              <input
+                type="checkbox"
+                checked={mostrarCurvas3D}
+                onChange={(e) => setMostrarCurvas3D(e.target.checked)}
+                className="rounded border-muted text-primary focus:ring-primary size-3.5"
+              />
+            </label>
+            {mostrarCurvas3D && (
+              <label className="flex items-center justify-between gap-2 cursor-pointer text-xs pl-2">
+                <span className="text-muted-foreground">Mostrar Altitudes nas Curvas</span>
+                <input
+                  type="checkbox"
+                  checked={mostrarAltitudesCurvas}
+                  onChange={(e) => setMostrarAltitudesCurvas(e.target.checked)}
+                  className="rounded border-muted text-primary focus:ring-primary size-3.5"
+                />
+              </label>
+            )}
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-xs" title="Destaca vértices que estão com altitude zero no desenho">
               <span>Destacar Cota Zero</span>
               <input
                 type="checkbox"
@@ -901,7 +1051,7 @@ export default function Map3DViewer({
                 className="rounded border-muted text-primary focus:ring-primary size-3.5"
               />
             </label>
-            <label className="flex items-center justify-between gap-2 cursor-pointer" title="Mostra os rótulos de nome e cota dos vértices no modelo 3D">
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-xs" title="Mostra os rótulos de nome e cota dos vértices no modelo 3D">
               <span>Mostrar Rótulos</span>
               <input
                 type="checkbox"
@@ -1015,8 +1165,9 @@ export default function Map3DViewer({
           size="sm"
           className="h-9 px-4 gap-1.5 font-bold shadow-md bg-[#10b981] hover:bg-[#059669] text-white"
           onClick={onVoltar2D}
+          title="Voltar ao modo Mapa 2D"
         >
-          <Navigation className="size-3.5 rotate-45" /> Voltar para 2D
+          <Map className="size-4" /> 2D
         </Button>
       </div>
     </div>

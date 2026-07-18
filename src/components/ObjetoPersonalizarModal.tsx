@@ -26,6 +26,7 @@ interface ObjetoPersonalizarModalProps {
   aviso: (msg: string) => void;
   copiaBuffer: ObjetoDesenho | null;
   setCopiaBuffer: (obj: ObjetoDesenho | null) => void;
+  onRemoverPrint3D?: () => void;
 }
 
 export function ObjetoPersonalizarModal({
@@ -44,7 +45,8 @@ export function ObjetoPersonalizarModal({
   gerarSituacaoPlanta,
   aviso,
   copiaBuffer,
-  setCopiaBuffer
+  setCopiaBuffer,
+  onRemoverPrint3D,
 }: ObjetoPersonalizarModalProps) {
   if (!objPersonalizarId) return null;
 
@@ -507,25 +509,74 @@ export function ObjetoPersonalizarModal({
             const id3D = 'planta.print3d';
             const ov3D = plantaConfig.textos?.[id3D] || {};
             const esc3D = (ov3D as any).escala ?? 1.0;
+            const temTerrap = plantaConfig.print3dVolumeCorte != null || plantaConfig.print3dVolumeAterro != null;
             return (
               <div className="space-y-4">
-                <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Modelo de Relevo 3D (Captura)</div>
+                <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Modelo de Relevo 3D (MDR)</div>
+
+                {/* Mostrar / Ocultar */}
                 <label className="flex items-center gap-2 cursor-pointer py-1">
                   <input type="checkbox" checked={plantaConfig.mostrarPrint3D !== false}
                     onChange={(e) => setPlantaConfig((p: PlantaConfig) => ({ ...p, mostrarPrint3D: e.target.checked }))}
                     className="rounded border-zinc-300 text-primary focus:ring-primary size-4" />
                   <span className="font-semibold text-foreground">Mostrar na planta</span>
                 </label>
+
+                {/* Dados de terraplanagem — só se houver dados */}
+                {temTerrap && (
+                  <label className="flex items-center gap-2 cursor-pointer py-1">
+                    <input type="checkbox" checked={plantaConfig.print3dMostrarTerraplanagem !== false}
+                      onChange={(e) => setPlantaConfig((p: PlantaConfig) => ({ ...p, print3dMostrarTerraplanagem: e.target.checked }))}
+                      className="rounded border-zinc-300 text-primary focus:ring-primary size-4" />
+                    <span className="font-semibold text-foreground">Exibir dados de terraplanagem</span>
+                  </label>
+                )}
+
+                {/* Resumo dos dados de terraplanagem */}
+                {temTerrap && (
+                  <div className="rounded-lg bg-muted/40 border border-border p-2.5 space-y-1 text-[11px]">
+                    {plantaConfig.print3dZRef != null && (
+                      <div className="flex justify-between"><span className="text-muted-foreground">Platô</span><span className="font-mono font-bold">{plantaConfig.print3dZRef.toFixed(2)} m</span></div>
+                    )}
+                    {plantaConfig.print3dVolumeCorte != null && (
+                      <div className="flex justify-between"><span className="text-red-600 font-bold">✂ Corte</span><span className="font-mono font-bold">{plantaConfig.print3dVolumeCorte.toFixed(1)} m³</span></div>
+                    )}
+                    {plantaConfig.print3dVolumeAterro != null && (
+                      <div className="flex justify-between"><span className="text-blue-600 font-bold">⬇ Aterro</span><span className="font-mono font-bold">{plantaConfig.print3dVolumeAterro.toFixed(1)} m³</span></div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tamanho */}
                 <div className="space-y-1">
                   <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
                     <span>Tamanho</span><span>{esc3D.toFixed(2)}x</span>
                   </div>
+                  <input type="range" min="0.4" max="3.0" step="0.05"
+                    value={esc3D}
+                    onChange={(e) => patchTextoPlanta(id3D, { escala: +Number(e.target.value).toFixed(2) })}
+                    className="w-full h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-primary" />
                   <div className="flex gap-1">
-                    <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: Math.max(0.4, +(esc3D - 0.05).toFixed(2)) })}>A−</button>
-                    <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: Math.min(3.0, +(esc3D + 0.05).toFixed(2)) })}>A+</button>
+                    <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: Math.max(0.4, +(esc3D - 0.1).toFixed(2)) })}>A−</button>
+                    <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: Math.min(3.0, +(esc3D + 0.1).toFixed(2)) })}>A+</button>
                     <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: 1.0 })}>Reset</button>
                   </div>
                 </div>
+
+                {/* Apagar MDR */}
+                {onRemoverPrint3D && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="w-full font-bold text-[11px]"
+                    onClick={() => {
+                      onRemoverPrint3D();
+                      setObjPersonalizarId(null);
+                    }}
+                  >
+                    <Trash2 className="size-3.5 mr-1" /> Apagar MDR da Planta
+                  </Button>
+                )}
               </div>
             );
           }
