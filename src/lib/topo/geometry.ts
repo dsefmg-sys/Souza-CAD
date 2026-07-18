@@ -17,6 +17,7 @@ export function distancia(a: PlanoXY, b: PlanoXY): number {
  * Trata o carry quando o arredondamento do minuto chega a 60.
  */
 export function azimuteDMS(deg: number): string {
+  if (!Number.isFinite(deg)) return `0°00'00"`;
   let a = deg % 360;
   if (a < 0) a += 360;
   let d = Math.floor(a);
@@ -30,13 +31,15 @@ export function azimuteDMS(deg: number): string {
 }
 
 /** Formata número com vírgula decimal (padrão BR). */
-export function numBR(v: number, casas = 2): string {
-  return v.toFixed(casas).replace('.', ',');
+export function numBR(v: number | null | undefined, casas = 2): string {
+  const val = Number.isFinite(v) ? (v as number) : 0;
+  return val.toFixed(casas).replace('.', ',');
 }
 
 /** Formata número com ponto de milhar e vírgula decimal (ex.: 1004.08 -> "1.004,08"). */
-export function numBRmilhar(v: number, casas = 2): string {
-  const [int, frac] = v.toFixed(casas).split('.');
+export function numBRmilhar(v: number | null | undefined, casas = 2): string {
+  const val = Number.isFinite(v) ? (v as number) : 0;
+  const [int, frac] = val.toFixed(casas).split('.');
   const intGrp = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return casas > 0 ? `${intGrp},${frac}` : intGrp;
 }
