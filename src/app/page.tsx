@@ -122,7 +122,7 @@ import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/
 import { carregarTiposDivisaCustom, salvarTipoDivisaCustom, type TipoDivisaCustom } from '@/lib/store/tiposDivisaCustom';
 import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, type PerfilUso } from '@/lib/store/perfilUso';
 import { garantirEmpresaDoWorkspace, minhaEmpresa, type Empresa } from '@/lib/store/empresas';
-import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
+import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, PREFERENCIAS_PADRAO, ATALHOS_F_PADRAO, ATALHOS_COMANDO_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist, carregarVideosTutorial, type VideoTutorial } from '@/lib/store/suporte';
 import { carregarConfigAssinatura, verificarBloqueioFaturamento, type ConfigAssinatura } from '@/lib/store/assinatura';
@@ -600,7 +600,7 @@ export default function EditorPage() {
   const [tiposDivisaCustom, setTiposDivisaCustom] = useState<TipoDivisaCustom[]>([]); // tipos de divisa cadastrados pelo projetista
   const [corPickerAberto, setCorPickerAberto] = useState(false); // painel de ajuste rápido das cores de divisa
   const [corBump, setCorBump] = useState(0); // força re-render após trocar uma cor (cores vivem em módulo)
-  const [, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
+  const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
   const [avisoReconciliarAberto, setAvisoReconciliarAberto] = useState(false);
   const [avisoReconciliarResolve, setAvisoReconciliarResolve] = useState<((v: 'exportar' | 'voltar' | 'conciliar') => void) | null>(null);
   // Tipos de divisa pra escolher: os oficiais (REPRESENTACOES) + os que o projetista cadastrou.
@@ -644,6 +644,9 @@ export default function EditorPage() {
   // Barra flutuante dos áudios (Introdução/Tutorial), separada da principal: abre por padrão toda
   // vez que o app é aberto; o usuário pode fechar se não quiser ouvir.
   const [barraAudiosAberta, setBarraAudiosAberta] = useState(true);
+  const [comandoInput, setComandoInput] = useState('');
+  const comandoInputRef = useRef<HTMLInputElement>(null);
+  const [menuFerramentasAberto, setMenuFerramentasAberto] = useState(false);
 
   // Onde o mapa ABRE num projeto vazio: a última localização em que o próprio cliente trabalhou
   // (guardada abaixo). Sem histórico, cai no centro do país — não em Espera Feliz, que é só a minha
@@ -728,7 +731,6 @@ export default function EditorPage() {
   const [modalSobreposicaoAberto, setModalSobreposicaoAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
   const [conferirAberto, setConferirAberto] = useState(false);
-  const [menuFerramentasAberto, setMenuFerramentasAberto] = useState(false);
   const [calcAberta, setCalcAberta] = useState(false);
   const [vvAberto, setVvAberto] = useState(false);
   const [vvBase, setVvBase] = useState<{ leste: number; norte: number; elevacao?: number } | null>(null);
@@ -1048,6 +1050,7 @@ export default function EditorPage() {
   const [gestaoAberta, setGestaoAberta] = useState(false);
   const [precoSugAberto, setPrecoSugAberto] = useState(false);
   const [tutorialAberto, setTutorialAberto] = useState(false);
+  const [tutorialF1Aberto, setTutorialF1Aberto] = useState(false);
   const [corCert, setCorCert] = useState('#06b6d4');
   const [corBordaCert, setCorBordaCert] = useState('#0891b2');
   const [espessuraCert, setEspessuraCert] = useState(1.4);
@@ -1566,6 +1569,136 @@ export default function EditorPage() {
     }
   }, [imovel, nomeProjetoManual]);
 
+  function executarAcao(acao: string) {
+    switch (acao) {
+      case 'tutorial':
+        setTutorialF1Aberto(true);
+        break;
+      case 'pontos':
+        iniciarImportTxt();
+        break;
+      case 'sigef':
+        setSigefMenuAberto(true);
+        break;
+      case 'dados':
+        setPainelAberto(true);
+        setAba('imovel');
+        break;
+      case 'confro':
+        setVista('mapa');
+        setModo((m) => (m === 'confrontante' ? 'navegar' : 'confrontante'));
+        break;
+      case 'divisas':
+        setVista('mapa');
+        setModo((m) => (m === 'divisa' ? 'navegar' : 'divisa'));
+        break;
+      case 'trt':
+        setTrtAberto(true);
+        break;
+      case 'ods':
+        setPlanilhaConfAberta(true);
+        break;
+      case 'conferir':
+        setConferirAberto(true);
+        break;
+      case 'pecas':
+        alternarMenuPecas();
+        break;
+      case 'cert':
+        window.open("https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3", "_blank", "noopener,noreferrer");
+        break;
+      case 'car':
+        setCarAberto(true);
+        break;
+      case 'navegar':
+        setModo('navegar');
+        break;
+      case 'linha':
+        setVista('mapa');
+        setModo('linha');
+        setDesenhoBuffer([]);
+        break;
+      case 'polilinha':
+        setVista('mapa');
+        setModo('polilinha');
+        setDesenhoBuffer([]);
+        break;
+      case 'tracejado':
+        setVista('mapa');
+        setModo('tracejado');
+        setDesenhoBuffer([]);
+        break;
+      case 'texto':
+        setModo('texto');
+        break;
+      case 'cota':
+        setVista('mapa');
+        setModo('cota');
+        setDesenhoBuffer([]);
+        break;
+      case 'simbolo':
+        setModo('simbolo');
+        break;
+      case 'retangulo':
+        setVista('mapa');
+        setModo('retangulo');
+        setDesenhoBuffer([]);
+        break;
+      case 'circulo':
+        setVista('mapa');
+        setModo('circulo');
+        setDesenhoBuffer([]);
+        break;
+      case 'arco':
+        setVista('mapa');
+        setModo('arco');
+        setDesenhoBuffer([]);
+        break;
+      case 'selecao_varios':
+        setModo('multi');
+        break;
+      case 'medir':
+        setModo('medir');
+        break;
+      case 'paralela':
+        setModo('paralela');
+        break;
+      case 'dividir':
+        setModo('dividir');
+        break;
+      case 'aparar':
+        setModo('trim');
+        break;
+      case 'prolongar':
+        setModo('extend');
+        break;
+      case 'salvar':
+        if (!processando) void salvar();
+        break;
+      case 'novo':
+        criarNovoProjeto();
+        break;
+      default:
+        break;
+    }
+  }
+
+  function executarComando(cmdText: string) {
+    const cmd = cmdText.trim().toLowerCase();
+    setComandoInput('');
+    if (comandoInputRef.current) {
+      comandoInputRef.current.blur();
+    }
+    if (!cmd) return;
+
+    const acao = prefs.atalhosComando?.[cmd] || ATALHOS_COMANDO_PADRAO[cmd];
+    if (!acao) {
+      aviso(`Comando desconhecido: ${cmdText}`);
+      return;
+    }
+    executarAcao(acao);
+  }
+
   // atalhos remapeados em ordem crescente
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -1581,20 +1714,27 @@ export default function EditorPage() {
         return;
       }
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      const isInput = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+      
+      // Se não estiver focado em nenhum input e digitar caractere comum
+      if (!isInput && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (comandoInputRef.current) {
+          e.preventDefault();
+          comandoInputRef.current.focus();
+          setComandoInput((prev) => prev + e.key);
+          return;
+        }
+      }
+
+      if (isInput) return;
       const k = e.key;
-      if (k === 'F1') { e.preventDefault(); setModo('navegar'); } // MOVER / EDITAR
-      else if (k === 'F2') { e.preventDefault(); setModo('navegar'); }
-      else if (k === 'F3') { e.preventDefault(); setSnapAtivo((s) => !s); }
-      else if (k === 'F4') { e.preventDefault(); setMostrarRotulos((m) => !m); }
-      else if (k === 'F5') { e.preventDefault(); setBloqueado((b) => !b); }
-      else if (k === 'F6') { e.preventDefault(); setModo('linha'); setDesenhoBuffer([]); }
-      else if (k === 'F7') { e.preventDefault(); setModo('polilinha'); setDesenhoBuffer([]); }
-      else if (k === 'F8') { e.preventDefault(); setModo('tracejado'); setDesenhoBuffer([]); }
-      else if (k === 'F9') { e.preventDefault(); setModo('texto'); }
-      else if (k === 'F10') { e.preventDefault(); setModo('cota'); setDesenhoBuffer([]); }
-      else if (k === 'F11') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'considerar' ? 'navegar' : 'considerar')); }
-      else if (k === 'F12') { e.preventDefault(); setVista('mapa'); setModo((m) => (m === 'ignorar' ? 'navegar' : 'ignorar')); }
+
+      if (k.match(/^F(1[0-2]|[1-9])$/)) {
+        e.preventDefault();
+        const acao = prefs.atalhosF?.[k] || ATALHOS_F_PADRAO[k];
+        if (acao) executarAcao(acao);
+        return;
+      }
       else if ((e.ctrlKey || e.metaKey) && e.altKey && (k === '+' || k === '=')) {
         e.preventDefault();
         setEscalaInterface((prev) => Math.min(1.25, Number((prev + 0.05).toFixed(2))));
@@ -1654,7 +1794,7 @@ export default function EditorPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo, desenhoBuffer, selMulti, objSelMulti, vertices, confrontantePorLado, desfazer, refazer, menuContexto, salvar, processando]);
+  }, [modo, desenhoBuffer, selMulti, objSelMulti, vertices, confrontantePorLado, desfazer, refazer, menuContexto, salvar, processando, prefs]);
 
   // ao sair do modo "triângulo", esvazia a seleção múltipla
   useEffect(() => { if (modo !== 'multi') setSelMulti((s) => (s.size ? new Set() : s)); }, [modo]);
@@ -6049,6 +6189,9 @@ export default function EditorPage() {
         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
         {!telaEstreita && (
           <>
+            <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-sky-500 hover:bg-sky-600 text-white`} title="Tutorial de Fluxo de Trabalho (F1)" onClick={() => setTutorialF1Aberto(true)}>
+              <HelpCircle className="size-3 shrink-0" /> TUTORIAL
+            </Button>
             <Etapa st={etapas.txt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}><Upload /> PONTOS</Button></Etapa>
             <Etapa st={etapas.sigef}>
               <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>

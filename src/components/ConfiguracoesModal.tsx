@@ -26,7 +26,7 @@ import {
   proximoNumeroReciboSeq,
   definirNumeroReciboSeq,
 } from '@/lib/store/settings';
-import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey } from '@/lib/store/suporte';
+import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte, carregarWhatsappSuporteNome, salvarWhatsappSuporteNome, carregarGeminiApiKey, salvarGeminiApiKey } from '@/lib/store/suporte';
 import { minhaEmpresa, type Empresa } from '@/lib/store/empresas';
 import { carregarModelos, salvarModelos, MODELOS_PADRAO } from '@/lib/store/modelos';
 import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENCIAS_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
@@ -78,6 +78,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const [importVizinhoAberto, setImportVizinhoAberto] = useState(false);
   const [modeloProprio, setModeloProprio] = useState(false);
   const [zapSuporte, setZapSuporte] = useState('');
+  const [zapSuporteNome, setZapSuporteNome] = useState('');
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO);
   const [modelosAberto, setModelosAberto] = useState(false);
   const [bancoAberto, setBancoAberto] = useState(false);
@@ -231,6 +232,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
       colegasCad.listar().then(setColegas).catch((e) => { console.warn('[ConfigModal] listarColegas:', e); flash('Nuvem indisponível — dados locais ativos.'); });
       if (souMaster()) {
         carregarWhatsappSuporte().then(setZapSuporte).catch((e) => console.warn('[ConfigModal] carregarWhatsappSuporte:', e));
+        carregarWhatsappSuporteNome().then(setZapSuporteNome).catch((e) => console.warn('[ConfigModal] carregarWhatsappSuporteNome:', e));
         carregarGeminiApiKey().then(setGeminiKey).catch((e) => console.warn('[ConfigModal] carregarGeminiApiKey:', e));
       }
       obterPerfilUsuario().then((p) => {
@@ -1000,13 +1002,22 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 )}
                 {souMaster() && (
                   <div className="space-y-3 rounded-sm border border-emerald-600/30 bg-emerald-600/5 p-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">WhatsApp de SUPORTE do sistema (só o master vê este campo)</Label>
-                      <Input placeholder="Ex.: 32 9 9999-9999 — vazio = botão de suporte não aparece"
-                        value={zapSuporte}
-                        onChange={(e) => setZapSuporte(e.target.value)}
-                        onBlur={() => { salvarWhatsappSuporte(zapSuporte).then(() => flash('Suporte salvo')).catch(() => flash('Salvo local; nuvem indisponível')); }} />
-                      <p className="text-[10px] text-muted-foreground">Aparece pros clientes como botão &quot;Falar com o suporte&quot; no tutorial. Deixe vazio pra esconder.</p>
+                    <div className="grid grid-cols-1 gap-2.5">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Nome de Exibição do Suporte</Label>
+                        <Input placeholder="Ex.: Darlan Souza"
+                          value={zapSuporteNome}
+                          onChange={(e) => setZapSuporteNome(e.target.value)}
+                          onBlur={() => { salvarWhatsappSuporteNome(zapSuporteNome).then(() => flash('Nome do suporte salvo')).catch(() => flash('Salvo local; nuvem indisponível')); }} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">WhatsApp de SUPORTE do sistema (só o master vê este campo)</Label>
+                        <Input placeholder="Ex.: 32 9 9999-9999 — vazio = botão de suporte não aparece"
+                          value={zapSuporte}
+                          onChange={(e) => setZapSuporte(e.target.value)}
+                          onBlur={() => { salvarWhatsappSuporte(zapSuporte).then(() => flash('Suporte salvo')).catch(() => flash('Salvo local; nuvem indisponível')); }} />
+                        <p className="text-[10px] text-muted-foreground">Aparece pros clientes como botão &quot;Falar com o suporte&quot; no tutorial. Deixe vazio pra esconder.</p>
+                      </div>
                     </div>
                     <div className="space-y-1 border-t pt-2">
                       <Label className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Chave de API do Gemini IA (Global para todos os clientes)</Label>

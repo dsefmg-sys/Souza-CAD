@@ -4,7 +4,7 @@ import {
   ChevronLeft, ChevronRight, CircleCheck, MessageCircle, GraduationCap,
   Sparkles, Play, Pause, Square, BookUser, X, Volume2
 } from 'lucide-react';
-import { carregarWhatsappSuporte, linkWhatsapp } from '@/lib/store/suporte';
+import { carregarWhatsappSuporte, carregarWhatsappSuporteNome, linkWhatsapp } from '@/lib/store/suporte';
 import { TEMAS_AJUDA } from '@/lib/ajuda/temas';
 import { PASSOS_BASE, PASSOS_AVANCADOS } from '@/lib/ajuda/passos';
 import { carregarPreferencias, salvarModo, salvarNivelExperiencia } from '@/lib/store/preferencias';
@@ -29,6 +29,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   const [modo, setModo] = useState<'simples' | 'medio' | 'completo'>('simples');
   const [nivel, setNivel] = useState<'iniciante' | 'experiente'>('experiente');
   const [zapSuporte, setZapSuporte] = useState('');
+  const [zapSuporteNome, setZapSuporteNome] = useState('Darlan Souza');
 
   // Estados para reprodução de áudio por Text-to-Speech ou Arquivo Gravado
   const [falando, setFalando] = useState(false);
@@ -292,8 +293,10 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     if (!open) return;
     setTela('menu'); setPasso(0); setTemaId(null);
     const p = carregarPreferencias();
-    setModo(p.modo); setNivel('experiente');
+    setModo(p.modo);
+    setNivel(p.nivelExperiencia || 'iniciante');
     carregarWhatsappSuporte().then(setZapSuporte).catch(() => {});
+    carregarWhatsappSuporteNome().then(setZapSuporteNome).catch(() => {});
   }, [open]);
   const linkSuporte = linkWhatsapp(zapSuporte);
 
@@ -380,10 +383,15 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
   );
 
   const botaoSuporte = linkSuporte && (
-    <a href={linkSuporte} target="_blank" rel="noopener noreferrer"
-       className="flex items-center justify-center gap-2 rounded-md border border-emerald-600/40 bg-emerald-600/10 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400">
-      <MessageCircle className="size-4" /> Falar com o suporte no WhatsApp
-    </a>
+    <div className="flex flex-col items-center gap-1.5 w-full">
+      <a href={linkSuporte} target="_blank" rel="noopener noreferrer"
+         className="flex items-center justify-center gap-2 rounded-md border border-emerald-600/40 bg-emerald-600/10 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400 w-full transition-colors">
+        <MessageCircle className="size-4" /> Falar com o suporte no WhatsApp
+      </a>
+      <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 select-all">
+        {zapSuporteNome} - {zapSuporte}
+      </span>
+    </div>
   );
 
   if (!open) return null;

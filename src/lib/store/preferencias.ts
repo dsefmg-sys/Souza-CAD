@@ -61,7 +61,46 @@ export interface PreferenciasApp {
   confirmarAntesApagar: boolean;
   /** Mostra campos para assinatura dos confrontantes na planta. Padrão: true. */
   mostrarAssinaturaConfrontantes: boolean;
+  /** Atalhos do teclado (F1 a F12) customizáveis. */
+  atalhosF?: Record<string, string>;
+  /** Atalhos de comando na barra de status. */
+  atalhosComando?: Record<string, string>;
 }
+
+export const ATALHOS_F_PADRAO: Record<string, string> = {
+  F1: 'tutorial',
+  F2: 'pontos',
+  F3: 'sigef',
+  F4: 'dados',
+  F5: 'confro',
+  F6: 'divisas',
+  F7: 'trt',
+  F8: 'ods',
+  F9: 'conferir',
+  F10: 'pecas',
+  F11: 'cert',
+  F12: 'car',
+};
+
+export const ATALHOS_COMANDO_PADRAO: Record<string, string> = {
+  ln: 'linha',
+  pl: 'polilinha',
+  tc: 'tracejado',
+  tt: 'texto',
+  ct: 'cota',
+  sb: 'simbolo',
+  rt: 'retangulo',
+  cc: 'circulo',
+  ac: 'arco',
+  sv: 'selecao_varios',
+  md: 'medir',
+  pr: 'paralela',
+  dv: 'dividir',
+  ap: 'aparar',
+  pg: 'prolongar',
+  salvar: 'salvar',
+  nn: 'novo',
+};
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {
   exigirConjuge: false,
@@ -78,6 +117,8 @@ export const PREFERENCIAS_PADRAO: PreferenciasApp = {
   casasDecimais: 3,
   confirmarAntesApagar: true,
   mostrarAssinaturaConfrontantes: true,
+  atalhosF: ATALHOS_F_PADRAO,
+  atalhosComando: ATALHOS_COMANDO_PADRAO,
 };
 
 const KEY = 'metrica.preferencias';
@@ -91,8 +132,12 @@ export function carregarPreferencias(): PreferenciasApp {
     const raw = localStorage.getItem(KEY);
     if (!raw) return PREFERENCIAS_PADRAO;
     const parsed = JSON.parse(raw) as Partial<PreferenciasApp>;
-    // modo e nivelExperiencia são INDEPENDENTES; cada um cai no padrão se não existir.
-    return { ...PREFERENCIAS_PADRAO, ...parsed };
+    return {
+      ...PREFERENCIAS_PADRAO,
+      ...parsed,
+      atalhosF: parsed.atalhosF ? { ...ATALHOS_F_PADRAO, ...parsed.atalhosF } : ATALHOS_F_PADRAO,
+      atalhosComando: parsed.atalhosComando ? { ...ATALHOS_COMANDO_PADRAO, ...parsed.atalhosComando } : ATALHOS_COMANDO_PADRAO,
+    };
   } catch {
     return PREFERENCIAS_PADRAO;
   }

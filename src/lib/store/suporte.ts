@@ -35,6 +35,28 @@ export async function salvarWhatsappSuporte(numero: string): Promise<void> {
   }
 }
 
+const CACHE_NOME = 'metrica.whatsappSuporteNome';
+
+export async function carregarWhatsappSuporteNome(): Promise<string> {
+  if (firebaseConfigurado) {
+    try {
+      const s = await getDoc(doc(fdb()!, 'config', 'app'));
+      const nome = (s.exists() ? String(s.data()?.whatsappSuporteNome ?? '') : '');
+      try { localStorage.setItem(CACHE_NOME, nome); } catch { /* ignore */ }
+      return nome || 'Darlan Souza';
+    } catch { /* ignore */ }
+  }
+  try { return localStorage.getItem(CACHE_NOME) ?? 'Darlan Souza'; } catch { return 'Darlan Souza'; }
+}
+
+export async function salvarWhatsappSuporteNome(nome: string): Promise<void> {
+  const n = nome.trim();
+  try { localStorage.setItem(CACHE_NOME, n); } catch { /* ignore */ }
+  if (firebaseConfigurado) {
+    await setDoc(doc(fdb()!, 'config', 'app'), { whatsappSuporteNome: n }, { merge: true });
+  }
+}
+
 /** Link wa.me pronto, ou null quando não há número configurado. */
 export function linkWhatsapp(numero: string): string | null {
   const dig = numero.replace(/\D/g, '');

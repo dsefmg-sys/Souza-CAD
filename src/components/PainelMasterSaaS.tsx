@@ -12,7 +12,7 @@ import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, 
 import { listarProjetosDoUsuario, salvarProjeto, novoId } from '@/lib/store/projects';
 import type { Projeto } from '@/lib/topo/types';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
-import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, carregarYoutubePlaylist, salvarYoutubePlaylist, carregarVideosTutorial, salvarVideosTutorial, type ConfigSmtp, type VideoTutorial } from '@/lib/store/suporte';
+import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarWhatsappSuporteNome, salvarWhatsappSuporteNome, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, carregarYoutubePlaylist, salvarYoutubePlaylist, carregarVideosTutorial, salvarVideosTutorial, type ConfigSmtp, type VideoTutorial } from '@/lib/store/suporte';
 import { auth } from '@/lib/firebase/client';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
 
@@ -32,6 +32,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [perfis, setPerfis] = useState<PerfilUso[]>([]);
   const [cfg, setCfg] = useState<ConfigAssinatura>(CONFIG_ASSINATURA_PADRAO);
   const [zap, setZap] = useState('');
+  const [zapNome, setZapNome] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
   const [appUrl, setAppUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -110,6 +111,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       setPerfis(await listarPerfisUso());
       setCfg(await carregarConfigAssinatura());
       setZap(await carregarWhatsappSuporte());
+      setZapNome(await carregarWhatsappSuporteNome());
       setGeminiKey(await carregarGeminiApiKey());
       const url = await carregarAppUrl();
       setAppUrl(url);
@@ -219,6 +221,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   async function salvarZap() {
     try {
       await salvarWhatsappSuporte(zap);
+      await salvarWhatsappSuporteNome(zapNome);
       flash('Suporte WhatsApp salvo!');
     } catch {
       flash('Erro ao salvar WhatsApp.');
@@ -436,12 +439,19 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                 {/* WhatsApp */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-zinc-400">WhatsApp de Suporte Técnico</Label>
-                  <div className="flex gap-2">
-                    <Input placeholder="Ex.: 32 9 9999-9999" value={zap} onChange={(e) => setZap(e.target.value)} className="h-10 text-sm bg-zinc-950 border-zinc-800 focus-visible:ring-amber-500 text-white placeholder:text-zinc-700" />
-                    <Button size="sm" onClick={salvarZap} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-10 px-4">Salvar</Button>
+                  <Label className="text-xs font-bold text-zinc-400">Suporte Técnico WhatsApp</Label>
+                  <div className="space-y-1.5 bg-zinc-900/30 p-2 rounded border border-zinc-800">
+                    <div>
+                      <Label className="text-[10px] text-zinc-500 font-bold uppercase">Nome de Exibição</Label>
+                      <Input placeholder="Ex.: Darlan Souza" value={zapNome} onChange={(e) => setZapNome(e.target.value)} className="h-8 text-xs bg-zinc-950 border-zinc-800 text-white focus-visible:ring-amber-500 placeholder:text-zinc-700" />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-zinc-500 font-bold uppercase">Número (com DDD)</Label>
+                      <Input placeholder="Ex.: 32 9 9999-9999" value={zap} onChange={(e) => setZap(e.target.value)} className="h-8 text-xs bg-zinc-950 border-zinc-800 text-white focus-visible:ring-amber-500 placeholder:text-zinc-700" />
+                    </div>
+                    <Button size="sm" onClick={salvarZap} className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-8 text-xs mt-1">Salvar Suporte</Button>
                   </div>
-                  <p className="text-xs text-zinc-500">Link wa.me mostrado no tutorial dos clientes.</p>
+                  <p className="text-[10px] text-zinc-500">Mostrado no tutorial dos clientes em verde com nome e número.</p>
                 </div>
 
                 {/* Gemini Key */}
