@@ -18,17 +18,73 @@ const RAMPA_RELEVO: { t: number; rgb: [number, number, number] }[] = [
   { t: 1.0, rgb: [236, 233, 224] }, // quase branco (picos)
 ];
 
+function interpolarCor(a: [number, number, number], b: [number, number, number], f: number): [number, number, number] {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * f),
+    Math.round(a[1] + (b[1] - a[1]) * f),
+    Math.round(a[2] + (b[2] - a[2]) * f),
+  ];
+}
+
+function recortaCanvasVisivel(canvas: HTMLCanvasElement, padding = 16): string {
+  try {
+    if (!canvas.width || !canvas.height) return canvas.toDataURL('image/png');
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return canvas.toDataURL('image/png');
+
+    tempCtx.drawImage(canvas, 0, 0);
+    const imgData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
+
+    let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+    let encontrouPixel = false;
+
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        const alpha = data[(y * canvas.width + x) * 4 + 3];
+        if (alpha > 10) {
+          encontrouPixel = true;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (!encontrouPixel || minX >= maxX || minY >= maxY) {
+      return canvas.toDataURL('image/png');
+    }
+
+    const cropX = Math.max(0, minX - padding);
+    const cropY = Math.max(0, minY - padding);
+    const cropW = Math.min(canvas.width - cropX, (maxX - minX) + padding * 2);
+    const cropH = Math.min(canvas.height - cropY, (maxY - minY) + padding * 2);
+
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = cropW;
+    croppedCanvas.height = cropH;
+    const croppedCtx = croppedCanvas.getContext('2d');
+    if (!croppedCtx) return canvas.toDataURL('image/png');
+
+    croppedCtx.drawImage(tempCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+    return croppedCanvas.toDataURL('image/png');
+  } catch (err) {
+    console.error('Erro ao recortar canvas visível:', err);
+    return canvas.toDataURL('image/png');
+  }
+}
+
 function corHipsometrica(t: number): [number, number, number] {
   const c = Math.max(0, Math.min(1, Number.isFinite(t) ? t : 0));
   for (let i = 1; i < RAMPA_RELEVO.length; i++) {
     const a = RAMPA_RELEVO[i - 1], b = RAMPA_RELEVO[i];
     if (c <= b.t) {
       const f = (c - a.t) / (b.t - a.t || 1);
-      return [
-        Math.round(a.rgb[0] + (b.rgb[0] - a.rgb[0]) * f),
-        Math.round(a.rgb[1] + (b.rgb[1] - a.rgb[1]) * f),
-        Math.round(a.rgb[2] + (b.rgb[2] - a.rgb[2]) * f),
-      ];
+      return interpolarCor(a.rgb, b.rgb, f);
     }
   }
   return RAMPA_RELEVO[RAMPA_RELEVO.length - 1].rgb;
@@ -100,7 +156,8 @@ export default function Map3DViewer({
   const [mostrarAltitudesCurvas, setMostrarAltitudesCurvas] = useState(true); // Exibir cotas de nível (valores de altitude)
   const [mostrarCurvasNoCapture, setMostrarCurvasNoCapture] = useState(true); // inclui curvas de nível no print MDR
   const [mostrarAltitudesNoCapture, setMostrarAltitudesNoCapture] = useState(true); // inclui valores de altitude no print MDR
-  const [modoEnquadramentoCapture, setModoEnquadramentoCapture] = useState<'camera' | 'imovel_completo'>('imovel_completo');
+  const [modoEnquadramentoCapture, setModoEnquadramentoCapture] = useState<'camera' | 'imovel_completo'>('camera');
+  const [captureRecortarBordas, setCaptureRecortarBordas] = useState(true); // recortar margens transparentes por padrão
 
   // Estados de cálculo de terraplenagem (volume de corte/aterro)
   const [calcVolumeAtivo, setCalcVolumeAtivo] = useState(false);
@@ -974,10 +1031,15 @@ export default function Map3DViewer({
                         onChange={(e) => setModoEnquadramentoCapture(e.target.value as 'camera' | 'imovel_completo')}
                         className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
                       >
-                        <option value="imovel_completo">Enquadrar Imóvel Completo (Visão Geral de Cima)</option>
-                        <option value="camera">Manter Ângulo Atual da Câmera</option>
+                        <option value="camera">Manter Ângulo Atual da Câmera (Recomendado)</option>
+                        <option value="imovel_completo">Visão Geral Superior (Planta 3D)</option>
                       </select>
                     </div>
+
+                    <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium border-t border-border/30 pt-2">
+                      <span>Ajustar largura/altura ao imóvel (sem vazios)</span>
+                      <input type="checkbox" checked={captureRecortarBordas} onChange={(e) => setCaptureRecortarBordas(e.target.checked)} className="size-3.5 accent-primary" />
+                    </label>
 
                     <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium border-t border-border/30 pt-2">
                       <span>Incluir curvas de nível</span>
@@ -1032,7 +1094,7 @@ export default function Map3DViewer({
 
                         requestAnimationFrame(() => {
                           requestAnimationFrame(() => {
-                            const dataUrl = canvas.toDataURL('image/png');
+                            const dataUrl = captureRecortarBordas ? recortaCanvasVisivel(canvas) : canvas.toDataURL('image/png');
                             captureModeRef.current = false;
                             yawRef.current = yawOld;
                             pitchRef.current = pitchOld;

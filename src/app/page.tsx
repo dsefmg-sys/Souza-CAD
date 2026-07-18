@@ -1090,6 +1090,15 @@ export default function EditorPage() {
   }, []);
   function fecharTutorial(o: boolean) { setTutorialAberto(o); if (!o) marcarTutorialVisto(); }
   const [pontosAberto, setPontosAberto] = useState(false);
+  const [pontosDecisaoAberto, setPontosDecisaoAberto] = useState(false);
+
+  function abrirGestaoPontos() {
+    if (vertices.length > 0) {
+      setPontosDecisaoAberto(true);
+    } else {
+      setPontosAberto(true);
+    }
+  }
   const [previewData, setPreviewData] = useState<{
     perim: unknown; vs: Vertex[]; numGlebas: number; municipio: string; fuso: unknown; z: number;
     novoImovel: ImovelData; contM: number; contP: number; prefixo: string; isGmlImport: boolean;
@@ -6295,7 +6304,7 @@ export default function EditorPage() {
                           <PencilRuler className="text-amber-400" /> <span>Precificação</span>
                         </Button>
                         {completo && (
-                          <Button size="sm" variant="secondary" onClick={() => setPontosAberto(true)} title="Banco de pontos">
+                          <Button size="sm" variant="secondary" onClick={abrirGestaoPontos} title="Banco de pontos">
                             <Database className="text-emerald-500" /> <span>Pontos</span>
                           </Button>
                         )}
@@ -7070,7 +7079,7 @@ export default function EditorPage() {
                     <Button size="sm" variant="outline" onClick={() => { setIaArquivoInicial(null); setIaAberta(true); }} title="IA Extrair: dados de PDFs, imagens e documentos"><Sparkles className="size-4 text-indigo-500" /></Button>
                     {completo && (<>
                     <Button size="sm" variant="outline" onClick={() => setGestaoAberta(true)} title="Gestão financeira"><Info className="size-4" /></Button>
-                    <Button size="sm" variant="outline" onClick={() => setPontosAberto(true)} title="Banco de pontos"><Database className="size-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={abrirGestaoPontos} title="Banco de pontos"><Database className="size-4" /></Button>
                     </>)}
                     {medioOuMais && (<>
                     <div className="h-px bg-border my-1" />
