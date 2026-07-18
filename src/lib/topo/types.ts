@@ -539,6 +539,7 @@ export interface Projeto {
   // PROJETO, não de uma gleba — sem este campo eles sumiam ao salvar/recarregar (bug 05/07/2026).
   verticesIgnorados?: Vertex[];
   gradeAltimetrica?: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[];
+  verticesOnlineElev?: Record<string, number>;
   correcoes?: CorrecaoErrata[];
   // Campos legados (projetos salvos antes do multi-gleba) — migrados ao abrir.
   vertices?: Vertex[];

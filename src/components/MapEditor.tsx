@@ -118,6 +118,7 @@ interface Props {
   parcelaCertSel?: number | null;
   onSelParcelaCert?: (idx: number | null) => void;
   verticesVizinho?: VerticeVizinho[];
+  gradeAltimetrica?: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[];
 }
 
 const ESPERA_FELIZ: [number, number] = [-20.6506, -41.9094];
@@ -1316,6 +1317,7 @@ export default function MapEditor(props: Props) {
     onContextMenuCert,
     onDblClickObjeto,
     onContextMenuMapa,
+    gradeAltimetrica = [],
   } = props;
 
   const [zoom, setZoom] = useState(16);
@@ -2045,6 +2047,21 @@ export default function MapEditor(props: Props) {
               }
             }
           }} />
+      ))}
+
+      {/* Grade de altitudes online (se houver dados) */}
+      {camadasVisiveis.curvas !== false && gradeAltimetrica && gradeAltimetrica.map((g, idx) => (
+        <CircleMarker
+          key={`grade-alt-${idx}`}
+          center={[g.lat, g.lon]}
+          radius={3.5}
+          pathOptions={{ color: '#4f46e5', fillColor: '#a5b4fc', fillOpacity: 0.9, weight: 1.2 }}
+          interactive={true}
+        >
+          <Tooltip permanent direction="top" className="bg-background/95 text-foreground border border-indigo-500/30 text-[8px] font-mono px-1 py-0.5 rounded shadow-xs" offset={[0, -2]}>
+            <span>{g.elevacao.toFixed(1)}m</span>
+          </Tooltip>
+        </CircleMarker>
       ))}
 
       {/* rótulos dos vértices (texto branco; arrastáveis com a ferramenta mover/F5; ocultação adaptativa

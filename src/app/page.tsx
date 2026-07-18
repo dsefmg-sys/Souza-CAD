@@ -458,6 +458,7 @@ export default function EditorPage() {
   const [vertices, setVertices] = useState<Vertex[]>([]);
   const [verticesIgnorados, setVerticesIgnorados] = useState<Vertex[]>([]); // fora do anel (ferramenta ignorar/considerar)
   const [gradeAltimetrica, setGradeAltimetrica] = useState<{ lat: number; lon: number; leste: number; norte: number; elevacao: number }[]>([]);
+  const [verticesOnlineElev, setVerticesOnlineElev] = useState<Record<string, number>>({});
   const [historiaAberta, setHistoriaAberta] = useState(false);
   const [imovel, setImovel] = useState<ImovelData>(IMOVEL_VAZIO);
   const [confrontantes, setConfrontantes] = useState<Confrontante[]>([]);
@@ -4267,11 +4268,12 @@ export default function EditorPage() {
   ): Ponto3D[] {
     const activeVertices = verticesOverride || vertices;
     const activeIgnorados = ignoradosOverride || verticesIgnorados;
-    const pts = desconsiderarVerticesLevantados
-      ? []
-      : [...activeVertices, ...activeIgnorados]
-          .filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte) && Number.isFinite(v.elevacao) && v.elevacao !== 0)
-          .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }));
+    const pts = [...activeVertices, ...activeIgnorados]
+          .map((v) => {
+            const z = desconsiderarVerticesLevantados ? (verticesOnlineElev[v.id] ?? v.elevacao) : v.elevacao;
+            return { x: v.leste, y: v.norte, z };
+          })
+          .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && p.z !== 0);
     const activeGrade = gradeOverride || gradeAltimetrica;
     const ptsGrade = activeGrade.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
     const total = [...pts, ...ptsGrade];
@@ -4331,17 +4333,17 @@ export default function EditorPage() {
           candidatos.push({ lat: cLat, lon: cLon });
         }
 
-        // Também busca altitudes para os vértices do perímetro sem cota para evitar efeito serrilhado na borda
+        // Também busca altitudes para os vértices do perímetro sem cota (ou todos se desconsiderarVerticesLevantados for true) para evitar efeito serrilhado na borda
         const queryPoints = [...candidatos];
         const startIndexVertices = queryPoints.length;
         vertices.forEach(v => {
-          if (!v.elevacao) {
+          if (desconsiderarVerticesLevantados || !v.elevacao) {
             queryPoints.push({ lat: v.lat, lon: v.lon });
           }
         });
         const startIndexIgnorados = queryPoints.length;
         verticesIgnorados.forEach(v => {
-          if (!v.elevacao) {
+          if (desconsiderarVerticesLevantados || !v.elevacao) {
             queryPoints.push({ lat: v.lat, lon: v.lon });
           }
         });
@@ -4373,11 +4375,11 @@ export default function EditorPage() {
               activeGrade = pontosObtidos;
             }
 
-            // Atualiza os vértices sem altitude
+            // Atualiza os vértices sem altitude (ou todos se desconsiderar for true)
             let mudouVertice = false;
             const novosVertices = vertices.map((v, idx) => {
-              const indexNoLote = startIndexVertices + vertices.filter((x, i) => i < idx && !x.elevacao).length;
-              if (!v.elevacao && indexNoLote < startIndexIgnorados) {
+              const indexNoLote = startIndexVertices + vertices.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
+              if ((desconsiderarVerticesLevantados || !v.elevacao) && indexNoLote < startIndexIgnorados) {
                 const elev = data.elevation[indexNoLote];
                 if (Number.isFinite(elev)) {
                   mudouVertice = true;
@@ -4390,8 +4392,8 @@ export default function EditorPage() {
             // Atualiza os ignorados
             let mudouIgnorados = false;
             const novosIgnorados = verticesIgnorados.map((v, idx) => {
-              const indexNoLote = startIndexIgnorados + verticesIgnorados.filter((x, i) => i < idx && !x.elevacao).length;
-              if (!v.elevacao && indexNoLote < queryPoints.length) {
+              const indexNoLote = startIndexIgnorados + verticesIgnorados.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
+              if ((desconsiderarVerticesLevantados || !v.elevacao) && indexNoLote < queryPoints.length) {
                 const elev = data.elevation[indexNoLote];
                 if (Number.isFinite(elev)) {
                   mudouIgnorados = true;
@@ -4523,17 +4525,17 @@ export default function EditorPage() {
         candidatos.push({ lat: cLat, lon: cLon });
       }
 
-      // Adiciona também os próprios vértices do perímetro no lote para obter altitudes se vierem zerados
+      // Adiciona também os próprios vértices do perímetro no lote para obter altitudes se vierem zerados (ou se desconsiderarVerticesLevantados for true)
       const queryPoints = [...candidatos];
       const startIndexVertices = queryPoints.length;
       vertices.forEach(v => {
-        if (!v.elevacao) {
+        if (desconsiderarVerticesLevantados || !v.elevacao) {
           queryPoints.push({ lat: v.lat, lon: v.lon });
         }
       });
       const startIndexIgnorados = queryPoints.length;
       verticesIgnorados.forEach(v => {
-        if (!v.elevacao) {
+        if (desconsiderarVerticesLevantados || !v.elevacao) {
           queryPoints.push({ lat: v.lat, lon: v.lon });
         }
       });
@@ -4570,11 +4572,32 @@ export default function EditorPage() {
       } else {
         setGradeAltimetrica(pontosObtidos);
 
-        // Atualiza os vértices sem altitude
+        const mapOnline: Record<string, number> = {};
+        vertices.forEach((v, idx) => {
+          const indexNoLote = startIndexVertices + vertices.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
+          if (indexNoLote < startIndexIgnorados) {
+            const elev = data.elevation[indexNoLote];
+            if (Number.isFinite(elev)) {
+              mapOnline[v.id] = +elev.toFixed(4);
+            }
+          }
+        });
+        verticesIgnorados.forEach((v, idx) => {
+          const indexNoLote = startIndexIgnorados + verticesIgnorados.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
+          if (indexNoLote < queryPoints.length) {
+            const elev = data.elevation[indexNoLote];
+            if (Number.isFinite(elev)) {
+              mapOnline[v.id] = +elev.toFixed(4);
+            }
+          }
+        });
+        setVerticesOnlineElev(prev => ({ ...prev, ...mapOnline }));
+
+        // Atualiza os vértices sem altitude (ou todos se desconsiderar for true)
         let mudouVertice = false;
         const novosVertices = vertices.map((v, idx) => {
-          const indexNoLote = startIndexVertices + vertices.filter((x, i) => i < idx && !x.elevacao).length;
-          if (!v.elevacao && indexNoLote < startIndexIgnorados) {
+          const indexNoLote = startIndexVertices + vertices.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
+          if ((desconsiderarVerticesLevantados || !v.elevacao) && indexNoLote < startIndexIgnorados) {
             const elev = data.elevation[indexNoLote];
             if (Number.isFinite(elev)) {
               mudouVertice = true;
@@ -4587,8 +4610,8 @@ export default function EditorPage() {
         // Atualiza os ignorados
         let mudouIgnorados = false;
         const novosIgnorados = verticesIgnorados.map((v, idx) => {
-          const indexNoLote = startIndexIgnorados + verticesIgnorados.filter((x, i) => i < idx && !x.elevacao).length;
-          if (!v.elevacao && indexNoLote < queryPoints.length) {
+          const indexNoLote = startIndexIgnorados + verticesIgnorados.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
+          if ((desconsiderarVerticesLevantados || !v.elevacao) && indexNoLote < queryPoints.length) {
             const elev = data.elevation[indexNoLote];
             if (Number.isFinite(elev)) {
               mudouIgnorados = true;
@@ -4908,7 +4931,7 @@ export default function EditorPage() {
       }
       const p: Projeto = {
         id, nome: nomeProjeto || imovel.denominacao || 'Sem nome', criadoEm: Date.now(), atualizadoEm: Date.now(),
-        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, parcelasCert, verticesVizinho, verticesIgnorados, gradeAltimetrica,
+        imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, parcelasCert, verticesVizinho, verticesIgnorados, gradeAltimetrica, verticesOnlineElev,
       };
       try {
         const destino = await salvarProjeto(p);
@@ -4986,7 +5009,7 @@ export default function EditorPage() {
     return vertices.length > 0 || glebas.some((g) => g.vertices.length > 0) || !!imovel.denominacao || !!imovel.proprietario || !!imovel.matricula;
   }
   function montarRascunho() {
-    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, glebaAtivaId, parcelasCert, verticesVizinho, verticesIgnorados, gradeAltimetrica };
+    return { v: 1, projetoId, nome: nomeProjeto, nomeProjetoManual, imovel, glebas: sincronizarGlebas(), zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, glebaAtivaId, parcelasCert, verticesVizinho, verticesIgnorados, gradeAltimetrica, verticesOnlineElev };
   }
   // Recria as referências tracejadas (desenho) a partir das parcelas certificadas gravadas —
   // usado ao reabrir/restaurar um projeto, para não precisar buscar de novo no INCRA.
@@ -5020,6 +5043,7 @@ export default function EditorPage() {
     setVerticesVizinho(d.verticesVizinho ?? []);
     setVerticesIgnorados(d.verticesIgnorados ?? []);
     setGradeAltimetrica(d.gradeAltimetrica ?? (d as unknown as { ga?: typeof d.gradeAltimetrica }).ga ?? []);
+    setVerticesOnlineElev(d.verticesOnlineElev ?? {});
     return true;
   }
 
@@ -5173,6 +5197,7 @@ export default function EditorPage() {
     setVerticesVizinho(p.verticesVizinho ?? []);
     setVerticesIgnorados(p.verticesIgnorados ?? []);
     setGradeAltimetrica(p.gradeAltimetrica ?? (p as unknown as { ga?: typeof p.gradeAltimetrica }).ga ?? []);
+    setVerticesOnlineElev(p.verticesOnlineElev ?? {});
     autoSave.resetBaseline(); // recém-carregado = baseline = estado atual, sem disquete
     setSalvarLaranja(false);
     setSalvoOk(true);
@@ -7118,6 +7143,7 @@ export default function EditorPage() {
           ) : vista === 'mapa' ? (
             <ErrorBoundary onReset={() => setVista('planta')}>
               <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
+                 gradeAltimetrica={gradeAltimetrica}
                  onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
                  centroPadrao={entradaMapa.centro} zoomPadrao={entradaMapa.zoom}
                  onAtivar3D={modo3dAtivado ? () => setVista('3d') : undefined}
