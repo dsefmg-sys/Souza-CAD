@@ -75,6 +75,8 @@ import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
 import { useAutoSave } from '@/lib/hooks/useAutoSave';
+import { useSuporteData } from '@/lib/hooks/useSuporteData';
+import { useTelaEstreita } from '@/lib/hooks/useTelaEstreita';
 import { montarVertices, reordenar, definirInicio, novoVertice, reprojetar, iniciarDoNorteHorario, recodificar } from '@/lib/topo/vertices';
 import { montarConfrontantes } from '@/lib/topo/confrontantes';
 import { novaGlebaVazia, glebaDe, migrarProjeto, dividirGleba, unirGlebas, dividirPorAreaAlvo } from '@/lib/topo/glebas';
@@ -605,13 +607,7 @@ export default function EditorPage() {
   // Tela estreita (celular em pé): o app é pensado pra tela horizontal, então no mobile a gente
   // encolhe a barra de ferramentas pra só ícones, senão ela sozinha come quase toda a largura e
   // sobra um filete pro mapa. Deitar o aparelho (paisagem) volta ao layout normal.
-  const [telaEstreita, setTelaEstreita] = useState(false);
-  useEffect(() => {
-    const check = () => setTelaEstreita(window.innerWidth < 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
+  const telaEstreita = useTelaEstreita();
   // No celular, a tela inicial é a "home de escritório" (abrir/criar projeto, IA, dados) em vez do
   // mapa — mapa/planta continuam existindo, só ficam atrás de um "Ver mapa" discreto. Só é
   // consultado quando telaEstreita; no desktop não tem efeito nenhum.
@@ -700,14 +696,7 @@ export default function EditorPage() {
   const [importModalAberto, setImportModalAberto] = useState(false);
   const [importPendingFile, setImportPendingFile] = useState<File | null>(null);
   const [vista, setVista] = useState<'mapa' | 'planta' | '3d'>('mapa');
-  // Modo 3D: recurso opcional, LIGADO/DESLIGADO pelo gestor (master) no painel. Padrão desligado —
-  // enquanto amadurece, o botão de 3D só aparece se o master ativar em config/app.
-  const [modo3dAtivado, setModo3dAtivado] = useState(false);
-  useEffect(() => { carregarModo3dAtivado().then(setModo3dAtivado).catch(() => {}); }, []);
-  const [videosUrl, setVideosUrl] = useState('');
-  useEffect(() => { carregarYoutubePlaylist().then(setVideosUrl).catch(() => {}); }, []);
-  const [videosTutorial, setVideosTutorial] = useState<VideoTutorial[]>([]);
-  useEffect(() => { carregarVideosTutorial().then(setVideosTutorial).catch(() => {}); }, []);
+  const { modo3dAtivado, videosUrl, videosTutorial } = useSuporteData();
   const [videosListaAberta, setVideosListaAberta] = useState(false);
   const [aba, setAba] = useState<Aba>('imovel');
   const [projetoId, setProjetoId] = useState<string | null>(null);
@@ -910,12 +899,22 @@ export default function EditorPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const salvaAudios = localStorage.getItem('metrica:pos_barra_audios');
-      if (!salvaAudios) {
-        setPosAudioBarra({
-          x: Math.max(10, Math.floor(window.innerWidth / 2 - 200)),
-          y: Math.max(10, window.innerHeight - 56),
-        });
+      let pos = {
+        x: Math.max(10, Math.floor(window.innerWidth / 2 - 200)),
+        y: Math.max(10, window.innerHeight - 56),
+      };
+      if (salvaAudios) {
+        try {
+          const parsed = JSON.parse(salvaAudios);
+          if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+            pos = {
+              x: Math.max(10, Math.min(window.innerWidth - 300, parsed.x)),
+              y: Math.max(10, Math.min(window.innerHeight - 50, parsed.y)),
+            };
+          }
+        } catch {}
       }
+      setPosAudioBarra(pos);
       const salvaAtalhos = localStorage.getItem('metrica:pos_barra_atalhos');
       if (!salvaAtalhos) {
         setPosAtalhos({ x: window.innerWidth / 2 - 250, y: 64 });
