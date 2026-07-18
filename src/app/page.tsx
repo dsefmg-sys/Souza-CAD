@@ -4237,6 +4237,7 @@ export default function EditorPage() {
   const [ajusteAltCm, setAjusteAltCm] = useState('');
   const [adensarOnlineAtivo, setAdensarOnlineAtivo] = useState(true);
   const [desconsiderarVerticesLevantados, setDesconsiderarVerticesLevantados] = useState(false);
+  const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState<number>(0); // 0 = Auto
 
   function ajustarAltitudesGlobais(cm: number) {
     if (!cm || isNaN(cm)) return;
@@ -4291,6 +4292,106 @@ export default function EditorPage() {
     if (pts.length >= 2) setIntervaloCurva(intervaloSugerido(pts));
   }
 
+  function calcularEspacamentoGradeAuto(vs: typeof vertices): number {
+    if (vs.length < 3) return 20;
+    const nestes = vs.map((v) => v.leste);
+    const nortes = vs.map((v) => v.norte);
+    const minLeste = Math.min(...nestes), maxLeste = Math.max(...nestes);
+    const minNorte = Math.min(...nortes), maxNorte = Math.max(...nortes);
+    const dx = maxLeste - minLeste;
+    const dy = maxNorte - minNorte;
+    const diagonal = Math.hypot(dx, dy); // diagonal do imóvel em metros
+    if (diagonal < 150) return 10;
+    if (diagonal < 500) return 20;
+    if (diagonal < 1500) return 30;
+    return Math.round(diagonal / 50); // ex: diagonal de 3000m -> espaçamento de 60m
+  }
+
+  function gerarGradePontosUTM(vs: typeof vertices, spacing: number): { lat: number; lon: number; leste: number; norte: number }[] {
+    if (vs.length < 3) return [];
+    const nestes = vs.map((v) => v.leste);
+    const nortes = vs.map((v) => v.norte);
+    const minLeste = Math.min(...nestes), maxLeste = Math.max(...nestes);
+    const minNorte = Math.min(...nortes), maxNorte = Math.max(...nortes);
+
+    // Ajusta o espaçamento se a quantidade de pontos estimada for muito alta (> 1500)
+    let currentSpacing = spacing;
+    let numX = Math.ceil((maxLeste - minLeste) / currentSpacing);
+    let numY = Math.ceil((maxNorte - minNorte) / currentSpacing);
+    while (numX * numY > 1500) {
+      currentSpacing += 5;
+      numX = Math.ceil((maxLeste - minLeste) / currentSpacing);
+      numY = Math.ceil((maxNorte - minNorte) / currentSpacing);
+    }
+
+    const candidatos: { lat: number; lon: number; leste: number; norte: number }[] = [];
+    const poly = vs.map(v => ({ x: v.leste, y: v.norte }));
+    const jitterMax = currentSpacing * 0.15;
+
+    for (let x = minLeste; x <= maxLeste; x += currentSpacing) {
+      for (let y = minNorte; y <= maxNorte; y += currentSpacing) {
+        // Aplica jitter de 15% para quebrar colinearidades que atrapalhariam Delaunay
+        const jx = (Math.random() - 0.5) * jitterMax;
+        const jy = (Math.random() - 0.5) * jitterMax;
+        const px = x + jx;
+        const py = y + jy;
+
+        if (pontoNoPoligono(px, py, poly)) {
+          // Converte de volta para lat/lon para consultar na API
+          const geo = utmParaGeo(px, py, zona, hemisferio);
+          candidatos.push({ lat: geo.lat, lon: geo.lon, leste: px, norte: py });
+        }
+      }
+    }
+
+    return candidatos;
+  }
+
+  async function obterAltitudesLote(pontos: { lat: number; lon: number }[]): Promise<Record<string, number>> {
+    const localCache: Record<string, number> = {};
+    const aBuscar: { lat: number; lon: number; key: string }[] = [];
+
+    for (const p of pontos) {
+      const key = `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`;
+      if (verticesOnlineElev[key] !== undefined) {
+        localCache[key] = verticesOnlineElev[key];
+      } else {
+        if (!aBuscar.some(x => x.key === key)) {
+          aBuscar.push({ lat: p.lat, lon: p.lon, key });
+        }
+      }
+    }
+
+    if (aBuscar.length > 0) {
+      // Chunking em lotes de no máximo 800 pontos
+      const BATCH_SIZE = 800;
+      for (let i = 0; i < aBuscar.length; i += BATCH_SIZE) {
+        const batch = aBuscar.slice(i, i + BATCH_SIZE);
+        const latsStr = batch.map(c => c.lat.toFixed(6)).join(',');
+        const lonsStr = batch.map(c => c.lon.toFixed(6)).join(',');
+        
+        const resApi = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}`);
+        if (!resApi.ok) throw new Error('Falha na resposta do servidor Open-Meteo.');
+        const data = await resApi.json();
+        if (!data || !Array.isArray(data.elevation)) {
+          throw new Error('Formato de resposta inválido da API de altitudes.');
+        }
+
+        batch.forEach((c, idx) => {
+          const elev = data.elevation[idx];
+          if (Number.isFinite(elev)) {
+            localCache[c.key] = elev;
+          }
+        });
+      }
+
+      // Atualiza o cache global
+      setVerticesOnlineElev(prev => ({ ...prev, ...localCache }));
+    }
+
+    return localCache;
+  }
+
   // Gera as CURVAS DE NÍVEL: triangula os pontos medidos, extrai as isolinhas no intervalo escolhido,
   // recorta ao polígono do imóvel e aplica os ajustes da engrenagem (cor, espessura, mestra a cada N).
   async function gerarCurvasNivel() {
@@ -4301,130 +4402,110 @@ export default function EditorPage() {
       setProcessando(true);
       aviso('Buscando grade de altitudes oficiais do terreno (Copernicus DEM)...');
       try {
-        const lats = vertices.map(v => v.lat);
-        const lons = vertices.map(v => v.lon);
-        const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-        const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+        const spacing = gradeDensidadeMetros > 0 ? gradeDensidadeMetros : calcularEspacamentoGradeAuto(vertices);
+        const candidatos = gerarGradePontosUTM(vertices, spacing);
 
-        // Grid 8x8 com jitter de 15% para quebrar colinearidades
-        const GRID_SIZE = 8;
-        const candidatos: { lat: number; lon: number }[] = [];
-        const poly = vertices.map(v => ({ x: v.lon, y: v.lat }));
-        const stepLat = (maxLat - minLat) / (GRID_SIZE - 1);
-        const stepLon = (maxLon - minLon) / (GRID_SIZE - 1);
-
-        for (let i = 0; i < GRID_SIZE; i++) {
-          const baseLat = minLat + stepLat * i;
-          for (let j = 0; j < GRID_SIZE; j++) {
-            const baseLon = minLon + stepLon * j;
-            const jitterLat = (Math.random() - 0.5) * stepLat * 0.15;
-            const jitterLon = (Math.random() - 0.5) * stepLon * 0.15;
-            const lat = baseLat + jitterLat;
-            const lon = baseLon + jitterLon;
-            if (pontoNoPoligono(lon, lat, poly)) {
-              candidatos.push({ lat, lon });
-            }
-          }
-        }
-
-        if (candidatos.length === 0) {
-          const cLat = lats.reduce((a, b) => a + b, 0) / vertices.length;
-          const cLon = lons.reduce((a, b) => a + b, 0) / vertices.length;
-          candidatos.push({ lat: cLat, lon: cLon });
-        }
-
-        // Também busca altitudes para os vértices do perímetro sem cota (ou todos se desconsiderarVerticesLevantados for true) para evitar efeito serrilhado na borda
         const queryPoints = [...candidatos];
-        const startIndexVertices = queryPoints.length;
         vertices.forEach(v => {
           if (desconsiderarVerticesLevantados || !v.elevacao) {
-            queryPoints.push({ lat: v.lat, lon: v.lon });
+            queryPoints.push({ lat: v.lat, lon: v.lon, leste: v.leste, norte: v.norte });
           }
         });
-        const startIndexIgnorados = queryPoints.length;
         verticesIgnorados.forEach(v => {
           if (desconsiderarVerticesLevantados || !v.elevacao) {
-            queryPoints.push({ lat: v.lat, lon: v.lon });
+            queryPoints.push({ lat: v.lat, lon: v.lon, leste: v.leste, norte: v.norte });
           }
         });
 
-        const latsStr = queryPoints.map(c => c.lat.toFixed(6)).join(',');
-        const lonsStr = queryPoints.map(c => c.lon.toFixed(6)).join(',');
+        // Executa a busca em lote com cache integrado
+        const resAltitudes = await obterAltitudesLote(queryPoints);
 
-        const resApi = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}`);
-        if (resApi.ok) {
-          const data = await resApi.json();
-          if (data && Array.isArray(data.elevation)) {
-            const pontosObtidos: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[] = [];
-            for (let k = 0; k < candidatos.length; k++) {
-              const elev = data.elevation[k];
-              if (Number.isFinite(elev)) {
-                const cand = candidatos[k];
-                const u = geoParaUtm(cand.lat, cand.lon, zona, hemisferio);
-                pontosObtidos.push({
-                  lat: cand.lat,
-                  lon: cand.lon,
-                  leste: u.leste,
-                  norte: u.norte,
-                  elevacao: elev
-                });
-              }
-            }
-            if (pontosObtidos.length > 0) {
-              setGradeAltimetrica(pontosObtidos);
-              activeGrade = pontosObtidos;
-            }
-
-            // Atualiza os vértices sem altitude (ou todos se desconsiderar for true)
-            let mudouVertice = false;
-            const novosVertices = vertices.map((v, idx) => {
-              const indexNoLote = startIndexVertices + vertices.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
-              if ((desconsiderarVerticesLevantados || !v.elevacao) && indexNoLote < startIndexIgnorados) {
-                const elev = data.elevation[indexNoLote];
-                if (Number.isFinite(elev)) {
-                  mudouVertice = true;
-                  return { ...v, elevacao: +elev.toFixed(4) };
-                }
-              }
-              return v;
+        const pontosObtidos: typeof gradeAltimetrica = [];
+        for (const cand of candidatos) {
+          const key = `${cand.lat.toFixed(6)},${cand.lon.toFixed(6)}`;
+          const elev = resAltitudes[key];
+          if (elev !== undefined) {
+            pontosObtidos.push({
+              lat: cand.lat,
+              lon: cand.lon,
+              leste: cand.leste,
+              norte: cand.norte,
+              elevacao: elev
             });
+          }
+        }
 
-            // Atualiza os ignorados
-            let mudouIgnorados = false;
-            const novosIgnorados = verticesIgnorados.map((v, idx) => {
-              const indexNoLote = startIndexIgnorados + verticesIgnorados.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
-              if ((desconsiderarVerticesLevantados || !v.elevacao) && indexNoLote < queryPoints.length) {
-                const elev = data.elevation[indexNoLote];
-                if (Number.isFinite(elev)) {
-                  mudouIgnorados = true;
-                  return { ...v, elevacao: +elev.toFixed(4) };
-                }
-              }
-              return v;
-            });
+        if (pontosObtidos.length > 0) {
+          setGradeAltimetrica(pontosObtidos);
+          activeGrade = pontosObtidos;
+        }
 
-            const totalMudados = (mudouVertice ? novosVertices.filter((v, idx) => v.elevacao !== vertices[idx].elevacao).length : 0) +
-                                 (mudouIgnorados ? novosIgnorados.filter((v, idx) => v.elevacao !== verticesIgnorados[idx].elevacao).length : 0);
-
-            if (totalMudados > 0) {
-              const aceitou = await confirmar({
-                titulo: 'Atualizar altitudes dos vértices',
-                mensagem: `Encontramos altitudes oficiais online para ${totalMudados} vértice(s) da divisa que estavam sem altitude. Deseja salvar essas altitudes nos vértices do seu projeto?`,
-                okLabel: 'Sim, salvar nos vértices',
-                cancelLabel: 'Não, usar apenas para as curvas'
-              });
-              if (aceitou) {
-                if (mudouVertice) setVertices(novosVertices);
-                if (mudouIgnorados) setVerticesIgnorados(novosIgnorados);
-                aviso(`Altitudes de ${totalMudados} vértice(s) atualizadas e salvas com sucesso.`);
-              } else {
-                aviso('Altitudes não foram salvas nos vértices, mas serão usadas temporariamente para traçar as curvas.');
-              }
-              // Sempre usa as novas altitudes calculadas para a triangulação do terreno nesta execução!
-              activeVertices = mudouVertice ? novosVertices : vertices;
-              activeIgnorados = mudouIgnorados ? novosIgnorados : verticesIgnorados;
+        // Atualiza os vértices sem altitude (ou todos se desconsiderar for true)
+        let mudouVertice = false;
+        const novosVertices = vertices.map(v => {
+          if (desconsiderarVerticesLevantados || !v.elevacao) {
+            const key = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+            const elev = resAltitudes[key];
+            if (elev !== undefined) {
+              mudouVertice = true;
+              return { ...v, elevacao: +elev.toFixed(4) };
             }
           }
+          return v;
+        });
+
+        // Atualiza os ignorados
+        let mudouIgnorados = false;
+        const novosIgnorados = verticesIgnorados.map(v => {
+          if (desconsiderarVerticesLevantados || !v.elevacao) {
+            const key = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+            const elev = resAltitudes[key];
+            if (elev !== undefined) {
+              mudouIgnorados = true;
+              return { ...v, elevacao: +elev.toFixed(4) };
+            }
+          }
+          return v;
+        });
+
+        // Também popula os IDs dos vértices no verticesOnlineElev para manter compatibilidade com
+        // desconsiderarVerticesLevantados que consome diretamente verticesOnlineElev[v.id]
+        const mapOnline: Record<string, number> = {};
+        novosVertices.forEach(v => {
+          const key = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+          const elev = resAltitudes[key];
+          if (elev !== undefined) {
+            mapOnline[v.id] = +elev.toFixed(4);
+          }
+        });
+        novosIgnorados.forEach(v => {
+          const key = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+          const elev = resAltitudes[key];
+          if (elev !== undefined) {
+            mapOnline[v.id] = +elev.toFixed(4);
+          }
+        });
+        setVerticesOnlineElev(prev => ({ ...prev, ...mapOnline }));
+
+        const totalMudados = (mudouVertice ? novosVertices.filter((v, idx) => v.elevacao !== vertices[idx].elevacao).length : 0) +
+                             (mudouIgnorados ? novosIgnorados.filter((v, idx) => v.elevacao !== verticesIgnorados[idx].elevacao).length : 0);
+
+        if (totalMudados > 0) {
+          const aceitou = await confirmar({
+            titulo: 'Atualizar altitudes dos vértices',
+            mensagem: `Encontramos altitudes oficiais online para ${totalMudados} vértice(s) da divisa que estavam sem altitude. Deseja salvar essas altitudes nos vértices do seu projeto?`,
+            okLabel: 'Sim, salvar nos vértices',
+            cancelLabel: 'Não, usar apenas para as curvas'
+          });
+          if (aceitou) {
+            if (mudouVertice) setVertices(novosVertices);
+            if (mudouIgnorados) setVerticesIgnorados(novosIgnorados);
+            aviso(`Altitudes de ${totalMudados} vértice(s) atualizadas e salvas com sucesso.`);
+          } else {
+            aviso('Altitudes não foram salvas nos vértices, mas serão usadas temporariamente para traçar as curvas.');
+          }
+          activeVertices = mudouVertice ? novosVertices : vertices;
+          activeIgnorados = mudouIgnorados ? novosIgnorados : verticesIgnorados;
         }
       } catch (e) {
         console.error('Erro ao adensar relevo automaticamente:', e);
@@ -4492,76 +4573,34 @@ export default function EditorPage() {
     setProcessando(true);
     aviso('Buscando grade de altitudes oficiais do terreno (Copernicus DEM)...');
     try {
-      const lats = vertices.map(v => v.lat);
-      const lons = vertices.map(v => v.lon);
-      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-      const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+      const spacing = gradeDensidadeMetros > 0 ? gradeDensidadeMetros : calcularEspacamentoGradeAuto(vertices);
+      const candidatos = gerarGradePontosUTM(vertices, spacing);
 
-      // Gera um grid de 8x8 pontos (suficientemente denso e rápido) com jitter
-      const GRID_SIZE = 8;
-      const candidatos: { lat: number; lon: number }[] = [];
-      const poly = vertices.map(v => ({ x: v.lon, y: v.lat })); // verificação em coordenadas geográficas
-      const stepLat = (maxLat - minLat) / (GRID_SIZE - 1);
-      const stepLon = (maxLon - minLon) / (GRID_SIZE - 1);
-
-      for (let i = 0; i < GRID_SIZE; i++) {
-        const baseLat = minLat + stepLat * i;
-        for (let j = 0; j < GRID_SIZE; j++) {
-          const baseLon = minLon + stepLon * j;
-          const jitterLat = (Math.random() - 0.5) * stepLat * 0.15;
-          const jitterLon = (Math.random() - 0.5) * stepLon * 0.15;
-          const lat = baseLat + jitterLat;
-          const lon = baseLon + jitterLon;
-          if (pontoNoPoligono(lon, lat, poly)) {
-            candidatos.push({ lat, lon });
-          }
-        }
-      }
-
-      if (candidatos.length === 0) {
-        // Fallback: se nenhum ponto caiu estritamente dentro (ex.: polígono estreito ou em L), usa o baricentro
-        const cLat = lats.reduce((a, b) => a + b, 0) / vertices.length;
-        const cLon = lons.reduce((a, b) => a + b, 0) / vertices.length;
-        candidatos.push({ lat: cLat, lon: cLon });
-      }
-
-      // Adiciona também os próprios vértices do perímetro no lote para obter altitudes se vierem zerados (ou se desconsiderarVerticesLevantados for true)
       const queryPoints = [...candidatos];
-      const startIndexVertices = queryPoints.length;
       vertices.forEach(v => {
         if (desconsiderarVerticesLevantados || !v.elevacao) {
-          queryPoints.push({ lat: v.lat, lon: v.lon });
+          queryPoints.push({ lat: v.lat, lon: v.lon, leste: v.leste, norte: v.norte });
         }
       });
-      const startIndexIgnorados = queryPoints.length;
       verticesIgnorados.forEach(v => {
         if (desconsiderarVerticesLevantados || !v.elevacao) {
-          queryPoints.push({ lat: v.lat, lon: v.lon });
+          queryPoints.push({ lat: v.lat, lon: v.lon, leste: v.leste, norte: v.norte });
         }
       });
 
-      const latsStr = queryPoints.map(c => c.lat.toFixed(6)).join(',');
-      const lonsStr = queryPoints.map(c => c.lon.toFixed(6)).join(',');
+      // Executa a busca em lote com cache integrado
+      const resAltitudes = await obterAltitudesLote(queryPoints);
 
-      const resApi = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}`);
-      if (!resApi.ok) throw new Error('Falha na resposta do servidor Open-Meteo.');
-      const data = await resApi.json();
-
-      if (!data || !Array.isArray(data.elevation)) {
-        throw new Error('Formato de resposta inválido.');
-      }
-
-      const pontosObtidos: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[] = [];
-      for (let k = 0; k < candidatos.length; k++) {
-        const elev = data.elevation[k];
-        if (Number.isFinite(elev)) {
-          const cand = candidatos[k];
-          const u = geoParaUtm(cand.lat, cand.lon, zona, hemisferio);
+      const pontosObtidos: typeof gradeAltimetrica = [];
+      for (const cand of candidatos) {
+        const key = `${cand.lat.toFixed(6)},${cand.lon.toFixed(6)}`;
+        const elev = resAltitudes[key];
+        if (elev !== undefined) {
           pontosObtidos.push({
             lat: cand.lat,
             lon: cand.lon,
-            leste: u.leste,
-            norte: u.norte,
+            leste: cand.leste,
+            norte: cand.norte,
             elevacao: elev
           });
         }
@@ -4572,34 +4611,13 @@ export default function EditorPage() {
       } else {
         setGradeAltimetrica(pontosObtidos);
 
-        const mapOnline: Record<string, number> = {};
-        vertices.forEach((v, idx) => {
-          const indexNoLote = startIndexVertices + vertices.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
-          if (indexNoLote < startIndexIgnorados) {
-            const elev = data.elevation[indexNoLote];
-            if (Number.isFinite(elev)) {
-              mapOnline[v.id] = +elev.toFixed(4);
-            }
-          }
-        });
-        verticesIgnorados.forEach((v, idx) => {
-          const indexNoLote = startIndexIgnorados + verticesIgnorados.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
-          if (indexNoLote < queryPoints.length) {
-            const elev = data.elevation[indexNoLote];
-            if (Number.isFinite(elev)) {
-              mapOnline[v.id] = +elev.toFixed(4);
-            }
-          }
-        });
-        setVerticesOnlineElev(prev => ({ ...prev, ...mapOnline }));
-
         // Atualiza os vértices sem altitude (ou todos se desconsiderar for true)
         let mudouVertice = false;
-        const novosVertices = vertices.map((v, idx) => {
-          const indexNoLote = startIndexVertices + vertices.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
-          if ((desconsiderarVerticesLevantados || !v.elevacao) && indexNoLote < startIndexIgnorados) {
-            const elev = data.elevation[indexNoLote];
-            if (Number.isFinite(elev)) {
+        const novosVertices = vertices.map(v => {
+          if (desconsiderarVerticesLevantados || !v.elevacao) {
+            const key = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+            const elev = resAltitudes[key];
+            if (elev !== undefined) {
               mudouVertice = true;
               return { ...v, elevacao: +elev.toFixed(4) };
             }
@@ -4609,17 +4627,35 @@ export default function EditorPage() {
 
         // Atualiza os ignorados
         let mudouIgnorados = false;
-        const novosIgnorados = verticesIgnorados.map((v, idx) => {
-          const indexNoLote = startIndexIgnorados + verticesIgnorados.filter((x, i) => i < idx && (desconsiderarVerticesLevantados || !x.elevacao)).length;
-          if ((desconsiderarVerticesLevantados || !v.elevacao) && indexNoLote < queryPoints.length) {
-            const elev = data.elevation[indexNoLote];
-            if (Number.isFinite(elev)) {
+        const novosIgnorados = verticesIgnorados.map(v => {
+          if (desconsiderarVerticesLevantados || !v.elevacao) {
+            const key = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+            const elev = resAltitudes[key];
+            if (elev !== undefined) {
               mudouIgnorados = true;
               return { ...v, elevacao: +elev.toFixed(4) };
             }
           }
           return v;
         });
+
+        // Também popula os IDs dos vértices no verticesOnlineElev para manter compatibilidade
+        const mapOnline: Record<string, number> = {};
+        novosVertices.forEach(v => {
+          const key = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+          const elev = resAltitudes[key];
+          if (elev !== undefined) {
+            mapOnline[v.id] = +elev.toFixed(4);
+          }
+        });
+        novosIgnorados.forEach(v => {
+          const key = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+          const elev = resAltitudes[key];
+          if (elev !== undefined) {
+            mapOnline[v.id] = +elev.toFixed(4);
+          }
+        });
+        setVerticesOnlineElev(prev => ({ ...prev, ...mapOnline }));
 
         const totalMudados = (mudouVertice ? novosVertices.filter((v, idx) => v.elevacao !== vertices[idx].elevacao).length : 0) +
                              (mudouIgnorados ? novosIgnorados.filter((v, idx) => v.elevacao !== verticesIgnorados[idx].elevacao).length : 0);
@@ -6530,6 +6566,25 @@ export default function EditorPage() {
                                     <span>Desconsiderar altitude dos vértices</span>
                                     <input type="checkbox" checked={desconsiderarVerticesLevantados} onChange={(e) => setDesconsiderarVerticesLevantados(e.target.checked)} className="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-primary" />
                                   </label>
+                                  <div className="flex items-center justify-between text-[10px] font-medium border-t border-border/20 pt-1.5">
+                                    <span title="Distância em metros entre os pontos de altitude da grade online. Menor = curvas mais realistas, porém exige mais processamento.">Espaçamento da Grade</span>
+                                    <select
+                                      value={gradeDensidadeMetros}
+                                      onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setGradeDensidadeMetros(val);
+                                        setGradeAltimetrica([]);
+                                      }}
+                                      className="h-6 rounded border bg-background px-1 text-[9px] focus:ring-1 focus:ring-primary focus:outline-none"
+                                    >
+                                      <option value={0}>Auto ({calcularEspacamentoGradeAuto(vertices)}m)</option>
+                                      <option value={10}>Muito Denso (10m)</option>
+                                      <option value={15}>Denso (15m)</option>
+                                      <option value={25}>Médio (25m)</option>
+                                      <option value={50}>Esparso (50m)</option>
+                                      <option value={100}>Muito Esparso (100m)</option>
+                                    </select>
+                                  </div>
                                 </div>
                               </div>
 
