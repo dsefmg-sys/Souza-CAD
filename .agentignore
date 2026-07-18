@@ -1,0 +1,23 @@
+# Pastas de build e dependências
+node_modules/
+.next/
+dist/
+build/
+out/
+.git/
+
+# Arquivos de log e depuração
+*.log
+firestore-debug.log
+npm-debug.log*
+
+# Mídias, PDFs e imagens pesadas
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+
+# Outros arquivos do sistema
+.DS_Store
+Thumbs.db

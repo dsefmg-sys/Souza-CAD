@@ -66,6 +66,8 @@ import EstudioModal from '@/components/EstudioModal';
 import HistoriaModal from '@/components/HistoriaModal';
 import Map3DViewer from '@/components/Map3DViewer';
 import { ObjetoPersonalizarModal } from '@/components/ObjetoPersonalizarModal';
+import { SigefMenuModal } from '@/components/SigefMenuModal';
+import { PecasSheetModal } from '@/components/PecasSheetModal';
 
 import PontosBancoModal from '@/components/PontosBancoModal';
 import type { ModoEdicao } from '@/components/MapEditor';
@@ -901,7 +903,7 @@ export default function EditorPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const salvaAudios = localStorage.getItem('metrica:pos_barra_audios');
-      let pos = {
+      let posAud = {
         x: Math.max(10, Math.floor(window.innerWidth / 2 - 200)),
         y: Math.max(10, window.innerHeight - 56),
       };
@@ -909,22 +911,38 @@ export default function EditorPage() {
         try {
           const parsed = JSON.parse(salvaAudios);
           if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
-            pos = {
+            posAud = {
               x: Math.max(10, Math.min(window.innerWidth - 300, parsed.x)),
               y: Math.max(10, Math.min(window.innerHeight - 50, parsed.y)),
             };
           }
         } catch {}
       }
-      setPosAudioBarra(pos);
+      setPosAudioBarra(posAud);
+
       const salvaAtalhos = localStorage.getItem('metrica:pos_barra_atalhos');
       if (!salvaAtalhos) {
         setPosAtalhos({ x: window.innerWidth / 2 - 250, y: 64 });
       }
+
       const salvaArea = localStorage.getItem('metrica:pos_barra_medidas');
-      if (!salvaArea) {
-        setPosArea({ x: window.innerWidth / 2 - 120, y: window.innerHeight - 80 });
+      let posAr = {
+        x: Math.max(10, Math.floor(window.innerWidth / 2 - 120)),
+        y: Math.max(10, window.innerHeight - 80),
+      };
+      if (salvaArea) {
+        try {
+          const parsed = JSON.parse(salvaArea);
+          if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+            posAr = {
+              x: Math.max(10, Math.min(window.innerWidth - 300, parsed.x)),
+              y: Math.max(10, Math.min(window.innerHeight - 50, parsed.y)),
+            };
+          }
+        } catch {}
       }
+      setPosArea(posAr);
+
       const salvaFolhaTravada = localStorage.getItem('metrica:planta_folha_travada');
       if (salvaFolhaTravada !== null) {
         setFolhaTravadaState(salvaFolhaTravada === '1');
@@ -934,6 +952,30 @@ export default function EditorPage() {
         setPlantaDarkState(salvaPlantaDark === '1');
       }
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      setPosArea((curr: { x: number; y: number }) => {
+        const maxX = Math.max(10, window.innerWidth - 300);
+        const maxY = Math.max(10, window.innerHeight - 50);
+        const newX = Math.max(10, Math.min(maxX, curr.x));
+        const newY = Math.max(10, Math.min(maxY, curr.y));
+        if (newX !== curr.x || newY !== curr.y) return { x: newX, y: newY };
+        return curr;
+      });
+      setPosAudioBarra((curr: { x: number; y: number }) => {
+        const maxX = Math.max(10, window.innerWidth - 300);
+        const maxY = Math.max(10, window.innerHeight - 50);
+        const newX = Math.max(10, Math.min(maxX, curr.x));
+        const newY = Math.max(10, Math.min(maxY, curr.y));
+        if (newX !== curr.x || newY !== curr.y) return { x: newX, y: newY };
+        return curr;
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const [plantaDark, setPlantaDarkState] = useState(true);
@@ -4191,6 +4233,27 @@ export default function EditorPage() {
   const [curvaMestraCada, setCurvaMestraCada] = useState(5); // linha mais forte a cada N curvas
   const [curvaEspessura, setCurvaEspessura] = useState<'fina' | 'media' | 'grossa'>('media');
   const [curvaConfigAberta, setCurvaConfigAberta] = useState(false);
+  const [ajusteAltCm, setAjusteAltCm] = useState('');
+
+  function ajustarAltitudesGlobais(cm: number) {
+    if (!cm || isNaN(cm)) return;
+    snap();
+    const deltaMeters = cm / 100;
+    setVertices((vs) =>
+      vs.map((v) => ({
+        ...v,
+        elevacao: +((v.elevacao ?? 0) + deltaMeters).toFixed(4),
+      }))
+    );
+    setVerticesIgnorados((vs) =>
+      vs.map((v) => ({
+        ...v,
+        elevacao: +((v.elevacao ?? 0) + deltaMeters).toFixed(4),
+      }))
+    );
+    aviso(`Ajuste de ${cm > 0 ? '+' : ''}${cm}cm aplicado a todos os pontos.`);
+  }
+
   // Espessura (mm de tela) da curva normal e da mestra, por nível de nitidez escolhido.
   const ESP_CURVA = { fina: { normal: 0.5, mestra: 1.1 }, media: { normal: 0.7, mestra: 1.5 }, grossa: { normal: 1.0, mestra: 2.1 } } as const;
 
@@ -6233,6 +6296,39 @@ export default function EditorPage() {
                                 <Database className="size-3.5" /> Adensar Relevo (Altitudes Online)
                               </Button>
 
+                              <div className="space-y-1 border-t border-border/40 pt-2">
+                                <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Ajustar Altitude Global</span>
+                                <div className="flex items-center justify-between gap-1.5 rounded-md bg-muted/20 p-1.5">
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      step={1}
+                                      value={ajusteAltCm}
+                                      onChange={(e) => setAjusteAltCm(e.target.value)}
+                                      className="h-6 w-14 rounded-sm border border-input bg-background text-center text-[10px] font-bold"
+                                      placeholder="Ex: -15"
+                                      title="Valor em centímetros para somar ou subtrair da altitude de todos os pontos"
+                                    />
+                                    <span className="text-[10px] text-muted-foreground">cm</span>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    className="h-6 px-2 text-[9px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white border-0 shadow-xs"
+                                    onClick={() => {
+                                      const cm = parseFloat(ajusteAltCm);
+                                      if (isNaN(cm)) {
+                                        aviso("Digite um valor em centímetros.");
+                                        return;
+                                      }
+                                      ajustarAltitudesGlobais(cm);
+                                    }}
+                                  >
+                                    Aplicar
+                                  </Button>
+                                </div>
+                              </div>
+
                             </div>
                           )}
                         </div>
@@ -7640,209 +7736,25 @@ export default function EditorPage() {
       <ErrorBoundary onReset={() => setPrecoSugAberto(false)}>
         <PrecoSugeridoModal open={precoSugAberto} onOpenChange={setPrecoSugAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} />
       </ErrorBoundary>
-      <Dialog open={sigefMenuAberto} onOpenChange={setSigefMenuAberto}>
-        <DialogContent className="max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-              <Database className="size-5" /> Integração SIGEF / INCRA
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="flex flex-col gap-4 mt-2">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              O principal objetivo deste módulo é obter e importar os vértices e polígonos confrontantes oficiais do INCRA para casar com o seu projeto, garantindo conformidade jurídica, e nomes e dados corretos de confrontações.
-            </p>
-
-            {colegasIdentificados.length > 0 && (
-              <div className="rounded-lg border border-emerald-600/20 bg-emerald-500/5 p-3 flex flex-col gap-1.5">
-                <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                  <Phone className="size-3.5" /> Colegas com vértices certificados identificados nesta área:
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
-                  {colegasIdentificados.map((col) => (
-                    <div key={col.id} className="text-xs bg-background border p-2 rounded flex flex-col gap-0.5 shadow-sm">
-                      <div className="font-bold flex items-center gap-1.5 text-foreground">
-                        <span className="px-1.5 py-px bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-[9px] font-black tracking-wider uppercase">
-                          {col.credenciamento}
-                        </span>
-                        <span className="truncate">{col.nome}</span>
-                      </div>
-                      {col.telefone && (
-                        <div className="text-[11px] text-muted-foreground">
-                          Telefone: <span className="font-semibold text-foreground">{col.telefone}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Confrontantes e Vértices Oficiais</span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">1. Importar Polígonos Vizinhos</span>
-                  <Button
-                    size="sm"
-                    className="h-8 font-bold"
-                    onClick={() => {
-                      setSigefMenuAberto(false);
-                      void importarVizinhosAuto();
-                    }}
-                  >
-                    Buscar Online
-                  </Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-snug">
-                  Busca automática online por região de todos os imóveis certificados que confrontam com o perímetro trabalhado, gerando os confrontantes automaticamente.
-                </p>
-                {parcelasCert.length > 0 && (
-                  <div className="mt-2 flex items-center justify-between gap-2 border border-dashed border-emerald-600/30 rounded-lg p-2 bg-background/50">
-                    <label className="flex cursor-pointer items-center gap-1.5 text-[11px] font-bold text-foreground select-none">
-                      <input type="checkbox" className="size-3.5 accent-emerald-600 rounded-sm" checked={mostrarCert} onChange={(e) => setMostrarCert(e.target.checked)} />
-                      Exibir no Mapa ({parcelasCert.length})
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] uppercase text-muted-foreground font-semibold">Opacidade:</span>
-                      <input type="range" min={0} max={0.5} step={0.02} value={opacidadeCert} disabled={!mostrarCert} onChange={(e) => setOpacidadeCert(Number(e.target.value))} className="w-20 accent-emerald-600 disabled:opacity-40" title="Opacidade do preenchimento das parcelas" />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-foreground">2. Importar CSV dos Vértices de Imóveis Vizinhos Certificados</span>
-                  <Button
-                    size="sm"
-                    className="h-8 font-bold shrink-0 bg-amber-500 hover:bg-amber-600 text-white border-transparent"
-                    onClick={() => {
-                      setSigefMenuAberto(false);
-                      verticesVizinhoRef.current?.click();
-                    }}
-                  >
-                    Importar CSV
-                  </Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-snug">
-                  Importa o <strong>CSV dos Vértices</strong> do imóvel vizinho certificado para servir como referência de encaixe no desenho, prevenindo vãos ou sobreposições de divisa.
-                </p>
-                <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-2 text-[10px] text-muted-foreground space-y-1 mt-1">
-                  <span className="font-extrabold uppercase text-[9px] tracking-wider text-amber-700 dark:text-amber-400 block">Como obter o CSV dos Vértices:</span>
-                  <ol className="list-decimal pl-4 space-y-1">
-                    <li><strong>Feche esta tela</strong> e clique no polígono vizinho já importado no mapa (item 1 acima).</li>
-                    <li>No painel que abrir, copie o <strong>Código INCRA</strong> do imóvel certificado.</li>
-                    <li>Acesse o <strong>SIGEF/INCRA</strong>, pesquise pelo Código INCRA copiado.</li>
-                    <li>Na página da parcela, baixe o <strong>CSV dos Vértices</strong>.</li>
-                    <li>Volte aqui e clique em <strong>Importar CSV</strong> (botão amarelo acima).</li>
-                  </ol>
-                </div>
-              </div>
-
-              {/* "Casar Vértices" mudou de lugar: agora fica logo abaixo de "Importar CSV do
-                  Confrontante", no painel da parcela selecionada no mapa — mais ágil, sem precisar
-                  abrir este menu só pra isso. */}
-
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">
-                    3. Gerar Vértices Virtuais (V)
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 font-bold border-indigo-500 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
-                    onClick={() => {
-                      setSigefMenuAberto(false);
-                      setVvBase(null);
-                      setVvAberto(true);
-                    }}
-                  >
-                    Gerar Virtual
-                  </Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-snug">
-                  Calcula e cria vértices virtuais (tipo V) para cantos inacessíveis (como córregos, vãos ou limites intangíveis), por afastamento de alinhamento ou interseção de rumos.
-                </p>
-              </div>
-
-
-              <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 p-3 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">Corrigir lat/lon do CSV dos Vértices</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 font-bold border-orange-500 text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950/20"
-                    onClick={() => { setSigefMenuAberto(false); corrigirLatLonRef.current?.click(); }}
-                  >
-                    Selecionar CSV
-                  </Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-snug">
-                  Atualiza apenas o lat/lon dos vértices do projeto usando o CSV dos Vértices oficial do SIGEF, cruzando pelo código SIGEF de cada vértice. Confrontantes e atribuições são preservados.
-                </p>
-              </div>
-
-              <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">Corrigir precisão reimportando TXT</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 font-bold border-violet-500 text-violet-600 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-950/20"
-                    onClick={() => { setSigefMenuAberto(false); setPlanilhaConfAberta(true); }}
-                  >
-                    Abrir
-                  </Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-snug">
-                  Restaura a precisão milimétrica dos vértices reimportando o TXT original do levantamento. Compara cada vértice com o ponto do TXT mais próximo (até 0,5m em cada eixo) e só atualiza as coordenadas em que o TXT traz mais casas decimais. Confrontantes, código SIGEF e atribuições são preservados. Mostra um preview das mudanças antes de aplicar.
-                </p>
-              </div>
-            </div>
-
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground border-t pt-3">Conciliar Medidas (Área e Perímetro)</span>
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <Ruler className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                <span className="text-xs font-bold text-foreground">Por que a área do SIGEF nunca bate 100% com a calculada aqui?</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-snug">
-                O SIGEF recalcula a área (SGL) e o perímetro usando as próprias fórmulas geodésicas e projeções oficiais — por isso o valor dele SEMPRE difere um pouco (alguns m²) do valor calculado por qualquer software de topografia, incluindo este. Essa diferença é normal e não indica erro no seu levantamento.
-              </p>
-              <p className="text-[11px] text-muted-foreground leading-snug">
-                Por segurança jurídica, o recomendado é <strong>sempre usar a área e o perímetro oficiais do SIGEF</strong> nas peças técnicas finais (memorial, planta, requerimento), não os calculados aqui. Pra isso: baixe a planilha SIGEF (.ods), envie pro site do SIGEF pra gerar o rascunho oficial, e depois cole os valores que ele devolver na janela <strong>&quot;Conferir&quot;</strong>, seção <strong>&quot;Reconciliação com o SIGEF&quot;</strong>.
-              </p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 font-bold border-amber-600 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20"
-                  onClick={() => {
-                    setSigefMenuAberto(false);
-                    setPlanilhaConfAberta(true);
-                  }}
-                >
-                  <Download className="size-3.5" /> Baixar Planilha SIGEF (.ods)
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 font-bold"
-                  onClick={() => {
-                    setSigefMenuAberto(false);
-                    setConferirAberto(true);
-                  }}
-                >
-                  <Check className="size-3.5" /> Já tenho os valores oficiais
-                </Button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SigefMenuModal
+        open={sigefMenuAberto}
+        onOpenChange={setSigefMenuAberto}
+        colegasIdentificados={colegasIdentificados}
+        parcelasCert={parcelasCert}
+        mostrarCert={mostrarCert}
+        setMostrarCert={setMostrarCert}
+        opacidadeCert={opacidadeCert}
+        setOpacidadeCert={setOpacidadeCert}
+        importarVizinhosAuto={importarVizinhosAuto}
+        onImportarCsvVizinhos={() => verticesVizinhoRef.current?.click()}
+        onGerarVirtual={() => {
+          setVvBase(null);
+          setVvAberto(true);
+        }}
+        onCorrigirLatLon={() => corrigirLatLonRef.current?.click()}
+        onAbrirPlanilhaConf={() => setPlanilhaConfAberta(true)}
+        onAbrirConferir={() => setConferirAberto(true)}
+      />
       <ErrorBoundary onReset={() => setCarAberto(false)}>
         <CarModal open={carAberto} onOpenChange={setCarAberto} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0}
           areasCamadas={(() => { const a = { app: 0, reservaLegal: 0, vegetacao: 0, usoConsolidado: 0 }; for (const o of objetos) if (o.tipo === 'polilinha' && o.carTema && o.pontos.length >= 3) a[o.carTema] += areaPoligonoObjeto(o); return a; })()}
@@ -7852,70 +7764,14 @@ export default function EditorPage() {
       <AnuenciaModal open={anuenciaAberta} onOpenChange={setAnuenciaAberta} confrontantes={confrontantes} lados={lados} mapa={confrontantePorLado} imovel={imovel} tecnico={tecnico} />
       <HistoriaModal open={historiaAberta} onOpenChange={setHistoriaAberta} />
 
-      {/* Janela de peças do celular: aberta pela MobileHome. Lista a MESMA `itensPecas` do menu de
-          peças — cada botão executa a ação (baixa direto ou abre o modal da peça) e fecha a janela. */}
-      <Dialog open={pecasSheetAberto} onOpenChange={setPecasSheetAberto}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base"><Download className="size-5 text-emerald-600 dark:text-emerald-400" /> Baixar peças técnicas</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 max-h-[75vh] overflow-y-auto pr-1">
-            {/* Botão Baixar Tudo no topo do Mobile Sheet */}
-            <button type="button" disabled={processando} onClick={() => { baixarPacoteEntrega(); }}
-              className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-3 text-center text-sm font-bold text-amber-700 hover:bg-amber-500/20 dark:text-amber-400 active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
-              {processando ? (
-                <>
-                  <RefreshCw className="size-4 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
-                  <span>Baixando...</span>
-                </>
-              ) : (
-                <>
-                  <Archive className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                  <span>Baixar Tudo (Pacote ZIP)</span>
-                </>
-              )}
-            </button>
-            <div className="my-1 border-b border-border/60" />
-
-            {/* Lista de Peças */}
-            {itensPecas.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border bg-background/60 p-2 text-left">
-                <span className="text-xs font-semibold text-foreground truncate pl-1" title={item.rotulo}>
-                  {item.rotulo}
-                </span>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground active:scale-[0.97]"
-                    title="Visualizar ou editar no navegador"
-                    onClick={() => { setPecasSheetAberto(false); item.onVisualizar(); }}
-                  >
-                    <Eye className="size-3.5" /> Ver
-                  </Button>
-                  {item.onBaixar && (
-                    <Button
-                      size="sm"
-                      className="h-8 gap-1 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-800 active:scale-[0.97]"
-                      title="Baixar arquivo"
-                      onClick={() => { setPecasSheetAberto(false); item.onBaixar?.(); }}
-                    >
-                      <Download className="size-3.5" /> Baixar
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-            {medioOuMais && (
-              <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer"
-                onClick={() => setPecasSheetAberto(false)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-3 py-3 text-center text-sm font-semibold text-emerald-700 hover:bg-emerald-600/20 dark:text-emerald-400">
-                <LogIn className="size-4 shrink-0" /> Acessar o SIGEF (certificar)
-              </a>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PecasSheetModal
+        open={pecasSheetAberto}
+        onOpenChange={setPecasSheetAberto}
+        processando={processando}
+        baixarPacoteEntrega={baixarPacoteEntrega}
+        itensPecas={itensPecas}
+        medioOuMais={medioOuMais}
+      />
       <RelatorioSobreposicaoModal
         isOpen={modalSobreposicaoAberto}
         onClose={() => setModalSobreposicaoAberto(false)}
@@ -8861,15 +8717,30 @@ function MiniSelect({ label, value, options, onChange }: { label: string; value:
 // fino, com só uma linha divisória entre eles — libera bastante largura pro nome sem perder o toque.
 function AjusteTamanho({ label, titulo, negrito = true, onDec, onInc }: { label: string; titulo?: string; negrito?: boolean; onDec: () => void; onInc: () => void }) {
   return (
-    <div className={`flex flex-col gap-0.5 rounded-sm bg-muted/30 px-1 py-0.5 text-[10px] text-foreground ${negrito ? 'font-bold' : 'font-medium'}`} title={titulo}>
-      <span className="truncate text-center leading-tight">{label}</span>
-      <div className="flex h-5 overflow-hidden rounded-sm border border-border/70">
-        <button type="button" aria-label={`Diminuir ${label}`} className="flex flex-1 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" onClick={onDec}>
-          <Minus className="size-3 shrink-0" />
+    <div className={`flex flex-col gap-0.5 rounded-md bg-muted/20 border border-border/40 px-1 py-1 text-[10px] text-foreground ${negrito ? 'font-bold' : 'font-medium'}`} title={titulo}>
+      <span className="truncate text-center leading-none text-[9.5px] text-muted-foreground font-bold mb-0.5">{label}</span>
+      <div className="flex h-5 overflow-hidden rounded border border-border/80 bg-background/80 shadow-xs">
+        <button
+          type="button"
+          aria-label={`Diminuir ${label}`}
+          className="flex flex-1 items-center justify-center text-foreground/80 hover:bg-primary/10 hover:text-primary active:scale-95 transition-all"
+          onClick={onDec}
+        >
+          <svg viewBox="0 0 24 24" width="12" height="12" className="block shrink-0 stroke-current" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
         </button>
-        <div className="w-px bg-border/70" />
-        <button type="button" aria-label={`Aumentar ${label}`} className="flex flex-1 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" onClick={onInc}>
-          <Plus className="size-3 shrink-0" />
+        <div className="w-px bg-border/80" />
+        <button
+          type="button"
+          aria-label={`Aumentar ${label}`}
+          className="flex flex-1 items-center justify-center text-foreground/80 hover:bg-primary/10 hover:text-primary active:scale-95 transition-all"
+          onClick={onInc}
+        >
+          <svg viewBox="0 0 24 24" width="12" height="12" className="block shrink-0 stroke-current" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
         </button>
       </div>
     </div>
