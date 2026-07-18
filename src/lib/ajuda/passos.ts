@@ -18,6 +18,7 @@ export const PASSOS_BASE: Passo[] = [
     icone: ToggleRight,
     titulo: 'A chave Fácil e Completo',
     texto: 'No SOUZA CAD você escolhe o tamanho da tela. Na barra flutuante embaixo tem uma chave: Fácil ou Completo. No Fácil aparece só o essencial — importar pontos, vizinhos, confrontantes e gerar as peças. No Completo entram desenho, cotas, hachuras e o resto das ferramentas. Pode trocar a qualquer hora: nada do projeto se perde.\n\nNa mesma região da barra lateral esquerda, em Visualização e Navegação, fica o botão Folha Travada. Com a folha travada, o carimbo e o layout ficam protegidos. Quer mover título, rosa dos ventos ou escala? Destrave, ajuste, e trave de novo. Assim você não arrasta nada sem querer.',
+    audioUrl: '/audio/tutorial/passo-base-0.mp3',
   },
   {
     icone: Users,
@@ -75,6 +76,7 @@ export const PASSOS_AVANCADOS: Passo[] = [
     icone: Sparkles,
     titulo: 'Desenho, hachuras e símbolos',
     texto: 'No SOUZA CAD você enriquece a planta com linhas, cotas, textos livres e símbolos — poste, marco, árvore. Dá pra hachurar áreas de preservação ou servidão, em linhas a quarenta e cinco graus ou em grade, e organizar tudo por camadas, com cor e espessura do seu jeito.\n\nNa mesma região da barra lateral esquerda, em Visualização e Navegação, fica o botão Folha Travada. Pra reposicionar a rosa dos ventos, a escala, o título ou qualquer pedaço do carimbo, a folha precisa estar destravada. Destrave, ajuste o layout, e trave de novo. Travada, nada se move sem querer — o ideal pro dia a dia.',
+    audioUrl: '/audio/tutorial/passo-avancado-1.mp3',
   },
   {
     icone: Ruler,
