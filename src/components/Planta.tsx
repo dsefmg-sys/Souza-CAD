@@ -1120,7 +1120,10 @@ export default function Planta({
     const wBox = numCols * colW + (numCols - 1) * gap + 8;
     const hr = (Math.min(vertices.length, colH) + 2.4) * lh;
     const bx = DRAW.x0 + 24 + (ovC.dx ?? 0);
-    const by = DRAW.y0 + 24 + (ovC.dy ?? 0);
+    let by = DRAW.y0 + 24 + (ovC.dy ?? 0);
+    if (!ovC.dy && areaTableBox) {
+      by += areaTableBox.height + 15;
+    }
     coordenadasTableBox = { left: bx, top: by, width: wBox, height: hr };
   }
 
@@ -1133,7 +1136,10 @@ export default function Planta({
     const temTerrap = config.print3dMostrarTerraplanagem && (config.print3dVolumeCorte != null || config.print3dVolumeAterro != null);
     const extraH = temTerrap ? 36 : 0;
     const baseX = (DRAW.x0 + 40) + (offset3D.dx ?? 0);
-    const baseY = (DRAW.y1 - 220 - extraH) + (offset3D.dy ?? 0);
+    let baseY = (DRAW.y1 - 220 - extraH) + (offset3D.dy ?? 0);
+    if (!offset3D.dy && roteiroTableBox) {
+      baseY -= (roteiroTableBox.height + 15);
+    }
     const w3D = 240 * esc3D;
     const h3D = 160 * esc3D;
     mdrBox = { left: baseX - 3, top: baseY - 3, width: w3D + 6, height: h3D + extraH + 6 };
@@ -2255,7 +2261,10 @@ export default function Planta({
 
         // Coordenada base do quadro 3D: no lado esquerdo do desenho, acima da barra de escala
         const baseX = (DRAW.x0 + 40) + (offset3D.dx ?? 0);
-        const baseY = (DRAW.y1 - 220 - extraH) + (offset3D.dy ?? 0);
+        let baseY = (DRAW.y1 - 220 - extraH) + (offset3D.dy ?? 0);
+        if (!offset3D.dy && roteiroTableBox) {
+          baseY -= (roteiroTableBox.height + 15);
+        }
 
         const w3D = 240 * esc3D;
         const h3D = 160 * esc3D;
@@ -2388,12 +2397,12 @@ export default function Planta({
                 )}
                 {config.print3dVolumeCorte != null && (
                   <text x={8} y={31} fontSize={fs(6)} fill="#dc2626" fontWeight="bold">
-                    ✂ Corte: {config.print3dVolumeCorte.toFixed(1)} m³
+                    Corte: {config.print3dVolumeCorte.toFixed(1)} m³
                   </text>
                 )}
                 {config.print3dVolumeAterro != null && (
                   <text x={w3D / 2 + 4} y={31} fontSize={fs(6)} fill="#2563eb" fontWeight="bold">
-                    ⬇ Aterro: {config.print3dVolumeAterro.toFixed(1)} m³
+                    Aterro: {config.print3dVolumeAterro.toFixed(1)} m³
                   </text>
                 )}
               </g>

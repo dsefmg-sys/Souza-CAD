@@ -7534,7 +7534,7 @@ export default function EditorPage() {
                   </div>
                   <ol className="list-decimal pl-3 space-y-1">
                     <li>Clique em <strong>Copiar Código</strong> abaixo;</li>
-                    <li>Clique em <strong>SIGEF 🔗</strong> para abrir a pesquisa;</li>
+                    <li>Clique em <strong>SIGEF</strong> para abrir a pesquisa;</li>
                     <li>No site, cole no campo <strong>Código do Imóvel</strong> e clique em Pesquisar;</li>
                     <li>Clique no ícone da <strong>nuvenzinha azul</strong> no final da linha e selecione obrigatoriamente <strong>CSV → Vértices</strong> (evite baixar o GML/Shapefile do contorno, pois eles possuem precisão reduzida de metros/decímetros no portal do INCRA);</li>
                     <li>Volte ao app e clique no botão violeta abaixo para importar o arquivo CSV para ter os vértices oficiais com precisão milimétrica.</li>
@@ -7555,7 +7555,7 @@ export default function EditorPage() {
                       <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => {
                         window.open('https://sigef.incra.gov.br/consultar/parcelas/', '_blank');
                       }}>
-                        <ExternalLink className="size-3.5" /> SIGEF 🔗
+                        <ExternalLink className="size-3.5" /> SIGEF
                       </Button>
                     </div>
                   )}
@@ -9267,14 +9267,14 @@ export default function EditorPage() {
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 uppercase tracking-wider text-[9px] font-bold">Ferramenta:</span>
               <span className="text-slate-200 font-semibold">
-                {modo === 'navegar' ? '✋ Mover/Editar Vértices' :
-                 modo === 'polilinha' ? '✏️ Desenhar Polilinha' :
-                 modo === 'tracejado' ? '✏️ Desenhar Linha Tracejada' :
-                 modo === 'cota' ? '📐 Inserir Cota de Distância' :
-                 modo === 'texto' ? '🔤 Inserir Bloco de Texto' :
-                 modo === 'medir' ? '📏 Régua de Medição' :
-                 modo === 'simbolo' ? '📍 Inserir Símbolo/Marcador' :
-                 '🖱️ Seleção e Navegação'}
+                {modo === 'navegar' ? 'Mover/Editar Vértices' :
+                 modo === 'polilinha' ? 'Desenhar Polilinha' :
+                 modo === 'tracejado' ? 'Desenhar Linha Tracejada' :
+                 modo === 'cota' ? 'Inserir Cota de Distância' :
+                 modo === 'texto' ? 'Inserir Bloco de Texto' :
+                 modo === 'medir' ? 'Régua de Medição' :
+                 modo === 'simbolo' ? 'Inserir Símbolo/Marcador' :
+                 'Seleção e Navegação'}
               </span>
             </div>
           )}

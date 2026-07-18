@@ -78,6 +78,11 @@ export function conferir(
     out.push({ nivel: 'erro', campo: 'imóvel', msg: `CPF do cônjuge do proprietário "${imovel.cpfConjugeProprietario}" é inválido.` });
   }
 
+  // Validação de TRT/ART
+  if (!imovel.numeroTrt?.trim() && !tecnico?.art?.trim()) {
+    out.push({ nivel: 'aviso', campo: 'profissional', msg: 'Número da TRT/ART do projeto não foi informado na seção TRT / Cadastro do Imóvel.' });
+  }
+
   // confrontantes incompletos e CPFs inválidos
   for (const c of confrontantes) {
     if (!c.nome) { out.push({ nivel: 'aviso', campo: 'confrontante', msg: 'Há trecho de divisa sem confrontante informado.' }); continue; }
