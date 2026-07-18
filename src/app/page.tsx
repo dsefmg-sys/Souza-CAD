@@ -6561,10 +6561,10 @@ export default function EditorPage() {
                   </span>
 
                   {modo === 'divisa' && (
-                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-500 ${
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-700 ${
                       pincelInicioId
                         ? 'ring-1 ring-amber-500/50 bg-amber-500/10'
-                        : 'ring-2 ring-amber-500/90 shadow-[0_0_15px_rgba(245,158,11,0.6)] animate-pulse bg-amber-500/15'
+                        : 'ring-1.5 ring-amber-500/70 shadow-[0_0_12px_rgba(245,158,11,0.35)] animate-pulse-lento bg-amber-500/10'
                     }`}>
                       <span className="relative inline-flex">
                         <button type="button"
@@ -6593,7 +6593,7 @@ export default function EditorPage() {
                           </div>
                         )}
                       </span>
-                      <select className="h-7 max-w-[220px] rounded-full border border-amber-500/50 bg-background/95 px-2 text-[10px] font-bold outline-none ring-1 ring-amber-400/40"
+                      <select className="h-7 max-w-[220px] rounded-full border border-amber-500/40 bg-background/95 px-2 text-[10px] font-bold outline-none ring-1 ring-amber-400/30"
                         value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
                         {opcoesDivisaTipo.map((r) => (
                           <option key={r} value={r} className="bg-background text-foreground">{rotuloDivisaTipo(r)}</option>
@@ -6607,10 +6607,10 @@ export default function EditorPage() {
                   )}
 
                   {modo === 'confrontante' && (
-                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-500 ${
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-700 ${
                       pincelInicioId
                         ? 'ring-1 ring-emerald-500/50 bg-emerald-500/10'
-                        : 'ring-2 ring-emerald-500/90 shadow-[0_0_15px_rgba(16,185,129,0.6)] animate-pulse bg-emerald-500/15'
+                        : 'ring-1.5 ring-emerald-500/70 shadow-[0_0_12px_rgba(16,185,129,0.35)] animate-pulse-lento bg-emerald-500/10'
                     }`}>
                       {confrontantePincelId && (() => {
                         const pincelConf = confrontantes.find((x) => x.id === confrontantePincelId);
@@ -6631,7 +6631,7 @@ export default function EditorPage() {
                         );
                       })()}
                       <select className={`h-7 max-w-[220px] rounded-full border bg-background/95 px-2 text-[10px] font-bold outline-none transition-all ${
-                        !confrontantePincelId ? 'border-emerald-500 ring-2 ring-emerald-400/60 text-emerald-700 dark:text-emerald-300' : 'border-border'
+                        !confrontantePincelId ? 'border-emerald-500/60 ring-1.5 ring-emerald-400/40 text-emerald-700 dark:text-emerald-300' : 'border-border'
                       }`}
                         value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
                         <option value="" className="bg-background text-muted-foreground">— Escolha ou Crie um —</option>
@@ -6646,7 +6646,7 @@ export default function EditorPage() {
                         </button>
                       )}
                       <Button size="sm" className={`h-7 shrink-0 gap-1 rounded-full bg-emerald-600 px-2 text-[9px] font-black uppercase text-white hover:bg-emerald-700 transition-all ${
-                        !confrontantePincelId ? 'ring-2 ring-emerald-300 shadow-md animate-pulse' : ''
+                        !confrontantePincelId ? 'ring-1.5 ring-emerald-300 shadow-sm animate-pulse-lento' : ''
                       }`}
                         onClick={novoConfrontantePincel} title="Novo confrontante">
                         <Plus className="size-3.5" /> Novo

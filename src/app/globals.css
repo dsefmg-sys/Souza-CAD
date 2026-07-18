@@ -168,3 +168,19 @@
   font-size: 0.8125rem !important;
 }
 
+/* Animação de guia elegante e lenta (breathe/pulse suave de 3.5s) */
+@keyframes pulse-lento {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.008);
+  }
+}
+
+.animate-pulse-lento {
+  animation: pulse-lento 3.5s ease-in-out infinite;
+}
+
