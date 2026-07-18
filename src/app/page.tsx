@@ -142,6 +142,17 @@ const MapEditor = dynamic(() => import('@/components/MapEditor'), {
   loading: () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Carregando mapa…</div>,
 });
 
+function IconeCurvasNivel({ className = "size-4 text-indigo-500" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4 19c4-2 7-2 11 0s5-1 5-3" />
+      <path d="M3 14c3-2 8-1 12 1s5-2 6-4" />
+      <path d="M5 9c4-3 9-1 12 1s4-2 4-3" />
+      <path d="M7 4c3-1 6 0 10 1" />
+    </svg>
+  );
+}
+
 const IMOVEL_VAZIO: ImovelData = {
   denominacao: '', matricula: '', cns: '', codigoImovelIncra: '', proprietario: '',
   cpfProprietario: '', tipoPessoa: 'Física', comprador: '', cpfComprador: '', municipio: '', local: '',
@@ -4575,11 +4586,10 @@ export default function EditorPage() {
     const minLeste = Math.min(...nestes), maxLeste = Math.max(...nestes);
     const minNorte = Math.min(...nortes), maxNorte = Math.max(...nortes);
 
-    // Ajusta o espaçamento se a quantidade de pontos estimada for muito alta (> 1500)
     let currentSpacing = spacing;
     let numX = Math.ceil((maxLeste - minLeste) / currentSpacing);
     let numY = Math.ceil((maxNorte - minNorte) / currentSpacing);
-    while (numX * numY > 1500) {
+    while (numX * numY > 1200) {
       currentSpacing += 1;
       numX = Math.ceil((maxLeste - minLeste) / currentSpacing);
       numY = Math.ceil((maxNorte - minNorte) / currentSpacing);
@@ -4588,18 +4598,19 @@ export default function EditorPage() {
 
     const candidatos: { lat: number; lon: number; leste: number; norte: number }[] = [];
     const poly = vs.map(v => ({ x: v.leste, y: v.norte }));
-    const jitterMax = currentSpacing * 0.15;
+    const jitterMax = currentSpacing * 0.12;
 
     for (let x = minLeste; x <= maxLeste; x += currentSpacing) {
       for (let y = minNorte; y <= maxNorte; y += currentSpacing) {
-        // Aplica jitter de 15% para quebrar colinearidades que atrapalhariam Delaunay
-        const jx = (Math.random() - 0.5) * jitterMax;
-        const jy = (Math.random() - 0.5) * jitterMax;
-        const px = x + jx;
-        const py = y + jy;
+        // PseudoJitter determinístico derivado das coordenadas para garantir 100% de cache na API
+        const hash1 = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+        const hash2 = Math.cos(x * 4.1414 + y * 93.111) * 23421.1234;
+        const r1 = hash1 - Math.floor(hash1) - 0.5;
+        const r2 = hash2 - Math.floor(hash2) - 0.5;
+        const px = x + r1 * jitterMax;
+        const py = y + r2 * jitterMax;
 
         if (pontoNoPoligono(px, py, poly)) {
-          // Converte de volta para lat/lon para consultar na API
           const geo = utmParaGeo(px, py, zona, hemisferio);
           candidatos.push({ lat: geo.lat, lon: geo.lon, leste: px, norte: py });
         }
@@ -6758,7 +6769,7 @@ export default function EditorPage() {
                             onClick={() => setCurvaConfigAberta((v) => !v)}
                             className="flex w-full items-center justify-between bg-muted/20 px-2.5 py-1.5 text-[10px] font-extrabold uppercase text-foreground hover:bg-muted/40 transition-colors">
                             <span className="flex items-center gap-1.5">
-                              <Waypoints className="size-3.5 text-indigo-500" />
+                              <IconeCurvasNivel className="size-3.5 text-indigo-500" />
                               Curvas de nível
                             </span>
                             <span className="text-[9px] text-muted-foreground">{curvaConfigAberta ? '▲' : '▼'}</span>
@@ -6892,7 +6903,7 @@ export default function EditorPage() {
                               <div className="grid grid-cols-2 gap-1 pt-1">
                                 <Button type="button" onClick={gerarCurvasNivel}
                                   className="h-7 bg-primary text-primary-foreground hover:bg-primary/90 font-bold border-0 shadow-xs rounded-md flex items-center justify-center gap-1 text-[10px]">
-                                  <Waypoints className="size-3.5" /> Gerar
+                                  <IconeCurvasNivel className="size-3.5" /> Gerar
                                 </Button>
                                 <Button type="button" disabled={!temCurvas} onClick={limparCurvasNivel}
                                   className="h-7 bg-red-600 hover:bg-red-700 text-white disabled:bg-gray-400 disabled:opacity-40 disabled:cursor-not-allowed font-bold border-0 shadow-xs rounded-md flex items-center justify-center gap-1 text-[10px]">
