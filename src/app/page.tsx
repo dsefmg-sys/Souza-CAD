@@ -1624,40 +1624,52 @@ export default function EditorPage() {
   }
 
   // ---------- desfazer / refazer (histórico de vértices + confrontantes + DESENHOS) ----------
-  // Os desenhos (cota/linha/texto/símbolo) entram no histórico — antes ficavam de fora e o
-  // Ctrl+Z "não funcionava" com a ferramenta Cotar (feedback de usuário, 05/07/2026).
-  type FotoHist = { v: Vertex[]; cpl: Record<number, string>; obj: ObjetoDesenho[]; ig: Vertex[]; pc: PlantaConfig };
+  // Os desenhos (cota/linha/texto/símbolo) e cadastros de confrontantes entram no histórico.
+  type FotoHist = { v: Vertex[]; conf: Confrontante[]; cpl: Record<number, string>; obj: ObjetoDesenho[]; ig: Vertex[]; pc: PlantaConfig };
   const histRef = useRef<FotoHist[]>([]);
   const redoRef = useRef<FotoHist[]>([]);
+  const [histCount, setHistCount] = useState(0);
+  const [redoCount, setRedoCount] = useState(0);
+
   function snap() {
     // guarda-duplicata por referência: o StrictMode (dev) roda atualizadores de estado 2x, e um
     // snap chamado lá dentro empilharia a mesma foto duas vezes (desfazer pediria 2 cliques)
     const ult = histRef.current[histRef.current.length - 1];
-    if (ult && ult.v === vertices && ult.cpl === confrontantePorLado && ult.obj === objetos && ult.ig === verticesIgnorados && ult.pc === plantaConfig) return;
-    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
+    if (ult && ult.v === vertices && ult.conf === confrontantes && ult.cpl === confrontantePorLado && ult.obj === objetos && ult.ig === verticesIgnorados && ult.pc === plantaConfig) return;
+    histRef.current.push({ v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
     if (histRef.current.length > 60) histRef.current.shift();
     redoRef.current = []; // uma ação nova invalida o que havia para refazer
+    setHistCount(histRef.current.length);
+    setRedoCount(0);
   }
+
   function aplicarFoto(s: FotoHist) {
     setVertices(s.v);
+    if (s.conf) setConfrontantes(s.conf);
     setConfrontantePorLado(s.cpl);
     setObjetos(s.obj);
     setVerticesIgnorados(s.ig);
     setPlantaConfig(s.pc); // posições/tamanhos/textos das caixas da planta (declarações, laudo, etc.)
   }
+
   function desfazer() {
     const s = histRef.current.pop();
     if (!s) { aviso('Nada para desfazer.'); return; }
-    redoRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
+    redoRef.current.push({ v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
     aplicarFoto(s);
-    aviso('Última ação desfeita.');
+    setHistCount(histRef.current.length);
+    setRedoCount(redoRef.current.length);
+    aviso(`Última ação desfeita (${histRef.current.length} no histórico).`);
   }
+
   function refazer() {
     const s = redoRef.current.pop();
     if (!s) { aviso('Nada para refazer.'); return; }
-    histRef.current.push({ v: vertices, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
+    histRef.current.push({ v: vertices, conf: confrontantes, cpl: confrontantePorLado, obj: objetos, ig: verticesIgnorados, pc: plantaConfig });
     aplicarFoto(s);
-    aviso('Ação refeita.');
+    setHistCount(histRef.current.length);
+    setRedoCount(redoRef.current.length);
+    aviso(`Ação refeita (${redoRef.current.length} para refazer).`);
   }
 
   // redimensionar a barra de ferramentas (largura, arrastando a borda direita)
@@ -3356,6 +3368,7 @@ export default function EditorPage() {
 
   // Cria um confrontante novo já como pincel ativo (nome preenchível depois na aba Confront.).
   async function novoConfrontantePincel() {
+    snap();
     const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
     const randomCor = gerarCorNovaConfrontante(confrontantes);
     const novoConf: Confrontante = { id, nome: '', cpf: '', matricula: '', cns: '', condicao: 'proprietario', cor: randomCor };
@@ -5680,10 +5693,24 @@ export default function EditorPage() {
                       {vista === 'mapa' ? (
                         <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
                           <div className="flex gap-0.5 w-full">
-                            <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={histCount === 0}
+                              className={`h-8 flex-1 px-0 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                              onClick={desfazer}
+                              title={histCount > 0 ? `Desfazer (Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
+                            >
                               <Undo2 className="size-3.5" />
                             </Button>
-                            <Button size="sm" variant="secondary" className="h-8 flex-1 px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={redoCount === 0}
+                              className={`h-8 flex-1 px-0 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                              onClick={refazer}
+                              title={redoCount > 0 ? `Refazer (Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
+                            >
                               <Redo2 className="size-3.5" />
                             </Button>
                           </div>
@@ -5695,10 +5722,24 @@ export default function EditorPage() {
                       ) : (
                         <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
                           {/* Mover é implícito na planta: destravar a folha já entra no modo de arrastar */}
-                          <Button size="sm" variant="secondary" className="h-8 w-full px-0 justify-center" onClick={desfazer} title="Desfazer (Ctrl+Z)">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={histCount === 0}
+                            className={`h-8 w-full px-0 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                            onClick={desfazer}
+                            title={histCount > 0 ? `Desfazer (Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
+                          >
                             <Undo2 className="size-3.5" />
                           </Button>
-                          <Button size="sm" variant="secondary" className="h-8 w-full px-0 justify-center" onClick={refazer} title="Refazer (Ctrl+Y)">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={redoCount === 0}
+                            className={`h-8 w-full px-0 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                            onClick={refazer}
+                            title={redoCount > 0 ? `Refazer (Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
+                          >
                             <Redo2 className="size-3.5" />
                           </Button>
 
@@ -6520,7 +6561,11 @@ export default function EditorPage() {
                   </span>
 
                   {modo === 'divisa' && (
-                    <div className="flex items-center gap-1.5">
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-500 ${
+                      pincelInicioId
+                        ? 'ring-1 ring-amber-500/50 bg-amber-500/10'
+                        : 'ring-2 ring-amber-500/90 shadow-[0_0_15px_rgba(245,158,11,0.6)] animate-pulse bg-amber-500/15'
+                    }`}>
                       <span className="relative inline-flex">
                         <button type="button"
                           className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2 hover:bg-muted transition-colors"
@@ -6548,7 +6593,7 @@ export default function EditorPage() {
                           </div>
                         )}
                       </span>
-                      <select className="h-7 max-w-[220px] rounded-full border border-border bg-background/95 px-2 text-[10px] font-semibold outline-none"
+                      <select className="h-7 max-w-[220px] rounded-full border border-amber-500/50 bg-background/95 px-2 text-[10px] font-bold outline-none ring-1 ring-amber-400/40"
                         value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
                         {opcoesDivisaTipo.map((r) => (
                           <option key={r} value={r} className="bg-background text-foreground">{rotuloDivisaTipo(r)}</option>
@@ -6562,7 +6607,11 @@ export default function EditorPage() {
                   )}
 
                   {modo === 'confrontante' && (
-                    <div className="flex items-center gap-1.5">
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all duration-500 ${
+                      pincelInicioId
+                        ? 'ring-1 ring-emerald-500/50 bg-emerald-500/10'
+                        : 'ring-2 ring-emerald-500/90 shadow-[0_0_15px_rgba(16,185,129,0.6)] animate-pulse bg-emerald-500/15'
+                    }`}>
                       {confrontantePincelId && (() => {
                         const pincelConf = confrontantes.find((x) => x.id === confrontantePincelId);
                         const corConf = corPorConfrontante(confrontantePincelId, pincelConf);
@@ -6581,9 +6630,11 @@ export default function EditorPage() {
                           </label>
                         );
                       })()}
-                      <select className="h-7 max-w-[220px] rounded-full border border-border bg-background/95 px-2 text-[10px] font-semibold outline-none"
+                      <select className={`h-7 max-w-[220px] rounded-full border bg-background/95 px-2 text-[10px] font-bold outline-none transition-all ${
+                        !confrontantePincelId ? 'border-emerald-500 ring-2 ring-emerald-400/60 text-emerald-700 dark:text-emerald-300' : 'border-border'
+                      }`}
                         value={confrontantePincelId} onChange={(e) => setConfrontantePincelId(e.target.value)} title="Confrontante a pintar">
-                        <option value="" className="bg-background text-muted-foreground">— Escolher —</option>
+                        <option value="" className="bg-background text-muted-foreground">— Escolha ou Crie um —</option>
                         {confrontantes.map((c) => (
                           <option key={c.id} value={c.id} className="bg-background" style={{ color: corPorConfrontante(c.id, c) }}>{c.nome || '(sem nome)'}</option>
                         ))}
@@ -6594,7 +6645,9 @@ export default function EditorPage() {
                           <Trash2 className="size-3.5" />
                         </button>
                       )}
-                      <Button size="sm" className="h-7 shrink-0 gap-1 rounded-full bg-emerald-600 px-2 text-[9px] font-black uppercase text-white hover:bg-emerald-700"
+                      <Button size="sm" className={`h-7 shrink-0 gap-1 rounded-full bg-emerald-600 px-2 text-[9px] font-black uppercase text-white hover:bg-emerald-700 transition-all ${
+                        !confrontantePincelId ? 'ring-2 ring-emerald-300 shadow-md animate-pulse' : ''
+                      }`}
                         onClick={novoConfrontantePincel} title="Novo confrontante">
                         <Plus className="size-3.5" /> Novo
                       </Button>
@@ -7344,7 +7397,16 @@ export default function EditorPage() {
 
                 <SecaoTitulo>Vértices do polígono</SecaoTitulo>
                 <div className="mb-2 flex flex-wrap gap-1">
-                  <Button size="sm" variant="outline" onClick={desfazer} title="Desfazer última ação" className="border-slate-500/30 hover:bg-slate-500/10"><Undo2 className="text-slate-500" /> Desfazer</Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={histCount === 0}
+                    onClick={desfazer}
+                    title={histCount > 0 ? `Desfazer (Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
+                    className={`border-slate-500/30 hover:bg-slate-500/10 ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    <Undo2 className="text-slate-500" /> Desfazer
+                  </Button>
                   <Button size="sm" variant="outline" onClick={renumerar} title="Reordena do norte (sentido horário) e renumera os códigos" className="border-blue-500/30 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400">Enumerar Vértices</Button>
                   <Button size="sm" variant="outline" className="text-destructive border-red-500/30 hover:bg-red-500/10" onClick={limparPoligono} title="Apagar todo o polígono para desenhar de novo à mão"><Trash2 /> Limpar</Button>
                   <Button size="sm" variant="default" onClick={abrirPlanilha} title="Editar todos os vértices em uma planilha" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"><Table className="size-4 mr-1" /> Editar em Tabela</Button>
