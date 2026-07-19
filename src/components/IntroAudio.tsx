@@ -216,11 +216,13 @@ export function AudioPill({ src, rotulo, titulo, dourado }: { src: string | stri
       <Volume2 className={`size-3 shrink-0 ${dourado ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} />
       <span className={`text-[10px] font-bold uppercase tracking-wide select-none shrink-0 ${dourado ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>{rotulo}</span>
       {/* barra de progresso minúscula — clicável pra retomar de onde parou */}
-      <div className="relative h-1 w-10 cursor-pointer rounded-full bg-border overflow-hidden shrink-0" onClick={seek} title="Clique para avançar">
-        <div className={`absolute left-0 top-0 h-full rounded-full transition-all duration-150 ${dourado ? 'bg-amber-500' : 'bg-primary'}`} style={{ width: `${progresso * 100}%` }} />
-      </div>
+      {rotulo !== 'TUTORIAL' && (
+        <div className="relative h-1 w-10 cursor-pointer rounded-full bg-border overflow-hidden shrink-0" onClick={seek} title="Clique para avançar">
+          <div className={`absolute left-0 top-0 h-full rounded-full transition-all duration-150 ${dourado ? 'bg-amber-500' : 'bg-primary'}`} style={{ width: `${progresso * 100}%` }} />
+        </div>
+      )}
       {/* Tempo restante — só aparece quando tocando ou pausado com duração conhecida */}
-      {restStr && (
+      {rotulo !== 'TUTORIAL' && restStr && (
         <span className={`text-[9px] tabular-nums font-semibold select-none shrink-0 ${dourado ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
           {restStr}
         </span>
@@ -261,7 +263,7 @@ export function TutorialAudioPill({ modo }: { modo: 'simples' | 'medio' | 'compl
   return (
     <AudioPill
       src={playlist}
-      rotulo="TUTORIAL COMPLETO"
+      rotulo="TUTORIAL"
       titulo="Áudio tutorial completo em sequência automática"
       dourado={true}
     />

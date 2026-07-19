@@ -1963,6 +1963,8 @@ export default function EditorPage() {
 
 
 
+
+
   useEffect(() => {
     if (sigefMenuAberto) {
       colegasCad.listar().then(setListaColegas).catch(() => {});
@@ -4794,6 +4796,13 @@ export default function EditorPage() {
   const [glebaCurvaAlvo, setGlebaCurvaAlvo] = useState<string>('todas');
   const [curvaUsarTriangulacao, setCurvaUsarTriangulacao] = useState<boolean>(false); // padrão: dados online (não triangulação local)
 
+  useEffect(() => {
+    if (curvaConfigAberta && vertices.length > 0) {
+      const latsLons = vertices.map((v) => ({ lat: v.lat, lon: v.lon }));
+      obterAltitudesLote(latsLons).catch(() => {});
+    }
+  }, [curvaConfigAberta, vertices]);
+
   function ajustarAltitudesGlobais(cm: number) {
     if (!cm || isNaN(cm)) return;
     snap();
@@ -4823,15 +4832,42 @@ export default function EditorPage() {
     ignoradosOverride?: typeof verticesIgnorados
   ): Ponto3D[] {
     const activeGrade = gradeOverride || gradeAltimetrica;
-    const ptsGrade = activeGrade.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
-
     const activeVertices = verticesOverride || vertices;
     const activeIgnorados = ignoradosOverride || verticesIgnorados;
+
+    // Calcula o offset médio entre as altitudes RTK (v.elevacao) e as altitudes DEM online
+    let avgOffset = 0;
+    if (!desconsiderarVerticesLevantados) {
+      let sumDiff = 0;
+      let countDiff = 0;
+      for (const v of activeVertices) {
+        if (v.elevacao && Math.abs(v.elevacao) > 0.001 && v.tipo !== 'V') {
+          const onlineZ = verticesOnlineElev[`${modeloElevacao}:${v.id}`] ?? verticesOnlineElev[v.id];
+          if (onlineZ && Math.abs(onlineZ) > 0.001) {
+            sumDiff += (v.elevacao - onlineZ);
+            countDiff++;
+          }
+        }
+      }
+      if (countDiff > 0) {
+        avgOffset = sumDiff / countDiff;
+      }
+    }
+
+    const ptsGrade = activeGrade.map((g) => ({
+      x: g.leste,
+      y: g.norte,
+      z: g.elevacao + avgOffset // Alinha a grade DEM online com o plano do RTK
+    }));
+
     const pts = [...(incluirDivisaNasCurvas ? activeVertices : []), ...activeIgnorados]
           .map((v) => {
-            const z = (desconsiderarVerticesLevantados || !v.elevacao)
-              ? (verticesOnlineElev[`${modeloElevacao}:${v.id}`] ?? verticesOnlineElev[v.id] ?? v.elevacao)
-              : v.elevacao;
+            const hasRTK = v.elevacao && Math.abs(v.elevacao) > 0.001;
+            let z = v.elevacao;
+            if (desconsiderarVerticesLevantados || !hasRTK) {
+              const onlineZ = verticesOnlineElev[`${modeloElevacao}:${v.id}`] ?? verticesOnlineElev[v.id];
+              z = (onlineZ && Math.abs(onlineZ) > 0.001) ? (onlineZ + avgOffset) : v.elevacao;
+            }
             return { x: v.leste, y: v.norte, z };
           })
           .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && p.z !== 0);
@@ -6585,23 +6621,23 @@ export default function EditorPage() {
 
           </span>
         </div>
-        <div className="flex flex-1 items-center gap-1 overflow-hidden px-2 py-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] [&_button_svg]:size-3">
+        <div className="flex flex-1 items-center gap-0.5 overflow-hidden px-1 py-1 [&_button]:h-6.5 [&_button]:px-1.5 [&_button]:text-[9px] [&_button_svg]:size-2.5 [&_button]:gap-0.5">
 
         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
         {!telaEstreita && (
           <>
-            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-sky-500 hover:bg-sky-600 text-white gap-1`} title="Início — Guia do fluxo de trabalho passo a passo (F1)" onClick={() => setTutorialF1Aberto(true)}>
+            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-sky-500 hover:bg-sky-600 text-white gap-0.5`} title="Início — Guia do fluxo de trabalho passo a passo (F1)" onClick={() => setTutorialF1Aberto(true)}>
               <GraduationCap className="size-3 shrink-0 animate-pulse text-sky-100" /> INÍCIO
               <Atalho k="F1" />
             </Button>
             <Etapa st={etapas.txt} tituloEtapa="1. Importação de Pontos" explicacao="Carregue as coordenadas obtidas no campo (TXT/CSV). O sistema lê altitudes, códigos SIGEF e plota o perímetro no mapa de satélite automaticamente.">
-              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_IMPORT} gap-1`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_IMPORT} gap-0.5`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}>
                 <Upload /> PONTOS
                 <Atalho k="F2" />
               </Button>
             </Etapa>
             <Etapa st={etapas.sigef} tituloEtapa="2. Integração SIGEF / Vizinhos" explicacao="Consulte e importe os imóveis certificados confrontantes direto da malha oficial do INCRA, efetuando o casamento perfeito dos vértices vizinhos.">
-              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_VIZINHO} gap-1`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_VIZINHO} gap-0.5`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
                 <Download /> SIGEF
                 <Atalho k="F3" />
               </Button>
@@ -6614,7 +6650,7 @@ export default function EditorPage() {
             abas (Imóvel, Vértices…) levam aos dados. Fica só no desktop. */}
         {!telaEstreita && (
           <Etapa st={etapas.dados} tituloEtapa="3. Cadastro do Imóvel & RT" explicacao="Preencha as informações do imóvel, proprietário, número da matrícula, serventia registral e os dados do Responsável Técnico habilitado.">
-            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
+            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
               <Upload /> DADOS
               <Atalho k="F4" />
             </Button>
@@ -6627,13 +6663,13 @@ export default function EditorPage() {
         {!telaEstreita && (
           <>
             <Etapa st={etapas.confro} tituloEtapa="4. Pintura de Confrontantes" explicacao="Marque os trechos do perímetro associando cada limite ao seu respectivo proprietário confrontante para gerar as cartas de anuência.">
-              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_CONFRO} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_CONFRO} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>
                 <Paintbrush className="size-3 shrink-0" /> CONFRO
                 <Atalho k="F5" />
               </Button>
             </Etapa>
             <Etapa st={etapas.divisas} tituloEtapa="5. Tipo de Divisas" explicacao="Defina o tipo físico de cada limite (muro, cerca de arame, córrego, etc.). O padrão é aplicado na planta e descrito na narrativa do memorial.">
-              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DIVISA} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DIVISA} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>
                 <Paintbrush className="size-3 shrink-0" /> DIVISAS
                 <Atalho k="F6" />
               </Button>
@@ -6647,18 +6683,18 @@ export default function EditorPage() {
         {(
           <>
             <Etapa st={etapas.trt} tituloEtapa="6. ART / TRT Oficial" explicacao="Registre o número da Anotação de Responsabilidade Técnica (CREA) ou Termo (CFT/CFTA) para vinculação direta nos carimbos e pranchas.">
-              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-0.5`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>
                 <Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}
                 <Atalho k="F7" />
               </Button>
             </Etapa>
             <Etapa st={etapas.ods} tituloEtapa="7. Geração de Planilha ODS" explicacao="Exporte a planilha oficial de credenciamento do SIGEF (.ods) com validações automáticas de altitude, método de posicionamento e código dos vértices.">
-              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-0.5`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}>
                 <Download /> ODS
                 <Atalho k="F8" />
               </Button>
             </Etapa>
-            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}>
+            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-0.5`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}>
               <CheckCircle2 /> CONFERIR
               <Atalho k="F9" />
             </Button>
@@ -6666,7 +6702,7 @@ export default function EditorPage() {
                 disputar espaço no cabeçalho com um botão solto pra cada um (mesmo espírito do menu
                 PEÇAS que já existe no celular). */}
             <div ref={pecasBtnRef} className="relative shrink-0">
-              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-0.5`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
                 <Download /> PEÇAS <ChevronDown className="size-3" />
                 <Atalho k="F10" />
               </Button>
@@ -6728,12 +6764,7 @@ export default function EditorPage() {
               )}
             </div>
 
-            {medioOuMais && (
-              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent gap-1`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>
-                <Leaf /> CAR
-                <Atalho k="F12" />
-              </Button>
-            )}
+
 
           </>
         )}
@@ -6980,15 +7011,13 @@ export default function EditorPage() {
                           <Redo2 className="size-3.5" /> <span>Refazer</span>
                           <Atalho k={obterAtalhoLateral('refazer', 'ry')} />
                         </Button>
-                        {vista === 'mapa' && (
-                          <Button size="sm" variant={mostrarRotulos ? 'default' : 'secondary'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vertices (${obterAtalhoLateral('rotulos', 'ro')})`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
-                            {mostrarRotulos ? <Eye /> : <EyeOff />} <span className="truncate">Rótulos</span>
-                            <Atalho k={obterAtalhoLateral('rotulos', 'ro')} />
-                          </Button>
-                        )}
                         <Button size="sm" variant={curvaConfigAberta ? 'default' : 'secondary'} className={`relative ${curvaConfigAberta ? COR_ATIVO : ''}`} onClick={() => setCurvaConfigAberta((v) => !v)} title={`Curvas de Nível (${obterAtalhoLateral('curvas_nivel', 'cn')}): traçar curvas de nível e relevo planialtimétrico.`}>
                           <IconeCurvasNivel className={curvaConfigAberta ? 'text-white shrink-0' : 'text-indigo-500 shrink-0'} /> <span className="truncate">Curvas</span>
                           <Atalho k={obterAtalhoLateral('curvas_nivel', 'cn')} />
+                        </Button>
+                        <Button size="sm" variant="secondary" className="relative text-lime-600 dark:text-lime-400 hover:bg-lime-500/20" title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (CR)" onClick={() => setCarAberto(true)}>
+                          <Leaf className="size-3.5 text-lime-500 shrink-0" /> <span className="truncate">CAR</span>
+                          <Atalho k="CR" />
                         </Button>
                       </div>
                     </div>
@@ -7301,7 +7330,7 @@ export default function EditorPage() {
                                       <div className="flex items-baseline gap-1">
                                         <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">SIGEF:</span>
                                         <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                          {numBR(imovel.areaAnterior != null && imovel.areaAnterior > 0 ? imovel.areaAnterior : res.areaHa, casasTela(4))}
+                                          {numBR(valoresEfetivos(res, imovel).areaHa, casasTela(4))}
                                         </span>
                                       </div>
                                     </div>
@@ -7323,7 +7352,7 @@ export default function EditorPage() {
                                       <div className="flex items-baseline gap-1">
                                         <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">SIGEF:</span>
                                         <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                          {numBR(imovel.perimetroSigef != null && imovel.perimetroSigef > 0 ? imovel.perimetroSigef : res.perimetro)}
+                                          {numBR(valoresEfetivos(res, imovel).perimetro)}
                                         </span>
                                       </div>
                                     </div>
@@ -7358,115 +7387,7 @@ export default function EditorPage() {
                           </div>
                         )}
 
-                        {/* Curvas de Nível (planialtimétrico) */}
-                        <div className="mt-1.5 rounded-lg border border-border/80 bg-background/50 overflow-hidden shadow-xs">
-                          <button type="button"
-                            onClick={() => setCurvaConfigAberta((v) => !v)}
-                            className="relative flex w-full items-center justify-between bg-muted/20 px-2.5 py-1.5 text-[10px] font-extrabold uppercase text-foreground hover:bg-muted/40 transition-colors">
-                            <span className="flex items-center gap-1.5">
-                              <IconeCurvasNivel className="size-3.5 text-indigo-500" />
-                              Curvas de Nível
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <span className="text-[8px] font-extrabold text-amber-500 font-mono">{obterAtalhoLateral('curvas_nivel', 'cn')}</span>
-                              <span className="text-[9px] text-muted-foreground">{curvaConfigAberta ? '▲' : '▼'}</span>
-                            </span>
-                          </button>
 
-                          {curvaConfigAberta && (
-                            <div className="p-2 space-y-2 bg-muted/5 animate-in slide-in-from-top-1 fade-in duration-200">
-                              
-                              {/* Linha 1: Intervalo (m) + Botão Sugerir */}
-                              <div className="flex items-center justify-between gap-1.5 rounded-md bg-muted/20 p-1.5">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[10px] font-bold text-foreground shrink-0">Intervalo:</span>
-                                  <button type="button"
-                                    onClick={() => setIntervaloCurva((c) => Math.max(0.1, +(c - 1).toFixed(2)))}
-                                    className="size-5 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none flex items-center justify-center">-</button>
-                                  <input type="number" min={0.1} step={1} value={intervaloCurva}
-                                    onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))}
-                                    className="h-5 w-10 rounded-sm border border-input bg-background px-1 text-center text-[10px] font-bold"
-                                    title="Intervalo entre as curvas de nível (metros)" />
-                                  <button type="button"
-                                    onClick={() => setIntervaloCurva((c) => +(c + 1).toFixed(2))}
-                                    className="size-5 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none flex items-center justify-center">+</button>
-                                  <span className="text-[9px] text-muted-foreground font-mono">m</span>
-                                </div>
-                                <button type="button" onClick={sugerirIntervaloCurva}
-                                  title="Sugerir intervalo pelo desnível"
-                                  className="h-5 rounded-sm bg-indigo-600 hover:bg-indigo-700 text-white px-2 text-[9px] font-bold shadow-xs transition-colors">
-                                  Sugerir
-                                </button>
-                              </div>
-
-                              {/* Linha 2: Linha Mestra & Espessura */}
-                              <div className="grid grid-cols-2 gap-1 bg-muted/20 p-1.5 rounded-md">
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="text-[9px] font-medium text-muted-foreground">Mestra:</span>
-                                  <input type="number" min={1} step={1} value={curvaMestraCada}
-                                    onChange={(e) => setCurvaMestraCada(Math.max(1, Math.round(Number(e.target.value) || 5)))}
-                                    className="h-5 w-8 rounded-sm border border-input bg-background text-center text-[9px] font-bold"
-                                    title="Curva mestra a cada N curvas" />
-                                </div>
-                                <div className="flex items-center justify-end gap-0.5">
-                                  {(['fina', 'media', 'grossa'] as const).map((e) => (
-                                    <button key={e} type="button" onClick={() => setCurvaEspessura(e)}
-                                      className={`h-5 px-1 text-[8px] font-bold rounded transition-colors ${curvaEspessura === e ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900' : 'hover:bg-muted text-foreground'}`}>
-                                      {e === 'fina' ? 'F' : e === 'media' ? 'M' : 'G'}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Linha 3: Fonte DEM & Espaçamento */}
-                              <div className="space-y-1 bg-muted/20 p-1.5 rounded-md text-[9px]">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-muted-foreground">Fonte DEM:</span>
-                                  <select
-                                    value={modeloElevacao}
-                                    onChange={(e) => {
-                                      setModeloElevacao(e.target.value as any);
-                                      setGradeAltimetrica([]);
-                                    }}
-                                    className="h-5 rounded border bg-background px-1 text-[9px] font-bold focus:ring-1 focus:ring-primary focus:outline-none w-28"
-                                  >
-                                    <option value="copernicus_dem_30">Copernicus 30m</option>
-                                    <option value="alos_dem_30">ALOS 3D 30m</option>
-                                    <option value="srtm_gld3">SRTM 30m</option>
-                                  </select>
-                                </div>
-                                <div className="flex items-center justify-between border-t border-border/20 pt-1">
-                                  <span className="font-medium text-muted-foreground">Grade:</span>
-                                  <select
-                                    value={gradeDensidadeMetros}
-                                    onChange={(e) => {
-                                      setGradeDensidadeMetros(Number(e.target.value));
-                                      setGradeAltimetrica([]);
-                                    }}
-                                    className="h-5 rounded border bg-background px-1 text-[9px] font-bold focus:ring-1 focus:ring-primary focus:outline-none"
-                                  >
-                                    <option value={30}>Nativo Satélite (30m)</option>
-                                    <option value={20}>Denso (20m)</option>
-                                    <option value={50}>Médio (50m)</option>
-                                    <option value={100}>Esparso (100m)</option>
-                                  </select>
-                                </div>
-                              </div>
-
-                              {/* Botões Ação */}
-                              <div className="grid grid-cols-2 gap-1 pt-0.5">
-                                <Button type="button" onClick={gerarCurvasNivel}
-                                  className="h-7 bg-primary text-primary-foreground hover:bg-primary/90 font-bold border-0 shadow-xs rounded-md flex items-center justify-center gap-1 text-[10px]">
-                                  <IconeCurvasNivel className="size-3.5" /> Gerar
-                                </Button>
-                                <Button type="button" disabled={!temCurvas} onClick={limparCurvasNivel}
-                                  className="h-7 bg-red-600 hover:bg-red-700 text-white disabled:bg-gray-400 disabled:opacity-40 disabled:cursor-not-allowed font-bold border-0 shadow-xs rounded-md flex items-center justify-center gap-1 text-[10px]">
-                                  <Trash2 className="size-3.5" /> Apagar
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
 
                         {/* DXF e KML lado a lado (no mesmo padrão de altura h-8 dos botões principais) */}
                         <div className="grid grid-cols-2 gap-1.5 mt-2">
@@ -8378,8 +8299,8 @@ export default function EditorPage() {
                 </>
               )}
 
-              {/* Controles de tutoriais e áudios de ajuda */}
-              {barraAudiosAberta && !introTocando && (
+              {/* Controles de tutoriais e áudios de ajuda (Sempre visível) */}
+              {!introTocando && (
                 <>
                   <div className="h-4 w-px bg-border shrink-0" />
                   <div className="flex items-center gap-1 shrink-0">
@@ -8396,6 +8317,16 @@ export default function EditorPage() {
                         <Youtube className="size-3 shrink-0" /> Vídeos
                       </button>
                     )}
+                    <button type="button" onClick={() => setMostrarRotulos((m) => !m)}
+                      title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (RO)`}
+                      className={`flex h-6 items-center gap-1 rounded-full border px-2 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                        mostrarRotulos 
+                          ? 'bg-primary text-primary-foreground border-primary/50' 
+                          : 'bg-background text-muted-foreground hover:bg-muted'
+                      }`}>
+                      {mostrarRotulos ? <Eye className="size-3 shrink-0" /> : <EyeOff className="size-3 shrink-0" />}
+                      <span>Rótulos</span>
+                    </button>
                     <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
                       title={completo
                         ? 'Modo Completo. Clique para o Fácil.'
@@ -8406,25 +8337,7 @@ export default function EditorPage() {
                       {completo ? <Briefcase className="size-3 text-sky-500 shrink-0" /> : medio ? <PencilRuler className="size-3 text-emerald-500 shrink-0" /> : <GraduationCap className="size-3 text-amber-500 shrink-0" />}
                       <span>Modo {completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}</span>
                     </button>
-                    <button type="button" onClick={() => setBarraAudiosAberta(false)}
-                      className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
-                      title="Ocultar painel de ajuda">
-                      <X className="size-3" />
-                    </button>
                   </div>
-                </>
-              )}
-
-              {/* Botão de reabrir painel de tutoriais se estiver oculto */}
-              {!barraAudiosAberta && !introTocando && (
-                <>
-                  <div className="h-4 w-px bg-border shrink-0" />
-                  <button type="button" onClick={() => setBarraAudiosAberta(true)}
-                    className="flex h-7 items-center gap-1 rounded-full border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 px-2 text-[10px] font-bold transition-colors shrink-0"
-                    title="Mostrar painel de tutoriais e áudios de ajuda">
-                    <HelpCircle className="size-3.5 text-sky-400 shrink-0" />
-                    <span>Ajuda</span>
-                  </button>
                 </>
               )}
             </div>
