@@ -78,6 +78,7 @@ import type { Vertex, ImovelData, Confrontante, TecnicoData, EscritorioData, Pro
 import { novaPolilinha, novoTexto, novaCota, novoSimbolo, novaCurvaNivel, areaPoligonoObjeto, comprimentoPolilinha, distanciaCota, CAR_TEMAS, COR_CURVA_NIVEL, COR_CURVA_AUTO } from '@/lib/topo/objetos';
 import { gerarCurvasDeNivel, intervaloSugerido, pontoNoPoligono, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { estimarAltitudes } from '@/lib/topo/altitudes';
+import { calcularOndulacaoGeoidalMAPGEO, ortometricaParaElipsoidal } from '@/lib/topo/geoid';
 import { SIMBOLOS, simboloSvgInterno } from '@/lib/topo/simbolos';
 import type { RotuloMapa } from '@/components/MapEditor';
 import { parseTxt, pontosDePerimetro } from '@/lib/topo/parseTxt';
@@ -328,7 +329,7 @@ function IconeCota({ className }: { className?: string }) {
 function Atalho({ k, className }: { k: string; className?: string }) {
   if (!k) return null;
   return (
-    <span className={`pointer-events-none text-[8.5px] font-mono font-bold tracking-wider uppercase px-1 py-0.5 rounded bg-slate-950/70 border border-slate-700/60 text-amber-300/90 shadow-sm shrink-0 select-none ml-auto ${className ?? ''}`}>
+    <span className={`pointer-events-none text-[8.5px] font-mono font-bold tracking-wider uppercase px-1 py-0.5 rounded bg-slate-200/90 dark:bg-slate-900/80 border border-slate-300/80 dark:border-slate-700/70 text-amber-700 dark:text-amber-300 shadow-2xs shrink-0 select-none ml-auto ${className ?? ''}`}>
       {k.toUpperCase()}
     </span>
   );
@@ -5231,10 +5232,14 @@ export default function EditorPage() {
             continue;
           }
           batch.forEach((c, idx) => {
-            const elev = data.elevation![idx];
-            if (Number.isFinite(elev)) {
-              localCache[c.key] = elev;
-              globalUpdates[c.cacheKey] = elev;
+            const elevOrtometrica = data.elevation![idx];
+            if (Number.isFinite(elevOrtometrica)) {
+              // Open-Meteo retorna Altitude Ortométrica H (DEM). Para manter compatibilidade com
+              // o receptor GNSS/RTK (SIRGAS 2000), convertemos H -> h (Altitude Elipsoidal) via MAPGEO: h = H + N.
+              const nMapgeo = calcularOndulacaoGeoidalMAPGEO(c.lat, c.lon);
+              const elevElipsoidal = ortometricaParaElipsoidal(elevOrtometrica, nMapgeo);
+              localCache[c.key] = elevElipsoidal;
+              globalUpdates[c.cacheKey] = elevElipsoidal;
             }
           });
         } catch (err) {
