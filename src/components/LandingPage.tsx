@@ -1,6 +1,6 @@
 'use client';
 
-import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check } from 'lucide-react';
+import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, MapPin } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 
 interface LandingPageProps {
@@ -80,9 +80,9 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
       </header>
 
       {/* ── ROLAGEM VERTICAL EM GRANDES SEÇÕES AMPLAS & LEGÍVEIS ── */}
-      <main className="relative flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-16 z-10 space-y-32 text-center">
+      <main className="relative flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-16 z-10 space-y-28 text-center">
         
-        {/* 1. SEÇÃO HERO: GRANDES TÍTULOS AMPLOS */}
+        {/* 1. SEÇÃO HERO: TÍTULO PRINCIPAL & SUBTÍTULO */}
         <section className="max-w-4xl mx-auto space-y-8 pt-4">
           <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-sm font-black uppercase tracking-wider text-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.2)]">
             <FileSpreadsheet className="size-5 text-emerald-400" />
@@ -98,7 +98,52 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </p>
         </section>
 
-        {/* 2. CAIXA DE PIONEIROS & CTA PRINCIPAL */}
+        {/* 2. 🌟 LOGO APÓS O TÍTULO: AS DUAS IMAGENS MAIS BONITAS E MARCANTES DO SISTEMA 🌟 */}
+        <section className="w-full space-y-16 pt-2">
+          
+          {/* IMAGEM MARCANTE 1: MODELO DIGITAL DE RELEVO 3D & CURVAS DE NÍVEL */}
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+              <Box className="size-4" /> Relevo 3D & Curvas de Nível Automáticas
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-black text-white">
+              Visualização Tridimensional de Terreno & Cubagem
+            </h2>
+
+            {/* Imagem Gigante Nítida 1 */}
+            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-slate-950">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/marca/preview_3d.png"
+                alt="Relevo 3D e Curvas de Nível no Souza-CAD"
+                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+              />
+            </div>
+          </div>
+
+          {/* IMAGEM MARCANTE 2: EDITOR DE MAPA GIS 2D COM SATÉLITE & CONFRONTANTES */}
+          <div className="space-y-4 pt-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+              <MapPin className="size-4" /> Editor 2D GIS & Imagem de Satélite
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-black text-white">
+              Delimitação Perimétrica & Vértices Oficiais no Mapa
+            </h2>
+
+            {/* Imagem Gigante Nítida 2 */}
+            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-slate-950">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/marca/preview_mapa2d.png"
+                alt="Editor de Mapa 2D Satélite e Confrontantes no Souza-CAD"
+                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+              />
+            </div>
+          </div>
+
+        </section>
+
+        {/* 3. CAIXA DE PIONEIROS & CTA PRINCIPAL */}
         <section className="w-full max-w-3xl mx-auto">
           <div className="bg-slate-900/90 border border-emerald-500/30 p-8 sm:p-12 rounded-3xl shadow-[0_0_70px_rgba(16,185,129,0.2)] space-y-8 backdrop-blur-xl relative overflow-hidden">
             
@@ -153,33 +198,8 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </div>
         </section>
 
-        {/* 3. GRANDE SEÇÃO 1: MÓDULO DE GESTÃO DO PROJETO & DOCUMENTOS (IMAGEM REAL NÍTIDA 1) */}
-        <section className="w-full space-y-8 pt-8 border-t border-slate-900/80">
-          <div className="max-w-3xl mx-auto space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-              <FileText className="size-4" /> Gestão do Projeto & Documentos
-            </div>
-            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-              Recibos, Contratos & Declarações com 1 Clique
-            </h2>
-            <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
-              Emissão formal em PDF de recibos de quitação, contratos de prestação de serviços de agrimensura, propostas comerciais e declarações cartorárias com dados e assinatura digital preenchidos automaticamente.
-            </p>
-          </div>
-
-          {/* IMAGEM GIGANTE REAL NÍTIDA (SEM MOLDURA/JANELA, RESOLUÇÃO COMPLETA) */}
-          <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/marca/preview_gestao.png"
-              alt="Gestão do Projeto, Recibos e Contratos no Souza-CAD"
-              className="w-full h-auto object-contain opacity-100 transition-all duration-300"
-            />
-          </div>
-        </section>
-
-        {/* 4. GRANDE SEÇÃO 2: A HISTÓRIA POR TRÁS DA FERRAMENTA */}
-        <section className="w-full max-w-4xl mx-auto py-4">
+        {/* 4. SEÇÃO DA HISTÓRIA DO CRIADOR (DARLAN SOUZA) - POSICIONADA ABAIXO DAS IMAGENS PRINCIPAIS */}
+        <section className="w-full max-w-4xl mx-auto py-2">
           <div className="bg-slate-900/80 border border-slate-800/80 p-8 sm:p-12 rounded-3xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
@@ -195,7 +215,33 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </div>
         </section>
 
-        {/* 5. GRANDE SEÇÃO 3: AUTOMACÃO DE ERRATAS E MALHA SIGEF (IMAGEM REAL NÍTIDA 2) */}
+        {/* 5. SEÇÕES DOS DEMAIS MÓDULOS ESPECIALIZADOS */}
+        
+        {/* MÓDULO DE GESTÃO DO PROJETO & DOCUMENTOS */}
+        <section className="w-full space-y-8 pt-8 border-t border-slate-900/80">
+          <div className="max-w-3xl mx-auto space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+              <FileText className="size-4" /> Gestão do Projeto & Documentos
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+              Recibos, Contratos & Declarações com 1 Clique
+            </h2>
+            <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
+              Emissão formal em PDF de recibos de quitação, contratos de prestação de serviços de agrimensura, propostas comerciais e declarações cartorárias com dados e assinatura digital preenchidos automaticamente.
+            </p>
+          </div>
+
+          <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/marca/preview_gestao.png"
+              alt="Gestão do Projeto, Recibos e Contratos no Souza-CAD"
+              className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+            />
+          </div>
+        </section>
+
+        {/* AUTOMACÃO DE ERRATAS E MALHA SIGEF */}
         <section className="w-full space-y-8 pt-8 border-t border-slate-900/80">
           <div className="max-w-3xl mx-auto space-y-4">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
@@ -209,7 +255,6 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </p>
           </div>
 
-          {/* IMAGEM GIGANTE REAL NÍTIDA (SEM MOLDURA/JANELA, RESOLUÇÃO COMPLETA) */}
           <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -220,7 +265,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </div>
         </section>
 
-        {/* 6. GRANDE SEÇÃO 4: PERSONALIZAÇÃO DA MARCA E CONFIGURAÇÕES (IMAGEM REAL NÍTIDA 3) */}
+        {/* PERSONALIZAÇÃO DA MARCA E CONFIGURAÇÕES */}
         <section className="w-full space-y-8 pt-8 border-t border-slate-900/80">
           <div className="max-w-3xl mx-auto space-y-4">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
@@ -234,7 +279,6 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </p>
           </div>
 
-          {/* IMAGEM GIGANTE REAL NÍTIDA (SEM MOLDURA/JANELA, RESOLUÇÃO COMPLETA) */}
           <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -245,7 +289,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </div>
         </section>
 
-        {/* 7. SEÇÃO FINAL: VALIDAÇÕES TÉCNICAS E CTA DE CREDENCIAMENTO */}
+        {/* 6. SEÇÃO FINAL: VALIDAÇÕES TÉCNICAS E CTA DE CREDENCIAMENTO */}
         <section className="w-full max-w-4xl mx-auto space-y-10 pt-10 border-t border-slate-900/80">
           <div className="text-center space-y-4">
             <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
