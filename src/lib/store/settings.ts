@@ -1,4 +1,5 @@
 import type { TecnicoData, EscritorioData, PlantaConfig, ImportTxtConfig, ImportVerticesVizinhoConfig } from '../topo/types';
+import { EscritorioSchema, TecnicoSchema } from '../zodSchemas';
 
 const KEY = 'metrica.tecnico';
 const KEY_ESCRITORIO = 'metrica.escritorio';
@@ -147,7 +148,10 @@ export function carregarEscritorio(): EscritorioData {
   try {
     const raw = localStorage.getItem(KEY_ESCRITORIO);
     if (!raw) return ESCRITORIO_PADRAO;
-    return { ...ESCRITORIO_PADRAO, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return ESCRITORIO_PADRAO;
+    const checked = EscritorioSchema.partial().safeParse(parsed);
+    return { ...ESCRITORIO_PADRAO, ...parsed, ...(checked.success ? checked.data : {}) };
   } catch {
     return ESCRITORIO_PADRAO;
   }
@@ -163,7 +167,10 @@ export function carregarTecnico(): TecnicoData {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return TECNICO_PADRAO;
-    return { ...TECNICO_PADRAO, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) return TECNICO_PADRAO;
+    const checked = TecnicoSchema.partial().safeParse(parsed);
+    return { ...TECNICO_PADRAO, ...parsed, ...(checked.success ? checked.data : {}) };
   } catch {
     return TECNICO_PADRAO;
   }
