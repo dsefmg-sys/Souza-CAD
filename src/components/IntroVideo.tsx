@@ -97,31 +97,6 @@ export default function IntroVideo() {
       </div>
 
       <div className="relative z-10 w-[min(90vw,960px)]">
-        {/* CARD VÍDEO FLUTUANTE 1 (Canto Superior Esquerdo - Maior, sem título e com inclinação estilosa) */}
-        <div className="absolute -top-7 -left-5 sm:-top-11 sm:-left-11 z-30 w-44 sm:w-72 aspect-video rounded-2xl overflow-hidden border-2 border-emerald-400/60 bg-black/95 shadow-[0_20px_50px_rgba(0,0,0,0.95)] backdrop-blur-md transition-all duration-500 hover:scale-105 hover:rotate-0 hover:z-40 -rotate-3 group pointer-events-auto">
-          <video
-            ref={(el) => { if (el) el.playbackRate = 0.75; }}
-            src="/marca/video1.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover opacity-95 group-hover:opacity-100 transition-opacity"
-          />
-        </div>
-
-        {/* CARD VÍDEO FLUTUANTE 2 (Canto Inferior Direito - Tamanho Diferente, sem título e com inclinação estilosa) */}
-        <div className="absolute -bottom-6 -right-4 sm:-bottom-10 sm:-right-10 z-30 w-36 sm:w-60 aspect-video rounded-2xl overflow-hidden border-2 border-emerald-400/60 bg-black/95 shadow-[0_20px_50px_rgba(0,0,0,0.95)] backdrop-blur-md transition-all duration-500 hover:scale-105 hover:rotate-0 hover:z-40 rotate-4 group pointer-events-auto">
-          <video
-            ref={(el) => { if (el) el.playbackRate = 0.75; }}
-            src="/marca/video2.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover opacity-95 group-hover:opacity-100 transition-opacity"
-          />
-        </div>
 
         {/* Moldura do vídeo: cantos arredondados, borda e brilho verdes — sem zoom no vídeo */}
         <div className="relative overflow-hidden rounded-2xl border border-emerald-400/30 bg-black shadow-[0_0_90px_rgba(16,185,129,0.28)]">

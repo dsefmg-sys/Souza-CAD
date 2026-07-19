@@ -10,7 +10,7 @@ interface LandingPageProps {
   texts: LandingPageTexts;
 }
 
-function InteractiveImageWindow({ src, alt }: { src: string; alt: string }) {
+function InteractiveImageWindow({ src, alt, onExpand }: { src: string; alt: string; onExpand?: (src: string) => void }) {
   const [isBottom, setIsBottom] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -29,19 +29,35 @@ function InteractiveImageWindow({ src, alt }: { src: string; alt: string }) {
     <div
       ref={containerRef}
       onClick={togglePosicao}
-      className="w-full h-[260px] sm:h-[350px] md:h-[440px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative cursor-pointer group select-none"
+      className="w-full h-[320px] sm:h-[460px] md:h-[580px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative cursor-pointer group select-none"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
         src={src}
         alt={alt}
-        style={{ transform: `translate3d(0, ${getTranslateY()}px, 0)` }}
-        className="w-full h-auto block pointer-events-none transition-transform duration-500 ease-in-out"
+        style={{
+          transform: `translate3d(0, ${getTranslateY()}px, 0)`,
+          imageRendering: '-webkit-optimize-contrast',
+        }}
+        className="w-full h-auto block pointer-events-none transition-transform duration-500 ease-in-out filter contrast-[1.02] saturate-[1.02]"
       />
       <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-slate-950/90 border border-emerald-500/40 text-[10px] sm:text-xs font-bold text-emerald-300 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all pointer-events-none backdrop-blur-md shadow-lg flex items-center gap-1.5">
         <span>{isBottom ? '▲ Clique para ver o topo' : '▼ Clique para ver a base'}</span>
       </div>
+
+      {onExpand && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onExpand(src);
+          }}
+          className="absolute top-3 left-3 px-3 py-1.5 rounded-full bg-slate-950/90 border border-slate-700 hover:border-emerald-400 text-[10px] sm:text-xs font-bold text-slate-200 hover:text-white opacity-80 hover:opacity-100 transition-all pointer-events-auto backdrop-blur-md shadow-md flex items-center gap-1.5"
+        >
+          <span>🔍 Expandir em HD</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -50,6 +66,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
   const [activeSection, setActiveSection] = useState(0);
   const [modalIndiqueAberto, setModalIndiqueAberto] = useState(false);
   const [textoCopiado, setTextoCopiado] = useState(false);
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
   const mensagemRecomendacao = `Conheça o Souza-CAD — Software Profissional de Engenharia Topográfica e Georreferenciamento SIGEF / INCRA.
 
@@ -304,6 +321,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <InteractiveImageWindow
               src="/marca/preview_requerimento.png"
               alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
+              onExpand={setLightboxImg}
             />
 
             {/* SEGUNDA IMAGEM (FLUTUANTE SOBREPOSTA NO CANTO INFERIOR DIREITO - MESMO TAMANHO E ESTILO DAS OUTRAS SEÇÕES) */}
@@ -355,6 +373,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <InteractiveImageWindow
               src="/marca/preview_sigef.png"
               alt="Conferência da Planilha SIGEF e Geração ODS no Souza-CAD"
+              onExpand={setLightboxImg}
             />
           </div>
         </div>
@@ -380,6 +399,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <InteractiveImageWindow
               src="/marca/preview_mapa2d.png"
               alt="Interface Completa e Relevo 3D Souza-CAD"
+              onExpand={setLightboxImg}
             />
           </div>
         </div>
@@ -428,6 +448,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <InteractiveImageWindow
               src="/marca/preview_planta_a3.png"
               alt="Planta Oficial do Imóvel"
+              onExpand={setLightboxImg}
             />
 
             {/* PRIMEIRA IMAGEM (FLUTUANTE COMO DETALHAMENTO SOBREPOSTO - SEM TÍTULO E SEM CORTES) */}
@@ -464,6 +485,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <InteractiveImageWindow
               src="/marca/preview_config.png"
               alt="Personalização de Marca e Assinatura Digital"
+              onExpand={setLightboxImg}
             />
 
             {/* PRIMEIRA IMAGEM (FLUTUANTE SOBREPOSTA À DIREITA - MESMO TAMANHO E SEM TÍTULO) */}
@@ -618,6 +640,30 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
                 <span>ABRIR NO WHATSAPP</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL LIGHTBOX HD FULLSCREEN */}
+      {lightboxImg && (
+        <div
+          onClick={() => setLightboxImg(null)}
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-200 cursor-zoom-out"
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxImg(null)}
+            className="absolute top-6 right-6 z-10 px-4 py-2 rounded-2xl bg-slate-900 border border-slate-700 text-white font-bold text-xs hover:border-emerald-400 transition-all cursor-pointer shadow-2xl"
+          >
+            ✕ Fechar Imagem (ESC)
+          </button>
+          <div className="max-w-[95vw] max-h-[92vh] overflow-auto rounded-2xl border border-emerald-500/40 bg-slate-950 shadow-[0_0_80px_rgba(16,185,129,0.3)] p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxImg}
+              alt="Visualização HD em Tela Cheia"
+              className="w-full h-auto max-h-[88vh] object-contain rounded-xl block mx-auto filter contrast-105"
+            />
           </div>
         </div>
       )}
