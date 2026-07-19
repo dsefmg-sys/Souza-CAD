@@ -530,7 +530,7 @@ export default function Planta({
   const verEscalaG = config.mostrarEscalaGrafica !== false;
   const verDivisaConf = config.mostrarDivisaConf !== false;
   const verVizinhoVtx = config.mostrarVerticesVizinho !== false;
-  const verSituacao = config.mostrarSituacao !== false;
+  const verSituacao = config.mostrarSituacao !== false && !config.situacaoEscondida;
   const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1.5;
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
   const fonteRot = fs(config.fonteRotulos ?? 10);
@@ -2037,7 +2037,21 @@ export default function Planta({
               folhaLast.current = u;
               captura(e);
             } : undefined}>
-            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="#ffffff" fillOpacity={0.001} stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} style={{ pointerEvents: 'all' }} />
+            <rect
+              x={px - half - 8}
+              y={top}
+              width={boxW}
+              height={boxH}
+              fill="#ffffff"
+              fillOpacity={0.001}
+              stroke="#cbd5e1"
+              strokeWidth={0.7}
+              rx={4}
+              ry={4}
+              style={{ pointerEvents: 'all' }}
+              onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:confrontantes'); }}
+              onDoubleClick={editavel ? (e) => { e.stopPropagation(); onEditarConfrontante?.(c.id); onDblClickObjeto?.('planta:confrontantes'); } : undefined}
+            />
             {placedElements}
           </g>
         );
@@ -2520,6 +2534,8 @@ export default function Planta({
               height={h3D + extraH}
               fill="transparent"
               style={{ pointerEvents: 'all' }}
+              onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:print3d'); }}
+              onDoubleClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:print3d'); onDblClickObjeto?.('planta:print3d'); }}
             />
 
             {editavel && objetoSelId === id3D && onRemoverPrint3D && (

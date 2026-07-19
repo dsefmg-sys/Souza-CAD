@@ -597,43 +597,43 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
 
         <div className="flex flex-1 overflow-hidden min-h-0">
           {/* Menu Lateral de Navegação */}
-          <div className="w-60 border-r border-border/40 bg-zinc-50/50 dark:bg-zinc-950/20 flex flex-col gap-4 p-4 shrink-0 overflow-y-auto select-none">
+          <div className="w-60 border-r border-border/40 bg-zinc-50/50 dark:bg-zinc-950/20 flex flex-col gap-3.5 p-3 shrink-0 overflow-y-auto select-none scrollbar-none">
             {/* Grupo 1: Empresa */}
-            <div className="space-y-1">
+            <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-800/50 bg-zinc-100/30 dark:bg-zinc-900/20 p-2 space-y-1 shadow-sm">
               <div className="flex items-center gap-1.5 px-2 mb-1">
                 <span className="size-1.5 rounded-full bg-amber-500" />
                 <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/80">Empresa</span>
               </div>
               <div className="space-y-0.5">
-                <Tb a="escritorio" rotulo="Dados da Empresa" titulo="Identificação, contato, endereço, logotipo e cores" />
-                <Tb a="equipe" rotulo="Ajudantes / Equipe" titulo="Convidar colaboradores e gerenciar permissões" />
+                <Tb a="escritorio" rotulo="Dados da Empresa" />
+                <Tb a="equipe" rotulo="Ajudantes / Equipe" />
               </div>
             </div>
 
             {/* Grupo 2: Pessoais */}
-            <div className="space-y-1">
+            <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-800/50 bg-zinc-100/30 dark:bg-zinc-900/20 p-2 space-y-1 shadow-sm">
               <div className="flex items-center gap-1.5 px-2 mb-1">
                 <span className="size-1.5 rounded-full bg-indigo-500" />
                 <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/80">Pessoal</span>
               </div>
               <div className="space-y-0.5">
-                <Tb a="pessoal" rotulo="Responsável Técnico" titulo="Seu nome, formação, conselho e registros" />
-                <Tb a="comportamento" rotulo="Comportamento" titulo="Tema, tamanho da fonte e preferências" />
-                <Tb a="atalhos" rotulo="Atalhos" titulo="Teclas de atalho do teclado" />
+                <Tb a="pessoal" rotulo="Responsável Técnico" />
+                <Tb a="comportamento" rotulo="Comportamento" />
+                <Tb a="atalhos" rotulo="Atalhos" />
               </div>
             </div>
 
             {/* Grupo 3: Workspace */}
-            <div className="space-y-1">
+            <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-800/50 bg-zinc-100/30 dark:bg-zinc-900/20 p-2 space-y-1 shadow-sm">
               <div className="flex items-center gap-1.5 px-2 mb-1">
                 <span className="size-1.5 rounded-full bg-emerald-500" />
                 <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/80">Workspace</span>
               </div>
               <div className="space-y-0.5">
-                <Tb a="numeracao" rotulo="Numeração e Fuso" titulo="Contador de marcos, fuso e hemisfério" />
-                <Tb a="modelos" rotulo="Importação e Modelos" titulo="Modelos de memorial, layout TXT e vizinhos" />
-                <Tb a="padroes" rotulo="Padrões & Backup" titulo="Valores padrão, tabela de preços e backup" />
-                <Tb a="colegas" rotulo="Colegas" titulo="Lista de agrimensores credenciados confrontantes" />
+                <Tb a="numeracao" rotulo="Numeração e Fuso" />
+                <Tb a="modelos" rotulo="Importação e Modelos" />
+                <Tb a="padroes" rotulo="Padrões & Backup" />
+                <Tb a="colegas" rotulo="Colegas" />
               </div>
             </div>
           </div>
@@ -946,26 +946,38 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 </div>
 
                 <div className="space-y-3 rounded-lg border bg-muted/20 p-3.5">
-                  {Object.entries(ACOES_ATALHOS).map(([acao, label]) => {
-                    const aliases = obterAliasesAcao(acao);
-                    return (
-                      <div key={acao} className="space-y-1">
-                        <div className="flex justify-between items-center text-[10px]">
-                          <span className="font-bold text-foreground">{label}</span>
-                          <span className="text-muted-foreground text-[8px] font-mono uppercase bg-muted/80 px-1 rounded">
-                            {acao}
-                          </span>
+                  {Object.entries(ACOES_ATALHOS)
+                    .map(([acao, label]) => ({
+                      acao,
+                      label,
+                      aliases: obterAliasesAcao(acao),
+                    }))
+                    .sort((a, b) => {
+                      const aHas = a.aliases.trim().length > 0;
+                      const bHas = b.aliases.trim().length > 0;
+                      if (aHas && !bHas) return -1;
+                      if (!aHas && bHas) return 1;
+                      return a.label.localeCompare(b.label);
+                    })
+                    .map(({ acao, label, aliases }) => {
+                      return (
+                        <div key={acao} className="space-y-1">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-bold text-foreground">{label}</span>
+                            <span className="text-muted-foreground text-[8px] font-mono uppercase bg-muted/80 px-1 rounded">
+                              {acao}
+                            </span>
+                          </div>
+                          <Input
+                            type="text"
+                            value={aliases}
+                            onChange={(e) => mudarAliasesAcao(acao, e.target.value)}
+                            placeholder="Ex: cc, cr"
+                            className="h-8 text-[11px] font-mono bg-background text-foreground"
+                          />
                         </div>
-                        <Input
-                          type="text"
-                          value={aliases}
-                          onChange={(e) => mudarAliasesAcao(acao, e.target.value)}
-                          placeholder="Ex: cc, cr"
-                          className="h-8 text-[11px] font-mono bg-background text-foreground"
-                        />
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               </div>
             </div>

@@ -151,8 +151,8 @@ export function ObjetoPersonalizarModal({
                 <label className="flex items-center gap-2 cursor-pointer py-1">
                   <input
                     type="checkbox"
-                    checked={!!plantaConfig.situacaoEscondida}
-                    onChange={(e) => setPlantaConfig((p: PlantaConfig) => ({ ...p, situacaoEscondida: e.target.checked }))}
+                    checked={!!plantaConfig.situacaoEscondida || plantaConfig.mostrarSituacao === false}
+                    onChange={(e) => setPlantaConfig((p: PlantaConfig) => ({ ...p, situacaoEscondida: e.target.checked, mostrarSituacao: !e.target.checked }))}
                     className="rounded border-zinc-300 text-primary focus:ring-primary size-4"
                   />
                   <span className="font-semibold text-foreground">Ocultar planta de situação</span>

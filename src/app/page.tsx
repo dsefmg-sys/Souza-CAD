@@ -272,7 +272,7 @@ const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-M
 // principal, porque baixar as peças é o objetivo do trabalho. Assim o olho é guiado, não gritado.
 const COR_IMPORT = 'bg-sky-500 hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-700 text-white border-transparent';       // entrada de dados
 const COR_VIZINHO = 'bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800 text-white border-transparent'; // vizinho certificado (SIGEF/INCRA)
-const COR_DADOS = 'bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-800 text-white border-transparent'; // cadastro e IA
+const COR_DADOS = 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-800 text-white border-transparent'; // cadastro e IA
 const COR_CONFRO = 'bg-blue-800 hover:bg-blue-900 text-white border-transparent';
 const COR_DIVISA = 'bg-indigo-700 hover:bg-indigo-800 text-white border-transparent';
 const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída — cor de ação principal (verde da marca)
@@ -435,6 +435,20 @@ export default function EditorPage() {
     });
   }
   const [pecasSheetAberto, setPecasSheetAberto] = useState(false); // janela de escolher peça no mobile (abre pela MobileHome)
+  const [dadosMenuAberto, setDadosMenuAberto] = useState(false);
+  const dadosBtnRef = useRef<HTMLDivElement>(null);
+  const [dadosMenuPos, setDadosMenuPos] = useState<{ top: number; left: number } | null>(null);
+  function alternarMenuDados() {
+    setDadosMenuAberto((v) => {
+      const abrindo = !v;
+      if (abrindo && dadosBtnRef.current) {
+        const r = dadosBtnRef.current.getBoundingClientRect();
+        setDadosMenuPos({ top: r.bottom + 4, left: Math.max(4, r.left) });
+      }
+      return abrindo;
+    });
+  }
+  const [explicacaoPassoAberto, setExplicacaoPassoAberto] = useState(false);
   const [perfil, setPerfil] = useState<PerfilUso | null>(null);
   // Cobrança é POR EMPRESA (Etapa 2b do SaaS multi-empresa) — quando existe, manda no bloqueio de
   // faturamento; sem ela ainda (empresa recém-criada, doc ainda propagando), cai pro `perfil`
@@ -6856,10 +6870,70 @@ export default function EditorPage() {
         {!telaEstreita && (
           <>
             <Etapa st={etapas.dados} tituloEtapa="3. Cadastro do Imóvel & RT" explicacao="Preencha as informações do imóvel, proprietário, número da matrícula, serventia registral e os dados do Responsável Técnico habilitado.">
-              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
-                <Database /> DADOS
-                <Atalho k="F4" />
-              </Button>
+              <div ref={dadosBtnRef} className="relative shrink-0">
+                <Button
+                  size="sm"
+                  className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`}
+                  title="Dados do projeto e tabelas da prancha (F4)"
+                  onClick={alternarMenuDados}
+                >
+                  <Database /> DADOS <ChevronDown className="size-3" />
+                  <Atalho k="F4" />
+                </Button>
+                {dadosMenuAberto && dadosMenuPos && (
+                  <>
+                    <div className={`fixed inset-0 ${Z_CLASSES.BACKDROP_DROPDOWN}`} onClick={() => setDadosMenuAberto(false)} />
+                    <div
+                      style={{ position: 'fixed', top: dadosMenuPos.top, left: dadosMenuPos.left }}
+                      className={`${Z_CLASSES.DROPDOWN_MENU} w-64 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1.5 shadow-2xl backdrop-blur-xl space-y-1`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => { setDadosMenuAberto(false); setPainelAberto(true); setAba('imovel'); }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors text-left"
+                      >
+                        <BookUser className="size-4 text-indigo-500 shrink-0" />
+                        <div>
+                          <div className="font-extrabold">Dados do Imóvel &amp; RT</div>
+                          <div className="text-[10px] text-muted-foreground font-normal">Matrícula, proprietário e responsável (F4)</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDadosMenuAberto(false);
+                          setPlantaConfig((c) => ({ ...c, mostrarQuadroAreas: true }));
+                          setVista('planta');
+                          avise('Quadro de Áreas inserido na prancha.');
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-colors text-left"
+                      >
+                        <LayoutGrid className="size-4 text-emerald-500 shrink-0" />
+                        <div>
+                          <div className="font-extrabold">Adicionar Quadro de Áreas</div>
+                          <div className="text-[10px] text-muted-foreground font-normal">Exibir resumo de áreas na planta</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDadosMenuAberto(false);
+                          setPlantaConfig((c) => ({ ...c, mostrarRoteiro: true }));
+                          setVista('planta');
+                          avise('Roteiro Perimétrico inserido na prancha.');
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg transition-colors text-left"
+                      >
+                        <FileText className="size-4 text-amber-500 shrink-0" />
+                        <div>
+                          <div className="font-extrabold">Adicionar Roteiro Perimétrico</div>
+                          <div className="text-[10px] text-muted-foreground font-normal">Exibir tabela de azimutes e distâncias</div>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </Etapa>
             <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
           </>
@@ -7192,7 +7266,7 @@ export default function EditorPage() {
           const rotulo = toolWEfetivo >= 104;
           return (
             <>
-              <aside style={{ width: toolWEfetivo }} className={`sidebar-lateral no-print scroll-fino relative flex shrink-0 flex-col gap-1 overflow-y-auto border-r bg-card p-1 [&_button]:h-7 sm:[&_button]:h-8 [&_button]:min-h-[26px] [&_button]:px-1.5 [&_button]:text-[10px] sm:[&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
+              <aside style={{ width: toolWEfetivo }} className={`sidebar-lateral no-print scrollbar-none relative flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r bg-card p-0.5 sm:p-1 [&_button]:h-6.5 sm:[&_button]:h-7 [&_button]:min-h-[22px] [&_button]:py-0 [&_button]:px-1 [&_button]:text-[9.5px] sm:[&_button]:text-[10px] [&_button_svg]:size-3 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
                 {vista === '3d' ? (
                   <div id="sidebar-3d-portal-target" className="flex-1 flex flex-col gap-3 py-1 text-xs" />
                 ) : (
@@ -10434,10 +10508,23 @@ export default function EditorPage() {
               Fuso {zona}{hemisferio}
             </span>
           </div>
+
+          {/* Próximo Passo Sugerido ou Mensagem de Desfazer / Ação (Substituição Temporária) — Posicionado perto do Fuso */}
+          <div
+            onClick={() => setExplicacaoPassoAberto(true)}
+            className="flex items-center gap-1.5 border-l border-slate-300 dark:border-slate-800 pl-2.5 shrink-0 cursor-pointer select-none group"
+            title="Clique para abrir a explicação completa deste passo"
+          >
+            <span className={`inline-block size-1.5 rounded-full shrink-0 ${msg ? 'bg-amber-500 animate-ping' : 'bg-sky-500 animate-pulse'}`} />
+            <span className={`font-black text-[9.5px] transition-all max-w-[280px] sm:max-w-[420px] truncate ${msg ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-sky-700 dark:text-sky-300 group-hover:underline'}`}>
+              {msg ? msg : `Próximo Passo Sugerido: ${dicaFluxo.resumo.replace(/^Próximo passo:\s*/i, '')}`}
+            </span>
+            {!msg && <Info className="size-3 text-sky-500 opacity-80 group-hover:opacity-100 shrink-0" />}
+          </div>
         </div>
 
         {/* Lado Direito: Estatísticas em tempo real & Status de Salvamento */}
-        <div className="flex items-center gap-4 shrink-0 divide-x divide-slate-800 text-slate-400 text-[9px] font-mono">
+<div className="flex items-center gap-4 shrink-0 divide-x divide-slate-800 text-slate-400 text-[9px] font-mono">
           {/* Seleção Atual */}
           {objetoSelId && (
             <div className="pl-4 text-amber-300 font-semibold">
@@ -10460,29 +10547,6 @@ export default function EditorPage() {
               Vértice: {vertices.find(v => v.id === selecionadoId)?.nome || 'Selecionado'}
             </div>
           )}
-
-          {/* Guia de Próximos Passos Dinâmico (Substituindo Estatísticas Físicas) */}
-          <div className="relative group pl-4 py-0.5 flex items-center gap-1.5 cursor-help select-none shrink-0">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse shrink-0" />
-            <span className="text-sky-700 dark:text-sky-300 font-extrabold max-w-[200px] sm:max-w-[260px] md:max-w-[320px] truncate text-[9px] transition-all">
-              Próximo Passo Sugerido: {dicaFluxo.resumo.replace(/^Próximo passo:\s*/i, '')}
-            </span>
-
-            {/* Popover/Tooltip de Dica de Fluxo Avançada */}
-            <div className="absolute bottom-full right-0 mb-2 w-80 p-3.5 bg-slate-900 border border-slate-800 text-slate-100 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-[3000]">
-              <div className="text-[10px] font-black text-sky-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-slate-850 pb-1">
-                <GraduationCap className="size-4 text-sky-400 animate-bounce" />
-                Como Proceder - Passo {dicaFluxo.passo} de 9
-              </div>
-              <p className="text-[10px] font-medium leading-relaxed font-sans text-slate-200 select-text">
-                {dicaFluxo.detalhe}
-              </p>
-              <div className="mt-2.5 pt-1.5 border-t border-slate-850 text-[8px] text-slate-400 flex justify-between font-mono">
-                <span>Fluxo do Souza-CAD</span>
-                <span>Passe o mouse para ler</span>
-              </div>
-            </div>
-          </div>
 
           {/* Status do Banco de Dados */}
           <div className="pl-4 flex items-center gap-1.5">
@@ -10521,8 +10585,35 @@ export default function EditorPage() {
           </div>
         </div>
       </div>
-      )}
-
+      {/* Modal Dialog de Explicação Detalhada do Passo Atual */}
+      <Dialog open={explicacaoPassoAberto} onOpenChange={setExplicacaoPassoAberto}>
+        <DialogContent className="max-w-md bg-slate-900 border border-slate-800 text-slate-100 p-5 rounded-2xl shadow-2xl">
+          <DialogHeader className="pb-3 border-b border-slate-800">
+            <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-sky-400">
+              <GraduationCap className="size-5 text-sky-400" />
+              Como Proceder — Passo {dicaFluxo.passo} de 9
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-3 space-y-2">
+            <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+              <Info className="size-4 text-amber-400 shrink-0" />
+              {dicaFluxo.resumo}
+            </div>
+            <p className="text-xs text-slate-200 leading-relaxed font-sans bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+              {dicaFluxo.detalhe}
+            </p>
+          </div>
+          <div className="flex justify-end pt-2 border-t border-slate-800">
+            <Button
+              type="button"
+              onClick={() => setExplicacaoPassoAberto(false)}
+              className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-5 py-2 rounded-lg border-0 shadow-md"
+            >
+              Entendido
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
