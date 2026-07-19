@@ -9840,7 +9840,7 @@ export default function EditorPage() {
       <IntroVideo />
 
       {landingPageAberta && (
-        <div className="fixed inset-0 z-[99999] bg-slate-950 overflow-y-auto">
+        <div className="fixed inset-0 z-[99999] bg-slate-950 overflow-y-auto scroll-smooth landing-snap-container">
           <LandingPage
             numUsuarios={numUsuariosTotal}
             texts={landingTexts}

@@ -1,6 +1,7 @@
 'use client';
 
-import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, MapPin, Map, Download, Award as AwardIcon, FileCheck, FileCode, Share2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 
 interface LandingPageProps {
@@ -10,6 +11,8 @@ interface LandingPageProps {
 }
 
 export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingPageProps) {
+  const [activeSection, setActiveSection] = useState(0);
+
   const indicarAmigo = () => {
     const msg = 'Confira o Souza-CAD, a plataforma de georreferenciamento e topografia mais rápida do mercado!';
     const url = typeof window !== 'undefined' ? window.location.origin : 'https://souza-cad.vercel.app';
@@ -19,17 +22,41 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${msg} ${url}`)}`, '_blank');
     }
   };
+
+  const scrollToSec = (idx: number) => {
+    const el = document.getElementById(`sec-${idx}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Observa a seção visível para atualizar os pontinhos laterais
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id;
+            const idx = parseInt(id.replace('sec-', ''), 10);
+            if (!isNaN(idx)) setActiveSection(idx);
+          }
+        });
+      },
+      { threshold: 0.4 }
+    );
+
+    const sections = document.querySelectorAll('.landing-snap-sec');
+    sections.forEach((sec) => observer.observe(sec));
+
+    return () => observer.disconnect();
+  }, []);
+
   // Escassez de vagas de pioneiros
   let vagasTotais = 50;
-  if (numUsuarios >= 50 && numUsuarios < 100) {
-    vagasTotais = 100;
-  } else if (numUsuarios >= 100 && numUsuarios < 200) {
-    vagasTotais = 200;
-  } else if (numUsuarios >= 200 && numUsuarios < 500) {
-    vagasTotais = 500;
-  } else if (numUsuarios >= 500) {
-    vagasTotais = 1000;
-  }
+  if (numUsuarios >= 50 && numUsuarios < 100) vagasTotais = 100;
+  else if (numUsuarios >= 100 && numUsuarios < 200) vagasTotais = 200;
+  else if (numUsuarios >= 200 && numUsuarios < 500) vagasTotais = 500;
+  else if (numUsuarios >= 500) vagasTotais = 1000;
 
   const vagasRestantes = Math.max(0, vagasTotais - numUsuarios);
   const estaEsgotado = numUsuarios >= 500;
@@ -47,10 +74,14 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
   ];
 
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100 overflow-x-hidden font-sans select-none selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col justify-between">
+    <div className="relative min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500/30 selection:text-emerald-200">
       
-      {/* Estilos e animações elegantes dedicados */}
+      {/* Estilos CSS para rolagem inteligente por seção (Scroll Snap) */}
       <style jsx global>{`
+        .landing-snap-sec {
+          scroll-snap-align: start !important;
+          scroll-snap-stop: always !important;
+        }
         @keyframes float-subtle {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-8px); }
@@ -63,23 +94,17 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
         }
-        .animate-float-subtle {
-          animation: float-subtle 7s ease-in-out infinite;
-        }
-        .animate-ambient-glow {
-          animation: ambient-glow 10s ease-in-out infinite;
-        }
+        .animate-float-subtle { animation: float-subtle 7s ease-in-out infinite; }
+        .animate-ambient-glow { animation: ambient-glow 10s ease-in-out infinite; }
         .btn-shimmer-effect {
           background-size: 200% 100%;
           background-image: linear-gradient(110deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0) 100%);
         }
-        .btn-shimmer-effect:hover {
-          animation: btn-shimmer 2s infinite;
-        }
+        .btn-shimmer-effect:hover { animation: btn-shimmer 2s infinite; }
       `}</style>
 
-      {/* ── BACKGROUND TÉCNICO: CURVAS DE NÍVEL TOPOGRÁFICAS SVG COM MOVIMENTO AMBIENTE ── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-15 animate-ambient-glow">
+      {/* BACKGROUND DE CURVAS DE NÍVEL SVG */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-15 animate-ambient-glow">
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
           <defs>
             <linearGradient id="topoGradLine" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -94,389 +119,248 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
         </svg>
       </div>
 
-      {/* ── HEADER CLEAN E ELEGANTE COM BOTÃO DE PIONEIRO (X/Y) ── */}
-      <header className="max-w-7xl mx-auto w-full px-6 py-6 flex items-center justify-between z-30 relative shrink-0">
+      {/* NAVEGADOR DE SEÇÕES COM PONTINHOS LATERAIS FLUTUANTES */}
+      <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex flex-col gap-3">
+        {[0, 1, 2, 3, 4, 5].map((idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => scrollToSec(idx)}
+            title={`Ir para seção ${idx + 1}`}
+            className={`size-3 rounded-full transition-all duration-300 cursor-pointer ${
+              activeSection === idx
+                ? 'bg-emerald-400 scale-125 ring-4 ring-emerald-500/20'
+                : 'bg-slate-700 hover:bg-slate-500 hover:scale-110'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* HEADER FIXO NO TOPO */}
+      <header className="fixed top-0 left-0 right-0 max-w-7xl mx-auto w-full px-6 py-4 flex items-center justify-between z-40 bg-slate-950/85 backdrop-blur-md border-b border-slate-900/60">
         <div className="flex items-center gap-3 group cursor-default">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 group-hover:border-emerald-400/60 group-hover:bg-emerald-500/20 transition-all duration-300 shadow-md">
-            <Compass className="size-6 text-emerald-400 group-hover:rotate-45 transition-transform duration-500" />
+          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 group-hover:border-emerald-400/60 group-hover:bg-emerald-500/20 transition-all duration-300 shadow-md">
+            <Compass className="size-5 text-emerald-400 group-hover:rotate-45 transition-transform duration-500" />
           </div>
           <div>
-            <span className="text-xl font-black tracking-widest text-white font-mono">SOUZA <span className="text-emerald-400">CAD</span></span>
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-400/90">Engenharia & Georreferenciamento</span>
+            <span className="text-lg font-black tracking-widest text-white font-mono">SOUZA <span className="text-emerald-400">CAD</span></span>
+            <span className="block text-[9px] font-bold uppercase tracking-wider text-emerald-400/90">Engenharia & Georreferenciamento</span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={indicarAmigo}
-            className="group relative px-4 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-2 hover:bg-emerald-500/20 hover:border-emerald-400/50 uppercase tracking-wider font-mono shadow-sm"
-            title="Compartilhar o Souza-CAD com colegas agrimensores e topógrafos"
+            className="group px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold transition-all duration-300 cursor-pointer flex items-center gap-1.5 hover:bg-emerald-500/20 uppercase tracking-wider font-mono shadow-sm"
           >
-            <Share2 className="size-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-            <span>INDIQUE PARA UM AMIGO</span>
+            <Share2 className="size-3.5 text-emerald-400" />
+            <span className="hidden sm:inline">INDIQUE UM AMIGO</span>
           </button>
 
           <button
             type="button"
             onClick={onPioneiro}
-            className="group relative px-5 py-2.5 rounded-2xl bg-emerald-600 text-white text-xs font-black transition-all duration-300 cursor-pointer flex items-center gap-2 hover:bg-emerald-500 hover:scale-[1.03] active:scale-[0.98] uppercase tracking-wider font-mono shadow-lg hover:shadow-emerald-500/20 btn-shimmer-effect"
+            className="group px-4 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-black transition-all duration-300 cursor-pointer flex items-center gap-1.5 hover:bg-emerald-500 hover:scale-[1.02] active:scale-[0.98] uppercase tracking-wider font-mono shadow-lg btn-shimmer-effect"
           >
-            <Zap className="size-4 group-hover:scale-110 transition-transform" />
-            <span>SER UM PIONEIRO ({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span>
+            <Zap className="size-3.5" />
+            <span>PIONEIRO ({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span>
           </button>
         </div>
       </header>
 
-      {/* ── ROLAGEM VERTICAL EM GRANDES SEÇÕES PERSUASIVAS & LEGÍVEIS ── */}
-      <main className="relative flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-16 z-10 space-y-24 text-center">
-        
-        {/* 1. SEÇÃO HERO: TÍTULO PRINCIPAL & SUBTÍTULO + IMAGEM PRINCIPAL */}
-        <section className="max-w-4xl mx-auto space-y-8 pt-4">
-          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-sm font-black uppercase tracking-wider text-emerald-300 transition-all duration-300 hover:border-emerald-400/40 hover:bg-emerald-500/15 shadow-sm">
-            <FileSpreadsheet className="size-5 text-emerald-400" />
+      {/* SEÇÃO 1: HERO & PREVIEW INICIAL */}
+      <section id="sec-0" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-24 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-300 shadow-sm">
+            <FileSpreadsheet className="size-4 text-emerald-400" />
             <span>Planilha ODS Padrão INCRA & SIGEF em Minutos</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white leading-[1.08] tracking-tight">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white leading-[1.08] tracking-tight">
             {titulo}
           </h1>
 
-          <p className="text-lg sm:text-2xl text-slate-300 leading-relaxed font-medium max-w-3xl mx-auto">
+          <p className="text-base sm:text-xl text-slate-300 leading-relaxed font-medium max-w-3xl mx-auto">
             {subtitulo}
           </p>
 
-          {/* IMAGEM HERO: Screenshot principal do app no topo com efeito suave de elevação */}
-          <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 mt-8 transition-all duration-500 hover:border-emerald-500/40 hover:shadow-emerald-500/10 hover:shadow-[0_20px_50px_rgba(16,185,129,0.12)] hover:-translate-y-1">
+          <div className="group w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 mt-4 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/marca/preview_mapa2d.png"
-              alt="Interface completa do Souza-CAD com editor de mapa 2D sobre imagem de satélite, delimitação perimétrica, confrontantes e métricas"
-              className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
+              alt="Interface completa do Souza-CAD"
+              className="w-full h-auto max-h-[42vh] object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
             />
           </div>
-        </section>
+        </div>
+        <button type="button" onClick={() => scrollToSec(1)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+          <ChevronDown className="size-6" />
+        </button>
+      </section>
 
-        {/* 2. DEMONSTRAÇÃO VISUAL — DIFERENCIAIS DO SOFTWARE */}
-        <section className="w-full space-y-20 pt-2">
-          
-          {/* IMAGEM 2: MODELO DIGITAL DE RELEVO (MDR 3D) INTEGRADO NA PRANCHA A3 */}
-          <div className="space-y-4 pt-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-              <Box className="size-4" /> Modelo Digital de Relevo (MDR 3D) na Prancha
-            </div>
-            <h2 className="text-2xl sm:text-4xl font-black text-white">
-              Modelo Digital de Relevo 3D Integrado à Prancha Oficial
-            </h2>
-            <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
-              Incorpore o Modelo Digital de Relevo 3D com malha TIN wireframe, diagrama de convergência magnética e convenções cartográficas na sua prancha final.
-            </p>
-
-            {/* Imagem Real 2: MDR 3D na Prancha */}
-            <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:shadow-[0_20px_50px_rgba(16,185,129,0.10)] hover:-translate-y-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_mdr_planta.png"
-                alt="MDR 3D e Convenções na Prancha A3 no Souza-CAD"
-                className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
-              />
-            </div>
+      {/* SEÇÃO 2: RELEVO 3D & PRANCHA A3 */}
+      <section id="sec-1" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+            <Box className="size-4" /> Modelo Digital de Relevo (MDR 3D) na Prancha
           </div>
+          <h2 className="text-2xl sm:text-4xl font-black text-white">
+            Modelo Digital de Relevo 3D Integrado à Prancha Oficial
+          </h2>
+          <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
+            Incorpore o Modelo Digital de Relevo 3D com malha TIN wireframe, diagrama de convergência magnética e convenções cartográficas na sua prancha final.
+          </p>
 
-        </section>
+          <div className="group w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/marca/preview_mdr_planta.png"
+              alt="MDR 3D e Convenções na Prancha A3"
+              className="w-full h-auto max-h-[46vh] object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
+            />
+          </div>
+        </div>
+        <button type="button" onClick={() => scrollToSec(2)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+          <ChevronDown className="size-6" />
+        </button>
+      </section>
 
-        {/* 3. A HISTÓRIA DO CRIADOR (DARLAN SOUZA - 14 ANOS DE PRÁTICA TÉCNICA) */}
-        <section className="w-full max-w-4xl mx-auto py-2">
-          <div className="group bg-slate-900/70 border border-slate-800/60 p-8 sm:p-12 rounded-2xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden transition-all duration-500 hover:border-emerald-500/30 hover:shadow-xl hover:-translate-y-0.5">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-700" />
+      {/* SEÇÃO 3: HISTÓRIA DO CRIADOR */}
+      <section id="sec-2" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-4xl mx-auto text-center border-b border-slate-900/60">
+        <div className="w-full space-y-6">
+          <div className="group bg-slate-900/80 border border-slate-800/80 p-8 sm:p-12 rounded-3xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden transition-all duration-500 hover:border-emerald-500/40 hover:shadow-2xl shadow-xl">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-700" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-              <Shield className="size-5 text-emerald-400 group-hover:scale-110 transition-transform duration-300" /> A história por trás da ferramenta
+              <Shield className="size-5 text-emerald-400" /> A história por trás da ferramenta
             </h3>
             <p className="text-base sm:text-xl text-slate-200 leading-relaxed italic">
               &ldquo;{historia}&rdquo;
             </p>
-            <div className="pt-4 flex items-center justify-between text-sm text-slate-400 font-medium border-t border-slate-850">
+            <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-slate-400 font-medium border-t border-slate-800 gap-2">
               <span className="font-bold text-white">— {autorHistoria}</span>
               <span className="text-emerald-400 font-bold">14 Anos de Experiência Prática</span>
             </div>
           </div>
-        </section>
+        </div>
+        <button type="button" onClick={() => scrollToSec(3)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+          <ChevronDown className="size-6" />
+        </button>
+      </section>
 
-        {/* 4. CAIXA DE ESCASSEZ & CREDENCIAMENTO PIONEIRO */}
-        <section className="w-full max-w-3xl mx-auto">
-          <div className="bg-slate-900/80 border border-emerald-500/20 p-8 sm:p-12 rounded-2xl shadow-xl space-y-8 backdrop-blur-xl relative overflow-hidden transition-all duration-500 hover:border-emerald-500/40">
-            
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-6 text-left">
+      {/* SEÇÃO 4: REQUERIMENTOS & PEÇAS ZIP */}
+      <section id="sec-3" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+            <FileCode className="size-4" /> Cartório & Requerimentos Jurídicos
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-black text-white">
+            Requerimentos ao Cartório & Download do Pacote ZIP
+          </h2>
+          <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
+            Gere minutas prontas para Retificação, Doação, Usucapião, Desmembramento e a Planta A3 com todas as peças compactadas num único Pacote ZIP.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+            <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/marca/preview_requerimento.png" alt="Requerimentos Cartorários" className="w-full h-auto max-h-[36vh] object-contain" />
+            </div>
+            <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/marca/preview_pecas.png" alt="Menu de Peças Técnicas ZIP" className="w-full h-auto max-h-[36vh] object-contain" />
+            </div>
+          </div>
+        </div>
+        <button type="button" onClick={() => scrollToSec(4)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+          <ChevronDown className="size-6" />
+        </button>
+      </section>
+
+      {/* SEÇÃO 5: HABILITAÇÃO PROFISSIONAL & MARCA */}
+      <section id="sec-4" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+            <AwardIcon className="size-4" /> CFT, CFTA & CREA + Sua Marca
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-black text-white">
+            ART e TRT Automáticos com a Sua Marca em Tudo
+          </h2>
+          <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
+            Suporte nativo para conselhos profissionais, assinatura digital cadastrada e inserção da sua logomarca em todas as peças geradas.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+            <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/marca/preview_conselhos.png" alt="Habilitação Profissional" className="w-full h-auto max-h-[36vh] object-contain" />
+            </div>
+            <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/marca/preview_config.png" alt="Personalização de Marca" className="w-full h-auto max-h-[36vh] object-contain" />
+            </div>
+          </div>
+        </div>
+        <button type="button" onClick={() => scrollToSec(5)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+          <ChevronDown className="size-6" />
+        </button>
+      </section>
+
+      {/* SEÇÃO 6: CREDENCIAMENTO PIONEIRO & CTA FINAL */}
+      <section id="sec-5" className="landing-snap-sec min-h-screen w-full flex flex-col justify-between items-center relative pt-20 pb-6 px-4 sm:px-6 max-w-5xl mx-auto text-center">
+        <div className="w-full max-w-3xl space-y-6 my-auto">
+          <div className="bg-slate-900/90 border border-emerald-500/30 p-6 sm:p-10 rounded-3xl shadow-2xl space-y-6 backdrop-blur-xl">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4 text-left">
               <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-wide flex items-center gap-3">
-                  <Award className="size-7 text-emerald-400 animate-float-subtle" />
+                <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-wide flex items-center gap-2">
+                  <Award className="size-6 text-emerald-400 animate-float-subtle" />
                   {estaEsgotado ? 'Pioneiros Esgotados' : 'VAGAS DE USUÁRIO PIONEIRO'}
                 </h2>
-                <p className="text-sm text-slate-300 mt-1">
+                <p className="text-xs sm:text-sm text-slate-300 mt-1">
                   {estaEsgotado 
-                    ? 'Vagas de teste encerradas. O Souza-CAD opera via planos profissionais para novos usuários.'
-                    : 'Como usuário pioneiro, você terá canal direto no WhatsApp do desenvolvedor para opinar, sugerir e ditar as próximas melhorias no software.'
-                  }
+                    ? 'Vagas de teste encerradas. O Souza-CAD opera via planos profissionais.'
+                    : 'Canal direto no WhatsApp do desenvolvedor para sugerir e acelerar melhorias.'}
                 </p>
               </div>
-
-              <div className="px-6 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-center shrink-0">
-                <span className="text-2xl font-black text-emerald-400 font-mono">{estaEsgotado ? vagasTotais : numUsuarios} / {vagasTotais}</span>
-                <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Vagas Ativadas</span>
+              <div className="px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-center shrink-0">
+                <span className="text-xl font-black text-emerald-400 font-mono">{estaEsgotado ? vagasTotais : numUsuarios} / {vagasTotais}</span>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Ativadas</span>
               </div>
             </div>
 
-            {/* Barra de Progresso */}
-            <div className="space-y-3 text-left">
-              <div className="h-3.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
+            <div className="space-y-2 text-left">
+              <div className="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
                 <div 
                   className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 rounded-full transition-all duration-1000"
                   style={{ width: `${estaEsgotado ? 100 : Math.min(100, (numUsuarios / vagasTotais) * 100)}%` }}
                 />
               </div>
-              <div className="text-xs sm:text-sm text-emerald-300 font-bold uppercase tracking-wider flex items-center justify-between">
-                <span>{estaEsgotado ? 'Plano Comercial Ativado' : `Restam apenas ${vagasRestantes} vagas gratuitas de pioneiro`}</span>
+              <div className="text-xs text-emerald-300 font-bold uppercase tracking-wider flex items-center justify-between">
+                <span>{estaEsgotado ? 'Plano Comercial Ativado' : `Restam apenas ${vagasRestantes} vagas gratuitas`}</span>
                 <span>Acesso Imediato</span>
               </div>
             </div>
 
-            {/* Botão CTA Principal */}
             <button
               type="button"
               onClick={onPioneiro}
-              className={`group relative w-full text-white font-black text-lg uppercase py-5 px-8 rounded-2xl transition-all duration-300 transform hover:scale-[1.015] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-xl btn-shimmer-effect ${
-                estaEsgotado
-                  ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20'
-                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20'
+              className={`group relative w-full text-white font-black text-base uppercase py-4 px-6 rounded-2xl transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2 shadow-xl btn-shimmer-effect ${
+                estaEsgotado ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500'
               }`}
             >
-              <Zap className="size-6 group-hover:scale-110 transition-transform duration-300" />
-              <span>{estaEsgotado ? 'ADQUIRIR PLANO PROFISSIONAL' : 'SER UM USUÁRIO PIONEIRO'}</span>
-              <ArrowRight className="size-6 group-hover:translate-x-1.5 transition-transform duration-300" />
-            </button>
-          </div>
-        </section>
-
-        {/* 5. MÓDULOS DE AUTOMAÇÃO DE CARTÓRIO & PEÇAS TÉCNICAS */}
-        <section className="w-full space-y-20 pt-8 border-t border-slate-900/80">
-          
-          {/* MÓDULO DE REQUERIMENTOS CARTORÁRIOS MULTI-ATOS */}
-          <div className="space-y-6">
-            <div className="max-w-3xl mx-auto space-y-3">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-                <FileCode className="size-4" /> Cartório & Requerimentos Jurídicos
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                Requerimentos ao Cartório com Enquadramento Jurídico
-              </h2>
-              <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
-                Gere minutas prontas em Word (.docx) para Retificação Simples, Doação, Compra e Venda, Remembramento, Desmembramento e Usucapião com a fundamentação legal de registros públicos.
-              </p>
-            </div>
-
-            {/* Imagem Real do Requerimento Multi-atos */}
-            <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:shadow-[0_20px_50px_rgba(16,185,129,0.10)] hover:-translate-y-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_requerimento.png"
-                alt="Requerimentos ao Cartório Multi-Atos no Souza-CAD"
-                className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
-              />
-            </div>
-          </div>
-
-          {/* PLANTA TOPOGRÁFICA OFICIAL A3 & EXPORTAÇÃO EM LOTE (PACOTE ZIP) */}
-          <div className="space-y-8 pt-4">
-            <div className="max-w-3xl mx-auto space-y-3">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-                <Map className="size-4" /> Peças Técnicas & Download do Pacote ZIP
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                Prancha A3/A0 Automática com Todas as Peças num Único Pacote
-              </h2>
-              <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
-                Gere de uma só vez a Planta Topográfica A3/A0 impressa, Memorial Descritivo, Requerimento Cartorário, Cartas de Anuência e Errata Perimetral compactados num único Pacote ZIP.
-              </p>
-            </div>
-
-            {/* Imagem Real da Planta A3 Oficial */}
-            <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-white transition-all duration-500 hover:border-emerald-500/40 hover:shadow-[0_20px_50px_rgba(16,185,129,0.10)] hover:-translate-y-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_planta_a3.png"
-                alt="Planta Topográfica A3 Pronta no Souza-CAD"
-                className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
-              />
-            </div>
-
-            {/* Imagem Real do Menu de Peças Técnicas (ZIP) */}
-            <div className="space-y-4 pt-6 max-w-3xl mx-auto">
-              <h3 className="text-xl font-black text-white text-left flex items-center gap-2">
-                <Download className="size-5 text-emerald-400" /> Exportação em Lote & Baixar Pacote ZIP
-              </h3>
-              <div className="group w-full rounded-2xl overflow-hidden shadow-xl border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/marca/preview_pecas.png"
-                  alt="Menu de Peças Técnicas e Pacote ZIP no Souza-CAD"
-                  className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* SUPORTE COMPLETO A CONSELHOS PROFISSIONAIS (CFT, CFTA, CREA) */}
-          <div className="space-y-6 pt-4 max-w-4xl mx-auto">
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-                <AwardIcon className="size-4" /> Habilitação Profissional
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                ART e TRT Automáticos para CFT, CFTA e CREA
-              </h2>
-              <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
-                Escolha seu conselho e categoria profissional para emissão automática de TRT (CFT/CFTA) ou ART (CREA) em todas as peças geradas pelo sistema.
-              </p>
-            </div>
-
-            {/* Imagem Real do Dropdown de Conselhos */}
-            <div className="group w-full max-w-2xl mx-auto rounded-2xl overflow-hidden shadow-xl border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_conselhos.png"
-                alt="Categorias Profissionais e Conselhos CFT, CFTA, CREA no Souza-CAD"
-                className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
-              />
-            </div>
-          </div>
-
-          {/* GESTÃO FINANCEIRA, MALHA SIGEF & CONFIGURAÇÃO DA MARCA */}
-          <div className="space-y-16 pt-6">
-            
-            {/* GESTÃO DO PROJETO & CONTRATOS */}
-            <div className="space-y-4">
-              <div className="max-w-3xl mx-auto space-y-3">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-                  <FileText className="size-4" /> Gestão do Projeto & Documentos
-                </div>
-                <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                  Recibos, Contratos & Declarações com 1 Clique
-                </h2>
-              </div>
-
-              <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/marca/preview_gestao.png"
-                  alt="Gestão do Projeto, Recibos e Contratos no Souza-CAD"
-                  className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
-                />
-              </div>
-            </div>
-
-            {/* AUTOMACÃO DE ERRATAS E MALHA SIGEF */}
-            <div className="space-y-4 pt-4">
-              <div className="max-w-3xl mx-auto space-y-3">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-                  <Layers className="size-4" /> Cartório & Malha SIGEF/INCRA
-                </div>
-                <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                  Errata Perimétrica Automática e Malha SIGEF Integrada
-                </h2>
-              </div>
-
-              <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/marca/preview_modulos.png"
-                  alt="Automação de Erratas e Malha SIGEF no Souza-CAD"
-                  className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
-                />
-              </div>
-            </div>
-
-            {/* PERSONALIZAÇÃO DA MARCA */}
-            <div className="space-y-4 pt-4">
-              <div className="max-w-3xl mx-auto space-y-3">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-                  <Settings className="size-4" /> Sua Marca & Identidade
-                </div>
-                <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                  A Sua Empresa em Todas as Peças Técnicas
-                </h2>
-              </div>
-
-              <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/marca/preview_config.png"
-                  alt="Configurações da Empresa e Assinatura Digital no Souza-CAD"
-                  className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
-                />
-              </div>
-            </div>
-
-          </div>
-
-        </section>
-
-        {/* 6. SEÇÃO FINAL: VALIDAÇÕES TÉCNICAS E CTA DE CREDENCIAMENTO */}
-        <section className="w-full max-w-4xl mx-auto space-y-10 pt-10 border-t border-slate-900/80">
-          <div className="text-center space-y-4">
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
-              Tudo o que seu escritório precisa para produzir mais
-            </h2>
-            <p className="text-base text-slate-300 max-w-2xl mx-auto">
-              Garanta sua vaga de usuário pioneiro e simplifique seu fluxo de agrimensura hoje mesmo.
-            </p>
-          </div>
-
-          {/* Lista Ampla de Recursos */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
-            {itensCheck.map((item, idx) => {
-              const parts = item.split(':');
-              const title = parts[0]?.trim() || '';
-              const desc = parts[1]?.trim() || '';
-              return (
-                <div key={idx} className="group p-6 rounded-2xl bg-slate-900/50 border border-slate-800 flex items-start gap-4 transition-all duration-300 hover:border-emerald-500/30 hover:bg-slate-900/80 hover:-translate-y-0.5 shadow-sm">
-                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0 mt-0.5 group-hover:bg-emerald-500/20 group-hover:border-emerald-400/40 transition-colors">
-                    <Check className="size-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-base group-hover:text-emerald-300 transition-colors">{title}</h4>
-                    {desc && <p className="text-sm text-slate-300 font-normal mt-1 leading-relaxed">{desc}</p>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* CTA Final */}
-          <div className="pt-6">
-            <button
-              type="button"
-              onClick={onPioneiro}
-              className={`group relative w-full text-white font-black text-lg uppercase py-5 px-8 rounded-2xl transition-all duration-300 transform hover:scale-[1.015] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-xl btn-shimmer-effect ${
-                estaEsgotado
-                  ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20'
-                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20'
-              }`}
-            >
-              <Zap className="size-6 group-hover:scale-110 transition-transform duration-300" />
+              <Zap className="size-5" />
               <span>{estaEsgotado ? 'ADQUIRIR PLANO PROFISSIONAL' : 'SER UM USUÁRIO PIONEIRO AGORA'}</span>
-              <ArrowRight className="size-6 group-hover:translate-x-1.5 transition-transform duration-300" />
+              <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
-        </section>
-
-      </main>
-
-      {/* ── FOOTER CLEAN ── */}
-      <footer className="max-w-7xl mx-auto w-full px-6 py-8 border-t border-slate-900/80 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 shrink-0 gap-3 z-10">
-        <span>&copy; {new Date().getFullYear()} Souza-CAD. Todos os direitos reservados.</span>
-        <div className="flex items-center gap-4">
-          <span>Desenvolvido para alta performance em georreferenciamento de imóveis rurais e urbanos.</span>
         </div>
-      </footer>
+
+        {/* FOOTER */}
+        <footer className="w-full pt-4 border-t border-slate-900/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2 shrink-0">
+          <span>&copy; {new Date().getFullYear()} Souza-CAD. Todos os direitos reservados.</span>
+          <span>Desenvolvido para alta performance em georreferenciamento.</span>
+        </footer>
+      </section>
+
     </div>
   );
 }
