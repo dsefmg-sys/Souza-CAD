@@ -8,6 +8,7 @@ import { getAdminApp } from '@/lib/firebaseAdmin';
 // Roda NO SERVIDOR: a chave (GOOGLE_GENAI_API_KEY) nunca vai para o navegador.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const MODELO = 'gemini-2.5-flash';
 const MAX_BASE64 = 22_000_000;
@@ -122,19 +123,31 @@ export async function POST(req: Request) {
       parts.push({ text: `TEXTO:\n"""${texto.slice(0, 15000)}"""` });
     }
 
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': key },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { temperature: 0, responseMimeType: 'application/json' },
-      }),
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 55000);
+
+    let r: Response;
+    try {
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODELO}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-goog-api-key': key },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{ parts }],
+          generationConfig: { temperature: 0, responseMimeType: 'application/json' },
+        }),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
     if (!r.ok) {
       const t = await r.text();
       let mensagemErro = `A IA respondeu com erro (${r.status}).`;
       if (r.status === 429) {
         mensagemErro = 'A IA atingiu o limite de requisições do Google Gemini (Erro 429). Aguarde um minuto ou configure sua própria Chave de API nas configurações do sistema.';
+      } else if (r.status === 503 || r.status === 504) {
+        mensagemErro = 'O servidor da IA do Google Gemini está temporariamente sobrecarregado (Erro 503/504). Tente novamente em alguns segundos.';
       }
       return NextResponse.json({ erro: mensagemErro, detalhe: t.slice(0, 300) }, { status: r.status });
     }
@@ -148,7 +161,12 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ dados });
   } catch (e) {
-    return NextResponse.json({ erro: 'Não consegui falar com a IA: ' + ((e as Error).message || 'erro') }, { status: 502 });
+    const isAbort = (e as Error)?.name === 'AbortError';
+    const status = isAbort ? 504 : 502;
+    const msg = isAbort
+      ? 'O processamento da IA demorou mais do que o limite permitido (Timeout de 55s). Tente com um documento menor ou envie novamente.'
+      : 'Não consegui falar com a IA: ' + ((e as Error).message || 'erro');
+    return NextResponse.json({ erro: msg }, { status });
   }
 }
 

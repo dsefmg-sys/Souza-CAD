@@ -83,4 +83,18 @@ describe('parseTxt com configuração de colunas', () => {
     expect(p.norte).toBeCloseTo(7700000.5);
     expect(p.leste).toBeCloseTo(300000.25); // NÃO virou 30000025
   });
+
+  it('EDGE CASES: tolera linhas em branco extras no final e quebras CRLF (Windows-1252)', () => {
+    const txt = "P1;DIVISA;7700000.5;300000.25;850.1\r\nP2;DIVISA;7700010.5;300010.25;851.0\r\n\r\n\r\n";
+    const pts = parseTxt(txt);
+    expect(pts).toHaveLength(2);
+    expect(pts[1].nome).toBe('P2');
+  });
+
+  it('EDGE CASES: lida graciosamente com valores numéricos extremos sem gerar NaN ou travar a execução', () => {
+    const txt = "P1;DIVISA;9007199254740991;300000.25;850.1";
+    const [p] = parseTxt(txt);
+    expect(Number.isFinite(p.norte)).toBe(true);
+    expect(p.norte).toBe(9007199254740991);
+  });
 });

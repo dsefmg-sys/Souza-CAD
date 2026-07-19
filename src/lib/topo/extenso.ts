@@ -138,3 +138,17 @@ export function parseNumberBR(input: string | number | null | undefined): number
   const num = Number(str);
   return Number.isFinite(num) ? num : 0;
 }
+
+/**
+ * Formata datas por extenso no padrão brasileiro (pt-BR) com timezone 'America/Sao_Paulo'.
+ * Evita mutação de dia por conversão UTC. Ex.: "19 de julho de 2026"
+ */
+export function dataExtensoBR(d: Date = new Date()): string {
+  const formatter = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  return formatter.format(d);
+}

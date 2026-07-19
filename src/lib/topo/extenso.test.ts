@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { valorPorExtenso } from './extenso';
+import { valorPorExtenso, dataExtensoBR } from './extenso';
 
 describe('valorPorExtenso', () => {
   it('valores simples', () => {
@@ -32,5 +32,11 @@ describe('valorPorExtenso', () => {
     expect(valorPorExtenso(1234.56, { estilo: 'conjuncao' })).toBe('mil e duzentos e trinta e quatro reais e cinquenta e seis centavos');
     expect(valorPorExtenso(1234.56, { estilo: 'conjuncao', capitalizar: true })).toBe('Mil e duzentos e trinta e quatro reais e cinquenta e seis centavos');
     expect(valorPorExtenso(1234.56, { estilo: 'virgula', capitalizar: true })).toBe('Mil, duzentos e trinta e quatro reais e cinquenta e seis centavos');
+  });
+
+  it('dataExtensoBR formata a data no padrão pt-BR e fuso America/Sao_Paulo', () => {
+    const d = new Date('2026-07-19T12:00:00-03:00');
+    const ext = dataExtensoBR(d);
+    expect(ext).toContain('19 de julho de 2026');
   });
 });
