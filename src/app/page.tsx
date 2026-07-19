@@ -4769,7 +4769,7 @@ export default function EditorPage() {
   const [ajusteAltCm, setAjusteAltCm] = useState('');
   const [desconsiderarVerticesLevantados, setDesconsiderarVerticesLevantados] = useState(false);
   const [incluirDivisaNasCurvas, setIncluirDivisaNasCurvas] = useState(true);
-  const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState(10); // padrão mais fino = curvas de melhor qualidade
+  const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState(0); // 0 = Auto (calcula espaçamento ótimo de acordo com o tamanho do imóvel e resolução 30m)
   const [modeloElevacao, setModeloElevacao] = useState<'copernicus_dem_30' | 'alos_dem_30' | 'srtm_gld3'>('copernicus_dem_30');
   const [glebaCurvaAlvo, setGlebaCurvaAlvo] = useState<string>('todas');
   const [curvaUsarTriangulacao, setCurvaUsarTriangulacao] = useState<boolean>(false); // padrão: dados online (não triangulação local)
@@ -4865,10 +4865,11 @@ export default function EditorPage() {
         aviso('Não foi possível obter dados de altitude online. Verifique a conexão com a internet.');
         return;
       }
-      setGradeAltimetrica(pontosObtidos);
-      aviso(`Grade de ${pontosObtidos.length} pontos obtida. Gerando curvas de nível...`);
+      const pontosSuavizados = suavizarGradeAltimetrica(pontosObtidos, spacingIdeal);
+      setGradeAltimetrica(pontosSuavizados);
+      aviso(`Grade de ${pontosSuavizados.length} pontos obtida. Gerando curvas de nível...`);
       // Monta os pontos 3D usando a grade recém-obtida (bypass de closure)
-      const ptsGrade = pontosObtidos.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
+      const ptsGrade = pontosSuavizados.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
       const ptsVertices = [...vertices, ...verticesIgnorados]
         .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }))
         .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && p.z !== 0);
@@ -4917,8 +4918,35 @@ export default function EditorPage() {
     }
   }
 
+  // Suavização espacial Gaussiana para eliminar degraus de pixel (pixel step artifact) em dados DEM de 30m
+  function suavizarGradeAltimetrica(
+    pts: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[],
+    spacing: number
+  ): { lat: number; lon: number; leste: number; norte: number; elevacao: number }[] {
+    if (pts.length < 4) return pts;
+    const sigma = Math.max(15, spacing * 0.9);
+    const twoSigma2 = 2 * sigma * sigma;
+
+    return pts.map((p) => {
+      let weightSum = 0;
+      let elevSum = 0;
+      for (let j = 0; j < pts.length; j++) {
+        const q = pts[j];
+        const dx = p.leste - q.leste;
+        const dy = p.norte - q.norte;
+        const dist2 = dx * dx + dy * dy;
+        if (dist2 > (spacing * 3.5) ** 2) continue; // busca vizinhos em até 3.5 espaçamentos
+        const w = Math.exp(-dist2 / twoSigma2);
+        weightSum += w;
+        elevSum += q.elevacao * w;
+      }
+      const smoothedElev = weightSum > 0 ? elevSum / weightSum : p.elevacao;
+      return { ...p, elevacao: +smoothedElev.toFixed(2) };
+    });
+  }
+
   function calcularEspacamentoGradeAuto(vs: typeof vertices): number {
-    if (vs.length < 3) return 20;
+    if (vs.length < 3) return 25;
     const nestes = vs.map((v) => v.leste);
     const nortes = vs.map((v) => v.norte);
     const minLeste = Math.min(...nestes), maxLeste = Math.max(...nestes);
@@ -4926,25 +4954,26 @@ export default function EditorPage() {
     const dx = maxLeste - minLeste;
     const dy = maxNorte - minNorte;
     const diagonal = Math.hypot(dx, dy); // diagonal do imóvel em metros
-    if (diagonal < 100) return 2;
-    if (diagonal < 250) return 5;
-    if (diagonal < 600) return 10;
-    if (diagonal < 1500) return 20;
-    return Math.max(30, Math.round(diagonal / 75)); // ex: diagonal de 3000m -> espaçamento de 40m
+    if (diagonal < 200) return 20;
+    if (diagonal < 500) return 25;
+    if (diagonal < 1200) return 35;
+    return Math.max(40, Math.round(diagonal / 50));
   }
 
   function gerarGradePontosUTM(vs: typeof vertices, spacing: number): { lat: number; lon: number; leste: number; norte: number }[] {
     if (vs.length < 3) return [];
+    // Impõe limite mínimo razoável de 15m para dados DEM de 30m (evita duplicar pixels e criar escadas)
+    const effectiveSpacing = Math.max(15, spacing || 20);
     const nestes = vs.map((v) => v.leste);
     const nortes = vs.map((v) => v.norte);
     const minLeste = Math.min(...nestes), maxLeste = Math.max(...nestes);
     const minNorte = Math.min(...nortes), maxNorte = Math.max(...nortes);
 
-    let currentSpacing = spacing;
+    let currentSpacing = effectiveSpacing;
     let numX = Math.ceil((maxLeste - minLeste) / currentSpacing);
     let numY = Math.ceil((maxNorte - minNorte) / currentSpacing);
-    while (numX * numY > 1200) {
-      currentSpacing += 1;
+    while (numX * numY > 800) {
+      currentSpacing += 2;
       numX = Math.ceil((maxLeste - minLeste) / currentSpacing);
       numY = Math.ceil((maxNorte - minNorte) / currentSpacing);
       if (currentSpacing > 10000) break;
@@ -5080,9 +5109,10 @@ export default function EditorPage() {
         }
 
         if (pontosObtidos.length > 0) {
-          setGradeAltimetrica(pontosObtidos);
-          activeGrade = pontosObtidos;
-          aviso(`Grade de relevo ativada com ${pontosObtidos.length} pontos de altitude online. Clique em [Gerar] para traçar as curvas.`);
+          const pontosSuavizados = suavizarGradeAltimetrica(pontosObtidos, spacing);
+          setGradeAltimetrica(pontosSuavizados);
+          activeGrade = pontosSuavizados;
+          aviso(`Grade de relevo ativada com ${pontosSuavizados.length} pontos de altitude online. Clique em [Gerar] para traçar as curvas.`);
         } else {
           aviso('Não foi possível obter dados de altitude online. Verifique a conexão com a internet ou tente novamente em instantes.');
         }
@@ -7450,14 +7480,11 @@ export default function EditorPage() {
                                       className="h-6 rounded border bg-background px-1 text-[9px] focus:ring-1 focus:ring-primary focus:outline-none"
                                     >
                                       <option value={0}>Auto ({calcularEspacamentoGradeAuto(vertices)}m)</option>
-                                      <option value={1}>Ultra Denso (1m)</option>
-                                      <option value={2}>Super Denso (2m)</option>
-                                      <option value={5}>Muito Denso (5m)</option>
-                                      <option value={10}>Denso (10m)</option>
-                                      <option value={15}>Médio-Denso (15m)</option>
-                                      <option value={25}>Médio (25m)</option>
-                                      <option value={50}>Esparso (50m)</option>
-                                      <option value={100}>Muito Esparso (100m)</option>
+                                      <option value={15}>Adensado (15m)</option>
+                                      <option value={20}>Denso (20m)</option>
+                                      <option value={30}>Nativo Satélite (30m)</option>
+                                      <option value={50}>Médio (50m)</option>
+                                      <option value={100}>Esparso (100m)</option>
                                     </select>
                                   </div>
                                 </div>
