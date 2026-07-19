@@ -287,19 +287,31 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
       </section>
 
       {/* SEÇÃO 2: GEORREFERENCIAMENTO SIGEF / INCRA */}
-      <section id="sec-1" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60 overflow-hidden">
-        {/* IMAGEM DE FUNDO AMBIENTAL EM ALTA RESOLUÇÃO NA SEÇÃO SIGEF/INCRA (SEC-1) */}
+      <section id="sec-1" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 text-center border-b border-slate-900/60 overflow-hidden">
+        {/* IMAGEM DE FUNDO AMBIENTAL EM ALTA RESOLUÇÃO NA SEÇÃO SIGEF/INCRA (SEC-1) - LARGURA E ALTURA TOTAL */}
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/marca/fundo-sigef-campo.png"
+            src="/marca/fundo-sigef-campo-hd.jpg"
             alt=""
-            className="w-full h-full object-cover opacity-35 filter contrast-125 saturate-125 brightness-90"
+            className="w-full h-full object-cover opacity-50 sm:opacity-60 filter blur-[2px] contrast-115 saturate-125"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-slate-950/65 to-slate-950" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/75 via-slate-950/50 to-slate-950" />
         </div>
 
-        <div className="max-w-5xl mx-auto space-y-6 w-full relative z-10">
+        {/* FEIXE DE LUZES OPACAS VARRENDO DA ESQUERDA PARA A DIREITA (70% OPACIDADE / MOVIMENTO & VELOCIDADE) */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-[2] opacity-70">
+          <div
+            className="absolute top-0 bottom-0 w-[45vw] bg-gradient-to-r from-transparent via-emerald-400/35 to-transparent -skew-x-12 blur-xl"
+            style={{ animation: 'varreLuzesSigef 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite' }}
+          />
+          <div
+            className="absolute top-0 bottom-0 w-[25vw] bg-gradient-to-r from-transparent via-teal-300/30 to-transparent -skew-x-12 blur-lg"
+            style={{ animation: 'varreLuzesSigef 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.6s' }}
+          />
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-6 w-full relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
             <Award className="size-4" /> Pensado para Georreferenciamento SIGEF / INCRA
           </div>
@@ -394,7 +406,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
               <img
                 src="/marca/preview_planta_a3.png"
                 alt="Planta Oficial do Imóvel"
-                className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
+                className="w-full h-auto max-h-[60vh] object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01] block mx-auto"
               />
             </div>
 
@@ -421,10 +433,10 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <AwardIcon className="size-4" /> CFT, CFTA &amp; CREA + Sua Marca
           </div>
           <h2 className="text-2xl sm:text-4xl font-black text-white">
-            ART e TRT Automáticos com a Sua Marca em Tudo
+            Sua marca em todas as peças técnicas e documentos.
           </h2>
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
-            Suporte nativo para conselhos profissionais, assinatura digital cadastrada e inserção da sua logomarca em todas as peças geradas.
+            Desenvolvida sob medida para profissionais registrados no CRT, CFTA e CREA.
           </p>
 
           {/* CONTAINER COM IMAGEM PRINCIPAL DE CONFIGURAÇÃO E PRIMEIRA IMAGEM DE CONSELHOS FLUTUANTE SOBREPOSTA À DIREITA */}
@@ -589,6 +601,13 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes varreLuzesSigef {
+          0% { transform: translateX(-100%) skewX(-12deg); }
+          100% { transform: translateX(250%) skewX(-12deg); }
+        }
+      `}</style>
 
     </div>
   );
