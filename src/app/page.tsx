@@ -10,7 +10,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
-  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale,
+  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -281,9 +281,11 @@ const PREM_BTN = 'shadow-xs hover:shadow-sm hover:scale-[1.01] active:scale-[0.9
 type EtapaEstado = 'feito' | 'andamento' | 'pendente';
 // Sinaliza o progresso da etapa por um SELO no canto do botão (não mais pela cor do ícone, que
 // destoava do texto): check verde = feita; bolinha azul pulsando = em andamento; nada = pendente.
-function Etapa({ st, children }: { st: EtapaEstado; children: ReactNode }) {
+function Etapa({ st, explicacao, tituloEtapa, children }: { st: EtapaEstado; explicacao?: string; tituloEtapa?: string; children: ReactNode }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <div className="relative flex shrink-0">
+    <div className="relative flex shrink-0" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
       {children}
       {st === 'feito' && (
         <span className="pointer-events-none absolute -right-1 -top-1 z-10 flex size-3.5 items-center justify-center rounded-full bg-green-600 text-white ring-2 ring-background" aria-label="etapa concluída">
@@ -292,6 +294,16 @@ function Etapa({ st, children }: { st: EtapaEstado; children: ReactNode }) {
       )}
       {st === 'andamento' && (
         <span className="pointer-events-none absolute -right-1 -top-1 z-10 size-2.5 animate-pulse rounded-full bg-blue-500 ring-2 ring-background" aria-label="etapa em andamento" />
+      )}
+      {hovered && explicacao && (
+        <div className="absolute top-full left-0 mt-2.5 z-[9999] w-72 p-3.5 rounded-xl bg-slate-950/95 text-slate-100 border border-emerald-500/40 shadow-2xl backdrop-blur-md pointer-events-none animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-1">
+            <Sparkles className="size-3.5 shrink-0 text-emerald-400" /> {tituloEtapa || 'Como funciona este passo'}
+          </div>
+          <p className="text-[11px] font-medium leading-relaxed text-slate-300 whitespace-normal">
+            {explicacao}
+          </p>
+        </div>
       )}
     </div>
   );
@@ -6493,7 +6505,12 @@ export default function EditorPage() {
   ];
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className={`flex h-screen flex-col overflow-hidden transition-all duration-300 ${
+      simuladorResolucao === 'fullhd' ? 'max-w-[1920px] mx-auto border-x border-border shadow-2xl' :
+      simuladorResolucao === 'ultrawide' ? 'max-w-[2560px] mx-auto border-x border-border shadow-2xl' :
+      simuladorResolucao === 'comum' ? 'max-w-[1366px] mx-auto border-x border-border shadow-2xl' :
+      simuladorResolucao === 'celular' ? 'max-w-[420px] h-[860px] my-auto mx-auto border-[10px] border-zinc-800 rounded-3xl shadow-2xl overflow-hidden' : ''
+    }`}>
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes gold-pulse {
           0%, 100% {
@@ -6569,13 +6586,13 @@ export default function EditorPage() {
               <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F1</span>
               <GraduationCap className="size-3 shrink-0 animate-pulse text-sky-100" /> INÍCIO
             </Button>
-            <Etapa st={etapas.txt}>
+            <Etapa st={etapas.txt} tituloEtapa="1. Importação de Pontos" explicacao="Carregue as coordenadas obtidas no campo (TXT/CSV). O sistema lê altitudes, códigos SIGEF e plota o perímetro no mapa de satélite automaticamente.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_IMPORT} gap-1`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}>
                 <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F2</span>
                 <Upload /> PONTOS
               </Button>
             </Etapa>
-            <Etapa st={etapas.sigef}>
+            <Etapa st={etapas.sigef} tituloEtapa="2. Integração SIGEF / Vizinhos" explicacao="Consulte e importe os imóveis certificados confrontantes direto da malha oficial do INCRA, efetuando o casamento perfeito dos vértices vizinhos.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_VIZINHO} gap-1`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
                 <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F3</span>
                 <Download /> SIGEF
@@ -6588,7 +6605,7 @@ export default function EditorPage() {
         {/* 2) Dados do projeto atual — no celular é redundante: PROJETOS abre o MESMO painel e as
             abas (Imóvel, Vértices…) levam aos dados. Fica só no desktop. */}
         {!telaEstreita && (
-          <Etapa st={etapas.dados}>
+          <Etapa st={etapas.dados} tituloEtapa="3. Cadastro do Imóvel & RT" explicacao="Preencha as informações do imóvel, proprietário, número da matrícula, serventia registral e os dados do Responsável Técnico habilitado.">
             <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
               <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F4</span>
               <Upload /> DADOS
@@ -6601,13 +6618,13 @@ export default function EditorPage() {
             celular ficam escondidas: mobile é pra consultar, preencher e baixar, não pra desenhar. */}
         {!telaEstreita && (
           <>
-            <Etapa st={etapas.confro}>
+            <Etapa st={etapas.confro} tituloEtapa="4. Pintura de Confrontantes" explicacao="Marque os trechos do perímetro associando cada limite ao seu respectivo proprietário confrontante para gerar as cartas de anuência.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_CONFRO} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>
                 <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F5</span>
                 <Paintbrush className="size-3 shrink-0" /> CONFRO
               </Button>
             </Etapa>
-            <Etapa st={etapas.divisas}>
+            <Etapa st={etapas.divisas} tituloEtapa="5. Tipo de Divisas" explicacao="Defina o tipo físico de cada limite (muro, cerca de arame, córrego, etc.). O padrão é aplicado na planta e descrito na narrativa do memorial.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DIVISA} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>
                 <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F6</span>
                 <Paintbrush className="size-3 shrink-0" /> DIVISAS
@@ -6621,13 +6638,13 @@ export default function EditorPage() {
             ODS e Conferir soltos, e memorial/planta/requerimento/anuência/errata num menu PEÇAS. */}
         {(
           <>
-            <Etapa st={etapas.trt}>
+            <Etapa st={etapas.trt} tituloEtapa="6. ART / TRT Oficial" explicacao="Registre o número da Anotação de Responsabilidade Técnica (CREA) ou Termo (CFT/CFTA) para vinculação direta nos carimbos e pranchas.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>
                 <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F7</span>
                 <Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}
               </Button>
             </Etapa>
-            <Etapa st={etapas.ods}>
+            <Etapa st={etapas.ods} tituloEtapa="7. Geração de Planilha ODS" explicacao="Exporte a planilha oficial de credenciamento do SIGEF (.ods) com validações automáticas de altitude, método de posicionamento e código dos vértices.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}>
                 <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F8</span>
                 <Download /> ODS
@@ -6746,9 +6763,31 @@ export default function EditorPage() {
                   </button>
                 )}
                  <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
-                  <Settings className="size-4 text-muted-foreground" /> Ajustes
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted font-medium">
+                  <Settings className="size-4 text-muted-foreground" /> Ajustes Gerais
                 </button>
+                <button type="button" onClick={() => { setPerfilMenuAberto(false); setTrtAberto(true); }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted font-bold text-emerald-600 dark:text-emerald-400">
+                  <UserCheck className="size-4 text-emerald-500" /> Responsável Técnico (RT)
+                </button>
+                {souMaster() && (
+                  <div className="flex flex-col gap-1 border-t border-b py-2 px-3 my-1">
+                    <span className="text-[10px] uppercase font-bold text-amber-500 flex items-center gap-1">
+                      <Monitor className="size-3" /> Resolução / Display
+                    </span>
+                    <select
+                      value={simuladorResolucao}
+                      onChange={(e) => setSimuladorResolucao(e.target.value as any)}
+                      className="w-full h-7 text-[11px] font-bold rounded border bg-background px-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                    >
+                      <option value="off">Nativa (Tela Cheia)</option>
+                      <option value="fullhd">Full HD (1920px)</option>
+                      <option value="ultrawide">Ultrawide (2560px)</option>
+                      <option value="comum">Desktop Comum (1366px)</option>
+                      <option value="celular">Simular Celular (420px)</option>
+                    </select>
+                  </div>
+                )}
                 <div className="flex items-center justify-between border-t border-b py-2 px-3 my-1">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground">Tamanho do texto</span>
                   <div className="flex items-center gap-1">
