@@ -105,19 +105,21 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
     setTimeout(() => setCopiado(null), 2000);
   }
 
-  // Impressão da tabela completa numa janela própria, sem mexer na tela do app.
+  // Impressão da tabela completa numa janela própria formatada em A4 Vertical (Portrait).
   function imprimirTabela() {
-    const win = window.open('', '_blank', 'width=880,height=1000');
+    const win = window.open('', '_blank', 'width=880,height=1100');
     if (!win) return;
     const esc = carregarEscritorio();
 
     const coresCabecalho = ['#059669', '#16a34a', '#65a30d', '#ca8a04', '#d97706', '#ea580c'];
-    const cabec = ['Área', ...NIVEIS_DIFICULDADE.map((n, i) => `<th style="background:${coresCabecalho[i]};color:#fff;font-weight:bold;">${'•'.repeat(i + 1)}<br><span style="font-size:10px;font-weight:normal;">${n.titulo}</span></th>`)].join('');
+    const coresCelulas = ['#e6f4ea', '#edf7ed', '#f4f9e6', '#fefce8', '#fffbeb', '#fff7ed'];
+
+    const cabec = ['Área', ...NIVEIS_DIFICULDADE.map((n, i) => `<th style="background:${coresCabecalho[i]};color:#fff;font-weight:bold;padding:8px 4px;">${'•'.repeat(i + 1)}<br><span style="font-size:9.5px;font-weight:bold;text-transform:uppercase;">${n.titulo}</span></th>`)].join('');
 
     const linhas = tabela
       .map((r, rIdx) => {
         const bgRow = rIdx % 2 === 0 ? '#f8fafc' : '#ffffff';
-        return `<tr style="background:${bgRow};"><th style="text-align:left;font-weight:bold;background:#e2e8f0;color:#1e293b;padding:6px 10px;">${r.areaHa} ha</th>${r.precos.map((p) => `<td style="font-weight:bold;color:#0f172a;">${reais(p)}</td>`).join('')}</tr>`;
+        return `<tr style="background:${bgRow};"><th style="text-align:left;font-weight:bold;background:#e2e8f0;color:#1e293b;padding:5px 8px;font-size:9.5px;">${r.areaHa} ha</th>${r.precos.map((p, idx) => `<td style="font-weight:bold;color:#0f172a;background:${coresCelulas[idx]};font-family:monospace;font-size:9.5px;">${reais(p)}</td>`).join('')}</tr>`;
       })
       .join('');
 
@@ -126,27 +128,37 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
       : `<div style="font-size:18px;font-weight:900;color:#059669;letter-spacing:-0.5px;">${esc.nome || 'SOUZA CAD'}</div>`;
 
     const infoEmpresa = `
-      <div style="font-size:14px;font-weight:bold;color:#0f172a;">${esc.nome || 'Escritório de Topografia & Georreferenciamento'}</div>
-      ${esc.cnpj ? `<div style="font-size:11px;color:#64748b;">CNPJ/CPF: ${esc.cnpj}</div>` : ''}
-      ${esc.telefone || esc.email ? `<div style="font-size:11px;color:#64748b;">${[esc.telefone, esc.email].filter(Boolean).join(' • ')}</div>` : ''}
-      ${esc.cidade ? `<div style="font-size:11px;color:#64748b;">${esc.cidade}${esc.uf ? ` - ${esc.uf}` : ''}</div>` : ''}
+      <div style="font-size:13px;font-weight:bold;color:#0f172a;">${esc.nome || 'Escritório de Topografia & Georreferenciamento'}</div>
+      ${esc.cnpj ? `<div style="font-size:10.5px;color:#64748b;">CNPJ/CPF: ${esc.cnpj}</div>` : ''}
+      ${esc.telefone || esc.email ? `<div style="font-size:10.5px;color:#64748b;">${[esc.telefone, esc.email].filter(Boolean).join(' • ')}</div>` : ''}
+      ${esc.cidade ? `<div style="font-size:10.5px;color:#64748b;">${esc.cidade}${esc.uf ? ` - ${esc.uf}` : ''}</div>` : ''}
     `;
 
-    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Precificação e Tabela de Orçamentos — ${esc.nome || 'Souza CAD'}</title>
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Tabela de Preços e Serviços — ${esc.nome || 'Souza CAD'}</title>
       <style>
-        @page { size: A4 landscape; margin: 15mm; }
-        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#0f172a;margin:0;padding:20px;background:#fff;}
-        .header-container{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #10b981;padding-bottom:12px;margin-bottom:16px;}
-        .title-box{text-align:right;}
-        .title-box h1{font-size:18px;margin:0;color:#065f46;text-transform:uppercase;letter-spacing:0.5px;}
-        .title-box p{font-size:11px;color:#64748b;margin:2px 0 0;}
-        table{border-collapse:collapse;width:100%;font-size:11px;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;}
-        th,td{border:1px solid #cbd5e1;padding:7px 10px;text-align:center;}
-        thead th{padding:8px 6px;}
-        tbody th{text-align:left;font-weight:bold;}
-        .nota{margin-top:16px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;font-size:10.5px;color:#166534;line-height:1.4;}
-        .footer-stamp{margin-top:20px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;}
+        @page { size: A4 portrait; margin: 10mm; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 0; padding: 16px; background: #fff; }
+        .no-print { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 16px; }
+        @media print { .no-print { display: none !important; } body { padding: 0; } }
+        .header-container { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #10b981; padding-bottom: 10px; margin-bottom: 14px; }
+        .title-box { text-align: right; }
+        .title-box h1 { font-size: 16px; margin: 0; color: #065f46; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 900; }
+        .title-box p { font-size: 10px; color: #64748b; margin: 2px 0 0; font-weight: 600; }
+        table { border-collapse: collapse; width: 100%; font-size: 9.5px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; }
+        th, td { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: center; }
+        thead th { padding: 6px 4px; }
+        tbody th { text-align: left; font-weight: bold; width: 60px; }
+        .nota { margin-top: 14px; padding: 9px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; font-size: 9.5px; color: #166534; line-height: 1.4; }
+        .footer-stamp { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 6px; }
+        .btn-action { background: #059669; color: white; border: none; padding: 8px 16px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .btn-action:hover { background: #047857; }
+        .btn-sec { background: #64748b; }
       </style></head><body>
+      <div class="no-print">
+        <button class="btn-action" onclick="window.print()">📄 Baixar PDF / Imprimir A4</button>
+        <button class="btn-action btn-sec" onclick="window.close()">Fechar</button>
+      </div>
       <div class="header-container">
         <div>${logoHtml}</div>
         <div style="margin-left:16px;flex:1;">${infoEmpresa}</div>
@@ -166,7 +178,7 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
         <span>Gerado via Souza-CAD • Sistema Profissional de Engenharia Topográfica</span>
         <span>Data: ${new Date().toLocaleDateString('pt-BR')}</span>
       </div>
-      <script>window.onload=function(){window.print()}<\/script>
+      <script>window.onload=function(){ setTimeout(function(){ window.print(); }, 250); }<\/script>
       </body></html>`);
     win.document.close();
   }
@@ -318,9 +330,9 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="flex justify-end">
-                  <Button size="sm" variant="outline" onClick={imprimirTabela} className="gap-1.5">
-                    <Printer className="size-4" /> Imprimir
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" onClick={imprimirTabela} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5">
+                    <Printer className="size-4" /> Baixar PDF / Imprimir A4
                   </Button>
                 </div>
                 <div className="overflow-auto rounded-sm border">
