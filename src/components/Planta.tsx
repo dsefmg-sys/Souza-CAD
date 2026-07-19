@@ -3487,7 +3487,7 @@ function CarimboA3(props: {
     campos.push(['DEMAIS TITULARES:', outrosTitulares.map((p) => `${p.nome} (${rotuloPapelProprietario(p.papel).toLowerCase()})`).join('; ')]);
   }
   campos.push(
-    ['MUNICÍPIO(S):', imovel.municipio || '—'],
+    ['MUNICÍPIO(S):', (imovel.municipio || '—').toUpperCase()],
     // Termo do PROJETO (informado no modal) tem prioridade; senão, o do cadastro. Sigla TRT/ART
     // conforme o conselho (técnico=TRT, engenheiro=ART).
     [`${rotulosProfissional(tecnico).termo}:`, imovel.numeroTrt || tecnico.art || '—'],

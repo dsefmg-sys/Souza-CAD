@@ -8766,6 +8766,53 @@ export default function EditorPage() {
               />
             )}
 
+            {aba === 'vertices' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <SecaoTitulo>Lista de Vértices ({vertices.length})</SecaoTitulo>
+                  <div className="text-xs text-muted-foreground font-mono">
+                    Perímetro: {res ? res.perimetro.toFixed(2) : '0.00'} m | Área: {res ? res.areaHa.toFixed(4) : '0.0000'} ha
+                  </div>
+                </div>
+                {vertices.length === 0 ? (
+                  <div className="text-center py-12 border border-dashed rounded-xl text-muted-foreground text-xs">
+                    Nenhum vértice cadastrado no projeto atual. Importe um TXT, DXF ou clique no mapa para adicionar.
+                  </div>
+                ) : (
+                  <div className="border rounded-xl overflow-hidden shadow-xs bg-background max-h-[440px] overflow-y-auto scroll-fino">
+                    <table className="w-full text-left text-xs font-mono">
+                      <thead className="bg-muted/50 border-b text-[10px] uppercase font-bold text-muted-foreground sticky top-0 bg-muted z-10">
+                        <tr>
+                          <th className="p-2 text-center w-10">#</th>
+                          <th className="p-2">Vértice</th>
+                          <th className="p-2">Leste (E)</th>
+                          <th className="p-2">Norte (N)</th>
+                          <th className="p-2">Altitude (Z)</th>
+                          <th className="p-2">Tipo</th>
+                          <th className="p-2">Método</th>
+                          <th className="p-2">Limite</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y text-[11px]">
+                        {vertices.map((v, i) => (
+                          <tr key={v.id || i} className="hover:bg-muted/30 transition-colors">
+                            <td className="p-2 text-center font-bold text-muted-foreground">{i + 1}</td>
+                            <td className="p-2 font-black text-emerald-600 dark:text-emerald-400">{v.nome}</td>
+                            <td className="p-2">{v.leste.toFixed(3)}</td>
+                            <td className="p-2">{v.norte.toFixed(3)}</td>
+                            <td className="p-2">{Number.isFinite(v.elevacao) ? v.elevacao.toFixed(2) : '0.00'}</td>
+                            <td className="p-2"><span className="px-1.5 py-0.5 rounded bg-muted font-bold text-[9px]">{v.tipo || 'P'}</span></td>
+                            <td className="p-2 text-muted-foreground text-[10px]">{v.metodo || '—'}</td>
+                            <td className="p-2 text-muted-foreground text-[10px]">{v.tipoLimite || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             {aba === 'planta' && (
               <PainelPlanta
                 config={plantaConfig}

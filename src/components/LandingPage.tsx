@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown, Monitor } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 
@@ -8,6 +8,47 @@ interface LandingPageProps {
   onPioneiro: () => void;
   numUsuarios: number;
   texts: LandingPageTexts;
+}
+
+function InteractiveImageWindow({ src, alt }: { src: string; alt: string }) {
+  const [translateY, setTranslateY] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current || !imgRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseRatioY = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+    const overflowY = imgRef.current.offsetHeight - rect.height;
+    if (overflowY > 0) {
+      setTranslateY(-mouseRatioY * overflowY);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setTranslateY(0);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="w-full h-[280px] sm:h-[380px] md:h-[460px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative cursor-ns-resize group"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        style={{ transform: `translateY(${translateY}px)` }}
+        className="w-full h-auto block transition-transform duration-200 ease-out pointer-events-none"
+      />
+      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-[10px] font-bold text-slate-300 opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none backdrop-blur-sm shadow-md">
+        ↕ Mova o mouse para rolar a imagem
+      </div>
+    </div>
+  );
 }
 
 export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingPageProps) {
@@ -262,21 +303,20 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             {subtitulo}
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left w-full max-w-6xl mx-auto mt-4">
-            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_requerimento.png"
-                alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
-                className="w-full h-full object-cover object-top block"
-              />
-            </div>
-            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
+          {/* CONTAINER COM IMAGEM PRINCIPAL E SEGUNDA IMAGEM FLUTUANTE NO CANTO SUPERIOR DIREITO */}
+          <div className="relative w-full max-w-5xl mx-auto mt-4">
+            <InteractiveImageWindow
+              src="/marca/preview_requerimento.png"
+              alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
+            />
+
+            {/* SEGUNDA IMAGEM (FLUTUANTE NO CANTO SUPERIOR DIREITO - SEM CORTES / OBJECT-CONTAIN) */}
+            <div className="absolute -top-6 -right-3 sm:-top-8 sm:-right-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_requerimento_modal.png"
-                alt="Requerimento ao Cartório e Atos Cumulativos no Souza-CAD"
-                className="w-full h-full object-cover object-top block"
+                alt="Requerimento ao Cartório e Atos Cumulativos"
+                className="w-full h-auto object-contain block"
               />
             </div>
           </div>
@@ -398,25 +438,20 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             Gere minutas prontas para Retificação, Doação, Usucapião, Desmembramento e a Planta com todas as peças compactadas num único Pacote ZIP.
           </p>
 
-          {/* CONTAINER COM IMAGEM PRINCIPAL DA PLANTA E PRIMEIRA IMAGEM FLUTUANTE SOBREPOSTA */}
+          {/* CONTAINER COM JANELA INTERATIVA (MOVIMENTO DO MOUSE ROLA A PLANTA) E PRIMEIRA IMAGEM FLUTUANTE */}
           <div className="relative w-full max-w-5xl mx-auto mt-4">
-            {/* SEGUNDA IMAGEM (PRINCIPAL - OCUPA MAIOR ESPAÇO) */}
-            <div className="group w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_planta_a3.png"
-                alt="Planta Oficial do Imóvel"
-                className="w-full h-auto max-h-[60vh] object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01] block mx-auto"
-              />
-            </div>
+            <InteractiveImageWindow
+              src="/marca/preview_planta_a3.png"
+              alt="Planta Oficial do Imóvel"
+            />
 
-            {/* PRIMEIRA IMAGEM (FLUTUANTE COMO DETALHAMENTO SOBREPOSTO - SEM TÍTULO) */}
+            {/* PRIMEIRA IMAGEM (FLUTUANTE COMO DETALHAMENTO SOBREPOSTO - SEM TÍTULO E SEM CORTES) */}
             <div className="absolute -bottom-6 -left-3 sm:-bottom-8 sm:-left-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_pecas.png"
                 alt="Pacote de Peças Técnicas ZIP"
-                className="w-full h-auto object-cover block"
+                className="w-full h-auto object-contain block"
               />
             </div>
           </div>
@@ -457,7 +492,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
               <img
                 src="/marca/preview_conselhos.png"
                 alt="Habilitação Profissional CFT/CREA"
-                className="w-full h-auto object-cover block"
+                className="w-full h-auto object-contain block"
               />
             </div>
           </div>
