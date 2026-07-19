@@ -40,8 +40,37 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-100 overflow-x-hidden font-sans select-none selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col justify-between">
       
-      {/* ── BACKGROUND TÉCNICO: CURVAS DE NÍVEL TOPOGRÁFICAS SVG ── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-10">
+      {/* Estilos e animações elegantes dedicados */}
+      <style jsx global>{`
+        @keyframes float-subtle {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+        }
+        @keyframes ambient-glow {
+          0%, 100% { opacity: 0.15; transform: scale(1); }
+          50% { opacity: 0.25; transform: scale(1.05); }
+        }
+        @keyframes btn-shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .animate-float-subtle {
+          animation: float-subtle 7s ease-in-out infinite;
+        }
+        .animate-ambient-glow {
+          animation: ambient-glow 10s ease-in-out infinite;
+        }
+        .btn-shimmer-effect {
+          background-size: 200% 100%;
+          background-image: linear-gradient(110deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0) 100%);
+        }
+        .btn-shimmer-effect:hover {
+          animation: btn-shimmer 2s infinite;
+        }
+      `}</style>
+
+      {/* ── BACKGROUND TÉCNICO: CURVAS DE NÍVEL TOPOGRÁFICAS SVG COM MOVIMENTO AMBIENTE ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-15 animate-ambient-glow">
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
           <defs>
             <linearGradient id="topoGradLine" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -56,24 +85,24 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
         </svg>
       </div>
 
-      {/* ── HEADER CLEAN COM BOTÃO DE PIONEIRO (X/Y) ── */}
+      {/* ── HEADER CLEAN E ELEGANTE COM BOTÃO DE PIONEIRO (X/Y) ── */}
       <header className="max-w-7xl mx-auto w-full px-6 py-6 flex items-center justify-between z-30 relative shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-            <Compass className="size-6 text-emerald-400" />
+        <div className="flex items-center gap-3 group cursor-default">
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 group-hover:border-emerald-400/60 group-hover:bg-emerald-500/20 transition-all duration-300 shadow-md">
+            <Compass className="size-6 text-emerald-400 group-hover:rotate-45 transition-transform duration-500" />
           </div>
           <div>
             <span className="text-xl font-black tracking-widest text-white font-mono">SOUZA <span className="text-emerald-400">CAD</span></span>
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-400">Engenharia & Georreferenciamento</span>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-400/90">Engenharia & Georreferenciamento</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onPioneiro}
-            className="px-5 py-2.5 rounded-2xl bg-emerald-500 text-white text-xs font-black transition-all cursor-pointer flex items-center gap-2 hover:bg-emerald-400 hover:scale-105 active:scale-95 uppercase tracking-wider font-mono shadow-lg"
+            className="group relative px-5 py-2.5 rounded-2xl bg-emerald-600 text-white text-xs font-black transition-all duration-300 cursor-pointer flex items-center gap-2 hover:bg-emerald-500 hover:scale-[1.03] active:scale-[0.98] uppercase tracking-wider font-mono shadow-lg hover:shadow-emerald-500/20 btn-shimmer-effect"
           >
-            <Zap className="size-4" />
+            <Zap className="size-4 group-hover:scale-110 transition-transform" />
             <span>SER UM PIONEIRO ({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span>
           </button>
         </div>
@@ -84,7 +113,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
         
         {/* 1. SEÇÃO HERO: TÍTULO PRINCIPAL & SUBTÍTULO + IMAGEM PRINCIPAL */}
         <section className="max-w-4xl mx-auto space-y-8 pt-4">
-          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-sm font-black uppercase tracking-wider text-emerald-300">
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-sm font-black uppercase tracking-wider text-emerald-300 transition-all duration-300 hover:border-emerald-400/40 hover:bg-emerald-500/15 shadow-sm">
             <FileSpreadsheet className="size-5 text-emerald-400" />
             <span>Planilha ODS Padrão INCRA & SIGEF em Minutos</span>
           </div>
@@ -97,13 +126,13 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             {subtitulo}
           </p>
 
-          {/* IMAGEM HERO: Screenshot principal do app no topo */}
-          <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 mt-8">
+          {/* IMAGEM HERO: Screenshot principal do app no topo com efeito suave de elevação */}
+          <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 mt-8 transition-all duration-500 hover:border-emerald-500/40 hover:shadow-emerald-500/10 hover:shadow-[0_20px_50px_rgba(16,185,129,0.12)] hover:-translate-y-1">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/marca/preview_mapa2d.png"
               alt="Interface completa do Souza-CAD com editor de mapa 2D sobre imagem de satélite, delimitação perimétrica, confrontantes e métricas"
-              className="w-full h-auto object-contain"
+              className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
             />
           </div>
         </section>
@@ -124,12 +153,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </p>
 
             {/* Imagem Real 2: MDR 3D na Prancha */}
-            <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
+            <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:shadow-[0_20px_50px_rgba(16,185,129,0.10)] hover:-translate-y-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_mdr_planta.png"
                 alt="MDR 3D e Convenções na Prancha A3 no Souza-CAD"
-                className="w-full h-auto object-contain"
+                className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
               />
             </div>
           </div>
@@ -138,10 +167,10 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
         {/* 3. A HISTÓRIA DO CRIADOR (DARLAN SOUZA - 14 ANOS DE PRÁTICA TÉCNICA) */}
         <section className="w-full max-w-4xl mx-auto py-2">
-          <div className="bg-slate-900/70 border border-slate-800/60 p-8 sm:p-12 rounded-2xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="group bg-slate-900/70 border border-slate-800/60 p-8 sm:p-12 rounded-2xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden transition-all duration-500 hover:border-emerald-500/30 hover:shadow-xl hover:-translate-y-0.5">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-700" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-              <Shield className="size-5" /> A história por trás da ferramenta
+              <Shield className="size-5 text-emerald-400 group-hover:scale-110 transition-transform duration-300" /> A história por trás da ferramenta
             </h3>
             <p className="text-base sm:text-xl text-slate-200 leading-relaxed italic">
               &ldquo;{historia}&rdquo;
@@ -155,12 +184,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
         {/* 4. CAIXA DE ESCASSEZ & CREDENCIAMENTO PIONEIRO */}
         <section className="w-full max-w-3xl mx-auto">
-          <div className="bg-slate-900/80 border border-emerald-500/20 p-8 sm:p-12 rounded-2xl shadow-xl space-y-8 backdrop-blur-xl relative overflow-hidden">
+          <div className="bg-slate-900/80 border border-emerald-500/20 p-8 sm:p-12 rounded-2xl shadow-xl space-y-8 backdrop-blur-xl relative overflow-hidden transition-all duration-500 hover:border-emerald-500/40">
             
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-6 text-left">
               <div>
                 <h2 className="text-2xl font-black text-white uppercase tracking-wide flex items-center gap-3">
-                  <Award className="size-7 text-emerald-400" />
+                  <Award className="size-7 text-emerald-400 animate-float-subtle" />
                   {estaEsgotado ? 'Pioneiros Esgotados' : 'VAGAS DE USUÁRIO PIONEIRO'}
                 </h2>
                 <p className="text-sm text-slate-300 mt-1">
@@ -195,15 +224,15 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             <button
               type="button"
               onClick={onPioneiro}
-              className={`w-full text-white font-black text-lg uppercase py-5 px-8 rounded-2xl transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-xl ${
+              className={`group relative w-full text-white font-black text-lg uppercase py-5 px-8 rounded-2xl transition-all duration-300 transform hover:scale-[1.015] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-xl btn-shimmer-effect ${
                 estaEsgotado
-                  ? 'bg-amber-600 hover:bg-amber-500'
-                  : 'bg-emerald-600 hover:bg-emerald-500'
+                  ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20'
+                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20'
               }`}
             >
-              <Zap className="size-6" />
+              <Zap className="size-6 group-hover:scale-110 transition-transform duration-300" />
               <span>{estaEsgotado ? 'ADQUIRIR PLANO PROFISSIONAL' : 'SER UM USUÁRIO PIONEIRO'}</span>
-              <ArrowRight className="size-6" />
+              <ArrowRight className="size-6 group-hover:translate-x-1.5 transition-transform duration-300" />
             </button>
           </div>
         </section>
@@ -226,12 +255,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </div>
 
             {/* Imagem Real do Requerimento Multi-atos */}
-            <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
+            <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:shadow-[0_20px_50px_rgba(16,185,129,0.10)] hover:-translate-y-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_requerimento.png"
                 alt="Requerimentos ao Cartório Multi-Atos no Souza-CAD"
-                className="w-full h-auto object-contain"
+                className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
               />
             </div>
           </div>
@@ -251,12 +280,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </div>
 
             {/* Imagem Real da Planta A3 Oficial */}
-            <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-white">
+            <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-white transition-all duration-500 hover:border-emerald-500/40 hover:shadow-[0_20px_50px_rgba(16,185,129,0.10)] hover:-translate-y-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_planta_a3.png"
                 alt="Planta Topográfica A3 Pronta no Souza-CAD"
-                className="w-full h-auto object-contain"
+                className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
               />
             </div>
 
@@ -265,12 +294,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
               <h3 className="text-xl font-black text-white text-left flex items-center gap-2">
                 <Download className="size-5 text-emerald-400" /> Exportação em Lote & Baixar Pacote ZIP
               </h3>
-              <div className="w-full rounded-2xl overflow-hidden shadow-xl border border-slate-800 bg-slate-950 p-2">
+              <div className="group w-full rounded-2xl overflow-hidden shadow-xl border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/marca/preview_pecas.png"
                   alt="Menu de Peças Técnicas e Pacote ZIP no Souza-CAD"
-                  className="w-full h-auto object-contain"
+                  className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
                 />
               </div>
             </div>
@@ -291,12 +320,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </div>
 
             {/* Imagem Real do Dropdown de Conselhos */}
-            <div className="w-full max-w-2xl mx-auto rounded-2xl overflow-hidden shadow-xl border border-slate-800 bg-slate-950 p-2">
+            <div className="group w-full max-w-2xl mx-auto rounded-2xl overflow-hidden shadow-xl border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_conselhos.png"
                 alt="Categorias Profissionais e Conselhos CFT, CFTA, CREA no Souza-CAD"
-                className="w-full h-auto object-contain"
+                className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
               />
             </div>
           </div>
@@ -315,12 +344,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
                 </h2>
               </div>
 
-              <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
+              <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/marca/preview_gestao.png"
                   alt="Gestão do Projeto, Recibos e Contratos no Souza-CAD"
-                  className="w-full h-auto object-contain"
+                  className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
                 />
               </div>
             </div>
@@ -336,12 +365,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
                 </h2>
               </div>
 
-              <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
+              <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/marca/preview_modulos.png"
                   alt="Automação de Erratas e Malha SIGEF no Souza-CAD"
-                  className="w-full h-auto object-contain"
+                  className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
                 />
               </div>
             </div>
@@ -357,12 +386,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
                 </h2>
               </div>
 
-              <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
+              <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/marca/preview_config.png"
                   alt="Configurações da Empresa e Assinatura Digital no Souza-CAD"
-                  className="w-full h-auto object-contain"
+                  className="w-full h-auto object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
                 />
               </div>
             </div>
@@ -389,12 +418,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
               const title = parts[0]?.trim() || '';
               const desc = parts[1]?.trim() || '';
               return (
-                <div key={idx} className="p-6 rounded-2xl bg-slate-900/50 border border-slate-800 flex items-start gap-4">
-                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0 mt-0.5">
+                <div key={idx} className="group p-6 rounded-2xl bg-slate-900/50 border border-slate-800 flex items-start gap-4 transition-all duration-300 hover:border-emerald-500/30 hover:bg-slate-900/80 hover:-translate-y-0.5 shadow-sm">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0 mt-0.5 group-hover:bg-emerald-500/20 group-hover:border-emerald-400/40 transition-colors">
                     <Check className="size-5" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-white text-base">{title}</h4>
+                    <h4 className="font-bold text-white text-base group-hover:text-emerald-300 transition-colors">{title}</h4>
                     {desc && <p className="text-sm text-slate-300 font-normal mt-1 leading-relaxed">{desc}</p>}
                   </div>
                 </div>
@@ -407,15 +436,15 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             <button
               type="button"
               onClick={onPioneiro}
-              className={`w-full text-white font-black text-lg uppercase py-5 px-8 rounded-2xl transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-xl ${
+              className={`group relative w-full text-white font-black text-lg uppercase py-5 px-8 rounded-2xl transition-all duration-300 transform hover:scale-[1.015] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-xl btn-shimmer-effect ${
                 estaEsgotado
-                  ? 'bg-amber-600 hover:bg-amber-500'
-                  : 'bg-emerald-600 hover:bg-emerald-500'
+                  ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20'
+                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20'
               }`}
             >
-              <Zap className="size-6" />
+              <Zap className="size-6 group-hover:scale-110 transition-transform duration-300" />
               <span>{estaEsgotado ? 'ADQUIRIR PLANO PROFISSIONAL' : 'SER UM USUÁRIO PIONEIRO AGORA'}</span>
-              <ArrowRight className="size-6" />
+              <ArrowRight className="size-6 group-hover:translate-x-1.5 transition-transform duration-300" />
             </button>
           </div>
         </section>
