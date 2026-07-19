@@ -12,14 +12,35 @@ interface LandingPageProps {
 
 export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingPageProps) {
   const [activeSection, setActiveSection] = useState(0);
+  const [modalIndiqueAberto, setModalIndiqueAberto] = useState(false);
+  const [textoCopiado, setTextoCopiado] = useState(false);
+
+  const mensagemRecomendacao = `🚀 *Conheça o Souza-CAD!* Software Profissional de Engenharia Topográfica e Georreferenciamento SIGEF / INCRA.
+
+✨ *Recursos em Segundos:*
+• Geração automática da Planilha ODS oficial do SIGEF
+• Requerimentos Cartorários (Retificação, Usucapião, Desmembramento)
+• Prancha Oficial com Modelo Digital de Relevo 3D
+• Leitura inteligente de documentos por IA
+
+👉 Teste agora gratuitamente no seu navegador:
+https://souzacad--souza-cad.us-east4.hosted.app/`;
 
   const indicarAmigo = () => {
-    const msg = 'Confira o Souza-CAD, a plataforma de georreferenciamento e topografia mais rápida do mercado!';
-    const url = typeof window !== 'undefined' ? window.location.origin : 'https://souza-cad.vercel.app';
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      navigator.share({ title: 'Souza-CAD', text: msg, url }).catch(() => {});
-    } else {
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${msg} ${url}`)}`, '_blank');
+    setModalIndiqueAberto(true);
+  };
+
+  const copiarTextoIndicacao = async () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(mensagemRecomendacao);
+      setTextoCopiado(true);
+      setTimeout(() => setTextoCopiado(false), 3500);
+    }
+  };
+
+  const compartilharWhatsApp = () => {
+    if (typeof window !== 'undefined') {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagemRecomendacao)}`, '_blank');
     }
   };
 
@@ -266,8 +287,19 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
       </section>
 
       {/* SEÇÃO 2: GEORREFERENCIAMENTO SIGEF / INCRA */}
-      <section id="sec-1" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
-        <div className="max-w-5xl mx-auto space-y-6 w-full">
+      <section id="sec-1" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60 overflow-hidden">
+        {/* IMAGEM DE FUNDO AMBIENTAL EM ALTA RESOLUÇÃO NA SEÇÃO SIGEF/INCRA (SEC-1) */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/marca/fundo-sigef-campo.png"
+            alt=""
+            className="w-full h-full object-cover opacity-35 filter contrast-125 saturate-125 brightness-90"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-slate-950/65 to-slate-950" />
+        </div>
+
+        <div className="max-w-5xl mx-auto space-y-6 w-full relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
             <Award className="size-4" /> Pensado para Georreferenciamento SIGEF / INCRA
           </div>
@@ -366,7 +398,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
               />
             </div>
 
-            {/* PRIMEIRA IMAGEM (FLUTUANTE COMO DETALHAMENTO SOBREPOSTO) */}
+            {/* PRIMEIRA IMAGEM (FLUTUANTE COMO DETALHAMENTO SOBREPOSTO - SEM TÍTULO) */}
             <div className="absolute -bottom-6 -left-3 sm:-bottom-8 sm:-left-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -374,9 +406,6 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
                 alt="Pacote de Peças Técnicas ZIP"
                 className="w-full h-auto object-cover block"
               />
-              <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-lg bg-emerald-950/90 border border-emerald-500/30 text-[10px] sm:text-xs font-black uppercase text-emerald-300 tracking-wider backdrop-blur-sm shadow-md">
-                Pacote ZIP de Peças Técnicas
-              </div>
             </div>
           </div>
         </div>
@@ -398,14 +427,26 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             Suporte nativo para conselhos profissionais, assinatura digital cadastrada e inserção da sua logomarca em todas as peças geradas.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left w-full max-w-6xl mx-auto">
-            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
+          {/* CONTAINER COM IMAGEM PRINCIPAL DE CONFIGURAÇÃO E PRIMEIRA IMAGEM DE CONSELHOS FLUTUANTE SOBREPOSTA À DIREITA */}
+          <div className="relative w-full max-w-5xl mx-auto mt-4">
+            {/* SEGUNDA IMAGEM (PRINCIPAL - OCUPA MAIOR ESPAÇO) */}
+            <div className="group w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_conselhos.png" alt="Habilitação Profissional" className="w-full h-full object-cover object-top block" />
+              <img
+                src="/marca/preview_config.png"
+                alt="Personalização de Marca e Assinatura Digital"
+                className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
+              />
             </div>
-            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
+
+            {/* PRIMEIRA IMAGEM (FLUTUANTE SOBREPOSTA À DIREITA - MESMO TAMANHO E SEM TÍTULO) */}
+            <div className="absolute -bottom-6 -right-3 sm:-bottom-8 sm:-right-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_config.png" alt="Personalização de Marca" className="w-full h-full object-cover object-top block" />
+              <img
+                src="/marca/preview_conselhos.png"
+                alt="Habilitação Profissional CFT/CREA"
+                className="w-full h-auto object-cover block"
+              />
             </div>
           </div>
         </div>
@@ -484,6 +525,70 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           <span>Desenvolvido para alta performance em georreferenciamento.</span>
         </footer>
       </section>
+
+      {/* MODAL CONVIDATIVO: INDIQUE UM AMIGO */}
+      {modalIndiqueAberto && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 text-left text-white">
+            <button
+              type="button"
+              onClick={() => setModalIndiqueAberto(false)}
+              className="absolute top-4 right-4 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                <Share2 className="size-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white uppercase tracking-wide">
+                  Indique o Souza-CAD
+                </h3>
+                <p className="text-xs text-slate-300">
+                  Compartilhe com amigos, colegas e grupos de agrimensura no WhatsApp!
+                </p>
+              </div>
+            </div>
+
+            {/* CAIXA DE TEXTO COPIÁVEL */}
+            <div className="relative rounded-2xl border border-slate-800 bg-slate-950 p-4 font-mono text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-all max-h-48 overflow-y-auto scroll-fino">
+              {mensagemRecomendacao}
+            </div>
+
+            {/* AÇÕES: COPIAR E ENVIAR NO WHATSAPP */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={copiarTextoIndicacao}
+                className="w-full py-3.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+              >
+                {textoCopiado ? (
+                  <>
+                    <Check className="size-4 text-emerald-400" />
+                    <span className="text-emerald-400">COPIADO COM SUCESSO!</span>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="size-4 text-emerald-400" />
+                    <span>COPIAR TEXTO</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={compartilharWhatsApp}
+                className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Zap className="size-4" />
+                <span>ABRIR NO WHATSAPP</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
