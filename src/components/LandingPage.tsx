@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown, Monitor, X } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 const bp = (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/$/, '');
