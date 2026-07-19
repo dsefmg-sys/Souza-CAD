@@ -6,14 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Users, Crown, RefreshCw, Shield, Sparkles,
-  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin, Copy, Plus, Youtube
+  DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin, Copy, Plus, Youtube, Cloud
 } from 'lucide-react';
+import { collection, getCountFromServer } from 'firebase/firestore';
 import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
 import { listarProjetosDoUsuario, salvarProjeto, novoId } from '@/lib/store/projects';
 import type { Projeto } from '@/lib/topo/types';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
 import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarWhatsappSuporteNome, salvarWhatsappSuporteNome, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, carregarYoutubePlaylist, salvarYoutubePlaylist, carregarVideosTutorial, salvarVideosTutorial, carregarLandingPageTexts, salvarLandingPageTexts, LANDING_PADRAO, type ConfigSmtp, type VideoTutorial, type LandingPageTexts } from '@/lib/store/suporte';
-import { auth } from '@/lib/firebase/client';
+import { auth, db as fdb, firebaseConfigurado } from '@/lib/firebase/client';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
 
 function dataBR(ms?: number): string {
@@ -110,7 +111,24 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   async function recarregar() {
     setCarregando(true);
     try {
-      setPerfis(await listarPerfisUso());
+      const listaPerfis = await listarPerfisUso();
+      if (firebaseConfigurado && fdb()) {
+        const perfisComContagem = await Promise.all(
+          listaPerfis.map(async (p) => {
+            try {
+              const targetUid = p.workspaceUid || p.uid;
+              const colRef = collection(fdb()!, 'users', targetUid, 'projetos');
+              const snap = await getCountFromServer(colRef);
+              return { ...p, totalProjetos: snap.data().count };
+            } catch {
+              return p;
+            }
+          })
+        );
+        setPerfis(perfisComContagem);
+      } else {
+        setPerfis(listaPerfis);
+      }
       setCfg(await carregarConfigAssinatura());
       setZap(await carregarWhatsappSuporte());
       setZapNome(await carregarWhatsappSuporteNome());
@@ -815,7 +833,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     </th>
                     <th className="px-4 py-3 min-w-[140px]">Cliente / RT</th>
                     <th className="px-4 py-3">E-mail</th>
-                    <th className="px-2 py-3 text-center w-16">Projetos</th>
+                    <th className="px-2 py-3 text-center w-24" title="Quantidade de projetos salvos na nuvem pelo usuário">Projetos (Nuvem)</th>
                     <th className="px-2 py-3 text-center w-28">Mensalidade (R$)</th>
                     <th className="px-2 py-3 text-center w-20">Venc. Dia</th>
                     <th className="px-2 py-3 text-center w-28">Faturamento</th>
@@ -862,7 +880,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                             ) : null}
                           </td>
                           <td className="px-2 py-2.5 text-center">
-                            <button type="button" title="Ver projetos deste cliente" onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)} className="font-bold text-emerald-400 hover:text-emerald-300 hover:underline text-sm">{p.totalProjetos ?? 0}</button>
+                            <button type="button" title="Ver projetos salvos na nuvem deste cliente" onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)} className="inline-flex items-center justify-center gap-1 font-extrabold text-emerald-400 hover:text-emerald-300 hover:underline text-xs bg-emerald-950/40 border border-emerald-800/40 px-2 py-1 rounded-md transition-colors"><Cloud className="size-3.5 text-emerald-400 shrink-0" /> <span>{p.totalProjetos ?? 0}</span></button>
                           </td>
                           <td colSpan={3} className="px-4 py-2.5 text-center text-xs text-zinc-500 italic">
                             Membro — cobrança segue a empresa de {dono?.empresaNome || dono?.email || 'outra conta'}
@@ -935,7 +953,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                           ) : null}
                         </td>
                         <td className="px-2 py-2.5 text-center">
-                          <button type="button" title="Ver projetos deste cliente" onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)} className="font-bold text-emerald-400 hover:text-emerald-300 hover:underline text-sm">{p.totalProjetos ?? 0}</button>
+                          <button type="button" title="Ver projetos salvos na nuvem deste cliente" onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)} className="inline-flex items-center justify-center gap-1 font-extrabold text-emerald-400 hover:text-emerald-300 hover:underline text-xs bg-emerald-950/40 border border-emerald-800/40 px-2 py-1 rounded-md transition-colors"><Cloud className="size-3.5 text-emerald-400 shrink-0" /> <span>{p.totalProjetos ?? 0}</span></button>
                         </td>
                         
                         {/* CRM: Mensalidade */}
