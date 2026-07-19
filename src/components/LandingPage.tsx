@@ -226,21 +226,21 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             {subtitulo}
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left w-full max-w-5xl mx-auto mt-4">
-            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 p-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left w-full max-w-6xl mx-auto mt-4">
+            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_requerimento.png"
                 alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
-                className="w-full h-auto max-h-[46vh] object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
+                className="w-full h-full object-cover object-top block"
               />
             </div>
-            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 p-2">
+            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_requerimento_modal.png"
                 alt="Requerimento ao Cartório e Atos Cumulativos no Souza-CAD"
-                className="w-full h-auto max-h-[46vh] object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
+                className="w-full h-full object-cover object-top block"
               />
             </div>
           </div>
@@ -328,7 +328,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
       {/* SEÇÃO 5: REQUERIMENTOS & PEÇAS ZIP */}
       <section id="sec-4" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
-        <div className="max-w-5xl mx-auto space-y-6 w-full">
+        <div className="max-w-6xl mx-auto space-y-6 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
             <FileCode className="size-4" /> Cartório &amp; Requerimentos Jurídicos
           </div>
@@ -339,14 +339,14 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             Gere minutas prontas para Retificação, Doação, Usucapião, Desmembramento e a Planta A3 com todas as peças compactadas num único Pacote ZIP.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left w-full">
-            <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left w-full max-w-6xl mx-auto">
+            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_pecas.png" alt="Menu de Peças Técnicas ZIP" className="w-full h-auto max-h-[46vh] object-contain block" />
+              <img src="/marca/preview_pecas.png" alt="Menu de Peças Técnicas ZIP" className="w-full h-full object-cover object-top block" />
             </div>
-            <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
+            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_planta_a3.png" alt="Prancha A3 Oficial" className="w-full h-auto max-h-[46vh] object-contain block" />
+              <img src="/marca/preview_planta_a3.png" alt="Prancha A3 Oficial" className="w-full h-full object-cover object-top block" />
             </div>
           </div>
         </div>
@@ -357,7 +357,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
       {/* SEÇÃO 6: HABILITAÇÃO PROFISSIONAL & MARCA */}
       <section id="sec-5" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
-        <div className="max-w-5xl mx-auto space-y-6 w-full">
+        <div className="max-w-6xl mx-auto space-y-6 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
             <AwardIcon className="size-4" /> CFT, CFTA &amp; CREA + Sua Marca
           </div>
@@ -368,14 +368,14 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             Suporte nativo para conselhos profissionais, assinatura digital cadastrada e inserção da sua logomarca em todas as peças geradas.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left w-full">
-            <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left w-full max-w-6xl mx-auto">
+            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_conselhos.png" alt="Habilitação Profissional" className="w-full h-auto max-h-[46vh] object-contain block" />
+              <img src="/marca/preview_conselhos.png" alt="Habilitação Profissional" className="w-full h-full object-cover object-top block" />
             </div>
-            <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
+            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_config.png" alt="Personalização de Marca" className="w-full h-auto max-h-[46vh] object-contain block" />
+              <img src="/marca/preview_config.png" alt="Personalização de Marca" className="w-full h-full object-cover object-top block" />
             </div>
           </div>
         </div>
