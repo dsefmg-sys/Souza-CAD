@@ -9294,13 +9294,13 @@ export default function EditorPage() {
         processando={processando}
       />
       <Dialog open={conferirAberto} onOpenChange={setConferirAberto}>
-        <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-6 rounded-xl bg-background shadow-2xl overflow-hidden">
-          <DialogHeader className="shrink-0 pb-4 border-b border-border/60">
+        <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-4 sm:p-5 rounded-xl bg-background shadow-2xl overflow-hidden">
+          <DialogHeader className="shrink-0 pb-2.5 border-b border-border/60">
             <DialogTitle className="text-sm font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2.5">
               <CheckCircle2 className="size-5" /> Conferir Projeto e Dados Gerais
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-grow overflow-y-auto min-h-0 pr-1 py-4">
+          <div className="flex-grow overflow-y-auto min-h-0 pr-1 pt-2.5 pb-1">
             <PainelConferencia
               vertices={vertices}
               res={res}
@@ -10977,7 +10977,7 @@ function PainelConferencia({
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Box de Reconciliação com o SIGEF */}
       {(() => {
         const reconciliado = !!imovel.usarValoresSigef &&
@@ -10985,187 +10985,202 @@ function PainelConferencia({
           verticesHashConferencia !== null &&
           verticesHashConferencia === vertices.map(v => `${v.leste.toFixed(3)},${v.norte.toFixed(3)}`).join('|');
         return (
-          <div className={`border p-3.5 rounded-xl shadow-sm text-left transition-colors duration-500 ${
+          <div className={`border p-2.5 px-3 rounded-lg shadow-sm text-left transition-colors duration-500 ${
             reconciliado
               ? 'bg-emerald-500/8 dark:bg-emerald-500/12 border-emerald-500/30'
               : 'bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/20'
           }`}>
-            <h3 className={`text-xs font-black uppercase tracking-wider mb-2 flex items-center gap-1.5 transition-colors ${
-              reconciliado ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
-            }`}>
-              <CheckCircle2 className={`size-4 transition-colors ${
-                reconciliado ? 'text-emerald-500' : 'text-amber-500'
-              }`} />
-              Reconciliação de Área/Perímetro com o SIGEF
-              {reconciliado && <span className="ml-auto text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">Conciliado ✔</span>}
-            </h3>
-            <p className="text-[11px] text-muted-foreground mb-3">
-              Por segurança jurídica, cole aqui a Área SGL e o Perímetro oficiais recalculados pelo SIGEF após processar a planilha ODS. Marque &quot;Usar&quot; para utilizá-los no memorial, planta e peças técnicas.
-            </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-foreground">Área Oficial (ha):</span>
-            <input
-              type="number"
-              step="0.0001"
-              placeholder="ex.: 12.3456"
-              value={imovel.areaSigefHa == null ? '' : imovel.areaSigefHa}
-              onChange={(e) => onChange({ ...imovel, areaSigefHa: e.target.value ? Number(e.target.value) : undefined })}
-              className="h-8 w-28 px-2.5 text-xs font-semibold border border-border/80 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-foreground">Perímetro Oficial (m):</span>
-            <input
-              type="number"
-              step="0.01"
-              placeholder="ex.: 1240.50"
-              value={imovel.perimetroSigef == null ? '' : imovel.perimetroSigef}
-              onChange={(e) => onChange({ ...imovel, perimetroSigef: e.target.value ? Number(e.target.value) : undefined })}
-              className="h-8 w-28 px-2.5 text-xs font-semibold border border-border/80 bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
-            />
-          </div>
-          <label className="flex items-center gap-1.5 cursor-pointer select-none bg-background dark:bg-zinc-900 border px-3 h-8 rounded-lg text-xs font-bold" title="Usar valores do SIGEF nas peças finais">
-            <input
-              type="checkbox"
-              checked={!!imovel.usarValoresSigef}
-              onChange={(e) => {
-                onChange({ ...imovel, usarValoresSigef: e.target.checked });
-                // Salva o hash dos vértices atuais para detectar futuras alterações
-                if (e.target.checked && imovel.areaSigefHa != null && imovel.perimetroSigef != null) {
-                  onReconciliar?.();
-                }
-              }}
-              className="rounded border-zinc-300 dark:border-zinc-700 text-amber-600 focus:ring-amber-500 size-3.5"
-            />
-            <span className="text-[11px] font-black text-amber-700 dark:text-amber-400 uppercase">Usar Valores do SIGEF</span>
-          </label>
-        </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
+                reconciliado ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
+              }`}>
+                <CheckCircle2 className={`size-4 transition-colors ${
+                  reconciliado ? 'text-emerald-500' : 'text-amber-500'
+                }`} />
+                Reconciliação de Área/Perímetro com o SIGEF
+                {reconciliado && <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">Conciliado ✔</span>}
+              </h3>
+              <p className="text-[10px] text-muted-foreground hidden sm:block">
+                Valores recalculados pelo SIGEF pós-ODS (utilizados nas peças se ativado).
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5 mt-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-foreground">Área Oficial (ha):</span>
+                <input
+                  type="number"
+                  step="0.0001"
+                  placeholder="ex.: 12.3456"
+                  value={imovel.areaSigefHa == null ? '' : imovel.areaSigefHa}
+                  onChange={(e) => onChange({ ...imovel, areaSigefHa: e.target.value ? Number(e.target.value) : undefined })}
+                  className="h-7 w-28 px-2 text-xs font-semibold border border-border/80 bg-background rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-foreground">Perímetro Oficial (m):</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="ex.: 1240.50"
+                  value={imovel.perimetroSigef == null ? '' : imovel.perimetroSigef}
+                  onChange={(e) => onChange({ ...imovel, perimetroSigef: e.target.value ? Number(e.target.value) : undefined })}
+                  className="h-7 w-28 px-2 text-xs font-semibold border border-border/80 bg-background rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
+                />
+              </div>
+              <label className="flex items-center gap-1.5 cursor-pointer select-none bg-background dark:bg-zinc-900 border border-border/80 px-2.5 h-7 rounded-md text-xs font-bold" title="Usar valores do SIGEF nas peças finais">
+                <input
+                  type="checkbox"
+                  checked={!!imovel.usarValoresSigef}
+                  onChange={(e) => {
+                    onChange({ ...imovel, usarValoresSigef: e.target.checked });
+                    if (e.target.checked && imovel.areaSigefHa != null && imovel.perimetroSigef != null) {
+                      onReconciliar?.();
+                    }
+                  }}
+                  className="rounded border-zinc-300 dark:border-zinc-700 text-amber-600 focus:ring-amber-500 size-3.5"
+                />
+                <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase">Usar Valores do SIGEF</span>
+              </label>
+            </div>
           </div>
         );
       })()}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Coluna Esquerda: Dados Gerais do Projeto (5 cols) */}
-      <div className="lg:col-span-5 space-y-4 text-left">
-        <Card className="border border-border/80 shadow-md">
-          <CardHeader className="pb-3 border-b border-border/50">
-            <CardTitle className="text-xs font-black uppercase text-foreground tracking-wider flex items-center gap-2">
-              <Info className="size-4 text-primary" /> Dados Gerais do Projeto
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 divide-y divide-border/60">
-            {det.map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between gap-4 px-4 py-2.5 text-xs">
-                <span className="text-muted-foreground font-semibold">{k}</span>
-                <span className="truncate text-right font-medium text-foreground max-w-[200px]" title={v}>{v}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-        
-        <div className="p-3.5 bg-muted/40 rounded-xl border text-[11px] leading-relaxed text-muted-foreground">
-          Os documentos de matrícula e os anexos dos confrontantes podem ser gerenciados na seção <strong>AJUSTES / DADOS</strong> do projeto na aba correspondente, com suporte a resumo automático e leitura via IA.
-        </div>
-      </div>
-
-      {/* Coluna Direita: Análise de Limites, Conflitos e Pendências (7 cols) */}
-      <div className="lg:col-span-7 space-y-4">
-        {/* Limites Legais e Conflitos de Divisa */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-          <Card className="border-blue-500/20 bg-blue-500/5">
-            <CardHeader className="pb-2 pt-3">
-              <CardTitle className="text-[11px] text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5 uppercase tracking-wide">
-                <Info className="size-4 text-blue-500" />
-                Limites de Precisão
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        {/* Coluna Esquerda: Dados Gerais do Projeto (5 cols -> Grid Adensado em 2 colunas) */}
+        <div className="lg:col-span-5 space-y-2 text-left">
+          <Card className="border border-border/80 shadow-sm">
+            <CardHeader className="py-2 px-3 border-b border-border/50 bg-muted/20">
+              <CardTitle className="text-xs font-black uppercase text-foreground tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Info className="size-3.5 text-primary" /> Dados Gerais do Projeto
+                </span>
+                <span className="text-[10px] font-semibold text-muted-foreground bg-background px-2 py-0.5 rounded border border-border/60">
+                  {vertices.length} vértices · {confrontantes.length} confrontantes
+                </span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pb-3 text-[10px] text-muted-foreground space-y-1.5">
-              <p>Limites recomendados de desvio padrão (sigma) para aprovação no SIGEF:</p>
-              <ul className="list-disc pl-4 space-y-0.5 font-medium">
-                <li><b>Artificiais (LA):</b> 0.10 m</li>
-                <li><b>Naturais (LN):</b> 3.00 m</li>
-                <li><b>Inacessíveis (LV):</b> 7.50 m</li>
-                <li><b>Vertical (Sigma Z):</b> 0.30 m</li>
-              </ul>
+            <CardContent className="p-2.5">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                {det.map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between gap-1 border-b border-border/30 pb-0.5 text-[11px] min-w-0">
+                    <span className="text-muted-foreground font-medium shrink-0 truncate max-w-[85px]">{k}</span>
+                    <span className="truncate text-right font-bold text-foreground max-w-[115px]" title={v}>{v}</span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
-
-          {conflitos.length > 0 ? (
-            <Card className="border-pink-500/20 bg-pink-500/5">
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="text-[11px] text-pink-700 dark:text-pink-300 font-bold flex items-center gap-1.5 uppercase tracking-wide">
-                  <AlertTriangle className="size-4 text-pink-500" />
-                  Conflitos (SIGEF)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1.5 pb-3">
-                {conflitos.map((c, i) => {
-                  const label = c.tipo === 'sobreposicao' ? 'Sobreposição' : 'Vão';
-                  const corLabel = c.tipo === 'sobreposicao' ? 'text-pink-600 dark:text-pink-400 font-bold' : 'text-cyan-600 dark:text-cyan-400 font-bold';
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => onIrParaConflito(c.pontoConflito.lat, c.pontoConflito.lon)}
-                      className="w-full text-left flex items-center justify-between text-[10px] rounded border border-border bg-background p-1.5 hover:bg-accent transition-colors"
-                    >
-                      <span>
-                        Lado {c.ladoIdx + 1}: <span className={corLabel}>{label}</span>
-                      </span>
-                      <span className="font-mono text-muted-foreground">
-                        {numBR(c.distancia)} m
-                      </span>
-                    </button>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="border-emerald-500/20 bg-emerald-500/5">
-              <CardHeader className="pb-2 pt-3">
-                <CardTitle className="text-[11px] text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1.5 uppercase tracking-wide">
-                  <CheckCircle2 className="size-4 text-emerald-500" />
-                  Conflitos de Divisa
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-3 text-[10px] text-muted-foreground font-medium">
-                Nenhum conflito de divisa ou sobreposição geométrica foi detectado com as parcelas certificadas vizinhas.
-              </CardContent>
-            </Card>
-          )}
+          
+          <div className="p-2 px-2.5 bg-muted/30 rounded-lg border border-border/40 text-[10px] leading-tight text-muted-foreground flex items-center gap-2">
+            <Info className="size-3.5 text-muted-foreground shrink-0" />
+            <span>Matrículas e anexos dos confrontantes podem ser gerenciados na aba <strong>AJUSTES / DADOS</strong>.</span>
+          </div>
         </div>
 
-        {/* Pendências / Checklist */}
-        <div className="space-y-2">
-          <div className="text-[10px] font-black uppercase text-muted-foreground tracking-wider text-left">Checklist de Conformidade</div>
-          {problemas.length > 0 ? (
-            <div className="grid grid-cols-1 gap-2 max-h-[350px] overflow-y-auto pr-1 scroll-fino">
-              {problemas.map((p, i) => (
-                <div key={i} className="flex items-start gap-2.5 rounded-lg border bg-background p-3 text-xs text-left shadow-sm">
-                  <span className="mt-0.5 shrink-0"><Icone n={p.nivel} /></span>
-                  <div className="space-y-0.5">
-                    <span className="font-bold uppercase text-[10px] text-foreground tracking-wide">{p.campo}</span>
-                    <p className="text-muted-foreground text-[11px] leading-relaxed font-medium">{p.msg}</p>
-                  </div>
+        {/* Coluna Direita: Análise de Limites, Conflitos e Pendências (7 cols) */}
+        <div className="lg:col-span-7 space-y-3">
+          {/* Limites Legais e Conflitos de Divisa */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+            <Card className="border-blue-500/20 bg-blue-500/5">
+              <CardHeader className="p-2.5 pb-1">
+                <CardTitle className="text-[10px] text-blue-700 dark:text-blue-300 font-bold flex items-center gap-1.5 uppercase tracking-wide">
+                  <Info className="size-3.5 text-blue-500" />
+                  Limites de Precisão SIGEF
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-2.5 pt-1 text-[10px] text-muted-foreground">
+                <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 font-medium">
+                  <div><b>Artificiais (LA):</b> 0.10m</div>
+                  <div><b>Naturais (LN):</b> 3.00m</div>
+                  <div><b>Inacessíveis (LV):</b> 7.50m</div>
+                  <div><b>Vertical (Sigma Z):</b> 0.30m</div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-6 border border-dashed rounded-xl bg-emerald-500/5 border-emerald-500/25 flex flex-col items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="size-8" />
-              <span className="text-xs font-bold uppercase tracking-wide">Projeto 100% Regularizado</span>
-              <p className="text-[11px] text-muted-foreground text-center">Nenhuma pendência encontrada. O projeto atende todos os requisitos do SIGEF/INCRA.</p>
-            </div>
-          )}
-        </div>
+              </CardContent>
+            </Card>
 
-        {/* Nota Legal */}
-        <NotaLegal chave="validadePeca" />
+            {conflitos.length > 0 ? (
+              <Card className="border-pink-500/20 bg-pink-500/5">
+                <CardHeader className="p-2.5 pb-1">
+                  <CardTitle className="text-[10px] text-pink-700 dark:text-pink-300 font-bold flex items-center gap-1.5 uppercase tracking-wide">
+                    <AlertTriangle className="size-3.5 text-pink-500" />
+                    Conflitos ({conflitos.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-2.5 pt-1 space-y-1">
+                  {conflitos.map((c, i) => {
+                    const label = c.tipo === 'sobreposicao' ? 'Sobreposição' : 'Vão';
+                    const corLabel = c.tipo === 'sobreposicao' ? 'text-pink-600 dark:text-pink-400 font-bold' : 'text-cyan-600 dark:text-cyan-400 font-bold';
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => onIrParaConflito(c.pontoConflito.lat, c.pontoConflito.lon)}
+                        className="w-full text-left flex items-center justify-between text-[10px] rounded border border-border bg-background px-2 py-1 hover:bg-accent transition-colors"
+                      >
+                        <span>Lado {c.ladoIdx + 1}: <span className={corLabel}>{label}</span></span>
+                        <span className="font-mono text-muted-foreground">{numBR(c.distancia)} m</span>
+                      </button>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-emerald-500/20 bg-emerald-500/5">
+                <CardHeader className="p-2.5 pb-1">
+                  <CardTitle className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold flex items-center gap-1.5 uppercase tracking-wide">
+                    <CheckCircle2 className="size-3.5 text-emerald-500" />
+                    Conflitos de Divisa
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-2.5 pt-1 text-[10px] text-muted-foreground font-medium">
+                  Sem sobreposição ou vão geométrico com vizinhos.
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Pendências / Checklist */}
+          <div className="space-y-1.5">
+            <div className="text-[10px] font-black uppercase text-muted-foreground tracking-wider text-left flex items-center justify-between">
+              <span>Checklist de Conformidade</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                problemas.filter(p => p.nivel === 'erro').length > 0 ? 'bg-destructive/15 text-destructive' :
+                problemas.filter(p => p.nivel === 'aviso').length > 0 ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' :
+                'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+              }`}>
+                {problemas.length === 0 ? '100% Ok' : `${problemas.length} item(ns)`}
+              </span>
+            </div>
+            {problemas.length > 0 ? (
+              <div className="grid grid-cols-1 gap-1.5 max-h-[190px] overflow-y-auto pr-1 scroll-fino">
+                {problemas.map((p, i) => (
+                  <div key={i} className="flex items-start gap-2 rounded-lg border bg-background p-2 text-xs text-left shadow-sm">
+                    <span className="mt-0.5 shrink-0"><Icone n={p.nivel} /></span>
+                    <div className="space-y-0.5">
+                      <span className="font-bold uppercase text-[9px] text-foreground tracking-wide">{p.campo}</span>
+                      <p className="text-muted-foreground text-[10px] leading-tight font-medium">{p.msg}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-2.5 border border-dashed rounded-lg bg-emerald-500/5 border-emerald-500/25 flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="size-5 shrink-0" />
+                <div className="text-left">
+                  <span className="text-xs font-bold uppercase tracking-wide block">Projeto 100% Regularizado</span>
+                  <p className="text-[10px] text-muted-foreground">Nenhuma pendência encontrada. Atende todos os requisitos do SIGEF/INCRA.</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Nota Legal */}
+          <NotaLegal chave="validadePeca" />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 }
 
 function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, onSalvarCadastro, imovel, tecnico, projetoId, onExtrairConfrontante, onExcluir, onEditar, sugCartorios = [] }: {
