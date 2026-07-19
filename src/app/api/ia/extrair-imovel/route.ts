@@ -7,6 +7,7 @@ import { getAdminApp } from '@/lib/firebaseAdmin';
 // Extrai dados do IMÓVEL/PROPRIETÁRIO de um texto ou documento (PDF/imagem) usando o Gemini.
 // Roda NO SERVIDOR: a chave (GOOGLE_GENAI_API_KEY) nunca vai para o navegador.
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const MODELO = 'gemini-2.5-flash';
 const MAX_BASE64 = 22_000_000;

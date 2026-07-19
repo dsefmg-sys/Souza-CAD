@@ -29,7 +29,7 @@ import {
 import { souMaster, carregarWhatsappSuporte, salvarWhatsappSuporte, carregarWhatsappSuporteNome, salvarWhatsappSuporteNome, carregarGeminiApiKey, salvarGeminiApiKey } from '@/lib/store/suporte';
 import { minhaEmpresa, type Empresa } from '@/lib/store/empresas';
 import { carregarModelos, salvarModelos, MODELOS_PADRAO } from '@/lib/store/modelos';
-import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENCIAS_PADRAO, ATALHOS_F_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
+import { carregarPreferencias, salvarPreferencias, aplicarEscalaFonte, PREFERENCIAS_PADRAO, ATALHOS_F_PADRAO, ATALHOS_COMANDO_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes, salvarPadroes, PADROES_PADRAO, type PadroesProjeto } from '@/lib/store/padroes';
 import { carregarPrecos, salvarPrecos, type PrecoServico } from '@/lib/store/precos';
 import { exportarConfiguracoesJson, importarConfiguracoesJson } from '@/lib/store/backup';
@@ -51,6 +51,7 @@ const TEXTO_TECNICO_RTK_NTRIP =
   'coordenadas dos vértices levantados, em sistema de referência adequado ao levantamento realizado.';
 
 const ACOES_ATALHOS: Record<string, string> = {
+  // ── Cabeçalho (Fluxo de Trabalho) ─────────────────────────────────────────
   tutorial: 'Tutorial Interativo',
   pontos: 'Importar Pontos (TXT/CSV)',
   sigef: 'Importar SIGEF/INCRA',
@@ -63,6 +64,20 @@ const ACOES_ATALHOS: Record<string, string> = {
   pecas: 'Peças Técnicas / Documentos',
   cert: 'Login SIGEF/INCRA',
   car: 'Consulta CAR / Área Ambiental',
+  // ── Barra Lateral — Gestão do Projeto ─────────────────────────────────────
+  gestao: 'Gestão Financeira',
+  novo: 'Novo Projeto',
+  salvar: 'Salvar Projeto',
+  precificacao: 'Precificação (quanto cobrar)',
+  pontos_banco: 'Banco de Pontos',
+  // ── Barra Lateral — Visualização e Navegação ──────────────────────────────
+  desfazer: 'Desfazer (Ctrl+Z)',
+  refazer: 'Refazer (Ctrl+Y)',
+  rotulos: 'Mostrar/Ocultar Rótulos',
+  folha_travada: 'Travar / Destravar Folha',
+  // ── Barra Lateral — Curvas de Nível ───────────────────────────────────────
+  curvas_nivel: 'Abrir/Fechar Curvas de Nível',
+  // ── Ferramentas de Desenho e Geometria ────────────────────────────────────
   navegar: 'Navegar / Modo Mover',
   linha: 'Desenhar Linha',
   polilinha: 'Desenhar Polilinha',
@@ -361,6 +376,47 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     salvarPreferencias(np);
     onConfigChange?.();
     flash('Salvo automaticamente');
+  };
+
+  // Obter lista de aliases para uma ação
+  const obterAliasesAcao = (acao: string) => {
+    const atalhos = prefs.atalhosComando || ATALHOS_COMANDO_PADRAO;
+    return Object.entries(atalhos)
+      .filter(([, val]) => val === acao)
+      .map(([key]) => key)
+      .join(', ');
+  };
+
+  // Mudar os aliases de uma ação
+  const mudarAliasesAcao = (acao: string, novoValor: string) => {
+    const atalhosAtuais = { ...(prefs.atalhosComando || ATALHOS_COMANDO_PADRAO) };
+    
+    // Remover todas as chaves antigas que apontavam para esta ação
+    for (const key of Object.keys(atalhosAtuais)) {
+      if (atalhosAtuais[key] === acao) {
+        delete atalhosAtuais[key];
+      }
+    }
+    
+    // Adicionar as novas chaves
+    const chavesNovas = novoValor.split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(s => s.length > 0);
+      
+    for (const key of chavesNovas) {
+      atalhosAtuais[key] = acao;
+    }
+    
+    mudarPref('atalhosComando', atalhosAtuais);
+  };
+
+  const obterAcaoF = (key: string) => {
+    return prefs.atalhosF?.[key] || ATALHOS_F_PADRAO[key] || '';
+  };
+
+  const mudarAcaoF = (key: string, acao: string) => {
+    const novosAtalhos = { ...(prefs.atalhosF || ATALHOS_F_PADRAO), [key]: acao };
+    mudarPref('atalhosF', novosAtalhos);
   };
 
   const mudarPadrao = <K extends keyof PadroesProjeto>(k: K, val: PadroesProjeto[K]) => {
@@ -830,6 +886,84 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {aba === 'atalhos' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full max-h-[70vh] overflow-y-auto pr-2 scroll-fino pb-4">
+              {/* Coluna Esquerda: Teclas de Função */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-indigo-500 mb-1 flex items-center gap-1">
+                    <Keyboard className="size-4" />
+                    Teclas de Função (F1 a F12)
+                  </h4>
+                  <p className="text-[10px] text-muted-foreground leading-normal">
+                    Associe ações rápidas às teclas F do cabeçalho.
+                  </p>
+                </div>
+                
+                <div className="space-y-2.5 rounded-lg border bg-muted/20 p-3.5">
+                  {Array.from({ length: 12 }, (_, i) => `F${i + 1}`).map((key) => {
+                    const acaoAtual = obterAcaoF(key);
+                    return (
+                      <div key={key} className="flex items-center justify-between gap-3 text-xs">
+                        <span className="font-mono font-bold bg-slate-900 border border-slate-800 text-amber-400 px-2 py-0.5 rounded text-[10px] shrink-0 min-w-[36px] text-center">
+                          {key}
+                        </span>
+                        <select
+                          className="flex-1 max-w-[240px] rounded-md border bg-background px-2.5 py-1 text-[11px] font-semibold text-foreground outline-none focus:ring-1 focus:ring-primary"
+                          value={acaoAtual}
+                          onChange={(e) => mudarAcaoF(key, e.target.value)}
+                        >
+                          <option value="">Nenhum</option>
+                          {Object.entries(ACOES_ATALHOS).map(([val, label]) => (
+                            <option key={val} value={val}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Coluna Direita: Comandos Curtos CAD */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-emerald-500 mb-1 flex items-center gap-1">
+                    <Sliders className="size-4" />
+                    Comandos de Texto CAD (Rodapé)
+                  </h4>
+                  <p className="text-[10px] text-muted-foreground leading-normal">
+                    Configure os atalhos de digitação para abrir ou ativar ferramentas na barra de status. Use vírgula para cadastrar mais de um alias por ferramenta.
+                  </p>
+                </div>
+
+                <div className="space-y-3 rounded-lg border bg-muted/20 p-3.5">
+                  {Object.entries(ACOES_ATALHOS).map(([acao, label]) => {
+                    const aliases = obterAliasesAcao(acao);
+                    return (
+                      <div key={acao} className="space-y-1">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="font-bold text-foreground">{label}</span>
+                          <span className="text-muted-foreground text-[8px] font-mono uppercase bg-muted/80 px-1 rounded">
+                            {acao}
+                          </span>
+                        </div>
+                        <Input
+                          type="text"
+                          value={aliases}
+                          onChange={(e) => mudarAliasesAcao(acao, e.target.value)}
+                          placeholder="Ex: cc, cr"
+                          className="h-8 text-[11px] font-mono bg-background text-foreground"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

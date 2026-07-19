@@ -377,6 +377,9 @@ export interface PlantaConfig {
   offsetY?: number;
   centroInfoPos?: { lat: number; lon: number }; // posição (arrastada) do rótulo central do imóvel no mapa
   mostrarGrade?: boolean;      // padrão true
+  gradeEspacamento?: 'auto' | 'fine' | 'medium' | 'coarse'; // espaçamento das linhas da grade UTM
+  gradeCorLinha?: string;      // cor das linhas da grade (padrão '#8a94a6')
+  gradeMostrarRotulos?: boolean; // mostrar rótulos E/N (padrão true)
   mostrarNortes?: boolean;     // padrão true
   mostrarConvencoes?: boolean; // padrão true
   mostrarEscalaGrafica?: boolean; // padrão true

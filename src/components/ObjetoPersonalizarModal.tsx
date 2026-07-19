@@ -603,6 +603,58 @@ export function ObjetoPersonalizarModal({
               </div>
             );
           }
+          if (tipoPlanta === 'grade') {
+            return (
+              <div className="space-y-4">
+                <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Configurações da Grade UTM</div>
+
+                {/* Mostrar / Ocultar Grade */}
+                <label className="flex items-center gap-2 cursor-pointer py-1">
+                  <input type="checkbox" checked={plantaConfig.mostrarGrade !== false}
+                    onChange={(e) => setPlantaConfig((p: PlantaConfig) => ({ ...p, mostrarGrade: e.target.checked }))}
+                    className="rounded border-zinc-300 text-primary focus:ring-primary size-4" />
+                  <span className="text-sm font-medium">Mostrar grade de coordenadas UTM</span>
+                </label>
+
+                {/* Espaçamento */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Espaçamento das linhas</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[['auto', 'Automático'], ['fine', 'Fino (100m)'], ['medium', 'Médio (500m)'], ['coarse', 'Espaçado (1000m)']].map(([val, label]) => (
+                      <button key={val} type="button"
+                        onClick={() => setPlantaConfig((p: PlantaConfig) => ({ ...p, gradeEspacamento: val as PlantaConfig['gradeEspacamento'] }))}
+                        className={`px-3 py-1 rounded-md text-xs font-bold border transition-colors ${(plantaConfig.gradeEspacamento ?? 'auto') === val ? 'bg-primary text-primary-foreground border-transparent' : 'bg-background hover:bg-muted border-border'}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Cor das linhas */}
+                <div className="flex items-center gap-3">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">Cor das linhas</label>
+                  <input type="color"
+                    value={plantaConfig.gradeCorLinha ?? '#8a94a6'}
+                    onChange={(e) => setPlantaConfig((p: PlantaConfig) => ({ ...p, gradeCorLinha: e.target.value }))}
+                    className="h-7 w-10 rounded border border-border cursor-pointer" />
+                  <button type="button" onClick={() => setPlantaConfig((p: PlantaConfig) => ({ ...p, gradeCorLinha: undefined }))}
+                    className="text-xs text-muted-foreground hover:text-foreground underline">Padrão</button>
+                </div>
+
+                {/* Rótulos */}
+                <label className="flex items-center gap-2 cursor-pointer py-1">
+                  <input type="checkbox" checked={plantaConfig.gradeMostrarRotulos !== false}
+                    onChange={(e) => setPlantaConfig((p: PlantaConfig) => ({ ...p, gradeMostrarRotulos: e.target.checked }))}
+                    className="rounded border-zinc-300 text-primary focus:ring-primary size-4" />
+                  <span className="text-sm font-medium">Mostrar rótulos de coordenadas (E/N)</span>
+                </label>
+
+                <p className="text-[10px] text-muted-foreground bg-muted/40 p-2 rounded-lg">
+                  A grade UTM mostra as linhas de coordenadas projetadas do sistema geodésico (SIRGAS 2000) na prancha. Duplo clique em qualquer linha ou rótulo de grade para abrir estas configurações.
+                </p>
+              </div>
+            );
+          }
           if (tipoPlanta === 'print3d') {
             const id3D = 'planta.print3d';
             const ov3D = plantaConfig.textos?.[id3D] || {};

@@ -6,6 +6,7 @@ import { validarAssinaturaMP } from '@/lib/mp/validarWebhook';
 import { getAdminApp } from '@/lib/firebaseAdmin';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // Notificação assíncrona do Mercado Pago: ao contrário de mp/verify (que depende do NAVEGADOR do
 // cliente voltar da tela de pagamento pra confirmar), esta rota é chamada pelo próprio Mercado Pago

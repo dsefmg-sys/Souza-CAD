@@ -12,7 +12,7 @@ import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, 
 import { listarProjetosDoUsuario, salvarProjeto, novoId } from '@/lib/store/projects';
 import type { Projeto } from '@/lib/topo/types';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
-import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarWhatsappSuporteNome, salvarWhatsappSuporteNome, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, carregarYoutubePlaylist, salvarYoutubePlaylist, carregarVideosTutorial, salvarVideosTutorial, type ConfigSmtp, type VideoTutorial } from '@/lib/store/suporte';
+import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarWhatsappSuporteNome, salvarWhatsappSuporteNome, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, carregarYoutubePlaylist, salvarYoutubePlaylist, carregarVideosTutorial, salvarVideosTutorial, carregarLandingPageTexts, salvarLandingPageTexts, LANDING_PADRAO, type ConfigSmtp, type VideoTutorial, type LandingPageTexts } from '@/lib/store/suporte';
 import { auth } from '@/lib/firebase/client';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
 
@@ -41,6 +41,8 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [novoVideoUrl, setNovoVideoUrl] = useState('');
   const [formNovoVideoAberto, setFormNovoVideoAberto] = useState(false);
   const [modo3d, setModo3d] = useState(false);
+  const [landingTexts, setLandingTexts] = useState<LandingPageTexts>(LANDING_PADRAO);
+  const [salvandoLanding, setSalvandoLanding] = useState(false);
   const [smtp, setSmtp] = useState<ConfigSmtp>({});
   const [salvandoSmtp, setSalvandoSmtp] = useState(false);
   const [carregando, setCarregando] = useState(false);
@@ -119,6 +121,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
         setEmailBotaoLink(url || (typeof window !== 'undefined' ? window.location.origin : ''));
       }
       setModo3d(await carregarModo3dAtivado());
+      setLandingTexts(await carregarLandingPageTexts());
       setSmtp(await carregarConfigSmtp());
       setYoutubeUrl(await carregarYoutubePlaylist());
       setVideos(await carregarVideosTutorial());
@@ -126,6 +129,18 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       console.error(e);
     } finally {
       setCarregando(false);
+    }
+  }
+
+  async function salvarLandingTextsConfig() {
+    setSalvandoLanding(true);
+    try {
+      await salvarLandingPageTexts(landingTexts);
+      flash('Textos da Landing Page salvas com sucesso!');
+    } catch {
+      flash('Erro ao salvar os textos da Landing Page.');
+    } finally {
+      setSalvandoLanding(false);
     }
   }
 
@@ -517,6 +532,37 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                   ) : (
                     <p className="text-xs text-zinc-500">Nenhum vídeo cadastrado ainda.</p>
                   )}
+                </div>
+
+                {/* Personalização da Landing Page */}
+                <div className="space-y-2 col-span-1 md:col-span-2 border-t border-zinc-800/80 pt-4 mt-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Textos Personalizados da Landing Page</Label>
+                      <p className="text-[10px] text-zinc-500">Altere a headline, história e diferenciais exibidos na apresentação inicial.</p>
+                    </div>
+                    <Button size="sm" onClick={salvarLandingTextsConfig} disabled={salvandoLanding} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-8 text-xs">
+                      {salvandoLanding ? 'Salvando...' : 'Salvar Textos da Landing'}
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">Headline / Título Principal</Label>
+                      <Input value={landingTexts.titulo || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, titulo: e.target.value }))} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">Autor / Assinatura da História</Label>
+                      <Input value={landingTexts.autorHistoria || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, autorHistoria: e.target.value }))} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white" />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">Subtítulo / Descrição</Label>
+                      <Input value={landingTexts.subtitulo || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, subtitulo: e.target.value }))} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white" />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">História do Agrimensor Programador</Label>
+                      <textarea value={landingTexts.historia || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, historia: e.target.value }))} className="w-full h-20 p-2 text-xs rounded border border-zinc-800 bg-zinc-900 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Ocultar cobrança */}

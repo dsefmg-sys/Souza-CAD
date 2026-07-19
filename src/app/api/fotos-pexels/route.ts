@@ -6,6 +6,7 @@ import { firebaseApiKeyServidor, tokenDoHeader, verificarTokenFirebase } from '@
 // no servidor e nunca vai para o navegador — assim, rotacionar a chave resolve de vez o vazamento.
 // Quem tem chave própria do Pexels continua chamando direto do navegador, sem passar por aqui.
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   const key = process.env.PEXELS_API_KEY;

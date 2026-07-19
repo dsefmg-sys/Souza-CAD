@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, getCountFromServer } from 'firebase/firestore';
 import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
 import { TERMOS_VERSAO } from '../legal/termos';
 
@@ -103,6 +103,25 @@ export async function listarPerfisUso(): Promise<PerfilUso[]> {
   } catch (e) {
     console.warn('Falha ao listar perfis de uso (só o master tem acesso):', e);
     return [];
+  }
+}
+
+/** Obtém a contagem total de usuários cadastrados de forma performática e econômica. */
+export async function obterContagemUsuarios(): Promise<number> {
+  if (!firebaseConfigurado) return 12; // Valor fictício offline
+  try {
+    const coll = collection(fdb()!, 'perfisUso');
+    const snap = await getCountFromServer(coll);
+    const count = snap.data().count;
+    try { localStorage.setItem('metrica.userCountCache', String(count)); } catch { /* ignore */ }
+    return count;
+  } catch (e) {
+    console.warn('Erro ao obter contagem de usuários do servidor:', e);
+    try {
+      const cached = localStorage.getItem('metrica.userCountCache');
+      if (cached) return Number(cached);
+    } catch { /* ignore */ }
+    return 12; // Fallback
   }
 }
 

@@ -4,6 +4,7 @@ import { verifySession } from '@/lib/apiAuth';
 import { getMercadoPagoClient } from '@/lib/mercadopago';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const session = await verifySession(req);

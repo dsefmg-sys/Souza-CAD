@@ -3,6 +3,9 @@ import { verifySession } from '@/lib/apiAuth';
 import nodemailer from 'nodemailer';
 import { obterConfigSmtp } from '@/lib/server/emailSmtp';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   const session = await verifySession(req);
   if (!session || !session.admin) {

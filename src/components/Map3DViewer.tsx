@@ -120,6 +120,8 @@ interface Map3DViewerProps {
   onVoltar2D: () => void;
   onCapture?: (dataUrl: string, meta?: { volCorte?: number; volAterro?: number; zRef?: number }) => void;
   gradeAltimetrica?: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[];
+  /** Dispara a geração automática de curvas de nível calculada para o imóvel (chama gerarCurvasNivel do editor). */
+  onGerarCurvas?: () => void;
 }
 
 export default function Map3DViewer({
@@ -131,7 +133,8 @@ export default function Map3DViewer({
   imovel,
   onVoltar2D,
   onCapture,
-  gradeAltimetrica = []
+  gradeAltimetrica = [],
+  onGerarCurvas,
 }: Map3DViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Câmera em REFS (não em state): o laço de desenho lê direto a cada quadro, então girar/arrastar/zoom
@@ -1474,6 +1477,23 @@ export default function Map3DViewer({
               title="Calcula a cota que falta a partir dos pontos que têm altitude (marcada como calculada; reversível)"
             >
               <Wand2 className="size-3" /> Completar altitudes
+            </Button>
+          </div>
+        )}
+
+        {/* Botão de geração automática de curvas de nível com configurações calculadas para este imóvel */}
+        {onGerarCurvas && (
+          <div className="space-y-1.5 pt-2 border-t border-border/60">
+            <p className="text-[10px] leading-snug text-indigo-600 dark:text-indigo-400 font-medium">
+              Gere curvas de nível com intervalo e grade calculados automaticamente para este imóvel.
+            </p>
+            <Button
+              size="sm"
+              className="h-8 w-full gap-1.5 text-[10px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white border-0"
+              onClick={onGerarCurvas}
+              title="Busca os dados de altitude online e gera as curvas de nível com configurações ótimas calculadas para este imóvel"
+            >
+              <RefreshCw className="size-3" /> Gerar Curvas de Nível
             </Button>
           </div>
         )}

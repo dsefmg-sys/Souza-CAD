@@ -55,6 +55,7 @@ import MobileHome from '@/components/MobileHome';
 import AssinaturaModal from '@/components/AssinaturaModal';
 import { rotulosProfissional } from '@/lib/topo/profissional';
 import IntroVideo from '@/components/IntroVideo';
+import LandingPage from '@/components/LandingPage';
 import { TutorialAudioPill } from '@/components/IntroAudio';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
 import CalculadoraModal from '@/components/CalculadoraModal';
@@ -120,11 +121,11 @@ import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
 import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
 import { carregarTiposDivisaCustom, salvarTipoDivisaCustom, type TipoDivisaCustom } from '@/lib/store/tiposDivisaCustom';
-import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, type PerfilUso } from '@/lib/store/perfilUso';
+import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, obterContagemUsuarios, type PerfilUso } from '@/lib/store/perfilUso';
 import { garantirEmpresaDoWorkspace, minhaEmpresa, type Empresa } from '@/lib/store/empresas';
 import { carregarPreferencias, salvarPreferencias, salvarModo, proximoModo, registrarTempoCompleto, confirmarApagar, casasTela, PREFERENCIAS_PADRAO, ATALHOS_F_PADRAO, ATALHOS_COMANDO_PADRAO, type PreferenciasApp } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
-import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist, carregarVideosTutorial, type VideoTutorial } from '@/lib/store/suporte';
+import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist, carregarVideosTutorial, carregarLandingPageTexts, LANDING_PADRAO, type VideoTutorial, type LandingPageTexts } from '@/lib/store/suporte';
 import { carregarConfigAssinatura, verificarBloqueioFaturamento, type ConfigAssinatura } from '@/lib/store/assinatura';
 
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
@@ -315,7 +316,7 @@ function IconeCota({ className }: { className?: string }) {
 // uso. O botão precisa ser `relative` — as grades põem `[&>button]:relative` uma vez só.
 function Atalho({ k, className }: { k: string; className?: string }) {
   return (
-    <span className={`pointer-events-none absolute right-0.5 top-0.5 text-[8px] font-extrabold leading-none tracking-tight text-amber-500 dark:text-amber-400 ${className ?? ''}`}>{k}</span>
+    <span className={`pointer-events-none absolute left-0.5 top-0.5 text-[8px] font-extrabold leading-none tracking-tight text-amber-500 dark:text-amber-400 ${className ?? ''}`}>{k}</span>
   );
 }
 
@@ -426,6 +427,8 @@ export default function EditorPage() {
   // individual como antes, pra nunca bloquear ninguém à toa durante a transição.
   const [empresaAtual, setEmpresaAtual] = useState<Empresa | null>(null);
   const [configAssinatura, setConfigAssinatura] = useState<ConfigAssinatura | null>(null);
+  const [numUsuariosTotal, setNumUsuariosTotal] = useState(12);
+  const [landingTexts, setLandingTexts] = useState<LandingPageTexts>(LANDING_PADRAO);
   const [avisoPagamentoAberto, setAvisoPagamentoAberto] = useState(false);
   const [pagamentoVerificando, setPagamentoVerificando] = useState(false);
   // zoom/pan da PRÉVIA da planta (não afeta o PDF exportado, que lê o SVG original)
@@ -498,6 +501,11 @@ export default function EditorPage() {
   // bloqueia trocar/criar gleba e importar enquanto uma operação assíncrona (importar/salvar)
   // está em andamento — evita corrida que jogaria dados na gleba errada.
   const [processando, setProcessando] = useState(false);
+  // Overlay visual de feedback ao executar atalho de teclado (OK = verde, erro = vermelho)
+  const [feedbackAtalho, setFeedbackAtalho] = useState<{ texto: string; tipo: 'ok' | 'erro' } | null>(null);
+  const feedbackAtalhoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Hash dos vértices no momento da última reconciliação com o SIGEF (para detectar mudanças)
+  const [verticesHashConferencia, setVerticesHashConferencia] = useState<string | null>(null);
   const [zona, setZona] = useState(23);
   const [hemisferio, setHemisferio] = useState<'N' | 'S'>('S');
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
@@ -1060,6 +1068,15 @@ export default function EditorPage() {
   // Novo usuário começa no simples. Fica salvo nas preferências e vale no app inteiro.
   const [modoApp, setModoApp] = useState<'simples' | 'medio' | 'completo'>('simples');
   const [, setTempoCompletoMs] = useState(0);
+  const [landingPageAberta, setLandingPageAberta] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const vista = localStorage.getItem('metrica:landing_page_vista');
+      return !vista;
+    } catch {
+      return false;
+    }
+  });
   const [introTocando, setIntroTocando] = useState(() => {
     if (typeof window === 'undefined') return false;
     // Espelha a lógica do IntroVideo: se a abertura JÁ tocou nesta sessão (ex.: rodou na tela de
@@ -1073,7 +1090,12 @@ export default function EditorPage() {
   useEffect(() => {
     const h = (e: Event) => setIntroTocando(!!(e as CustomEvent<boolean>).detail);
     window.addEventListener('souzacad:intro', h);
-    return () => window.removeEventListener('souzacad:intro', h);
+    const s = () => setLandingPageAberta(true);
+    window.addEventListener('souzacad:ver-site', s);
+    return () => {
+      window.removeEventListener('souzacad:intro', h);
+      window.removeEventListener('souzacad:ver-site', s);
+    };
   }, []);
   function trocarModoApp(m: 'simples' | 'medio' | 'completo') { setModoApp(m); try { salvarModo(m); } catch { /* ignore */ } }
   const completo = modoApp === 'completo';
@@ -1187,6 +1209,8 @@ export default function EditorPage() {
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
     iniciarCoresDivisa(); // aplica as cores de divisa personalizadas do projetista
     setTiposDivisaCustom(carregarTiposDivisaCustom());
+    obterContagemUsuarios().then(setNumUsuariosTotal).catch(() => {});
+    carregarLandingPageTexts().then(setLandingTexts).catch(() => {});
     setPrefs(carregarPreferencias()); // preferências de interface (ícones do cabeçalho etc.)
     // condições de uso: o aceite é registrado discretamente no primeiro acesso (PrimeiroAcessoModal);
     // o texto mora em Ajustes → Sobre o sistema — sem tela bloqueando (decisão do dono, 05/07/2026)
@@ -1679,6 +1703,36 @@ export default function EditorPage() {
       case 'novo':
         criarNovoProjeto();
         break;
+      case 'preco':
+      case 'precificacao':
+        setPrecoSugAberto(true);
+        break;
+      case 'pontos_banco':
+        abrirGestaoPontos();
+        break;
+      case 'rotulos':
+        setMostrarRotulos((m) => !m);
+        break;
+      case 'gestao':
+        setGestaoAberta(true);
+        break;
+      case 'desfazer':
+        desfazer();
+        break;
+      case 'refazer':
+        refazer();
+        break;
+      case 'curvas_nivel':
+        setCurvaConfigAberta((v) => !v);
+        break;
+      case 'folha_travada':
+      case 'trava_folha':
+        setFolhaTravada((f) => {
+          const n = !f;
+          if (!n) setModo('navegar');
+          return n;
+        });
+        break;
       default:
         break;
     }
@@ -1692,12 +1746,78 @@ export default function EditorPage() {
     }
     if (!cmd) return;
 
-    const acao = prefs.atalhosComando?.[cmd] || ATALHOS_COMANDO_PADRAO[cmd];
+    // Dicionário estendido com aliases de 2 letras baseados nas consoantes e comuns do CAD
+    const aliasesExtra: Record<string, string> = {
+      // Desenho e Geometria
+      lh: 'linha',
+      ln: 'linha',
+      pl: 'polilinha',
+      tr: 'tracejado',
+      tx: 'texto',
+      tt: 'texto',
+      ct: 'cota',
+      co: 'cota',
+      sm: 'simbolo',
+      sb: 'simbolo',
+      rt: 'retangulo',
+      cc: 'circulo',
+      cr: 'circulo',
+      rc: 'arco',
+      ac: 'arco',
+      sv: 'selecao_varios', // sv = selecionar vários (legacy)
+      md: 'medir',
+      me: 'medir',
+      pr: 'paralela',
+      dv: 'dividir',
+      tm: 'aparar',
+      ap: 'aparar',
+      ex: 'prolongar',
+      pg: 'prolongar',
+
+      // Barra Lateral Esquerda e Outros Comandos
+      gt: 'gestao',
+      nv: 'novo',
+      sl: 'salvar',
+      pc: 'precificacao',
+      pt: 'pontos_banco',
+      bp: 'pontos_banco',
+      rl: 'rotulos',
+      ro: 'rotulos',
+      ft: 'folha_travada',
+      tv: 'folha_travada',
+      tf: 'folha_travada',
+      dz: 'desfazer',
+      ry: 'refazer',
+      cn: 'curvas_nivel',
+    };
+
+    const acao = aliasesExtra[cmd] || prefs.atalhosComando?.[cmd] || ATALHOS_COMANDO_PADRAO[cmd];
     if (!acao) {
-      aviso(`Comando desconhecido: ${cmdText}`);
+      dispararFeedbackAtalho(`"${cmdText}" não reconhecido`, 'erro');
       return;
     }
     executarAcao(acao);
+    // Feedback visual: mostra o nome da ação ativada no centro da tela
+    const nomes: Record<string, string> = {
+      linha: 'Linha', polilinha: 'Polilinha', tracejado: 'Tracejado', texto: 'Texto',
+      cota: 'Cota', simbolo: 'Símbolo', retangulo: 'Retângulo', circulo: 'Círculo',
+      arco: 'Arco', selecao_varios: 'Selecionar', medir: 'Medir', paralela: 'Paralela',
+      dividir: 'Dividir', aparar: 'Aparar', prolongar: 'Prolongar', navegar: 'Navegar',
+      gestao: 'Gestão', novo: 'Novo Projeto', salvar: 'Salvar', precificacao: 'Precificação',
+      pontos_banco: 'Banco de Pontos', desfazer: 'Desfazer', refazer: 'Refazer',
+      rotulos: 'Rótulos', folha_travada: 'Travar Folha', curvas_nivel: 'Curvas de Nível',
+      tutorial: 'Tutorial', pontos: 'Pontos', sigef: 'SIGEF', dados: 'Dados', confro: 'CONFRO',
+      divisas: 'Divisas', trt: 'ART/TRT', ods: 'ODS', conferir: 'Conferir', pecas: 'Peças',
+      cert: 'CERT', car: 'CAR',
+    };
+    dispararFeedbackAtalho(nomes[acao] || acao, 'ok');
+  }
+
+  // Exibe o overlay de feedback de atalho no centro da tela por ~1.2s
+  function dispararFeedbackAtalho(texto: string, tipo: 'ok' | 'erro') {
+    if (feedbackAtalhoTimerRef.current) clearTimeout(feedbackAtalhoTimerRef.current);
+    setFeedbackAtalho({ texto, tipo });
+    feedbackAtalhoTimerRef.current = setTimeout(() => setFeedbackAtalho(null), tipo === 'ok' ? 1200 : 900);
   }
 
   // atalhos remapeados em ordem crescente
@@ -4649,10 +4769,10 @@ export default function EditorPage() {
   const [ajusteAltCm, setAjusteAltCm] = useState('');
   const [desconsiderarVerticesLevantados, setDesconsiderarVerticesLevantados] = useState(false);
   const [incluirDivisaNasCurvas, setIncluirDivisaNasCurvas] = useState(true);
-  const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState(15);
+  const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState(10); // padrão mais fino = curvas de melhor qualidade
   const [modeloElevacao, setModeloElevacao] = useState<'copernicus_dem_30' | 'alos_dem_30' | 'srtm_gld3'>('copernicus_dem_30');
   const [glebaCurvaAlvo, setGlebaCurvaAlvo] = useState<string>('todas');
-  const [curvaUsarTriangulacao, setCurvaUsarTriangulacao] = useState<boolean>(true);
+  const [curvaUsarTriangulacao, setCurvaUsarTriangulacao] = useState<boolean>(false); // padrão: dados online (não triangulação local)
 
   function ajustarAltitudesGlobais(cm: number) {
     if (!cm || isNaN(cm)) return;
@@ -4708,6 +4828,93 @@ export default function EditorPage() {
   function sugerirIntervaloCurva() {
     const pts = pontos3dCurvas();
     if (pts.length >= 2) setIntervaloCurva(intervaloSugerido(pts));
+  }
+
+  // Gera curvas de nível AUTOMATICAMENTE: calcula o espaçamento da grade e o intervalo ótimos
+  // para ESTE imóvel (baseado na diagonal/área do polígono) e depois dispara a geração completa.
+  // Chamado pelo botão "Gerar Curvas de Nível" no viewer 3D.
+  // Implementado de forma auto-contida para contornar a closure dos estados React.
+  async function gerarCurvasNivelAuto() {
+    if (vertices.length < 3) {
+      aviso('Importe os pontos do levantamento antes de gerar curvas de nível.');
+      return;
+    }
+    // Calcula parâmetros ótimos para este imóvel
+    const spacingIdeal = calcularEspacamentoGradeAuto(vertices);
+    setGradeDensidadeMetros(spacingIdeal);
+    setCurvaUsarTriangulacao(false);
+    // Gera nova grade de altitude, ignorando cache antigo
+    setGradeAltimetrica([]);
+    setProcessando(true);
+    aviso('Calculando grade de altitudes ideal para este imóvel (dados online)...');
+    try {
+      const candidatos = gerarGradePontosUTM(vertices, spacingIdeal);
+      const queryPoints = [...candidatos];
+      vertices.forEach(v => { queryPoints.push({ lat: v.lat, lon: v.lon, leste: v.leste, norte: v.norte }); });
+      verticesIgnorados.forEach(v => { queryPoints.push({ lat: v.lat, lon: v.lon, leste: v.leste, norte: v.norte }); });
+      const resAltitudes = await obterAltitudesLote(queryPoints);
+      const pontosObtidos: typeof gradeAltimetrica = [];
+      for (const cand of candidatos) {
+        const key = `${cand.lat.toFixed(6)},${cand.lon.toFixed(6)}`;
+        const elev = resAltitudes[key];
+        if (elev !== undefined) {
+          pontosObtidos.push({ lat: cand.lat, lon: cand.lon, leste: cand.leste, norte: cand.norte, elevacao: elev });
+        }
+      }
+      if (pontosObtidos.length === 0) {
+        aviso('Não foi possível obter dados de altitude online. Verifique a conexão com a internet.');
+        return;
+      }
+      setGradeAltimetrica(pontosObtidos);
+      aviso(`Grade de ${pontosObtidos.length} pontos obtida. Gerando curvas de nível...`);
+      // Monta os pontos 3D usando a grade recém-obtida (bypass de closure)
+      const ptsGrade = pontosObtidos.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
+      const ptsVertices = [...vertices, ...verticesIgnorados]
+        .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }))
+        .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && p.z !== 0);
+      const pts3d = [...ptsVertices, ...ptsGrade];
+      if (pts3d.length < 4) {
+        aviso('Pontos insuficientes com altitude para gerar curvas. Tente um espaçamento menor.');
+        return;
+      }
+      const zs = pts3d.map(p => p.z); void zs; // usado apenas para debug se necessário
+      const intervaloAuto = intervaloSugerido(pts3d);
+      setIntervaloCurva(intervaloAuto);
+      const poligono = vertices.length >= 3 ? vertices.map(v => ({ x: v.leste, y: v.norte })) : undefined;
+      const poligonos = undefined;
+      const { gerarCurvasDeNivel } = await import('@/lib/topo/curvasNivel');
+      const curvas = gerarCurvasDeNivel(pts3d, {
+        intervalo: intervaloAuto,
+        poligono,
+        poligonos,
+        usarTriangulacao: false,
+        passosSuavizacao: 4,
+      });
+      if (!curvas.length) {
+        aviso('Não consegui traçar curvas com esses pontos. Tente um intervalo menor nas configurações de Curvas de Nível.');
+        return;
+      }
+      const niveis = [...new Set(curvas.map((c) => c.nivel))];
+      const cadaN = Math.max(1, Math.round(curvaMestraCada));
+      const passoMestra = intervaloAuto * cadaN;
+      const esp = ESP_CURVA[curvaEspessura];
+      const objs = curvas.map((c) => {
+        const mestra = Math.abs(c.nivel / passoMestra - Math.round(c.nivel / passoMestra)) < 1e-6;
+        const pontos = c.linha.map((p) => { const g = utmParaGeo(p.x, p.y, zona, hemisferio); return { lat: g.lat, lon: g.lon, leste: p.x, norte: p.y }; });
+        return novaCurvaNivel(pontos, c.nivel, mestra, {
+          cor: curvaCorAuto ? COR_CURVA_AUTO : (mestra ? curvaCorMestra : curvaCorFina),
+          espessura: mestra ? esp.mestra : esp.normal
+        });
+      });
+      setObjetos((os) => [...os.filter((o) => o.curvaNivel == null), ...objs]);
+      aviso(`${objs.length} curvas de nível geradas em ${niveis.length} níveis (intervalo ${intervaloAuto}m). Voltando ao mapa.`);
+      setVista('mapa');
+    } catch (e) {
+      console.error('[gerarCurvasNivelAuto] Erro:', e);
+      aviso('Erro ao gerar curvas de nível automaticamente. Verifique o console para detalhes.');
+    } finally {
+      setProcessando(false);
+    }
   }
 
   function calcularEspacamentoGradeAuto(vs: typeof vertices): number {
@@ -4784,31 +4991,46 @@ export default function EditorPage() {
     }
 
     if (aBuscar.length > 0) {
-      const BATCH_SIZE = 150;
+      const BATCH_SIZE = 100; // reduzido de 150 para evitar URLs muito longas
       const globalUpdates: Record<string, number> = {};
       for (let i = 0; i < aBuscar.length; i += BATCH_SIZE) {
         const batch = aBuscar.slice(i, i + BATCH_SIZE);
         const latsStr = batch.map(c => c.lat.toFixed(6)).join(',');
         const lonsStr = batch.map(c => c.lon.toFixed(6)).join(',');
-        
-        const resApi = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}&model=${modeloElevacao}`);
-        if (!resApi.ok) throw new Error('Falha na resposta do servidor Open-Meteo.');
-        const data = await resApi.json();
-        if (!data || !Array.isArray(data.elevation)) {
-          throw new Error('Formato de resposta inválido da API de altitudes.');
-        }
-
-        batch.forEach((c, idx) => {
-          const elev = data.elevation[idx];
-          if (Number.isFinite(elev)) {
-            localCache[c.key] = elev;
-            globalUpdates[c.cacheKey] = elev;
+        try {
+          const resApi = await fetch(
+            `https://api.open-meteo.com/v1/elevation?latitude=${latsStr}&longitude=${lonsStr}`,
+            { signal: AbortSignal.timeout(15000) }
+          );
+          if (!resApi.ok) {
+            console.warn(`[Altitude] HTTP ${resApi.status} no batch ${i / BATCH_SIZE + 1}`);
+            continue;
           }
-        });
+          const data = await resApi.json() as { elevation?: number[]; error?: boolean; reason?: string };
+          if (data.error) {
+            console.warn('[Altitude] Erro da API:', data.reason);
+            continue;
+          }
+          if (!data || !Array.isArray(data.elevation)) {
+            console.warn('[Altitude] Formato de resposta inesperado:', data);
+            continue;
+          }
+          batch.forEach((c, idx) => {
+            const elev = data.elevation![idx];
+            if (Number.isFinite(elev)) {
+              localCache[c.key] = elev;
+              globalUpdates[c.cacheKey] = elev;
+            }
+          });
+        } catch (err) {
+          console.error(`[Altitude] Erro ao buscar batch ${i / BATCH_SIZE + 1}:`, err);
+          // continua com os próximos batches mesmo se um falhar
+        }
       }
-
       // Atualiza o cache global
-      setVerticesOnlineElev(prev => ({ ...prev, ...globalUpdates }));
+      if (Object.keys(globalUpdates).length > 0) {
+        setVerticesOnlineElev(prev => ({ ...prev, ...globalUpdates }));
+      }
     }
 
     return localCache;
@@ -4860,6 +5082,9 @@ export default function EditorPage() {
         if (pontosObtidos.length > 0) {
           setGradeAltimetrica(pontosObtidos);
           activeGrade = pontosObtidos;
+          aviso(`Grade de relevo ativada com ${pontosObtidos.length} pontos de altitude online. Clique em [Gerar] para traçar as curvas.`);
+        } else {
+          aviso('Não foi possível obter dados de altitude online. Verifique a conexão com a internet ou tente novamente em instantes.');
         }
 
         // Atualiza os vértices sem altitude (ou todos se desconsiderar for true)
@@ -4988,6 +5213,7 @@ export default function EditorPage() {
       poligono,
       poligonos,
       usarTriangulacao: curvaUsarTriangulacao,
+      passosSuavizacao: 4, // suavização extra para curvas mais fluidas e realistas
     });
     if (!curvas.length) { await avisar({ titulo: 'Curvas de nível', mensagem: 'Não consegui traçar curvas com esses pontos e intervalo. Tente um intervalo menor ou traga mais pontos internos.' }); return; }
 
@@ -5843,6 +6069,100 @@ export default function EditorPage() {
     return conferirProntoParaExportar(imovel, vertices, confrontantes, tecnico, confrontantePorLado).ok;
   }, [imovel, vertices, confrontantes, tecnico, confrontantePorLado]);
 
+  // Guia de próximos passos dinâmicos com base no estado do fluxo
+  const dicaFluxo = useMemo(() => {
+    const nLados = Object.keys(confrontantePorLado).length;
+    const todosLados = vertices.length > 0 && nLados >= vertices.length;
+    const todasDivisas = vertices.length > 0 && vertices.every((v) => !!v.representacao) && todosLados;
+    
+    const txtFeito = vertices.length >= 3;
+    const dadosFeitos = !!(imovel.denominacao && imovel.matricula && imovel.proprietario && imovel.municipio);
+    const confroFeito = todosLados;
+    const divisasFeitas = todasDivisas;
+    const trtFeita = !!imovel.numeroTrt?.trim();
+    const odsFeito = !!baixou.ods;
+    
+    if (!txtFeito) {
+      return {
+        passo: 1,
+        resumo: "Próximo passo: Importar os pontos do levantamento (.txt)",
+        detalhe: "Envie o arquivo contendo as coordenadas dos vértices (latitude/longitude ou UTM) obtidos no receptor GNSS. Clique no botão \"PONTOS\" no cabeçalho ou pressione F2 para carregar o arquivo TXT/CSV."
+      };
+    }
+    
+    if (sigefStatus === 'idle') {
+      return {
+        passo: 2,
+        resumo: "Próximo passo: Consultar os vizinhos certificados no SIGEF",
+        detalhe: "Consulte se existem imóveis vizinhos já certificados no SIGEF/INCRA para evitar sobreposições e obter os dados corretos de confrontação. Clique no botão \"SIGEF\" no cabeçalho ou pressione F3."
+      };
+    }
+    
+    if (!dadosFeitos) {
+      return {
+        passo: 3,
+        resumo: "Próximo passo: Preencher os dados do projeto (Imóvel, Proprietário, RT)",
+        detalhe: "Insira as informações básicas do imóvel (Denominação, Matrícula), Proprietário e Responsável Técnico. Clique no botão \"DADOS\" no cabeçalho ou pressione F4. Estes dados preencherão o carimbo e os documentos."
+      };
+    }
+    
+    if (!confroFeito) {
+      return {
+        passo: 4,
+        resumo: "Próximo passo: Definir confrontantes de cada trecho (CONFRO)",
+        detalhe: "Indique os vizinhos confrontantes de cada lado do imóvel. Clique em \"CONFRO\" (F5) no cabeçalho, selecione o confrontante e depois clique nos vértices correspondentes no mapa (no sentido horário) para associá-los."
+      };
+    }
+    
+    if (!divisasFeitas) {
+      return {
+        passo: 5,
+        resumo: "Próximo passo: Caracterizar limites e divisas (DIVISAS)",
+        detalhe: "Defina o tipo de divisa física de cada trecho do perímetro. Clique em \"DIVISAS\" (F6) no cabeçalho, selecione o tipo (Muro, Cerca, Córrego, etc.) e clique no trecho correspondente no mapa (no sentido horário)."
+      };
+    }
+    
+    if (!trtFeita) {
+      return {
+        passo: 6,
+        resumo: "Próximo passo: Inserir o número da ART/TRT",
+        detalhe: "Informe o número da ART (CREA) ou TRT (CFT) correspondente ao georreferenciamento do imóvel. Clique no botão \"ART/TRT\" no cabeçalho ou pressione F7 para salvar."
+      };
+    }
+    
+    if (!odsFeito) {
+      return {
+        passo: 7,
+        resumo: "Próximo passo: Baixar a planilha ODS para certificação SIGEF",
+        detalhe: "Gere a planilha no formato ODS exigida pelo SIGEF/INCRA para o credenciamento do imóvel. Clique em \"ODS\" no cabeçalho (F8) para conferir e exportar o arquivo."
+      };
+    }
+    
+    if (!projPronto) {
+      return {
+        passo: 8,
+        resumo: "Próximo passo: Executar a checagem final (CONFERIR)",
+        detalhe: "Execute a checagem final do projeto. O app verificará tolerâncias de precisão de vértices, fechamento linear e angular, além de confrontações. Clique no botão \"CONFERIR\" (F9) para validar."
+      };
+    }
+    
+    return {
+      passo: 9,
+      resumo: "Passo Final: Baixar o pacote de peças técnicas (PEÇAS)",
+      detalhe: "Seu projeto está concluído e pronto para entrega! Clique no botão \"PEÇAS\" no cabeçalho (F10) ou use o menu dropdown para baixar individualmente ou o Pacote ZIP com Memorial Descritivo (.docx), Planta (.svg), Requerimento e Declarações."
+    };
+  }, [vertices, imovel, confrontantePorLado, sigefStatus, baixou, projPronto]);
+
+  // Retorna o atalho curto configurado para a ferramenta
+  const obterAtalhoLateral = (acao: string, fallbackFKey: string) => {
+    const atalhos = prefs.atalhosComando || ATALHOS_COMANDO_PADRAO;
+    const correspondente = Object.entries(atalhos).find(([, val]) => val === acao);
+    if (correspondente) {
+      return correspondente[0];
+    }
+    return fallbackFKey;
+  };
+
   // rótulos de confrontante arrastáveis no mapa (posRotulo manual ou centróide dos lados)
   const rotulosConf: RotuloMapa[] = useMemo(() => {
     const out: RotuloMapa[] = [];
@@ -6215,12 +6535,19 @@ export default function EditorPage() {
         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
         {!telaEstreita && (
           <>
-            <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-sky-500 hover:bg-sky-600 text-white`} title="Tutorial de Fluxo de Trabalho (F1)" onClick={() => setTutorialF1Aberto(true)}>
-              <HelpCircle className="size-3 shrink-0" /> TUTORIAL
+            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-sky-500 hover:bg-sky-600 text-white gap-1`} title="Início — Guia do fluxo de trabalho passo a passo (F1)" onClick={() => setTutorialF1Aberto(true)}>
+              <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F1</span>
+              <GraduationCap className="size-3 shrink-0 animate-pulse text-sky-100" /> INÍCIO
             </Button>
-            <Etapa st={etapas.txt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}><Upload /> PONTOS</Button></Etapa>
+            <Etapa st={etapas.txt}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_IMPORT} gap-1`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}>
+                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F2</span>
+                <Upload /> PONTOS
+              </Button>
+            </Etapa>
             <Etapa st={etapas.sigef}>
-              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_VIZINHO}`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_VIZINHO} gap-1`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
+                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F3</span>
                 <Download /> SIGEF
               </Button>
             </Etapa>
@@ -6232,7 +6559,8 @@ export default function EditorPage() {
             abas (Imóvel, Vértices…) levam aos dados. Fica só no desktop. */}
         {!telaEstreita && (
           <Etapa st={etapas.dados}>
-            <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''}`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
+            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
+              <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F4</span>
               <Upload /> DADOS
             </Button>
           </Etapa>
@@ -6243,8 +6571,18 @@ export default function EditorPage() {
             celular ficam escondidas: mobile é pra consultar, preencher e baixar, não pra desenhar. */}
         {!telaEstreita && (
           <>
-            <Etapa st={etapas.confro}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_CONFRO} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}><Paintbrush className="size-3 shrink-0" /> CONFRO</Button></Etapa>
-            <Etapa st={etapas.divisas}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_DIVISA} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}><Paintbrush className="size-3 shrink-0" /> DIVISAS</Button></Etapa>
+            <Etapa st={etapas.confro}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_CONFRO} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>
+                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F5</span>
+                <Paintbrush className="size-3 shrink-0" /> CONFRO
+              </Button>
+            </Etapa>
+            <Etapa st={etapas.divisas}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DIVISA} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>
+                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F6</span>
+                <Paintbrush className="size-3 shrink-0" /> DIVISAS
+              </Button>
+            </Etapa>
             <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
           </>
         )}
@@ -6253,14 +6591,28 @@ export default function EditorPage() {
             ODS e Conferir soltos, e memorial/planta/requerimento/anuência/errata num menu PEÇAS. */}
         {(
           <>
-            <Etapa st={etapas.trt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}><Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}</Button></Etapa>
-            <Etapa st={etapas.ods}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA_OURO}`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}><Download /> ODS</Button></Etapa>
-            <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA}`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}><CheckCircle2 /> CONFERIR</Button>
+            <Etapa st={etapas.trt}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>
+                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F7</span>
+                <Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}
+              </Button>
+            </Etapa>
+            <Etapa st={etapas.ods}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}>
+                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F8</span>
+                <Download /> ODS
+              </Button>
+            </Etapa>
+            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}>
+              <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F9</span>
+              <CheckCircle2 /> CONFERIR
+            </Button>
             {/* Memorial, planta, requerimento, anuência e errata: reunidos num menu PEÇAS, pra não
                 disputar espaço no cabeçalho com um botão solto pra cada um (mesmo espírito do menu
                 PEÇAS que já existe no celular). */}
             <div ref={pecasBtnRef} className="relative shrink-0">
-              <Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
+                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F10</span>
                 <Download /> PEÇAS <ChevronDown className="size-3" />
               </Button>
               {pecasMenuAberto && pecasMenuPos && (
@@ -6322,11 +6674,17 @@ export default function EditorPage() {
             </div>
             {medioOuMais && (
               <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
-                <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-emerald-800 hover:bg-emerald-900 text-white border-transparent`} title="Acessar o SIGEF para certificação eletrônica do imóvel"><CheckCircle2 /> CERT</Button>
+                <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-emerald-800 hover:bg-emerald-900 text-white border-transparent gap-1`} title="Acessar o SIGEF para certificação eletrônica do imóvel">
+                  <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F11</span>
+                  <CheckCircle2 /> CERT
+                </Button>
               </a>
             )}
             {medioOuMais && (
-              <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}><Leaf /> CAR</Button>
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent gap-1`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>
+                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F12</span>
+                <Leaf /> CAR
+              </Button>
             )}
 
           </>
@@ -6464,28 +6822,33 @@ export default function EditorPage() {
                       {/* Botões de Gestão — grade de 2 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo
                           (sem botão de largura total; menos rolagem). */}
                       <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                        <Button size="sm" variant="secondary" className="col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setGestaoAberta(true)} title="Gestão financeira">
+                        <Button size="sm" variant="secondary" className="relative col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setGestaoAberta(true)} title={`Gestão financeira (${obterAtalhoLateral('gestao', 'gt')})`}>
                           <BarChart3 className="text-white" /> <span>Gestão</span>
+                          <Atalho k={obterAtalhoLateral('gestao', 'gt')} />
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={criarNovoProjeto} disabled={processando} title="Novo projeto">
+                        <Button size="sm" variant="secondary" className="relative" onClick={criarNovoProjeto} disabled={processando} title={`Novo projeto (${obterAtalhoLateral('novo', 'nv')})`}>
                           <Plus className="text-amber-500" /> <span>Novo</span>
+                          <Atalho k={obterAtalhoLateral('novo', 'nv')} />
                         </Button>
                         <Button
                           size="sm"
                           variant="secondary"
                           onClick={salvar}
                           disabled={processando}
-                          title={salvarLaranja ? "Salvar projeto atual (Ctrl+S) - Modificações pendentes de salvamento!" : "Projeto salvo e sincronizado (Ctrl+S)"}
+                          title={salvarLaranja ? `Salvar projeto atual (${obterAtalhoLateral('salvar', 'sl')}) - Modificações pendentes de salvamento!` : `Projeto salvo e sincronizado (${obterAtalhoLateral('salvar', 'sl')})`}
                           className={`relative transition-all duration-300 ${salvarLaranja ? 'bg-orange-500 hover:bg-orange-600 text-white font-bold border-transparent' : ''}`}
                         >
                           <Save className={salvarLaranja ? 'text-white' : 'text-emerald-500'} /> <span>SALVAR</span>
+                          <Atalho k={obterAtalhoLateral('salvar', 'sl')} />
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={() => setPrecoSugAberto(true)} title="Precificação: quanto cobrar por este imóvel">
+                        <Button size="sm" variant="secondary" className="relative" onClick={() => setPrecoSugAberto(true)} title={`Precificação: quanto cobrar por este imóvel (${obterAtalhoLateral('precificacao', 'pc')})`}>
                           <PencilRuler className="text-amber-400" /> <span>Precificação</span>
+                          <Atalho k={obterAtalhoLateral('precificacao', 'pc')} />
                         </Button>
                         {completo && (
-                          <Button size="sm" variant="secondary" onClick={abrirGestaoPontos} title="Banco de pontos">
+                          <Button size="sm" variant="secondary" className="relative" onClick={abrirGestaoPontos} title={`Banco de pontos (${obterAtalhoLateral('pontos_banco', 'pt')})`}>
                             <Database className="text-emerald-500" /> <span>Pontos</span>
+                            <Atalho k={obterAtalhoLateral('pontos_banco', 'pt')} />
                           </Button>
                         )}
                       </div>
@@ -6514,26 +6877,28 @@ export default function EditorPage() {
                               size="sm"
                               variant="secondary"
                               disabled={histCount === 0}
-                              className={`h-8 flex-1 px-0 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                              className={`relative h-8 flex-1 px-0 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
                               onClick={desfazer}
-                              title={histCount > 0 ? `Desfazer (Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
+                              title={histCount > 0 ? `Desfazer (${obterAtalhoLateral('desfazer', 'dz')} / Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
                             >
                               <Undo2 className="size-3.5" />
+                              <Atalho k={obterAtalhoLateral('desfazer', 'dz')} />
                             </Button>
                             <Button
                               size="sm"
                               variant="secondary"
                               disabled={redoCount === 0}
-                              className={`h-8 flex-1 px-0 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                              className={`relative h-8 flex-1 px-0 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
                               onClick={refazer}
-                              title={redoCount > 0 ? `Refazer (Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
+                              title={redoCount > 0 ? `Refazer (${obterAtalhoLateral('refazer', 'ry')} / Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
                             >
                               <Redo2 className="size-3.5" />
+                              <Atalho k={obterAtalhoLateral('refazer', 'ry')} />
                             </Button>
                           </div>
-                          <Button size="sm" variant={mostrarRotulos ? 'default' : 'secondary'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vertices (F4)`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
+                          <Button size="sm" variant={mostrarRotulos ? 'default' : 'secondary'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vertices (${obterAtalhoLateral('rotulos', 'ro')})`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
                             {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
-                            <Atalho k="F4" />
+                            <Atalho k={obterAtalhoLateral('rotulos', 'ro')} />
                           </Button>
                         </div>
                       ) : (
@@ -6543,29 +6908,31 @@ export default function EditorPage() {
                             size="sm"
                             variant="secondary"
                             disabled={histCount === 0}
-                            className={`h-8 w-full px-0 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                            className={`relative h-8 w-full px-0 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
                             onClick={desfazer}
-                            title={histCount > 0 ? `Desfazer (Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
+                            title={histCount > 0 ? `Desfazer (${obterAtalhoLateral('desfazer', 'dz')} / Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
                           >
                             <Undo2 className="size-3.5" />
+                            <Atalho k={obterAtalhoLateral('desfazer', 'dz')} />
                           </Button>
                           <Button
                             size="sm"
                             variant="secondary"
                             disabled={redoCount === 0}
-                            className={`h-8 w-full px-0 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                            className={`relative h-8 w-full px-0 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
                             onClick={refazer}
-                            title={redoCount > 0 ? `Refazer (Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
+                            title={redoCount > 0 ? `Refazer (${obterAtalhoLateral('refazer', 'ry')} / Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
                           >
                             <Redo2 className="size-3.5" />
+                            <Atalho k={obterAtalhoLateral('refazer', 'ry')} />
                           </Button>
 
                           {/* Trava da folha — destravar = liberar edição do layout (mover implícito) */}
                           <button
                             type="button"
                             onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
-                            title={folhaTravada ? 'Moldura travada — clique para destravar e editar o layout' : 'Moldura destravada — clique para travar e proteger o layout'}
-                            className={`col-span-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-md border-2 text-[9px] font-bold uppercase tracking-wide transition-colors ${
+                            title={`${folhaTravada ? 'Moldura travada — clique para destravar e editar o layout' : 'Moldura destravada — clique para travar e proteger o layout'} (${obterAtalhoLateral('folha_travada', 'ft')})`}
+                            className={`relative col-span-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-md border-2 text-[9px] font-bold uppercase tracking-wide transition-colors ${
                               folhaTravada
                                 ? 'border-border bg-background text-foreground hover:bg-muted'
                                 : 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 animate-pulse'
@@ -6573,6 +6940,7 @@ export default function EditorPage() {
                           >
                             {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
                             <span>{folhaTravada ? 'Folha Travada' : 'Folha Destravada'}</span>
+                            <Atalho k={obterAtalhoLateral('folha_travada', 'ft')} />
                           </button>
                         </div>
                       )}
@@ -6585,59 +6953,69 @@ export default function EditorPage() {
                           <span>Desenho e Geometria</span>
                         </span>
                         <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
-                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'secondary'} className={`relative ${modo === 'linha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('linha', true)} title="Linha Reta (F6): clique 2 pontos para criar uma linha simples. Botão direito cancela.">
+                          <Button size="sm" variant={modo === 'linha' ? 'default' : 'secondary'} className={`relative ${modo === 'linha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('linha', true)} title={`Linha Reta (${obterAtalhoLateral('linha', 'F6')}): clique 2 pontos para criar uma linha simples. Botão direito cancela.`}>
                             <PenTool className={modo === 'linha' ? 'text-white shrink-0' : 'text-amber-500 shrink-0'} /> <span className="truncate">Linha</span>
-                            <Atalho k="F6" />
+                            <Atalho k={obterAtalhoLateral('linha', 'F6')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'secondary'} className={`relative ${modo === 'polilinha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('polilinha', true)} title="Polilinha (F7): clique vários pontos. Clique com botão direito conclui e insere a polilinha.">
+                          <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'secondary'} className={`relative ${modo === 'polilinha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('polilinha', true)} title={`Polilinha (${obterAtalhoLateral('polilinha', 'F7')}): clique vários pontos. Clique com botão direito conclui e insere a polilinha.`}>
                             <PenTool className={modo === 'polilinha' ? 'text-white shrink-0' : 'text-cyan-500 shrink-0'} /> <span className="truncate">Polilinha</span>
-                            <Atalho k="F7" />
+                            <Atalho k={obterAtalhoLateral('polilinha', 'F7')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'secondary'} className={`relative ${modo === 'tracejado' ? COR_ATIVO : ''}`} onClick={() => alternarModo('tracejado', true)} title="Tracejado / Servidão (F8): clique vários pontos. Botão direito conclui o desenho.">
+                          <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'secondary'} className={`relative ${modo === 'tracejado' ? COR_ATIVO : ''}`} onClick={() => alternarModo('tracejado', true)} title={`Tracejado / Servidão (${obterAtalhoLateral('tracejado', 'F8')}): clique vários pontos. Botão direito conclui o desenho.`}>
                             <PenTool className={modo === 'tracejado' ? 'text-white shrink-0' : 'text-indigo-500 opacity-80 shrink-0'} /> <span className="truncate">Tracejado</span>
-                            <Atalho k="F8" />
+                            <Atalho k={obterAtalhoLateral('tracejado', 'F8')} />
                           </Button>
 
-                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title="Inserir Texto (F9): clique em qualquer posição para adicionar anotação ou rótulo." onClick={() => alternarModo('texto')}>
+                          <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title={`Inserir Texto (${obterAtalhoLateral('texto', 'F9')}): clique em qualquer posição para adicionar anotação ou rótulo.`} onClick={() => alternarModo('texto')}>
                             <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span className="truncate">Texto</span>
-                            <Atalho k="F9" />
+                            <Atalho k={obterAtalhoLateral('texto', 'F9')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'secondary'} className={`relative ${modo === 'cota' ? COR_ATIVO : ''}`} onClick={() => alternarModo('cota', true)} title="Cota de Dimensão (F10): clique dois pontos para medir e exibir a cota.">
+                          <Button size="sm" variant={modo === 'cota' ? 'default' : 'secondary'} className={`relative ${modo === 'cota' ? COR_ATIVO : ''}`} onClick={() => alternarModo('cota', true)} title={`Cota de Dimensão (${obterAtalhoLateral('cota', 'F10')}): clique dois pontos para medir e exibir a cota.`}>
                             <IconeCota className={modo === 'cota' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Cota</span>
-                            <Atalho k="F10" />
+                            <Atalho k={obterAtalhoLateral('cota', 'F10')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'secondary'} className={modo === 'simbolo' ? COR_ATIVO : ''} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title="Símbolos Topográficos: selecione e clique no mapa para posicionar poste, árvore, casa...">
+                          <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'secondary'} className={`relative ${modo === 'simbolo' ? COR_ATIVO : ''}`} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title={`Símbolos Topográficos (${obterAtalhoLateral('simbolo', 'sb')}): selecione e clique no mapa para posicionar poste, árvore, casa...`}>
                             <div className={modo === 'simbolo' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'}><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
                             <span className="truncate">Símbolos</span>
+                            <Atalho k={obterAtalhoLateral('simbolo', 'sb')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'secondary'} className={modo === 'retangulo' ? COR_ATIVO : ''} onClick={() => alternarModo('retangulo', true)} title="Retângulo: clique em dois cantos opostos no mapa para desenhar a caixa.">
+                          <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'secondary'} className={`relative ${modo === 'retangulo' ? COR_ATIVO : ''}`} onClick={() => alternarModo('retangulo', true)} title={`Retângulo (${obterAtalhoLateral('retangulo', 'rt')}): clique em dois cantos opostos no mapa para desenhar a caixa.`}>
                             <Square className={modo === 'retangulo' ? 'text-white shrink-0' : 'text-orange-500 shrink-0'} /> <span className="truncate">Retângulo</span>
+                            <Atalho k={obterAtalhoLateral('retangulo', 'rt')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'circulo' ? 'default' : 'secondary'} className={modo === 'circulo' ? COR_ATIVO : ''} onClick={() => alternarModo('circulo', true)} title="Círculo: clique no centro e depois na borda para desenhar o círculo.">
+                          <Button size="sm" variant={modo === 'circulo' ? 'default' : 'secondary'} className={`relative ${modo === 'circulo' ? COR_ATIVO : ''}`} onClick={() => alternarModo('circulo', true)} title={`Círculo (${obterAtalhoLateral('circulo', 'cc')}): clique no centro e depois na borda para desenhar o círculo.`}>
                             <Circle className={modo === 'circulo' ? 'text-white shrink-0' : 'text-amber-400 shrink-0'} /> <span className="truncate">Círculo</span>
+                            <Atalho k={obterAtalhoLateral('circulo', 'cc')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'arco' ? 'default' : 'secondary'} className={modo === 'arco' ? COR_ATIVO : ''} onClick={() => alternarModo('arco', true)} title="Arco Curvo: clique 3 pontos (início, meio e fim) para traçar o arco.">
+                          <Button size="sm" variant={modo === 'arco' ? 'default' : 'secondary'} className={`relative ${modo === 'arco' ? COR_ATIVO : ''}`} onClick={() => alternarModo('arco', true)} title={`Arco Curvo (${obterAtalhoLateral('arco', 'ac')}): clique 3 pontos (início, meio e fim) para traçar o arco.`}>
                             <Spline className={modo === 'arco' ? 'text-white shrink-0' : 'text-teal-500 shrink-0'} /> <span className="truncate">Arco</span>
+                            <Atalho k={obterAtalhoLateral('arco', 'ac')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'secondary'} className={modo === 'multi' ? COR_ATIVO : ''} onClick={() => { alternarModo('multi'); }} title="Seleção Múltipla: clique em elementos ou abra uma caixa de seleção para selecionar vários vértices/objetos de uma vez.">
+                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'secondary'} className={`relative ${modo === 'multi' ? COR_ATIVO : ''}`} onClick={() => { alternarModo('multi'); }} title={`Seleção Múltipla (${obterAtalhoLateral('selecao_varios', 'sv')}): clique em elementos ou abra uma caixa de seleção para selecionar vários vértices/objetos de uma vez.`}>
                             <span className="truncate text-[10px] font-bold">Sel. Vários</span>
+                            <Atalho k={obterAtalhoLateral('selecao_varios', 'sv')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'secondary'} className={modo === 'medir' ? COR_ATIVO : ''} onClick={() => alternarModo('medir', true)} title="Régua de Medição: meça distâncias e azimutes entre pontos no mapa com alta precisão.">
+                          <Button size="sm" variant={modo === 'medir' ? 'default' : 'secondary'} className={`relative ${modo === 'medir' ? COR_ATIVO : ''}`} onClick={() => alternarModo('medir', true)} title={`Régua de Medição (${obterAtalhoLateral('medir', 'md')}): meça distâncias e azimutes entre pontos no mapa com alta precisão.`}>
                             <Ruler className={modo === 'medir' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'} /> <span className="truncate">Medir</span>
+                            <Atalho k={obterAtalhoLateral('medir', 'md')} />
                           </Button>
                           {/* Geometria avançada de CAD — só no Completo (o Médio fica com o desenho do dia a dia) */}
                           {completo && (<>
-                          <Button size="sm" variant={modo === 'paralela' ? 'default' : 'secondary'} className={modo === 'paralela' ? COR_ATIVO : ''} onClick={() => alternarModo('paralela', true)} title="Linha Paralela (Offset): clique numa linha e informe a distância de afastamento.">
+                          <Button size="sm" variant={modo === 'paralela' ? 'default' : 'secondary'} className={`relative ${modo === 'paralela' ? COR_ATIVO : ''}`} onClick={() => alternarModo('paralela', true)} title={`Linha Paralela / Offset (${obterAtalhoLateral('paralela', 'pr')}): clique numa linha e informe a distância de afastamento.`}>
                             <Waypoints className={modo === 'paralela' ? 'text-white shrink-0' : 'text-violet-500 shrink-0'} /> <span className="truncate">Paralela</span>
+                            <Atalho k={obterAtalhoLateral('paralela', 'pr')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'dividir' ? 'default' : 'secondary'} className={modo === 'dividir' ? COR_ATIVO : ''} onClick={() => alternarModo('dividir')} title="Dividir Divisa: clique num segmento de divisa para dividi-lo em partes iguais.">
+                          <Button size="sm" variant={modo === 'dividir' ? 'default' : 'secondary'} className={`relative ${modo === 'dividir' ? COR_ATIVO : ''}`} onClick={() => alternarModo('dividir')} title={`Dividir Divisa (${obterAtalhoLateral('dividir', 'dv')}): clique num segmento de divisa para dividi-lo em partes iguais.`}>
                             <GitCommit className={modo === 'dividir' ? 'text-white shrink-0' : 'text-purple-500 shrink-0'} /> <span className="truncate">Dividir</span>
+                            <Atalho k={obterAtalhoLateral('dividir', 'dv')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'trim' ? 'default' : 'secondary'} className={modo === 'trim' ? COR_ATIVO : ''} onClick={() => alternarModo('trim')} title="Aparar (Trim): corte pontas de polilinhas no limite de interseção.">
+                          <Button size="sm" variant={modo === 'trim' ? 'default' : 'secondary'} className={`relative ${modo === 'trim' ? COR_ATIVO : ''}`} onClick={() => alternarModo('trim')} title={`Aparar / Trim (${obterAtalhoLateral('aparar', 'ap')}): corte pontas de polilinhas no limite de interseção.`}>
                             <Scissors className={modo === 'trim' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Aparar</span>
+                            <Atalho k={obterAtalhoLateral('aparar', 'ap')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'extend' ? 'default' : 'secondary'} className={modo === 'extend' ? COR_ATIVO : ''} onClick={() => alternarModo('extend')} title="Prolongar (Extend): estenda uma polilinha até atingir o limite selecionado.">
+                          <Button size="sm" variant={modo === 'extend' ? 'default' : 'secondary'} className={`relative ${modo === 'extend' ? COR_ATIVO : ''}`} onClick={() => alternarModo('extend')} title={`Prolongar / Extend (${obterAtalhoLateral('prolongar', 'pg')}): estenda uma polilinha até atingir o limite selecionado.`}>
                             <Expand className={modo === 'extend' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'} /> <span className="truncate">Prolongar</span>
+                            <Atalho k={obterAtalhoLateral('prolongar', 'pg')} />
                           </Button>
                           </>)}
                           {modo === 'simbolo' && (
@@ -6936,12 +7314,15 @@ export default function EditorPage() {
                         <div className="mt-1.5 rounded-lg border border-border/80 bg-background/50 overflow-hidden shadow-xs">
                           <button type="button"
                             onClick={() => setCurvaConfigAberta((v) => !v)}
-                            className="flex w-full items-center justify-between bg-muted/20 px-2.5 py-1.5 text-[10px] font-extrabold uppercase text-foreground hover:bg-muted/40 transition-colors">
+                            className="relative flex w-full items-center justify-between bg-muted/20 px-2.5 py-1.5 text-[10px] font-extrabold uppercase text-foreground hover:bg-muted/40 transition-colors">
                             <span className="flex items-center gap-1.5">
                               <IconeCurvasNivel className="size-3.5 text-indigo-500" />
                               Curvas de nível
                             </span>
-                            <span className="text-[9px] text-muted-foreground">{curvaConfigAberta ? '▲' : '▼'}</span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-[8px] font-extrabold text-amber-500 font-mono">{obterAtalhoLateral('curvas_nivel', 'cn')}</span>
+                              <span className="text-[9px] text-muted-foreground">{curvaConfigAberta ? '▲' : '▼'}</span>
+                            </span>
                           </button>
 
                           {curvaConfigAberta && (
@@ -7436,6 +7817,7 @@ export default function EditorPage() {
                 imovel={imovel}
                 onVoltar2D={() => setVista('mapa')}
                 gradeAltimetrica={gradeAltimetrica}
+                onGerarCurvas={gerarCurvasNivelAuto}
                 onCapture={(dataUrl, meta) => {
                   atualizarPlantaConfig((c) => ({
                     ...c,
@@ -8651,6 +9033,10 @@ export default function EditorPage() {
               numGlebas={glebas.length}
               projetoId={projetoId}
               onIrParaConflito={(lat, lon) => { setConferirAberto(false); setVista('mapa'); setFocoLatLng([lat, lon]); }}
+              onReconciliar={() => setVerticesHashConferencia(
+                vertices.map(v => `${v.leste.toFixed(3)},${v.norte.toFixed(3)}`).join('|')
+              )}
+              verticesHashConferencia={verticesHashConferencia}
             />
           </div>
         </DialogContent>
@@ -9253,6 +9639,34 @@ export default function EditorPage() {
         </defs>
       </svg>
 
+      {/* ── OVERLAY DE FEEDBACK DE ATALHO (centro da tela, semi-transparente, grande) ── */}
+      {feedbackAtalho && (
+        <div
+          className={`pointer-events-none fixed inset-0 z-[9998] flex items-center justify-center`}
+          aria-hidden
+        >
+          <div
+            className={`
+              animate-in fade-in zoom-in-95 duration-150
+              px-10 py-6 rounded-2xl shadow-2xl backdrop-blur-sm
+              flex flex-col items-center gap-2
+              ${
+                feedbackAtalho.tipo === 'ok'
+                  ? 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-300'
+                  : 'bg-red-950/80 border border-red-500/40 text-red-300'
+              }
+            `}
+          >
+            <span className="text-5xl font-black tracking-tight leading-none">
+              {feedbackAtalho.texto}
+            </span>
+            <span className="text-xs font-semibold opacity-60 uppercase tracking-widest">
+              {feedbackAtalho.tipo === 'ok' ? 'Ativado' : 'Atalho inválido'}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* ── PAINEL DE PROPRIEDADES FLUTUANTE (CANTO SUPERIOR DIREITO) ──────────────── */}
       <ObjetoPersonalizarModal
         objPersonalizarId={objPersonalizarId}
@@ -9388,6 +9802,23 @@ export default function EditorPage() {
 
       <IntroVideo />
 
+      {landingPageAberta && (
+        <div className="fixed inset-0 z-[99999] bg-slate-950 overflow-y-auto">
+          <LandingPage
+            numUsuarios={numUsuariosTotal}
+            texts={landingTexts}
+            onPioneiro={() => {
+              try {
+                localStorage.setItem('metrica:landing_page_vista', 'true');
+              } catch { /* ignore */ }
+              setLandingPageAberta(false);
+              // Dispara evento para o player de vídeo começar a tocar imediatamente
+              window.dispatchEvent(new CustomEvent('souzacad:ver-intro'));
+            }}
+          />
+        </div>
+      )}
+
       {notificacaoTamanho.visible && (
         <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[9999] bg-[#0a1f14]/90 text-emerald-400 font-bold border border-emerald-800/40 px-4 py-2 rounded-full text-xs shadow-lg flex items-center gap-1.5 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200">
           {notificacaoTamanho.texto}
@@ -9395,6 +9826,143 @@ export default function EditorPage() {
       )}
 
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
+
+      <Dialog open={tutorialF1Aberto} onOpenChange={setTutorialF1Aberto}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-6 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-y-auto">
+          <DialogHeader className="shrink-0 pb-4 border-b border-slate-800 flex items-center justify-between">
+            <DialogTitle className="text-base font-black uppercase tracking-wider text-sky-400 flex items-center gap-2">
+              <GraduationCap className="size-5" />
+              Início — Fluxo de Trabalho do Georreferenciamento
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-5 py-4">
+            {/* Banner principal: fluxo esquerda → direita */}
+            <div className="bg-gradient-to-r from-sky-600/20 to-emerald-600/20 border border-sky-500/40 rounded-xl p-4">
+              <h4 className="font-bold text-sm flex items-center gap-2 mb-2 text-sky-300">
+                <Info className="size-4 shrink-0" />
+                Siga os botões da esquerda para a direita!
+              </h4>
+              <p className="text-[11px] leading-relaxed text-slate-200">
+                O cabeçalho do aplicativo foi projetado como uma <strong className="text-sky-300">linha do tempo visual</strong>.
+                Cada botão representa uma etapa do georreferenciamento, ordenada
+                {' '}<strong className="text-amber-300">da esquerda para a direita</strong>{' '}na ordem exata em que deve ser executada.
+                Basta avançar botão a botão — o app constrói, valida e preenche as peças automaticamente.
+              </p>
+              <div className="mt-2.5 flex items-center gap-1 text-[10px] font-bold text-slate-400 flex-wrap">
+                {['INÍCIO','PONTOS','SIGEF','DADOS','CONFRO','DIVISAS','ART/TRT','ODS','CONFERIR','PEÇAS'].map((s, i, arr) => (
+                  <span key={s} className="flex items-center gap-1">
+                    <span className="bg-slate-800 text-sky-300 px-1.5 py-0.5 rounded text-[9px] font-mono">{s}</span>
+                    {i < arr.length - 1 && <span className="text-amber-500">›</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
+                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">1</div>
+                <div>
+                  <h5 className="font-bold text-xs text-slate-200">PONTOS (F2)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    Importe o arquivo TXT ou CSV gerado pelo receptor GNSS. É a base do desenho que carregará todas as coordenadas.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
+                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">2</div>
+                <div>
+                  <h5 className="font-bold text-xs text-slate-200">SIGEF (F3)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    Consulte confrontantes oficiais no SIGEF. Baixe limites certificados vizinhos para evitar sobreposições e inconsistências.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
+                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">3</div>
+                <div>
+                  <h5 className="font-bold text-xs text-slate-200">DADOS (F4)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    Preencha as informações gerais do imóvel, proprietário e responsável técnico para preenchimento automático das peças e carimbo.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
+                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">4</div>
+                <div>
+                  <h5 className="font-bold text-xs text-slate-200">CONFRO (F5)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    Associe os confrontantes proprietários a cada trecho da divisa. Clique nos vértices correspondentes no sentido horário.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
+                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">5</div>
+                <div>
+                  <h5 className="font-bold text-xs text-slate-200">DIVISAS (F6)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    Selecione a representação física de cada limite (muro, cerca, córrego, etc.) e pinte no mapa no sentido horário.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
+                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">6</div>
+                <div>
+                  <h5 className="font-bold text-xs text-slate-200">ART/TRT (F7)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    Insira o número de registro da sua anotação ou termo de responsabilidade técnica para emissão legal dos documentos.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
+                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">7</div>
+                <div>
+                  <h5 className="font-bold text-xs text-slate-200">ODS (F8)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    Exporte a planilha ODS estruturada no padrão SIGEF/INCRA para iniciar o credenciamento nacional.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
+                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">8</div>
+                <div>
+                  <h5 className="font-bold text-xs text-slate-200">CONFERIR (F9)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                    Realize a checagem eletrônica das tolerâncias, precisões e discrepâncias geodésicas antes de emitir os relatórios.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3.5 flex gap-3.5">
+              <div className="size-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">9</div>
+              <div>
+                <h5 className="font-bold text-xs text-amber-400">PEÇAS TÉCNICAS (F10)</h5>
+                <p className="text-[10px] text-slate-300 mt-1 leading-relaxed">
+                  Baixe as peças em lote (Pacote ZIP) ou individualmente: Memorial Descritivo (.docx), Planta (.svg), Requerimento e Declarações.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end pt-3 border-t border-slate-800">
+            <Button
+              type="button"
+              onClick={() => setTutorialF1Aberto(false)}
+              className="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs px-4 py-1.5 rounded-lg border-0"
+            >
+              Entendido
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {videosListaAberta && (
         <>
@@ -9494,11 +10062,12 @@ export default function EditorPage() {
         </div>
       )}
 
-      {/* Barra de Status e Notificações Inteligente (sempre visível no rodapé do palco) */}
-      <div
-        className="no-print fixed bottom-0 right-0 z-[2000] flex h-7 items-center justify-between bg-slate-950 text-slate-300 text-[10px] font-medium border-t border-slate-800 shadow-lg px-3 select-none"
-        style={{ left: toolWEfetivo }}
-      >
+      {/* Barra de Status e Notificações Inteligente (oculta se o vídeo de intro ou a landing page estiverem ativos) */}
+      {!introTocando && !landingPageAberta && (
+        <div
+          className="no-print fixed bottom-0 right-0 z-[2000] flex h-7 items-center justify-between bg-slate-950 text-slate-300 text-[10px] font-medium border-t border-slate-800 shadow-lg px-3 select-none"
+          style={{ left: toolWEfetivo }}
+        >
         {/* Lado Esquerdo: Mensagem de Status Ativa / Alerta ou Modo Atual */}
         <div className="flex items-center gap-2 min-w-0">
           {msg ? (
@@ -9564,6 +10133,27 @@ export default function EditorPage() {
               )}
             </div>
           )}
+
+          {/* Caixa de Entrada de Comandos CAD */}
+          <div className="flex items-center gap-1 border-l border-slate-850 pl-2.5 shrink-0 select-text">
+            <span className="text-slate-500 font-mono text-[9px] font-bold">&gt;</span>
+            <input
+              ref={comandoInputRef}
+              type="text"
+              value={comandoInput}
+              onChange={(e) => setComandoInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  executarComando(comandoInput);
+                } else if (e.key === 'Escape') {
+                  setComandoInput('');
+                  if (comandoInputRef.current) comandoInputRef.current.blur();
+                }
+              }}
+              placeholder="Comando (ex: cc, rt, pl)"
+              className="bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-sky-500 focus:bg-slate-950 text-slate-100 placeholder-slate-650 px-1.5 py-0.5 rounded text-[9px] w-36 font-mono outline-none transition-all select-text"
+            />
+          </div>
         </div>
 
         {/* Lado Direito: Estatísticas em tempo real & Status de Salvamento */}
@@ -9591,34 +10181,28 @@ export default function EditorPage() {
             </div>
           )}
 
-          {/* Estatísticas Físicas */}
-          {vertices.length >= 3 && res && (() => {
-            const sigefConciliado = imovel.areaSigefHa != null && imovel.areaSigefHa > 0 && imovel.usarValoresSigef !== false;
-            return (
-              <div className="flex items-center gap-3 pl-4">
-                <span>{vertices.length} Vértices</span>
-                <button
-                  type="button"
-                  onClick={() => setConferirAberto(true)}
-                  className="hover:opacity-80 transition-colors flex items-center gap-1 cursor-pointer font-medium border-0 bg-transparent text-slate-400 outline-none text-[9px]"
-                  title={sigefConciliado ? "Área conciliada com o SIGEF (oficial)" : "Área calculada pelo app: clique para reconciliar com o SIGEF"}
-                >
-                  <Scale className={`size-3 shrink-0 ${sigefConciliado ? 'text-emerald-500' : 'text-amber-500'}`} />
-                  <span className={sigefConciliado ? 'text-emerald-400 font-semibold' : ''}>
-                    Área: {(valoresEfetivos(res, imovel).areaHa).toFixed(4)} ha
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConferirAberto(true)}
-                  className="hover:opacity-80 transition-colors flex items-center gap-1 cursor-pointer font-medium border-0 bg-transparent text-slate-400 outline-none text-[9px]"
-                  title="Conciliação de perímetro: clique para reconciliar com o SIGEF"
-                >
-                  <span>Perímetro: {(valoresEfetivos(res, imovel).perimetro).toFixed(2)} m</span>
-                </button>
+          {/* Guia de Próximos Passos Dinâmico (Substituindo Estatísticas Físicas) */}
+          <div className="relative group pl-4 py-0.5 flex items-center gap-1.5 cursor-help select-none shrink-0">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
+            <span className="text-sky-300 font-semibold max-w-[200px] sm:max-w-[260px] md:max-w-[320px] truncate text-[9px] transition-all">
+              {dicaFluxo.resumo}
+            </span>
+
+            {/* Popover/Tooltip de Dica de Fluxo Avançada */}
+            <div className="absolute bottom-full right-0 mb-2 w-80 p-3.5 bg-slate-900 border border-slate-800 text-slate-100 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-[3000]">
+              <div className="text-[10px] font-black text-sky-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-slate-850 pb-1">
+                <GraduationCap className="size-4 text-sky-400 animate-bounce" />
+                Como Proceder - Passo {dicaFluxo.passo} de 9
               </div>
-            );
-          })()}
+              <p className="text-[10px] font-medium leading-relaxed font-sans text-slate-350 select-text">
+                {dicaFluxo.detalhe}
+              </p>
+              <div className="mt-2.5 pt-1.5 border-t border-slate-850 text-[8px] text-slate-500 flex justify-between font-mono">
+                <span>Fluxo do Souza-CAD</span>
+                <span>Passe o mouse para ler</span>
+              </div>
+            </div>
+          </div>
 
           {/* Status do Banco de Dados */}
           <div className="pl-4 flex items-center gap-1.5">
@@ -9648,6 +10232,7 @@ export default function EditorPage() {
           </div>
         </div>
       </div>
+      )}
 
     </div>
   );
@@ -10095,11 +10680,13 @@ function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zo
 
 function PainelConferencia({
   vertices, res, imovel, confrontantes, confrontantePorLado, onChange, conflitos, onIrParaConflito, tecnico,
-  nomeProjeto, numGlebas, projetoId
+  nomeProjeto, numGlebas, projetoId, onReconciliar, verticesHashConferencia
 }: {
   vertices: Vertex[]; res: ReturnType<typeof calcular> | null; imovel: ImovelData; confrontantes: Confrontante[]; confrontantePorLado: Record<number, string>; onChange: (i: ImovelData) => void;
   conflitos: ConflitoDivisa[];
   onIrParaConflito: (lat: number, lon: number) => void;
+  onReconciliar?: () => void;
+  verticesHashConferencia: string | null;
   tecnico: TecnicoData | null;
   nomeProjeto: string;
   numGlebas: number;
@@ -10140,13 +10727,29 @@ function PainelConferencia({
   return (
     <div className="space-y-4">
       {/* Box de Reconciliação com o SIGEF */}
-      <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-xl shadow-sm text-left">
-        <h3 className="text-xs font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider mb-2 flex items-center gap-1.5">
-          <CheckCircle2 className="size-4 text-amber-500" /> Reconciliação de Área/Perímetro com o SIGEF
-        </h3>
-        <p className="text-[11px] text-muted-foreground mb-3">
-          Por segurança jurídica, cole aqui a Área SGL e o Perímetro oficiais recalculados pelo SIGEF após processar a planilha ODS. Marque &quot;Usar&quot; para utilizá-los no memorial, planta e peças técnicas.
-        </p>
+      {(() => {
+        const reconciliado = !!imovel.usarValoresSigef &&
+          imovel.areaSigefHa != null && imovel.perimetroSigef != null &&
+          verticesHashConferencia !== null &&
+          verticesHashConferencia === vertices.map(v => `${v.leste.toFixed(3)},${v.norte.toFixed(3)}`).join('|');
+        return (
+          <div className={`border p-3.5 rounded-xl shadow-sm text-left transition-colors duration-500 ${
+            reconciliado
+              ? 'bg-emerald-500/8 dark:bg-emerald-500/12 border-emerald-500/30'
+              : 'bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/20'
+          }`}>
+            <h3 className={`text-xs font-black uppercase tracking-wider mb-2 flex items-center gap-1.5 transition-colors ${
+              reconciliado ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'
+            }`}>
+              <CheckCircle2 className={`size-4 transition-colors ${
+                reconciliado ? 'text-emerald-500' : 'text-amber-500'
+              }`} />
+              Reconciliação de Área/Perímetro com o SIGEF
+              {reconciliado && <span className="ml-auto text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">Conciliado ✔</span>}
+            </h3>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              Por segurança jurídica, cole aqui a Área SGL e o Perímetro oficiais recalculados pelo SIGEF após processar a planilha ODS. Marque &quot;Usar&quot; para utilizá-los no memorial, planta e peças técnicas.
+            </p>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold text-foreground">Área Oficial (ha):</span>
@@ -10174,13 +10777,21 @@ function PainelConferencia({
             <input
               type="checkbox"
               checked={!!imovel.usarValoresSigef}
-              onChange={(e) => onChange({ ...imovel, usarValoresSigef: e.target.checked })}
+              onChange={(e) => {
+                onChange({ ...imovel, usarValoresSigef: e.target.checked });
+                // Salva o hash dos vértices atuais para detectar futuras alterações
+                if (e.target.checked && imovel.areaSigefHa != null && imovel.perimetroSigef != null) {
+                  onReconciliar?.();
+                }
+              }}
               className="rounded border-zinc-300 dark:border-zinc-700 text-amber-600 focus:ring-amber-500 size-3.5"
             />
             <span className="text-[11px] font-black text-amber-700 dark:text-amber-400 uppercase">Usar Valores do SIGEF</span>
           </label>
         </div>
-      </div>
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Coluna Esquerda: Dados Gerais do Projeto (5 cols) */}

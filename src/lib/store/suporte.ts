@@ -222,3 +222,51 @@ export async function salvarModo3dAtivado(ativo: boolean): Promise<void> {
     await setDoc(doc(fdb()!, 'config', 'app'), { modo3dAtivado: ativo }, { merge: true });
   }
 }
+
+export interface LandingPageTexts {
+  titulo?: string;
+  subtitulo?: string;
+  historia?: string;
+  autorHistoria?: string;
+  itensCheck?: string[];
+}
+
+export const LANDING_PADRAO: LandingPageTexts = {
+  titulo: 'Otimize 5 horas de projeto em apenas 20 minutos.',
+  subtitulo: 'Um sistema planialtimétrico e de georreferenciamento de imóveis rurais completo e intuitivo, feito sob medida para as reais necessidades de agrimensores, técnicos e engenheiros brasileiros.',
+  historia: 'Depois de 14 anos empreendendo na área de agrimensura, enfrentando o cansaço de refazer projetos manuais no CAD tradicional e preencher planilhas repetitivas, decidi aprender a programar para criar a ferramenta que eu mesmo precisava para ter liberdade, agilidade e total segurança técnica. O Souza-CAD transforma um processo manual e exaustivo de 5 horas em apenas 20 minutos de trabalho eficiente.',
+  autorHistoria: 'Agrimensor Programador & Criador do Souza-CAD',
+  itensCheck: [
+    'Georreferenciamento Rural: Memoriais e geração de planilha ODS para SIGEF.',
+    'Planialtimetria Precisa: Curvas de nível automáticas a partir de altitude online.',
+    'CAR e Lotes Urbanos: Perímetro, confrontações e desenhos prontos em segundos.',
+    'Garantia de Segurança: Validações inteligentes que evitam erros no cartório.'
+  ]
+};
+
+const CACHE_LANDING = 'metrica.landingTexts';
+
+export async function carregarLandingPageTexts(): Promise<LandingPageTexts> {
+  if (firebaseConfigurado) {
+    try {
+      const s = await getDoc(doc(fdb()!, 'config', 'app'));
+      const data = s.exists() ? s.data()?.landingPageTexts : undefined;
+      if (data && typeof data === 'object') {
+        try { localStorage.setItem(CACHE_LANDING, JSON.stringify(data)); } catch { /* ignore */ }
+        return { ...LANDING_PADRAO, ...data };
+      }
+    } catch { /* ignore */ }
+  }
+  try {
+    const cached = localStorage.getItem(CACHE_LANDING);
+    if (cached) return { ...LANDING_PADRAO, ...JSON.parse(cached) };
+  } catch { /* ignore */ }
+  return LANDING_PADRAO;
+}
+
+export async function salvarLandingPageTexts(texts: LandingPageTexts): Promise<void> {
+  try { localStorage.setItem(CACHE_LANDING, JSON.stringify(texts)); } catch { /* ignore */ }
+  if (firebaseConfigurado) {
+    await setDoc(doc(fdb()!, 'config', 'app'), { landingPageTexts: texts }, { merge: true });
+  }
+}

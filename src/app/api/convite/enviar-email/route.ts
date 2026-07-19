@@ -6,6 +6,7 @@ import { enviarEmailSmtp } from '@/lib/server/emailSmtp';
 import { checarLimiteIA } from '@/lib/ia/rateLimit';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const APP_URL_PADRAO = 'https://souzacad--souza-cad.us-east4.hosted.app/';
 

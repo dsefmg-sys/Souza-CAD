@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX, SkipForward } from 'lucide-react';
+import { Volume2, VolumeX, SkipForward, Share2, Globe } from 'lucide-react';
 import { carregarPreferencias } from '@/lib/store/preferencias';
 
 /**
@@ -26,6 +26,7 @@ export default function IntroVideo() {
     return salva ? salva === 'false' : true; // por padrão com áudio ativado
   });
   const [tocando, setTocando] = useState(false); // só revela o vídeo quando ele já está rodando
+  const [copiado, setCopiado] = useState(false); // feedback de cópia do link
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Fica ouvindo o pedido de rever (botão nas Configurações).
@@ -146,7 +147,37 @@ export default function IntroVideo() {
         </div>
 
         {/* Botões abaixo da moldura */}
-        <div className="mt-4 flex items-center justify-end gap-2">
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-2.5">
+          
+          {/* Compartilhar */}
+          <button
+            onClick={() => {
+              if (typeof navigator !== 'undefined') {
+                void navigator.clipboard.writeText("https://metrica.souzacad.com.br");
+                setCopiado(true);
+                setTimeout(() => setCopiado(false), 2000);
+              }
+            }}
+            className="relative flex h-9 items-center justify-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 text-xs font-semibold text-white/90 backdrop-blur transition-colors hover:bg-white/20"
+            title="Compartilhar link do Souza-CAD com amigos agrimensores"
+          >
+            <Share2 className="size-4" />
+            <span>{copiado ? 'Link Copiado!' : 'Compartilhar'}</span>
+          </button>
+
+          {/* Site */}
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('souzacad:ver-site'));
+              fechar();
+            }}
+            className="flex h-9 items-center justify-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 text-xs font-semibold text-white/90 backdrop-blur transition-colors hover:bg-white/20"
+            title="Ver a história e detalhes do Souza-CAD"
+          >
+            <Globe className="size-4" />
+            <span>Site</span>
+          </button>
+
           <button
             onClick={alternarSom}
             className="flex h-9 items-center justify-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 text-xs font-semibold text-white/90 backdrop-blur transition-colors hover:bg-white/20"
@@ -155,6 +186,7 @@ export default function IntroVideo() {
             {comSom ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
             {comSom ? 'Áudio Ativado' : 'Áudio Desativado'}
           </button>
+          
           <button
             onClick={fechar}
             className="flex h-9 items-center gap-1.5 rounded-full bg-white/90 px-4 text-xs font-bold text-black shadow-lg transition-colors hover:bg-white"

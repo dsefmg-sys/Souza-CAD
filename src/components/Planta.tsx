@@ -500,6 +500,8 @@ export default function Planta({
   }
 
   const verGrade = config.mostrarGrade !== false;
+  const gradeCorLinha = config.gradeCorLinha ?? '#8a94a6';
+  const gradeMostrarRotulos = config.gradeMostrarRotulos !== false;
   const verNortes = config.mostrarNortes !== false;
   const verConv = config.mostrarConvencoes !== false;
   const verEscalaG = config.mostrarEscalaGrafica !== false;
@@ -1279,14 +1281,19 @@ export default function Planta({
       {/* ---------- GRADE (números DENTRO do quadro, no topo e na esquerda) ---------- */}
       <g clipPath="url(#map-clip)">
         {verGrade && (
-          <g mask="url(#grid-mask)">
+          <g
+            mask="url(#grid-mask)"
+            onDoubleClick={editavel ? (e) => { e.stopPropagation(); onDblClickObjeto?.('planta:grade'); } : undefined}
+            style={editavel ? { cursor: 'crosshair' } : undefined}
+            aria-label="Grade UTM — duplo clique para configurar"
+          >
             {linhasX.map((x) => {
               const valX = sx(x);
               if (valX < DRAW.x0 || valX > DRAW.x1) return null;
               return (
                 <g key={`x${x}`}>
-                  <line x1={valX} y1={DRAW.y0} x2={valX} y2={DRAW.y1} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
-                  {rotX.has(x) && valX >= DRAW.x0 + 48 && valX <= DRAW.x1 - 48 && <text x={valX} y={DRAW.y0 + 13} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>}
+                  <line x1={valX} y1={DRAW.y0} x2={valX} y2={DRAW.y1} stroke={gradeCorLinha} strokeWidth={0.5} strokeDasharray="2 5" />
+                  {gradeMostrarRotulos && rotX.has(x) && valX >= DRAW.x0 + 48 && valX <= DRAW.x1 - 48 && <text x={valX} y={DRAW.y0 + 13} fontSize={fs(7.5)} textAnchor="middle" fill={gradeCorLinha} stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">{`E ${numBR(x, 4)}`}</text>}
                 </g>
               );
             })}
@@ -1295,11 +1302,15 @@ export default function Planta({
               if (valY < DRAW.y0 || valY > DRAW.y1) return null;
               return (
                 <g key={`y${y}`}>
-                  <line x1={DRAW.x0} y1={valY} x2={DRAW.x1} y2={valY} stroke="#8a94a6" strokeWidth={0.5} strokeDasharray="2 5" />
-                  {rotY.has(y) && valY >= DRAW.y0 + 48 && valY <= DRAW.y1 - 48 && <text x={DRAW.x0 + 13} y={valY} fontSize={fs(7.5)} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${valY})`}>{`N ${numBR(y, 4)}`}</text>}
+                  <line x1={DRAW.x0} y1={valY} x2={DRAW.x1} y2={valY} stroke={gradeCorLinha} strokeWidth={0.5} strokeDasharray="2 5" />
+                  {gradeMostrarRotulos && rotY.has(y) && valY >= DRAW.y0 + 48 && valY <= DRAW.y1 - 48 && <text x={DRAW.x0 + 13} y={valY} fontSize={fs(7.5)} textAnchor="middle" fill={gradeCorLinha} stroke="#ffffff" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round" transform={`rotate(-90 ${DRAW.x0 + 13} ${valY})`}>{`N ${numBR(y, 4)}`}</text>}
                 </g>
               );
             })}
+            {/* Área invisível sobre o rótulo de coordenada para facilitar o duplo-clique */}
+            {editavel && (
+              <rect x={DRAW.x0} y={DRAW.y0} width={DRAW.x1 - DRAW.x0} height={18} fill="transparent" style={{ pointerEvents: 'all' }} />
+            )}
           </g>
         )}
 

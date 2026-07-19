@@ -83,6 +83,7 @@ export const ATALHOS_F_PADRAO: Record<string, string> = {
 };
 
 export const ATALHOS_COMANDO_PADRAO: Record<string, string> = {
+  // Ferramentas de desenho e geometria
   ln: 'linha',
   pl: 'polilinha',
   tr: 'tracejado',
@@ -98,8 +99,17 @@ export const ATALHOS_COMANDO_PADRAO: Record<string, string> = {
   dv: 'dividir',
   ap: 'aparar',
   pg: 'prolongar',
-  salvar: 'salvar',
-  nn: 'novo',
+  ro: 'rotulos',
+  // Ações e navegação da barra lateral
+  dz: 'desfazer',
+  ry: 'refazer',
+  ft: 'folha_travada',
+  gt: 'gestao',
+  nv: 'novo',
+  sl: 'salvar',
+  pt: 'pontos',
+  pc: 'precificacao',
+  cn: 'curvas_nivel',
 };
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {

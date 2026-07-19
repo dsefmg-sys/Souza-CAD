@@ -5,6 +5,7 @@ import { firebaseApiKeyServidor, tokenDoHeader, verificarTokenFirebase } from '@
 import { getAdminApp } from '@/lib/firebaseAdmin';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const MODELO = 'gemini-2.5-flash';
 const MAX_BASE64 = 22_000_000;

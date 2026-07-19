@@ -6,6 +6,7 @@ import { getMercadoPagoClient } from '@/lib/mercadopago';
 import { getAdminApp } from '@/lib/firebaseAdmin';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function reqOrigin(req: NextRequest): string {
   const proto = req.headers.get('x-forwarded-proto') || 'https';
