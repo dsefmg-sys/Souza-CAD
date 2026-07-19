@@ -1154,6 +1154,7 @@ export default function EditorPage() {
     perim: unknown; vs: Vertex[]; numGlebas: number; municipio: string; fuso: unknown; z: number;
     novoImovel: ImovelData; contM: number; contP: number; prefixo: string; isGmlImport: boolean;
   } | null>(null);
+  const [importacaoModoMesclar, setImportacaoModoMesclar] = useState(false);
   const [situacaoVersSnapshot, setSituacaoVersSnapshot] = useState<string>('');
   const snapshotDesenho = useMemo(() => {
     return montarSnapshotDesenho(sincronizarGlebas());
@@ -2598,7 +2599,9 @@ export default function EditorPage() {
     const { vs: vs0, numGlebas, municipio, z: z0, novoImovel, contM, contP, prefixo } = previewData;
 
     let destino: 'atual' | 'novo' = 'novo';
-    if (vertices.length > 0 || projetoId !== null) {
+    if (importacaoModoMesclar) {
+      destino = 'atual';
+    } else if (vertices.length > 0 || projetoId !== null) {
       const escolha = await escolher({
         titulo: 'Destino da Importação',
         mensagem: 'Deseja importar estes pontos para o projeto atual (preservando dados de cadastro e substituindo a geometria) ou criar um Novo Projeto do zero?',
@@ -2767,29 +2770,68 @@ export default function EditorPage() {
       carregarGleba(gs[0]);
       setVerticesIgnorados(finalIgnorados);
     } else {
-      // Importando no atual: atualiza os vértices e confrontantes da gleba ativa
-      const novasGlebas = glebas.map((g) => {
-        if (g.id === glebaAtivaId) {
-          return {
-            ...g,
-            vertices: vs,
-            confrontantes: cs,
-            confrontantePorLado: mapa
-          };
+      if (importacaoModoMesclar) {
+        const baseIndex = vertices.length;
+        const vsMerge = vs.map((v, idx) => ({ ...v, ordem: baseIndex + idx }));
+        const vsFinal = [...vertices, ...vsMerge];
+
+        const csFinal = [...confrontantes];
+        for (const c of cs) {
+          if (!csFinal.some((x) => x.nome === c.nome)) {
+            csFinal.push(c);
+          }
         }
-        return g;
-      });
-      setGlebas(novasGlebas);
-      setVertices(vs);
-      setConfrontantes(cs);
-      setConfrontantePorLado(mapa);
-      setVerticesIgnorados(finalIgnorados);
+
+        const mapaFinal = { ...confrontantePorLado };
+        for (const [keyStr, val] of Object.entries(mapa)) {
+          const key = Number(keyStr);
+          mapaFinal[baseIndex + key] = val;
+        }
+
+        const novasGlebas = glebas.map((g) => {
+          if (g.id === glebaAtivaId) {
+            return {
+              ...g,
+              vertices: vsFinal,
+              confrontantes: csFinal,
+              confrontantePorLado: mapaFinal
+            };
+          }
+          return g;
+        });
+
+        setGlebas(novasGlebas);
+        setVertices(vsFinal);
+        setConfrontantes(csFinal);
+        setConfrontantePorLado(mapaFinal);
+        setVerticesIgnorados([...verticesIgnorados, ...finalIgnorados]);
+      } else {
+        // Importando no atual: atualiza os vértices e confrontantes da gleba ativa
+        const novasGlebas = glebas.map((g) => {
+          if (g.id === glebaAtivaId) {
+            return {
+              ...g,
+              vertices: vs,
+              confrontantes: cs,
+              confrontantePorLado: mapa
+            };
+          }
+          return g;
+        });
+        setGlebas(novasGlebas);
+        setVertices(vs);
+        setConfrontantes(cs);
+        setConfrontantePorLado(mapa);
+        setVerticesIgnorados(finalIgnorados);
+      }
     }
-    if (gerarPoligono) {
-      const extra = ignorados.length ? ` (${ignorados.length} fora do polígono)` : '';
+    if (importacaoModoMesclar) {
+      aviso(`${vs.length} vértice(s) adicional(is) importado(s) e mesclado(s) com sucesso ao projeto.`);
+    } else if (gerarPoligono) {
+      const extra = finalIgnorados.length ? ` (${finalIgnorados.length} fora do polígono)` : '';
       aviso(`${vs.length} vértices importados e perímetro gerado na Parcela 1${extra} — fuso ${z}${hemisferio} (${municipio}).`);
     } else {
-      aviso(`${ignorados.length} vértices importados como pontos soltos, SEM perímetro — fuso ${z}${hemisferio} (${municipio}). Use a ferramenta "Considerar" para formar o polígono quando quiser.`);
+      aviso(`${finalIgnorados.length} vértices importados como pontos soltos, SEM perímetro — fuso ${z}${hemisferio} (${municipio}). Use a ferramenta "Considerar" para formar o polígono quando quiser.`);
     }
     setPreviewData(null);
     setImportPendingFile(null);
@@ -4780,13 +4822,16 @@ export default function EditorPage() {
     } finally { setProcessando(false); }
   }
 
-  const [intervaloCurva, setIntervaloCurva] = useState(1);
+  const [intervaloCurva, setIntervaloCurva] = useState(5);
   const [curvaCorAuto, setCurvaCorAuto] = useState(true); // cor automática: branca no mapa, cinza na planta
   const [curvaCorFina, setCurvaCorFina] = useState(COR_CURVA_NIVEL);
   const [curvaCorMestra, setCurvaCorMestra] = useState(COR_CURVA_NIVEL);
-  const [curvaMestraCada, setCurvaMestraCada] = useState(5); // linha mais forte a cada N curvas
+  const [curvaMestraCada, setCurvaMestraCada] = useState(3); // linha mais forte a cada N curvas
   const [curvaEspessura, setCurvaEspessura] = useState<'fina' | 'media' | 'grossa'>('media');
+  const [curvaEstiloMestra, setCurvaEstiloMestra] = useState<'solido' | 'tracejado' | 'pontilhado'>('solido');
+  const [curvaEstiloNormal, setCurvaEstiloNormal] = useState<'solido' | 'tracejado' | 'pontilhado'>('solido');
   const [curvaConfigAberta, setCurvaConfigAberta] = useState(false);
+  const [abaCurva, setAbaCurva] = useState<'geracao' | 'estilo'>('geracao');
   const [ajusteAltCm, setAjusteAltCm] = useState('');
   const [desconsiderarVerticesLevantados, setDesconsiderarVerticesLevantados] = useState(false);
   const [incluirDivisaNasCurvas, setIncluirDivisaNasCurvas] = useState(true);
@@ -4960,7 +5005,9 @@ export default function EditorPage() {
         const pontos = c.linha.map((p) => { const g = utmParaGeo(p.x, p.y, zona, hemisferio); return { lat: g.lat, lon: g.lon, leste: p.x, norte: p.y }; });
         return novaCurvaNivel(pontos, c.nivel, mestra, {
           cor: curvaCorAuto ? COR_CURVA_AUTO : (mestra ? curvaCorMestra : curvaCorFina),
-          espessura: mestra ? esp.mestra : esp.normal
+          espessura: mestra ? esp.mestra : esp.normal,
+          estiloLinha: mestra ? curvaEstiloMestra : curvaEstiloNormal,
+          tracejado: (mestra ? curvaEstiloMestra : curvaEstiloNormal) === 'tracejado'
         });
       });
       setObjetos((os) => [...os.filter((o) => o.curvaNivel == null), ...objs]);
@@ -5309,7 +5356,12 @@ export default function EditorPage() {
     const objs = curvas.map((c) => {
       const mestra = Math.abs(c.nivel / passoMestra - Math.round(c.nivel / passoMestra)) < 1e-6;
       const pontos = c.linha.map((p) => { const g = utmParaGeo(p.x, p.y, zona, hemisferio); return { lat: g.lat, lon: g.lon, leste: p.x, norte: p.y }; });
-      return novaCurvaNivel(pontos, c.nivel, mestra, { cor: curvaCorAuto ? COR_CURVA_AUTO : (mestra ? curvaCorMestra : curvaCorFina), espessura: mestra ? esp.mestra : esp.normal });
+      return novaCurvaNivel(pontos, c.nivel, mestra, {
+        cor: curvaCorAuto ? COR_CURVA_AUTO : (mestra ? curvaCorMestra : curvaCorFina),
+        espessura: mestra ? esp.mestra : esp.normal,
+        estiloLinha: mestra ? curvaEstiloMestra : curvaEstiloNormal,
+        tracejado: (mestra ? curvaEstiloMestra : curvaEstiloNormal) === 'tracejado'
+      });
     });
     // remove curvas antigas e coloca as novas (mantém o resto do desenho)
     setObjetos((os) => [...os.filter((o) => o.curvaNivel == null), ...objs]);
@@ -5841,21 +5893,10 @@ export default function EditorPage() {
     return true;
   }
 
-  async function criarNovoProjeto() {
-    if (temConteudoTrabalho()) {
-      const ok = await confirmar({ titulo: 'Criar novo projeto', mensagem: 'Deseja SALVAR o projeto atual antes de criar um novo?', okLabel: 'Salvar e criar novo', cancelLabel: 'Descartar e criar novo' });
-      if (ok) {
-        await salvar();
-      } else {
-        const confirmarDescarte = await confirmar({ titulo: 'Descartar alterações', mensagem: 'Você escolheu não salvar. Deseja realmente DESCARTAR as alterações não salvas e iniciar um novo projeto?', okLabel: 'Descartar', perigo: true });
-        if (!confirmarDescarte) return;
-      }
-    }
-    // Limpa todos os estados para começar do zero
+  function resetarEstadosNovoProjeto() {
     setProjetoId(null);
     setNomeProjeto('');
     setNomeProjetoManual(false);
-    // Projeto novo já nasce com os padrões de trabalho da empresa (Ajustes → Padrões & Backup).
     const pad = carregarPadroes();
     setImovel({
       denominacao: '',
@@ -5898,6 +5939,19 @@ export default function EditorPage() {
     setSigefStatus('idle'); setBaixou({}); setSalvoOk(false);
     localStorage.removeItem(rascunhoKey());
     setMobileTela('home');
+  }
+
+  async function criarNovoProjeto() {
+    if (temConteudoTrabalho()) {
+      const ok = await confirmar({ titulo: 'Criar novo projeto', mensagem: 'Deseja SALVAR o projeto atual antes de criar um novo?', okLabel: 'Salvar e criar novo', cancelLabel: 'Descartar e criar novo' });
+      if (ok) {
+        await salvar();
+      } else {
+        const confirmarDescarte = await confirmar({ titulo: 'Descartar alterações', mensagem: 'Você escolheu não salvar. Deseja realmente DESCARTAR as alterações não salvas e iniciar um novo projeto?', okLabel: 'Descartar', perigo: true });
+        if (!confirmarDescarte) return;
+      }
+    }
+    resetarEstadosNovoProjeto();
     aviso('Novo projeto iniciado. Importe pontos para começar.');
     setTimeout(() => {
       fileRef.current?.click();
@@ -5963,8 +6017,30 @@ export default function EditorPage() {
   // antes de importar um novo TXT, oferece salvar o trabalho atual (que será substituído)
   async function iniciarImportTxt() {
     if (temConteudoTrabalho()) {
-      const ok = await confirmar({ titulo: 'Importar novo arquivo', mensagem: 'Há um trabalho em andamento. Deseja SALVÁ-LO como projeto antes de importar um novo arquivo?', okLabel: 'Salvar e importar', cancelLabel: 'Importar sem salvar' });
-      if (ok) { await salvar(); }
+      const escolha = await escolher({
+        titulo: 'Importar novos pontos',
+        mensagem: 'Há um trabalho ou projeto ativo. O que você deseja fazer com a importação de novos pontos?',
+        opcoes: [
+          { chave: 'mesclar', label: 'Importar mais pontos para este projeto', variant: 'default' },
+          { chave: 'salvar_novo', label: 'Salvar atual e começar outro projeto', variant: 'outline' },
+          { chave: 'descartar_novo', label: 'Fechar sem salvar e começar outro projeto', variant: 'destructive' },
+        ],
+        cancelLabel: 'Cancelar'
+      });
+      if (!escolha) return; // cancelou
+
+      if (escolha === 'mesclar') {
+        setImportacaoModoMesclar(true);
+      } else if (escolha === 'salvar_novo') {
+        setImportacaoModoMesclar(false);
+        await salvar();
+        resetarEstadosNovoProjeto();
+      } else if (escolha === 'descartar_novo') {
+        setImportacaoModoMesclar(false);
+        resetarEstadosNovoProjeto();
+      }
+    } else {
+      setImportacaoModoMesclar(false);
     }
     fileRef.current?.click();
   }
@@ -7363,22 +7439,23 @@ export default function EditorPage() {
                               {/* Escala da Planta (só no modo Planta) */}
                               {vista === 'planta' && (
                                 <div className="flex flex-col gap-1">
-                                  <div className="flex items-center justify-between gap-1 rounded-md border border-border bg-background/80 overflow-hidden h-7 px-0.5">
+                                  <div className="flex items-center justify-between gap-1 rounded-md border border-zinc-300 dark:border-zinc-800 bg-zinc-100 dark:bg-black overflow-hidden h-7 px-0.5" onDoubleClick={() => setAba('planta')}>
                                     <button type="button"
-                                      className="h-6 w-6 rounded-sm hover:bg-accent text-foreground font-bold transition-colors text-base flex items-center justify-center"
+                                      className="h-6 w-6 rounded-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-black dark:hover:text-white font-bold transition-colors text-base flex items-center justify-center"
                                       title="Reduzir escala" onClick={() => alterarEscala(250)}>-</button>
                                     <button type="button"
-                                      className={`flex-1 h-6 rounded-sm hover:bg-accent font-bold transition-colors text-[9px] tracking-wider flex items-center justify-center ${!plantaConfig.escalaManual ? 'text-primary' : 'text-foreground/80'}`}
+                                      className={`flex-1 h-6 rounded-sm font-black transition-all text-[9px] tracking-wider flex items-center justify-center gap-1 uppercase hover:bg-zinc-200 dark:hover:bg-zinc-900 ${
+                                        !plantaConfig.escalaManual
+                                          ? 'text-sky-600 dark:text-sky-400 font-extrabold'
+                                          : 'text-zinc-900 dark:text-white font-extrabold'
+                                      }`}
                                       title="Escala da Planta (clique para Automática)"
                                       onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>
                                       ESCALA{!plantaConfig.escalaManual ? ' (AUTO)' : ` 1:${obterEscalaEfetiva()}`}
                                     </button>
                                     <button type="button"
-                                      className="h-6 w-6 rounded-sm hover:bg-accent text-foreground font-bold transition-colors text-base flex items-center justify-center"
+                                      className="h-6 w-6 rounded-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-black dark:hover:text-white font-bold transition-colors text-base flex items-center justify-center"
                                       title="Aumentar escala" onClick={() => alterarEscala(-250)}>+</button>
-                                  </div>
-                                  <div className="flex items-center justify-center rounded-md bg-black text-white h-6 text-[10px] tracking-wider font-bold animate-in fade-in duration-200" onDoubleClick={() => setAba('planta')}>
-                                    1 : {obterEscalaEfetiva()}
                                   </div>
                                 </div>
                               )}
@@ -8305,11 +8382,6 @@ export default function EditorPage() {
                   <div className="h-4 w-px bg-border shrink-0" />
                   <div className="flex items-center gap-1 shrink-0">
                     <TutorialAudioPill modo={modoApp} />
-                    <button type="button" onClick={() => setTutorialAberto(true)}
-                      className="flex h-6 items-center gap-1 rounded-full border bg-background px-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                      title="Tutorial em áudio e texto">
-                      <HelpCircle className="size-3 shrink-0" /> Guias
-                    </button>
                     {(videosUrl || videosTutorial.length > 0) && (
                       <button type="button" onClick={() => setVideosListaAberta(true)}
                         className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
@@ -8571,68 +8643,222 @@ export default function EditorPage() {
       </Dialog>
 
       {/* Modal de Configuração e Geração de Curvas de Nível */}
+      {/* Modal de Configuração e Geração de Curvas de Nível */}
       <Dialog open={curvaConfigAberta} onOpenChange={setCurvaConfigAberta}>
         <DialogContent className="max-w-md bg-card p-4 rounded-xl border shadow-2xl">
           <DialogHeader className="pb-2 border-b">
             <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
               <IconeCurvasNivel className="size-4 text-indigo-500" />
-              Geração de Curvas de Nível
+              Configuração e Geração de Curvas
             </DialogTitle>
           </DialogHeader>
 
-          <div className="py-3 space-y-3">
-            {/* Intervalo (m) + Botão Sugerir */}
-            <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/20 p-2 border">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-foreground">Intervalo entre Curvas:</span>
-                <button type="button"
-                  onClick={() => setIntervaloCurva((c) => Math.max(0.1, +(c - 1).toFixed(2)))}
-                  className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">-</button>
-                <input type="number" min={0.1} step={1} value={intervaloCurva}
-                  onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))}
-                  className="h-6 w-12 rounded border border-input bg-background px-1 text-center text-xs font-bold"
-                  title="Intervalo entre as curvas de nível (metros)" />
-                <button type="button"
-                  onClick={() => setIntervaloCurva((c) => +(c + 1).toFixed(2))}
-                  className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">+</button>
-                <span className="text-xs text-muted-foreground font-mono">m</span>
-              </div>
-              <Button type="button" size="sm" onClick={sugerirIntervaloCurva}
-                title="Sugerir intervalo pelo desnível"
-                className="h-6 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 text-[10px] font-bold">
-                Sugerir
-              </Button>
-            </div>
+          {/* Abas */}
+          <div className="flex border-b text-xs font-bold my-2 select-none">
+            <button
+              type="button"
+              onClick={() => setAbaCurva('geracao')}
+              className={`flex-1 py-1.5 text-center border-b-2 transition-all ${
+                abaCurva === 'geracao'
+                  ? 'border-indigo-500 text-indigo-500 font-extrabold'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Parâmetros de Geração
+            </button>
+            <button
+              type="button"
+              onClick={() => setAbaCurva('estilo')}
+              className={`flex-1 py-1.5 text-center border-b-2 transition-all ${
+                abaCurva === 'estilo'
+                  ? 'border-indigo-500 text-indigo-500 font-extrabold'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Estilo Visual & Grade
+            </button>
+          </div>
 
-            {/* Linha Mestra & Espessura em linhas limpas dedicadas */}
-            <div className="flex items-center justify-between gap-2 bg-muted/20 p-2 rounded-lg border">
-              <span className="text-xs font-semibold text-muted-foreground">Curva Mestra a cada:</span>
-              <div className="flex items-center gap-1.5">
-                <button type="button"
-                  onClick={() => setCurvaMestraCada((c) => Math.max(1, c - 1))}
-                  className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">-</button>
-                <input type="number" min={1} step={1} value={curvaMestraCada}
-                  onChange={(e) => setCurvaMestraCada(Math.max(1, Math.round(Number(e.target.value) || 5)))}
-                  className="h-6 w-12 rounded border border-input bg-background text-center text-xs font-bold" />
-                <button type="button"
-                  onClick={() => setCurvaMestraCada((c) => c + 1)}
-                  className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">+</button>
-                <span className="text-xs text-muted-foreground font-medium">curvas</span>
-              </div>
-            </div>
+          <div className="py-2 space-y-3 min-h-[220px]">
+            {abaCurva === 'geracao' ? (
+              <>
+                {/* Intervalo (m) + Botão Sugerir */}
+                <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/20 p-2 border">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground">Intervalo entre Curvas:</span>
+                    <button type="button"
+                      onClick={() => setIntervaloCurva((c) => Math.max(0.1, +(c - 1).toFixed(2)))}
+                      className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">-</button>
+                    <input type="number" min={0.1} step={1} value={intervaloCurva}
+                      onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))}
+                      className="h-6 w-12 rounded border border-input bg-background px-1 text-center text-xs font-bold"
+                      title="Intervalo entre as curvas de nível (metros)" />
+                    <button type="button"
+                      onClick={() => setIntervaloCurva((c) => +(c + 1).toFixed(2))}
+                      className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">+</button>
+                    <span className="text-xs text-muted-foreground font-mono">m</span>
+                  </div>
+                  <Button type="button" size="sm" onClick={sugerirIntervaloCurva}
+                    title="Sugerir intervalo pelo desnível"
+                    className="h-6 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 text-[10px] font-bold">
+                    Sugerir
+                  </Button>
+                </div>
 
-            <div className="flex items-center justify-between gap-2 bg-muted/20 p-2.5 rounded-lg border">
-              <span className="text-xs font-semibold text-muted-foreground">Espessura das Curvas:</span>
-              <div className="flex items-center gap-2">
-                {(['fina', 'media', 'grossa'] as const).map((e) => (
-                  <button key={e} type="button" onClick={() => setCurvaEspessura(e)}
-                    className={`flex flex-col items-center justify-center px-3 py-1.5 min-w-[56px] rounded transition-all ${curvaEspessura === e ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900 shadow-sm font-bold' : 'bg-background hover:bg-muted text-foreground border font-medium'}`}>
-                    <span className="text-[10px] leading-none mb-1">{e === 'fina' ? 'Fina' : e === 'media' ? 'Média' : 'Grossa'}</span>
-                    <span className={`w-full rounded-full ${e === 'fina' ? 'h-[1px] bg-current opacity-70' : e === 'media' ? 'h-[2.5px] bg-current opacity-90' : 'h-[4px] bg-current'}`} />
-                  </button>
-                ))}
-              </div>
-            </div>
+                {/* Linha Mestra a cada */}
+                <div className="flex items-center justify-between gap-2 bg-muted/20 p-2 rounded-lg border">
+                  <span className="text-xs font-semibold text-muted-foreground">Curva Mestra a cada:</span>
+                  <div className="flex items-center gap-1.5">
+                    <button type="button"
+                      onClick={() => setCurvaMestraCada((c) => Math.max(1, c - 1))}
+                      className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">-</button>
+                    <input type="number" min={1} step={1} value={curvaMestraCada}
+                      onChange={(e) => setCurvaMestraCada(Math.max(1, Math.round(Number(e.target.value) || 3)))}
+                      className="h-6 w-12 rounded border border-input bg-background text-center text-xs font-bold" />
+                    <button type="button"
+                      onClick={() => setCurvaMestraCada((c) => c + 1)}
+                      className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">+</button>
+                    <span className="text-xs text-muted-foreground font-medium">curvas</span>
+                  </div>
+                </div>
+
+                {/* Fonte DEM (Altitude) */}
+                <div className="flex items-center justify-between gap-2 bg-muted/20 p-2 rounded-lg border">
+                  <span className="text-xs font-semibold text-muted-foreground">Modelo de Elevação (DEM):</span>
+                  <select
+                    value={modeloElevacao}
+                    onChange={(e) => {
+                      setModeloElevacao(e.target.value as any);
+                      setGradeAltimetrica([]);
+                    }}
+                    className="h-7 rounded border bg-background px-2 text-xs font-bold focus:ring-1 focus:ring-primary focus:outline-none w-44"
+                  >
+                    <option value="copernicus_dem_30">Copernicus 30m</option>
+                    <option value="alos_dem_30">ALOS 3D 30m</option>
+                    <option value="srtm_gld3">SRTM 30m</option>
+                  </select>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Resolução da Grade */}
+                <div className="flex items-center justify-between gap-2 bg-muted/20 p-2 rounded-lg border">
+                  <span className="text-xs font-semibold text-muted-foreground">Grade de Amostragem:</span>
+                  <select
+                    value={gradeDensidadeMetros}
+                    onChange={(e) => {
+                      setGradeDensidadeMetros(Number(e.target.value));
+                      setGradeAltimetrica([]);
+                    }}
+                    className="h-7 rounded border bg-background px-2 text-xs font-bold focus:ring-1 focus:ring-primary focus:outline-none"
+                  >
+                    <option value={30}>Nativo Satélite (30m)</option>
+                    <option value={20}>Denso (20m)</option>
+                    <option value={50}>Médio (50m)</option>
+                    <option value={100}>Esparso (100m)</option>
+                  </select>
+                </div>
+
+                {/* Espessura das Curvas */}
+                <div className="flex items-center justify-between gap-2 bg-muted/20 p-2.5 rounded-lg border">
+                  <span className="text-xs font-semibold text-muted-foreground">Espessura:</span>
+                  <div className="flex items-center gap-2">
+                    {(['fina', 'media', 'grossa'] as const).map((e) => (
+                      <button key={e} type="button" onClick={() => setCurvaEspessura(e)}
+                        className={`flex flex-col items-center justify-center px-2 py-1 min-w-[48px] rounded transition-all ${curvaEspessura === e ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900 shadow-sm font-bold' : 'bg-background hover:bg-muted text-foreground border font-medium'}`}>
+                        <span className="text-[9px] leading-none mb-1">{e === 'fina' ? 'Fina' : e === 'media' ? 'Média' : 'Grossa'}</span>
+                        <span className={`w-full rounded-full ${e === 'fina' ? 'h-[1px] bg-current opacity-70' : e === 'media' ? 'h-[2.5px] bg-current opacity-90' : 'h-[4px] bg-current'}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Estilo das Linhas (Mestra e Normal) */}
+                <div className="grid grid-cols-2 gap-2 bg-muted/20 p-2 rounded-lg border">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Linha Normal</span>
+                    <select
+                      value={curvaEstiloNormal}
+                      onChange={(e) => setCurvaEstiloNormal(e.target.value as any)}
+                      className="h-7 rounded border bg-background px-1.5 text-xs font-bold focus:ring-1 focus:ring-primary focus:outline-none w-full"
+                    >
+                      <option value="solido">Sólido</option>
+                      <option value="tracejado">Tracejado</option>
+                      <option value="pontilhado">Pontilhado</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Linha Mestra</span>
+                    <select
+                      value={curvaEstiloMestra}
+                      onChange={(e) => setCurvaEstiloMestra(e.target.value as any)}
+                      className="h-7 rounded border bg-background px-1.5 text-xs font-bold focus:ring-1 focus:ring-primary focus:outline-none w-full"
+                    >
+                      <option value="solido">Sólido</option>
+                      <option value="tracejado">Tracejado</option>
+                      <option value="pontilhado">Pontilhado</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Cores das Curvas */}
+                <div className="bg-muted/20 p-2 rounded-lg border space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground">Colorização Automática:</span>
+                    <button
+                      type="button"
+                      onClick={() => setCurvaCorAuto(!curvaCorAuto)}
+                      className={`h-6 px-3 text-[10px] font-bold rounded transition-all ${
+                        curvaCorAuto
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-background hover:bg-muted text-foreground border'
+                      }`}
+                    >
+                      {curvaCorAuto ? 'ATIVADO' : 'PERSONALIZAR'}
+                    </button>
+                  </div>
+
+                  {!curvaCorAuto && (
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/20">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase">Cor Curva Normal</span>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="color"
+                            value={curvaCorFina}
+                            onChange={(e) => setCurvaCorFina(e.target.value)}
+                            className="size-6 rounded border cursor-pointer bg-background"
+                          />
+                          <input
+                            type="text"
+                            value={curvaCorFina}
+                            onChange={(e) => setCurvaCorFina(e.target.value)}
+                            className="h-6 w-16 text-[10px] font-mono font-bold text-center border rounded bg-background uppercase"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase">Cor Curva Mestra</span>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="color"
+                            value={curvaCorMestra}
+                            onChange={(e) => setCurvaCorMestra(e.target.value)}
+                            className="size-6 rounded border cursor-pointer bg-background"
+                          />
+                          <input
+                            type="text"
+                            value={curvaCorMestra}
+                            onChange={(e) => setCurvaCorMestra(e.target.value)}
+                            className="h-6 w-16 text-[10px] font-mono font-bold text-center border rounded bg-background uppercase"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t">
@@ -9559,7 +9785,31 @@ export default function EditorPage() {
                 ))}
               </div>
             </div>
-            
+
+            {/* Banner destacado para o botão de Guias */}
+            <div className="bg-gradient-to-r from-indigo-950 to-indigo-900 border-2 border-indigo-500/80 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl select-none animate-in fade-in duration-300">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-full shrink-0 border border-indigo-500/20">
+                  <HelpCircle className="size-6 text-indigo-400" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-indigo-200 uppercase tracking-wider">
+                    Manual de Habilitação & Guias do Usuário
+                  </h4>
+                  <p className="text-[11px] text-slate-300 mt-1 leading-relaxed max-w-lg">
+                    Consulte o manual interativo completo e os guias passo a passo para dominar a plataforma e o fluxo de certificação do SIGEF.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={() => { setTutorialF1Aberto(false); setTutorialAberto(true); }}
+                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-2.5 rounded-lg border-0 shadow-lg shrink-0 uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all"
+              >
+                <HelpCircle className="size-4" /> Abrir Guias e Manuais
+              </Button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
                 <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">1</div>

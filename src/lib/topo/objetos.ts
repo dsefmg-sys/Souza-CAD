@@ -15,12 +15,17 @@ export const COR_CURVA_NIVEL = '#8a5a2b';
 /** Sentinela de cor AUTOMÁTICA da curva: cada tela decide (branca no mapa escuro, cinza na planta branca). */
 export const COR_CURVA_AUTO = 'auto';
 
-/** Cria uma polilinha marcada como CURVA DE NÍVEL na altitude `nivel`. Mestra (a cada Nª) mais grossa.
- * Cor e espessura vêm da engrenagem de ajustes; sem opções, cai no padrão de carta topográfica. */
-export function novaCurvaNivel(pontos: PontoLL[], nivel: number, mestra: boolean, opts: { cor?: string; espessura?: number } = {}): ObjetoDesenho {
+export function novaCurvaNivel(
+  pontos: PontoLL[],
+  nivel: number,
+  mestra: boolean,
+  opts: { cor?: string; espessura?: number; tracejado?: boolean; estiloLinha?: string } = {}
+): ObjetoDesenho {
   return {
     id: novoObjetoId(), tipo: 'polilinha', pontos, curvaNivel: nivel, curvaMestra: mestra,
     cor: opts.cor ?? COR_CURVA_NIVEL, espessura: opts.espessura ?? (mestra ? 1.2 : 0.5),
+    tracejado: opts.tracejado,
+    estiloLinha: opts.estiloLinha ?? (opts.tracejado ? 'tracejado' : 'solido')
   };
 }
 
