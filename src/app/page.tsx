@@ -7317,8 +7317,8 @@ export default function EditorPage() {
                           <Save className={salvarLaranja ? 'text-white animate-pulse' : 'text-emerald-500'} /> <span>SALVAR</span>
                           <Atalho k={obterAtalhoLateral('salvar', 'sv')} />
                         </Button>
-                        <Button size="sm" variant="secondary" className="relative" onClick={() => setPrecoSugAberto(true)} title={`Precificação: quanto cobrar por este imóvel (${obterAtalhoLateral('precificacao', 'pc')})`}>
-                          <PencilRuler className="text-amber-400" /> <span>Precificação</span>
+                        <Button size="sm" variant="secondary" className="relative" onClick={() => setPrecoSugAberto(true)} title={`Precificar: quanto cobrar por este imóvel (${obterAtalhoLateral('precificacao', 'pc')})`}>
+                          <PencilRuler className="text-amber-400" /> <span>Precificar</span>
                           <Atalho k={obterAtalhoLateral('precificacao', 'pc')} />
                         </Button>
                         <Button size="sm" variant="secondary" className="relative" onClick={() => setIaAberta(true)} title="Extração Inteligente (IA): extrair dados cadastrais e vértices/coordenadas de documentos e memoriais">
