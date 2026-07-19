@@ -571,6 +571,12 @@ export function ObjetoPersonalizarModal({
             return (
               <div className="space-y-4">
                 <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Polígono SIGEF Importado</div>
+                <label className="flex items-center gap-2 cursor-pointer py-1">
+                  <input type="checkbox" checked={plantaConfig.sigefOcultar !== true}
+                    onChange={(e) => setPlantaConfig((p: PlantaConfig) => ({ ...p, sigefOcultar: !e.target.checked }))}
+                    className="rounded border-zinc-300 text-primary focus:ring-primary size-4" />
+                  <span className="text-sm font-medium">Mostrar polígono na planta</span>
+                </label>
                 <div className="space-y-1">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cor</Label>
                   <div className="flex items-center gap-2">

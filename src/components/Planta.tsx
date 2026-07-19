@@ -1332,7 +1332,7 @@ export default function Planta({
 
       {/* ---------- IMÓVEIS VIZINHOS CERTIFICADOS ---------- */}
       {/* Desenha as parcelas vizinhas certificadas no SIGEF em azul claro, mostrando o confrontamento homologado */}
-      {verVizinhoVtx && parcelasCert.map((pc, idx) => {
+      {verVizinhoVtx && !config.sigefOcultar && parcelasCert.map((pc, idx) => {
         const anelPc = pc.anel.map(([lat, lon]) => {
           const u = geoParaUtm(lat, lon, zona, hemisferio);
           return { x: sx(u.leste), y: sy(u.norte) };

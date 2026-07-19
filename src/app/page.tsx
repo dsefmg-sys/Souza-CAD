@@ -316,7 +316,7 @@ function IconeCota({ className }: { className?: string }) {
 // uso. O botão precisa ser `relative` — as grades põem `[&>button]:relative` uma vez só.
 function Atalho({ k, className }: { k: string; className?: string }) {
   return (
-    <span className={`pointer-events-none absolute left-0.5 top-0.5 text-[8px] font-extrabold leading-none tracking-tight text-amber-500 dark:text-amber-400 ${className ?? ''}`}>{k}</span>
+    <span className={`pointer-events-none absolute right-0.5 bottom-0.5 text-[8px] font-extrabold leading-none tracking-tight text-amber-500 dark:text-amber-400 ${className ?? ''}`}>{k.toUpperCase()}</span>
   );
 }
 
@@ -6536,18 +6536,18 @@ export default function EditorPage() {
         {!telaEstreita && (
           <>
             <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-sky-500 hover:bg-sky-600 text-white gap-1`} title="Início — Guia do fluxo de trabalho passo a passo (F1)" onClick={() => setTutorialF1Aberto(true)}>
-              <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F1</span>
+              <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F1</span>
               <GraduationCap className="size-3 shrink-0 animate-pulse text-sky-100" /> INÍCIO
             </Button>
             <Etapa st={etapas.txt}>
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_IMPORT} gap-1`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}>
-                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F2</span>
+                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F2</span>
                 <Upload /> PONTOS
               </Button>
             </Etapa>
             <Etapa st={etapas.sigef}>
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_VIZINHO} gap-1`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
-                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F3</span>
+                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F3</span>
                 <Download /> SIGEF
               </Button>
             </Etapa>
@@ -6560,7 +6560,7 @@ export default function EditorPage() {
         {!telaEstreita && (
           <Etapa st={etapas.dados}>
             <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
-              <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F4</span>
+              <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F4</span>
               <Upload /> DADOS
             </Button>
           </Etapa>
@@ -6573,13 +6573,13 @@ export default function EditorPage() {
           <>
             <Etapa st={etapas.confro}>
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_CONFRO} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>
-                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F5</span>
+                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F5</span>
                 <Paintbrush className="size-3 shrink-0" /> CONFRO
               </Button>
             </Etapa>
             <Etapa st={etapas.divisas}>
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DIVISA} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>
-                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F6</span>
+                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F6</span>
                 <Paintbrush className="size-3 shrink-0" /> DIVISAS
               </Button>
             </Etapa>
@@ -6593,18 +6593,18 @@ export default function EditorPage() {
           <>
             <Etapa st={etapas.trt}>
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>
-                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F7</span>
+                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F7</span>
                 <Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}
               </Button>
             </Etapa>
             <Etapa st={etapas.ods}>
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}>
-                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F8</span>
+                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F8</span>
                 <Download /> ODS
               </Button>
             </Etapa>
             <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}>
-              <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F9</span>
+              <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F9</span>
               <CheckCircle2 /> CONFERIR
             </Button>
             {/* Memorial, planta, requerimento, anuência e errata: reunidos num menu PEÇAS, pra não
@@ -6612,7 +6612,7 @@ export default function EditorPage() {
                 PEÇAS que já existe no celular). */}
             <div ref={pecasBtnRef} className="relative shrink-0">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
-                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F10</span>
+                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F10</span>
                 <Download /> PEÇAS <ChevronDown className="size-3" />
               </Button>
               {pecasMenuAberto && pecasMenuPos && (
@@ -6675,14 +6675,14 @@ export default function EditorPage() {
             {medioOuMais && (
               <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
                 <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-emerald-800 hover:bg-emerald-900 text-white border-transparent gap-1`} title="Acessar o SIGEF para certificação eletrônica do imóvel">
-                  <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F11</span>
+                  <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F11</span>
                   <CheckCircle2 /> CERT
                 </Button>
               </a>
             )}
             {medioOuMais && (
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent gap-1`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>
-                <span className="absolute -top-1.5 -left-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F12</span>
+                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F12</span>
                 <Leaf /> CAR
               </Button>
             )}
@@ -7701,7 +7701,7 @@ export default function EditorPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 gap-x-1 gap-y-1 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
+                    <div className="grid grid-cols-3 gap-1.5 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
                       <span className="text-[10px] font-bold uppercase text-foreground col-span-3 px-1 mb-0.5">Ajuste de Tamanhos</span>
                       
                       <AjusteTamanho label="Interface" valor={`${Math.round(escalaInterface * 100)}%`} titulo="Tamanho das letras da interface"
@@ -7734,6 +7734,7 @@ export default function EditorPage() {
                       ...(completo ? [['Vért. V', 'Criar vértice virtual (V): canto que você não ocupou, por afastamento ou interseção de alinhamentos', <Waypoints key="i" className="size-4" />, () => { setVvBase(null); setVvAberto(true); }, 'text-indigo-600 dark:text-indigo-400']] : []),
                       ...(completo ? [['DXF', 'Editor de DXF (abrir e editar um DXF qualquer, ex.: projeto elétrico — isolado do projeto)', <PencilRuler key="i" className="size-4" />, () => setDxfEditorAberto(true), 'text-indigo-600 dark:text-indigo-400']] : []),
                       ...(completo ? [['% Área', 'Porcentagem entre dois polígonos (área de um em relação ao outro e ao total)', <Percent key="i" className="size-4" />, () => setPorcentagemAberta(true), 'text-indigo-600 dark:text-indigo-400']] : []),
+                      ...(vista === 'planta' ? [[folhaTravada ? 'Travada' : 'Destrav.', folhaTravada ? 'Folha travada — clique para destravar e mover elementos' : 'Folha destravada — clique para travar e proteger o layout', folhaTravada ? <Lock key="i" className="size-4" /> : <LockOpen key="i" className="size-4" />, () => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }, folhaTravada ? 'text-slate-500' : 'text-amber-500']] : []),
                       ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')), 'text-slate-500'],
                       ['Config.', 'Configurações gerais', <Settings key="i" className="size-4" />, () => { setConfigAba(undefined); setConfigAberta(true); }, 'text-slate-500'],
                       ...(!ocultarCobranca || souMaster() ? [['Planos', souMaster() ? 'Cobrança do app: planos, preços e nível de cada cliente (admin)' : 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400']] : []),
@@ -10259,23 +10260,23 @@ function AjusteTamanho({ label, valor, titulo, negrito = true, onDec, onInc }: {
         <span className="truncate text-[9.5px] font-bold text-foreground/90">{label}</span>
         {valor && <span className="text-[9px] font-mono font-black text-primary shrink-0">{valor}</span>}
       </div>
-      <div className="flex h-[22px] items-stretch overflow-hidden rounded border border-border/90 bg-background shadow-2xs">
+      <div className="flex h-7 items-stretch overflow-hidden rounded border border-border/90 bg-background shadow-2xs">
         <button
           type="button"
           aria-label={`Diminuir ${label}`}
-          className="flex flex-1 items-center justify-center text-foreground bg-secondary/80 hover:bg-primary hover:text-white active:scale-95 transition-all"
+          className="flex flex-1 items-center justify-center min-w-0 text-foreground bg-secondary/80 hover:bg-primary hover:text-white active:scale-95 transition-all"
           onClick={onDec}
         >
-          <Minus className="size-2.5 shrink-0" />
+          <Minus className="size-3 shrink-0" />
         </button>
         <div className="w-px bg-border/80" />
         <button
           type="button"
           aria-label={`Aumentar ${label}`}
-          className="flex flex-1 items-center justify-center text-foreground bg-secondary/80 hover:bg-primary hover:text-white active:scale-95 transition-all"
+          className="flex flex-1 items-center justify-center min-w-0 text-foreground bg-secondary/80 hover:bg-primary hover:text-white active:scale-95 transition-all"
           onClick={onInc}
         >
-          <Plus className="size-2.5 shrink-0" />
+          <Plus className="size-3 shrink-0" />
         </button>
       </div>
     </div>

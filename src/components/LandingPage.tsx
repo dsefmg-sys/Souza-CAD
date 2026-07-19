@@ -41,26 +41,26 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
     <div className="relative min-h-screen bg-slate-950 text-slate-100 overflow-x-hidden font-sans select-none selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col justify-between">
       
       {/* ── BACKGROUND TÉCNICO: CURVAS DE NÍVEL TOPOGRÁFICAS SVG ── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-15">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-10">
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
           <defs>
             <linearGradient id="topoGradLine" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
-              <stop offset="50%" stopColor="#059669" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#047857" stopOpacity="0.1" />
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+              <stop offset="50%" stopColor="#059669" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#047857" stopOpacity="0.08" />
             </linearGradient>
           </defs>
-          <path d="M-100 150 C 300 80, 600 350, 1200 180 C 1500 80, 1800 280, 2200 120" fill="none" stroke="url(#topoGradLine)" strokeWidth="1.5" className="animate-pulse" style={{ animationDuration: '7s' }} />
-          <path d="M-100 350 C 400 250, 700 550, 1300 300 C 1600 200, 1900 450, 2300 300" fill="none" stroke="url(#topoGradLine)" strokeWidth="1.2" className="animate-pulse" style={{ animationDuration: '9s' }} />
-          <path d="M-100 550 C 250 450, 800 750, 1400 500 C 1700 400, 2000 650, 2400 500" fill="none" stroke="url(#topoGradLine)" strokeWidth="1" className="animate-pulse" style={{ animationDuration: '11s' }} />
+          <path d="M-100 150 C 300 80, 600 350, 1200 180 C 1500 80, 1800 280, 2200 120" fill="none" stroke="url(#topoGradLine)" strokeWidth="1.5" />
+          <path d="M-100 350 C 400 250, 700 550, 1300 300 C 1600 200, 1900 450, 2300 300" fill="none" stroke="url(#topoGradLine)" strokeWidth="1.2" />
+          <path d="M-100 550 C 250 450, 800 750, 1400 500 C 1700 400, 2000 650, 2400 500" fill="none" stroke="url(#topoGradLine)" strokeWidth="1" />
         </svg>
       </div>
 
       {/* ── HEADER CLEAN COM BOTÃO DE PIONEIRO (X/Y) ── */}
       <header className="max-w-7xl mx-auto w-full px-6 py-6 flex items-center justify-between z-30 relative shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-            <Compass className="size-6 text-emerald-400 animate-spin" style={{ animationDuration: '60s' }} />
+          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+            <Compass className="size-6 text-emerald-400" />
           </div>
           <div>
             <span className="text-xl font-black tracking-widest text-white font-mono">SOUZA <span className="text-emerald-400">CAD</span></span>
@@ -71,78 +71,65 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           <button
             type="button"
             onClick={onPioneiro}
-            className="px-5 py-2.5 rounded-2xl bg-emerald-400 text-slate-950 text-xs font-black transition-all cursor-pointer flex items-center gap-2 shadow-[0_0_30px_rgba(16,185,129,0.45)] hover:bg-emerald-300 hover:scale-105 active:scale-95 uppercase tracking-wider font-mono"
+            className="px-5 py-2.5 rounded-2xl bg-emerald-500 text-white text-xs font-black transition-all cursor-pointer flex items-center gap-2 hover:bg-emerald-400 hover:scale-105 active:scale-95 uppercase tracking-wider font-mono shadow-lg"
           >
-            <Zap className="size-4 fill-slate-950" />
+            <Zap className="size-4" />
             <span>SER UM PIONEIRO ({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span>
           </button>
         </div>
       </header>
 
       {/* ── ROLAGEM VERTICAL EM GRANDES SEÇÕES PERSUASIVAS & LEGÍVEIS ── */}
-      <main className="relative flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-16 z-10 space-y-28 text-center">
+      <main className="relative flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-16 z-10 space-y-24 text-center">
         
-        {/* 1. SEÇÃO HERO: TÍTULO PRINCIPAL & SUBTÍTULO */}
+        {/* 1. SEÇÃO HERO: TÍTULO PRINCIPAL & SUBTÍTULO + IMAGEM PRINCIPAL */}
         <section className="max-w-4xl mx-auto space-y-8 pt-4">
-          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-sm font-black uppercase tracking-wider text-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.2)]">
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-sm font-black uppercase tracking-wider text-emerald-300">
             <FileSpreadsheet className="size-5 text-emerald-400" />
             <span>Planilha ODS Padrão INCRA & SIGEF em Minutos</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white leading-[1.08] tracking-tight drop-shadow-md">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white leading-[1.08] tracking-tight">
             {titulo}
           </h1>
 
-          <p className="text-lg sm:text-2xl text-slate-200 leading-relaxed font-medium max-w-3xl mx-auto">
+          <p className="text-lg sm:text-2xl text-slate-300 leading-relaxed font-medium max-w-3xl mx-auto">
             {subtitulo}
           </p>
+
+          {/* IMAGEM HERO: Screenshot principal do app no topo */}
+          <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 mt-8">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/marca/preview_mapa2d.png"
+              alt="Interface completa do Souza-CAD com editor de mapa 2D sobre imagem de satélite, delimitação perimétrica, confrontantes e métricas"
+              className="w-full h-auto object-contain"
+            />
+          </div>
         </section>
 
-        {/* 2. 🌟 DEMONSTRAÇÃO VISUAL IMPACTANTE (IMAGENS REAIS DO SISTEMA LOGO APÓS O HERO) 🌟 */}
+        {/* 2. DEMONSTRAÇÃO VISUAL — DIFERENCIAIS DO SOFTWARE */}
         <section className="w-full space-y-20 pt-2">
           
-          {/* IMAGEM MARCANTE 1: EDITOR 2D GIS COM IMAGEM DE SATÉLITE & DELIMITAÇÃO PERIMÉTRICA */}
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-              <MapPin className="size-4" /> Editor 2D GIS & Imagem de Satélite
-            </div>
-            <h2 className="text-2xl sm:text-4xl font-black text-white">
-              Delimitação Perimétrica & Vértices Oficiais no Mapa
-            </h2>
-            <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
-              Visualização GIS direta sobre imagem de satélite com malha perimétrica, cálculo automático de área, azimutes, distâncias e confrontantes.
-            </p>
-
-            {/* Imagem Real 1: Satélite 2D */}
-            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-slate-950">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_mapa2d.png"
-                alt="Editor de Mapa 2D Satélite e Confrontantes no Souza-CAD"
-                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
-              />
-            </div>
-          </div>
-
-          {/* IMAGEM MARCANTE 2: MODELO DIGITAL DE RELEVO (MDR 3D) INTEGRADO NA PRANCHA A3 */}
+          {/* IMAGEM 2: MODELO DIGITAL DE RELEVO (MDR 3D) INTEGRADO NA PRANCHA A3 */}
           <div className="space-y-4 pt-4">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
               <Box className="size-4" /> Modelo Digital de Relevo (MDR 3D) na Prancha
             </div>
             <h2 className="text-2xl sm:text-4xl font-black text-white">
-              Relevo 3D, Situação & Convenções em Layout Oficial
+              Modelo Digital de Relevo 3D Integrado à Prancha Oficial
             </h2>
             <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
               Incorpore o Modelo Digital de Relevo 3D com malha TIN wireframe, diagrama de convergência magnética e convenções cartográficas na sua prancha final.
             </p>
 
             {/* Imagem Real 2: MDR 3D na Prancha */}
-            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-slate-950">
+            <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_mdr_planta.png"
                 alt="MDR 3D e Convenções na Prancha A3 no Souza-CAD"
-                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                className="w-full h-auto object-contain"
               />
             </div>
           </div>
@@ -151,7 +138,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
         {/* 3. A HISTÓRIA DO CRIADOR (DARLAN SOUZA - 14 ANOS DE PRÁTICA TÉCNICA) */}
         <section className="w-full max-w-4xl mx-auto py-2">
-          <div className="bg-slate-900/80 border border-slate-800/80 p-8 sm:p-12 rounded-3xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden">
+          <div className="bg-slate-900/70 border border-slate-800/60 p-8 sm:p-12 rounded-2xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
               <Shield className="size-5" /> A história por trás da ferramenta
@@ -168,7 +155,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
         {/* 4. CAIXA DE ESCASSEZ & CREDENCIAMENTO PIONEIRO */}
         <section className="w-full max-w-3xl mx-auto">
-          <div className="bg-slate-900/90 border border-emerald-500/30 p-8 sm:p-12 rounded-3xl shadow-[0_0_70px_rgba(16,185,129,0.2)] space-y-8 backdrop-blur-xl relative overflow-hidden">
+          <div className="bg-slate-900/80 border border-emerald-500/20 p-8 sm:p-12 rounded-2xl shadow-xl space-y-8 backdrop-blur-xl relative overflow-hidden">
             
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-6 text-left">
               <div>
@@ -190,17 +177,17 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
               </div>
             </div>
 
-            {/* Barra de Progresso Neon */}
+            {/* Barra de Progresso */}
             <div className="space-y-3 text-left">
-              <div className="h-4 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
+              <div className="h-3.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
                 <div 
-                  className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 rounded-full transition-all duration-1000 shadow-[0_0_18px_rgba(16,185,129,0.7)]"
+                  className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 rounded-full transition-all duration-1000"
                   style={{ width: `${estaEsgotado ? 100 : Math.min(100, (numUsuarios / vagasTotais) * 100)}%` }}
                 />
               </div>
               <div className="text-xs sm:text-sm text-emerald-300 font-bold uppercase tracking-wider flex items-center justify-between">
                 <span>{estaEsgotado ? 'Plano Comercial Ativado' : `Restam apenas ${vagasRestantes} vagas gratuitas de pioneiro`}</span>
-                <span className="animate-pulse">Acesso Imediato</span>
+                <span>Acesso Imediato</span>
               </div>
             </div>
 
@@ -208,13 +195,13 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             <button
               type="button"
               onClick={onPioneiro}
-              className={`w-full text-slate-950 font-black text-lg uppercase py-5 px-8 rounded-2xl transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-2xl ${
+              className={`w-full text-white font-black text-lg uppercase py-5 px-8 rounded-2xl transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-xl ${
                 estaEsgotado
-                  ? 'bg-amber-500 hover:bg-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.45)]'
-                  : 'bg-emerald-400 hover:bg-emerald-300 shadow-[0_0_45px_rgba(16,185,129,0.5)]'
+                  ? 'bg-amber-600 hover:bg-amber-500'
+                  : 'bg-emerald-600 hover:bg-emerald-500'
               }`}
             >
-              <Zap className="size-6 fill-slate-950" />
+              <Zap className="size-6" />
               <span>{estaEsgotado ? 'ADQUIRIR PLANO PROFISSIONAL' : 'SER UM USUÁRIO PIONEIRO'}</span>
               <ArrowRight className="size-6" />
             </button>
@@ -239,12 +226,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </div>
 
             {/* Imagem Real do Requerimento Multi-atos */}
-            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-slate-950">
+            <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_requerimento.png"
                 alt="Requerimentos ao Cartório Multi-Atos no Souza-CAD"
-                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                className="w-full h-auto object-contain"
               />
             </div>
           </div>
@@ -256,7 +243,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
                 <Map className="size-4" /> Peças Técnicas & Download do Pacote ZIP
               </div>
               <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                Planta Topográfica Oficial A3 Pronta & Geração em Lote
+                Prancha A3/A0 Automática com Todas as Peças num Único Pacote
               </h2>
               <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
                 Gere de uma só vez a Planta Topográfica A3/A0 impressa, Memorial Descritivo, Requerimento Cartorário, Cartas de Anuência e Errata Perimetral compactados num único Pacote ZIP.
@@ -264,12 +251,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </div>
 
             {/* Imagem Real da Planta A3 Oficial */}
-            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-white">
+            <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-white">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_planta_a3.png"
                 alt="Planta Topográfica A3 Pronta no Souza-CAD"
-                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                className="w-full h-auto object-contain"
               />
             </div>
 
@@ -278,12 +265,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
               <h3 className="text-xl font-black text-white text-left flex items-center gap-2">
                 <Download className="size-5 text-emerald-400" /> Exportação em Lote & Baixar Pacote ZIP
               </h3>
-              <div className="w-full rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(16,185,129,0.18)] border border-slate-800 bg-slate-950 p-2">
+              <div className="w-full rounded-2xl overflow-hidden shadow-xl border border-slate-800 bg-slate-950 p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/marca/preview_pecas.png"
                   alt="Menu de Peças Técnicas e Pacote ZIP no Souza-CAD"
-                  className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                  className="w-full h-auto object-contain"
                 />
               </div>
             </div>
@@ -296,7 +283,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
                 <AwardIcon className="size-4" /> Habilitação Profissional
               </div>
               <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                Suporte para CFT, CFTA, CREA ou Duplo Registro
+                ART e TRT Automáticos para CFT, CFTA e CREA
               </h2>
               <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
                 Escolha seu conselho e categoria profissional para emissão automática de TRT (CFT/CFTA) ou ART (CREA) em todas as peças geradas pelo sistema.
@@ -304,12 +291,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </div>
 
             {/* Imagem Real do Dropdown de Conselhos */}
-            <div className="w-full max-w-2xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(16,185,129,0.18)] border border-slate-800 bg-slate-950 p-2">
+            <div className="w-full max-w-2xl mx-auto rounded-2xl overflow-hidden shadow-xl border border-slate-800 bg-slate-950 p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_conselhos.png"
                 alt="Categorias Profissionais e Conselhos CFT, CFTA, CREA no Souza-CAD"
-                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                className="w-full h-auto object-contain"
               />
             </div>
           </div>
@@ -328,12 +315,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
                 </h2>
               </div>
 
-              <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
+              <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/marca/preview_gestao.png"
                   alt="Gestão do Projeto, Recibos e Contratos no Souza-CAD"
-                  className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                  className="w-full h-auto object-contain"
                 />
               </div>
             </div>
@@ -345,16 +332,16 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
                   <Layers className="size-4" /> Cartório & Malha SIGEF/INCRA
                 </div>
                 <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                  Erratas para Cartório & Vértices Confrontantes
+                  Errata Perimétrica Automática e Malha SIGEF Integrada
                 </h2>
               </div>
 
-              <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
+              <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/marca/preview_modulos.png"
                   alt="Automação de Erratas e Malha SIGEF no Souza-CAD"
-                  className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                  className="w-full h-auto object-contain"
                 />
               </div>
             </div>
@@ -370,12 +357,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
                 </h2>
               </div>
 
-              <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
+              <div className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/marca/preview_config.png"
                   alt="Configurações da Empresa e Assinatura Digital no Souza-CAD"
-                  className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                  className="w-full h-auto object-contain"
                 />
               </div>
             </div>
@@ -402,8 +389,8 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
               const title = parts[0]?.trim() || '';
               const desc = parts[1]?.trim() || '';
               return (
-                <div key={idx} className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 flex items-start gap-4">
-                  <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0 mt-0.5">
+                <div key={idx} className="p-6 rounded-2xl bg-slate-900/50 border border-slate-800 flex items-start gap-4">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0 mt-0.5">
                     <Check className="size-5" />
                   </div>
                   <div>
@@ -420,13 +407,13 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             <button
               type="button"
               onClick={onPioneiro}
-              className={`w-full text-slate-950 font-black text-lg uppercase py-5 px-8 rounded-2xl transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-2xl ${
+              className={`w-full text-white font-black text-lg uppercase py-5 px-8 rounded-2xl transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-xl ${
                 estaEsgotado
-                  ? 'bg-amber-500 hover:bg-amber-400 shadow-[0_0_40px_rgba(245,158,11,0.45)]'
-                  : 'bg-emerald-400 hover:bg-emerald-300 shadow-[0_0_45px_rgba(16,185,129,0.5)]'
+                  ? 'bg-amber-600 hover:bg-amber-500'
+                  : 'bg-emerald-600 hover:bg-emerald-500'
               }`}
             >
-              <Zap className="size-6 fill-slate-950" />
+              <Zap className="size-6" />
               <span>{estaEsgotado ? 'ADQUIRIR PLANO PROFISSIONAL' : 'SER UM USUÁRIO PIONEIRO AGORA'}</span>
               <ArrowRight className="size-6" />
             </button>

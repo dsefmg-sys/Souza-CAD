@@ -1,0 +1,322 @@
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index e8aeff1..ec1ef10 100644
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -5843,6 +5843,90 @@ export default function EditorPage() {
+     return conferirProntoParaExportar(imovel, vertices, confrontantes, tecnico, confrontantePorLado).ok;
+   }, [imovel, vertices, confrontantes, tecnico, confrontantePorLado]);
+ 
++  // Guia de próximos passos dinâmicos com base no estado do fluxo
++  const dicaFluxo = useMemo(() => {
++    const nLados = Object.keys(confrontantePorLado).length;
++    const todosLados = vertices.length > 0 && nLados >= vertices.length;
++    const todasDivisas = vertices.length > 0 && vertices.every((v) => !!v.representacao) && todosLados;
++    
++    const txtFeito = vertices.length >= 3;
++    const dadosFeitos = !!(imovel.denominacao && imovel.matricula && imovel.proprietario && imovel.municipio);
++    const confroFeito = todosLados;
++    const divisasFeitas = todasDivisas;
++    const trtFeita = !!imovel.numeroTrt?.trim();
++    const odsFeito = !!baixou.ods;
++    
++    if (!txtFeito) {
++      return {
++        passo: 1,
++        resumo: "Próximo passo: Importar os pontos do levantamento (.txt)",
++        detalhe: "Envie o arquivo contendo as coordenadas dos vértices (latitude/longitude ou UTM) obtidos no receptor GNSS. Clique no botão \"PONTOS\" no cabeçalho ou pressione F2 para carregar o arquivo TXT/CSV."
++      };
++    }
++    
++    if (sigefStatus === 'idle') {
++      return {
++        passo: 2,
++        resumo: "Próximo passo: Consultar os vizinhos certificados no SIGEF",
++        detalhe: "Consulte se existem imóveis vizinhos já certificados no SIGEF/INCRA para evitar sobreposições e obter os dados corretos de confrontação. Clique no botão \"SIGEF\" no cabeçalho ou pressione F3."
++      };
++    }
++    
++    if (!dadosFeitos) {
++      return {
++        passo: 3,
++        resumo: "Próximo passo: Preencher os dados do projeto (Imóvel, Proprietário, RT)",
++        detalhe: "Insira as informações básicas do imóvel (Denominação, Matrícula), Proprietário e Responsável Técnico. Clique no botão \"DADOS\" no cabeçalho ou pressione F4. Estes dados preencherão o carimbo e os documentos."
++      };
++    }
++    
++    if (!confroFeito) {
++      return {
++        passo: 4,
++        resumo: "Próximo passo: Definir confrontantes de cada trecho (CONFRO)",
++        detalhe: "Indique os vizinhos confrontantes de cada lado do imóvel. Clique em \"CONFRO\" (F5) no cabeçalho, selecione o confrontante e depois clique nos vértices correspondentes no mapa (no sentido horário) para associá-los."
++      };
++    }
++    
++    if (!divisasFeitas) {
++      return {
++        passo: 5,
++        resumo: "Próximo passo: Caracterizar limites e divisas (DIVISAS)",
++        detalhe: "Defina o tipo de divisa física de cada trecho do perímetro. Clique em \"DIVISAS\" (F6) no cabeçalho, selecione o tipo (Muro, Cerca, Córrego, etc.) e clique no trecho correspondente no mapa (no sentido horário)."
++      };
++    }
++    
++    if (!trtFeita) {
++      return {
++        passo: 6,
++        resumo: "Próximo passo: Inserir o número da ART/TRT",
++        detalhe: "Informe o número da ART (CREA) ou TRT (CFT) correspondente ao georreferenciamento do imóvel. Clique no botão \"ART/TRT\" no cabeçalho ou pressione F7 para salvar."
++      };
++    }
++    
++    if (!odsFeito) {
++      return {
++        passo: 7,
++        resumo: "Próximo passo: Baixar a planilha ODS para certificação SIGEF",
++        detalhe: "Gere a planilha no formato ODS exigida pelo SIGEF/INCRA para o credenciamento do imóvel. Clique em \"ODS\" no cabeçalho (F8) para conferir e exportar o arquivo."
++      };
++    }
++    
++    if (!projPronto) {
++      return {
++        passo: 8,
++        resumo: "Próximo passo: Executar a checagem final (CONFERIR)",
++        detalhe: "Execute a checagem final do projeto. O app verificará tolerâncias de precisão de vértices, fechamento linear e angular, além de confrontações. Clique no botão \"CONFERIR\" (F9) para validar."
++      };
++    }
++    
++    return {
++      passo: 9,
++      resumo: "Passo Final: Baixar o pacote de peças técnicas (PEÇAS)",
++      detalhe: "Seu projeto está concluído e pronto para entrega! Clique no botão \"PEÇAS\" no cabeçalho (F10) ou use o menu dropdown para baixar individualmente ou o Pacote ZIP com Memorial Descritivo (.docx), Planta (.svg), Requerimento e Declarações."
++    };
++  }, [vertices, imovel, confrontantePorLado, sigefStatus, baixou, projPronto]);
++
+   // rótulos de confrontante arrastáveis no mapa (posRotulo manual ou centróide dos lados)
+   const rotulosConf: RotuloMapa[] = useMemo(() => {
+     const out: RotuloMapa[] = [];
+@@ -6215,8 +6299,8 @@ export default function EditorPage() {
+         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
+         {!telaEstreita && (
+           <>
+-            <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-sky-500 hover:bg-sky-600 text-white`} title="Tutorial de Fluxo de Trabalho (F1)" onClick={() => setTutorialF1Aberto(true)}>
+-              <HelpCircle className="size-3 shrink-0" /> TUTORIAL
++            <Button size="sm" className={`shrink-0 ${PREM_BTN} bg-sky-500 hover:bg-sky-600 text-white`} title="Tutorial do Passo a Passo (F1)" onClick={() => setTutorialF1Aberto(true)}>
++              <GraduationCap className="size-3 shrink-0 animate-pulse text-sky-100" /> TUTORIAL FLUXO
+             </Button>
+             <Etapa st={etapas.txt}><Button size="sm" className={`shrink-0 ${PREM_BTN} ${COR_IMPORT}`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}><Upload /> PONTOS</Button></Etapa>
+             <Etapa st={etapas.sigef}>
+@@ -9396,6 +9480,131 @@ export default function EditorPage() {
+ 
+       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
+ 
++      <Dialog open={tutorialF1Aberto} onOpenChange={setTutorialF1Aberto}>
++        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-6 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-y-auto">
++          <DialogHeader className="shrink-0 pb-4 border-b border-slate-800 flex items-center justify-between">
++            <DialogTitle className="text-base font-black uppercase tracking-wider text-sky-400 flex items-center gap-2">
++              <GraduationCap className="size-5" />
++              Guia do Fluxo de Trabalho (Passo a Passo)
++            </DialogTitle>
++          </DialogHeader>
++          
++          <div className="space-y-5 py-4">
++            <div className="bg-sky-500/10 border border-sky-500/30 rounded-lg p-4 text-sky-200">
++              <h4 className="font-bold text-xs flex items-center gap-1.5 mb-1 text-sky-300">
++                <Info className="size-4 animate-bounce" />
++                Os passos são totalmente autoexplicativos!
++              </h4>
++              <p className="text-[11px] leading-relaxed">
++                A sequência de botões no cabeçalho (topo da tela) foi projetada de forma lógica da esquerda para a direita para guiar o seu levantamento de forma lógica. Ao avançar em cada etapa, seu projeto será construído e validado automaticamente.
++              </p>
++            </div>
++            
++            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
++              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
++                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">1</div>
++                <div>
++                  <h5 className="font-bold text-xs text-slate-200">PONTOS (F2)</h5>
++                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
++                    Importe o arquivo TXT ou CSV gerado pelo receptor GNSS. É a base do desenho que carregará todas as coordenadas.
++                  </p>
++                </div>
++              </div>
++
++              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
++                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">2</div>
++                <div>
++                  <h5 className="font-bold text-xs text-slate-200">SIGEF (F3)</h5>
++                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
++                    Consulte confrontantes oficiais no SIGEF. Baixe limites certificados vizinhos para evitar sobreposições e inconsistências.
++                  </p>
++                </div>
++              </div>
++
++              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
++                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">3</div>
++                <div>
++                  <h5 className="font-bold text-xs text-slate-200">DADOS (F4)</h5>
++                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
++                    Preencha as informações gerais do imóvel, proprietário e responsável técnico para preenchimento automático das peças e carimbo.
++                  </p>
++                </div>
++              </div>
++
++              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
++                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">4</div>
++                <div>
++                  <h5 className="font-bold text-xs text-slate-200">CONFRO (F5)</h5>
++                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
++                    Associe os confrontantes proprietários a cada trecho da divisa. Clique nos vértices correspondentes no sentido horário.
++                  </p>
++                </div>
++              </div>
++
++              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
++                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">5</div>
++                <div>
++                  <h5 className="font-bold text-xs text-slate-200">DIVISAS (F6)</h5>
++                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
++                    Selecione a representação física de cada limite (muro, cerca, córrego, etc.) e pinte no mapa no sentido horário.
++                  </p>
++                </div>
++              </div>
++
++              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
++                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">6</div>
++                <div>
++                  <h5 className="font-bold text-xs text-slate-200">ART/TRT (F7)</h5>
++                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
++                    Insira o número de registro da sua anotação ou termo de responsabilidade técnica para emissão legal dos documentos.
++                  </p>
++                </div>
++              </div>
++
++              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
++                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">7</div>
++                <div>
++                  <h5 className="font-bold text-xs text-slate-200">ODS (F8)</h5>
++                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
++                    Exporte a planilha ODS estruturada no padrão SIGEF/INCRA para iniciar o credenciamento nacional.
++                  </p>
++                </div>
++              </div>
++
++              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
++                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">8</div>
++                <div>
++                  <h5 className="font-bold text-xs text-slate-200">CONFERIR (F9)</h5>
++                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
++                    Realize a checagem eletrônica das tolerâncias, precisões e discrepâncias geodésicas antes de emitir os relatórios.
++                  </p>
++                </div>
++              </div>
++            </div>
++
++            <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3.5 flex gap-3.5">
++              <div className="size-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">9</div>
++              <div>
++                <h5 className="font-bold text-xs text-amber-400">PEÇAS TÉCNICAS (F10)</h5>
++                <p className="text-[10px] text-slate-300 mt-1 leading-relaxed">
++                  Baixe as peças em lote (Pacote ZIP) ou individualmente: Memorial Descritivo (.docx), Planta (.svg), Requerimento e Declarações.
++                </p>
++              </div>
++            </div>
++          </div>
++          
++          <div className="flex justify-end pt-3 border-t border-slate-800">
++            <Button
++              type="button"
++              onClick={() => setTutorialF1Aberto(false)}
++              className="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs px-4 py-1.5 rounded-lg border-0"
++            >
++              Entendido
++            </Button>
++          </div>
++        </DialogContent>
++      </Dialog>
++
+       {videosListaAberta && (
+         <>
+           <div className="fixed inset-0 z-[1290] bg-black/40" onClick={() => setVideosListaAberta(false)} />
+@@ -9564,6 +9773,27 @@ export default function EditorPage() {
+               )}
+             </div>
+           )}
++
++          {/* Caixa de Entrada de Comandos CAD */}
++          <div className="flex items-center gap-1 border-l border-slate-850 pl-2.5 shrink-0 select-text">
++            <span className="text-slate-500 font-mono text-[9px] font-bold">&gt;</span>
++            <input
++              ref={comandoInputRef}
++              type="text"
++              value={comandoInput}
++              onChange={(e) => setComandoInput(e.target.value)}
++              onKeyDown={(e) => {
++                if (e.key === 'Enter') {
++                  executarComando(comandoInput);
++                } else if (e.key === 'Escape') {
++                  setComandoInput('');
++                  if (comandoInputRef.current) comandoInputRef.current.blur();
++                }
++              }}
++              placeholder="Comando (ex: cc, rt, pl)"
++              className="bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-sky-500 focus:bg-slate-950 text-slate-100 placeholder-slate-650 px-1.5 py-0.5 rounded text-[9px] w-36 font-mono outline-none transition-all select-text"
++            />
++          </div>
+         </div>
+ 
+         {/* Lado Direito: Estatísticas em tempo real & Status de Salvamento */}
+@@ -9591,34 +9821,28 @@ export default function EditorPage() {
+             </div>
+           )}
+ 
+-          {/* Estatísticas Físicas */}
+-          {vertices.length >= 3 && res && (() => {
+-            const sigefConciliado = imovel.areaSigefHa != null && imovel.areaSigefHa > 0 && imovel.usarValoresSigef !== false;
+-            return (
+-              <div className="flex items-center gap-3 pl-4">
+-                <span>{vertices.length} Vértices</span>
+-                <button
+-                  type="button"
+-                  onClick={() => setConferirAberto(true)}
+-                  className="hover:opacity-80 transition-colors flex items-center gap-1 cursor-pointer font-medium border-0 bg-transparent text-slate-400 outline-none text-[9px]"
+-                  title={sigefConciliado ? "Área conciliada com o SIGEF (oficial)" : "Área calculada pelo app: clique para reconciliar com o SIGEF"}
+-                >
+-                  <Scale className={`size-3 shrink-0 ${sigefConciliado ? 'text-emerald-500' : 'text-amber-500'}`} />
+-                  <span className={sigefConciliado ? 'text-emerald-400 font-semibold' : ''}>
+-                    Área: {(valoresEfetivos(res, imovel).areaHa).toFixed(4)} ha
+-                  </span>
+-                </button>
+-                <button
+-                  type="button"
+-                  onClick={() => setConferirAberto(true)}
+-                  className="hover:opacity-80 transition-colors flex items-center gap-1 cursor-pointer font-medium border-0 bg-transparent text-slate-400 outline-none text-[9px]"
+-                  title="Conciliação de perímetro: clique para reconciliar com o SIGEF"
+-                >
+-                  <span>Perímetro: {(valoresEfetivos(res, imovel).perimetro).toFixed(2)} m</span>
+-                </button>
++          {/* Guia de Próximos Passos Dinâmico (Substituindo Estatísticas Físicas) */}
++          <div className="relative group pl-4 py-0.5 flex items-center gap-1.5 cursor-help select-none shrink-0">
++            <span className="inline-block w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
++            <span className="text-sky-300 font-semibold max-w-[200px] sm:max-w-[260px] md:max-w-[320px] truncate text-[9px] transition-all">
++              {dicaFluxo.resumo}
++            </span>
++
++            {/* Popover/Tooltip de Dica de Fluxo Avançada */}
++            <div className="absolute bottom-full right-0 mb-2 w-80 p-3.5 bg-slate-900 border border-slate-800 text-slate-100 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-[3000]">
++              <div className="text-[10px] font-black text-sky-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-slate-850 pb-1">
++                <GraduationCap className="size-4 text-sky-400 animate-bounce" />
++                Como Proceder - Passo {dicaFluxo.passo} de 9
+               </div>
+-            );
+-          })()}
++              <p className="text-[10px] font-medium leading-relaxed font-sans text-slate-350 select-text">
++                {dicaFluxo.detalhe}
++              </p>
++              <div className="mt-2.5 pt-1.5 border-t border-slate-850 text-[8px] text-slate-500 flex justify-between font-mono">
++                <span>Fluxo do Souza-CAD</span>
++                <span>Passe o mouse para ler</span>
++              </div>
++            </div>
++          </div>
+ 
+           {/* Status do Banco de Dados */}
+           <div className="pl-4 flex items-center gap-1.5">

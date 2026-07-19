@@ -435,6 +435,8 @@ export interface PlantaConfig {
   sigefCor?: string;
   sigefEspessura?: number;
   sigefOpacidade?: number;
+  /** Ocultar polígonos SIGEF importados na planta (checkbox no modal de personalização). */
+  sigefOcultar?: boolean;
 }
 
 /** Como os dados ausentes/não preenchidos no cadastro devem ser tratados na geração de documentos. */
