@@ -264,6 +264,31 @@ export default function Map3DViewer({
      
   }, [pontos3D, vertices]);
 
+  // Offset entre vértices levantados (RTK) e a grade DEM online, para que os pontos de grade
+  // amarelos desenhados em 3D fiquem EXATAMENTE sobre a superfície do terreno.
+  const avgOffsetGrade = useMemo(() => {
+    const vtxsComElev = vertices.filter((v) => v.elevacao && Math.abs(v.elevacao) > 0.001);
+    if (vtxsComElev.length === 0 || gradeAltimetrica.length === 0) return 0;
+    let sum = 0, count = 0;
+    for (const v of vtxsComElev) {
+      let minD2 = Infinity, closestZ: number | null = null;
+      for (const g of gradeAltimetrica) {
+        const dx = v.leste - g.leste;
+        const dy = v.norte - g.norte;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < minD2 && d2 < 10000) { // dentro de 100m
+          minD2 = d2;
+          closestZ = g.elevacao;
+        }
+      }
+      if (closestZ !== null && Math.abs(closestZ) > 0.001) {
+        sum += (v.elevacao! - closestZ);
+        count++;
+      }
+    }
+    return count > 0 ? sum / count : 0;
+  }, [vertices, gradeAltimetrica]);
+
   const temSuperficie = superficie.tris.length > 0;
 
   // Lógica matemática avançada e exata de cubagem por prismas triangulares
@@ -862,7 +887,8 @@ export default function Map3DViewer({
       // 4b. Desenha os pontos da grade altimétrica em 3D
       if (gradeAltimetrica && gradeAltimetrica.length > 0) {
         gradeAltimetrica.forEach((g) => {
-          const proj = project(g.leste, g.norte, g.elevacao);
+          const zEfetivo = g.elevacao + avgOffsetGrade;
+          const proj = project(g.leste, g.norte, zEfetivo);
           
           // Desenha bolinha amarela pequena
           ctx.beginPath();
@@ -875,7 +901,7 @@ export default function Map3DViewer({
 
           // Placa de altitude para pontos de grade
           if (mostrarLabels3D) {
-            const altText = `${g.elevacao.toFixed(1)}m`;
+            const altText = `${zEfetivo.toFixed(1)}m`;
             ctx.save();
             ctx.font = 'bold 8.5px monospace';
             const tw = ctx.measureText(altText).width + 8;

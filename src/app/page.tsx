@@ -4870,6 +4870,49 @@ export default function EditorPage() {
   // Espessura (mm de tela) da curva normal e da mestra, por nível de nitidez escolhido.
   const ESP_CURVA = { fina: { normal: 0.5, mestra: 1.1 }, media: { normal: 0.7, mestra: 1.5 }, grossa: { normal: 1.0, mestra: 2.1 } } as const;
 
+  // Função auxiliar para calcular o offset médio (diferença de datum) entre altitudes RTK medidas no campo e o DEM online.
+  function calcularOffsetMedioRTKDEM(
+    activeVertices = vertices,
+    activeGrade = gradeAltimetrica,
+    activeIgnorados = verticesIgnorados
+  ): number {
+    if (desconsiderarVerticesLevantados) return 0;
+    let sumDiff = 0;
+    let countDiff = 0;
+
+    for (const v of activeVertices) {
+      if (v.elevacao && Math.abs(v.elevacao) > 0.001 && v.tipo !== 'V') {
+        const latLonKey = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+        const onlineZ = verticesOnlineElev[`${modeloElevacao}:${v.id}`] ??
+                        verticesOnlineElev[v.id] ??
+                        verticesOnlineElev[`${modeloElevacao}:${latLonKey}`] ??
+                        verticesOnlineElev[latLonKey];
+        if (onlineZ && Math.abs(onlineZ) > 0.001) {
+          sumDiff += (v.elevacao - onlineZ);
+          countDiff++;
+        } else if (activeGrade.length > 0) {
+          let minD2 = Infinity;
+          let closestZ: number | null = null;
+          for (const g of activeGrade) {
+            const dx = v.leste - g.leste;
+            const dy = v.norte - g.norte;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < minD2 && d2 < 10000) { // dentro de 100m
+              minD2 = d2;
+              closestZ = g.elevacao;
+            }
+          }
+          if (closestZ !== null && Math.abs(closestZ) > 0.001) {
+            sumDiff += (v.elevacao - closestZ);
+            countDiff++;
+          }
+        }
+      }
+    }
+
+    return countDiff > 0 ? (sumDiff / countDiff) : 0;
+  }
+
   // Junta os pontos com altitude (perímetro + ignorados/internos + grade digital online) no plano UTM — base pra sugerir e gerar.
   function pontos3dCurvas(
     gradeOverride?: typeof gradeAltimetrica,
@@ -4880,28 +4923,7 @@ export default function EditorPage() {
     const activeVertices = verticesOverride || vertices;
     const activeIgnorados = ignoradosOverride || verticesIgnorados;
 
-    // Calcula o offset médio entre as altitudes RTK (v.elevacao) e as altitudes DEM online
-    let avgOffset = 0;
-    if (!desconsiderarVerticesLevantados) {
-      let sumDiff = 0;
-      let countDiff = 0;
-      for (const v of activeVertices) {
-        if (v.elevacao && Math.abs(v.elevacao) > 0.001 && v.tipo !== 'V') {
-          const latLonKey = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
-          const onlineZ = verticesOnlineElev[`${modeloElevacao}:${v.id}`] ??
-                          verticesOnlineElev[v.id] ??
-                          verticesOnlineElev[`${modeloElevacao}:${latLonKey}`] ??
-                          verticesOnlineElev[latLonKey];
-          if (onlineZ && Math.abs(onlineZ) > 0.001) {
-            sumDiff += (v.elevacao - onlineZ);
-            countDiff++;
-          }
-        }
-      }
-      if (countDiff > 0) {
-        avgOffset = sumDiff / countDiff;
-      }
-    }
+    const avgOffset = calcularOffsetMedioRTKDEM(activeVertices, activeGrade, activeIgnorados);
 
     const ptsGrade = activeGrade.map((g) => ({
       x: g.leste,
@@ -4977,8 +4999,9 @@ export default function EditorPage() {
       const pontosSuavizados = suavizarGradeAltimetrica(pontosObtidos, spacingIdeal);
       setGradeAltimetrica(pontosSuavizados);
       aviso(`Grade de ${pontosSuavizados.length} pontos obtida. Gerando curvas de nível...`);
-      // Monta os pontos 3D usando a grade recém-obtida (bypass de closure)
-      const ptsGrade = pontosSuavizados.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao }));
+      // Monta os pontos 3D usando a grade recém-obtida e ajustada pelo offset RTK-DEM (bypass de closure)
+      const avgOffsetAuto = calcularOffsetMedioRTKDEM(vertices, pontosSuavizados, verticesIgnorados);
+      const ptsGrade = pontosSuavizados.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao + avgOffsetAuto }));
       const ptsVertices = [...vertices, ...verticesIgnorados]
         .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }))
         .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && p.z !== 0);
@@ -5508,11 +5531,12 @@ export default function EditorPage() {
     const semCota = vertices.filter((v) => !v.elevacao && Number.isFinite(v.leste) && Number.isFinite(v.norte));
     if (semCota.length === 0) { await avisar({ titulo: 'Completar altitudes', mensagem: 'Todos os vértices já têm altitude.' }); return; }
 
+    const avgOffset = calcularOffsetMedioRTKDEM(vertices, gradeAltimetrica, verticesIgnorados);
     const base: Ponto3D[] = [
       ...[...vertices, ...verticesIgnorados]
         .filter((v) => v.elevacao && !v.elevacaoInterpolada && Number.isFinite(v.leste) && Number.isFinite(v.norte))
         .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao })),
-      ...gradeAltimetrica.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao })),
+      ...gradeAltimetrica.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao + avgOffset })),
     ];
     if (base.length === 0) { await avisar({ titulo: 'Completar altitudes', mensagem: 'Não há nenhum ponto com altitude pra servir de base. Traga pontos com cota (levantamento) ou use a grade de relevo online.' }); return; }
 

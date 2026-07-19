@@ -2057,22 +2057,50 @@ export default function MapEditor(props: Props) {
       ))}
 
       {/* Grade de altitudes online (se houver dados) — texto BRANCO sem caixa de fundo */}
-      {camadasVisiveis.curvas !== false && gradeAltimetrica && gradeAltimetrica.map((g, idx) => (
-        <CircleMarker
-          key={`grade-alt-${idx}`}
-          center={[g.lat, g.lon]}
-          radius={3.5}
-          pane="markerPane"
-          pathOptions={{ color: '#ffffff', fillColor: '#38bdf8', fillOpacity: 0.9, weight: 1.2 }}
-          interactive={true}
-        >
-          <Tooltip permanent direction="top" className="!bg-transparent !border-0 !shadow-none font-mono text-[9px] font-black text-white p-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]" offset={[0, -3]}>
-            <span style={{ color: '#ffffff', textShadow: '-1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000, 1px 1px 2px #000, 0 0 4px #000' }}>
-              {g.elevacao.toFixed(1)}m
-            </span>
-          </Tooltip>
-        </CircleMarker>
-      ))}
+      {(() => {
+        if (camadasVisiveis.curvas === false || !gradeAltimetrica || gradeAltimetrica.length === 0) return null;
+        const vtxsComElev = vertices.filter((v) => v.elevacao && Math.abs(v.elevacao) > 0.001);
+        let avgOffset = 0;
+        if (vtxsComElev.length > 0) {
+          let sum = 0, count = 0;
+          for (const v of vtxsComElev) {
+            let minD2 = Infinity, closestZ: number | null = null;
+            for (const g of gradeAltimetrica) {
+              const dx = v.leste - g.leste;
+              const dy = v.norte - g.norte;
+              const d2 = dx * dx + dy * dy;
+              if (d2 < minD2 && d2 < 10000) {
+                minD2 = d2;
+                closestZ = g.elevacao;
+              }
+            }
+            if (closestZ !== null && Math.abs(closestZ) > 0.001) {
+              sum += (v.elevacao! - closestZ);
+              count++;
+            }
+          }
+          if (count > 0) avgOffset = sum / count;
+        }
+        return gradeAltimetrica.map((g, idx) => {
+          const zEfetivo = g.elevacao + avgOffset;
+          return (
+            <CircleMarker
+              key={`grade-alt-${idx}`}
+              center={[g.lat, g.lon]}
+              radius={3.5}
+              pane="markerPane"
+              pathOptions={{ color: '#ffffff', fillColor: '#38bdf8', fillOpacity: 0.9, weight: 1.2 }}
+              interactive={true}
+            >
+              <Tooltip permanent direction="top" className="!bg-transparent !border-0 !shadow-none font-mono text-[9px] font-black text-white p-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]" offset={[0, -3]}>
+                <span style={{ color: '#ffffff', textShadow: '-1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000, 1px 1px 2px #000, 0 0 4px #000' }}>
+                  {zEfetivo.toFixed(1)}m
+                </span>
+              </Tooltip>
+            </CircleMarker>
+          );
+        });
+      })()}
 
       {/* rótulos dos vértices (texto branco; arrastáveis com a ferramenta mover/F5; ocultação adaptativa
           para evitar poluição visual). A linha-guia até o rótulo movido manualmente também é
