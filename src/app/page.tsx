@@ -329,7 +329,7 @@ function IconeCota({ className }: { className?: string }) {
 function Atalho({ k, className }: { k: string; className?: string }) {
   if (!k) return null;
   return (
-    <span className={`pointer-events-none text-[8.5px] font-mono font-bold tracking-wider uppercase px-1 py-0.5 rounded bg-slate-200/90 dark:bg-slate-900/80 border border-slate-300/80 dark:border-slate-700/70 text-amber-700 dark:text-amber-300 shadow-2xs shrink-0 select-none ml-auto ${className ?? ''}`}>
+    <span className={`pointer-events-none text-[8.5px] font-sans font-black tracking-widest uppercase px-1.5 py-0.5 rounded bg-slate-900/5 dark:bg-white/10 border border-slate-950/10 dark:border-white/15 text-foreground/80 dark:text-foreground/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_1px_1px_rgba(0,0,0,0.06)] dark:shadow-none shrink-0 select-none ml-auto transition-all ${className ?? ''}`}>
       {k.toUpperCase()}
     </span>
   );
@@ -1079,6 +1079,7 @@ export default function EditorPage() {
   const [corBordaCert, setCorBordaCert] = useState('#0891b2');
   const [espessuraCert, setEspessuraCert] = useState(1.4);
   const [assinaturaAberta, setAssinaturaAberta] = useState(false);
+  const [projetosModalAberto, setProjetosModalAberto] = useState(false);
   // A CHAVE do app: 'simples' (tela enxuta, ideal pra aprender) x 'completo' (tudo à mostra).
   // Novo usuário começa no simples. Fica salvo nas preferências e vale no app inteiro.
   const [modoApp, setModoApp] = useState<'simples' | 'medio' | 'completo'>('simples');
@@ -6134,6 +6135,29 @@ export default function EditorPage() {
     fileRef.current?.click();
   }
 
+  async function carregarProjetoComConfirmacao(id: string) {
+    if (salvarLaranja) {
+      const resp = await escolher({
+        titulo: 'Salvar alterações pendentes?',
+        mensagem: 'Você possui alterações não salvas no projeto atual. Deseja salvá-las antes de abrir outro projeto?',
+        opcoes: [
+          { chave: 'salvar', label: 'Salvar e Abrir', variant: 'default' },
+          { chave: 'descartar', label: 'Descartar e Abrir', variant: 'destructive' },
+        ],
+        cancelLabel: 'Cancelar'
+      });
+      if (resp === 'salvar') {
+        await salvar();
+      } else if (resp === 'descartar') {
+        // continua
+      } else {
+        // Cancelado ou fechar -> aborta
+        return;
+      }
+    }
+    await abrir(id);
+  }
+
   async function atualizarLista() { setProjetos(await listarProjetos()); totalPontosRegistrados().then(setTotalPontos).catch(() => {}); }
   async function abrir(id: string) {
     const p0 = await carregarProjeto(id);
@@ -6283,7 +6307,7 @@ export default function EditorPage() {
     reader.readAsText(file);
   }
 
-  useEffect(() => { if (aba === 'projetos') atualizarLista(); }, [aba]);
+  useEffect(() => { if (aba === 'projetos' || projetosModalAberto) atualizarLista(); }, [aba, projetosModalAberto]);
 
   const lados = res?.lados ?? [];
 
@@ -8279,6 +8303,28 @@ export default function EditorPage() {
 
           {vista === 'planta' && (
             <div id="planta-print" className="relative h-full select-none overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
+              {/* Botão flutuante iOS para travar/destravar folha */}
+              <button
+                type="button"
+                onClick={() => {
+                  const nova = !folhaTravada;
+                  setFolhaTravada(nova);
+                  if (!nova) setModo('navegar');
+                }}
+                className={`absolute top-4 right-4 z-20 flex size-12 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-all duration-300 active:scale-90 select-none ${
+                  folhaTravada
+                    ? 'bg-slate-900/50 hover:bg-slate-900/60 border-slate-700/30 text-emerald-400 opacity-50 hover:opacity-85'
+                    : 'bg-emerald-600/70 hover:bg-emerald-600/80 border-emerald-500/30 text-white animate-pulse shadow-emerald-500/20'
+                }`}
+                title={folhaTravada ? "Folha Travada: clique para destravar a movimentação do carimbo/rosa/escala" : "Folha Destravada: clique para travar e proteger as posições"}
+              >
+                {folhaTravada ? (
+                  <Lock className="size-5" />
+                ) : (
+                  <LockOpen className="size-5" />
+                )}
+              </button>
+
               {/* folha DESTRAVADA: borda verde-clara pulsante avisando que dá pra arrastar (não vai no PDF) */}
               {!folhaTravada && <div className="pointer-events-none absolute inset-0 z-[5] animate-pulse rounded-sm ring-4 ring-inset ring-green-400/70" />}
               {/* controles da planta movidos para a coluna esquerda; aqui a folha fica limpa */}
@@ -8850,11 +8896,82 @@ export default function EditorPage() {
                       <div className="text-[10px] text-muted-foreground">{contarVertices(p)} vértices</div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => { abrir(p.id); setPainelAberto(false); }}>
+                      <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => { carregarProjetoComConfirmacao(p.id); setPainelAberto(false); }}>
                         <FolderOpen className="size-3" /> Abrir
                       </Button>
                       <Button size="sm" variant="ghost" className="size-7 p-0 text-destructive" onClick={() => remover(p.id)}>
                         <Trash2 className="size-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Abertura de Projetos Rápidos (Status Bar) */}
+      <Dialog open={projetosModalAberto} onOpenChange={setProjetosModalAberto}>
+        <DialogContent className="max-w-lg bg-card p-6 rounded-2xl border border-border shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+          <DialogHeader className="pb-3 border-b">
+            <DialogTitle className="flex items-center gap-2 text-base font-extrabold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+              <FolderOpen className="size-5 text-indigo-500" />
+              Selecione um Projeto para Abrir
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4 flex-1 overflow-y-auto space-y-2">
+            {projetos.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm font-semibold text-muted-foreground">Nenhum projeto salvo no Souza-CAD.</p>
+                <Button size="sm" className="mt-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold" onClick={() => { setProjetosModalAberto(false); criarNovoProjeto(); }}>
+                  <Plus className="size-3.5" /> Criar Novo Projeto
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2.5">
+                {projetos.map((p) => (
+                  <div
+                    key={p.id}
+                    onClick={() => { carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
+                    className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-border/70 hover:border-indigo-500/50 hover:bg-indigo-500/5 bg-muted/10 cursor-pointer transition-all duration-200 group"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors uppercase truncate">
+                        {p.nome || 'Imóvel sem Nome'}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground font-mono">
+                        <span className="bg-slate-250 dark:bg-slate-800 px-1.5 py-0.5 rounded text-foreground font-bold font-sans">
+                          {p.imovel?.municipio || 'Sem Município'}
+                        </span>
+                        <span>•</span>
+                        <span>{contarVertices(p)} vértices</span>
+                        {calcularAreaHaProjeto(p) > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{calcularAreaHaProjeto(p).toFixed(4)} ha</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-[10px] font-bold gap-1 bg-background hover:bg-indigo-600 hover:text-white transition-all shadow-xs border-border/80"
+                        onClick={(e) => { e.stopPropagation(); carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
+                      >
+                        <FolderOpen className="size-3" /> Abrir
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="size-8 p-0 text-destructive hover:bg-destructive/10"
+                        onClick={(e) => { e.stopPropagation(); remover(p.id); }}
+                        title="Excluir projeto"
+                      >
+                        <Trash2 className="size-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -10314,7 +10431,7 @@ export default function EditorPage() {
           <div className="relative group pl-4 py-0.5 flex items-center gap-1.5 cursor-help select-none shrink-0">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
             <span className="text-sky-300 font-semibold max-w-[200px] sm:max-w-[260px] md:max-w-[320px] truncate text-[9px] transition-all">
-              {dicaFluxo.resumo}
+              Próximo Passo Sugerido: {dicaFluxo.resumo}
             </span>
 
             {/* Popover/Tooltip de Dica de Fluxo Avançada */}
@@ -10349,7 +10466,15 @@ export default function EditorPage() {
           </div>
 
           {/* Botão de Ajustes e Configurações no fim da Barra de Status */}
-          <div className="pl-3 border-l border-slate-800 flex items-center">
+          <div className="pl-3 border-l border-slate-800 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setProjetosModalAberto(true)}
+              className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors flex items-center gap-1 cursor-pointer outline-none"
+              title="Abrir Lista de Projetos Salvos"
+            >
+              <FolderOpen className="size-3.5" />
+            </button>
             <button
               type="button"
               onClick={() => setConfigAberta(true)}
@@ -11406,6 +11531,19 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
 function contarVertices(p: Projeto): number {
   if (p.glebas?.length) return p.glebas.reduce((s, g) => s + g.vertices.length, 0);
   return p.vertices?.length ?? 0;
+}
+
+function calcularAreaHaProjeto(p: Projeto): number {
+  const g = p.glebas?.[0];
+  if (!g || !g.vertices || g.vertices.length < 3) return 0;
+  let sum = 0;
+  const pts = g.vertices;
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const next = (i + 1) % n;
+    sum += pts[i].leste * pts[next].norte - pts[next].leste * pts[i].norte;
+  }
+  return Math.abs(sum) / 20000; // M2 para Ha: dividir por 2 * 10000
 }
 
 function distPontoSegmento(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {

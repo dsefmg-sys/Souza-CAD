@@ -52,19 +52,19 @@ export const MODELOS_PADRAO: ModelosDocs = {
   laudoTecnico:
     'Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.',
   contratoContratante:
-    '{proprietario}, CPF nº {cpfProprietario}, doravante denominado(a) CONTRATANTE.',
+    '{proprietario}, inscrito(a) no CPF/CNPJ sob o nº {cpfProprietario}, residente e domiciliado(a) no município de {municipio}, doravante denominado(a) simplesmente CONTRATANTE.',
   contratoContratado:
-    '{escritorio}, CNPJ nº {cnpjEscritorio}, neste ato representado por {responsavelTecnico}, doravante denominado CONTRATADO.',
+    '{escritorio}, pessoa jurídica de direito privado inscrita no CNPJ sob o nº {cnpjEscritorio}, neste ato representada por {responsavelTecnico}, doravante denominado simplesmente CONTRATADO.',
   contratoObjeto:
-    'Prestação de serviços de georreferenciamento e certificação do imóvel {denominacao}, matrícula {matricula}, situado em {municipio}, com área de {area} e perímetro de {perimetro}.',
+    'O presente contrato tem por objeto a prestação de serviços técnicos especializados de Engenharia/Agrimensura, compreendendo o levantamento planialtimétrico, georreferenciamento de precisão ao Sistema Geodésico Brasileiro (SIRGAS 2000), demarcação de divisas, confecção de peças gráficas (Planta Oficial), narrativa perimétrica em Memorial Descritivo e elaboração da Planilha ODS para certificação junto ao SIGEF/INCRA do imóvel rural {denominacao}, registrado sob a Matrícula nº {matricula}, situado no município de {municipio}, com área aproximada de {area} e perímetro de {perimetro}.',
   contratoValor:
-    'Pelos serviços, o CONTRATANTE pagará ao CONTRATADO o valor de {valor} ({valorExtenso}), {formaPagamento}.',
+    'Pelos serviços técnicos contratados e descritos na Cláusula 1ª, o(a) CONTRATANTE pagará ao CONTRATADO o valor total ajustado de {valor} ({valorExtenso}), a ser quitado mediante a seguinte forma de pagamento: {formaPagamento}.',
   contratoPrazo:
-    'O CONTRATADO executará os serviços no prazo de {prazoDias} dias, ressalvadas as etapas que dependam de terceiros (cartório, INCRA, confrontantes) e de condições de campo.',
+    'O CONTRATADO compromete-se a concluir os trabalhos de campo e elaboração das peças técnicas no prazo estimado de {prazoDias} dias úteis, contados a partir da entrega de toda a documentação necessária pelo CONTRATANTE. Parágrafo Único: O prazo avençado poderá ser prorrogado por motivos de força maior, intempéries climáticas adversas ou atrasos decorrentes de trâmites burocráticos junto a terceiros, tais como Ofícios de Registro de Imóveis, INCRA ou colheita de assinaturas de anuência de confrontantes.',
   contratoObrigacoes:
-    'O CONTRATANTE fornecerá documentos e informações necessárias e indicará as divisas em campo; o CONTRATADO executará os serviços com zelo técnico e responsabilidade profissional.',
+    'I - O CONTRATANTE obriga-se a fornecer ao CONTRATADO cópias legíveis dos documentos de propriedade (matrícula/certidão atualizada), documentos pessoais e indicar expressamente em campo os limites e confrontações do imóvel, responsabilizando-se civil e criminalmente pela veracidade das indicações fornecidas.\nII - O CONTRATADO compromete-se a executar os serviços com rigoroso zelo técnico, observando as normas de precisão do INCRA (ABNT/SIGEF), prestando a devida Anotação/Termo de Responsabilidade Técnica (ART/TRT).',
   contratoForo:
-    'Fica eleito o foro da comarca de {municipio} para dirimir eventuais dúvidas oriundas deste contrato.',
+    'Para dirimir quaisquer controvérsias decorrentes deste contrato, as partes elegem, com renúncia expressa a qualquer outro por mais privilegiado que seja, o Foro da Comarca de {municipio}.',
   reciboReferente:
     'serviços de georreferenciamento e certificação do imóvel {denominacao}, matrícula {matricula}, situado em {municipio}, com área de {area}',
   memorialInfoTecnicas:

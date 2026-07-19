@@ -74,8 +74,37 @@ interface BaseArgs {
   modoTratamentoAusente?: ModoTratamentoAusente;
 }
 
+/** Aplica o papel timbrado executivo (moldura sutil, faixa de topo verde esmeralda/dourada com as cores da marca SOUZA CAD e rodapé de segurança). */
+function aplicarPapelTimbrado(doc: jsPDF) {
+  const larg = doc.internal.pageSize.getWidth();
+  const alt = doc.internal.pageSize.getHeight();
+
+  // Faixa de topo executiva nas cores oficiais da marca SOUZA CAD (Verde Esmeralda + Dourado)
+  doc.setFillColor(14, 138, 86); // Verde Esmeralda Marca #0e8a56
+  doc.rect(0, 0, larg, 3.5, 'F');
+  doc.setFillColor(245, 158, 11); // Dourado Marca #f59e0b
+  doc.rect(0, 3.5, larg, 1.2, 'F');
+
+  // Moldura perimetral sutil de papel timbrado com toque esmeralda
+  doc.setDrawColor(209, 250, 229); // emerald-100
+  doc.setLineWidth(0.35);
+  doc.rect(8, 8, larg - 16, alt - 16);
+
+  // Rodapé de segurança do papel timbrado
+  doc.setDrawColor(167, 243, 208); // emerald-200
+  doc.setLineWidth(0.25);
+  doc.line(18, alt - 12, larg - 18, alt - 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139); // slate-500
+  doc.text('Documento gerado pelo Souza-CAD • Sistema Profissional de Georreferenciamento & Topografia', larg / 2, alt - 7, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+}
+
 function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, larg: number): number {
-  let y = margem;
+  aplicarPapelTimbrado(doc);
+  let y = margem + 3;
   if (esc.logoDataUrl) {
     try {
       const fmt = esc.logoDataUrl.includes('image/png') ? 'PNG' : 'JPEG';
@@ -104,7 +133,7 @@ function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, la
   const linhas = [esc.ramo, localLinha, docsLinha, contatoLinha].filter(Boolean) as string[];
   y += 9;
   linhas.forEach((l) => { doc.text(l, larg / 2, y, { align: 'center' }); y += 4.2; });
-  doc.setDrawColor(120); doc.line(margem, y + 1, larg - margem, y + 1);
+  doc.setDrawColor(180); doc.line(margem, y + 1, larg - margem, y + 1);
   return y + 8;
 }
 
@@ -152,6 +181,19 @@ function decorarDoc(doc: jsPDF) {
   } as unknown as typeof doc.text;
 }
 
+/** Adiciona imagem de assinatura PNG sem achatar ou distorcer sua proporção de aspecto (max 50mm x 18mm). */
+function adicionarAssinaturaSemAchatamento(doc: jsPDF, dataUrl: string, xCentral: number, yLinha: number, maxW: number = 48, maxH: number = 18) {
+  try {
+    const fmt = dataUrl.includes('image/png') ? 'PNG' : 'JPEG';
+    const w = maxW;
+    const h = maxH;
+    // Desenha centralizado sobre a linha de assinatura sem achatar
+    doc.addImage(dataUrl, fmt, xCentral - w / 2, yLinha - h - 1, w, h);
+  } catch (e) {
+    console.warn("Erro ao desenhar assinatura automática:", e);
+  }
+}
+
 /** Recibo de pagamento do serviço, pronto para imprimir/assinar. */
 export function gerarReciboPdf(a: BaseArgs & { valor: number; referente?: string; numero?: string }): void {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -183,11 +225,7 @@ export function gerarReciboPdf(a: BaseArgs & { valor: number; referente?: string
   doc.text(`${vars.municipio || vars.cidade || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 26;
   if (a.escritorio.autoAssinar && a.escritorio.assinaturaDataUrl) {
-    try {
-      doc.addImage(a.escritorio.assinaturaDataUrl, 'PNG', larg / 2 - 20, y - 13, 40, 12);
-    } catch (e) {
-      console.warn("Erro ao desenhar assinatura automática no recibo:", e);
-    }
+    adicionarAssinaturaSemAchatamento(doc, a.escritorio.assinaturaDataUrl, larg / 2, y, 48, 16);
   }
   doc.setLineWidth(0.3); doc.line(larg / 2 - 45, y, larg / 2 + 45, y);
   doc.setFontSize(10);
@@ -226,7 +264,7 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
 
   doc.setFontSize(10.5);
   clausulas.forEach(([titulo, texto]) => {
-    if (y > alt - 50) { doc.addPage(); y = margem; }
+    if (y > alt - 48) { doc.addPage(); aplicarPapelTimbrado(doc); y = margem + 8; }
     doc.setFont('helvetica', 'bold'); doc.text(titulo, margem, y); y += 5.5;
     doc.setFont('helvetica', 'normal');
     const linhas = doc.splitTextToSize(texto, larg - margem * 2);
@@ -234,16 +272,12 @@ export function gerarContratoPdf(a: BaseArgs & { valor: number; formaPagamento?:
     y += linhas.length * 5.3 + 5;
   });
 
-  if (y > alt - 60) { doc.addPage(); y = margem; }
+  if (y > alt - 55) { doc.addPage(); aplicarPapelTimbrado(doc); y = margem + 8; }
   y += 6;
   doc.text(`${vVars.municipio || vVars.cidade || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 24;
   if (a.escritorio.autoAssinar && a.escritorio.assinaturaDataUrl) {
-    try {
-      doc.addImage(a.escritorio.assinaturaDataUrl, 'PNG', larg - margem - 55, y - 13, 40, 12);
-    } catch (e) {
-      console.warn("Erro ao desenhar assinatura automática no contrato:", e);
-    }
+    adicionarAssinaturaSemAchatamento(doc, a.escritorio.assinaturaDataUrl, larg - margem - 35, y, 48, 16);
   }
   doc.setLineWidth(0.3);
   doc.line(margem, y, margem + 70, y);
@@ -289,7 +323,7 @@ export function gerarPropostaPdf(a: BaseArgs & { valor: number; prazoDias?: numb
   ];
   doc.setFontSize(10.5);
   itens.forEach(([rot, val]) => {
-    if (y > alt - 50) { doc.addPage(); y = margem; }
+    if (y > alt - 48) { doc.addPage(); aplicarPapelTimbrado(doc); y = margem + 8; }
     doc.setFont('helvetica', 'bold'); doc.text(`${rot}:`, margem, y);
     doc.setFont('helvetica', 'normal');
     const wrap = doc.splitTextToSize(val, larg - margem * 2 - 45);
@@ -298,15 +332,11 @@ export function gerarPropostaPdf(a: BaseArgs & { valor: number; prazoDias?: numb
   });
 
   y += 6;
-  if (y > alt - 40) { doc.addPage(); y = margem; }
+  if (y > alt - 40) { doc.addPage(); aplicarPapelTimbrado(doc); y = margem + 8; }
   doc.text(`${vars.municipio || vars.cidade || '—'}, ${a.dataExtenso}.`, margem, y);
   y += 22;
   if (a.escritorio.autoAssinar && a.escritorio.assinaturaDataUrl) {
-    try {
-      doc.addImage(a.escritorio.assinaturaDataUrl, 'PNG', larg / 2 - 20, y - 13, 40, 12);
-    } catch (e) {
-      console.warn("Erro ao desenhar assinatura automática na proposta:", e);
-    }
+    adicionarAssinaturaSemAchatamento(doc, a.escritorio.assinaturaDataUrl, larg / 2, y, 48, 16);
   }
   doc.setLineWidth(0.3); doc.line(larg / 2 - 45, y, larg / 2 + 45, y);
   doc.setFontSize(10);
