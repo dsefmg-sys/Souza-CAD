@@ -6930,12 +6930,7 @@ export default function EditorPage() {
         )}
        </div>
 
-        {/* Fuso UTM do Projeto no Canto Direito do Cabeçalho */}
-        <div className="hidden sm:flex shrink-0 items-center px-2 border-l self-stretch">
-          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap" title={`Projeção Cartográfica do Projeto: Fuso ${zona}${hemisferio} (UTM/SIRGAS 2000)`}>
-            Fuso {zona}{hemisferio}
-          </span>
-        </div>
+
 
         {/* Bolinha do perfil, à direita do cabeçalho: só a foto, sem o nome. Abre ao passar o mouse. */}
         <div className="relative flex shrink-0 items-center border-l px-2 self-stretch"
@@ -7157,9 +7152,9 @@ export default function EditorPage() {
                           <PencilRuler className="text-amber-400" /> <span>Precificação</span>
                           <Atalho k={obterAtalhoLateral('precificacao', 'pc')} />
                         </Button>
-                        <Button size="sm" variant="secondary" className="relative" onClick={() => setAltitudeModalAberta(true)} title="Gestão de altitudes dos vértices e ajuste global (+/- cm)">
-                          <Mountain className="text-indigo-500" /> <span>Altitude</span>
-                          <Atalho k="AL" />
+                        <Button size="sm" variant="secondary" className="relative" onClick={() => setIaAberta(true)} title="Extração Inteligente (IA): extrair dados cadastrais e vértices/coordenadas de documentos e memoriais">
+                          <Sparkles className="text-violet-500 shrink-0 size-3.5" /> <span>USAR IA</span>
+                          <Atalho k="IA" />
                         </Button>
                         <div className="grid grid-cols-2 gap-1 col-span-2">
                           <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="w-full">
@@ -7277,9 +7272,9 @@ export default function EditorPage() {
                             <Ruler className={modo === 'medir' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'} /> <span className="truncate">Medir</span>
                             <Atalho k={obterAtalhoLateral('medir', 'md')} />
                           </Button>
-                          <Button size="sm" variant={curvaConfigAberta ? 'default' : 'secondary'} className={`relative ${curvaConfigAberta ? COR_ATIVO : ''}`} onClick={() => setCurvaConfigAberta((v) => !v)} title={`Curvas de Nível (${obterAtalhoLateral('curvas_nivel', 'cn')}): traçar curvas de nível e relevo planialtimétrico.`}>
-                            <IconeCurvasNivel className={curvaConfigAberta ? 'text-white shrink-0' : 'text-indigo-500 shrink-0'} /> <span className="truncate">Curvas</span>
-                            <Atalho k={obterAtalhoLateral('curvas_nivel', 'cn')} />
+                          <Button size="sm" variant="secondary" className="relative" onClick={() => setAltitudeModalAberta(true)} title="Gestão de altitudes dos vértices e ajuste global (+/- cm)">
+                            <Mountain className="text-indigo-500 shrink-0" /> <span className="truncate">Altitude</span>
+                            <Atalho k="AL" />
                           </Button>
                           {/* Geometria avançada de CAD — só no Completo (o Médio fica com o desenho do dia a dia) */}
                           {completo && (<>
@@ -7505,33 +7500,33 @@ export default function EditorPage() {
                           )}
                         </div>
 
-                        {/* MÉTRICAS DO LEVANTAMENTO: Texto Limpo Lado a Lado (Área / Área SIGEF, Perímetro / Perímetro SIGEF) */}
+                        {/* MÉTRICAS DO LEVANTAMENTO: Layout do Mockup */}
                         {(res || chaveTopoVisivel || vista === 'planta') && (
-                          <div className="mt-1.5 rounded-lg border border-border/80 bg-background/50 overflow-hidden shadow-xs">
-                            <div className="flex items-center justify-between bg-muted/30 px-2.5 py-1.5 border-b border-border/60">
-                              <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                                <BarChart3 className="size-3 text-primary" /> Métricas
+                          <div className="mt-1.5 rounded-xl border border-border/80 bg-slate-900/90 text-slate-100 overflow-hidden shadow-md">
+                            <div className="flex items-center gap-2 bg-slate-950/60 px-3 py-2 border-b border-slate-800/80">
+                              <BarChart3 className="size-4 text-emerald-500 shrink-0" />
+                              <span className="text-xs font-black uppercase tracking-wider text-slate-100">
+                                MÉTRICAS
                               </span>
                             </div>
-                            <div className="p-2 space-y-2 text-xs font-semibold">
+                            <div className="p-2.5 space-y-2">
                               {res && (
-                                <div className="space-y-1.5">
+                                <div className="space-y-2">
                                   {/* ÁREA (HA) */}
-                                  <div className="rounded-md bg-muted/20 border border-border/40 p-1.5 space-y-1">
-                                    <div className="flex items-center justify-between border-b border-border/30 pb-0.5">
-                                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">ÁREA (HA)</span>
-                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                                        <CheckCircle2 className="size-2.5 text-emerald-500 shrink-0" /> SIGEF
-                                      </span>
+                                  <div className="rounded-lg bg-slate-950/40 border border-slate-800/60 p-2.5 space-y-2">
+                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-300">
+                                      ÁREA (HA)
                                     </div>
-                                    <div className="flex items-center justify-between text-xs px-1">
-                                      <div className="flex items-baseline gap-1">
-                                        <span className="text-[9px] text-muted-foreground font-bold">Sistema:</span>
-                                        <span className="font-mono font-bold text-foreground">{numBR(res.areaHa, casasTela(4))}</span>
+                                    <div className="flex items-center justify-between text-xs font-bold px-0.5">
+                                      <div className="flex items-baseline gap-1.5">
+                                        <span className="text-slate-400 font-semibold text-[11px]">Sistema:</span>
+                                        <span className="font-mono text-white text-sm font-extrabold">
+                                          {numBR(res.areaHa, casasTela(4))}
+                                        </span>
                                       </div>
-                                      <div className="flex items-baseline gap-1">
-                                        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">SIGEF:</span>
-                                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                      <div className="flex items-baseline gap-1.5">
+                                        <span className="text-emerald-400 font-bold text-[11px]">SIGEF:</span>
+                                        <span className="font-mono text-emerald-400 text-sm font-extrabold">
                                           {numBR(valoresEfetivos(res, imovel).areaHa, casasTela(4))}
                                         </span>
                                       </div>
@@ -7539,21 +7534,20 @@ export default function EditorPage() {
                                   </div>
 
                                   {/* PERÍMETRO (M) */}
-                                  <div className="rounded-md bg-muted/20 border border-border/40 p-1.5 space-y-1">
-                                    <div className="flex items-center justify-between border-b border-border/30 pb-0.5">
-                                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">PERÍMETRO (M)</span>
-                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                                        <CheckCircle2 className="size-2.5 text-emerald-500 shrink-0" /> SIGEF
-                                      </span>
+                                  <div className="rounded-lg bg-slate-950/40 border border-slate-800/60 p-2.5 space-y-2">
+                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-300">
+                                      PERÍMETRO (M)
                                     </div>
-                                    <div className="flex items-center justify-between text-xs px-1">
-                                      <div className="flex items-baseline gap-1">
-                                        <span className="text-[9px] text-muted-foreground font-bold">Sistema:</span>
-                                        <span className="font-mono font-bold text-foreground">{numBR(res.perimetro)}</span>
+                                    <div className="flex items-center justify-between text-xs font-bold px-0.5">
+                                      <div className="flex items-baseline gap-1.5">
+                                        <span className="text-slate-400 font-semibold text-[11px]">Sistema:</span>
+                                        <span className="font-mono text-white text-sm font-extrabold">
+                                          {numBR(res.perimetro)}
+                                        </span>
                                       </div>
-                                      <div className="flex items-baseline gap-1">
-                                        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">SIGEF:</span>
-                                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                      <div className="flex items-baseline gap-1.5">
+                                        <span className="text-emerald-400 font-bold text-[11px]">SIGEF:</span>
+                                        <span className="font-mono text-emerald-400 text-sm font-extrabold">
                                           {numBR(valoresEfetivos(res, imovel).perimetro)}
                                         </span>
                                       </div>
@@ -7561,7 +7555,6 @@ export default function EditorPage() {
                                   </div>
                                 </div>
                               )}
-
                             </div>
                           </div>
                         )}
@@ -8610,7 +8603,7 @@ export default function EditorPage() {
       <ExtrairIaModal open={iaAberta} onOpenChange={(o) => { setIaAberta(o); if (!o) { setIaArquivoInicial(null); setIaConfrontanteId(null); } }} arquivoInicial={iaArquivoInicial}
         confrontantes={confrontantes.map((c) => ({ id: c.id, nome: c.nome }))}
         destinoInicial={iaConfrontanteId ?? 'imovel'}
-        onAplicar={(parcial, destino, arquivo) => {
+        onAplicar={(parcial, destino, arquivo, verticesExtraidos) => {
           // Mapeia os campos de "pessoa" do imóvel para os de um confrontante (reaproveitado nos dois casos).
           const p = parcial as Record<string, string>;
           const patchConf = (): Partial<Confrontante> => {
@@ -8630,6 +8623,29 @@ export default function EditorPage() {
               salvarArquivo(projetoId, arquivo, { dono, confrontanteId, tipoDoc: 'ia-extracao' }).catch(() => {});
             }
           };
+          if (verticesExtraidos && verticesExtraidos.length >= 3) {
+            const { latLonDeUtm } = require('@/lib/topo/coords');
+            const novosV: Vertex[] = verticesExtraidos.map((v, i) => {
+              const geo = latLonDeUtm(v.leste, v.norte, zona, hemisferio);
+              const cod = v.nome || `P-${i + 1}`;
+              return {
+                id: `v_${Date.now()}_${i}`,
+                ordem: i + 1,
+                nome: cod,
+                codigoCampo: cod,
+                norte: v.norte,
+                leste: v.leste,
+                elevacao: v.elevacao ?? 0,
+                lat: geo.lat,
+                lon: geo.lon,
+                tipo: 'M',
+                codigoSigef: cod,
+                isDivisa: true,
+              };
+            });
+            setVertices(novosV);
+            aviso(`IA extraiu ${novosV.length} vértices e gerou o polígono do imóvel.`);
+          }
           if (destino === 'imovel') {
             setImovel((im) => ({ ...im, ...parcial }));
             anexar('imovel');

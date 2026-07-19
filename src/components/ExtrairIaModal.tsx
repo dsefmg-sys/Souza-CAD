@@ -17,7 +17,12 @@ interface Props {
   /** Aplica os dados extraídos ao destino escolhido: 'imovel', 'novo' (novo confrontante) ou o id de um confrontante.
    *  `arquivo` vem preenchido só quando o usuário acabou de subir um arquivo NOVO nesta tela (não quando a
    *  extração partiu de um documento já anexado) — o chamador decide se/como anexar ao projeto. */
-  onAplicar: (parcial: Partial<ImovelData>, destino: string, arquivo?: File) => void;
+  onAplicar: (
+    parcial: Partial<ImovelData>,
+    destino: string,
+    arquivo?: File,
+    verticesExtraidos?: { nome?: string; norte: number; leste: number; elevacao?: number }[]
+  ) => void;
   /** Documento já anexado que a IA deve ler (parte da extração a partir de um arquivo guardado). */
   arquivoInicial?: { data: string; mimeType: string; nome: string } | null;
   /** Confrontantes existentes, para o roteamento "a quem pertence" depois da leitura. */
@@ -49,6 +54,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [campos, setCampos] = useState<Record<string, string> | null>(null);
+  const [verticesExtraidos, setVerticesExtraidos] = useState<{ nome?: string; norte: number; leste: number; elevacao?: number }[] | null>(null);
   const [destino, setDestino] = useState('imovel'); // a quem aplicar: 'imovel' | 'novo' | id do confrontante
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -56,7 +62,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
   // Ao abrir vindo de um documento anexado, já carrega o arquivo e limpa o resultado anterior.
   // `arquivoFile` fica de fora de propósito: esse arquivo já existe no projeto, não é upload novo.
   useEffect(() => {
-    if (open && arquivoInicial) { setArquivo(arquivoInicial); setArquivoFile(null); setCampos(null); setErro(''); setTexto(''); }
+    if (open && arquivoInicial) { setArquivo(arquivoInicial); setArquivoFile(null); setCampos(null); setVerticesExtraidos(null); setErro(''); setTexto(''); }
   }, [open, arquivoInicial]);
   // Ao abrir, o destino começa no que foi pedido (imóvel, ou o confrontante de onde partiu o documento).
   useEffect(() => {
@@ -104,7 +110,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
   };
 
   async function extrair() {
-    setErro(''); setCarregando(true); setCampos(null);
+    setErro(''); setCarregando(true); setCampos(null); setVerticesExtraidos(null);
     try {
       // manda o comprovante de login junto — o servidor só gasta a cota da IA com usuário logado
       const usuario = auth()?.currentUser;
@@ -116,7 +122,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
       });
       
       const rawText = await r.text();
-      let j: { erro?: string; dados?: Record<string, string> };
+      let j: { erro?: string; dados?: Record<string, unknown> };
       try {
         j = JSON.parse(rawText);
       } catch {
@@ -129,10 +135,14 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
         return; 
       }
       
-      const d = (j.dados ?? {}) as Record<string, string>;
+      const d = (j.dados ?? {}) as Record<string, unknown>;
       const base: Record<string, string> = {};
-      for (const c of CAMPOS) base[c.chave] = (d[c.chave] ?? '').toString();
+      for (const c of CAMPOS) base[c.chave] = (d[c.chave] as string | undefined ?? '').toString();
       setCampos(base);
+
+      if (Array.isArray(d.vertices) && d.vertices.length > 0) {
+        setVerticesExtraidos(d.vertices as { nome?: string; norte: number; leste: number; elevacao?: number }[]);
+      }
     } catch (e) { 
       setErro('Falha ao chamar a IA: ' + ((e as Error).message || 'erro')); 
     } finally { 
@@ -147,9 +157,9 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
     for (const [k, v] of Object.entries(resto)) if (v.trim()) (parcial as Record<string, string>)[k] = v.trim();
     const areaNum = parseFloat((areaAnteriorHa || '').replace(',', '.'));
     if (Number.isFinite(areaNum) && areaNum > 0) parcial.areaAnterior = areaNum;
-    onAplicar(parcial, destino, arquivoFile ?? undefined);
+    onAplicar(parcial, destino, arquivoFile ?? undefined, verticesExtraidos ?? undefined);
     onOpenChange(false);
-    setTexto(''); setArquivo(null); setArquivoFile(null); setCampos(null);
+    setTexto(''); setArquivo(null); setArquivoFile(null); setCampos(null); setVerticesExtraidos(null);
   }
 
   return (
@@ -160,14 +170,13 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
             <div className="p-1.5 bg-violet-500/10 rounded-lg text-violet-600 dark:text-violet-400">
               <Sparkles className="size-5" />
             </div>
-            Leitura e Extração de Dados com IA
+            Leitura e Extração de Dados &amp; Vértices com IA
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4 min-h-0 pr-1">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Arraste qualquer tipo de arquivo (PDF de Matrícula, Escritura, Planta, lista de coordenadas ou foto de papel) para ler e extrair os dados automaticamente.
-            A inteligência artificial analisará o documento para extrair qualquer informação útil (coordenadas, proprietários, confrontantes, áreas, etc.) e preencher o cadastro.
+            Arraste qualquer tipo de arquivo (PDF de Matrícula, Escritura, Memorial, Tabela de Coordenadas ou Imagem) para ler e extrair os dados cadastrais e os vértices do polígono automaticamente.
           </p>
 
           {/* Area Multimodal: Upload / Dropzone */}
@@ -219,7 +228,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
                   <UploadCloud className="size-6" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-foreground">Arraste a Matrícula (PDF ou Imagem)</div>
+                  <div className="text-xs font-bold text-foreground">Arraste a Matrícula / Memorial (PDF ou Imagem)</div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">ou clique para selecionar do computador (máx 15MB)</div>
                 </div>
               </div>
@@ -257,6 +266,37 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
                   </label>
                 ))}
               </div>
+
+              {verticesExtraidos && verticesExtraidos.length > 0 && (
+                <div className="border border-indigo-500/30 rounded-lg p-3 bg-indigo-500/5 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                    <span>Vértices Extraídos para Polígono ({verticesExtraidos.length} pontos encontrados)</span>
+                  </div>
+                  <div className="max-h-36 overflow-y-auto border rounded bg-background text-[11px]">
+                    <table className="w-full border-collapse text-left">
+                      <thead className="bg-muted sticky top-0 font-bold border-b text-muted-foreground">
+                        <tr>
+                          <th className="p-1 px-2">Vértice</th>
+                          <th className="p-1 px-2">Norte (Y)</th>
+                          <th className="p-1 px-2">Leste (X)</th>
+                          <th className="p-1 px-2">Altitude (Z)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {verticesExtraidos.map((v, i) => (
+                          <tr key={i} className="border-b last:border-0 hover:bg-muted/40">
+                            <td className="p-1 px-2 font-semibold">{v.nome || `P-${i + 1}`}</td>
+                            <td className="p-1 px-2">{v.norte}</td>
+                            <td className="p-1 px-2">{v.leste}</td>
+                            <td className="p-1 px-2">{v.elevacao ?? 0}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* A quem pertence este documento — o roteamento pedido: a IA leu, agora você decide o dono. */}
               <div className="rounded-lg border border-border/70 bg-background p-2.5 space-y-1">
                 <span className="block text-[11px] font-semibold text-muted-foreground">A quem pertence este documento?</span>
@@ -273,7 +313,7 @@ export default function ExtrairIaModal({ open, onOpenChange, onAplicar, arquivoI
                 </select>
                 <p className="text-[10px] leading-snug text-muted-foreground">
                   {destino === 'imovel'
-                    ? 'Os dados vão para o cadastro do imóvel e do proprietário.'
+                    ? 'Os dados vão para o cadastro do imóvel/proprietário e os vértices extraídos geram/atualizam o polígono.'
                     : destino === 'novo'
                     ? 'Cria um confrontante novo com estes dados — depois é só pintar as divisas dele no mapa.'
                     : 'Os dados vão para o confrontante escolhido (nome, CPF, cônjuge, matrícula e cartório).'}

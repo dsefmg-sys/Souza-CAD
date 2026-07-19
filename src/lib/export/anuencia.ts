@@ -23,8 +23,8 @@ export interface AnuenciaInput {
 function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
   const { imovel, tecnico, confrontante, verticesCompartilhados, comarca, dataExtenso, incluirVerticesLista } = sanitizarProfundo(input);
 
-  const local = comarca || imovel.municipio || '________';
-  const data = dataExtenso || '___ de __________________ de 20___';
+  const local = comarca || imovel.municipio || 'DADO AUSENTE';
+  const data = dataExtenso || 'DADO AUSENTE';
 
   const rotuloRT = rotulosProfissional(tecnico);
 
@@ -48,11 +48,11 @@ function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
 
   // Qualificação do Confrontante
   const conjugeTxt = confrontante.conjugeNome
-    ? `, casado(a) sob o regime de bens com ${confrontante.conjugeNome}, inscrito(a) no CPF sob o nº ${confrontante.conjugeCpf || '___________'}`
+    ? `, casado(a) sob o regime de bens com ${confrontante.conjugeNome}, inscrito(a) no CPF sob o nº ${confrontante.conjugeCpf || 'DADO AUSENTE'}`
     : '';
 
   const inventarianteTxt = confrontante.inventarianteNome
-    ? `, neste ato representado(a) pelo(a) inventariante ${confrontante.inventarianteNome}, inscrito(a) no CPF sob o nº ${confrontante.inventarianteCpf || '___________'}`
+    ? `, neste ato representado(a) pelo(a) inventariante ${confrontante.inventarianteNome}, inscrito(a) no CPF sob o nº ${confrontante.inventarianteCpf || 'DADO AUSENTE'}`
     : '';
 
   const condicaoTxt = confrontante.condicao === 'posseiro'
@@ -68,7 +68,7 @@ function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
   let qualConfrontante = `Eu, ${confrontante.nome}, `;
   if (confrontante.cpf) qualConfrontante += `inscrito(a) no CPF sob o nº ${confrontante.cpf}, `;
   qualConfrontante += `na qualidade de ${condicaoTxt} do imóvel confrontante `;
-  if (confrontante.matricula) qualConfrontante += `registrado sob a Matrícula nº ${confrontante.matricula} (CNS: ${confrontante.cns || '________'}) `;
+  if (confrontante.matricula) qualConfrontante += `registrado sob a Matrícula nº ${confrontante.matricula} (CNS: ${confrontante.cns || 'DADO AUSENTE'}) `;
   qualConfrontante += `${conjugeTxt}${inventarianteTxt}, `;
 
   paragraphs.push(new Paragraph({
@@ -81,19 +81,19 @@ function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
         text: `para os devidos fins de direito e perante o Cartório de Registro de Imóveis competente, que conheço e concordo plenamente com os limites perimetrais e divisas comuns estabelecidos no levantamento topográfico georreferenciado do imóvel rural denominado `,
         size: 22
       }),
-      new TextRun({ text: imovel.denominacao || '________________', bold: true, size: 22 }),
+      new TextRun({ text: imovel.denominacao || 'DADO AUSENTE', bold: true, size: 22 }),
       new TextRun({ text: imovel.regimeTerra === 'posse' ? `, sob a posse de ` : `, de propriedade de `, size: 22 }),
       new TextRun({
         text: imovel.tipoPessoa === 'Espólio' && imovel.inventarianteNome
           ? `Espólio de ${imovel.proprietario}, representado por seu inventariante ${imovel.inventarianteNome}`
-          : (imovel.proprietario || '________________'),
+          : (imovel.proprietario || 'DADO AUSENTE'),
         bold: true,
         size: 22
       }),
       new TextRun({ text: `, executado sob a responsabilidade técnica do profissional `, size: 22 }),
-      new TextRun({ text: tecnico.nome || '________________', bold: true, size: 22 }),
+      new TextRun({ text: tecnico.nome || 'DADO AUSENTE', bold: true, size: 22 }),
       new TextRun({ text: `, credenciado junto ao INCRA sob o código `, size: 22 }),
-      new TextRun({ text: tecnico.credenciamentoIncra || '________', bold: true, size: 22 }),
+      new TextRun({ text: tecnico.credenciamentoIncra || 'DADO AUSENTE', bold: true, size: 22 }),
       new TextRun({ text: `.`, size: 22 }),
     ]
   }));

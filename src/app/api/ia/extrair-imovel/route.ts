@@ -72,10 +72,12 @@ export async function POST(req: Request) {
 
   let texto = '';
   let arquivo: { data: string; mimeType: string } | null = null;
+  let modo = 'todos';
   try {
     const body = await req.json();
     texto = body.texto ?? '';
     arquivo = body.arquivo ?? null;
+    modo = body.modo ?? 'todos';
   } catch { /* corpo inválido */ }
 
   if ((!texto || texto.trim().length < 10) && !arquivo) {
@@ -94,11 +96,11 @@ export async function POST(req: Request) {
   }
 
   const instrucao =
-    'Você é um assistente de agrimensura no Brasil. Extraia do texto ou documento fornecido os dados do IMÓVEL e ' +
-    'do PROPRIETÁRIO para um georreferenciamento (SIGEF/INCRA). Responda APENAS com um JSON válido, ' +
-    'sem markdown e sem comentários, com EXATAMENTE estas chaves (use string vazia quando não achar): ' +
-    'denominacao, matricula, cns, codigoImovelIncra, proprietario, cpfProprietario, conjugeProprietario, ' +
-    'cpfConjugeProprietario, municipio, comarca, areaAnteriorHa. Não invente dados que não estejam no documento.';
+    'Você é um especialista em georreferenciamento e agrimensura no Brasil. Extraia do texto ou documento fornecido:' +
+    ' 1. Os dados do IMÓVEL e do PROPRIETÁRIO (denominacao, matricula, cns, codigoImovelIncra, proprietario, cpfProprietario, conjugeProprietario, cpfConjugeProprietario, municipio, comarca, areaAnteriorHa).' +
+    ' 2. Se houver memorial descritivo, certidão, tabela de coordenadas ou lista de pontos UTM/geodésicos no documento, extraia a lista de VÉRTICES no array "vertices" com os objetos: { "nome": string, "norte": number, "leste": number, "elevacao": number }.' +
+    ' Responda APENAS com um JSON válido na estrutura: { "denominacao": "...", "matricula": "...", "cns": "...", "codigoImovelIncra": "...", "proprietario": "...", "cpfProprietario": "...", "conjugeProprietario": "...", "cpfConjugeProprietario": "...", "municipio": "...", "comarca": "...", "areaAnteriorHa": "...", "vertices": [ { "nome": "P-01", "norte": 7450000.123, "leste": 650000.456, "elevacao": 520.5 } ] }.' +
+    ' Se um campo cadastral não for encontrado use "". Se não houver vértices, use []. Não invente números fictícios.';
 
   try {
     type ParteGemini = { text: string } | { inlineData: { mimeType: string; data: string } };
@@ -138,7 +140,7 @@ export async function POST(req: Request) {
     }
     const j = await r.json();
     const saida: string = j?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    let dados: Record<string, string> = {};
+    let dados: Record<string, unknown> = {};
     try { dados = JSON.parse(saida); }
     catch {
       const m = saida.match(/\{[\s\S]*\}/);
@@ -149,3 +151,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: 'Não consegui falar com a IA: ' + ((e as Error).message || 'erro') }, { status: 502 });
   }
 }
+
