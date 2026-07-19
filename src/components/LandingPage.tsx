@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown } from 'lucide-react';
+import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown, Monitor } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 
 interface LandingPageProps {
@@ -30,7 +30,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
     }
   };
 
-  // Observa a seção visível para atualizar os pontinhos laterais
+  // Observa a seção visível para atualizar os pontinhos laterais e gerencia rolada leve no mouse
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -48,7 +48,41 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
     const sections = document.querySelectorAll('.landing-snap-sec');
     sections.forEach((sec) => observer.observe(sec));
 
-    return () => observer.disconnect();
+    let cooldown = false;
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (cooldown) return;
+      if (Math.abs(e.deltaY) < 10) return; // ignora micro tremores
+
+      // Executa o pulo de seção com uma rolada leve
+      if (e.deltaY > 0) {
+        setActiveSection((prev) => {
+          const next = Math.min(5, prev + 1);
+          scrollToSec(next);
+          return next;
+        });
+      } else {
+        setActiveSection((prev) => {
+          const next = Math.max(0, prev - 1);
+          scrollToSec(next);
+          return next;
+        });
+      }
+
+      cooldown = true;
+      timeoutId = setTimeout(() => {
+        cooldown = false;
+      }, 550);
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('wheel', handleWheel);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   // Escassez de vagas de pioneiros
@@ -170,7 +204,15 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
       {/* SEÇÃO 1: HERO & PREVIEW INICIAL */}
       <section id="sec-0" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-24 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-5">
+          {/* AVISO RECOMENDAÇÃO MOBILE */}
+          <div className="flex md:hidden items-center justify-center gap-2 px-3.5 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-semibold max-w-lg mx-auto text-left leading-tight shadow-sm">
+            <Monitor className="size-4 shrink-0 text-amber-400" />
+            <span>
+              <strong>Dica de Uso:</strong> Para melhor experiência na edição de mapas e plantas A3, acesse pelo seu computador ou notebook.
+            </span>
+          </div>
+
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-300 shadow-sm">
             <FileSpreadsheet className="size-4 text-emerald-400" />
             <span>Planilha ODS Padrão INCRA & SIGEF em Minutos</span>
