@@ -2226,7 +2226,7 @@ export default function MapEditor(props: Props) {
         if (!lista.length) return null;
         return (
           <div
-            className={`absolute bottom-6 right-2 ${Z_CLASSES.MAP_CONTROLS} max-h-40 max-w-56 overflow-y-auto rounded-sm border bg-background/90 px-2 py-1.5 text-[11px] shadow backdrop-blur`}
+            className={`absolute bottom-12 right-2 ${Z_CLASSES.MAP_CONTROLS} max-h-[calc(100vh-220px)] max-w-64 overflow-y-auto scroll-fino rounded-xl border border-border/80 bg-background/95 p-2 text-[11px] shadow-xl backdrop-blur-md text-left select-none`}
             onWheel={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}

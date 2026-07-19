@@ -7,7 +7,7 @@ import { saveAs } from 'file-saver';
 import {
   Upload, FileText, Map as MapIcon, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen,
-  CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
+  CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Search,
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
   Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain,
@@ -6797,7 +6797,7 @@ export default function EditorPage() {
             <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
             <Etapa st={etapas.sigef} tituloEtapa="2. Integração SIGEF / Vizinhos" explicacao="Consulte e importe os imóveis certificados confrontantes direto da malha oficial do INCRA, efetuando o casamento perfeito dos vértices vizinhos.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_VIZINHO} gap-0.5`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
-                <Download /> SIGEF
+                <Search /> SIGEF
                 <Atalho k="F3" />
               </Button>
             </Etapa>
@@ -6810,7 +6810,7 @@ export default function EditorPage() {
           <>
             <Etapa st={etapas.dados} tituloEtapa="3. Cadastro do Imóvel & RT" explicacao="Preencha as informações do imóvel, proprietário, número da matrícula, serventia registral e os dados do Responsável Técnico habilitado.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
-                <Upload /> DADOS
+                <Database /> DADOS
                 <Atalho k="F4" />
               </Button>
             </Etapa>
@@ -6850,7 +6850,7 @@ export default function EditorPage() {
             <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
             <Etapa st={etapas.ods} tituloEtapa="7. Geração de Planilha ODS" explicacao="Exporte a planilha oficial de credenciamento do SIGEF (.ods) com validações automáticas de altitude, método de posicionamento e código dos vértices.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-0.5`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}>
-                <Download /> ODS
+                <ShieldCheck /> ODS
                 <Atalho k="F8" />
               </Button>
             </Etapa>
@@ -7143,9 +7143,9 @@ export default function EditorPage() {
                           onClick={salvar}
                           disabled={processando}
                           title={salvarLaranja ? `Salvar projeto atual (${obterAtalhoLateral('salvar', 'sl')}) - Modificações pendentes de salvamento!` : `Projeto salvo e sincronizado (${obterAtalhoLateral('salvar', 'sl')})`}
-                          className={`relative transition-all duration-300 ${salvarLaranja ? 'bg-orange-500 hover:bg-orange-600 text-white font-bold border-transparent' : ''}`}
+                          className={`relative transition-all duration-300 ${salvarLaranja ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold border-transparent shadow-md shadow-emerald-500/20' : ''}`}
                         >
-                          <Save className={salvarLaranja ? 'text-white' : 'text-emerald-500'} /> <span>SALVAR</span>
+                          <Save className={salvarLaranja ? 'text-white animate-pulse' : 'text-emerald-500'} /> <span>SALVAR</span>
                           <Atalho k={obterAtalhoLateral('salvar', 'sl')} />
                         </Button>
                         <Button size="sm" variant="secondary" className="relative" onClick={() => setPrecoSugAberto(true)} title={`Precificação: quanto cobrar por este imóvel (${obterAtalhoLateral('precificacao', 'pc')})`}>

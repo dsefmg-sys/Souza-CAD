@@ -11,25 +11,13 @@ interface LandingPageProps {
 }
 
 function InteractiveImageWindow({ src, alt, onExpand }: { src: string; alt: string; onExpand?: (src: string) => void }) {
-  const [isBottom, setIsBottom] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-
-  const togglePosicao = () => {
-    setIsBottom((prev) => !prev);
-  };
-
-  const getTranslateY = () => {
-    if (!isBottom || !containerRef.current || !imgRef.current) return 0;
-    const overflowY = imgRef.current.offsetHeight - containerRef.current.offsetHeight;
-    return overflowY > 0 ? -Math.round(overflowY) : 0;
-  };
 
   return (
     <div
       ref={containerRef}
-      onClick={togglePosicao}
-      className="w-full h-[320px] sm:h-[460px] md:h-[580px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative cursor-pointer group select-none"
+      className="w-full h-[320px] sm:h-[460px] md:h-[580px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative select-none group"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -37,25 +25,18 @@ function InteractiveImageWindow({ src, alt, onExpand }: { src: string; alt: stri
         src={src}
         alt={alt}
         style={{
-          transform: `translate3d(0, ${getTranslateY()}px, 0)`,
           imageRendering: '-webkit-optimize-contrast',
         }}
-        className="w-full h-auto block pointer-events-none transition-transform duration-500 ease-in-out filter contrast-[1.02] saturate-[1.02]"
+        className="w-full h-auto block pointer-events-none filter contrast-[1.02] saturate-[1.02]"
       />
-      <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-slate-950/90 border border-emerald-500/40 text-[10px] sm:text-xs font-bold text-emerald-300 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all pointer-events-none backdrop-blur-md shadow-lg flex items-center gap-1.5">
-        <span>{isBottom ? '▲ Clique para ver o topo' : '▼ Clique para ver a base'}</span>
-      </div>
 
       {onExpand && (
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onExpand(src);
-          }}
-          className="absolute top-3 left-3 px-3 py-1.5 rounded-full bg-slate-950/90 border border-slate-700 hover:border-emerald-400 text-[10px] sm:text-xs font-bold text-slate-200 hover:text-white opacity-80 hover:opacity-100 transition-all pointer-events-auto backdrop-blur-md shadow-md flex items-center gap-1.5"
+          onClick={() => onExpand(src)}
+          className="absolute top-3 right-3 px-3.5 py-1.5 rounded-full bg-slate-950/90 border border-emerald-500/40 text-[10px] sm:text-xs font-bold text-emerald-300 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all pointer-events-auto backdrop-blur-md shadow-lg cursor-pointer"
         >
-          <span>🔍 Expandir em HD</span>
+          VER
         </button>
       )}
     </div>
