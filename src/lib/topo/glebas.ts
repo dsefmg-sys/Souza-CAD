@@ -10,7 +10,7 @@ export function novoGlebaId(): string {
 export function novaGlebaVazia(indice: number): Gleba {
   return {
     id: novoGlebaId(),
-    denominacao: `Parcela ${indice}`,
+    denominacao: `PARCELA ${indice}`,
     parcela: String(indice).padStart(3, '0'),
     vertices: [],
     confrontantes: [],

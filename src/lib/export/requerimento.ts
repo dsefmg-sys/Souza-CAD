@@ -21,6 +21,8 @@ export interface RequerimentoInput {
   dataExtenso?: string;   // ex.: "17 de março de 2026"
   /** Tipo do ato que motiva a retificação — muda os rótulos das partes e o texto de contextualização. Padrão: 'venda'. */
   tipoAto?: TipoAtoRequerimento;
+  /** Múltiplos atos selecionados (ex.: ['retificacao', 'desmembramento']). */
+  tiposAtos?: TipoAtoRequerimento[];
   /** Partes adicionais (mais de um donatário/coproprietário) além de requerente/transmitente. */
   partesAdicionais?: PessoaQualificada[];
   correcoes?: CorrecaoErrata[];
@@ -66,6 +68,21 @@ const ROTULOS_ATO: Record<TipoAtoRequerimento, { requerente: string; transmitent
     assinaTrans: '(Cônjuge / Coproprietário)',
   },
 };
+
+function formatarListaAtos(atos: TipoAtoRequerimento[]): string {
+  const NOMES: Record<TipoAtoRequerimento, string> = {
+    retificacao: 'RETIFICAÇÃO DE ÁREA',
+    venda: 'COMPRA E VENDA',
+    doacao: 'DOAÇÃO',
+    unificacao: 'REMEMBRAMENTO (UNIFICAÇÃO)',
+    desmembramento: 'DESMEMBRAMENTO DE GLEBA',
+    usucapiao: 'RECONHECIMENTO DE USUCAPIÃO',
+  };
+  const nomes = atos.map((a) => NOMES[a] || a.toUpperCase());
+  if (nomes.length === 1) return nomes[0];
+  if (nomes.length === 2) return `${nomes[0]} E ${nomes[1]}`;
+  return `${nomes.slice(0, -1).join(', ')} E ${nomes[nomes.length - 1]}`;
+}
 
 /**
  * Troca os rótulos de "propriedade" por "posse" quando o imóvel é de posse (não registrado).
@@ -204,8 +221,12 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   const transClonado = fPessoa(transmitente);
   const partesAdicionais = (input.partesAdicionais ?? []).map(fPessoa).filter((p) => p.nome?.trim());
 
-  const tipo = input.tipoAto ?? 'venda';
-  const rotOriginal = ROTULOS_ATO[tipo];
+  const atos: TipoAtoRequerimento[] = (input.tiposAtos && input.tiposAtos.length > 0)
+    ? input.tiposAtos
+    : [input.tipoAto ?? 'venda'];
+
+  const tipoPrioritario = atos.find((a) => a === 'venda' || a === 'doacao' || a === 'usucapiao') || atos[0];
+  const rotOriginal = ROTULOS_ATO[tipoPrioritario];
   const rot = imovel.regimeTerra === 'posse' ? {
     requerente: rotuloPosse(rotOriginal.requerente),
     transmitente: rotuloPosse(rotOriginal.transmitente),
@@ -248,11 +269,16 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   if (imovel.ficticio) {
     c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [new TextRun({ text: '*** DADOS FICTÍCIOS — DOCUMENTO DE DEMONSTRAÇÃO, SEM VALIDADE LEGAL ***', bold: true, size: 20, color: 'B91C1C' })] }));
   }
-  c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: 'REQUERIMENTO DE AVERBAÇÃO DE GEORREFERENCIAMENTO COM RETIFICAÇÃO DE ÁREA', bold: true, size: 24 })] }));
+
+  const tituloDocumento = (atos.length === 1 && atos[0] === 'retificacao')
+    ? 'REQUERIMENTO DE AVERBAÇÃO DE GEORREFERENCIAMENTO COM RETIFICAÇÃO DE ÁREA'
+    : `REQUERIMENTO DE AVERBAÇÃO DE GEORREFERENCIAMENTO CUMULADO COM ${formatarListaAtos(atos)}`;
+
+  c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: tituloDocumento, bold: true, size: 24 })] }));
   c.push(par('(Art. 176, §3º e §4º, e Art. 213, II, da Lei 6.015/73 c/c Decreto 4.449/02)', AlignmentType.CENTER));
   c.push(par(`Ilustríssimo Senhor(a) Oficial do Cartório de Registro de Imóveis da Comarca de ${comarca},`));
 
-  const mostrarTransmitente = tipo !== 'retificacao' || !!transmitente.nome?.trim() || permitirIncompleto;
+  const mostrarTransmitente = tipoPrioritario !== 'retificacao' || !!transmitente.nome?.trim() || permitirIncompleto;
 
   c.push(titulo(rot.requerente));
   blocoPessoa(reqClonado, modo, imovel).forEach((x) => c.push(x));
@@ -265,32 +291,34 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   partesAdicionais.forEach((p, i) => {
     let papelRotulo = `PARTE ADICIONAL ${i + 1}`;
     if (p.papel === 'requerente') {
-      papelRotulo = tipo === 'venda' ? 'COMPRADOR / ADQUIRENTE ADICIONAL' : tipo === 'doacao' ? 'DONATÁRIO ADICIONAL' : 'REQUERENTE / COPROPRIETÁRIO ADICIONAL';
+      papelRotulo = tipoPrioritario === 'venda' ? 'COMPRADOR / ADQUIRENTE ADICIONAL' : tipoPrioritario === 'doacao' ? 'DONATÁRIO ADICIONAL' : 'REQUERENTE / COPROPRIETÁRIO ADICIONAL';
     } else if (p.papel === 'transmitente') {
-      papelRotulo = tipo === 'venda' ? 'VENDEDOR / TRANSMITENTE ADICIONAL' : tipo === 'doacao' ? 'DOADOR ADICIONAL' : 'COPROPRIETÁRIO / TRANSMITENTE ADICIONAL';
+      papelRotulo = tipoPrioritario === 'venda' ? 'VENDEDOR / TRANSMITENTE ADICIONAL' : tipoPrioritario === 'doacao' ? 'DOADOR ADICIONAL' : 'COPROPRIETÁRIO / TRANSMITENTE ADICIONAL';
     }
     c.push(titulo(papelRotulo));
     blocoPessoa(p, modo, imovel).forEach((x) => c.push(x));
   });
 
   c.push(titulo('DO REQUERIMENTO'));
-  let reqTextoRaw = '';
-  if (tipo === 'doacao') reqTextoRaw = modelos.requerimentoDoacao;
-  else if (tipo === 'unificacao') reqTextoRaw = modelos.requerimentoUnificacao;
-  else if (tipo === 'desmembramento') reqTextoRaw = modelos.requerimentoDesmembramento;
-  else if (tipo === 'usucapiao') reqTextoRaw = modelos.requerimentoUsucapiao;
-  else if (tipo === 'retificacao') reqTextoRaw = modelos.requerimentoRetificacao;
-  else reqTextoRaw = modelos.requerimentoVenda;
+  for (const ato of atos) {
+    let reqTextoRaw = '';
+    if (ato === 'doacao') reqTextoRaw = modelos.requerimentoDoacao;
+    else if (ato === 'unificacao') reqTextoRaw = modelos.requerimentoUnificacao;
+    else if (ato === 'desmembramento') reqTextoRaw = modelos.requerimentoDesmembramento;
+    else if (ato === 'usucapiao') reqTextoRaw = modelos.requerimentoUsucapiao;
+    else if (ato === 'retificacao') reqTextoRaw = modelos.requerimentoRetificacao;
+    else reqTextoRaw = modelos.requerimentoVenda;
 
-  c.push(par(preencherModelo(reqTextoRaw, varsModelo)));
+    c.push(par(preencherModelo(reqTextoRaw, varsModelo)));
+  }
 
   c.push(titulo('DA IDENTIFICAÇÃO DO IMÓVEL'));
   const origens = (imovel.matriculasOrigem ?? []).filter((m) => m.trim());
-  const donoNome = (tipo === 'retificacao' && !transmitente.nome?.trim() && !permitirIncompleto)
+  const donoNome = (tipoPrioritario === 'retificacao' && !transmitente.nome?.trim() && !permitirIncompleto)
     ? (reqClonado.nome || f(imovel.proprietario))
     : (transClonado.nome || f(imovel.proprietario));
 
-  if (tipo === 'unificacao' && origens.length > 0) {
+  if (atos.includes('unificacao') && origens.length > 0) {
     c.push(par(`O imóvel resulta da unificação das matrículas nº ${origens.join(', nº ')}, situado no município de ${varsModelo.municipio}, passando a constituir uma só matrícula sob nº ${varsModelo.matricula}, Livro nº 2, em nome de ${donoNome}.`));
   } else if (imovel.regimeTerra === 'posse') {
     c.push(par(`O imóvel rural denominado ${varsModelo.denominacao}, situado no município de ${varsModelo.municipio}, é detido sob regime de posse por ${donoNome}${varsModelo.matricula && varsModelo.matricula !== 'DADO AUSENTE' ? `, com referência ao registro/transcrição nº ${varsModelo.matricula}` : ' (sem matrícula registrada)'}.`));
@@ -381,13 +409,30 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     c.push(par(`Declaram, para fins fiscais e de cálculo dos emolumentos, que o valor do imóvel é de: R$ ${valImovelStr} (${valImovelStr === 'DADO AUSENTE' ? 'DADO AUSENTE' : '____________'}).`));
   }
 
-  const finalidadePedido = tipo === 'venda' || tipo === 'doacao'
-    ? 'para viabilizar o registro da futura transmissão da propriedade'
-    : tipo === 'usucapiao'
-      ? 'para instruir o pedido de reconhecimento da usucapião do imóvel'
-      : 'para regularizar a base tabular do imóvel perante este Cartório';
   c.push(titulo('DO PEDIDO'));
-  c.push(par(`Diante do exposto, requerem: a averbação do georreferenciamento do imóvel; a retificação da área e da descrição constante da matrícula, adequando-a à realidade física; a consequente regularização da base tabular do imóvel ${finalidadePedido}.`));
+  const itensPedidos: string[] = [
+    'a averbação do georreferenciamento do imóvel ao Sistema Geodésico Brasileiro (SIRGAS 2000)',
+    'a retificação da área e da descrição constante da matrícula, adequando-a à realidade física apurada',
+  ];
+  if (atos.includes('unificacao')) {
+    itensPedidos.push('o remembramento e unificação das matrículas de origem sob uma nova matrícula única');
+  }
+  if (atos.includes('desmembramento')) {
+    itensPedidos.push('o desmembramento da parcela destacada com a abertura da respectiva matrícula independente');
+  }
+  if (atos.includes('venda')) {
+    itensPedidos.push('o registro do título de transmissão de propriedade por compra e venda em favor do adquirente');
+  }
+  if (atos.includes('doacao')) {
+    itensPedidos.push('o registro do título de doação em favor do donatário');
+  }
+  if (atos.includes('usucapiao')) {
+    itensPedidos.push('o processamento e o reconhecimento da usucapião extrajudicial com a devida transposição registral');
+  }
+  itensPedidos.push('a consequente regularização da base tabular do imóvel perante este Cartório de Registro de Imóveis');
+
+  const textoPedidosFormatted = itensPedidos.map((p, idx) => ` (${idx + 1}) ${p};`).join('');
+  c.push(par(`Diante do exposto, requerem a Vossa Senhoria:${textoPedidosFormatted}`));
   c.push(par('Nestes termos, pede deferimento.'));
 
   const data = input.dataExtenso ? `${comarca}, ${input.dataExtenso}.` : `${comarca}, ____ de __________ de ______.`;
@@ -430,9 +475,9 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   partesAdicionais.forEach((p) => {
     let papelAssinatura = '(Parte adicional)';
     if (p.papel === 'requerente') {
-      papelAssinatura = tipo === 'venda' ? '(Adquirente / Comprador Adicional)' : tipo === 'doacao' ? '(Donatário Adicional)' : '(Requerente Adicional)';
+      papelAssinatura = tipoPrioritario === 'venda' ? '(Adquirente / Comprador Adicional)' : tipoPrioritario === 'doacao' ? '(Donatário Adicional)' : '(Requerente Adicional)';
     } else if (p.papel === 'transmitente') {
-      papelAssinatura = tipo === 'venda' ? '(Transmitente / Vendedor Adicional)' : tipo === 'doacao' ? '(Doador Adicional)' : '(Transmitente Adicional)';
+      papelAssinatura = tipoPrioritario === 'venda' ? '(Transmitente / Vendedor Adicional)' : tipoPrioritario === 'doacao' ? '(Doador Adicional)' : '(Transmitente Adicional)';
     }
     assina([p.nome, papelAssinatura]);
   });

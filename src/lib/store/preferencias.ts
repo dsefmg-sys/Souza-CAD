@@ -93,7 +93,7 @@ export const ATALHOS_COMANDO_PADRAO: Record<string, string> = {
   rt: 'retangulo',
   cc: 'circulo',
   ac: 'arco',
-  sv: 'selecao_varios',
+  sl: 'selecao_varios',
   md: 'medir',
   pr: 'paralela',
   dv: 'dividir',
@@ -101,15 +101,17 @@ export const ATALHOS_COMANDO_PADRAO: Record<string, string> = {
   pg: 'prolongar',
   ro: 'rotulos',
   // Ações e navegação da barra lateral
-  dz: 'desfazer',
-  ry: 'refazer',
+  df: 'desfazer',
+  rf: 'refazer',
   ft: 'folha_travada',
   gt: 'gestao',
   nv: 'novo',
-  sl: 'salvar',
-  pt: 'pontos',
+  sv: 'salvar',
+  pt: 'pontos_banco',
   pc: 'precificacao',
   cn: 'curvas_nivel',
+  at: 'altitude',
+  aj: 'ajustes',
 };
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {

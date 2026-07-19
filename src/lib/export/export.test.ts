@@ -260,6 +260,25 @@ describe('requerimento', () => {
     expect(texto).toContain('PARTE ADICIONAL 1');
     expect(texto).toContain('PARTE ADICIONAL 2');
   });
+
+  it('geração de requerimento cumulativo com múltiplos atos (retificação + desmembramento)', async () => {
+    const { res } = preparar();
+    const requerente: PessoaQualificada = { ...PESSOA_VAZIA, nome: 'Proprietário Requerente', cpf: '111.111.111-11' };
+    const transmitente: PessoaQualificada = { ...PESSOA_VAZIA, nome: 'Coproprietário', cpf: '222.222.222-22' };
+    const blob = await gerarRequerimentoDocx({
+      imovel, tecnico, requerente, transmitente,
+      tiposAtos: ['retificacao', 'desmembramento'], areaRealHa: res.areaHa, dataExtenso: '19 de julho de 2026',
+    });
+    const buf = Buffer.from(await blob.arrayBuffer());
+    const zip = await JSZip.loadAsync(buf);
+    const xml = await zip.file('word/document.xml')!.async('string');
+    const texto = xml.replace(/<[^>]+>/g, ' ');
+
+    expect(texto).toContain('REQUERIMENTO DE AVERBAÇÃO DE GEORREFERENCIAMENTO CUMULADO COM RETIFICAÇÃO DE ÁREA E DESMEMBRAMENTO DE GLEBA');
+    expect(texto).toContain('desmembramento');
+    expect(texto).toContain('retificação');
+    expect(texto).toContain('SIRGAS 2000');
+  });
 });
 
 describe('sigef ods', () => {

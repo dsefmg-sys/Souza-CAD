@@ -93,8 +93,15 @@ interface Props {
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
   tipoAto: TipoAtoRequerimento;
+  tiposAtos?: TipoAtoRequerimento[];
   partesAdicionais: PessoaQualificada[];
-  onChangePessoas: (req: PessoaQualificada, trans: PessoaQualificada, tipoAto: TipoAtoRequerimento, partesAdicionais: PessoaQualificada[]) => void;
+  onChangePessoas: (
+    req: PessoaQualificada,
+    trans: PessoaQualificada,
+    tipoAto: TipoAtoRequerimento,
+    partesAdicionais: PessoaQualificada[],
+    tiposAtos?: TipoAtoRequerimento[]
+  ) => void;
   sugProp: ProprietarioCad[];
   correcoes: CorrecaoErrata[];
   onBaixar?: () => void;
@@ -218,18 +225,33 @@ function transVazio(imovel: ImovelData): PessoaQualificada {
   return { ...PESSOA_VAZIA, nome: imovel.proprietario, cpf: imovel.cpfProprietario, cidadeUf: imovel.municipio || '' };
 }
 
-export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, tipoAto, partesAdicionais, onChangePessoas, sugProp, correcoes, onBaixar }: Props) {
+export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, tipoAto, tiposAtos, partesAdicionais, onChangePessoas, sugProp, correcoes, onBaixar }: Props) {
   const [req, setReq] = useState<PessoaQualificada>(requerente ?? PESSOA_VAZIA);
   const [trans, setTrans] = useState<PessoaQualificada>(transmitente ?? transVazio(imovel));
-  const [localTipoAto, setLocalTipoAto] = useState<TipoAtoRequerimento>(tipoAto);
+  const [localTiposAtos, setLocalTiposAtos] = useState<TipoAtoRequerimento[]>(() => {
+    if (tiposAtos && tiposAtos.length > 0) return tiposAtos;
+    return [tipoAto || 'retificacao'];
+  });
   const [localPartesAdicionais, setLocalPartesAdicionais] = useState<PessoaQualificada[]>(partesAdicionais);
   const [msg, setMsg] = useState('');
   const [mostrarDicas, setMostrarDicas] = useState(true);
+
+  const localTipoAto = localTiposAtos.find((a) => a === 'venda' || a === 'doacao' || a === 'usucapiao') || localTiposAtos[0];
   // Partes adicionais = mais de uma pessoa do lado do REQUERENTE ou TRANSMITENTE (ex.: cônjuges, coproprietários).
   const permiteVariasPartes = localTipoAto === 'venda' || localTipoAto === 'doacao' || localTipoAto === 'unificacao' || localTipoAto === 'retificacao';
-  const rotuloParteAdicional = localTipoAto === 'venda' ? 'comprador/vendedor' : localTipoAto === 'doacao' ? 'donatário/doador' : 'proprietário';
 
   useEffect(() => { setMostrarDicas(carregarPreferencias().mostrarDicasEducativas); }, []);
+
+  function toggleAto(valor: TipoAtoRequerimento) {
+    setLocalTiposAtos((prev) => {
+      if (prev.includes(valor)) {
+        if (prev.length === 1) return prev; // Não permite desmarcar o único ato restante
+        return prev.filter((a) => a !== valor);
+      } else {
+        return [...prev, valor];
+      }
+    });
+  }
 
   function addParte() { setLocalPartesAdicionais((ps) => [...ps, { ...PESSOA_VAZIA, papel: 'requerente' }]); }
   function setParte(i: number, p: PessoaQualificada) { setLocalPartesAdicionais((ps) => ps.map((x, k) => (k === i ? p : x))); }
@@ -248,7 +270,8 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     if (open) {
       setReq(requerente ?? PESSOA_VAZIA);
       setTrans(transmitente ?? transVazio(imovel));
-      setLocalTipoAto(tipoAto || 'retificacao');
+      const iniciaisAtos = (tiposAtos && tiposAtos.length > 0) ? tiposAtos : [tipoAto || 'retificacao'];
+      setLocalTiposAtos(iniciaisAtos);
       
       let iniciais = partesAdicionais ?? [];
       if (iniciais.length === 0 && imovel.proprietariosAdicionais && imovel.proprietariosAdicionais.length > 0) {
@@ -270,7 +293,8 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     const mudouReq = JSON.stringify(req) !== JSON.stringify(requerente ?? PESSOA_VAZIA);
     const mudouTrans = JSON.stringify(trans) !== JSON.stringify(transmitente ?? transVazio(imovel));
     const mudouPartes = JSON.stringify(localPartesAdicionais) !== JSON.stringify(partesAdicionais ?? []);
-    const mudouTipo = localTipoAto !== tipoAto;
+    const atosRef = (tiposAtos && tiposAtos.length > 0) ? tiposAtos : [tipoAto || 'retificacao'];
+    const mudouTipo = JSON.stringify(localTiposAtos) !== JSON.stringify(atosRef);
 
     if (mudouReq || mudouTrans || mudouPartes || mudouTipo) {
       const ok = await confirmar({
@@ -307,7 +331,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     const modoTratamentoAusente = resultado;
     const permitirIncompleto = modoTratamentoAusente === 'dado_ausente';
 
-    onChangePessoas(req, trans, localTipoAto, localPartesAdicionais);
+    onChangePessoas(req, trans, localTipoAto, localPartesAdicionais, localTiposAtos);
     const padroes = carregarPadroes();
     const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
     try {
@@ -322,6 +346,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           areaRealHa,
           dataExtenso: dataExtensoHoje(),
           tipoAto: localTipoAto,
+          tiposAtos: localTiposAtos,
           partesAdicionais: localPartesAdicionais,
           comarca,
           correcoes: correcoes || [],
@@ -356,7 +381,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
       <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] flex flex-col p-6" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="shrink-0">
-          <DialogTitle>Requerimento ao cartório (retificação de área)</DialogTitle>
+          <DialogTitle>Requerimento ao cartório (retificação e atos cumulativos)</DialogTitle>
         </DialogHeader>
         <datalist id="lista-pessoas">{sugProp.map((p) => <option key={p.id} value={p.nome} />)}</datalist>
 
@@ -366,31 +391,63 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
             <div className="space-y-4">
               {/* Tipo de Ato */}
               <div className="space-y-1.5 border rounded-lg bg-muted/10 p-3">
-                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Tipo de ato</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Tipo(s) de ato (Selecione 1 ou mais atos)
+                  </Label>
+                  <span className="text-[9px] font-semibold text-primary">
+                    {localTiposAtos.length > 1 ? `${localTiposAtos.length} atos selecionados` : 'Ato único'}
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {OPCOES_ATO.map((o) => {
                     const cfg = CONFIG_BOTOES_ATO[o.valor];
-                    const ativo = localTipoAto === o.valor;
+                    const ativo = localTiposAtos.includes(o.valor);
                     return (
                       <Button
                         key={o.valor}
                         type="button"
                         size="sm"
-                        onClick={() => setLocalTipoAto(o.valor)}
-                        className={`h-8 text-xs font-bold transition-all shadow-sm ${ativo ? cfg.active : cfg.inactive}`}
+                        onClick={() => toggleAto(o.valor)}
+                        className={`h-8 text-xs font-bold transition-all shadow-sm flex items-center justify-between px-2 ${ativo ? cfg.active : cfg.inactive}`}
                       >
-                        {o.rotulo}
+                        <span className="truncate">{o.rotulo}</span>
+                        <span className={`text-[10px] ml-1 font-black ${ativo ? 'opacity-100' : 'opacity-30'}`}>
+                          {ativo ? '✓' : '+'}
+                        </span>
                       </Button>
                     );
                   })}
                 </div>
-                {mostrarDicas && (
-                  <p className="rounded-lg border border-dashed border-amber-500/20 bg-amber-500/5 p-2.5 text-[10px] text-muted-foreground leading-relaxed">
-                    <strong className="text-amber-700 dark:text-amber-400 font-bold block mb-0.5">O que implica este tipo de ato:</strong>
-                    {OPCOES_ATO.find((o) => o.valor === localTipoAto)?.explicacao}
-                  </p>
+
+                {localTiposAtos.length > 1 && (
+                  <div className="flex flex-wrap items-center gap-1 mt-2 p-2 rounded-lg bg-primary/10 border border-primary/20 text-[10px]">
+                    <span className="font-bold text-primary mr-0.5">Atos acumulados:</span>
+                    {localTiposAtos.map((ta) => {
+                      const rot = OPCOES_ATO.find((x) => x.valor === ta)?.rotulo;
+                      return (
+                        <span key={ta} className="px-1.5 py-0.5 rounded font-extrabold bg-primary text-primary-foreground shadow-xs">
+                          {rot}
+                        </span>
+                      );
+                    })}
+                  </div>
                 )}
-                <NotaLegal chave={localTipoAto === 'usucapiao' ? 'usucapiao' : 'requerimento'} />
+
+                {mostrarDicas && (
+                  <div className="space-y-1 rounded-lg border border-dashed border-amber-500/20 bg-amber-500/5 p-2.5 text-[10px] text-muted-foreground leading-relaxed">
+                    <strong className="text-amber-700 dark:text-amber-400 font-bold block mb-0.5">O que implicam os atos selecionados:</strong>
+                    {localTiposAtos.map((ta) => {
+                      const item = OPCOES_ATO.find((o) => o.valor === ta);
+                      return (
+                        <p key={ta} className="text-[10px] leading-tight">
+                          • <strong>{item?.rotulo}:</strong> {item?.explicacao}
+                        </p>
+                      );
+                    })}
+                  </div>
+                )}
+                <NotaLegal chave={localTiposAtos.includes('usucapiao') ? 'usucapiao' : 'requerimento'} />
                 {localTipoAto !== 'venda' && localTipoAto !== 'retificacao' && (
                   <p className="text-[10px] text-amber-500 font-semibold leading-snug">
                     Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.

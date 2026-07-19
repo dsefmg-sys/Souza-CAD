@@ -15,7 +15,7 @@ const baseProj: Omit<Projeto, 'glebas' | 'vertices' | 'confrontantes' | 'confron
 describe('glebas', () => {
   it('novaGlebaVazia numera a parcela com zero à esquerda', () => {
     expect(novaGlebaVazia(1).parcela).toBe('001');
-    expect(novaGlebaVazia(2).denominacao).toBe('Parcela 2');
+    expect(novaGlebaVazia(2).denominacao).toBe('PARCELA 2');
   });
 
   it('divide por área alvo: quadrado 100x100 (1 ha) em 0,4 ha + 0,6 ha', () => {

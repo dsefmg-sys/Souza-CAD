@@ -1091,7 +1091,12 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                   <div key={proj.id} className="mb-2 rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-left">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-bold text-white">{proj.nome}</div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="truncate text-sm font-bold text-white">{proj.nome}</span>
+                          {proj.excluidoEm ? (
+                            <span className="rounded bg-red-950/80 px-1.5 py-0.5 text-[9px] font-bold text-red-400 border border-red-800/40 uppercase shrink-0">Lixeira</span>
+                          ) : null}
+                        </div>
                         <div className="truncate text-xs text-zinc-400">{proj.imovel?.denominacao || 'Sem denominação do imóvel'}</div>
                       </div>
                       <span className="shrink-0 text-xs text-zinc-500">Alterado em {dataBR(proj.atualizadoEm)}</span>

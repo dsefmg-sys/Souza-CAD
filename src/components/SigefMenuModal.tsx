@@ -173,29 +173,9 @@ export function SigefMenuModal({
               </p>
             </div>
 
-            <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 p-3 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground">Corrigir lat/lon do CSV dos Vértices</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 font-bold border-orange-500 text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950/20"
-                  onClick={() => {
-                    onOpenChange(false);
-                    onCorrigirLatLon();
-                  }}
-                >
-                  Selecionar CSV
-                </Button>
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-snug">
-                Atualiza apenas o lat/lon dos vértices do projeto usando o CSV dos Vértices oficial do SIGEF, cruzando pelo código SIGEF de cada vértice. Confrontantes e atribuições são preservados.
-              </p>
-            </div>
-
             <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-3 flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground">Corrigir precisão reimportando TXT</span>
+                <span className="text-xs font-bold text-foreground">4. Corrigir precisão reimportando TXT</span>
                 <Button
                   size="sm"
                   variant="outline"
@@ -209,7 +189,7 @@ export function SigefMenuModal({
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground leading-snug">
-                Restaura a precisão milimétrica dos vértices reimportando o TXT original do levantamento. Compara cada vértice com o ponto do TXT mais próximo (até 0,5m em cada eixo) e só atualiza as coordenadas em que o TXT traz mais casas decimais. Confrontantes, código SIGEF e atribuições são preservados. Mostra um preview das mudanças antes de aplicar.
+                Restaura a precisão milimétrica dos vértices reimportando o TXT original do levantamento. Compara cada vértice com o ponto do TXT mais próximo e atualiza as coordenadas.
               </p>
             </div>
           </div>

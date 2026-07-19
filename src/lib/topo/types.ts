@@ -553,6 +553,7 @@ export interface Projeto {
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
   tipoAto?: 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao' | 'retificacao';
+  tiposAtos?: ('venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao' | 'retificacao')[];
   partesAdicionais?: PessoaQualificada[];
   // Configuração editável da planta (opcional)
   plantaConfig?: PlantaConfig;

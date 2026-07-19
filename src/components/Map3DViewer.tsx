@@ -193,30 +193,28 @@ export default function Map3DViewer({
 
   // Centralização e escala automática
   const finitePts = vertices.filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte));
-  const hasZ = finitePts.some((v) => (v.elevacao || 0) !== 0);
+  const validElevs = finitePts.map((v) => v.elevacao).filter((e) => Number.isFinite(e) && Math.abs(e || 0) > 0.001);
+  const hasZ = validElevs.length > 0;
 
   const stats = (() => {
     if (finitePts.length === 0) return { avgX: 0, avgY: 0, avgZ: 0, maxDist: 100 };
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
-    let minZ = Infinity, maxZ = -Infinity;
-    let sumX = 0, sumY = 0, sumZ = 0;
+    let sumX = 0, sumY = 0;
+
+    const avgZ = validElevs.length > 0 ? validElevs.reduce((a, b) => a + (b || 0), 0) / validElevs.length : 0;
 
     finitePts.forEach((v) => {
       sumX += v.leste;
       sumY += v.norte;
-      sumZ += v.elevacao || 0;
       if (v.leste < minX) minX = v.leste;
       if (v.leste > maxX) maxX = v.leste;
       if (v.norte < minY) minY = v.norte;
       if (v.norte > maxY) maxY = v.norte;
-      if ((v.elevacao || 0) < minZ) minZ = v.elevacao || 0;
-      if ((v.elevacao || 0) > maxZ) maxZ = v.elevacao || 0;
     });
 
     const avgX = sumX / finitePts.length;
     const avgY = sumY / finitePts.length;
-    const avgZ = sumZ / finitePts.length;
 
     const dx = maxX - minX;
     const dy = maxY - minY;
@@ -593,12 +591,14 @@ export default function Map3DViewer({
       }
 
       // Linhas verticais projetando os vértices do chão para a altitude real (efeito 3D topográfico)
+      const getZSeguro = (v: Vertex) => (v.elevacao && Math.abs(v.elevacao) > 0.001 ? v.elevacao : stats.avgZ);
+
       if (hasZ && !temSuperficie) {
         ctx.strokeStyle = 'rgba(34, 197, 94, 0.25)';
         ctx.lineWidth = 0.5;
         finitePts.forEach((v) => {
           const chao = project(v.leste, v.norte, stats.avgZ - stats.maxDist * 0.1);
-          const real = project(v.leste, v.norte, v.elevacao || 0);
+          const real = project(v.leste, v.norte, getZSeguro(v));
           ctx.beginPath();
           ctx.moveTo(chao.x, chao.y);
           ctx.lineTo(real.x, real.y);
@@ -625,7 +625,7 @@ export default function Map3DViewer({
       }
 
       // 3. Desenha o polígono principal em 3D
-      const projetados = finitePts.map((v) => project(v.leste, v.norte, v.elevacao || 0));
+      const projetados = finitePts.map((v) => project(v.leste, v.norte, getZSeguro(v)));
 
       ctx.beginPath();
       projetados.forEach((proj, idx) => {

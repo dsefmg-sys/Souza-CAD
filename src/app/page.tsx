@@ -258,7 +258,7 @@ function limparNomeArquivo(nome: string): string {
     .replace(/[çÇ]/g, (m) => (m === 'ç' ? 'c' : 'C'));
 }
 
-type Aba = 'imovel' | 'vertices' | 'confrontantes' | 'planta' | 'projetos';
+type Aba = 'imovel' | 'localizacao' | 'proprietario' | 'vertices' | 'confrontantes' | 'planta' | 'projetos';
 
 // tons médios e suaves (funcionam no tema claro e escuro via opacidade)
 // municípios mais atendidos (atalho na importação; cada um ancora o fuso 23/24)
@@ -324,12 +324,13 @@ function IconeCota({ className }: { className?: string }) {
   );
 }
 
-// Selo de atalho estampado no canto do botão (ex.: F6, Esc). Usa o âmbar que já é a cor de atalho
-// do app (o "Esc" do botão MAPA/PLANTA). Deixa o usuário aprender os atalhos vendo-os no lugar de
-// uso. O botão precisa ser `relative` — as grades põem `[&>button]:relative` uma vez só.
+// Exibe o atalho em parênteses com 30% de transparência (ex.: LINHA (LN), PONTOS (F2))
 function Atalho({ k, className }: { k: string; className?: string }) {
+  if (!k) return null;
   return (
-    <span className={`pointer-events-none absolute right-0.5 bottom-0.5 text-[8px] font-extrabold leading-none tracking-tight text-amber-500 dark:text-amber-400 ${className ?? ''}`}>{k.toUpperCase()}</span>
+    <span className={`pointer-events-none text-[8.5px] font-extrabold opacity-30 tracking-tighter shrink-0 select-none ml-0.5 ${className ?? ''}`}>
+      ({k.toUpperCase()})
+    </span>
   );
 }
 
@@ -6579,25 +6580,25 @@ export default function EditorPage() {
 
           </span>
         </div>
-        <div className="flex flex-1 items-center gap-1 overflow-x-auto px-2 py-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] [&_button_svg]:size-3">
+        <div className="flex flex-1 items-center gap-1 overflow-hidden px-2 py-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[10px] [&_button_svg]:size-3">
 
         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
         {!telaEstreita && (
           <>
             <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-sky-500 hover:bg-sky-600 text-white gap-1`} title="Início — Guia do fluxo de trabalho passo a passo (F1)" onClick={() => setTutorialF1Aberto(true)}>
-              <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F1</span>
               <GraduationCap className="size-3 shrink-0 animate-pulse text-sky-100" /> INÍCIO
+              <Atalho k="F1" />
             </Button>
             <Etapa st={etapas.txt} tituloEtapa="1. Importação de Pontos" explicacao="Carregue as coordenadas obtidas no campo (TXT/CSV). O sistema lê altitudes, códigos SIGEF e plota o perímetro no mapa de satélite automaticamente.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_IMPORT} gap-1`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}>
-                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F2</span>
                 <Upload /> PONTOS
+                <Atalho k="F2" />
               </Button>
             </Etapa>
             <Etapa st={etapas.sigef} tituloEtapa="2. Integração SIGEF / Vizinhos" explicacao="Consulte e importe os imóveis certificados confrontantes direto da malha oficial do INCRA, efetuando o casamento perfeito dos vértices vizinhos.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_VIZINHO} gap-1`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
-                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F3</span>
                 <Download /> SIGEF
+                <Atalho k="F3" />
               </Button>
             </Etapa>
             <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
@@ -6609,8 +6610,8 @@ export default function EditorPage() {
         {!telaEstreita && (
           <Etapa st={etapas.dados} tituloEtapa="3. Cadastro do Imóvel & RT" explicacao="Preencha as informações do imóvel, proprietário, número da matrícula, serventia registral e os dados do Responsável Técnico habilitado.">
             <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
-              <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F4</span>
               <Upload /> DADOS
+              <Atalho k="F4" />
             </Button>
           </Etapa>
         )}
@@ -6622,14 +6623,14 @@ export default function EditorPage() {
           <>
             <Etapa st={etapas.confro} tituloEtapa="4. Pintura de Confrontantes" explicacao="Marque os trechos do perímetro associando cada limite ao seu respectivo proprietário confrontante para gerar as cartas de anuência.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_CONFRO} ${modo === 'confrontante' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar confrontante: clique os vértices do trecho (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'confrontante' ? 'navegar' : 'confrontante'); }}>
-                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F5</span>
                 <Paintbrush className="size-3 shrink-0" /> CONFRO
+                <Atalho k="F5" />
               </Button>
             </Etapa>
             <Etapa st={etapas.divisas} tituloEtapa="5. Tipo de Divisas" explicacao="Defina o tipo físico de cada limite (muro, cerca de arame, córrego, etc.). O padrão é aplicado na planta e descrito na narrativa do memorial.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DIVISA} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''} gap-1`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>
-                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F6</span>
                 <Paintbrush className="size-3 shrink-0" /> DIVISAS
+                <Atalho k="F6" />
               </Button>
             </Etapa>
             <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
@@ -6642,27 +6643,27 @@ export default function EditorPage() {
           <>
             <Etapa st={etapas.trt} tituloEtapa="6. ART / TRT Oficial" explicacao="Registre o número da Anotação de Responsabilidade Técnica (CREA) ou Termo (CFT/CFTA) para vinculação direta nos carimbos e pranchas.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title={`Abrir os dados da ${tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'} (cole o número emitido para concluir a etapa)`} onClick={() => setTrtAberto(true)}>
-                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F7</span>
                 <Copy /> {tecnico?.conselho === 'CREA' ? 'ART' : 'TRT'}
+                <Atalho k="F7" />
               </Button>
             </Etapa>
             <Etapa st={etapas.ods} tituloEtapa="7. Geração de Planilha ODS" explicacao="Exporte a planilha oficial de credenciamento do SIGEF (.ods) com validações automáticas de altitude, método de posicionamento e código dos vértices.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}>
-                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F8</span>
                 <Download /> ODS
+                <Atalho k="F8" />
               </Button>
             </Etapa>
             <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-1`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}>
-              <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F9</span>
               <CheckCircle2 /> CONFERIR
+              <Atalho k="F9" />
             </Button>
             {/* Memorial, planta, requerimento, anuência e errata: reunidos num menu PEÇAS, pra não
                 disputar espaço no cabeçalho com um botão solto pra cada um (mesmo espírito do menu
                 PEÇAS que já existe no celular). */}
             <div ref={pecasBtnRef} className="relative shrink-0">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-1`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
-                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F10</span>
                 <Download /> PEÇAS <ChevronDown className="size-3" />
+                <Atalho k="F10" />
               </Button>
               {pecasMenuAberto && pecasMenuPos && (
                 <>
@@ -6721,18 +6722,11 @@ export default function EditorPage() {
                 </>
               )}
             </div>
-            {medioOuMais && (
-              <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="shrink-0">
-                <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-emerald-800 hover:bg-emerald-900 text-white border-transparent gap-1`} title="Acessar o SIGEF para certificação eletrônica do imóvel">
-                  <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F11</span>
-                  <CheckCircle2 /> CERT
-                </Button>
-              </a>
-            )}
+
             {medioOuMais && (
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-lime-600 hover:bg-lime-700 dark:bg-lime-700 dark:hover:bg-lime-800 text-white border-transparent gap-1`} title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (modo CAR completo em construção)" onClick={() => setCarAberto(true)}>
-                <span className="absolute -bottom-1.5 -right-1 bg-slate-950 text-amber-400 text-[7px] font-black px-0.5 py-px rounded font-mono leading-none border border-amber-400/40">F12</span>
                 <Leaf /> CAR
+                <Atalho k="F12" />
               </Button>
             )}
 
@@ -6894,17 +6888,29 @@ export default function EditorPage() {
                       
 
 
-                      {/* Botões de Gestão — grade de 2 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo
-                          (sem botão de largura total; menos rolagem). */}
+                      {/* Botões de Gestão — grade de 2 colunas, ícone em cima e rótulo em MAIÚSCULA embaixo */}
                       <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                        <Button size="sm" variant="secondary" className="relative col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setGestaoAberta(true)} title={`Gestão financeira (${obterAtalhoLateral('gestao', 'gt')})`}>
+                        <Button size="sm" variant="secondary" className="relative bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setGestaoAberta(true)} title={`Gestão financeira (${obterAtalhoLateral('gestao', 'gt')})`}>
                           <BarChart3 className="text-white" /> <span>Gestão</span>
                           <Atalho k={obterAtalhoLateral('gestao', 'gt')} />
                         </Button>
-                        <Button size="sm" variant="secondary" className="relative" onClick={criarNovoProjeto} disabled={processando} title={`Novo projeto (${obterAtalhoLateral('novo', 'nv')})`}>
-                          <Plus className="text-amber-500" /> <span>Novo</span>
-                          <Atalho k={obterAtalhoLateral('novo', 'nv')} />
-                        </Button>
+                        {completo ? (
+                          <Button size="sm" variant="secondary" className="relative" onClick={abrirGestaoPontos} title={`Banco de pontos (${obterAtalhoLateral('pontos_banco', 'pt')})`}>
+                            <Database className="text-emerald-500" /> <span>Pontos</span>
+                            <Atalho k={obterAtalhoLateral('pontos_banco', 'pt')} />
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="secondary" className="relative" onClick={criarNovoProjeto} disabled={processando} title={`Novo projeto (${obterAtalhoLateral('novo', 'nv')})`}>
+                            <Plus className="text-amber-500" /> <span>Novo</span>
+                            <Atalho k={obterAtalhoLateral('novo', 'nv')} />
+                          </Button>
+                        )}
+                        {completo && (
+                          <Button size="sm" variant="secondary" className="relative" onClick={criarNovoProjeto} disabled={processando} title={`Novo projeto (${obterAtalhoLateral('novo', 'nv')})`}>
+                            <Plus className="text-amber-500" /> <span>Novo</span>
+                            <Atalho k={obterAtalhoLateral('novo', 'nv')} />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="secondary"
@@ -6922,13 +6928,14 @@ export default function EditorPage() {
                         </Button>
                         <Button size="sm" variant="secondary" className="relative" onClick={() => setAltitudeModalAberta(true)} title="Gestão de altitudes dos vértices e ajuste global (+/- cm)">
                           <Mountain className="text-indigo-500" /> <span>Altitude</span>
+                          <Atalho k="AL" />
                         </Button>
-                        {completo && (
-                          <Button size="sm" variant="secondary" className="relative" onClick={abrirGestaoPontos} title={`Banco de pontos (${obterAtalhoLateral('pontos_banco', 'pt')})`}>
-                            <Database className="text-emerald-500" /> <span>Pontos</span>
-                            <Atalho k={obterAtalhoLateral('pontos_banco', 'pt')} />
+                        <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="w-full">
+                          <Button size="sm" variant="secondary" className="relative w-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" title="Acessar o SIGEF (INCRA) para certificação eletrônica do imóvel">
+                            <ExternalLink className="size-3.5 text-emerald-500" /> <span>SIGEF</span>
+                            <Atalho k="SG" />
                           </Button>
-                        )}
+                        </a>
                       </div>
                       {glebas.length > 1 && (
                         <div className="flex flex-wrap gap-1 items-center justify-between border-t pt-1.5 mt-0.5">
@@ -6943,94 +6950,51 @@ export default function EditorPage() {
                       )}
                     </div>
 
-                    {/* CARD 2: VISUALIZAÇÃO & HISTÓRICO */}
-                    <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
-                      <span className="text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b text-muted-foreground select-none flex items-center">
-                        <span>Visualização &amp; Navegação</span>
-                      </span>
-                      {vista === 'mapa' ? (
-                        <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                          <div className="flex gap-0.5 w-full">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={histCount === 0}
-                              className={`relative h-8 flex-1 px-0 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
-                              onClick={desfazer}
-                              title={histCount > 0 ? `Desfazer (${obterAtalhoLateral('desfazer', 'dz')} / Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
-                            >
-                              <Undo2 className="size-3.5" />
-                              <Atalho k={obterAtalhoLateral('desfazer', 'dz')} />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={redoCount === 0}
-                              className={`relative h-8 flex-1 px-0 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
-                              onClick={refazer}
-                              title={redoCount > 0 ? `Refazer (${obterAtalhoLateral('refazer', 'ry')} / Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
-                            >
-                              <Redo2 className="size-3.5" />
-                              <Atalho k={obterAtalhoLateral('refazer', 'ry')} />
-                            </Button>
-                          </div>
+                    {/* CARD 2: VISUALIZAÇÃO & NAVEGAÇÃO (SEM TÍTULO) */}
+                    <div className="flex flex-col gap-1 border rounded-lg p-1 bg-muted/10 shadow-2xs">
+                      <div className="grid grid-cols-2 gap-1 [&>button]:h-7.5 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-0.5 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:truncate [&_span]:text-center">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={histCount === 0}
+                          className={`relative h-7.5 w-full px-1 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          onClick={desfazer}
+                          title={histCount > 0 ? `Desfazer (${obterAtalhoLateral('desfazer', 'dz')} / Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
+                        >
+                          <Undo2 className="size-3.5" /> <span>Desfazer</span>
+                          <Atalho k={obterAtalhoLateral('desfazer', 'dz')} />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={redoCount === 0}
+                          className={`relative h-7.5 w-full px-1 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          onClick={refazer}
+                          title={redoCount > 0 ? `Refazer (${obterAtalhoLateral('refazer', 'ry')} / Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
+                        >
+                          <Redo2 className="size-3.5" /> <span>Refazer</span>
+                          <Atalho k={obterAtalhoLateral('refazer', 'ry')} />
+                        </Button>
+                        {vista === 'mapa' && (
                           <Button size="sm" variant={mostrarRotulos ? 'default' : 'secondary'} title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vertices (${obterAtalhoLateral('rotulos', 'ro')})`} onClick={() => setMostrarRotulos((m) => !m)} className={`relative ${mostrarRotulos ? COR_ATIVO : ''}`}>
-                            {mostrarRotulos ? <Eye /> : <EyeOff />} <span>Rótulos</span>
+                            {mostrarRotulos ? <Eye /> : <EyeOff />} <span className="truncate">Rótulos</span>
                             <Atalho k={obterAtalhoLateral('rotulos', 'ro')} />
                           </Button>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:leading-none">
-                          {/* Mover é implícito na planta: destravar a folha já entra no modo de arrastar */}
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={histCount === 0}
-                            className={`relative h-8 w-full px-0 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
-                            onClick={desfazer}
-                            title={histCount > 0 ? `Desfazer (${obterAtalhoLateral('desfazer', 'dz')} / Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
-                          >
-                            <Undo2 className="size-3.5" />
-                            <Atalho k={obterAtalhoLateral('desfazer', 'dz')} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={redoCount === 0}
-                            className={`relative h-8 w-full px-0 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
-                            onClick={refazer}
-                            title={redoCount > 0 ? `Refazer (${obterAtalhoLateral('refazer', 'ry')} / Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
-                          >
-                            <Redo2 className="size-3.5" />
-                            <Atalho k={obterAtalhoLateral('refazer', 'ry')} />
-                          </Button>
-
-                          {/* Trava da folha — destravar = liberar edição do layout (mover implícito) */}
-                          <button
-                            type="button"
-                            onClick={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }}
-                            title={`${folhaTravada ? 'Moldura travada — clique para destravar e editar o layout' : 'Moldura destravada — clique para travar e proteger o layout'} (${obterAtalhoLateral('folha_travada', 'ft')})`}
-                            className={`relative col-span-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-md border-2 text-[9px] font-bold uppercase tracking-wide transition-colors ${
-                              folhaTravada
-                                ? 'border-border bg-background text-foreground hover:bg-muted'
-                                : 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 animate-pulse'
-                            }`}
-                          >
-                            {folhaTravada ? <Lock className="size-3.5" /> : <LockOpen className="size-3.5" />}
-                            <span>{folhaTravada ? 'Folha Travada' : 'Folha Destravada'}</span>
-                            <Atalho k={obterAtalhoLateral('folha_travada', 'ft')} />
-                          </button>
-                        </div>
-                      )}
+                        )}
+                        <Button size="sm" variant={curvaConfigAberta ? 'default' : 'secondary'} className={`relative ${curvaConfigAberta ? COR_ATIVO : ''}`} onClick={() => setCurvaConfigAberta((v) => !v)} title={`Curvas de Nível (${obterAtalhoLateral('curvas_nivel', 'cn')}): traçar curvas de nível e relevo planialtimétrico.`}>
+                          <IconeCurvasNivel className={curvaConfigAberta ? 'text-white shrink-0' : 'text-indigo-500 shrink-0'} /> <span className="truncate">Curvas</span>
+                          <Atalho k={obterAtalhoLateral('curvas_nivel', 'cn')} />
+                        </Button>
+                      </div>
                     </div>
 
                     {/* CARD 3: FERRAMENTAS DE DESENHO */}
                     {medioOuMais && (vista === 'mapa' || editarPlanta) && (
-                      <div className="flex flex-col gap-1.5 border rounded-lg p-1.5 bg-muted/10 shadow-sm">
+                      <div className="flex flex-col gap-1 border rounded-lg p-1 bg-muted/10 shadow-2xs">
                         <span className="text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b text-muted-foreground select-none flex items-center">
                           <span>Desenho e Geometria</span>
                         </span>
-                        <div className="grid grid-cols-3 gap-1 [&>button]:h-8 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-1 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold">
+                        <div className="grid grid-cols-2 gap-1 [&>button]:h-7.5 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-0.5 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:truncate [&_span]:text-center">
                           <Button size="sm" variant={modo === 'linha' ? 'default' : 'secondary'} className={`relative ${modo === 'linha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('linha', true)} title={`Linha Reta (${obterAtalhoLateral('linha', 'F6')}): clique 2 pontos para criar uma linha simples. Botão direito cancela.`}>
                             <PenTool className={modo === 'linha' ? 'text-white shrink-0' : 'text-amber-500 shrink-0'} /> <span className="truncate">Linha</span>
                             <Atalho k={obterAtalhoLateral('linha', 'F6')} />
@@ -7070,12 +7034,16 @@ export default function EditorPage() {
                             <Atalho k={obterAtalhoLateral('arco', 'ac')} />
                           </Button>
                           <Button size="sm" variant={modo === 'multi' ? 'default' : 'secondary'} className={`relative ${modo === 'multi' ? COR_ATIVO : ''}`} onClick={() => { alternarModo('multi'); }} title={`Seleção Múltipla (${obterAtalhoLateral('selecao_varios', 'sv')}): clique em elementos ou abra uma caixa de seleção para selecionar vários vértices/objetos de uma vez.`}>
-                            <span className="truncate text-[10px] font-bold">Sel. Vários</span>
+                            <span className="truncate text-[9px] font-bold">Sel. Vários</span>
                             <Atalho k={obterAtalhoLateral('selecao_varios', 'sv')} />
                           </Button>
                           <Button size="sm" variant={modo === 'medir' ? 'default' : 'secondary'} className={`relative ${modo === 'medir' ? COR_ATIVO : ''}`} onClick={() => alternarModo('medir', true)} title={`Régua de Medição (${obterAtalhoLateral('medir', 'md')}): meça distâncias e azimutes entre pontos no mapa com alta precisão.`}>
                             <Ruler className={modo === 'medir' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'} /> <span className="truncate">Medir</span>
                             <Atalho k={obterAtalhoLateral('medir', 'md')} />
+                          </Button>
+                          <Button size="sm" variant={curvaConfigAberta ? 'default' : 'secondary'} className={`relative ${curvaConfigAberta ? COR_ATIVO : ''}`} onClick={() => setCurvaConfigAberta((v) => !v)} title={`Curvas de Nível (${obterAtalhoLateral('curvas_nivel', 'cn')}): traçar curvas de nível e relevo planialtimétrico.`}>
+                            <IconeCurvasNivel className={curvaConfigAberta ? 'text-white shrink-0' : 'text-indigo-500 shrink-0'} /> <span className="truncate">Curvas</span>
+                            <Atalho k={obterAtalhoLateral('curvas_nivel', 'cn')} />
                           </Button>
                           {/* Geometria avançada de CAD — só no Completo (o Médio fica com o desenho do dia a dia) */}
                           {completo && (<>
@@ -7301,7 +7269,7 @@ export default function EditorPage() {
                           )}
                         </div>
 
-                        {/* MÉTRICAS DO LEVANTAMENTO: Área, Perímetro, Modo e Escala */}
+                        {/* MÉTRICAS DO LEVANTAMENTO: Texto Limpo Lado a Lado (Área / Área SIGEF, Perímetro / Perímetro SIGEF) */}
                         {(res || chaveTopoVisivel || vista === 'planta') && (
                           <div className="mt-1.5 rounded-lg border border-border/80 bg-background/50 overflow-hidden shadow-xs">
                             <div className="flex items-center justify-between bg-muted/30 px-2.5 py-1.5 border-b border-border/60">
@@ -7309,24 +7277,49 @@ export default function EditorPage() {
                                 <BarChart3 className="size-3 text-primary" /> Métricas
                               </span>
                             </div>
-                            <div className="p-2 space-y-2">
-
-                              {/* Área e Perímetro */}
+                            <div className="p-2 space-y-2 text-xs font-semibold">
                               {res && (
                                 <div className="space-y-1.5">
-                                  <div className="grid grid-cols-2 gap-1.5">
-                                    <div className="flex flex-col items-center justify-center rounded-lg bg-muted/40 border border-border/50 py-2 px-1">
-                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Área (Sistema)</span>
-                                      <div className="flex items-baseline justify-center gap-1 mt-0.5">
-                                        <span className="text-[13px] font-black text-foreground leading-tight tracking-tight">{numBR(res.areaHa, casasTela(4))}</span>
-                                        <span className="text-[10px] font-bold text-muted-foreground">ha</span>
+                                  {/* ÁREA (HA) */}
+                                  <div className="rounded-md bg-muted/20 border border-border/40 p-1.5 space-y-1">
+                                    <div className="flex items-center justify-between border-b border-border/30 pb-0.5">
+                                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">ÁREA (HA)</span>
+                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                                        <CheckCircle2 className="size-2.5 text-emerald-500 shrink-0" /> SIGEF
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs px-1">
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="text-[9px] text-muted-foreground font-bold">Sistema:</span>
+                                        <span className="font-mono font-bold text-foreground">{numBR(res.areaHa, casasTela(4))}</span>
+                                      </div>
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">SIGEF:</span>
+                                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                          {numBR(imovel.areaAnterior != null && imovel.areaAnterior > 0 ? imovel.areaAnterior : res.areaHa, casasTela(4))}
+                                        </span>
                                       </div>
                                     </div>
-                                    <div className="flex flex-col items-center justify-center rounded-lg bg-muted/40 border border-border/50 py-2 px-1">
-                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Perímetro (Sistema)</span>
-                                      <div className="flex items-baseline justify-center gap-1 mt-0.5">
-                                        <span className="text-[13px] font-black text-foreground leading-tight tracking-tight">{numBR(res.perimetro)}</span>
-                                        <span className="text-[10px] font-bold text-muted-foreground">m</span>
+                                  </div>
+
+                                  {/* PERÍMETRO (M) */}
+                                  <div className="rounded-md bg-muted/20 border border-border/40 p-1.5 space-y-1">
+                                    <div className="flex items-center justify-between border-b border-border/30 pb-0.5">
+                                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">PERÍMETRO (M)</span>
+                                      <span className="text-[8px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                                        <CheckCircle2 className="size-2.5 text-emerald-500 shrink-0" /> SIGEF
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs px-1">
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="text-[9px] text-muted-foreground font-bold">Sistema:</span>
+                                        <span className="font-mono font-bold text-foreground">{numBR(res.perimetro)}</span>
+                                      </div>
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">SIGEF:</span>
+                                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                          {numBR(imovel.perimetroSigef != null && imovel.perimetroSigef > 0 ? imovel.perimetroSigef : res.perimetro)}
+                                        </span>
                                       </div>
                                     </div>
                                   </div>
@@ -7473,7 +7466,9 @@ export default function EditorPage() {
                         {/* DXF e KML lado a lado (no mesmo padrão de altura h-8 dos botões principais) */}
                         <div className="grid grid-cols-2 gap-1.5 mt-2">
                           <div className="flex h-8 items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 transition-all hover:border-emerald-500/50 shadow-2xs">
-                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 tracking-wider">DXF</span>
+                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center">
+                              DXF <Atalho k="DX" />
+                            </span>
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" title="Exportar arquivo CAD (.dxf)" onClick={exportarDxf}>
                                 <Download className="size-3.5" />
@@ -7485,7 +7480,9 @@ export default function EditorPage() {
                           </div>
 
                           <div className="flex h-8 items-center justify-between rounded-lg border border-teal-500/30 bg-teal-500/10 px-2.5 transition-all hover:border-teal-500/50 shadow-2xs">
-                            <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 tracking-wider">KML</span>
+                            <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 tracking-wider flex items-center">
+                              KML <Atalho k="KM" />
+                            </span>
                             <div className="flex items-center gap-0.5">
                               <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" title="Exportar Google Earth (.kml)" onClick={() => exportarKML(vertices, imovel)}>
                                 <Download className="size-3.5" />
@@ -7643,83 +7640,26 @@ export default function EditorPage() {
                   </div>
                 )}
 
-                {/* RODAPÉ FIXO: ajuste de texto + sistema (calculadora, tema, config, sair) */}
-                <div className="mt-auto flex flex-col gap-1.5 border-t pt-1.5 px-1">
-                  {/* Ajuste de tamanhos: só no desktop; no celular é raro em campo e polui o rodapé. */}
-                  {!telaEstreita && (vista === 'mapa' ? (
-                    <div className="flex flex-col gap-1 mt-1 pt-1 border-t" title="Tamanho dos nomes/rótulos dos vértices no mapa">
-                      <span className="text-[10px] font-bold uppercase text-foreground px-1 mb-0.5">Ajuste de Tamanhos</span>
-                      <div className="grid grid-cols-2 gap-1">
-                        <AjusteTamanho label="Rótulos" valor={`${tamNomes}pt`} titulo="Tamanho dos nomes/códigos que aparecem nos vértices"
-                          onDec={() => setTamNomes((n) => Math.max(7, n - 1))} onInc={() => setTamNomes((n) => Math.min(22, n + 1))} />
-                        <AjusteTamanho label="Texto Central" valor={`${tamCentro}pt`} titulo="Tamanho do texto central da gleba (denominação/área/perímetro no meio do polígono)"
-                          onDec={() => setTamCentro((n) => Math.max(7, n - 1))} onInc={() => setTamCentro((n) => Math.min(22, n + 1))} />
-                        <AjusteTamanho label="Interface" valor={`${Math.round(escalaInterface * 100)}%`} titulo="Tamanho das letras da interface (botões, instruções, lembretes) — ajuda quem enxerga menos"
-                          onDec={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.1).toFixed(2))))} onInc={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.1).toFixed(2))))} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-1.5 mt-1 pt-1 border-t" title="Tamanho dos textos da planta, por escopo">
-                      <span className="text-[10px] font-bold uppercase text-foreground col-span-3 px-1 mb-0.5">Ajuste de Tamanhos</span>
-                      
-                      <AjusteTamanho label="Interface" valor={`${Math.round(escalaInterface * 100)}%`} titulo="Tamanho das letras da interface"
-                        onDec={() => setEscalaInterface((s) => Math.max(0.8, +((s - 0.1).toFixed(2))))} onInc={() => setEscalaInterface((s) => Math.min(1.6, +((s + 0.1).toFixed(2))))} />
-
-                      {([
-                        ['Tabelas', 'escalaTabelas', 1, 0.05, 0.4, 3, 'Tamanho só das tabelas: roteiro perimétrico, quadro de áreas e de coordenadas'],
-                        ['Rótulos', 'fonteRotulos', 10, 0.5, 5, 20, undefined],
-                        ['Símbolos', 'escalaVertices', 1, 0.05, 0.4, 3, undefined],
-                        ['Declarações', 'escalaDeclaracoes', 1, 0.05, 0.4, 3, undefined],
-                        ['Confront.', 'escalaConfront', 1, 0.05, 0.4, 3, undefined],
-                      ] as [string, keyof PlantaConfig, number, number, number, number, string | undefined][]).map(([rot, campo, base, passo, min, max, titulo]) => {
-                        const aj = (d: number) => setPlantaConfig((c) => { const atual = (c[campo] as number | undefined) ?? base; return { ...c, [campo]: Math.max(min, Math.min(max, +((atual + d).toFixed(2)))) }; });
-                        const valAtual = (plantaConfig[campo] as number | undefined) ?? base;
-                        const valStr = campo === 'fonteRotulos' ? `${valAtual.toFixed(1)}pt` : `${Math.round(valAtual * 100)}%`;
-                        return (
-                          <AjusteTamanho key={campo} label={rot} valor={valStr} titulo={titulo} negrito={rot === 'Tabelas'}
-                            onDec={() => aj(-passo)} onInc={() => aj(passo)} />
-                        );
-                      })}
-                    </div>
-                  ))}
-                  {/* ferramentas e sistema: rotulados. No celular vira UMA coluna (senão viram ícones
-                      espremidos e ilegíveis no strip estreito); no desktop, grade de 4. */}
-                  <div className={`grid gap-1 ${telaEstreita ? 'grid-cols-1' : 'grid-cols-4'}`}>
+                {/* RODAPÉ FIXO: apenas Calc, Tema, Planos e Demo */}
+                <div className="mt-auto border-t pt-1.5 px-1">
+                  <div className={`grid gap-1 ${telaEstreita ? 'grid-cols-1' : 'grid-cols-2'}`}>
                     {([
-                      // 5º item = cor do ícone por categoria (ferramentas=índigo, sistema=neutro, master=âmbar, sair=vermelho)
-                      // Ferramentas extras (índigo): só aparecem no modo Completo — não fazem parte do caminho essencial.
-                      ...(medioOuMais ? [['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-4" />, () => setCalcAberta(true), 'text-indigo-600 dark:text-indigo-400']] : []),
-                      ...(completo ? [['Vért. V', 'Criar vértice virtual (V): canto que você não ocupou, por afastamento ou interseção de alinhamentos', <Waypoints key="i" className="size-4" />, () => { setVvBase(null); setVvAberto(true); }, 'text-indigo-600 dark:text-indigo-400']] : []),
-                      ...(completo ? [['DXF', 'Editor de DXF (abrir e editar um DXF qualquer, ex.: projeto elétrico — isolado do projeto)', <PencilRuler key="i" className="size-4" />, () => setDxfEditorAberto(true), 'text-indigo-600 dark:text-indigo-400']] : []),
-                      ...(completo ? [['% Área', 'Porcentagem entre dois polígonos (área de um em relação ao outro e ao total)', <Percent key="i" className="size-4" />, () => setPorcentagemAberta(true), 'text-indigo-600 dark:text-indigo-400']] : []),
-                      ...(vista === 'planta' ? [[folhaTravada ? 'Travada' : 'Destrav.', folhaTravada ? 'Folha travada — clique para destravar e mover elementos' : 'Folha destravada — clique para travar e proteger o layout', folhaTravada ? <Lock key="i" className="size-4" /> : <LockOpen key="i" className="size-4" />, () => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }, folhaTravada ? 'text-slate-500' : 'text-amber-500']] : []),
-                      ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')), 'text-slate-500'],
-                      ['Config.', 'Configurações gerais', <Settings key="i" className="size-4" />, () => { setConfigAba(undefined); setConfigAberta(true); }, 'text-slate-500'],
-                      ...(!ocultarCobranca || souMaster() ? [['Planos', souMaster() ? 'Cobrança do app: planos, preços e nível de cada cliente (admin)' : 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400']] : []),
-
-                      ...(souMaster() ? [['Demo', 'Carregar um projeto fictício completo (Minas Gerais) para demonstração — peças saem marcadas como dados fictícios', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400']] : []),
-                    ] as [string, string, React.ReactNode, () => void, string][]).map(([rotuloBtn, dica, icone, acao, cor]) => (
+                      ['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-4" />, () => setCalcAberta(true), 'text-indigo-600 dark:text-indigo-400', 'CC'],
+                      ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')), 'text-slate-500', 'TM'],
+                      ['Planos', 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400', 'PL'],
+                      ['Demo', 'Carregar um projeto fictício completo para demonstração', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400', 'DM'],
+                    ] as [string, string, React.ReactNode, () => void, string, string][]).map(([rotuloBtn, dica, icone, acao, cor, atalhoKey]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline"
-                        className={`h-11 min-w-0 flex-col gap-0.5 overflow-hidden p-0.5 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:${cor} [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
+                        className={`h-10 min-w-0 flex-row gap-1.5 overflow-hidden px-2 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:${cor} [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
                         title={dica} onClick={acao}>
                         <span className={cor}>{icone}</span>
-                        {/* No celular, só o ícone (o rótulo truncava feio no strip estreito); a dica no title explica. */}
-                        <span className={`w-full truncate text-center text-[10px] font-semibold leading-none ${telaEstreita ? 'hidden' : ''}`}>{rotuloBtn}</span>
+                        <div className={`flex items-center gap-0.5 min-w-0 truncate ${telaEstreita ? 'hidden' : ''}`}>
+                          <span className={`truncate text-center text-[10.5px] font-semibold leading-none`}>{rotuloBtn}</span>
+                          <Atalho k={atalhoKey} />
+                        </div>
                       </Button>
                     ))}
                   </div>
-                  {/* Convite pra subir de degrau: a pessoa vê que existe mais e avança a chave quando quiser. */}
-                  {!completo && rotulo && (
-                    <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
-                      title="Toque para subir um degrau e liberar mais ferramentas."
-                      className="mt-1 block !h-auto w-full rounded-lg border border-dashed border-primary/40 bg-primary/5 !p-2 text-left !text-[10px] leading-snug text-muted-foreground hover:bg-primary/10">
-                      {medio ? (
-                        <>Você está no modo <b className="text-foreground">Médio</b>, com as ferramentas do dia a dia. Quando quiser tudo, inclusive as avançadas, alterne para o modo <b className="text-primary">Completo</b>.</>
-                      ) : (
-                        <>Você está no modo <b className="text-foreground">Fácil</b>, ideal para se familiarizar com o sistema. Quando se sentir seguro, suba para o modo <b className="text-primary">Médio</b>.</>
-                      )}
-                    </button>
-                  )}
                 </div>
                 {!telaEstreita && toolWEfetivo > 0 && (
                   <div
@@ -8459,7 +8399,7 @@ export default function EditorPage() {
                           : 'Modo Fácil. Clique para o Médio.'}
                       className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
                       {completo ? <Briefcase className="size-3 text-sky-500 shrink-0" /> : medio ? <PencilRuler className="size-3 text-emerald-500 shrink-0" /> : <GraduationCap className="size-3 text-amber-500 shrink-0" />}
-                      <span>{completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}</span>
+                      <span>Modo {completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}</span>
                     </button>
                     <button type="button" onClick={() => setBarraAudiosAberta(false)}
                       className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
@@ -8491,334 +8431,7 @@ export default function EditorPage() {
           )}
         </main>
 
-        {/* Faixa sensível na borda DIREITA: encostar o mouse abre o painel de dados. Some quando o
-            painel já está aberto. No celular NÃO aparece: não há mouse pra "encostar", e a faixa
-            verde só polui a tela — lá o painel abre pelos botões PROJETOS/DADOS. */}
-        {!painelAberto && !introTocando && !telaEstreita && (
-          <div className="no-print absolute right-0 top-1/2 -translate-y-1/2 z-[1999] w-[18px] h-[50%] bg-gradient-to-b from-emerald-400 via-green-400 to-emerald-500 dark:from-emerald-600 dark:via-green-500 dark:to-emerald-600 cursor-pointer border rounded-l-xl border-emerald-300/40 dark:border-emerald-700/40 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-400/40 hover:w-[22px] transition-all duration-200 flex items-center justify-center overflow-hidden"
-            onMouseEnter={() => setPainelAberto(true)}
-            title="Dados do projeto (encoste para abrir)" aria-hidden>
-            <div className="w-[2px] h-10 rounded-full bg-white/50 dark:bg-white/30" />
-            {/* Efeito de brilho que passa esporadicamente */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/40 to-transparent animate-[shimmer_4s_ease-in-out_infinite]" style={{ backgroundSize: '100% 200%' }} />
-          </div>
-        )}
 
-        {/* Painel suspenso de dados do projeto — ocupa toda a altura disponível do fim da página ao cabeçalho */}
-        <div ref={painelWrap}
-          className={`no-print z-[2000] flex flex-col bg-card shadow-2xl transition-all duration-300 ${
-            telaEstreita
-              // Celular: folha de aplicativo que SOBE de baixo e cobre a tela abaixo do cabeçalho.
-              ? `fixed inset-x-0 bottom-0 top-11 rounded-t-2xl border-t ${painelAberto ? 'translate-y-0 opacity-100 visible' : 'translate-y-full opacity-0 invisible pointer-events-none'}`
-              // Desktop: gaveta que desliza da direita — 320px (30% mais estreita que os 460px de antes).
-              : `absolute right-0 top-0 bottom-0 h-full w-[min(320px,100vw)] border-l ${painelAberto ? 'translate-x-0 opacity-100 visible' : 'translate-x-full opacity-0 invisible pointer-events-none'}`
-          }`}
-          onMouseEnter={() => { painelMouseDentro.current = true; }}
-          onMouseLeave={() => { painelMouseDentro.current = false; if (!telaEstreita && !asideDrag.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }}
-          onBlurCapture={() => { if (telaEstreita) return; setTimeout(() => { if (!painelMouseDentro.current && !painelWrap.current?.contains(document.activeElement)) setPainelAberto(false); }, 50); }}>
-          <aside className="relative z-20 flex flex-1 flex-col overflow-hidden bg-card">
-            {/* No desktop o painel some sozinho quando o mouse sai; no celular (sem mouse) mostramos
-                um botão Fechar, senão não teria como sair dele. */}
-            {telaEstreita && (
-              <div className="flex items-center justify-between border-b bg-muted/20 px-2 py-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Dados do projeto</span>
-                <button type="button" onClick={() => setPainelAberto(false)} className="flex h-7 items-center gap-1 rounded-md px-2 text-xs font-semibold text-muted-foreground hover:bg-muted">
-                  <X className="size-4" /> Fechar
-                </button>
-              </div>
-            )}
-            {/* glebas */}
-            <div className="flex flex-wrap items-center gap-1.5 border-b p-1.5 bg-muted/20">
-            {glebas.map((g) => (
-              <button key={g.id} disabled={processando} onClick={() => trocarGleba(g.id)}
-                className={`shrink-0 rounded-sm px-2 py-1 text-xs disabled:opacity-50 ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                {g.denominacao}
-              </button>
-            ))}
-            <Button size="sm" className="bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 text-white" disabled={processando} onClick={novaGleba} title="Nova gleba"><Plus /></Button>
-            <Button size="sm" className="bg-slate-600 hover:bg-slate-700 dark:bg-slate-600 dark:hover:bg-slate-500 text-white" onClick={async () => { const n = await perguntar({ titulo: 'Renomear gleba', mensagem: 'Nome da gleba:', valorInicial: glebaAtivaNome }); if (n) renomearGlebaAtiva(n); }} title="Renomear gleba"><Pencil /></Button>
-            {glebas.length > 1 && <Button size="sm" variant="destructive" disabled={processando} onClick={() => removerGleba(glebaAtivaId)} title="Remover gleba"><Trash2 /></Button>}
-            <Button size="sm" className={`ml-auto gap-1 text-[11px] ${COR_DADOS}`} onClick={() => setConsultarAberto(true)} title="Consultar cadastros antigos e inserir no projeto atual">
-              <Database className="size-3.5" /> Banco de Dados
-            </Button>
-          </div>
-          {/* resumo movido para o painel flutuante (canto sup. esquerdo do mapa/planta) */}
-
-          {/* abas — ícone em cima, título em MAIÚSCULAS embaixo; a ativa vira um botão de cor sólida */}
-          <div className="flex gap-1 border-b bg-muted/20 p-1">
-            {([
-              ['imovel', 'IMÓVEL', <BookUser key="i" className="size-4" />],
-              ['vertices', 'VÉRTICES', <Waypoints key="i" className="size-4" />],
-              ['confrontantes', 'CONFRONT.', <Users key="i" className="size-4" />],
-              ['planta', 'PLANTA', <MapIcon key="i" className="size-4" />],
-              ['projetos', 'PROJETOS', <Database key="i" className="size-4" />],
-            ] as [Aba, string, React.ReactNode][]).map(([a, rot, icone]) => (
-              <button key={a} onClick={() => setAba(a)} title={rot}
-                className={`flex flex-1 flex-col items-center gap-0.5 rounded-sm px-1 py-1.5 text-[9px] font-bold uppercase tracking-wide transition-colors ${aba === a ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-muted'}`}>
-                {icone}
-                <span className="leading-none">{rot}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className={`min-h-0 flex-1 overflow-auto p-2.5 scroll-fino ${telaEstreita ? 'mobile-conforto' : ''}`}>
-            <datalist id="lista-cns">
-              {sugCartorios.map((c) => (
-                <option key={c.id} value={c.cns}>
-                  {c.municipio ? `${c.municipio} - ` : ''}{c.nome}
-                </option>
-              ))}
-            </datalist>
-            {aba === 'imovel' && <>
-              <PainelImovel imovel={imovel} onChange={setImovel} onMunicipio={aoMudarMunicipio} onLocal={aoMudarLocalidade} nome={nomeProjeto} onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }} zona={zona} hemisferio={hemisferio} onZona={trocarZona} onHemisferio={trocarHemisferio} sugProp={sugProp} onSalvarProp={salvarPropCadastro} sugCartorios={sugCartorios} onIa={() => { setIaArquivoInicial(null); setIaAberta(true); }} />
-              <div className="mt-2"><DocumentosProjeto projetoId={projetoId} dono="imovel" titulo="Documentos do imóvel e do proprietário" onExtrair={extrairDocumento} /></div>
-            </>}
-            {aba === 'vertices' && (
-              <div className="space-y-1">
-                <SecaoTitulo>Divisão e remembramento</SecaoTitulo>
-                {/* Painel de Desmembramento */}
-                <div className="mb-3 rounded-md border border-dashed p-2 bg-muted/20 text-xs">
-                  <div className="font-semibold text-foreground text-[11px] mb-1 flex items-center justify-between">
-                    <span>Desmembramento (Divisão)</span>
-                    {(vSplitInicioId || vSplitFimId) && (
-                      <button className="text-[10px] text-muted-foreground hover:text-foreground" onClick={() => { setVSplitInicioId(null); setVSplitFimId(null); }}>limpar</button>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mb-2">Selecione dois vértices (ou clique neles e use os botões abaixo) para dividir.</p>
-                  
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div>
-                      <span className="text-[9px] block text-muted-foreground uppercase font-medium">De:</span>
-                      <select 
-                        value={vSplitInicioId ?? ''} 
-                        onChange={(e) => setVSplitInicioId(e.target.value || null)}
-                        className="h-7 w-full rounded-sm border bg-background px-1 text-[11px]"
-                      >
-                        <option value="">(Selecione)</option>
-                        {vertices.map(v => <option key={v.id} value={v.id}>{v.codigoSigef || v.codigoCampo || v.nome}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <span className="text-[9px] block text-muted-foreground uppercase font-medium">Até:</span>
-                      <select 
-                        value={vSplitFimId ?? ''} 
-                        onChange={(e) => setVSplitFimId(e.target.value || null)}
-                        className="h-7 w-full rounded-sm border bg-background px-1 text-[11px]"
-                      >
-                        <option value="">(Selecione)</option>
-                        {vertices.map(v => <option key={v.id} value={v.id}>{v.codigoSigef || v.codigoCampo || v.nome}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="w-full h-7 text-xs font-semibold"
-                    disabled={!vSplitInicioId || !vSplitFimId || vSplitInicioId === vSplitFimId}
-                    onClick={executarDivisaoGleba}
-                  >
-                    Dividir Gleba por esta Linha
-                  </Button>
-
-                  {/* Divisão por ÁREA ALVO: corte paralelo à reta De→Até */}
-                  <div className="mt-2 border-t border-dashed pt-2">
-                    <span className="text-[9px] block text-muted-foreground uppercase font-medium mb-1">Ou dividir por área alvo</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="text" inputMode="decimal" value={areaAlvoHa} onChange={(e) => setAreaAlvoHa(e.target.value)}
-                        placeholder="ha (ex.: 0,4)" className="h-7 flex-1 rounded-sm border bg-background px-1 text-[11px]" />
-                      <Button size="sm" variant="secondary" className="h-7 px-2 text-[11px] font-semibold"
-                        disabled={!vSplitInicioId || !vSplitFimId || vSplitInicioId === vSplitFimId || !areaAlvoHa}
-                        onClick={executarDivisaoPorArea} title="A linha de corte fica paralela à reta De→Até e é posicionada para dar esta área de um lado">
-                        Dividir
-                      </Button>
-                    </div>
-                    <p className="text-[9px] text-muted-foreground mt-1">A linha de divisão sai paralela à reta De→Até e é posicionada para dar a área informada de um lado.</p>
-                  </div>
-                </div>
-
-                {/* Painel de Fusão (Remembramento) - exibe apenas se houver outras glebas */}
-                {glebas.length > 1 && (
-                  <div className="mb-3 rounded-md border border-dashed p-2 bg-muted/20 text-xs">
-                    <div className="font-semibold text-foreground text-[11px] mb-1">Fusão (Remembramento)</div>
-                    <p className="text-[10px] text-muted-foreground mb-2">Una a gleba ativa com outra que compartilhe a mesma divisa.</p>
-                    <div className="flex flex-wrap gap-1">
-                      {glebas.filter(g => g.id !== glebaAtivaId).map(g => (
-                        <Button 
-                          key={g.id}
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-[10px] py-0 px-2"
-                          onClick={() => executarFusaoGlebas(g.id)}
-                        >
-                          Unir com {g.denominacao}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <SecaoTitulo>Vértices do polígono</SecaoTitulo>
-                <div className="mb-2 flex flex-wrap gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={histCount === 0}
-                    onClick={desfazer}
-                    title={histCount > 0 ? `Desfazer (Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
-                    className={`border-slate-500/30 hover:bg-slate-500/10 ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
-                  >
-                    <Undo2 className="text-slate-500" /> Desfazer
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={renumerar} title="Reordena do norte (sentido horário) e renumera os códigos" className="border-blue-500/30 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400">Enumerar Vértices</Button>
-                  <Button size="sm" variant="outline" className="text-destructive border-red-500/30 hover:bg-red-500/10" onClick={limparPoligono} title="Apagar todo o polígono para desenhar de novo à mão"><Trash2 /> Limpar</Button>
-                  <Button size="sm" variant="default" onClick={abrirPlanilha} title="Editar todos os vértices em uma planilha" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"><Table className="size-4 mr-1" /> Editar em Tabela</Button>
-                </div>
-                <p className="mb-1 text-[10px] text-muted-foreground">Arraste um vértice para reordenar o polígono (renumera automático).</p>
-                {vertices.map((v, i) => {
-                  const l = lados[i];
-                  const usarGeodesico = imovel.tipoAzimute !== 'plano';
-                  const azEfetivo = l ? (() => {
-                    if (!usarGeodesico) return l.azimute;
-                    if (v.lat != null && v.lon != null) {
-                      const cm = convergenciaMeridiana(v.lat, v.lon, zona);
-                      return (l.azimute + cm + 360) % 360;
-                    }
-                    return l.azimute;
-                  })() : 0;
-                  return (
-                    <div key={v.id}
-                      draggable
-                      onDragStart={() => setDragVtxIdx(i)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => { if (dragVtxIdx != null) reordenarVertice(dragVtxIdx, i); setDragVtxIdx(null); }}
-                      className={`cursor-grab rounded-sm border p-2 text-xs ${selecionadoId === v.id ? 'border-primary bg-accent' : ''} ${dragVtxIdx === i ? 'opacity-50' : ''}`}
-                      onMouseEnter={() => setRealceId(v.id)} onMouseLeave={() => setRealceId((r) => (r === v.id ? null : r))}
-                      onClick={() => setSelecionadoId(v.id)}>
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono font-semibold">{v.codigoSigef || '(sem código)'}</span>
-                        <span className="flex gap-1">
-                          <button className="rounded-sm bg-secondary px-2.5 py-1 text-sm font-bold" onClick={(e) => { e.stopPropagation(); alternarTipo(v.id); }} title="Alternar tipo do marco (M/P/V)">{v.tipo}</button>
-                          <button className="rounded-sm bg-destructive px-2 py-1 text-sm text-destructive-foreground" onClick={(e) => { e.stopPropagation(); apagarVertice(v.id); }} title="Apagar vértice">×</button>
-                        </span>
-                      </div>
-                      <div className="mt-1 text-muted-foreground">{v.codigoCampo || v.nome}</div>
-                      {l && <div className="text-muted-foreground">→ {azimuteDMS(azEfetivo)} · {numBR(l.distancia)} m · {v.tipoLimite || 'LA6'}</div>}
-                      {selecionadoId === v.id && (
-                        <div className="mt-2 grid grid-cols-2 gap-1 border-t pt-2" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex flex-col gap-0.5">
-                            <MiniSelect label="Tipo" value={v.tipo} options={TIPOS_VERTICE as readonly string[]} onChange={(val) => editarVertice(v.id, { tipo: val as Vertex['tipo'], isDivisa: val === 'M' })} />
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            <MiniSelect label="Método" value={v.metodo || 'PG6'} options={METODOS_POSICIONAMENTO as readonly string[]} onChange={(val) => editarVertice(v.id, { metodo: val })} />
-                            <button type="button" className="text-[8px] text-primary hover:underline text-left mt-0.5" onClick={() => editarVariosVertices({ metodo: v.metodo || 'PG6' })}>
-                              {selMulti.size > 0 ? `Aplicar à sel. (${selMulti.size})` : 'Aplicar a todos'}
-                            </button>
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            <MiniSelect label="Limite (saída)" value={v.tipoLimite || 'LA6'} options={TIPOS_LIMITE as readonly string[]} onChange={(val) => editarVertice(v.id, { tipoLimite: val })} />
-                            <button type="button" className="text-[8px] text-primary hover:underline text-left mt-0.5" onClick={() => editarVariosVertices({ tipoLimite: v.tipoLimite || 'LA6' })}>
-                              {selMulti.size > 0 ? `Aplicar à sel. (${selMulti.size})` : 'Aplicar a todos'}
-                            </button>
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            <MiniSelect label="Repres." value={v.representacao || 'linha-ideal'} options={opcoesDivisaTipo} onChange={(val) => editarVertice(v.id, { representacao: val })} />
-                            <button type="button" className="text-[8px] text-primary hover:underline text-left mt-0.5" onClick={() => editarVariosVertices({ representacao: v.representacao || 'linha-ideal' })}>
-                              {selMulti.size > 0 ? `Aplicar à sel. (${selMulti.size})` : 'Aplicar a todos'}
-                            </button>
-                          </div>
-                          <div className="col-span-2 space-y-1">
-                            <Label>Altitude (m)</Label>
-                            <Input type="number" step="0.01" value={String(v.elevacao)} onChange={(e) => editarVertice(v.id, { elevacao: Number(e.target.value) })} />
-                          </div>
-                          <div className="col-span-2 grid grid-cols-2 gap-1 mt-1">
-                            <button
-                              type="button"
-                              onClick={async () => { setVSplitInicioId(v.id); await avisar({ titulo: 'Início da divisão', mensagem: `Vértice ${v.codigoSigef || v.nome} definido como Início da divisão.` }); }}
-                              className="rounded-sm border border-input bg-background h-6 px-1 text-[9px] hover:bg-accent font-medium text-foreground transition-colors"
-                            >
-                              Definir como Início
-                            </button>
-                            <button
-                              type="button"
-                              onClick={async () => { setVSplitFimId(v.id); await avisar({ titulo: 'Fim da divisão', mensagem: `Vértice ${v.codigoSigef || v.nome} definido como Fim da divisão.` }); }}
-                              className="rounded-sm border border-input bg-background h-6 px-1 text-[9px] hover:bg-accent font-medium text-foreground transition-colors"
-                            >
-                              Definir como Fim
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {aba === 'confrontantes' && (
-              <PainelConfrontantes confrontantes={confrontantes} onChange={setConfrontantes} onExcluir={excluirConfrontante} onEditar={setConfEditId} mapa={confrontantePorLado} lados={lados} sugConf={sugConf} onSalvarCadastro={salvarConfCadastro} imovel={imovel} tecnico={tecnico} projetoId={projetoId} onExtrairConfrontante={extrairDocumentoConfrontante} sugCartorios={sugCartorios} />
-            )}
-            {aba === 'planta' && (
-              <PainelPlanta config={plantaConfig} onChange={atualizarPlantaConfig} temSituacao={!!situacaoUrl} temLogo={!!escritorio?.logoDataUrl} numGlebas={glebas.length}
-                onVerPlanta={() => setVista('planta')} onSalvarPadrao={() => {
-                  const tit = (plantaConfig.titulo || 'Padrão').trim();
-                  salvarPlantaTemplate(tit, plantaConfig);
-                  salvarPlantaPadrao(plantaConfig);
-                  aviso(`Modelo de planta salvo para o tipo de trabalho: "${tit}".`);
-                }} />
-            )}
-            {aba === 'projetos' && (
-              <div className="space-y-2">
-                <SecaoTitulo>Projeto atual</SecaoTitulo>
-                
-
-                {/* Botões de backup local JSON */}
-                <div className="grid grid-cols-2 gap-1 bg-muted/20 p-1 rounded-sm border">
-                  <Button size="sm" variant="outline" className="h-8 text-[11px] gap-1 px-1" disabled={processando} onClick={exportarProjetoAtualJson} title="Exportar o projeto aberto em um arquivo JSON local para backup">
-                    <Download className="size-3.5" /> Exportar JSON
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-8 text-[11px] gap-1 px-1" disabled={processando} onClick={() => jsonBackupRef.current?.click()} title="Importar um projeto salvo em arquivo JSON local">
-                    <Upload className="size-3.5" /> Importar JSON
-                  </Button>
-                </div>
-
-                <div className="flex items-center gap-2 rounded-sm border bg-muted/40 p-2 text-[11px] text-muted-foreground">
-                  <Database className="size-3.5" /> {totalPontos} ponto(s) no banco do credenciado (nunca reusados).
-                </div>
-                {/* Link pra tela cheia de projetos: só ela tem lixeira (recuperar projeto apagado) e
-                    backup completo em .zip de tudo — não duplicamos essas duas coisas aqui. */}
-                <Link href="/projetos"
-                  className="flex items-center gap-2 rounded-sm border bg-muted/40 p-2 text-[11px] font-semibold text-primary hover:bg-muted/70">
-                  <FolderOpen className="size-3.5" /> Ver todos os projetos, lixeira e backup completo
-                </Link>
-                <SecaoTitulo>Projetos salvos</SecaoTitulo>
-                {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
-                {projetos.map((p) => (
-                  <div key={p.id} className="space-y-1.5 rounded-lg border p-3 transition-colors hover:bg-muted/40">
-                    {/* Título/dados numa linha própria — nunca disputa espaço com os botões, então
-                        nunca fica cortado por eles, mesmo com a barra lateral estreita. */}
-                    <div className="min-w-0">
-                      <div className="w-full truncate text-sm font-semibold">{p.nome}</div>
-                      <div className="text-xs text-muted-foreground">{contarVertices(p)} vértices{(p.glebas?.length ?? 0) > 1 ? ` · ${p.glebas!.length} glebas` : ''}</div>
-                      {p.atualizadoEm ? <div className="text-[10px] text-muted-foreground">Salvo em {new Date(p.atualizadoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div> : null}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1">
-                      <Button size="sm" variant="outline" className="h-8 gap-1 text-[11px]" onClick={() => abrir(p.id)} title="Abrir este projeto">
-                        <FolderOpen className="size-3.5" /> Abrir
-                      </Button>
-                      <Button size="sm" variant="ghost" className="size-8 p-0" disabled={exportandoProjetoId === p.id} onClick={() => exportarProjetoDaLista(p)} title="Exportar (dados + arquivos anexados) em .zip">
-                        <Download className={`size-4 ${exportandoProjetoId === p.id ? 'animate-pulse' : ''}`} />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => renomear(p)} title="Renomear"><Pencil className="size-4" /></Button>
-                      <Button size="sm" variant="ghost" className="size-8 p-0 text-destructive" onClick={() => remover(p.id)} title="Excluir"><Trash2 className="size-4" /></Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          </aside>
-        </div>
       </div>
 
       <RequerimentoModal
@@ -8921,6 +8534,204 @@ export default function EditorPage() {
       <ErrataModal open={errataAberto} onOpenChange={setErrataAberto} imovel={imovel} tecnico={tecnico} confrontantes={confrontantes} areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} correcoes={correcoes} onChangeCorrecoes={setCorrecoes} onBaixar={() => setBaixou((b) => ({ ...b, errata: true }))} />
       <AnuenciaModal open={anuenciaAberta} onOpenChange={setAnuenciaAberta} confrontantes={confrontantes} lados={lados} mapa={confrontantePorLado} imovel={imovel} tecnico={tecnico} />
       <HistoriaModal open={historiaAberta} onOpenChange={setHistoriaAberta} />
+
+      {/* JANELA MODAL CENTRALIZADA DADOS DO IMÓVEL */}
+      <Dialog open={painelAberto} onOpenChange={setPainelAberto}>
+        <DialogContent className="max-w-4xl h-[680px] max-h-[95vh] flex flex-col bg-card p-4 rounded-xl border shadow-2xl overflow-hidden">
+          <DialogHeader className="pb-2 border-b flex flex-row items-center justify-between">
+            <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
+              <Upload className="size-4 text-indigo-500" />
+              Dados do Imóvel &amp; Responsável Técnico
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Seletor de Abas Horizontais */}
+          <div className="flex flex-wrap gap-1 border-b bg-muted/20 p-1 my-2 rounded-lg">
+            {([
+              ['imovel', 'IMÓVEL', <BookUser key="i" className="size-3.5" />],
+              ['localizacao', 'LOCALIZAÇÃO', <MapIcon key="i" className="size-3.5" />],
+              ['proprietario', 'PROPRIETÁRIO', <Users key="i" className="size-3.5" />],
+              ['vertices', 'VÉRTICES', <Waypoints key="i" className="size-3.5" />],
+              ['confrontantes', 'CONFRONTANTES', <Users key="i" className="size-3.5" />],
+              ['planta', 'PLANTA', <MapIcon key="i" className="size-3.5" />],
+              ['projetos', 'PROJETOS', <Database key="i" className="size-3.5" />],
+            ] as [Aba, string, React.ReactNode][]).map(([a, rot, icone]) => (
+              <button
+                key={a}
+                type="button"
+                onClick={() => setAba(a)}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-extrabold uppercase tracking-wider transition-colors ${aba === a ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-secondary text-secondary-foreground hover:bg-muted'}`}
+              >
+                {icone}
+                <span className="truncate">{rot}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-1 overflow-y-auto py-1 pr-1">
+            {['imovel', 'localizacao', 'proprietario'].includes(aba) && (
+              <PainelImovel
+                aba={aba}
+                imovel={imovel}
+                onChange={setImovel}
+                onMunicipio={aoMudarMunicipio}
+                onLocal={aoMudarLocalidade}
+                nome={nomeProjeto}
+                onNome={(v) => { setNomeProjeto(v); setNomeProjetoManual(true); }}
+                zona={zona}
+                hemisferio={hemisferio}
+                onZona={trocarZona}
+                onHemisferio={trocarHemisferio}
+                sugProp={sugProp}
+                onSalvarProp={salvarPropCadastro}
+                sugCartorios={sugCartorios}
+                onIa={() => { setIaArquivoInicial(null); setIaAberta(true); }}
+                projetoId={projetoId}
+                extrairDocumento={extrairDocumento}
+              />
+            )}
+
+            {aba === 'confrontantes' && (
+              <PainelConfrontantes
+                confrontantes={confrontantes}
+                onChange={setConfrontantes}
+                onExcluir={excluirConfrontante}
+                onEditar={setConfEditId}
+                mapa={confrontantePorLado}
+                lados={lados}
+                sugConf={sugConf}
+                onSalvarCadastro={salvarConfCadastro}
+                imovel={imovel}
+                tecnico={tecnico}
+                projetoId={projetoId}
+                onExtrairConfrontante={extrairDocumentoConfrontante}
+                sugCartorios={sugCartorios}
+              />
+            )}
+
+            {aba === 'planta' && (
+              <PainelPlanta
+                config={plantaConfig}
+                onChange={atualizarPlantaConfig}
+                temSituacao={!!situacaoUrl}
+                temLogo={!!escritorio?.logoDataUrl}
+                numGlebas={glebas.length}
+                onVerPlanta={() => { setPainelAberto(false); setVista('planta'); }}
+                onSalvarPadrao={() => {
+                  const tit = (plantaConfig.titulo || 'Padrão').trim();
+                  salvarPlantaTemplate(tit, plantaConfig);
+                  salvarPlantaPadrao(plantaConfig);
+                  aviso(`Modelo de planta salvo para o tipo de trabalho: "${tit}".`);
+                }}
+              />
+            )}
+
+            {aba === 'projetos' && (
+              <div className="space-y-2">
+                <SecaoTitulo>Projetos salvos</SecaoTitulo>
+                {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
+                {projetos.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 bg-muted/10">
+                    <div className="min-w-0">
+                      <div className="w-full truncate text-xs font-bold">{p.nome}</div>
+                      <div className="text-[10px] text-muted-foreground">{contarVertices(p)} vértices</div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => { abrir(p.id); setPainelAberto(false); }}>
+                        <FolderOpen className="size-3" /> Abrir
+                      </Button>
+                      <Button size="sm" variant="ghost" className="size-7 p-0 text-destructive" onClick={() => remover(p.id)}>
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Configuração e Geração de Curvas de Nível */}
+      <Dialog open={curvaConfigAberta} onOpenChange={setCurvaConfigAberta}>
+        <DialogContent className="max-w-md bg-card p-4 rounded-xl border shadow-2xl">
+          <DialogHeader className="pb-2 border-b">
+            <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
+              <IconeCurvasNivel className="size-4 text-indigo-500" />
+              Geração de Curvas de Nível
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-3 space-y-3">
+            {/* Intervalo (m) + Botão Sugerir */}
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/20 p-2 border">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-foreground">Intervalo entre Curvas:</span>
+                <button type="button"
+                  onClick={() => setIntervaloCurva((c) => Math.max(0.1, +(c - 1).toFixed(2)))}
+                  className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">-</button>
+                <input type="number" min={0.1} step={1} value={intervaloCurva}
+                  onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))}
+                  className="h-6 w-12 rounded border border-input bg-background px-1 text-center text-xs font-bold"
+                  title="Intervalo entre as curvas de nível (metros)" />
+                <button type="button"
+                  onClick={() => setIntervaloCurva((c) => +(c + 1).toFixed(2))}
+                  className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">+</button>
+                <span className="text-xs text-muted-foreground font-mono">m</span>
+              </div>
+              <Button type="button" size="sm" onClick={sugerirIntervaloCurva}
+                title="Sugerir intervalo pelo desnível"
+                className="h-6 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 text-[10px] font-bold">
+                Sugerir
+              </Button>
+            </div>
+
+            {/* Linha Mestra & Espessura em linhas limpas dedicadas */}
+            <div className="flex items-center justify-between gap-2 bg-muted/20 p-2 rounded-lg border">
+              <span className="text-xs font-semibold text-muted-foreground">Curva Mestra a cada:</span>
+              <div className="flex items-center gap-1.5">
+                <button type="button"
+                  onClick={() => setCurvaMestraCada((c) => Math.max(1, c - 1))}
+                  className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">-</button>
+                <input type="number" min={1} step={1} value={curvaMestraCada}
+                  onChange={(e) => setCurvaMestraCada(Math.max(1, Math.round(Number(e.target.value) || 5)))}
+                  className="h-6 w-12 rounded border border-input bg-background text-center text-xs font-bold" />
+                <button type="button"
+                  onClick={() => setCurvaMestraCada((c) => c + 1)}
+                  className="size-6 rounded bg-background border hover:bg-muted text-xs font-bold flex items-center justify-center">+</button>
+                <span className="text-xs text-muted-foreground font-medium">curvas</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 bg-muted/20 p-2.5 rounded-lg border">
+              <span className="text-xs font-semibold text-muted-foreground">Espessura das Curvas:</span>
+              <div className="flex items-center gap-2">
+                {(['fina', 'media', 'grossa'] as const).map((e) => (
+                  <button key={e} type="button" onClick={() => setCurvaEspessura(e)}
+                    className={`flex flex-col items-center justify-center px-3 py-1.5 min-w-[56px] rounded transition-all ${curvaEspessura === e ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900 shadow-sm font-bold' : 'bg-background hover:bg-muted text-foreground border font-medium'}`}>
+                    <span className="text-[10px] leading-none mb-1">{e === 'fina' ? 'Fina' : e === 'media' ? 'Média' : 'Grossa'}</span>
+                    <span className={`w-full rounded-full ${e === 'fina' ? 'h-[1px] bg-current opacity-70' : e === 'media' ? 'h-[2.5px] bg-current opacity-90' : 'h-[4px] bg-current'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t">
+            <Button type="button" variant="outline" size="sm" onClick={() => setCurvaConfigAberta(false)}>
+              Fechar
+            </Button>
+            {temCurvas && (
+              <Button type="button" variant="destructive" size="sm" onClick={() => { limparCurvasNivel(); setCurvaConfigAberta(false); }}>
+                <Trash2 className="size-3.5 mr-1" /> Apagar Curvas
+              </Button>
+            )}
+            <Button type="button" size="sm" onClick={() => { gerarCurvasNivel(); setCurvaConfigAberta(false); }} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold">
+              <IconeCurvasNivel className="size-3.5 mr-1" /> Gerar Curvas de Nível
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <PecasSheetModal
         open={pecasSheetAberto}
@@ -9713,6 +9524,7 @@ export default function EditorPage() {
           dataExtenso={dataPorExtenso()}
           onAbrirAjustes={(aba) => { setGestaoAberta(false); setConfigAba(aba); setConfigAberta(true); }}
           onAbrirConferir={() => { setGestaoAberta(false); setConferirAberto(true); }}
+          onAbrirProjeto={(id) => { setGestaoAberta(false); abrir(id); }}
         />
       )}
       <Dialog open={avisoReconciliarAberto} onOpenChange={(open) => {
@@ -10052,57 +9864,7 @@ export default function EditorPage() {
               <span>DADOS FICTÍCIOS — Sem validade legal</span>
             </div>
           ) : (
-            <div className="relative flex items-center gap-1.5 select-none">
-              <span className="text-slate-500 uppercase tracking-wider text-[9px] font-bold">Ferramenta:</span>
-              <button
-                type="button"
-                onClick={() => setMenuFerramentasAberto(v => !v)}
-                className="text-slate-200 hover:text-white font-semibold flex items-center gap-1 cursor-pointer bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded transition-colors text-xs"
-              >
-                <span>
-                  {modo === 'navegar' ? 'Mover/Editar Vértices' :
-                   modo === 'polilinha' ? 'Desenhar Polilinha' :
-                   modo === 'tracejado' ? 'Desenhar Linha Tracejada' :
-                   modo === 'cota' ? 'Inserir Cota de Distância' :
-                   modo === 'texto' ? 'Inserir Bloco de Texto' :
-                   modo === 'medir' ? 'Régua de Medição' :
-                   modo === 'simbolo' ? 'Inserir Símbolo/Marcador' :
-                   'Seleção e Navegação'}
-                </span>
-                <ChevronUp className="size-3 shrink-0 text-slate-400" />
-              </button>
-              {menuFerramentasAberto && (
-                <>
-                  <div className="fixed inset-0 z-[1200]" onClick={() => setMenuFerramentasAberto(false)} />
-                  <div className="absolute bottom-full left-0 mb-1 z-[1201] w-48 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl p-1 text-[11px] text-slate-200">
-                    <div className="px-2 py-1 text-[9px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800/80 mb-1">Escolher Ferramenta</div>
-                    {[
-                      { val: 'navegar', label: 'Mover/Editar Vértices' },
-                      { val: 'polilinha', label: 'Desenhar Polilinha' },
-                      { val: 'tracejado', label: 'Desenhar Linha Tracejada' },
-                      { val: 'cota', label: 'Inserir Cota de Distância' },
-                      { val: 'texto', label: 'Inserir Bloco de Texto' },
-                      { val: 'medir', label: 'Régua de Medição' },
-                      { val: 'simbolo', label: 'Inserir Símbolo/Marcador' }
-                    ].map((item) => (
-                      <button
-                        key={item.val}
-                        type="button"
-                        onClick={() => {
-                          alternarModo(item.val as ModoEdicao);
-                          setMenuFerramentasAberto(false);
-                        }}
-                        className={`w-full text-left px-2 py-1 rounded hover:bg-slate-800 hover:text-white transition-colors ${
-                          modo === item.val ? 'bg-primary/20 text-primary font-bold' : ''
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+            <span className="text-slate-400 text-xs font-medium">Pronto</span>
           )}
 
           {/* Caixa de Entrada de Comandos CAD */}
@@ -10298,352 +10060,333 @@ function Campo({ label, value, onChange, placeholder, list, aviso, importante }:
     </div>
   );
 }
-
-function PainelImovel({ imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios, onIa }: {
+function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios, onIa, projetoId, extrairDocumento }: {
+  aba?: Aba;
   imovel: ImovelData; onChange: (i: ImovelData) => void; onMunicipio: (s: string) => void; onLocal: (s: string) => void;
-  nome: string; onNome: (s: string) => void;
+  nome: string; onNome: (v: string) => void;
   zona: number; hemisferio: 'N' | 'S'; onZona: (z: number) => void; onHemisferio: (h: 'N' | 'S') => void;
   sugProp: ProprietarioCad[]; onSalvarProp: () => void; sugCartorios: CartorioCad[];
   onIa?: () => void;
+  projetoId?: string | null;
+  extrairDocumento?: (arquivo: ArquivoProjeto) => void;
 }) {
   const set = (k: keyof ImovelData, v: string) => onChange({ ...imovel, [k]: v });
   function setProprietario(v: string) {
     const m = sugProp.find((p) => p.nome === v);
     onChange(m ? { ...imovel, proprietario: v, cpfProprietario: m.cpf, tipoPessoa: m.tipoPessoa } : { ...imovel, proprietario: v });
   }
-  // Outros titulares do imóvel (condôminos, nu-proprietário, inventariante...).
   const titulares = imovel.proprietariosAdicionais ?? [];
   const setTitulares = (lista: ProprietarioParte[]) => onChange({ ...imovel, proprietariosAdicionais: lista });
   const addTitular = () => setTitulares([...titulares, { nome: '', cpf: '', papel: 'condomino' }]);
   const setTitular = (i: number, patch: Partial<ProprietarioParte>) => setTitulares(titulares.map((p, k) => (k === i ? { ...p, ...patch } : p)));
   const rmTitular = (i: number) => setTitulares(titulares.filter((_, k) => k !== i));
-  return (
-    <div className="space-y-2">
-      {/* Seletor Deslizante Rural / Urbano */}
-      <div className="flex rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700">
-        <button
-          type="button"
-          onClick={() => onChange({ ...imovel, tipoImovel: 'rural' })}
-          className={`flex-1 rounded-md py-1.5 text-center transition-all ${imovel.tipoImovel !== 'urbano' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
-        >
-          Rural
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange({ ...imovel, tipoImovel: 'urbano' })}
-          className={`flex-1 rounded-md py-1.5 text-center transition-all ${imovel.tipoImovel === 'urbano' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
-        >
-          Urbano
-        </button>
-      </div>
 
-      {onIa && (
-        <button
-          type="button"
-          onClick={onIa}
-          className="w-full flex items-center justify-between p-3.5 rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/5 to-transparent hover:from-violet-500/15 hover:via-fuchsia-500/10 transition-all group shadow-sm text-left mt-1"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-violet-600 rounded-lg text-white group-hover:scale-105 transition-transform shadow">
-              <Sparkles className="size-4" />
-            </div>
-            <div>
-              <div className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1">
-                Leitura Automática com IA
-              </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
-                Envie PDF da Matrícula, Escritura ou Imagens e a IA preenche o cadastro.
-              </div>
-            </div>
-          </div>
-          <ChevronRight className="size-4 text-violet-500 group-hover:translate-x-0.5 transition-transform" />
-        </button>
-      )}
-
-      <SecaoTitulo>Identificação do imóvel</SecaoTitulo>
-      <Campo label="Nome do projeto" value={nome} onChange={onNome} importante />
-      <Campo label="Denominação do imóvel" value={imovel.denominacao} onChange={(v) => set('denominacao', v)} placeholder={imovel.tipoImovel === 'urbano' ? "Lote / Residencial..." : "Fazenda..."} importante />
-      <div className="grid grid-cols-2 gap-2">
-        <Campo label="Matrícula" value={imovel.matricula} onChange={(v) => set('matricula', v)} importante={imovel.cns !== 'não informar'} />
-        <div>
-          <Campo label="Cartório (CNS)" value={imovel.cns} onChange={(v) => set('cns', v)} list="lista-cns" importante={imovel.cns !== 'não informar'} />
-          {(() => {
-            const cart = sugCartorios.find(x => x.cns === imovel.cns);
-            return cart ? (
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 leading-tight">
-                {cart.municipio ? `${cart.municipio} - ` : ''}{cart.nome}
-              </p>
-            ) : imovel.cns === 'não informar' ? (
-              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 leading-tight font-semibold">
-                Imóvel sem registro em cartório
-              </p>
-            ) : null;
-          })()}
-          <label className="flex items-center gap-1.5 cursor-pointer mt-1 select-none">
-            <input
-              type="checkbox"
-              checked={imovel.cns === 'não informar'}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  onChange({ ...imovel, cns: 'não informar', matricula: '' });
-                } else {
-                  onChange({ ...imovel, cns: '' });
-                }
-              }}
-              className="rounded border-zinc-300 dark:border-zinc-700 text-primary focus:ring-primary size-3.5"
-            />
-            <span className="text-[9px] font-bold text-muted-foreground uppercase">Sem registro (Não informar)</span>
-          </label>
-        </div>
-      </div>
-      <div className="space-y-1">
-        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Regime de terra</Label>
-        <div className="flex rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700">
-          <button
-            type="button"
-            onClick={() => onChange({ ...imovel, regimeTerra: 'propriedade' })}
-            className={`flex-1 rounded-md py-1.5 text-center transition-all ${(imovel.regimeTerra ?? 'propriedade') === 'propriedade' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
-          >
-            Propriedade
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange({ ...imovel, regimeTerra: 'posse' })}
-            className={`flex-1 rounded-md py-1.5 text-center transition-all ${imovel.regimeTerra === 'posse' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
-          >
-            Posse
-          </button>
-        </div>
-      </div>
-
-      {imovel.tipoImovel === 'urbano' ? (
-        <>
-          <Campo label="Inscrição Municipal" value={imovel.inscricaoMunicipal ?? ''} onChange={(v) => set('inscricaoMunicipal', v)} placeholder="Inscrição municipal..." />
-          <div className="grid grid-cols-2 gap-2">
-            <Campo label="Frente (m)" value={imovel.frenteM != null ? String(imovel.frenteM) : ''} onChange={(v) => onChange({ ...imovel, frenteM: v === '' ? undefined : Number(v) })} placeholder="0.00" />
-            <Campo label="Fundos (m)" value={imovel.fundosM != null ? String(imovel.fundosM) : ''} onChange={(v) => onChange({ ...imovel, fundosM: v === '' ? undefined : Number(v) })} placeholder="0.00" />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Campo label="Dist. Esquina (m)" value={imovel.distanciaEsquinaM != null ? String(imovel.distanciaEsquinaM) : ''} onChange={(v) => onChange({ ...imovel, distanciaEsquinaM: v === '' ? undefined : Number(v) })} placeholder="0.00" />
-            <Campo label="Rua da Esquina" value={imovel.esquinaRua ?? ''} onChange={(v) => set('esquinaRua', v)} placeholder="Rua..." />
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-2">
-            <Campo label="Código do Imóvel (SNCR/INCRA)" value={imovel.codigoImovelIncra} onChange={(v) => set('codigoImovelIncra', v)} importante />
-            <Campo label="Área anterior na matrícula (ha)" value={imovel.areaAnterior != null ? String(imovel.areaAnterior) : ''} onChange={(v) => onChange({ ...imovel, areaAnterior: v === '' ? undefined : Number(v) })} placeholder="0.0000" importante />
-          </div>
-          {/* Padrão do memorial: só oferecido quando o imóvel é de Mato Grosso (INTERMAT). */}
-          {ufDoMunicipio(imovel.municipio) === 'MT' && (
+  if (aba === 'localizacao') {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+        {/* CARD LOCALIZAÇÃO */}
+        <div className="space-y-2 border rounded-xl p-3 bg-muted/10">
+          <SecaoTitulo>Localização do Imóvel</SecaoTitulo>
+          <div className="space-y-2">
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Padrão do memorial</Label>
-              <div className="flex rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700">
-                <button
-                  type="button"
-                  onClick={() => onChange({ ...imovel, padraoMemorial: 'incra' })}
-                  className={`flex-1 rounded-md py-1.5 text-center transition-all ${(imovel.padraoMemorial ?? 'incra') === 'incra' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
-                >
-                  INCRA / SIGEF
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onChange({ ...imovel, padraoMemorial: 'intermat' })}
-                  className={`flex-1 rounded-md py-1.5 text-center transition-all ${imovel.padraoMemorial === 'intermat' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
-                >
-                  INTERMAT (MT)
-                </button>
+              <Campo label="Município" value={imovel.municipio} onChange={onMunicipio} placeholder="Espera Feliz-MG" importante />
+              <div className="flex flex-wrap gap-1 pt-1">
+                {MUNICIPIOS_ATALHO.map((m) => (
+                  <button key={m} type="button" onClick={() => onMunicipio(m)} title={`Usar ${m}`}
+                    className={`rounded-md border px-2 py-0.5 text-[10px] transition-colors ${imovel.municipio === m ? 'border-primary bg-primary/10 text-primary font-bold' : 'bg-secondary text-secondary-foreground hover:bg-muted'}`}>
+                    {m.replace(/-[A-Z]{2}$/, '')}
+                  </button>
+                ))}
               </div>
-              <p className="text-[10px] text-muted-foreground leading-snug">
-                INTERMAT adiciona ao memorial a referência ao Instituto de Terras de Mato Grosso e o parágrafo de finalidade da regularização estadual. O restante da peça é o mesmo padrão do Incra.
-              </p>
             </div>
-          )}
-        </>
-      )}
-      <SecaoTitulo>Proprietário e partes</SecaoTitulo>
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <Label className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 font-extrabold">Proprietário *</Label>
-          <button className="text-[10px] text-primary hover:underline" onClick={onSalvarProp}>salvar no cadastro</button>
-        </div>
-        <Input list="lista-proprietarios" value={imovel.proprietario} onChange={(e) => setProprietario(e.target.value)} className="h-8 text-sm border-amber-600/30" />
-        <datalist id="lista-proprietarios">
-          {sugProp.map((p) => <option key={p.id} value={p.nome} />)}
-        </datalist>
-      </div>
-      <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} aviso={avisoDoc(imovel.cpfProprietario)} importante />
-      
-      <div className="space-y-1">
-        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Tipo de Proprietário</Label>
-        <select
-          value={imovel.tipoPessoa || 'Física'}
-          onChange={(e) => set('tipoPessoa', e.target.value)}
-          className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-        >
-          <option value="Física">Pessoa Física</option>
-          <option value="Jurídica">Pessoa Jurídica</option>
-          <option value="Espólio">Espólio (Sucessão)</option>
-        </select>
-      </div>
-
-      {imovel.tipoPessoa === 'Espólio' && (
-        <div className="space-y-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 animate-in fade-in duration-200">
-          <div className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400">Dados do Inventariante</div>
-          <Campo label="Nome do Inventariante" value={imovel.inventarianteNome ?? ''} onChange={(v) => set('inventarianteNome', v)} importante />
-          <div className="grid grid-cols-2 gap-2">
-            <Campo label="CPF do Inventariante" value={imovel.inventarianteCpf ?? ''} onChange={(v) => set('inventarianteCpf', v)} aviso={avisoDoc(imovel.inventarianteCpf)} importante />
-            <Campo label="RG do Inventariante" value={imovel.inventarianteRg ?? ''} onChange={(v) => set('inventarianteRg', v)} />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Campo label="Estado Civil" value={imovel.inventarianteEstadoCivil ?? ''} onChange={(v) => set('inventarianteEstadoCivil', v)} />
-            <Campo label="Nacionalidade" value={imovel.inventarianteNacionalidade ?? ''} onChange={(v) => set('inventarianteNacionalidade', v)} />
+            <Campo label="Local (memorial / córrego / bairro)" value={imovel.local} onChange={onLocal} placeholder={imovel.municipio || 'Córrego...'} importante />
           </div>
         </div>
-      )}
 
-      <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
-      <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} aviso={avisoDoc(imovel.cpfConjugeProprietario)} />
+        {/* CARD FUSO UTM & PARÂMETROS */}
+        <div className="space-y-2 border rounded-xl p-3 bg-muted/10">
+          <SecaoTitulo>Fuso UTM &amp; Geodesia</SecaoTitulo>
 
-      {/* Comprador (para compra e venda / transferências) */}
-      <div className="flex items-center justify-between">
-        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Comprador (se houver)</Label>
-        {imovel.comprador && (
-          <button
-            type="button"
-            className="text-[10px] text-primary hover:underline font-bold"
-            onClick={async () => {
-              if (await confirmar({ titulo: 'Promover comprador', mensagem: `Deseja promover o comprador "${imovel.comprador}" a proprietário do imóvel? As informações atuais do proprietário serão substituídas.`, okLabel: 'Promover' })) {
-                onChange({
-                  ...imovel,
-                  proprietario: imovel.comprador || '',
-                  cpfProprietario: imovel.cpfComprador || '',
-                  comprador: '',
-                  cpfComprador: '',
-                });
-              }
-            }}
-          >
-            Tornar Proprietário (Transmissão)
-          </button>
-        )}
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Campo label="Nome do comprador" value={imovel.comprador ?? ''} onChange={(v) => set('comprador', v)} placeholder="Se houver..." />
-        <Campo label="CPF/CNPJ do comprador" value={imovel.cpfComprador ?? ''} onChange={(v) => set('cpfComprador', v)} aviso={avisoDoc(imovel.cpfComprador)} />
-      </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Hemisfério</Label>
+              <div className="flex rounded-md border border-input p-0.5">
+                {(['S', 'N'] as const).map((h) => (
+                  <button key={h} type="button" onClick={() => onHemisferio(h)}
+                    className={`rounded-sm px-3 py-0.5 text-[10px] font-bold uppercase transition-colors ${hemisferio === h ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+                    {h === 'S' ? 'Sul (S)' : 'Norte (N)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold block pt-1">Fuso UTM (Zona 18 a 25)</Label>
+            <div className="grid grid-cols-8 gap-1">
+              {[18, 19, 20, 21, 22, 23, 24, 25].map((z) => (
+                <button key={z} type="button" onClick={() => onZona(z)} title={`Fuso ${z}${hemisferio}`}
+                  className={`rounded-md border py-1 text-[11px] font-extrabold transition-colors ${zona === z ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-input bg-secondary text-secondary-foreground hover:bg-accent'}`}>
+                  {z}
+                </button>
+              ))}
+            </div>
+          </div>
 
-
-      {/* Papel do proprietário na cadeia dominial — decide como ele assina as peças. */}
-      <div className="space-y-1">
-        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Papel do proprietário</Label>
-        <select className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-          value={imovel.papelProprietario ?? 'proprietario'} onChange={(e) => set('papelProprietario', e.target.value)}>
-          <option value="proprietario">Proprietário pleno</option>
-          <option value="condomino">Condômino / coproprietário</option>
-          <option value="usufrutuario">Usufrutuário</option>
-          <option value="nu-proprietario">Nu-proprietário</option>
-          <option value="inventariante">Inventariante (espólio)</option>
-        </select>
-        {(imovel.papelProprietario ?? 'proprietario') !== 'proprietario' && (
-          <NotaLegal chave={
-            imovel.papelProprietario === 'condomino' ? 'condomino'
-            : (imovel.papelProprietario === 'usufrutuario' || imovel.papelProprietario === 'nu-proprietario') ? 'usufruto'
-            : imovel.papelProprietario === 'inventariante' ? 'espolio'
-            : 'papelProprietario'} />
-        )}
-      </div>
-
-      {/* Outros titulares: condôminos, nu-proprietário, inventariante — cada um assina conforme o papel. */}
-      <div className="space-y-1.5 rounded-sm border p-2 bg-muted/10">
-        <div className="flex items-center justify-between">
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Outros titulares{titulares.length ? ` (${titulares.length})` : ''}</Label>
-          <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={addTitular}><Plus className="size-3.5" /> Adicionar</Button>
+          <div className="space-y-1 pt-2 border-t">
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Cálculo de Azimute no Memorial</Label>
+            <select
+              className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs font-semibold"
+              value={imovel.tipoAzimute ?? 'geodesico'}
+              onChange={(e) => set('tipoAzimute', e.target.value)}
+            >
+              <option value="geodesico">Azimutes Geodésicos (Padrão Oficial SIGEF/INCRA)</option>
+              <option value="plano">Azimutes Planos (Grid UTM)</option>
+            </select>
+          </div>
         </div>
-        {titulares.length === 0 && <p className="text-[10px] text-muted-foreground leading-snug">Coproprietários, nu-proprietário, inventariante… Cada um entra com a sua própria assinatura na peça.</p>}
-        {titulares.map((tt, i) => (
-          <div key={i} className="space-y-1.5 rounded-sm border bg-background p-2">
-            <div className="flex items-center gap-1.5">
-              <select className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-xs"
-                value={tt.papel} onChange={(e) => setTitular(i, { papel: e.target.value as ProprietarioParte['papel'] })}>
+      </div>
+    );
+  }
+
+  if (aba === 'proprietario') {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+        {/* CARD PROPRIETÁRIO PRINCIPAL */}
+        <div className="space-y-2 border rounded-xl p-3 bg-muted/10">
+          <SecaoTitulo>Proprietário Principal</SecaoTitulo>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 font-extrabold">Proprietário *</Label>
+                <button type="button" className="text-[10px] text-primary hover:underline font-semibold" onClick={onSalvarProp}>Salvar no cadastro</button>
+              </div>
+              <Input list="lista-proprietarios" value={imovel.proprietario} onChange={(e) => setProprietario(e.target.value)} className="h-8 text-xs font-semibold border-amber-600/30" />
+              <datalist id="lista-proprietarios">
+                {sugProp.map((p) => <option key={p.id} value={p.nome} />)}
+              </datalist>
+            </div>
+            <Campo label="CPF/CNPJ do proprietário" value={imovel.cpfProprietario} onChange={(v) => set('cpfProprietario', v)} aviso={avisoDoc(imovel.cpfProprietario)} importante />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Tipo de Proprietário</Label>
+              <select
+                value={imovel.tipoPessoa || 'Física'}
+                onChange={(e) => set('tipoPessoa', e.target.value)}
+                className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+              >
+                <option value="Física">Pessoa Física</option>
+                <option value="Jurídica">Pessoa Jurídica</option>
+                <option value="Espólio">Espólio (Sucessão)</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Papel do proprietário</Label>
+              <select className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                value={imovel.papelProprietario ?? 'proprietario'} onChange={(e) => set('papelProprietario', e.target.value)}>
+                <option value="proprietario">Proprietário pleno</option>
                 <option value="condomino">Condômino / coproprietário</option>
                 <option value="usufrutuario">Usufrutuário</option>
                 <option value="nu-proprietario">Nu-proprietário</option>
                 <option value="inventariante">Inventariante (espólio)</option>
-                <option value="proprietario">Proprietário</option>
               </select>
-              <Button size="sm" variant="ghost" className="size-8 shrink-0 p-0 text-destructive" title="Remover titular" onClick={() => rmTitular(i)}><Trash2 className="size-3.5" /></Button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Campo label="Nome" value={tt.nome} onChange={(v) => setTitular(i, { nome: v })} />
-              <Campo label="CPF/CNPJ" value={tt.cpf} onChange={(v) => setTitular(i, { cpf: v })} aviso={avisoDoc(tt.cpf)} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Campo label="Cônjuge (se houver)" value={tt.conjugeNome ?? ''} onChange={(v) => setTitular(i, { conjugeNome: v })} />
-              <Campo label="CPF do cônjuge" value={tt.conjugeCpf ?? ''} onChange={(v) => setTitular(i, { conjugeCpf: v })} aviso={avisoDoc(tt.conjugeCpf)} />
             </div>
           </div>
-        ))}
-      </div>
 
-      <SecaoTitulo>Localização e fuso</SecaoTitulo>
-      <div className="space-y-1">
-        <Campo label="Município" value={imovel.municipio} onChange={onMunicipio} placeholder="Espera Feliz-MG" />
-        <div className="flex flex-wrap gap-1">
-          {MUNICIPIOS_ATALHO.map((m) => (
-            <button key={m} onClick={() => onMunicipio(m)} title={`Usar ${m} (ajusta o fuso)`}
-              className={`rounded-sm border px-1.5 py-0.5 text-[10px] ${imovel.municipio === m ? 'border-primary bg-primary/10 text-primary' : 'bg-secondary text-secondary-foreground'}`}>
-              {m.replace(/-[A-Z]{2}$/, '')}
-            </button>
-          ))}
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
+            <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} aviso={avisoDoc(imovel.cpfConjugeProprietario)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1 border-t border-dashed">
+            <Campo label="Nome do comprador (se houver)" value={imovel.comprador ?? ''} onChange={(v) => set('comprador', v)} placeholder="Se houver..." />
+            <Campo label="CPF/CNPJ do comprador" value={imovel.cpfComprador ?? ''} onChange={(v) => set('cpfComprador', v)} aviso={avisoDoc(imovel.cpfComprador)} />
+          </div>
         </div>
-      </div>
-      <Campo label="Local (memorial) — opcional, padrão é o município" value={imovel.local} onChange={onLocal} placeholder={imovel.municipio || 'Córrego ..., Cidade-UF'} />
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fuso UTM</Label>
-          <div className="flex rounded-md border border-input p-0.5">
-            {(['S', 'N'] as const).map((h) => (
-              <button key={h} type="button" onClick={() => onHemisferio(h)}
-                className={`rounded-sm px-2.5 py-0.5 text-[11px] font-semibold uppercase transition-colors ${hemisferio === h ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
-                {h === 'S' ? 'Sul' : 'Norte'}
-              </button>
+
+        {/* CARD OUTROS TITULARES & DOCUMENTOS */}
+        <div className="space-y-2 border rounded-xl p-3 bg-muted/10">
+          <SecaoTitulo>Outros Titulares &amp; Documentos</SecaoTitulo>
+          <div className="space-y-1.5 rounded-lg border p-2 bg-background shadow-sm">
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Outros titulares{titulares.length ? ` (${titulares.length})` : ''}</Label>
+              <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px] px-2" onClick={addTitular}><Plus className="size-3" /> Adicionar</Button>
+            </div>
+            {titulares.length === 0 && <p className="text-[10px] text-muted-foreground leading-snug">Coproprietários, nu-proprietários, inventariantes adicionais.</p>}
+            {titulares.map((tt, i) => (
+              <div key={i} className="space-y-1 rounded border bg-muted/20 p-1.5 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <select className="h-7 flex-1 rounded-md border border-input bg-background px-2 text-[11px]"
+                    value={tt.papel} onChange={(e) => setTitular(i, { papel: e.target.value as ProprietarioParte['papel'] })}>
+                    <option value="condomino">Condômino / coproprietário</option>
+                    <option value="usufrutuario">Usufrutuário</option>
+                    <option value="nu-proprietario">Nu-proprietário</option>
+                    <option value="inventariante">Inventariante (espólio)</option>
+                  </select>
+                  <Button size="sm" variant="ghost" className="size-6 shrink-0 p-0 text-destructive" title="Remover titular" onClick={() => rmTitular(i)}><Trash2 className="size-3" /></Button>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <Input placeholder="Nome" value={tt.nome} onChange={(e) => setTitular(i, { nome: e.target.value })} className="h-7 text-xs" />
+                  <Input placeholder="CPF/CNPJ" value={tt.cpf} onChange={(e) => setTitular(i, { cpf: e.target.value })} className="h-7 text-xs" />
+                </div>
+              </div>
             ))}
           </div>
-        </div>
-        {/* Todos os fusos do Brasil continental e ilhas (18 a 25): um toque escolhe qualquer um. */}
-        <div className="grid grid-cols-8 gap-1">
-          {[18, 19, 20, 21, 22, 23, 24, 25].map((z) => (
-            <button key={z} type="button" onClick={() => onZona(z)} title={`Fuso ${z}${hemisferio}`}
-              className={`rounded-sm border py-1 text-xs font-bold transition-colors ${zona === z ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-input bg-secondary text-secondary-foreground hover:bg-accent'}`}>
-              {z}
-            </button>
-          ))}
+
+          {projetoId && extrairDocumento && (
+            <div className="pt-1 border-t">
+              <DocumentosProjeto projetoId={projetoId} dono="imovel" titulo="Documentos do Imóvel &amp; Proprietário" onExtrair={extrairDocumento} />
+            </div>
+          )}
         </div>
       </div>
-      <p className="text-[10px] text-muted-foreground">O sistema já detecta o fuso ao importar o TXT. Se precisar corrigir, toque no fuso certo acima — todos os do Brasil estão disponíveis.</p>
-      
-      <div className="space-y-1 mt-1 border-t pt-2">
-        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Cálculo de Azimute nas Peças</Label>
-        <select
-          className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-          value={imovel.tipoAzimute ?? 'geodesico'}
-          onChange={(e) => set('tipoAzimute', e.target.value)}
-        >
-          <option value="geodesico">Azimutes Geodésicos (Recomendado SIGEF)</option>
-          <option value="plano">Azimutes Planos (Grid de Quadrícula UTM)</option>
-        </select>
-        <p className="text-[10px] text-muted-foreground leading-snug">
-          {(imovel.tipoAzimute ?? 'geodesico') === 'geodesico' ? (
-            <span>
-              <strong>Geodésico (Verdadeiro):</strong> Corrige a distorção da projeção com a Convergência Meridiana (CM). Padrão exigido pelo SIGEF/INCRA.
-            </span>
-          ) : (
-            <span>
-              <strong>Plano (Quadrícula):</strong> Usa os ângulos puramente cartesianos calculados na grade plana UTM. Indicado para loteamentos e projetos simples de prefeitura.
-            </span>
+    );
+  }
+
+  // Padrão: aba === 'imovel' (Imóvel & Registro)
+  return (
+    <div className="space-y-3">
+      {/* Seletor Deslizante Rural / Urbano & Leitura com IA */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="flex rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700 h-10 items-center">
+          <button
+            type="button"
+            onClick={() => onChange({ ...imovel, tipoImovel: 'rural' })}
+            className={`flex-1 rounded-md py-1 text-center transition-all ${imovel.tipoImovel !== 'urbano' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800 font-bold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
+          >
+            Rural
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ ...imovel, tipoImovel: 'urbano' })}
+            className={`flex-1 rounded-md py-1 text-center transition-all ${imovel.tipoImovel === 'urbano' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm border border-zinc-200/50 dark:border-zinc-800 font-bold' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'}`}
+          >
+            Urbano
+          </button>
+        </div>
+
+        {onIa && (
+          <button
+            type="button"
+            onClick={onIa}
+            className="flex items-center justify-between px-3 py-1.5 rounded-lg border border-violet-500/30 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/5 to-transparent hover:from-violet-500/15 hover:via-fuchsia-500/10 transition-all group shadow-sm text-left h-10"
+          >
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-violet-600 rounded-md text-white group-hover:scale-105 transition-transform shadow">
+                <Sparkles className="size-3.5" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1">
+                  Leitura Automática da Matrícula com IA
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="size-4 text-violet-500 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+        {/* COLUNA ESQUERDA: Identificação do imóvel */}
+        <div className="space-y-2 border rounded-xl p-3 bg-muted/10">
+          <SecaoTitulo>Identificação do imóvel</SecaoTitulo>
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="Nome do projeto" value={nome} onChange={onNome} importante />
+            <Campo label="Denominação do imóvel" value={imovel.denominacao} onChange={(v) => set('denominacao', v)} placeholder={imovel.tipoImovel === 'urbano' ? "Lote / Residencial..." : "Fazenda..."} importante />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Campo label="Matrícula" value={imovel.matricula} onChange={(v) => set('matricula', v)} importante={imovel.cns !== 'não informar'} />
+            <div>
+              <Campo label="Cartório (CNS)" value={imovel.cns} onChange={(v) => set('cns', v)} list="lista-cns" importante={imovel.cns !== 'não informar'} />
+              {(() => {
+                const cart = sugCartorios.find(x => x.cns === imovel.cns);
+                return cart ? (
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 leading-tight">
+                    {cart.municipio ? `${cart.municipio} - ` : ''}{cart.nome}
+                  </p>
+                ) : imovel.cns === 'não informar' ? (
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 leading-tight font-semibold">
+                    Imóvel sem registro em cartório
+                  </p>
+                ) : null;
+              })()}
+              <label className="flex items-center gap-1.5 cursor-pointer mt-1 select-none">
+                <input
+                  type="checkbox"
+                  checked={imovel.cns === 'não informar'}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      onChange({ ...imovel, cns: 'não informar', matricula: '' });
+                    } else {
+                      onChange({ ...imovel, cns: '' });
+                    }
+                  }}
+                  className="rounded border-zinc-300 dark:border-zinc-700 text-primary focus:ring-primary size-3.5"
+                />
+                <span className="text-[9px] font-bold text-muted-foreground uppercase">Sem registro (Não informar)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* COLUNA DIREITA: Registro & Regime */}
+        <div className="space-y-2 border rounded-xl p-3 bg-muted/10">
+          <SecaoTitulo>Regime &amp; Códigos Oficiais</SecaoTitulo>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Regime de terra</Label>
+              <div className="flex rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700">
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...imovel, regimeTerra: 'propriedade' })}
+                  className={`flex-1 rounded-md py-1 text-center transition-all ${(imovel.regimeTerra ?? 'propriedade') === 'propriedade' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold' : 'text-zinc-500 dark:text-zinc-400'}`}
+                >
+                  Propriedade
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...imovel, regimeTerra: 'posse' })}
+                  className={`flex-1 rounded-md py-1 text-center transition-all ${imovel.regimeTerra === 'posse' ? 'bg-white dark:bg-zinc-950 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold' : 'text-zinc-500 dark:text-zinc-400'}`}
+                >
+                  Posse
+                </button>
+              </div>
+            </div>
+
+            {imovel.tipoImovel === 'rural' ? (
+              <Campo label="Código INCRA / SNCR" value={imovel.codigoImovelIncra} onChange={(v) => set('codigoImovelIncra', v)} importante />
+            ) : (
+              <Campo label="Inscrição Municipal" value={imovel.inscricaoMunicipal ?? ''} onChange={(v) => set('inscricaoMunicipal', v)} placeholder="Inscrição..." />
+            )}
+          </div>
+
+          {imovel.tipoImovel === 'rural' && (
+            <div className="grid grid-cols-2 gap-2">
+              <Campo label="Área anterior na matrícula (ha)" value={imovel.areaAnterior != null ? String(imovel.areaAnterior) : ''} onChange={(v) => onChange({ ...imovel, areaAnterior: v === '' ? undefined : Number(v) })} placeholder="0.0000" importante />
+              {ufDoMunicipio(imovel.municipio) === 'MT' && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Padrão do memorial</Label>
+                  <div className="flex rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700">
+                    <button
+                      type="button"
+                      onClick={() => onChange({ ...imovel, padraoMemorial: 'incra' })}
+                      className={`flex-1 rounded-md py-1 text-center transition-all ${(imovel.padraoMemorial ?? 'incra') === 'incra' ? 'bg-white dark:bg-zinc-950 text-indigo-600' : 'text-zinc-500'}`}
+                    >
+                      INCRA / SIGEF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onChange({ ...imovel, padraoMemorial: 'intermat' })}
+                      className={`flex-1 rounded-md py-1 text-center transition-all ${imovel.padraoMemorial === 'intermat' ? 'bg-white dark:bg-zinc-950 text-indigo-600' : 'text-zinc-500'}`}
+                    >
+                      INTERMAT
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
-        </p>
+        </div>
       </div>
     </div>
   );

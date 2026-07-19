@@ -75,8 +75,10 @@ const ACOES_ATALHOS: Record<string, string> = {
   refazer: 'Refazer (Ctrl+Y)',
   rotulos: 'Mostrar/Ocultar Rótulos',
   folha_travada: 'Travar / Destravar Folha',
-  // ── Barra Lateral — Curvas de Nível ───────────────────────────────────────
+  // ── Barra Lateral — Curvas de Nível e Utilidades ──────────────────────────
   curvas_nivel: 'Abrir/Fechar Curvas de Nível',
+  altitude: 'Consultar/Definir Altitudes (AT)',
+  ajustes: 'Ajustes / Configurações (AJ)',
   // ── Ferramentas de Desenho e Geometria ────────────────────────────────────
   navegar: 'Navegar / Modo Mover',
   linha: 'Desenhar Linha',

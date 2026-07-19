@@ -96,7 +96,7 @@ export async function salvarProjeto(p: Projeto): Promise<DestinoSalvamento> {
  * administrativo pra ver, sem editar, onde um cliente está travado (projeto vazio, sem confrontantes
  * pintados, etc.) — sem essa visão o suporte é só o que o cliente descreve por mensagem.
  */
-export async function listarProjetosDoUsuario(uid: string): Promise<Projeto[]> {
+export async function listarProjetosDoUsuario(uid: string, incluirExcluidos = true): Promise<Projeto[]> {
   let targetUid = uid;
   try {
     const perfilSnap = await getDoc(doc(fdb()!, 'perfisUso', uid));
@@ -110,7 +110,10 @@ export async function listarProjetosDoUsuario(uid: string): Promise<Projeto[]> {
     console.error('Falha ao obter workspaceUid do perfil:', e);
   }
   const snap = await getDocs(colProjetos(targetUid));
-  return snap.docs.map((d) => daNuvem(d.data())).filter((p): p is Projeto => !!p && !p.excluidoEm).sort((a, b) => b.atualizadoEm - a.atualizadoEm);
+  return snap.docs
+    .map((d) => daNuvem(d.data()))
+    .filter((p): p is Projeto => !!p && (incluirExcluidos || !p.excluidoEm))
+    .sort((a, b) => b.atualizadoEm - a.atualizadoEm);
 }
 
 export async function listarProjetos(): Promise<Projeto[]> {

@@ -46,6 +46,7 @@ export interface DepsAutoSave {
   requerente: import('../topo/types').PessoaQualificada | null | undefined;
   transmitente: import('../topo/types').PessoaQualificada | null | undefined;
   tipoAto: string | null;
+  tiposAtos?: string[] | null;
   partesAdicionais: import('../topo/types').PessoaQualificada[];
   gradeAltimetrica: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[];
 }
@@ -60,13 +61,13 @@ export function useAutoSave(deps: DepsAutoSave): EstadoAutoSave {
       v: deps.vertices, i: deps.imovel, c: deps.confrontantes, cpl: deps.confrontantePorLado,
       o: deps.objetos, pc: deps.plantaConfig, g: deps.glebas, vv: deps.verticesVizinho,
       ig: deps.verticesIgnorados, np: deps.nomeProjeto, rq: deps.requerente, tr: deps.transmitente,
-      ta: deps.tipoAto, pa: deps.partesAdicionais, ga: deps.gradeAltimetrica,
+      ta: deps.tipoAto, tas: deps.tiposAtos, pa: deps.partesAdicionais, ga: deps.gradeAltimetrica,
     }),
     [
       deps.vertices, deps.imovel, deps.confrontantes, deps.confrontantePorLado,
       deps.objetos, deps.plantaConfig, deps.glebas, deps.verticesVizinho,
       deps.verticesIgnorados, deps.nomeProjeto, deps.requerente, deps.transmitente,
-      deps.tipoAto, deps.partesAdicionais, deps.gradeAltimetrica,
+      deps.tipoAto, deps.tiposAtos, deps.partesAdicionais, deps.gradeAltimetrica,
     ]
   );
 
