@@ -75,4 +75,5 @@ export const Z_CLASSES = {
   MODAL_ADMIN: 'z-[3000]',
   MODAL_DIALOG: 'z-[5000]',
   CRITICAL_ALERT: 'z-[9999]',
+  TACTICAL_GLASS: 'backdrop-blur-md bg-slate-950/80 border border-slate-800/60 rounded-xl shadow-2xl',
 } as const;

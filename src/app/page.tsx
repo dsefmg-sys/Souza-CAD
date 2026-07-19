@@ -328,8 +328,8 @@ function IconeCota({ className }: { className?: string }) {
 function Atalho({ k, className }: { k: string; className?: string }) {
   if (!k) return null;
   return (
-    <span className={`pointer-events-none text-[8.5px] font-black tracking-tighter text-amber-500 shrink-0 select-none ml-0.5 ${className ?? ''}`}>
-      ({k.toUpperCase()})
+    <span className={`pointer-events-none text-[8.5px] font-mono font-bold tracking-wider uppercase px-1 py-0.5 rounded bg-slate-950/70 border border-slate-700/60 text-amber-300/90 shadow-sm shrink-0 select-none ml-auto ${className ?? ''}`}>
+      {k.toUpperCase()}
     </span>
   );
 }
@@ -7231,71 +7231,71 @@ export default function EditorPage() {
                         </span>
                         <div className="grid grid-cols-2 gap-1 [&>button]:h-7.5 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-0.5 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:truncate [&_span]:text-center">
                           <Button size="sm" variant={modo === 'linha' ? 'default' : 'secondary'} className={`relative ${modo === 'linha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('linha', true)} title={`Linha Reta (${obterAtalhoLateral('linha', 'F6')}): clique 2 pontos para criar uma linha simples. Botão direito cancela.`}>
-                            <PenTool className={modo === 'linha' ? 'text-white shrink-0' : 'text-amber-500 shrink-0'} /> <span className="truncate">Linha</span>
+                            <PenTool className={modo === 'linha' ? 'text-white shrink-0' : 'text-sky-400 shrink-0'} /> <span className="truncate">Linha</span>
                             <Atalho k={obterAtalhoLateral('linha', 'F6')} />
                           </Button>
                           <Button size="sm" variant={modo === 'polilinha' ? 'default' : 'secondary'} className={`relative ${modo === 'polilinha' ? COR_ATIVO : ''}`} onClick={() => alternarModo('polilinha', true)} title={`Polilinha (${obterAtalhoLateral('polilinha', 'F7')}): clique vários pontos. Clique com botão direito conclui e insere a polilinha.`}>
-                            <PenTool className={modo === 'polilinha' ? 'text-white shrink-0' : 'text-cyan-500 shrink-0'} /> <span className="truncate">Polilinha</span>
+                            <PenTool className={modo === 'polilinha' ? 'text-white shrink-0' : 'text-sky-400 shrink-0'} /> <span className="truncate">Polilinha</span>
                             <Atalho k={obterAtalhoLateral('polilinha', 'F7')} />
                           </Button>
                           <Button size="sm" variant={modo === 'tracejado' ? 'default' : 'secondary'} className={`relative ${modo === 'tracejado' ? COR_ATIVO : ''}`} onClick={() => alternarModo('tracejado', true)} title={`Tracejado / Servidão (${obterAtalhoLateral('tracejado', 'F8')}): clique vários pontos. Botão direito conclui o desenho.`}>
-                            <PenTool className={modo === 'tracejado' ? 'text-white shrink-0' : 'text-indigo-500 opacity-80 shrink-0'} /> <span className="truncate">Tracejado</span>
+                            <PenTool className={modo === 'tracejado' ? 'text-white shrink-0' : 'text-sky-400 opacity-90 shrink-0'} /> <span className="truncate">Tracejado</span>
                             <Atalho k={obterAtalhoLateral('tracejado', 'F8')} />
                           </Button>
 
                           <Button size="sm" variant={modo === 'texto' ? 'default' : 'secondary'} className={`relative ${modo === 'texto' ? COR_ATIVO : ''}`} title={`Inserir Texto (${obterAtalhoLateral('texto', 'F9')}): clique em qualquer posição para adicionar anotação ou rótulo.`} onClick={() => alternarModo('texto')}>
-                            <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-emerald-500 shrink-0'} /> <span className="truncate">Texto</span>
+                            <FileText className={modo === 'texto' ? 'text-white shrink-0' : 'text-amber-400 shrink-0'} /> <span className="truncate">Texto</span>
                             <Atalho k={obterAtalhoLateral('texto', 'F9')} />
                           </Button>
                           <Button size="sm" variant={modo === 'cota' ? 'default' : 'secondary'} className={`relative ${modo === 'cota' ? COR_ATIVO : ''}`} onClick={() => alternarModo('cota', true)} title={`Cota de Dimensão (${obterAtalhoLateral('cota', 'F10')}): clique dois pontos para medir e exibir a cota.`}>
-                            <IconeCota className={modo === 'cota' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Cota</span>
+                            <IconeCota className={modo === 'cota' ? 'text-white shrink-0' : 'text-amber-400 shrink-0'} /> <span className="truncate">Cota</span>
                             <Atalho k={obterAtalhoLateral('cota', 'F10')} />
                           </Button>
                           <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'secondary'} className={`relative ${modo === 'simbolo' ? COR_ATIVO : ''}`} onClick={() => { setModo(modo === 'simbolo' ? 'navegar' : 'simbolo'); }} title={`Símbolos Topográficos (${obterAtalhoLateral('simbolo', 'sb')}): selecione e clique no mapa para posicionar poste, árvore, casa...`}>
-                            <div className={modo === 'simbolo' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'}><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
+                            <div className={modo === 'simbolo' ? 'text-white shrink-0' : 'text-amber-400 shrink-0'}><svg viewBox="-14 -14 28 28" className="size-3.5" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></div>
                             <span className="truncate">Símbolos</span>
                             <Atalho k={obterAtalhoLateral('simbolo', 'sb')} />
                           </Button>
                           <Button size="sm" variant={modo === 'retangulo' ? 'default' : 'secondary'} className={`relative ${modo === 'retangulo' ? COR_ATIVO : ''}`} onClick={() => alternarModo('retangulo', true)} title={`Retângulo (${obterAtalhoLateral('retangulo', 'rt')}): clique em dois cantos opostos no mapa para desenhar a caixa.`}>
-                            <Square className={modo === 'retangulo' ? 'text-white shrink-0' : 'text-orange-500 shrink-0'} /> <span className="truncate">Retângulo</span>
+                            <Square className={modo === 'retangulo' ? 'text-white shrink-0' : 'text-sky-400 shrink-0'} /> <span className="truncate">Retângulo</span>
                             <Atalho k={obterAtalhoLateral('retangulo', 'rt')} />
                           </Button>
                           <Button size="sm" variant={modo === 'circulo' ? 'default' : 'secondary'} className={`relative ${modo === 'circulo' ? COR_ATIVO : ''}`} onClick={() => alternarModo('circulo', true)} title={`Círculo (${obterAtalhoLateral('circulo', 'cc')}): clique no centro e depois na borda para desenhar o círculo.`}>
-                            <Circle className={modo === 'circulo' ? 'text-white shrink-0' : 'text-amber-400 shrink-0'} /> <span className="truncate">Círculo</span>
+                            <Circle className={modo === 'circulo' ? 'text-white shrink-0' : 'text-sky-400 shrink-0'} /> <span className="truncate">Círculo</span>
                             <Atalho k={obterAtalhoLateral('circulo', 'cc')} />
                           </Button>
                           <Button size="sm" variant={modo === 'arco' ? 'default' : 'secondary'} className={`relative ${modo === 'arco' ? COR_ATIVO : ''}`} onClick={() => alternarModo('arco', true)} title={`Arco Curvo (${obterAtalhoLateral('arco', 'ac')}): clique 3 pontos (início, meio e fim) para traçar o arco.`}>
-                            <Spline className={modo === 'arco' ? 'text-white shrink-0' : 'text-teal-500 shrink-0'} /> <span className="truncate">Arco</span>
+                            <Spline className={modo === 'arco' ? 'text-white shrink-0' : 'text-sky-400 shrink-0'} /> <span className="truncate">Arco</span>
                             <Atalho k={obterAtalhoLateral('arco', 'ac')} />
                           </Button>
                           <Button size="sm" variant={modo === 'multi' ? 'default' : 'secondary'} className={`relative ${modo === 'multi' ? COR_ATIVO : ''}`} onClick={() => { alternarModo('multi'); }} title={`Seleção Múltipla (${obterAtalhoLateral('selecao_varios', 'sv')}): clique em elementos ou abra uma caixa de seleção para selecionar vários vértices/objetos de uma vez.`}>
-                            <span className="truncate text-[9px] font-bold">Sel. Vários</span>
+                            <span className="truncate text-[9px] font-bold text-fuchsia-400">Sel. Vários</span>
                             <Atalho k={obterAtalhoLateral('selecao_varios', 'sv')} />
                           </Button>
                           <Button size="sm" variant={modo === 'medir' ? 'default' : 'secondary'} className={`relative ${modo === 'medir' ? COR_ATIVO : ''}`} onClick={() => alternarModo('medir', true)} title={`Régua de Medição (${obterAtalhoLateral('medir', 'md')}): meça distâncias e azimutes entre pontos no mapa com alta precisão.`}>
-                            <Ruler className={modo === 'medir' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'} /> <span className="truncate">Medir</span>
+                            <Ruler className={modo === 'medir' ? 'text-white shrink-0' : 'text-amber-400 shrink-0'} /> <span className="truncate">Medir</span>
                             <Atalho k={obterAtalhoLateral('medir', 'md')} />
                           </Button>
                           <Button size="sm" variant="secondary" className="relative" onClick={() => setAltitudeModalAberta(true)} title="Gestão de altitudes dos vértices e ajuste global (+/- cm)">
-                            <Mountain className="text-indigo-500 shrink-0" /> <span className="truncate">Altitude</span>
+                            <Mountain className="text-amber-400 shrink-0" /> <span className="truncate">Altitude</span>
                             <Atalho k="AL" />
                           </Button>
                           {/* Geometria avançada de CAD — só no Completo (o Médio fica com o desenho do dia a dia) */}
                           {completo && (<>
                           <Button size="sm" variant={modo === 'paralela' ? 'default' : 'secondary'} className={`relative ${modo === 'paralela' ? COR_ATIVO : ''}`} onClick={() => alternarModo('paralela', true)} title={`Linha Paralela / Offset (${obterAtalhoLateral('paralela', 'pr')}): clique numa linha e informe a distância de afastamento.`}>
-                            <Waypoints className={modo === 'paralela' ? 'text-white shrink-0' : 'text-violet-500 shrink-0'} /> <span className="truncate">Paralela</span>
+                            <Waypoints className={modo === 'paralela' ? 'text-white shrink-0' : 'text-fuchsia-400 shrink-0'} /> <span className="truncate">Paralela</span>
                             <Atalho k={obterAtalhoLateral('paralela', 'pr')} />
                           </Button>
                           <Button size="sm" variant={modo === 'dividir' ? 'default' : 'secondary'} className={`relative ${modo === 'dividir' ? COR_ATIVO : ''}`} onClick={() => alternarModo('dividir')} title={`Dividir Divisa (${obterAtalhoLateral('dividir', 'dv')}): clique num segmento de divisa para dividi-lo em partes iguais.`}>
-                            <GitCommit className={modo === 'dividir' ? 'text-white shrink-0' : 'text-purple-500 shrink-0'} /> <span className="truncate">Dividir</span>
+                            <GitCommit className={modo === 'dividir' ? 'text-white shrink-0' : 'text-fuchsia-400 shrink-0'} /> <span className="truncate">Dividir</span>
                             <Atalho k={obterAtalhoLateral('dividir', 'dv')} />
                           </Button>
                           <Button size="sm" variant={modo === 'trim' ? 'default' : 'secondary'} className={`relative ${modo === 'trim' ? COR_ATIVO : ''}`} onClick={() => alternarModo('trim')} title={`Aparar / Trim (${obterAtalhoLateral('aparar', 'ap')}): corte pontas de polilinhas no limite de interseção.`}>
-                            <Scissors className={modo === 'trim' ? 'text-white shrink-0' : 'text-rose-500 shrink-0'} /> <span className="truncate">Aparar</span>
+                            <Scissors className={modo === 'trim' ? 'text-white shrink-0' : 'text-fuchsia-400 shrink-0'} /> <span className="truncate">Aparar</span>
                             <Atalho k={obterAtalhoLateral('aparar', 'ap')} />
                           </Button>
                           <Button size="sm" variant={modo === 'extend' ? 'default' : 'secondary'} className={`relative ${modo === 'extend' ? COR_ATIVO : ''}`} onClick={() => alternarModo('extend')} title={`Prolongar / Extend (${obterAtalhoLateral('prolongar', 'pg')}): estenda uma polilinha até atingir o limite selecionado.`}>
-                            <Expand className={modo === 'extend' ? 'text-white shrink-0' : 'text-sky-500 shrink-0'} /> <span className="truncate">Prolongar</span>
+                            <Expand className={modo === 'extend' ? 'text-white shrink-0' : 'text-fuchsia-400 shrink-0'} /> <span className="truncate">Prolongar</span>
                             <Atalho k={obterAtalhoLateral('prolongar', 'pg')} />
                           </Button>
                           </>)}
