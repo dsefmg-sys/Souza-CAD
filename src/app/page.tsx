@@ -6965,10 +6965,8 @@ export default function EditorPage() {
 
 
 
-        {/* Bolinha do perfil, à direita do cabeçalho: só a foto, sem o nome. Abre ao passar o mouse. */}
-        <div className="relative flex shrink-0 items-center border-l px-2 self-stretch"
-          onMouseEnter={() => setPerfilMenuAberto(true)}
-          onMouseLeave={() => setPerfilMenuAberto(false)}>
+        {/* Bolinha do perfil, à direita do cabeçalho: só a foto, sem o nome. Abre ao clicar. */}
+        <div className="relative flex shrink-0 items-center border-l px-2 self-stretch">
           <button type="button" onClick={() => setPerfilMenuAberto((v) => !v)} title="Sua conta"
             className="rounded-full transition-transform hover:scale-105">
             {user?.photoURL && !avatarQuebrado ? (
@@ -7013,9 +7011,40 @@ export default function EditorPage() {
                   <UserCheck className="size-4 text-emerald-500 shrink-0" /> <span className="whitespace-nowrap">Responsável Técnico ({rotulosProfissional(tecnico).conselho})</span>
                 </button>
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); window.open('/?landing=true', '_blank'); }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-500/10 active:scale-98 transition-all whitespace-nowrap">
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[11px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-500/10 active:scale-98 transition-all whitespace-nowrap">
                   <ExternalLink className="size-4 text-slate-500 dark:text-slate-400 shrink-0" /> <span className="whitespace-nowrap">Ir para o Site (Landing Page)</span>
                 </button>
+
+                {/* IMPORTAÇÃO & EXPORTAÇÃO CAD (DXF / KML) */}
+                <div className="grid grid-cols-2 gap-1.5 p-1.5 my-1 bg-slate-500/5 dark:bg-white/5 border border-white/5 rounded-xl select-none">
+                  <div className="flex h-8 items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 shadow-2xs">
+                    <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center gap-1">
+                      DXF <Atalho k="DX" />
+                    </span>
+                    <div className="flex items-center gap-0.5">
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" title="Exportar arquivo CAD (.dxf)" onClick={() => { setPerfilMenuAberto(false); exportarDxf(); }}>
+                        <Download className="size-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" disabled={processando} title="Importar arquivo CAD (.dxf)" onClick={() => { setPerfilMenuAberto(false); dxfRef.current?.click(); }}>
+                        <Upload className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex h-8 items-center justify-between rounded-lg border border-teal-500/30 bg-teal-500/10 px-2 shadow-2xs">
+                    <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 tracking-wider flex items-center gap-1">
+                      KML <Atalho k="KM" />
+                    </span>
+                    <div className="flex items-center gap-0.5">
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" title="Exportar Google Earth (.kml)" onClick={() => { setPerfilMenuAberto(false); exportarKML(vertices, imovel); }}>
+                        <Download className="size-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded-md text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" disabled={processando} title="Importar Google Earth (.kml)" onClick={() => { setPerfilMenuAberto(false); kmlRef.current?.click(); }}>
+                        <Upload className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
                 
                 {souMaster() && (
                   <div className="flex flex-col gap-1.5 border-t border-b border-slate-100 dark:border-zinc-800 py-2.5 px-3 my-1 bg-amber-500/5 rounded-xl">
@@ -7048,11 +7077,11 @@ export default function EditorPage() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button"
                         onClick={(e) => { e.stopPropagation(); setEscalaInterface((prev) => Math.max(0.85, Number((prev - 0.05).toFixed(2)))); }}
-                        className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all" title="Diminuir">-</button>
+                        className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs" title="Diminuir">-</button>
                       <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round(escalaInterface * 100)}%</span>
                       <button type="button"
                         onClick={(e) => { e.stopPropagation(); setEscalaInterface((prev) => Math.min(1.3, Number((prev + 0.05).toFixed(2)))); }}
-                        className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all" title="Aumentar">+</button>
+                        className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs" title="Aumentar">+</button>
                     </div>
                   </div>
  
@@ -7060,9 +7089,9 @@ export default function EditorPage() {
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
                     <span className="whitespace-nowrap">Rótulos e Nomes:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.5, Number(((c.escalaTextos ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">-</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.5, Number(((c.escalaTextos ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
                       <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaTextos ?? 1) * 100)}%</span>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, Number(((c.escalaTextos ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">+</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, Number(((c.escalaTextos ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">+</button>
                     </div>
                   </div>
  
@@ -7070,9 +7099,9 @@ export default function EditorPage() {
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
                     <span className="whitespace-nowrap">Símbolos e Vértices:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.max(0.5, Number(((c.escalaVertices ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">-</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.max(0.5, Number(((c.escalaVertices ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
                       <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaVertices ?? 1) * 100)}%</span>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.min(2.5, Number(((c.escalaVertices ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">+</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.min(2.5, Number(((c.escalaVertices ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">+</button>
                     </div>
                   </div>
  
@@ -7080,9 +7109,9 @@ export default function EditorPage() {
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
                     <span className="whitespace-nowrap">Tabelas e Quadros:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.max(0.5, Number(((c.escalaTabelas ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">-</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.max(0.5, Number(((c.escalaTabelas ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
                       <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaTabelas ?? 1) * 100)}%</span>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.min(2.5, Number(((c.escalaTabelas ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">+</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.min(2.5, Number(((c.escalaTabelas ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">+</button>
                     </div>
                   </div>
  
@@ -7090,9 +7119,9 @@ export default function EditorPage() {
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
                     <span className="whitespace-nowrap">Confrontantes:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.max(0.5, Number(((c.escalaConfront ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">-</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.max(0.5, Number(((c.escalaConfront ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
                       <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaConfront ?? 1) * 100)}%</span>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.min(2.5, Number(((c.escalaConfront ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">+</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.min(2.5, Number(((c.escalaConfront ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">+</button>
                     </div>
                   </div>
                 </div>
@@ -7605,36 +7634,7 @@ export default function EditorPage() {
 
 
 
-                        {/* DXF e KML lado a lado (no mesmo padrão de altura h-8 dos botões principais) */}
-                        <div className="grid grid-cols-2 gap-1.5 mt-2">
-                          <div className="flex h-8 items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 transition-all hover:border-emerald-500/50 shadow-2xs">
-                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center">
-                              DXF <Atalho k="DX" />
-                            </span>
-                            <div className="flex items-center gap-0.5">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" title="Exportar arquivo CAD (.dxf)" onClick={exportarDxf}>
-                                <Download className="size-3.5" />
-                              </Button>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" disabled={processando} title="Importar arquivo CAD (.dxf)" onClick={() => dxfRef.current?.click()}>
-                                <Upload className="size-3.5" />
-                              </Button>
-                            </div>
-                          </div>
 
-                          <div className="flex h-8 items-center justify-between rounded-lg border border-teal-500/30 bg-teal-500/10 px-2.5 transition-all hover:border-teal-500/50 shadow-2xs">
-                            <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 tracking-wider flex items-center">
-                              KML <Atalho k="KM" />
-                            </span>
-                            <div className="flex items-center gap-0.5">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" title="Exportar Google Earth (.kml)" onClick={() => exportarKML(vertices, imovel)}>
-                                <Download className="size-3.5" />
-                              </Button>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 rounded text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" disabled={processando} title="Importar Google Earth (.kml)" onClick={() => kmlRef.current?.click()}>
-                                <Upload className="size-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
 
                       </div>
                     )}
