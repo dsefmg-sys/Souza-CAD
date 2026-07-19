@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Receipt, FileText, Plus, Trash2, Wallet, Building2, TrendingUp, TrendingDown, Clock, BarChart3, CheckCircle2, Zap, FolderOpen } from 'lucide-react';
+import { Receipt, FileText, Plus, Trash2, Wallet, Building2, TrendingUp, TrendingDown, Clock, BarChart3, CheckCircle2, Zap, FolderOpen, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { escolher } from '@/lib/ui/dialogos';
+import { escolher, confirmar, perguntar } from '@/lib/ui/dialogos';
 import type { ImovelData, EscritorioData, TecnicoData, FinanceiroProjeto, LancamentoFinanceiro, Projeto } from '@/lib/topo/types';
 import { rotulosProfissional } from '@/lib/topo/profissional';
 import { saveAs } from 'file-saver';
@@ -209,9 +209,8 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* TAMANHO FIXO Garantido (h-[680px]) para não mudar de tamanho ao trocar de aba */}
-      <DialogContent className="w-[95vw] max-w-[1150px] h-[680px] max-h-[95vh] flex flex-col p-4 overflow-hidden rounded-xl border shadow-2xl">
-        <DialogHeader className="border-b pb-2.5 shrink-0 flex flex-row items-center justify-between">
+      <DialogContent className="w-[95vw] max-w-[1100px] h-[88vh] max-h-[780px] flex flex-col p-3.5 overflow-hidden rounded-xl border shadow-2xl">
+        <DialogHeader className="border-b pb-2 shrink-0 flex flex-row items-center justify-between">
           <DialogTitle className="flex items-center gap-2 text-base font-extrabold uppercase tracking-wide">
             <Wallet className="size-5 text-emerald-500" />
             Gestão do Projeto &amp; Financeiro
@@ -219,28 +218,28 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
         </DialogHeader>
 
         {/* NAVEGAÇÃO DE ABAS */}
-        <div className="flex gap-2 border-b py-2 shrink-0">
+        <div className="flex gap-2 border-b py-1.5 shrink-0">
           <button
             onClick={() => setAba('projeto')}
-            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wider transition-colors ${aba === 'projeto' ? 'bg-primary text-primary-foreground shadow-xs' : 'bg-muted/40 text-muted-foreground hover:bg-muted'}`}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-extrabold uppercase tracking-wider transition-colors ${aba === 'projeto' ? 'bg-primary text-primary-foreground shadow-xs' : 'bg-muted/40 text-muted-foreground hover:bg-muted'}`}
           >
             <BarChart3 className="size-3.5" /> 1. Este Projeto &amp; Emissão de Peças
           </button>
           <button
             onClick={() => setAba('empresa')}
-            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wider transition-colors ${aba === 'empresa' ? 'bg-primary text-primary-foreground shadow-xs' : 'bg-muted/40 text-muted-foreground hover:bg-muted'}`}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-extrabold uppercase tracking-wider transition-colors ${aba === 'empresa' ? 'bg-primary text-primary-foreground shadow-xs' : 'bg-muted/40 text-muted-foreground hover:bg-muted'}`}
           >
             <Building2 className="size-3.5" /> 2. Todos os Projetos &amp; Financeiro Geral
           </button>
         </div>
 
-        {/* CONTEÚDO SCROLLÁVEL INTERNO COM ALTURA FIXA */}
-        <div className="flex-1 overflow-y-auto pr-1 py-3 text-xs space-y-4">
+        {/* CONTEÚDO SCROLLÁVEL INTERNO */}
+        <div className="flex-1 overflow-y-auto pr-1 py-2 text-xs space-y-3">
           {aba === 'projeto' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               
               {/* COLUNA DA ESQUERDA: DADOS DO PROJETO & FINANCEIRO */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 
                 {/* 1. DADOS RESUMIDOS DO PROJETO */}
                 <section className="space-y-1.5">
@@ -272,81 +271,76 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
                   </div>
                 </section>
 
-                {/* 2. VALORES E LANÇAMENTO FINANCEIRO DO PROJETO */}
-                <section className="space-y-2.5 rounded-xl border bg-card p-3 shadow-xs">
-                  <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Wallet className="size-3.5 text-emerald-500" /> Lançamento Financeiro do Serviço
-                  </h3>
+                {/* 2. VALORES E LANÇAMENTO FINANCEIRO DO PROJETO (DESPOLUÍDO E COMPACTO) */}
+                <section className="space-y-2 rounded-xl border bg-card p-2.5 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Wallet className="size-3.5 text-emerald-500" /> Lançamento Financeiro do Serviço
+                    </h3>
+                    <div className="flex items-center gap-2 text-[10px] font-bold">
+                      <span className="text-muted-foreground">A Receber: <strong className={aReceber > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600'}>{moedaBR(aReceber)}</strong></span>
+                      <span className="text-muted-foreground">Lucro Est.: <strong className={lucro >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600'}>{moedaBR(lucro)}</strong></span>
+                    </div>
+                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold">Valor Cobrado do Cliente (R$)</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-0.5">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-[9.5px] font-bold text-foreground">Valor Cobrado</Label>
+                        {precos.some((p) => p.valor > 0) && (
+                          <select
+                            className="text-[9px] bg-transparent border-0 font-semibold text-primary cursor-pointer p-0 focus:ring-0"
+                            value=""
+                            onChange={(e) => {
+                              const p = precos.find((x) => x.id === e.target.value);
+                              if (p) patch({ valorCobrado: p.valor });
+                            }}
+                          >
+                            <option value="">Tabela…</option>
+                            {precos.filter((p) => p.valor > 0).map((p) => (
+                              <option key={p.id} value={p.id}>{p.servico} ({moedaBR(p.valor)})</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                       <Input
                         type="number"
-                        className="h-8 font-bold bg-background text-foreground text-xs"
+                        className="h-7.5 font-bold bg-background text-foreground text-xs"
                         value={financeiro.valorCobrado ?? ''}
                         placeholder="0,00"
                         onChange={(e) => patch({ valorCobrado: e.target.value === '' ? undefined : Number(e.target.value) })}
                       />
                     </div>
-                    {precos.some((p) => p.valor > 0) && (
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold">Tabela de Preços</Label>
-                        <select
-                          className="h-8 w-full rounded-md border bg-background px-2 text-xs font-medium text-foreground"
-                          value=""
-                          onChange={(e) => {
-                            const p = precos.find((x) => x.id === e.target.value);
-                            if (p) patch({ valorCobrado: p.valor });
-                          }}
-                        >
-                          <option value="">Puxar da Tabela…</option>
-                          {precos.filter((p) => p.valor > 0).map((p) => (
-                            <option key={p.id} value={p.id}>{p.servico} — {moedaBR(p.valor)}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/20 p-2 border">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Valor Recebido (R$)</Label>
+                    <div className="space-y-0.5">
+                      <Label className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400">Valor Recebido</Label>
                       <Input
                         type="number"
                         placeholder="0,00"
                         value={recebido || ''}
                         onChange={(e) => setRecebidoTotal(e.target.value === '' ? 0 : Number(e.target.value))}
-                        className="h-8 bg-background text-emerald-600 font-bold text-xs"
+                        className="h-7.5 bg-background text-emerald-600 font-bold text-xs"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold text-red-600 dark:text-red-400">Custo com o Serviço (R$)</Label>
+
+                    <div className="space-y-0.5">
+                      <Label className="text-[9.5px] font-bold text-red-600 dark:text-red-400">Custos / Despesas</Label>
                       <Input
                         type="number"
                         placeholder="0,00"
                         value={gasto || ''}
                         onChange={(e) => setCustoTotal(e.target.value === '' ? 0 : Number(e.target.value))}
-                        className="h-8 bg-background text-red-600 font-bold text-xs"
+                        className="h-7.5 bg-background text-red-600 font-bold text-xs"
                       />
                     </div>
                   </div>
 
-                  {/* Cartões de Indicadores */}
-                  <div className="grid grid-cols-3 gap-1.5 pt-1">
-                    <Cartao titulo="Recebido" valor={recebido} cor="text-emerald-600 dark:text-emerald-400" icone={<TrendingUp className="size-3.5" />} />
-                    <Cartao titulo="Custos" valor={gasto} cor="text-red-600 dark:text-red-400" icone={<TrendingDown className="size-3.5" />} />
-                    <Cartao titulo="A Receber" valor={aReceber} cor={aReceber > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'} icone={<Clock className="size-3.5" />} />
-                  </div>
-
-                  <div className="space-y-1 pt-1">
-                    <Label className="text-[10px] font-bold text-muted-foreground">Observações Financeiras</Label>
-                    <textarea
-                      className="w-full rounded-md border bg-background p-2 text-xs font-medium focus:ring-1 focus:ring-primary focus:outline-none"
-                      rows={2}
+                  <div className="pt-0.5">
+                    <Input
+                      className="h-7 bg-background text-xs font-medium"
                       value={financeiro.observacoes ?? ''}
                       onChange={(e) => patch({ observacoes: e.target.value })}
-                      placeholder="Histórico de pagamentos, parcelas, dados bancários..."
+                      placeholder="Observações financeiras, forma de pagamento, parcelamento..."
                     />
                   </div>
                 </section>
@@ -489,10 +483,11 @@ export default function GestaoProjetoModal({ open, onOpenChange, imovel, finance
             </div>
           )}
 
-          {/* ABA 2: LISTA DE TODOS OS PROJETOS DA EMPRESA COM EDIÇÃO DE CUSTO, RECEBIDO E STATUS DE PAGAMENTO */}
+          {/* ABA 2: LISTA DE TODOS OS PROJETOS COM AÇÕES DE ABRIR, EDITAR E EXCLUIR */}
           {aba === 'empresa' && (
             <EmpresaResumo
               projetos={projetos}
+              setProjetos={setProjetos}
               isAdmin={isAdmin}
               onAtualizarProjeto={atualizarFinanceiroQualquerProjeto}
               onAbrirProjeto={onAbrirProjeto}
@@ -515,26 +510,47 @@ function resumoFin(f?: FinanceiroProjeto) {
 
 function EmpresaResumo({
   projetos,
+  setProjetos,
   isAdmin,
   onAtualizarProjeto,
   onAbrirProjeto,
   onOpenChange,
 }: {
   projetos: Projeto[] | null;
+  setProjetos: React.Dispatch<React.SetStateAction<Projeto[] | null>>;
   isAdmin: boolean;
   onAtualizarProjeto: (p: Projeto, patch: { valorCobrado?: number; recebido?: number; gasto?: number }) => Promise<void>;
   onAbrirProjeto?: (id: string) => void;
   onOpenChange: (o: boolean) => void;
 }) {
-  if (!isAdmin) {
-    return (
-      <div className="rounded-lg border border-zinc-500/20 bg-zinc-500/5 p-6 text-center text-muted-foreground">
-        A visão geral financeira consolidada é restrita aos administradores da empresa.
-      </div>
-    );
-  }
   if (projetos === null) return <div className="p-6 text-center text-muted-foreground">Carregando projetos…</div>;
-  if (projetos.length === 0) return <div className="p-6 text-center text-muted-foreground">Nenhum projeto salvo ainda.</div>;
+  if (projetos.length === 0) return <div className="p-6 text-center text-muted-foreground font-semibold">Nenhum projeto salvo ainda.</div>;
+
+  const handleExcluir = async (p: Projeto) => {
+    if (await confirmar({
+      titulo: 'Excluir Projeto',
+      mensagem: `Tem certeza que deseja excluir o projeto "${p.nome || p.imovel?.denominacao || 'Sem nome'}"? Esta ação não pode ser desfeita.`,
+      okLabel: 'Sim, Excluir',
+    })) {
+      const { excluirProjeto } = await import('@/lib/store/projects');
+      await excluirProjeto(p.id);
+      setProjetos((prev) => (prev ? prev.filter((pr) => pr.id !== p.id) : []));
+    }
+  };
+
+  const handleEditarNome = async (p: Projeto) => {
+    const novo = await perguntar({
+      titulo: 'Editar Nome do Projeto',
+      mensagem: 'Informe o novo nome para o projeto:',
+      valorInicial: p.nome || p.imovel?.denominacao || '',
+    });
+    if (novo && novo.trim()) {
+      const novoProj = { ...p, nome: novo.trim() };
+      const { salvarProjeto } = await import('@/lib/store/projects');
+      await salvarProjeto(novoProj as any);
+      setProjetos((prev) => (prev ? prev.map((pr) => (pr.id === p.id ? (novoProj as any) : pr)) : []));
+    }
+  };
 
   // Calcular estatísticas globais consolidadas
   const totalGlobal = projetos.reduce((s, p) => {
@@ -549,14 +565,14 @@ function EmpresaResumo({
   }, { cobrado: 0, recebido: 0, gasto: 0, aReceber: 0, saldo: 0 });
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Visão Geral &amp; Lançamento de Custos / Pagamentos por Projeto</h3>
-        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase">Administração da Empresa</span>
+        <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Todos os Projetos Salvos ({projetos.length})</h3>
+        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase">Gestão Unificada</span>
       </div>
 
       {/* CARTÕES DE RESUMO GLOBAL */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-muted/10 p-2.5 rounded-xl border">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-muted/10 p-2 rounded-xl border">
         <Cartao titulo="Total Cobrado" valor={totalGlobal.cobrado} cor="text-zinc-700 dark:text-zinc-300" icone={<BarChart3 className="size-3.5" />} />
         <Cartao titulo="Total Recebido" valor={totalGlobal.recebido} cor="text-emerald-600 dark:text-emerald-400" icone={<TrendingUp className="size-3.5" />} />
         <Cartao titulo="Total Gastos/Custos" valor={totalGlobal.gasto} cor="text-red-600 dark:text-red-400" icone={<TrendingDown className="size-3.5" />} />
@@ -573,8 +589,8 @@ function EmpresaResumo({
               <th className="p-2 text-center w-28">Custos do Serviço</th>
               <th className="p-2 text-center w-28">Valor Recebido</th>
               <th className="p-2 text-right w-24">A Receber</th>
-              <th className="p-2 text-center w-28">Status</th>
-              <th className="p-2 text-center w-20">Ação</th>
+              <th className="p-2 text-center w-24">Status</th>
+              <th className="p-2 text-center w-28">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -590,7 +606,7 @@ function EmpresaResumo({
 
               return (
                 <tr key={p.id} className="hover:bg-muted/20 transition-colors">
-                  <td className="p-2.5 min-w-0">
+                  <td className="p-2 min-w-0">
                     <div className="font-bold text-foreground truncate">{p.nome || p.imovel?.denominacao || 'Projeto sem nome'}</div>
                     <div className="text-[10px] text-muted-foreground truncate">{p.imovel?.proprietario || 'Proprietário não informado'} • {p.imovel?.municipio || 'UF'}</div>
                   </td>
@@ -630,39 +646,59 @@ function EmpresaResumo({
                       className="h-7 w-24 rounded border bg-background text-center font-bold text-emerald-600 text-xs focus:ring-1 focus:ring-primary"
                     />
                   </td>
-                  <td className={`p-2.5 text-right font-mono font-bold ${r.aReceber > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                  <td className={`p-2 text-right font-mono font-bold ${r.aReceber > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
                     {moedaBR(r.aReceber)}
                   </td>
                   <td className="p-2 text-center">
                     {st === 'pago' ? (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-1 text-[9px] font-black text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 uppercase">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 uppercase">
                         <CheckCircle2 className="size-3 text-emerald-500" /> Pago
                       </span>
                     ) : st === 'parcial' ? (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-1 text-[9px] font-black text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[9px] font-black text-amber-600 dark:text-amber-400 border border-amber-500/30 uppercase">
                         <Zap className="size-3 text-amber-500" /> Parcial
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-1 text-[9px] font-black text-red-600 dark:text-red-400 border border-red-500/30 uppercase">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-0.5 text-[9px] font-black text-red-600 dark:text-red-400 border border-red-500/30 uppercase">
                         <Clock className="size-3 text-red-500" /> Pendente
                       </span>
                     )}
                   </td>
                   <td className="p-2 text-center">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[10px] gap-1 font-bold border-primary/30 text-primary hover:bg-primary/10"
-                      onClick={() => {
-                        if (onAbrirProjeto) {
-                          onOpenChange(false);
-                          onAbrirProjeto(p.id);
-                        }
-                      }}
-                      title="Abrir este projeto no editor"
-                    >
-                      <FolderOpen className="size-3" /> Abrir
-                    </Button>
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-[10px] gap-1 font-bold border-primary/30 text-primary hover:bg-primary/10"
+                        onClick={() => {
+                          if (onAbrirProjeto) {
+                            onOpenChange(false);
+                            onAbrirProjeto(p.id);
+                          }
+                        }}
+                        title="Abrir este projeto no editor"
+                      >
+                        <FolderOpen className="size-3" /> Abrir
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                        onClick={() => handleEditarNome(p)}
+                        title="Renomear / Editar nome do projeto"
+                      >
+                        <Pencil className="size-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                        onClick={() => handleExcluir(p)}
+                        title="Excluir projeto"
+                      >
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               );

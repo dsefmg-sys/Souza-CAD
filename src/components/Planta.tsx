@@ -240,7 +240,7 @@ function Ted(props: {
     <g id={id} style={ed ? { cursor: 'move' } : undefined}
        onClick={ed ? (e) => { e.stopPropagation(); onSelect?.(id); } : undefined}
        onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id, conteudo); } : undefined}
-       onContextMenu={ed ? (e) => { e.preventDefault(); e.stopPropagation(); onMenu?.(id, conteudo, e.clientX, e.clientY); } : undefined}
+       onContextMenu={undefined}
        onPointerDown={ed ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}>
       {ov?.fundoBranco && (
         <rect
@@ -1294,14 +1294,8 @@ export default function Planta({
         style={{ display: 'block', background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif', cursor: editavel ? (modo === 'navegar' ? 'move' : CURSOR_CROSSHAIR) : 'default', touchAction: editavel ? 'none' : undefined }}
         onPointerDown={editavel ? plantaDown : undefined} onPointerMove={editavel ? plantaMove : undefined} onPointerUp={editavel ? plantaUp : undefined}
         onContextMenu={(e) => {
-          const target = e.target as SVGElement;
-          const isBg = target === svgRef.current || target.tagName === 'svg' || 
-            (target.tagName === 'rect' && target.getAttribute('x') === '0' && target.getAttribute('y') === '0') ||
-            (target.tagName === 'rect' && target.getAttribute('fill') === 'transparent');
-          if (isBg) {
-            e.preventDefault();
-            onContextMenuVazio?.();
-          }
+          e.preventDefault();
+          onContextMenuVazio?.();
         }}
         onDoubleClick={(e) => {
           const target = e.target as SVGElement;
@@ -1778,12 +1772,7 @@ export default function Planta({
             onSelecObjeto?.(o.id);
           }
         };
-        // Clique direito num objeto abre o mesmo menu de edição do mapa (aumentar, diminuir,
-        // cor, espessura, apagar…). Só quando a planta é editável. O texto já tem o seu via <Ted>.
-        const ctx = (editavel && onContextMenuObjeto && o.curvaNivel == null) ? {
-          style: { cursor: 'context-menu' as const },
-          onContextMenu: (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); onSelecObjeto?.(o.id); onContextMenuObjeto(o.id, o.tipo, e.clientX, e.clientY); },
-        } : {};
+        const ctx = {};
         if (o.tipo === 'simbolo' && sp[0]) {
           const tam = o.tamanho ?? 30;
           const esc = (tam / 20).toFixed(2);
@@ -2029,7 +2018,7 @@ export default function Planta({
           <g key={i}
             style={editavel ? { cursor: 'move' } : undefined}
             onDoubleClick={editavel ? (e) => { e.stopPropagation(); onEditarConfrontante?.(c.id); onDblClickObjeto?.('planta:confrontantes'); } : undefined}
-            onContextMenu={editavel && onConfrontanteMenu ? (e) => { e.preventDefault(); e.stopPropagation(); onConfrontanteMenu(c.id, c.nome, e.clientX, e.clientY); } : undefined}
+            onContextMenu={undefined}
             onPointerDown={editavel ? (e) => {
               e.stopPropagation();
               const u = svgPonto(e); if (!u) return;

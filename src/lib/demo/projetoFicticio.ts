@@ -87,23 +87,24 @@ export interface ProjetoFicticio {
   hemisferio: 'N' | 'S';
 }
 
-export function gerarProjetoFicticio(opts?: { grande?: boolean }): ProjetoFicticio {
-  const grande = opts?.grande ?? false;
+export function gerarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: number }): ProjetoFicticio {
+  const mult = opts?.multiplicador && opts.multiplicador > 0 ? opts.multiplicador : (opts?.grande ? 1 : 0);
+  const grande = opts?.grande || mult > 0;
 
   // Variantes geométricas aleatórias: escala, rotação e translação
   const offsetLeste = Math.floor((Math.random() - 0.5) * 4000);
   const offsetNorte = Math.floor((Math.random() - 0.5) * 4000);
-  const escala = grande ? (1.8 + Math.random() * 1.2) : (0.75 + Math.random() * 0.55);
+  const escala = grande ? (1.5 + Math.sqrt(mult) * 0.8) : (0.75 + Math.random() * 0.55);
   const angulo = Math.random() * 2 * Math.PI; // rotaciona a figura
 
   const cxOrig = PONTOS_BASE.reduce((s, p) => s + p.leste, 0) / PONTOS_BASE.length;
   const cyOrig = PONTOS_BASE.reduce((s, p) => s + p.norte, 0) / PONTOS_BASE.length;
 
-  // Se grande, gera polígono com muitos vértices (80–120) simulando um imóvel irregular extenso
+  // Se grande ou multiplicador > 0, gera polígono com número ajustável de vértices (ex: 80 a 10.000)
   let pontosFinais: typeof PONTOS_BASE;
   if (grande) {
-    const numVertices = 80 + Math.floor(Math.random() * 41); // 80 a 120
-    const raio = 350 + Math.random() * 200; // raio base em metros
+    const numVertices = Math.max(80, Math.min(10000, Math.floor(80 * (mult || 1) + Math.random() * 20)));
+    const raio = (350 + Math.random() * 200) * Math.sqrt(Math.max(1, mult)); // raio base em metros ajustado
     pontosFinais = Array.from({ length: numVertices }, (_, i) => {
       const theta = (2 * Math.PI * i) / numVertices;
       const r = raio * (0.7 + Math.random() * 0.6); // variação de raio para irregularidade

@@ -5991,7 +5991,7 @@ export default function EditorPage() {
   }
 
   // Carrega um projeto completo FICTÍCIO (demonstração). As peças saem marcadas como dados fictícios.
-  async function carregarProjetoFicticio(opts?: { grande?: boolean }) {
+  async function carregarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: number }) {
     if (temConteudoTrabalho() && !(await confirmar({ titulo: 'Projeto de demonstração', mensagem: 'Carregar o projeto fictício de demonstração? O trabalho atual não salvo será descartado.', okLabel: 'Carregar demonstração' }))) return;
     const f = gerarProjetoFicticio(opts);
     const gleba: Gleba = { ...novaGlebaVazia(1), denominacao: f.imovel.denominacao, vertices: f.vertices, confrontantes: f.confrontantes, confrontantePorLado: f.confrontantePorLado };
@@ -7074,12 +7074,19 @@ export default function EditorPage() {
                           <Mountain className="text-indigo-500" /> <span>Altitude</span>
                           <Atalho k="AL" />
                         </Button>
-                        <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="w-full">
-                          <Button size="sm" variant="secondary" className="relative w-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" title="Acessar o SIGEF (INCRA) para certificação eletrônica do imóvel">
-                            <ExternalLink className="size-3.5 text-emerald-500" /> <span>SIGEF</span>
-                            <Atalho k="SG" />
-                          </Button>
-                        </a>
+                        <div className="grid grid-cols-2 gap-1 col-span-2">
+                          <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="w-full">
+                            <Button size="sm" variant="secondary" className="relative w-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 gap-1" title="Acessar o SIGEF (INCRA) para certificação eletrônica do imóvel">
+                              <ExternalLink className="size-3.5 text-emerald-500" /> <span>SIGEF</span>
+                              <Atalho k="SG" />
+                            </Button>
+                          </a>
+                          <a href={tecnico?.conselho === 'CREA' ? 'https://www.confea.org.br/' : 'https://sincet.haia.com.br/app/'} target="_blank" rel="noopener noreferrer" className="w-full">
+                            <Button size="sm" variant="secondary" className="relative w-full text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 gap-1" title={`Emitir ${rotulosProfissional(tecnico).termo} oficial (${rotulosProfissional(tecnico).conselho})`}>
+                              <ExternalLink className="size-3.5 text-blue-500" /> <span>{rotulosProfissional(tecnico).termo === 'ART' ? 'Emitir ART' : 'Emitir TRT'}</span>
+                            </Button>
+                          </a>
+                        </div>
                       </div>
                       {glebas.length > 1 && (
                         <div className="flex flex-wrap gap-1 items-center justify-between border-t pt-1.5 mt-0.5">
@@ -7468,30 +7475,6 @@ export default function EditorPage() {
                                 </div>
                               )}
 
-                              {/* Escala da Planta (só no modo Planta) */}
-                              {vista === 'planta' && (
-                                <div className="flex flex-col gap-1">
-                                  <div className="flex items-center justify-between gap-1 rounded-md border border-zinc-300 dark:border-zinc-800 bg-zinc-100 dark:bg-black overflow-hidden h-7 px-0.5" onDoubleClick={() => setAba('planta')}>
-                                    <button type="button"
-                                      className="h-6 w-6 rounded-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-black dark:hover:text-white font-bold transition-colors text-base flex items-center justify-center"
-                                      title="Reduzir escala" onClick={() => alterarEscala(250)}>-</button>
-                                    <button type="button"
-                                      className={`flex-1 h-6 rounded-sm font-black transition-all text-[9px] tracking-wider flex items-center justify-center gap-1 uppercase hover:bg-zinc-200 dark:hover:bg-zinc-900 ${
-                                        !plantaConfig.escalaManual
-                                          ? 'text-sky-600 dark:text-sky-400 font-extrabold'
-                                          : 'text-zinc-900 dark:text-white font-extrabold'
-                                      }`}
-                                      title="Escala da Planta (clique para Automática)"
-                                      onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>
-                                      ESCALA{!plantaConfig.escalaManual ? ' (AUTO)' : ` 1:${obterEscalaEfetiva()}`}
-                                    </button>
-                                    <button type="button"
-                                      className="h-6 w-6 rounded-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-900 hover:text-black dark:hover:text-white font-bold transition-colors text-base flex items-center justify-center"
-                                      title="Aumentar escala" onClick={() => alterarEscala(-250)}>+</button>
-                                  </div>
-                                </div>
-                              )}
-
                             </div>
                           </div>
                         )}
@@ -7693,14 +7676,20 @@ export default function EditorPage() {
                         </div>
                       </Button>
                     ))}
-                    {/* Demo: clique normal = projeto padrão, segurar = projeto GRANDE */}
+                    {/* Demo: clique normal = projeto padrão, segurar = projeto GRANDE com complexidade configurável */}
                     <Button size="sm" variant="outline"
                       className={`h-10 min-w-0 flex-row gap-1.5 overflow-hidden px-2 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:text-amber-600 dark:[&_svg]:text-amber-400 [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
-                      title="Clique = demo normal · Segure = demo GRANDE (80+ vértices para teste de performance)"
+                      title="Clique = demo normal · Segure = demo GRANDE (pergunta multiplicador de complexidade p/ teste de performance)"
                       onPointerDown={(e) => {
-                        const timer = window.setTimeout(() => {
+                        const timer = window.setTimeout(async () => {
                           (e.target as HTMLElement).dataset.longPress = '1';
-                          carregarProjetoFicticio({ grande: true });
+                          const resp = await perguntar({
+                            titulo: 'Demonstração de Alta Performance',
+                            mensagem: 'Informe o fator multiplicador de complexidade do imóvel (ex: 1 = ~80 vértices, 5 = ~400 vértices, 10 = ~800 vértices, 50 = ~4.000 vértices, 100 = ~8.000 vértices):',
+                            valorInicial: '10',
+                          });
+                          const mult = resp && !isNaN(Number(resp)) ? Math.max(1, Math.min(100, Number(resp))) : 1;
+                          carregarProjetoFicticio({ grande: true, multiplicador: mult });
                         }, 800);
                         (e.target as HTMLElement).dataset.longTimer = String(timer);
                       }}
@@ -8431,6 +8420,15 @@ export default function EditorPage() {
                       Situação
                     </button>
                   )}
+
+                  {/* Escala da Planta na Barra Flutuante */}
+                  <div className="flex items-center gap-1 rounded-full border border-border bg-background/95 h-7 px-1 text-[10px] font-extrabold shrink-0 shadow-2xs">
+                    <button type="button" className="size-5 rounded-full hover:bg-muted font-bold flex items-center justify-center text-xs text-foreground transition-colors" title="Reduzir escala" onClick={() => alterarEscala(250)}>-</button>
+                    <button type="button" className="px-1 text-[9.5px] uppercase font-bold text-sky-600 dark:text-sky-400 hover:underline" title="Escala da Planta (clique para Automática)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>
+                      ESCALA{!plantaConfig.escalaManual ? ' (AUTO)' : ` 1:${obterEscalaEfetiva()}`}
+                    </button>
+                    <button type="button" className="size-5 rounded-full hover:bg-muted font-bold flex items-center justify-center text-xs text-foreground transition-colors" title="Aumentar escala" onClick={() => alterarEscala(-250)}>+</button>
+                  </div>
 
                   {/* Tema da prancha */}
                   <button type="button" onClick={() => setPlantaDark((v) => !v)}
