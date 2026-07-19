@@ -4887,7 +4887,11 @@ export default function EditorPage() {
       let countDiff = 0;
       for (const v of activeVertices) {
         if (v.elevacao && Math.abs(v.elevacao) > 0.001 && v.tipo !== 'V') {
-          const onlineZ = verticesOnlineElev[`${modeloElevacao}:${v.id}`] ?? verticesOnlineElev[v.id];
+          const latLonKey = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+          const onlineZ = verticesOnlineElev[`${modeloElevacao}:${v.id}`] ??
+                          verticesOnlineElev[v.id] ??
+                          verticesOnlineElev[`${modeloElevacao}:${latLonKey}`] ??
+                          verticesOnlineElev[latLonKey];
           if (onlineZ && Math.abs(onlineZ) > 0.001) {
             sumDiff += (v.elevacao - onlineZ);
             countDiff++;
@@ -4910,7 +4914,11 @@ export default function EditorPage() {
             const hasRTK = v.elevacao && Math.abs(v.elevacao) > 0.001;
             let z = v.elevacao;
             if (desconsiderarVerticesLevantados || !hasRTK) {
-              const onlineZ = verticesOnlineElev[`${modeloElevacao}:${v.id}`] ?? verticesOnlineElev[v.id];
+              const latLonKey = `${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
+              const onlineZ = verticesOnlineElev[`${modeloElevacao}:${v.id}`] ??
+                              verticesOnlineElev[v.id] ??
+                              verticesOnlineElev[`${modeloElevacao}:${latLonKey}`] ??
+                              verticesOnlineElev[latLonKey];
               z = (onlineZ && Math.abs(onlineZ) > 0.001) ? (onlineZ + avgOffset) : v.elevacao;
             }
             return { x: v.leste, y: v.norte, z };
@@ -5959,9 +5967,9 @@ export default function EditorPage() {
   }
 
   // Carrega um projeto completo FICTÍCIO (demonstração). As peças saem marcadas como dados fictícios.
-  async function carregarProjetoFicticio() {
+  async function carregarProjetoFicticio(opts?: { grande?: boolean }) {
     if (temConteudoTrabalho() && !(await confirmar({ titulo: 'Projeto de demonstração', mensagem: 'Carregar o projeto fictício de demonstração? O trabalho atual não salvo será descartado.', okLabel: 'Carregar demonstração' }))) return;
-    const f = gerarProjetoFicticio();
+    const f = gerarProjetoFicticio(opts);
     const gleba: Gleba = { ...novaGlebaVazia(1), denominacao: f.imovel.denominacao, vertices: f.vertices, confrontantes: f.confrontantes, confrontantePorLado: f.confrontantePorLado };
     setProjetoId(null);
     setNomeProjeto(f.nome); setNomeProjetoManual(true);
@@ -5975,7 +5983,7 @@ export default function EditorPage() {
     setSigefStatus('idle'); setBaixou({}); setSalvoOk(false);
     setGlebas([gleba]);
     carregarGleba(gleba);
-    aviso('Projeto fictício carregado. Use para demonstração — todas as peças saem marcadas como DADOS FICTÍCIOS.');
+    aviso(`Projeto fictício${opts?.grande ? ' GRANDE (' + f.vertices.length + ' vértices)' : ''} carregado. Use para demonstração — todas as peças saem marcadas como DADOS FICTÍCIOS.`);
   }
 
   async function converterPolilinhaEmPerimetro() {
@@ -7650,7 +7658,6 @@ export default function EditorPage() {
                       ['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-4" />, () => setCalcAberta(true), 'text-indigo-600 dark:text-indigo-400', 'CC'],
                       ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')), 'text-slate-500', 'TM'],
                       ['Planos', 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400', 'PL'],
-                      ['Demo', 'Carregar um projeto fictício completo para demonstração', <FlaskConical key="i" className="size-4" />, () => carregarProjetoFicticio(), 'text-amber-600 dark:text-amber-400', 'DM'],
                     ] as [string, string, React.ReactNode, () => void, string, string][]).map(([rotuloBtn, dica, icone, acao, cor, atalhoKey]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline"
                         className={`h-10 min-w-0 flex-row gap-1.5 overflow-hidden px-2 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:${cor} [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
@@ -7662,6 +7669,41 @@ export default function EditorPage() {
                         </div>
                       </Button>
                     ))}
+                    {/* Demo: clique normal = projeto padrão, segurar = projeto GRANDE */}
+                    <Button size="sm" variant="outline"
+                      className={`h-10 min-w-0 flex-row gap-1.5 overflow-hidden px-2 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:text-amber-600 dark:[&_svg]:text-amber-400 [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
+                      title="Clique = demo normal · Segure = demo GRANDE (80+ vértices para teste de performance)"
+                      onPointerDown={(e) => {
+                        const timer = window.setTimeout(() => {
+                          (e.target as HTMLElement).dataset.longPress = '1';
+                          carregarProjetoFicticio({ grande: true });
+                        }, 800);
+                        (e.target as HTMLElement).dataset.longTimer = String(timer);
+                      }}
+                      onPointerUp={(e) => {
+                        const el = e.target as HTMLElement;
+                        const timer = Number(el.dataset.longTimer || '0');
+                        if (timer) window.clearTimeout(timer);
+                        if (el.dataset.longPress === '1') {
+                          el.dataset.longPress = '';
+                          return;
+                        }
+                        el.dataset.longPress = '';
+                        carregarProjetoFicticio();
+                      }}
+                      onPointerLeave={(e) => {
+                        const el = e.target as HTMLElement;
+                        const timer = Number(el.dataset.longTimer || '0');
+                        if (timer) window.clearTimeout(timer);
+                        el.dataset.longPress = '';
+                      }}
+                    >
+                      <span className="text-amber-600 dark:text-amber-400"><FlaskConical className="size-4" /></span>
+                      <div className={`flex items-center gap-0.5 min-w-0 truncate ${telaEstreita ? 'hidden' : ''}`}>
+                        <span className="truncate text-center text-[10.5px] font-semibold leading-none">Demo</span>
+                        <Atalho k="DM" />
+                      </div>
+                    </Button>
                   </div>
                 </div>
                 {!telaEstreita && toolWEfetivo > 0 && (

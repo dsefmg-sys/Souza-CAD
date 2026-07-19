@@ -87,17 +87,37 @@ export interface ProjetoFicticio {
   hemisferio: 'N' | 'S';
 }
 
-export function gerarProjetoFicticio(): ProjetoFicticio {
+export function gerarProjetoFicticio(opts?: { grande?: boolean }): ProjetoFicticio {
+  const grande = opts?.grande ?? false;
+
   // Variantes geométricas aleatórias: escala, rotação e translação
   const offsetLeste = Math.floor((Math.random() - 0.5) * 4000);
   const offsetNorte = Math.floor((Math.random() - 0.5) * 4000);
-  const escala = 0.75 + Math.random() * 0.55; // varia tamanho da área
+  const escala = grande ? (1.8 + Math.random() * 1.2) : (0.75 + Math.random() * 0.55);
   const angulo = Math.random() * 2 * Math.PI; // rotaciona a figura
 
   const cxOrig = PONTOS_BASE.reduce((s, p) => s + p.leste, 0) / PONTOS_BASE.length;
   const cyOrig = PONTOS_BASE.reduce((s, p) => s + p.norte, 0) / PONTOS_BASE.length;
 
-  const raw: RawPoint[] = PONTOS_BASE.map((p, i) => {
+  // Se grande, gera polígono com muitos vértices (80–120) simulando um imóvel irregular extenso
+  let pontosFinais: typeof PONTOS_BASE;
+  if (grande) {
+    const numVertices = 80 + Math.floor(Math.random() * 41); // 80 a 120
+    const raio = 350 + Math.random() * 200; // raio base em metros
+    pontosFinais = Array.from({ length: numVertices }, (_, i) => {
+      const theta = (2 * Math.PI * i) / numVertices;
+      const r = raio * (0.7 + Math.random() * 0.6); // variação de raio para irregularidade
+      const leste = Math.round(cxOrig + r * Math.cos(theta));
+      const norte = Math.round(cyOrig + r * Math.sin(theta));
+      const codigos = ['CERCA', 'MATA', 'ESTRADA', 'MURO', 'CORREGO', 'RIO', 'DIVISA', 'VALE'];
+      const codigo = codigos[Math.floor(Math.random() * codigos.length)];
+      return { leste, norte, codigo };
+    });
+  } else {
+    pontosFinais = PONTOS_BASE;
+  }
+
+  const raw: RawPoint[] = pontosFinais.map((p, i) => {
     const dx = p.leste - cxOrig;
     const dy = p.norte - cyOrig;
     // Rotação geométrica
@@ -116,7 +136,7 @@ export function gerarProjetoFicticio(): ProjetoFicticio {
   const vertices = montarVertices(raw, ZONA, HEMISFERIO, TEC_DEMO);
   // cada divisa recebe um tipo de representação de exemplo (mostra as convenções na planta)
   const reps = ['cerca', 'mata', 'estrada', 'cerca', 'corrego', 'corrego'];
-  vertices.forEach((v, i) => { v.representacao = reps[i] === 'mata' ? 'linha-ideal' : reps[i]; });
+  vertices.forEach((v, i) => { v.representacao = reps[i % reps.length] === 'mata' ? 'linha-ideal' : reps[i % reps.length]; });
   const { confrontantes, confrontantePorLado } = montarConfrontantes(vertices);
 
   // Preenche dados dos confrontantes com nomes e CPFs aleatórios
@@ -127,7 +147,7 @@ export function gerarProjetoFicticio(): ProjetoFicticio {
       c.condicao = 'posseiro';
     } else {
       const idx = Math.floor(Math.random() * nomesRestantes.length);
-      const nomeEscolhido = nomesRestantes.splice(idx, 1)[0] || 'Confrontante Temporário';
+      const nomeEscolhido = nomesRestantes.splice(idx, 1)[0] || nomesRestantes.length > 0 ? nomesRestantes[0] || 'Confrontante Temporário' : 'Confrontante Temporário';
       c.nome = nomeEscolhido;
       c.cpf = gerarCpfValido();
       c.matricula = String(Math.floor(1000 + Math.random() * 9000));
@@ -159,5 +179,5 @@ export function gerarProjetoFicticio(): ProjetoFicticio {
     ficticio: true,
   };
 
-  return { nome: `${selectedImovel} (demonstração)`, imovel, vertices, confrontantes, confrontantePorLado, zona: ZONA, hemisferio: HEMISFERIO };
+  return { nome: `${selectedImovel} (demonstração${grande ? ' GRANDE' : ''})`, imovel, vertices, confrontantes, confrontantePorLado, zona: ZONA, hemisferio: HEMISFERIO };
 }

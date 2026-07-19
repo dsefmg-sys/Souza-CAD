@@ -142,6 +142,8 @@ export default function Map3DViewer({
   const yawRef = useRef(-0.5);   // rotação horizontal
   const pitchRef = useRef(0.8);  // inclinação vertical
   const zoomRef = useRef(1.0);
+  const panXRef = useRef(0);     // pan horizontal
+  const panYRef = useRef(0);     // pan vertical
   // Escala vertical: por padrão FIEL (1:1, mostra o imóvel como ele é). O botão "Realce" liga um
   // destaque fixo e discreto pra enxergar o relevo em terreno plano — sem cursor de números.
   const [realce, setRealce] = useState(false);
@@ -161,7 +163,7 @@ export default function Map3DViewer({
   const ultimaInteracao = useRef(0);
   const marcarInteracao = () => { ultimaInteracao.current = performance.now(); };
 
-  const dragRef = useRef({ isDragging: false, startX: 0, startY: 0, startYaw: 0, startPitch: 0 });
+  const dragRef = useRef({ isDragging: false, button: 0, startX: 0, startY: 0, startYaw: 0, startPitch: 0, startPanX: 0, startPanY: 0 });
   // Pinça de dois dedos (zoom no toque): distância e zoom no início do gesto.
   const pinchRef = useRef({ active: false, startDist: 0, startZoom: 1 });
 
@@ -423,8 +425,8 @@ export default function Map3DViewer({
         const dist = stats.maxDist * 1.5;
         const pers = dist / (dist + z2 > 0.1 ? dist + z2 : 0.1);
 
-        const screenX = w / 2 + x2 * finalScale * pers;
-        const screenY = h / 2 - y2 * finalScale * pers;
+        const screenX = w / 2 + panXRef.current + x2 * finalScale * pers;
+        const screenY = h / 2 + panYRef.current - y2 * finalScale * pers;
 
         return { x: screenX, y: screenY, depth: z2 };
       };
@@ -950,7 +952,16 @@ export default function Map3DViewer({
 
   // Handlers de Mouse para drag
   const handleMouseDown = (e: React.MouseEvent) => {
-    dragRef.current = { isDragging: true, startX: e.clientX, startY: e.clientY, startYaw: yawRef.current, startPitch: pitchRef.current };
+    dragRef.current = {
+      isDragging: true,
+      button: e.button,
+      startX: e.clientX,
+      startY: e.clientY,
+      startYaw: yawRef.current,
+      startPitch: pitchRef.current,
+      startPanX: panXRef.current,
+      startPanY: panYRef.current,
+    };
     marcarInteracao();
   };
 
@@ -958,8 +969,15 @@ export default function Map3DViewer({
     if (!dragRef.current.isDragging) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
-    yawRef.current = dragRef.current.startYaw + dx * 0.007;
-    pitchRef.current = aplicarPitch(dragRef.current.startPitch + dy * 0.007);
+
+    if (dragRef.current.button === 2) {
+      const sens = 1.0 / zoomRef.current;
+      panXRef.current = dragRef.current.startPanX + dx * sens;
+      panYRef.current = dragRef.current.startPanY + dy * sens;
+    } else {
+      yawRef.current = dragRef.current.startYaw + dx * 0.007;
+      pitchRef.current = aplicarPitch(dragRef.current.startPitch + dy * 0.007);
+    }
     marcarInteracao();
   };
 
@@ -978,7 +996,7 @@ export default function Map3DViewer({
   const handleTouchStart = (e: React.TouchEvent) => {
     marcarInteracao();
     if (e.touches.length === 1) {
-      dragRef.current = { isDragging: true, startX: e.touches[0].clientX, startY: e.touches[0].clientY, startYaw: yawRef.current, startPitch: pitchRef.current };
+      dragRef.current = { isDragging: true, button: 0, startX: e.touches[0].clientX, startY: e.touches[0].clientY, startYaw: yawRef.current, startPitch: pitchRef.current, startPanX: panXRef.current, startPanY: panYRef.current };
       pinchRef.current.active = false;
     } else if (e.touches.length === 2) {
       dragRef.current.isDragging = false;
@@ -1032,6 +1050,7 @@ export default function Map3DViewer({
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
         onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); onVoltar2D(); } }}
+        onContextMenu={(e) => e.preventDefault()}
         className="w-full h-full flex-grow cursor-grab active:cursor-grabbing touch-none"
       />
 
@@ -1193,6 +1212,7 @@ export default function Map3DViewer({
         
         <div className="space-y-1">
           <p>• Arraste (ou um dedo) para girar</p>
+          <p>• Botão direito + arrastar: pan (mover)</p>
           <p>• Rolagem ou pinça para zoom</p>
         </div>
 
@@ -1202,7 +1222,7 @@ export default function Map3DViewer({
           <div className="grid grid-cols-3 gap-1">
             <button
               type="button"
-              onClick={() => { yawRef.current = 0; pitchRef.current = 0.05; zoomRef.current = 1.0; marcarInteracao(); }}
+              onClick={() => { yawRef.current = 0; pitchRef.current = 0.05; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
               className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50"
               title="Visão Geral Superior (Planta 3D)"
             >
@@ -1210,7 +1230,7 @@ export default function Map3DViewer({
             </button>
             <button
               type="button"
-              onClick={() => { yawRef.current = -0.7; pitchRef.current = 0.75; zoomRef.current = 1.0; marcarInteracao(); }}
+              onClick={() => { yawRef.current = -0.7; pitchRef.current = 0.75; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
               className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50"
               title="Visão Isométrica 3D"
             >
@@ -1218,7 +1238,7 @@ export default function Map3DViewer({
             </button>
             <button
               type="button"
-              onClick={() => { yawRef.current = 0; pitchRef.current = 1.45; zoomRef.current = 1.0; marcarInteracao(); }}
+              onClick={() => { yawRef.current = 0; pitchRef.current = 1.45; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
               className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50"
               title="Visão de Perfil do Relevo"
             >
@@ -1488,7 +1508,7 @@ export default function Map3DViewer({
             size="sm"
             variant="outline"
             className="h-8 w-full gap-1.5 text-[10px] font-bold"
-            onClick={() => { yawRef.current = -0.5; pitchRef.current = 0.8; zoomRef.current = 1.0; marcarInteracao(); }}
+            onClick={() => { yawRef.current = -0.5; pitchRef.current = 0.8; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
           >
             <RotateCcw className="size-3" /> Resetar
           </Button>
