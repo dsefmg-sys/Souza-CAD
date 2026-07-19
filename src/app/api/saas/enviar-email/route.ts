@@ -38,6 +38,9 @@ export async function POST(req: Request) {
           user: smtpUser,
           pass: smtpPass,
         },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
       });
 
       for (const dest of emails) {

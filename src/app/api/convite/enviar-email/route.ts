@@ -79,12 +79,27 @@ export async function POST(req: Request) {
   `;
 
   try {
-    const { enviado } = await enviarEmailSmtp({ to: paraEmail, subject: 'Você recebeu um convite de colaboração no Souza CAD', html });
-    return NextResponse.json({ success: true, enviado });
+    const res = await enviarEmailSmtp({ to: paraEmail, subject: 'Você recebeu um convite de colaboração no Souza CAD', html });
+    if (!res.enviado) {
+      console.warn('[convite/enviar-email] E-mail de convite não disparado:', res.erro);
+    }
+    return NextResponse.json({
+      success: true,
+      enviado: res.enviado,
+      erro: res.erro,
+      aviso: res.enviado ? undefined : 'Convite salvo, mas não consegui mandar o e-mail.'
+    });
   } catch (e: unknown) {
-    console.error('[convite/enviar-email] erro ao enviar:', (e as Error)?.message || e);
+    const msg = (e as Error)?.message || String(e);
+    console.error('[convite/enviar-email] erro inesperado ao enviar:', msg);
     // O convite (registro no Firestore) já existe e funciona sem este e-mail — por isso não
     // devolvemos erro fatal pro cliente, só avisamos que o e-mail em si não saiu.
-    return NextResponse.json({ success: true, enviado: false, aviso: 'Convite salvo, mas não consegui mandar o e-mail.' });
+    return NextResponse.json({
+      success: true,
+      enviado: false,
+      erro: msg,
+      aviso: 'Convite salvo, mas não consegui mandar o e-mail.'
+    });
   }
 }
+
