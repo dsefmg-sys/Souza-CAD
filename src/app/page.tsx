@@ -324,12 +324,12 @@ function IconeCota({ className }: { className?: string }) {
   );
 }
 
-// Exibe o atalho em parênteses com 30% de transparência (ex.: LINHA (LN), PONTOS (F2))
+// Exibe o atalho em badge dourado com 20% de transparência (ex.: F2, LN, DM)
 function Atalho({ k, className }: { k: string; className?: string }) {
   if (!k) return null;
   return (
-    <span className={`pointer-events-none text-[8.5px] font-extrabold opacity-30 tracking-tighter shrink-0 select-none ml-0.5 ${className ?? ''}`}>
-      ({k.toUpperCase()})
+    <span className={`pointer-events-none text-[8.5px] font-black tracking-tight shrink-0 select-none ml-1 px-1 py-0.2 rounded-xs bg-amber-500/20 text-amber-500 border border-amber-500/30 ${className ?? ''}`}>
+      {k.toUpperCase()}
     </span>
   );
 }
@@ -6732,42 +6732,45 @@ export default function EditorPage() {
         <div className="flex flex-1 items-center gap-0.5 overflow-hidden px-1 py-1 [&_button]:h-6.5 [&_button]:px-1.5 [&_button]:text-[9px] [&_button_svg]:size-2.5 [&_button]:gap-0.5">
 
         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
+        {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
         {!telaEstreita && (
           <>
             <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-sky-500 hover:bg-sky-600 text-white gap-0.5`} title="Início — Guia do fluxo de trabalho passo a passo (F1)" onClick={() => setTutorialF1Aberto(true)}>
               <GraduationCap className="size-3 shrink-0 animate-pulse text-sky-100" /> INÍCIO
               <Atalho k="F1" />
             </Button>
+            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
             <Etapa st={etapas.txt} tituloEtapa="1. Importação de Pontos" explicacao="Carregue as coordenadas obtidas no campo (TXT/CSV). O sistema lê altitudes, códigos SIGEF e plota o perímetro no mapa de satélite automaticamente.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_IMPORT} gap-0.5`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}>
                 <Upload /> PONTOS
                 <Atalho k="F2" />
               </Button>
             </Etapa>
+            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
             <Etapa st={etapas.sigef} tituloEtapa="2. Integração SIGEF / Vizinhos" explicacao="Consulte e importe os imóveis certificados confrontantes direto da malha oficial do INCRA, efetuando o casamento perfeito dos vértices vizinhos.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_VIZINHO} gap-0.5`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
                 <Download /> SIGEF
                 <Atalho k="F3" />
               </Button>
             </Etapa>
-            <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
+            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
           </>
         )}
 
-        {/* 2) Dados do projeto atual — no celular é redundante: PROJETOS abre o MESMO painel e as
-            abas (Imóvel, Vértices…) levam aos dados. Fica só no desktop. */}
+        {/* 2) Dados do projeto atual */}
         {!telaEstreita && (
-          <Etapa st={etapas.dados} tituloEtapa="3. Cadastro do Imóvel & RT" explicacao="Preencha as informações do imóvel, proprietário, número da matrícula, serventia registral e os dados do Responsável Técnico habilitado.">
-            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
-              <Upload /> DADOS
-              <Atalho k="F4" />
-            </Button>
-          </Etapa>
+          <>
+            <Etapa st={etapas.dados} tituloEtapa="3. Cadastro do Imóvel & RT" explicacao="Preencha as informações do imóvel, proprietário, número da matrícula, serventia registral e os dados do Responsável Técnico habilitado.">
+              <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`} title="Preencher dados do imóvel, proprietário e responsável técnico" onClick={() => { setPainelAberto(true); setAba('imovel'); }}>
+                <Upload /> DADOS
+                <Atalho k="F4" />
+              </Button>
+            </Etapa>
+            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+          </>
         )}
-        <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
 
-        {/* 3) Pintar confrontantes e divisas (ativa o modo no mapa) — são ações de DESENHO, então no
-            celular ficam escondidas: mobile é pra consultar, preencher e baixar, não pra desenhar. */}
+        {/* 3) Pintar confrontantes e divisas */}
         {!telaEstreita && (
           <>
             <Etapa st={etapas.confro} tituloEtapa="4. Pintura de Confrontantes" explicacao="Marque os trechos do perímetro associando cada limite ao seu respectivo proprietário confrontante para gerar as cartas de anuência.">
@@ -6776,18 +6779,18 @@ export default function EditorPage() {
                 <Atalho k="F5" />
               </Button>
             </Etapa>
-            <Etapa st={etapas.divisas} tituloEtapa="5. Tipo de Divisas" explicacao="Defina o tipo físico de cada limite (muro, cerca de arame, córrego, etc.). O padrão é aplicado na planta e descrito na narrativa do memorial.">
+            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            <Etapa st={etapas.divisas} tituloEtapa="5. Tipo de Divisas" explicacao="Defina o tipo físico de cada limite (muro, cerca de arame, córrego, etc.). O padrão é applied na planta e descrito na narrativa do memorial.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DIVISA} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>
                 <Paintbrush className="size-3 shrink-0" /> DIVISAS
                 <Atalho k="F6" />
               </Button>
             </Etapa>
-            <ChevronRight className="-mx-1.5 size-3 shrink-0 self-center text-amber-500/60" aria-hidden />
+            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
           </>
         )}
 
-        {/* 5) Peças (só desktop; no celular a lista vai pra janela aberta pela MobileHome): ART/TRT,
-            ODS e Conferir soltos, e memorial/planta/requerimento/anuência/errata num menu PEÇAS. */}
+        {/* 5) Peças */}
         {(
           <>
             <Etapa st={etapas.trt} tituloEtapa="6. ART / TRT Oficial" explicacao="Registre o número da Anotação de Responsabilidade Técnica (CREA) ou Termo (CFT/CFTA) para vinculação direta nos carimbos e pranchas.">
@@ -6796,19 +6799,20 @@ export default function EditorPage() {
                 <Atalho k="F7" />
               </Button>
             </Etapa>
+            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
             <Etapa st={etapas.ods} tituloEtapa="7. Geração de Planilha ODS" explicacao="Exporte a planilha oficial de credenciamento do SIGEF (.ods) com validações automáticas de altitude, método de posicionamento e código dos vértices.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-0.5`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}>
                 <Download /> ODS
                 <Atalho k="F8" />
               </Button>
             </Etapa>
+            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
             <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-0.5`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}>
               <CheckCircle2 /> CONFERIR
               <Atalho k="F9" />
             </Button>
-            {/* Memorial, planta, requerimento, anuência e errata: reunidos num menu PEÇAS, pra não
-                disputar espaço no cabeçalho com um botão solto pra cada um (mesmo espírito do menu
-                PEÇAS que já existe no celular). */}
+            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            {/* PEÇAS: botão final sem seta após ele */}
             <div ref={pecasBtnRef} className="relative shrink-0">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-0.5`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
                 <Download /> PEÇAS <ChevronDown className="size-3" />
@@ -6818,18 +6822,18 @@ export default function EditorPage() {
                 <>
                   <div className={`fixed inset-0 ${Z_CLASSES.BACKDROP_DROPDOWN}`} onClick={() => setPecasMenuAberto(false)} />
                   <div style={{ position: 'fixed', top: pecasMenuPos.top, right: pecasMenuPos.right }} className={`${Z_CLASSES.DROPDOWN_MENU} w-64 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1.5 shadow-2xl backdrop-blur-xl space-y-1`}>
-                    {/* Botão Baixar Tudo no topo do dropdown desktop */}
+                    {/* Botão Baixar Tudo no topo do dropdown desktop (Destaque Principal) */}
                     <button type="button" disabled={processando} onClick={() => { baixarPacoteEntrega(); }}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 px-3 py-2 text-center text-xs font-bold text-amber-700 dark:text-amber-400 border border-amber-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 px-4 py-3 text-center text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 border border-amber-500/35 shadow-md transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
                       {processando ? (
                         <>
-                          <RefreshCw className="size-3.5 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
-                          <span>Baixando...</span>
+                          <RefreshCw className="size-4 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
+                          <span className="text-xs font-black">Baixando...</span>
                         </>
                       ) : (
                         <>
-                          <Archive className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-                          <span>Baixar Tudo (Pacote ZIP)</span>
+                          <Archive className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                          <span className="text-xs font-black">BAIXAR TUDO (ZIP)</span>
                         </>
                       )}
                     </button>
@@ -6895,34 +6899,35 @@ export default function EditorPage() {
           </button>
           {perfilMenuAberto && (
             <div className={`absolute right-0 top-full pt-1.5 ${Z_CLASSES.DROPDOWN_MENU}`}>
-              <div className="w-52 overflow-hidden rounded-xl border bg-background/98 p-1 shadow-2xl backdrop-blur-xl">
+              <div className="w-72 overflow-hidden rounded-xl border bg-background/98 p-1.5 shadow-2xl backdrop-blur-xl space-y-0.5">
                 {nuvemDisponivel && !user && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); definirModoEntrada('login'); }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-primary hover:bg-primary/10">
-                    <LogIn className="size-4" /> Fazer login
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-primary hover:bg-primary/10 whitespace-nowrap">
+                    <LogIn className="size-4 shrink-0" /> <span className="truncate whitespace-nowrap">Fazer login</span>
                   </button>
                 )}
-                 <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted font-medium">
-                  <Settings className="size-4 text-muted-foreground" /> Ajustes Gerais
+                <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted font-medium whitespace-nowrap">
+                  <Settings className="size-4 text-muted-foreground shrink-0" /> <span className="truncate whitespace-nowrap">Ajustes Gerais do Projeto</span>
                 </button>
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); setTrtAberto(true); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted font-bold text-emerald-600 dark:text-emerald-400">
-                  <UserCheck className="size-4 text-emerald-500" /> Responsável Técnico (RT)
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                  <UserCheck className="size-4 text-emerald-500 shrink-0" /> <span className="truncate whitespace-nowrap">Responsável Técnico ({rotulosProfissional(tecnico).conselho})</span>
                 </button>
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); window.open('/?landing=true', '_blank'); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted font-semibold text-emerald-600 dark:text-emerald-400">
-                  <ExternalLink className="size-4 text-emerald-500" /> Ir para o Site (Landing Page)
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                  <ExternalLink className="size-4 text-emerald-500 shrink-0" /> <span className="truncate whitespace-nowrap">Ir para o Site (Landing Page)</span>
                 </button>
+                
                 {souMaster() && (
-                  <div className="flex flex-col gap-1 border-t border-b py-2 px-3 my-1">
-                    <span className="text-[10px] uppercase font-bold text-amber-500 flex items-center gap-1">
+                  <div className="flex flex-col gap-1 border-t border-b py-2 px-3 my-1 bg-amber-500/5 rounded-lg">
+                    <span className="text-[9.5px] uppercase font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                       <Monitor className="size-3" /> Resolução / Display
                     </span>
                     <select
                       value={simuladorResolucao}
                       onChange={(e) => setSimuladorResolucao(e.target.value as any)}
-                      className="w-full h-7 text-[11px] font-bold rounded border bg-background px-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                      className="w-full h-7 text-[10.5px] font-bold rounded border bg-background px-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                     >
                       <option value="off">Nativa (Tela Cheia)</option>
                       <option value="fullhd">Full HD (1920px)</option>
@@ -6932,51 +6937,78 @@ export default function EditorPage() {
                     </select>
                   </div>
                 )}
-                <div className="flex items-center justify-between border-t border-b py-2 px-3 my-1">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Tamanho do texto</span>
-                  <div className="flex items-center gap-1">
-                    <button type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEscalaInterface((prev) => Math.max(0.9, Number((prev - 0.05).toFixed(2))));
-                      }}
-                      className="flex size-6 items-center justify-center rounded border bg-muted/50 text-xs font-bold hover:bg-muted"
-                      title="Diminuir texto (Ctrl + Alt + -)"
-                    >
-                      A-
-                    </button>
-                    <button type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEscalaInterface(1);
-                      }}
-                      className="flex h-6 px-1.5 items-center justify-center rounded border bg-muted/50 text-[10px] font-bold hover:bg-muted"
-                      title="Tamanho padrão"
-                    >
-                      100%
-                    </button>
-                    <button type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEscalaInterface((prev) => Math.min(1.25, Number((prev + 0.05).toFixed(2))));
-                      }}
-                      className="flex size-6 items-center justify-center rounded border bg-muted/50 text-xs font-bold hover:bg-muted"
-                      title="Aumentar texto (Ctrl + Alt + +)"
-                    >
-                      A+
-                    </button>
+
+                {/* PAINEL DE AJUSTES DE ESCALA (+ / -) */}
+                <div className="border-t border-b py-2 px-2.5 my-1 space-y-1.5 bg-muted/20 rounded-lg">
+                  <span className="text-[9.5px] uppercase font-extrabold text-muted-foreground tracking-wider block border-b pb-1">
+                    Ajustes de Escala da Planta & Texto
+                  </span>
+
+                  {/* Texto da Interface */}
+                  <div className="flex items-center justify-between text-[10.5px] font-semibold">
+                    <span className="text-foreground whitespace-nowrap">Interface Geral:</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button type="button"
+                        onClick={(e) => { e.stopPropagation(); setEscalaInterface((prev) => Math.max(0.85, Number((prev - 0.05).toFixed(2)))); }}
+                        className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted" title="Diminuir texto">-</button>
+                      <span className="w-8 text-center text-[10px] font-mono font-bold">{Math.round(escalaInterface * 100)}%</span>
+                      <button type="button"
+                        onClick={(e) => { e.stopPropagation(); setEscalaInterface((prev) => Math.min(1.3, Number((prev + 0.05).toFixed(2)))); }}
+                        className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted" title="Aumentar texto">+</button>
+                    </div>
+                  </div>
+
+                  {/* Rótulos da Planta */}
+                  <div className="flex items-center justify-between text-[10.5px] font-semibold">
+                    <span className="text-foreground whitespace-nowrap">Rótulos e Nomes:</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.5, Number(((c.escalaTextos ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">-</button>
+                      <span className="w-8 text-center text-[10px] font-mono font-bold">{Math.round((plantaConfig.escalaTextos ?? 1) * 100)}%</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, Number(((c.escalaTextos ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">+</button>
+                    </div>
+                  </div>
+
+                  {/* Símbolos e Vértices */}
+                  <div className="flex items-center justify-between text-[10.5px] font-semibold">
+                    <span className="text-foreground whitespace-nowrap">Símbolos e Vértices:</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.max(0.5, Number(((c.escalaVertices ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">-</button>
+                      <span className="w-8 text-center text-[10px] font-mono font-bold">{Math.round((plantaConfig.escalaVertices ?? 1) * 100)}%</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.min(2.5, Number(((c.escalaVertices ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">+</button>
+                    </div>
+                  </div>
+
+                  {/* Tabelas e Quadros */}
+                  <div className="flex items-center justify-between text-[10.5px] font-semibold">
+                    <span className="text-foreground whitespace-nowrap">Tabelas e Quadros:</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.max(0.5, Number(((c.escalaTabelas ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">-</button>
+                      <span className="w-8 text-center text-[10px] font-mono font-bold">{Math.round((plantaConfig.escalaTabelas ?? 1) * 100)}%</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.min(2.5, Number(((c.escalaTabelas ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">+</button>
+                    </div>
+                  </div>
+
+                  {/* Confrontantes */}
+                  <div className="flex items-center justify-between text-[10.5px] font-semibold">
+                    <span className="text-foreground whitespace-nowrap">Confrontantes:</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.max(0.5, Number(((c.escalaConfront ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">-</button>
+                      <span className="w-8 text-center text-[10px] font-mono font-bold">{Math.round((plantaConfig.escalaConfront ?? 1) * 100)}%</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.min(2.5, Number(((c.escalaConfront ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">+</button>
+                    </div>
                   </div>
                 </div>
+
                 {souMaster() && user && !entrouSemLogin && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); setModoMaster('gerir'); }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted">
-                    <ShieldCheck className="size-4 text-amber-500" /> Gerir SaaS
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted whitespace-nowrap">
+                    <ShieldCheck className="size-4 text-amber-500 shrink-0" /> <span className="truncate whitespace-nowrap">Gerir SaaS</span>
                   </button>
                 )}
                 {nuvemDisponivel && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); limparConfigLocalNaSaida(); sair(); definirModoEntrada('boasVindas'); }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-500/10 dark:text-red-400">
-                    <LogOut className="size-4" /> {user ? 'Sair' : 'Voltar ao Início'}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-red-600 hover:bg-red-500/10 dark:text-red-400 whitespace-nowrap">
+                    <LogOut className="size-4 shrink-0" /> <span className="truncate whitespace-nowrap">{user ? 'Sair da Conta' : 'Voltar ao Início'}</span>
                   </button>
                 )}
               </div>
