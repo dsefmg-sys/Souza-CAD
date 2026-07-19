@@ -72,19 +72,6 @@ const SLIDES_PREVIEW: SlidePreview[] = [
       'Configuração de registros (CFT/CREA/CFTA)'
     ],
     estatistica: 'Marca Própria'
-  },
-  {
-    id: 'topografia',
-    badge: 'Desenho Topográfico & Curvas',
-    titulo: 'Prancha A3/A0 & Curvas de Nível Automáticas',
-    subtitulo: 'Planta oficial com rosa dos ventos, escala gráfica, carimbo e curvas de nível automáticas geradas por busca de altitude online.',
-    imagem: '/marca/splash.png',
-    detalhes: [
-      'Exportação para DXF, KML, Shapefile (SHP) e GPX',
-      'Curvas de nível 2D e 3D automáticas',
-      'Memorial descritivo no padrão oficial INCRA'
-    ],
-    estatistica: '5h ➔ 20min'
   }
 ];
 
