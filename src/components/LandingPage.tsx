@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Shield, Zap, Compass, Users, CheckCircle, Smartphone, Monitor, FileText, Layers, Settings, Eye, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Shield, Zap, Compass, Users, CheckCircle, Smartphone, FileText, Layers, Settings, ChevronLeft, ChevronRight, Sparkles, ArrowRight, Award, Check } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 
 interface LandingPageProps {
@@ -10,64 +10,90 @@ interface LandingPageProps {
   texts: LandingPageTexts;
 }
 
-interface SlideItem {
+interface ShowcaseModule {
   id: string;
+  badge: string;
   titulo: string;
   subtitulo: string;
-  badge: string;
   imagem: string;
-  detalhe: string;
+  destaques: string[];
+  estatistica: { valor: string; rotulo: string };
 }
 
-const SLIDES: SlideItem[] = [
+const MODULOS_SHOWCASE: ShowcaseModule[] = [
   {
     id: 'gestao',
-    titulo: 'Gestão Financeira & Documentos Comerciais',
-    subtitulo: 'Emissão instantânea de Recibos formais, Contratos de Prestação de Serviços, Propostas e Declarações de Posse ou Sobreposição.',
-    badge: 'Financeiro & Contratos',
+    badge: 'Gestão Financeira & Contratos',
+    titulo: 'Contratos, Recibos e Propostas Comerciais com 1 Clique',
+    subtitulo: 'Tudo integrado ao projeto. Emita recibos formais de quitação em PDF, propostas comerciais, contratos de prestação de serviços e declarações cartorárias com seus dados e assinatura digital preenchidos automaticamente.',
     imagem: '/marca/preview_gestao.png',
-    detalhe: '✔ Gere recibos em PDF, contratos e propostas com os valores e prazos do projeto em 1 clique.'
+    destaques: [
+      'Recibo de quitação formal em PDF assinado automaticamente',
+      'Contratos e propostas comerciais personalizadas',
+      'Declarações avulsas de posse, espólio e sobreposição'
+    ],
+    estatistica: { valor: '100%', rotulo: 'Segurança Contratual' }
   },
   {
-    id: 'errata',
-    titulo: 'Errata para o Cartório em 1 Clique',
-    subtitulo: 'Defina as correções necessárias para o processo de retificação de área com atalhos de preenchimento rápido.',
-    badge: 'Cartório & Retificação',
+    id: 'erratas',
+    badge: 'Automação Cartorária',
+    titulo: 'Gerador de Erratas para Retificação de Área em Word (.docx)',
+    subtitulo: 'Esqueça o preenchimento manual de correções de matrícula. O Souza-CAD gera minutas completas de erratas prontas para protocolo em cartório com atalhos de preenchimento rápido dos dados do imóvel e confrontantes.',
     imagem: '/marca/preview_modulos.png',
-    detalhe: '✔ Errata gerada no formato Word (.docx), pronta para protocolo com justificativa e campo de assinatura.'
+    destaques: [
+      'Atalhos de inserção de matrícula, denominação e confrontantes',
+      'Formatação oficial aceita em cartórios de registro de imóveis',
+      'Gerado em Word editável (.docx) com campo de responsabilidade técnica'
+    ],
+    estatistica: { valor: '5 min', rotulo: 'Tempo de Elaboração' }
   },
   {
     id: 'sigef',
-    titulo: 'Confrontantes & Busca Online no INCRA',
-    subtitulo: 'Busca automática online por região de todos os imóveis certificados que confrontam com o perímetro trabalhado.',
-    badge: 'SIGEF & INCRA',
+    badge: 'Malha SIGEF & INCRA',
+    titulo: 'Busca Online Automática de Confrontantes e Polígonos Vizinhos',
+    subtitulo: 'Cruze instantaneamente a malha pública do SIGEF/INCRA na sua região de projeto. O sistema importa automaticamente os polígonos vizinhos certificados e previne vãos ou sobreposições no perímetro.',
     imagem: '/marca/preview_modulos.png',
-    detalhe: '✔ Importe polígonos vizinhos e evite vãos ou sobreposições de divisa na certificação.'
+    destaques: [
+      'Busca georreferenciada online por raio de localização',
+      'Validação automática de vértices e confrontações oficiais',
+      'Gerador de vértices virtuais e ajuste fino de coordenadas'
+    ],
+    estatistica: { valor: 'Zero', rotulo: 'Sobreposição de Divisas' }
   },
   {
     id: 'config',
-    titulo: 'Configurações da Empresa & Marca',
-    subtitulo: 'Identificação completa do seu escritório com logotipo, marca, endereço e assinatura digital transparente.',
-    badge: 'Marca & Empresa',
+    badge: 'Sua Marca & Identidade',
+    titulo: 'Personalização Completa com seu Logotipo e Assinatura Digital',
+    subtitulo: 'Defina as cores da sua empresa, logotipo oficial para o carimbo da planta A3/A0 e assinatura PNG transparente para aplicar automaticamente em todas as peças técnicas.',
     imagem: '/marca/preview_config.png',
-    detalhe: '✔ Tudo o que você preenche reflete automaticamente nos memoriais, plantas, recibos e requerimentos.'
+    destaques: [
+      'Assinatura digital transparente em PDF, DOCX e Memoriais',
+      'Logotipo personalizado no carimbo oficial da prancha SVG/PDF',
+      'Configuração rápida de registros profissionais (CFT/CREA/CFTA)'
+    ],
+    estatistica: { valor: '100%', rotulo: 'Personalizado para seu Escritório' }
   },
   {
-    id: 'planta',
-    titulo: 'Desenho Topográfico & Prancha SVG/PDF',
-    subtitulo: 'Renderização em tempo real de pranchas nos padrões A3/A0 com tabela de coordenadas, carimbo e escala.',
-    badge: 'Planta & Desenho',
+    id: 'topografia',
+    badge: 'Georreferenciamento & Planialtimetria',
+    titulo: 'Prancha SVG/PDF A3/A0, Curvas de Nível 3D e Memoriais Automáticos',
+    subtitulo: 'Desenho vetorial de alto desempenho focado em agrimensura rural e urbana. Curvas de nível automáticas a partir de altitude Copernicus DEM 90m online, memorial descritivo perimétrico e exportação ODS para SIGEF.',
     imagem: '/marca/splash.png',
-    detalhe: '✔ Controle total de rótulos, cotas, linhas de divisa e convenções topográficas.'
+    destaques: [
+      'Rosa dos ventos, escala gráfica e tabela de coordenadas UTM automáticas',
+      'Exportação para DXF (AutoCAD), KML, Shapefile (SHP) e GPX',
+      'Algoritmo perimétrico com ponto inicial no vértice mais ao Norte'
+    ],
+    estatistica: { valor: '5h ➔ 20min', rotulo: 'Ganho Real de Produtividade' }
   }
 ];
 
 export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingPageProps) {
-  const [slideAtual, setSlideAtual] = useState(0);
+  const [moduloAtivo, setModuloAtivo] = useState(0);
   const [pausado, setPausado] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Lógica de vagas dinâmicas baseada na quantidade de usuários cadastrados
+  // Escassez de vagas de pioneiros
   let vagasTotais = 50;
   if (numUsuarios >= 50 && numUsuarios < 100) {
     vagasTotais = 100;
@@ -82,12 +108,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
   const vagasRestantes = Math.max(0, vagasTotais - numUsuarios);
   const estaEsgotado = numUsuarios >= 500;
 
-  // Autoplay do carrossel (avança a cada 5s, se não estiver pausado)
+  // Autoplay suave a cada 6 segundos
   useEffect(() => {
     if (pausado) return;
     timerRef.current = setInterval(() => {
-      setSlideAtual((prev) => (prev + 1) % SLIDES.length);
-    }, 5000);
+      setModuloAtivo((prev) => (prev + 1) % MODULOS_SHOWCASE.length);
+    }, 6000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -105,13 +131,31 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
     'Garantia de Segurança: Validações inteligentes que evitam erros no cartório.'
   ];
 
-  const slide = SLIDES[slideAtual];
+  const modulo = MODULOS_SHOWCASE[moduloAtivo];
 
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-100 overflow-x-hidden font-sans select-none selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col justify-between">
       
-      {/* ── BANNER PARA CELULAR (Aviso de uso complementar no mobile e completo no PC) ── */}
-      <div className="block md:hidden bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center">
+      {/* ── BACKGROUND TÉCNICO: CURVAS DE NÍVEL TOPOGRÁFICAS SVG ANIMADAS ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-20">
+        <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+          <defs>
+            <linearGradient id="topoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+              <stop offset="50%" stopColor="#059669" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#047857" stopOpacity="0.05" />
+            </linearGradient>
+          </defs>
+          <path d="M-100 200 C 300 100, 600 400, 1200 200 C 1500 100, 1800 300, 2200 150" fill="none" stroke="url(#topoGrad)" strokeWidth="1.5" className="animate-pulse" style={{ animationDuration: '8s' }} />
+          <path d="M-100 350 C 400 250, 700 550, 1300 300 C 1600 200, 1900 450, 2300 300" fill="none" stroke="url(#topoGrad)" strokeWidth="1.2" className="animate-pulse" style={{ animationDuration: '10s' }} />
+          <path d="M-100 500 C 250 400, 800 700, 1400 450 C 1700 350, 2000 600, 2400 450" fill="none" stroke="url(#topoGrad)" strokeWidth="1" className="animate-pulse" style={{ animationDuration: '12s' }} />
+          <path d="M-100 650 C 500 550, 900 850, 1500 600 C 1800 500, 2100 750, 2500 600" fill="none" stroke="url(#topoGrad)" strokeWidth="0.8" />
+          <path d="M-100 800 C 350 700, 1000 1000, 1600 750 C 1900 650, 2200 900, 2600 750" fill="none" stroke="url(#topoGrad)" strokeWidth="0.6" />
+        </svg>
+      </div>
+
+      {/* ── BANNER PARA CELULAR (Uso complementar no mobile) ── */}
+      <div className="block md:hidden bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center z-20">
         <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-400">
           <Smartphone className="size-4 animate-bounce shrink-0" />
           <span>Uso no celular é auxiliar/consulta em campo.</span>
@@ -121,250 +165,270 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
         </p>
       </div>
 
-      {/* ── HEADER ── */}
-      <header className="max-w-7xl mx-auto w-full px-6 py-6 flex items-center justify-between z-10 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+      {/* ── HEADER CLEAN ── */}
+      <header className="max-w-7xl mx-auto w-full px-6 py-6 flex items-center justify-between z-20 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
             <Compass className="size-6 text-emerald-400 animate-spin" style={{ animationDuration: '60s' }} />
           </div>
-          <span className="text-lg font-black tracking-widest text-white font-mono">SOUZA <span className="text-emerald-400">CAD</span></span>
+          <div>
+            <span className="text-xl font-black tracking-widest text-white font-mono">SOUZA <span className="text-emerald-400">CAD</span></span>
+            <span className="block text-[9px] font-bold uppercase tracking-wider text-emerald-500/90">Engenharia & Georreferenciamento</span>
+          </div>
         </div>
-        <div className="hidden md:flex items-center gap-2.5 text-xs text-slate-400">
-          <Monitor className="size-3.5" />
-          <span>Focado no navegador para PC</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onPioneiro}
+            className="px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+          >
+            <Zap className="size-3.5" />
+            <span>Acessar Plataforma</span>
+          </button>
         </div>
       </header>
 
-      {/* ── CONTEÚDO PRINCIPAL ── */}
-      <main className="flex-grow flex flex-col items-center justify-center max-w-6xl mx-auto w-full px-6 py-8 md:py-12 z-10 space-y-16">
+      {/* ── CONTEÚDO PRINCIPAL (HERO + VAGAS + CARROSSEL FULL-WIDTH) ── */}
+      <main className="flex-grow flex flex-col items-center max-w-7xl mx-auto w-full px-6 py-4 md:py-8 z-10 space-y-12">
         
-        {/* HERO SECTION */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center w-full">
-          
-          {/* Coluna Esquerda: Chamada, História, Métricas */}
-          <div className="lg:col-span-7 space-y-6 text-left">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider text-emerald-400">
-              <Zap className="size-3" /> Tecnologia & Prática de Campo
-            </div>
-
-            <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight">
-              {titulo}
-            </h1>
-
-            <p className="text-sm md:text-base text-slate-300 leading-relaxed font-medium">
-              {subtitulo}
-            </p>
-
-            {/* 📋 História do Agrimensor-Programador */}
-            <div className="bg-slate-900/60 border border-slate-800/80 p-5 rounded-2xl relative overflow-hidden backdrop-blur-md">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1.5">
-                <Shield className="size-4" /> A história por trás da ferramenta
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed italic">
-                &ldquo;{historia}&rdquo;
-              </p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-400">— {autorHistoria}</span>
-              </div>
-            </div>
-
-            {/* Recursos Rápido */}
-            <div className="grid grid-cols-2 gap-4 text-xs font-bold">
-              {itensCheck.map((item, idx) => {
-                const parts = item.split(':');
-                const title = parts[0]?.trim() || '';
-                const desc = parts[1]?.trim() || '';
-                return (
-                  <div key={idx} className="flex items-start gap-2 text-slate-300">
-                    <CheckCircle className="size-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <div>
-                      <h4>{title}</h4>
-                      {desc && <p className="text-[10px] text-slate-400 font-normal mt-0.5">{desc}</p>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
+        {/* HERO TITULO & SUBTITULO */}
+        <div className="text-center max-w-4xl space-y-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-xs font-black uppercase tracking-wider text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+            <Zap className="size-3.5" /> Desenvolvido por Agrimensor para Agrimensores
           </div>
 
-          {/* Coluna Direita: Box de Acesso e Escassez */}
-          <div className="lg:col-span-5 flex flex-col justify-center">
-            <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-3xl shadow-[0_0_80px_rgba(16,185,129,0.1)] text-center relative overflow-hidden backdrop-blur-xl">
-              
-              {/* Círculos decorativos */}
-              <div className="absolute -left-12 -top-12 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
-              <div className="absolute -right-12 -bottom-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white leading-tight tracking-tight">
+            {titulo}
+          </h1>
 
-              <h2 className="text-xl font-black text-white uppercase tracking-wide">
-                {estaEsgotado ? 'Pioneiros Esgotados' : 'OPORTUNIDADE EXCLUSIVA'}
-              </h2>
-              <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                {estaEsgotado 
-                  ? 'As vagas gratuitas de pioneiros foram totalmente preenchidas. O Souza-CAD agora opera sob o sistema de planos comerciais para novos entrantes.'
-                  : 'Seja um pioneiro na plataforma e ajude a ditar o futuro da tecnologia para agrimensura no Brasil.'
-                }
-              </p>
-
-              {/* Barra de vagas */}
-              <div className="my-6 space-y-2">
-                <div className="flex justify-between text-xs font-black">
-                  <span className="text-emerald-400 flex items-center gap-1">
-                    <Users className="size-3.5" /> {estaEsgotado ? 'VAGAS PREENCHIDAS' : 'VAGAS ATIVADAS'}
-                  </span>
-                  <span>{estaEsgotado ? vagasTotais : numUsuarios} / {vagasTotais}</span>
-                </div>
-                <div className="h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                  <div 
-                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-1000"
-                    style={{ width: `${estaEsgotado ? 100 : Math.min(100, (numUsuarios / vagasTotais) * 100)}%` }}
-                  />
-                </div>
-                <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1 animate-pulse">
-                  {estaEsgotado 
-                    ? <span>Adquira uma assinatura profissional para ter acesso completo</span>
-                    : <span>Apenas {vagasRestantes} vagas de pioneiro em aberto</span>
-                  }
-                </div>
-              </div>
-
-              {/* Botão de Ação */}
-              <button
-                type="button"
-                onClick={onPioneiro}
-                className={`w-full text-slate-950 font-black text-sm uppercase py-4 px-6 rounded-2xl transition-all transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 ${
-                  estaEsgotado
-                    ? 'bg-amber-500 hover:bg-amber-400 shadow-[0_4px_20px_rgba(245,158,11,0.3)]'
-                    : 'bg-emerald-500 hover:bg-emerald-400 shadow-[0_4px_20px_rgba(16,185,129,0.3)]'
-                }`}
-              >
-                <Zap className="size-4 fill-slate-950" />
-                {estaEsgotado ? 'ADQUIRIR PLANO PROFISSIONAL' : 'SER UM USUÁRIO PIONEIRO'}
-              </button>
-
-              <div className="mt-4 flex flex-col items-center justify-center gap-1.5">
-                <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                  <CheckCircle className="size-3.5 text-emerald-400" />
-                  <span>{estaEsgotado ? 'Acesso imediato com plano ativo' : 'Acesso imediato à versão completa'}</span>
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                  <CheckCircle className="size-3.5 text-emerald-400" />
-                  <span>{estaEsgotado ? 'Suporte prioritário via WhatsApp' : 'Sem compromisso financeiro inicial'}</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
+          <p className="text-sm sm:text-base md:text-lg text-slate-300 leading-relaxed font-medium max-w-3xl mx-auto">
+            {subtitulo}
+          </p>
         </div>
 
-        {/* ── CARROSSEL SHOWCASE INTERATIVO DE ALTA QUALIDADE ── */}
+        {/* ── RETÂNGULO DE OPORTUNIDADE & ESCASSEZ DE PIONEIROS (POSICIONADO LOGO ABAIXO DA CHAMADA) ── */}
+        <div className="w-full max-w-3xl bg-slate-900/90 border border-slate-800 p-6 md:p-8 rounded-3xl shadow-[0_0_80px_rgba(16,185,129,0.12)] text-center relative overflow-hidden backdrop-blur-2xl">
+          <div className="absolute -left-12 -top-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -right-12 -bottom-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+            <div className="text-left">
+              <h2 className="text-lg font-black text-white uppercase tracking-wide flex items-center gap-2">
+                <Award className="size-5 text-emerald-400" />
+                {estaEsgotado ? 'Pioneiros Esgotados' : 'VAGAS DE USUÁRIO PIONEIRO'}
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {estaEsgotado 
+                  ? 'Vagas de teste preenchidas. O Souza-CAD opera via planos profissionais para novos usuários.'
+                  : 'Garanta seu credenciamento pioneiro e tenha acesso prioritário a todas as atualizações.'
+                }
+              </p>
+            </div>
+            
+            {/* Vagas Contador Badge */}
+            <div className="px-4 py-2 rounded-2xl bg-slate-950 border border-slate-800 text-center shrink-0">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Status de Vagas</span>
+              <span className="text-base font-black text-emerald-400">{estaEsgotado ? vagasTotais : numUsuarios} / {vagasTotais}</span>
+            </div>
+          </div>
+
+          {/* Barra de vagas */}
+          <div className="space-y-2 mb-6">
+            <div className="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 rounded-full transition-all duration-1000 shadow-[0_0_12px_rgba(16,185,129,0.5)]"
+                style={{ width: `${estaEsgotado ? 100 : Math.min(100, (numUsuarios / vagasTotais) * 100)}%` }}
+              />
+            </div>
+            <div className="text-[11px] text-emerald-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1.5">
+              <Sparkles className="size-3.5 animate-pulse" />
+              {estaEsgotado 
+                ? <span>Cadastre seu escritório e adquira o plano profissional</span>
+                : <span>Resta(m) apenas {vagasRestantes} vaga(s) de pioneiro com desconto vitalício</span>
+              }
+            </div>
+          </div>
+
+          {/* Botão de Ação CTA Principal */}
+          <button
+            type="button"
+            onClick={onPioneiro}
+            className={`w-full text-slate-950 font-black text-base uppercase py-4 px-8 rounded-2xl transition-all transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center justify-center gap-3 shadow-2xl ${
+              estaEsgotado
+                ? 'bg-amber-500 hover:bg-amber-400 shadow-[0_4px_25px_rgba(245,158,11,0.4)]'
+                : 'bg-emerald-400 hover:bg-emerald-300 shadow-[0_4px_25px_rgba(16,185,129,0.4)]'
+            }`}
+          >
+            <Zap className="size-5 fill-slate-950" />
+            <span>{estaEsgotado ? 'ADQUIRIR PLANO PROFISSIONAL' : 'QUERO SER UM USUÁRIO PIONEIRO'}</span>
+            <ArrowRight className="size-5" />
+          </button>
+        </div>
+
+        {/* 📋 HISTÓRIA E DESTAQUES TÉCNICOS */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 w-full max-w-5xl">
+          {/* História do Criador */}
+          <div className="md:col-span-7 bg-slate-900/70 border border-slate-800/80 p-6 rounded-3xl relative overflow-hidden backdrop-blur-xl flex flex-col justify-between">
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                <Shield className="size-4" /> A história por trás da ferramenta
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed italic">
+                &ldquo;{historia}&rdquo;
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-850 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-400">— {autorHistoria}</span>
+              <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">14 Anos de Prática de Campo</span>
+            </div>
+          </div>
+
+          {/* Destaques Rápido em Grid */}
+          <div className="md:col-span-5 grid grid-cols-1 gap-3">
+            {itensCheck.map((item, idx) => {
+              const parts = item.split(':');
+              const title = parts[0]?.trim() || '';
+              const desc = parts[1]?.trim() || '';
+              return (
+                <div key={idx} className="p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/80 flex items-start gap-3 text-xs">
+                  <div className="p-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0 mt-0.5">
+                    <Check className="size-3.5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-200">{title}</h4>
+                    {desc && <p className="text-[11px] text-slate-400 font-normal mt-0.5 leading-snug">{desc}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── SHOWCASE EM TELA CHEIA CINEMATOGRÁFICO COM FUSÃO DE GRADIENTE ("FUMAÇA") ── */}
         <section 
-          className="w-full space-y-6 pt-6 border-t border-slate-900/80"
+          className="w-full pt-8 space-y-6"
           onMouseEnter={() => setPausado(true)}
           onMouseLeave={() => setPausado(false)}
         >
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider text-emerald-400">
-              <Sparkles className="size-3" /> Galeria Interativa da Aplicação
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+              <Sparkles className="size-3.5" /> Galeria Imersiva de Alta Qualidade
             </div>
-            <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
-              O Souza-CAD por dentro
+            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">
+              Conheça o Souza-CAD por dentro
             </h2>
-            <p className="text-xs text-slate-400 max-w-xl mx-auto">
-              Navegue pelos módulos oficiais do sistema e veja a precisão gráfica, facilidade de uso e automações disponíveis.
+            <p className="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto">
+              Visualização de tela cheia das ferramentas reais. A fusão contínua entre a interface e o sistema.
             </p>
           </div>
 
-          {/* Navegação de Abas Rápidas do Carrossel */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {SLIDES.map((s, idx) => (
+          {/* Seleção de Módulos (Tabs) */}
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            {MODULOS_SHOWCASE.map((m, idx) => (
               <button
-                key={s.id}
+                key={m.id}
                 type="button"
-                onClick={() => setSlideAtual(idx)}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                  slideAtual === idx
-                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] scale-105'
-                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                onClick={() => setModuloAtivo(idx)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer flex items-center gap-2 ${
+                  moduloAtivo === idx
+                    ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.3)] font-black scale-105'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
                 }`}
               >
-                <span className="size-1.5 rounded-full bg-current" />
-                <span>{s.badge}</span>
+                <span className={`size-2 rounded-full ${moduloAtivo === idx ? 'bg-slate-950' : 'bg-emerald-500'}`} />
+                <span>{m.badge}</span>
               </button>
             ))}
           </div>
 
-          {/* Moldura de Janela CAD com Navegação Lateral e Controles */}
-          <div className="relative rounded-2xl border border-slate-800 bg-slate-900/90 p-2 md:p-4 shadow-[0_0_90px_rgba(16,185,129,0.14)] backdrop-blur-xl overflow-hidden group">
+          {/* 🖼️ CONTAINER CINEMATOGRÁFICO DE LARGURA TOTAL COM SOBREPOSIÇÃO DE TEXTO E VIGNETTE ("FUMAÇA") */}
+          <div className="relative w-full rounded-3xl border border-slate-800/80 bg-slate-950 overflow-hidden shadow-[0_0_120px_rgba(16,185,129,0.12)] min-h-[460px] md:min-h-[580px] flex items-center justify-center group">
             
-            {/* Header da Moldura estilo Software */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800/80 mb-3">
-              <div className="flex items-center gap-2">
-                <span className="size-3 rounded-full bg-rose-500/80 inline-block" />
-                <span className="size-3 rounded-full bg-amber-500/80 inline-block" />
-                <span className="size-3 rounded-full bg-emerald-500/80 inline-block" />
-                <span className="ml-2 text-xs font-bold text-slate-200">{slide.titulo}</span>
-              </div>
-              <div className="flex items-center gap-3 text-[10px] font-mono text-slate-400">
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-emerald-400 font-bold">{slide.badge}</span>
-                <span>Slide {slideAtual + 1} de {SLIDES.length}</span>
-              </div>
-            </div>
+            {/* 1. A IMAGEM DE TELA CHEIA */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              key={modulo.id}
+              src={modulo.imagem}
+              alt={modulo.titulo}
+              className="absolute inset-0 w-full h-full object-cover object-top opacity-70 transition-all duration-700 transform scale-[1.01] group-hover:scale-105"
+            />
 
-            {/* Imagem com botões de navegação lateral (< >) */}
-            <div className="relative rounded-xl overflow-hidden border border-slate-800/80 bg-slate-950 flex items-center justify-center min-h-[340px] max-h-[540px]">
+            {/* 2. GRADIENTES DE FUSÃO ("FUMAÇA" NAS BORDAS QUE SE FUNDEM AO BG-SLATE-950 DO APP) */}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/80 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/30 to-slate-950/80 pointer-events-none" />
+            <div className="absolute inset-0 bg-radial from-transparent via-slate-950/30 to-slate-950 pointer-events-none" />
+
+            {/* 3. BOTÕES FLUTUANTES DE NAVEGAÇÃO LATERAL (< >) */}
+            <button
+              type="button"
+              onClick={() => setModuloAtivo((prev) => (prev - 1 + MODULOS_SHOWCASE.length) % MODULOS_SHOWCASE.length)}
+              className="absolute left-4 z-30 p-3 rounded-full bg-slate-950/80 text-white border border-slate-800 hover:bg-emerald-400 hover:text-slate-950 transition-all shadow-2xl hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
+              title="Módulo Anterior"
+            >
+              <ChevronLeft className="size-6" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setModuloAtivo((prev) => (prev + 1) % MODULOS_SHOWCASE.length)}
+              className="absolute right-4 z-30 p-3 rounded-full bg-slate-950/80 text-white border border-slate-800 hover:bg-emerald-400 hover:text-slate-950 transition-all shadow-2xl hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
+              title="Próximo Módulo"
+            >
+              <ChevronRight className="size-6" />
+            </button>
+
+            {/* 4. CONTEÚDO SOBREPOSTO (TEXTO, TÍTULOS E ESTATÍSTICA DIRECTLY OVER THE IMAGE) */}
+            <div className="relative z-20 max-w-4xl mx-auto px-6 py-12 md:py-16 text-left space-y-6 flex flex-col justify-end h-full">
               
-              {/* Botão Anterior */}
-              <button
-                type="button"
-                onClick={() => setSlideAtual((prev) => (prev - 1 + SLIDES.length) % SLIDES.length)}
-                className="absolute left-3 z-20 p-2.5 rounded-full bg-slate-950/80 text-white border border-slate-800 hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-xl hover:scale-110 active:scale-95"
-                title="Slide Anterior"
-              >
-                <ChevronLeft className="size-5" />
-              </button>
+              <div className="flex items-center gap-3">
+                <span className="px-3.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-black uppercase tracking-wider backdrop-blur-md shadow-lg">
+                  {modulo.badge}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">
+                  Módulo {moduloAtivo + 1} de {MODULOS_SHOWCASE.length}
+                </span>
+              </div>
 
-              {/* Botão Próximo */}
-              <button
-                type="button"
-                onClick={() => setSlideAtual((prev) => (prev + 1) % SLIDES.length)}
-                className="absolute right-3 z-20 p-2.5 rounded-full bg-slate-950/80 text-white border border-slate-800 hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-xl hover:scale-110 active:scale-95"
-                title="Próximo Slide"
-              >
-                <ChevronRight className="size-5" />
-              </button>
+              <h3 className="text-2xl sm:text-4xl md:text-5xl font-black text-white leading-tight tracking-tight drop-shadow-md max-w-3xl">
+                {modulo.titulo}
+              </h3>
 
-              {/* Imagem Renderizada */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                key={slide.id}
-                src={slide.imagem}
-                alt={slide.titulo}
-                className="w-full h-auto object-contain max-h-[520px] transition-all duration-500 transform animate-in fade-in zoom-in-95"
-              />
+              <p className="text-sm sm:text-base text-slate-200 leading-relaxed font-medium max-w-2xl drop-shadow-sm">
+                {modulo.subtitulo}
+              </p>
+
+              {/* Destaques e Estatística do Módulo */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 pt-2">
+                <div className="sm:col-span-8 space-y-2">
+                  {modulo.destaques.map((d, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs font-bold text-slate-200 bg-slate-900/60 border border-slate-800/60 backdrop-blur-md px-3 py-1.5 rounded-xl">
+                      <CheckCircle className="size-4 text-emerald-400 shrink-0" />
+                      <span>{d}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="sm:col-span-4 bg-emerald-500/10 border border-emerald-500/30 backdrop-blur-md p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-lg">
+                  <span className="text-2xl font-black text-emerald-400 font-mono">{modulo.estatistica.valor}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 mt-0.5">{modulo.estatistica.rotulo}</span>
+                </div>
+              </div>
+
             </div>
 
-            {/* Painel Inferior Sincronizado */}
-            <div className="mt-3 px-4 py-3 bg-slate-950/60 rounded-xl border border-slate-850 flex flex-col md:flex-row items-start md:items-center justify-between text-xs gap-3">
-              <div className="space-y-0.5">
-                <p className="font-semibold text-slate-200">{slide.subtitulo}</p>
-                <p className="text-[11px] text-emerald-400 font-medium">{slide.detalhe}</p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0 self-center md:self-auto">
-                {SLIDES.map((_, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setSlideAtual(idx)}
-                    className={`h-2 rounded-full transition-all ${
-                      slideAtual === idx ? 'w-6 bg-emerald-400' : 'w-2 bg-slate-800 hover:bg-slate-700'
-                    }`}
-                    title={`Ir para slide ${idx + 1}`}
-                  />
-                ))}
-              </div>
+            {/* Indicator Dots na Parte Inferior do Container */}
+            <div className="absolute bottom-4 right-6 z-30 flex items-center gap-2">
+              {MODULOS_SHOWCASE.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setModuloAtivo(idx)}
+                  className={`h-2.5 rounded-full transition-all cursor-pointer ${
+                    moduloAtivo === idx ? 'w-8 bg-emerald-400' : 'w-2.5 bg-slate-800 hover:bg-slate-700'
+                  }`}
+                  title={`Ir para o módulo ${idx + 1}`}
+                />
+              ))}
             </div>
 
           </div>
@@ -372,11 +436,11 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
       </main>
 
-      {/* ── FOOTER ── */}
-      <footer className="max-w-7xl mx-auto w-full px-6 py-6 border-t border-slate-900/60 flex flex-col md:flex-row items-center justify-between text-[10px] text-slate-500 shrink-0 gap-2">
+      {/* ── FOOTER CLEAN ── */}
+      <footer className="max-w-7xl mx-auto w-full px-6 py-6 border-t border-slate-900/80 flex flex-col md:flex-row items-center justify-between text-[11px] text-slate-500 shrink-0 gap-2 z-10">
         <span>&copy; {new Date().getFullYear()} Souza-CAD. Todos os direitos reservados.</span>
         <div className="flex items-center gap-4">
-          <span>Desenvolvido para máxima eficiência em georreferenciamento de imóveis.</span>
+          <span>Desenvolvido para alta performance em georreferenciamento de imóveis rurais e urbanos.</span>
         </div>
       </footer>
     </div>
