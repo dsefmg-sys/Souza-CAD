@@ -1244,7 +1244,17 @@ export default function EditorPage() {
     try { if (active) setSetupOk(souMaster() || localStorage.getItem('metrica.setupFeito') === '1'); } catch { if (active) setSetupOk(true); }
     // registra/atualiza o perfil de uso (o titular acompanha empresa, RT, projetos)
     const esc = carregarEscritorio(); const tec = carregarTecnico();
-    sincronizarPerfil({ ultimoAcessoEm: Date.now(), empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {});
+    const muniUsar = esc.cidade || esc.municipio || imovel?.municipio || '';
+    const ufUsar = esc.uf || imovel?.uf || '';
+    sincronizarPerfil({
+      ultimoAcessoEm: Date.now(),
+      empresaNome: esc.nome,
+      empresaCnpj: esc.cnpj,
+      rtNome: tec.nome,
+      rtCft: tec.cft,
+      municipio: muniUsar,
+      uf: ufUsar,
+    }).catch(() => {});
     try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 480 && active) setToolW(w); } catch { /* ignore */ }
     // tamNomes e escalaInterface já nascem com o valor salvo (lazy init do useState, acima).
     try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680 && active) setAsideW(w); } catch { /* ignore */ }

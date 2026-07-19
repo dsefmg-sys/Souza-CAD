@@ -113,11 +113,69 @@ export function formatarNome(s: string): string {
  * ligar/desligar recursos por estado (ex.: padrão INTERMAT só quando o imóvel é de Mato Grosso).
  */
 export function ufDoMunicipio(municipio: string | undefined): string | null {
-  const m = (municipio || '').trim().match(/-\s*([A-Za-z]{2})\s*$/);
+  const m = (municipio || '').trim();
   if (!m) return null;
-  const uf = m[1].toUpperCase();
+  const lastHyphen = m.lastIndexOf('-');
+  const lastSlash = m.lastIndexOf('/');
+  const idx = Math.max(lastHyphen, lastSlash);
+  const candidate = idx !== -1 ? m.slice(idx + 1).trim().toUpperCase() : m.toUpperCase();
   const ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
-  return ufs.includes(uf) ? uf : null;
+  return ufs.includes(candidate) ? candidate : null;
+}
+
+export const CAPITAIS_UF: Record<string, { lat: number; lon: number }> = {
+  AC: { lat: -9.9754, lon: -67.8249 },
+  AL: { lat: -9.6658, lon: -35.7350 },
+  AP: { lat: 0.0389, lon: -51.0664 },
+  AM: { lat: -3.1190, lon: -60.0217 },
+  BA: { lat: -12.9718, lon: -38.5011 },
+  CE: { lat: -3.7172, lon: -38.5433 },
+  DF: { lat: -15.7942, lon: -47.8822 },
+  ES: { lat: -20.3155, lon: -40.3128 },
+  GO: { lat: -16.6869, lon: -49.2648 },
+  MA: { lat: -2.5307, lon: -44.3068 },
+  MT: { lat: -15.6014, lon: -56.0979 },
+  MS: { lat: -20.4697, lon: -54.6201 },
+  MG: { lat: -19.9167, lon: -43.9345 },
+  PA: { lat: -1.4558, lon: -48.4902 },
+  PB: { lat: -7.1195, lon: -34.8450 },
+  PR: { lat: -25.4284, lon: -49.2733 },
+  PE: { lat: -8.0476, lon: -34.8770 },
+  PI: { lat: -5.0892, lon: -42.8019 },
+  RJ: { lat: -22.9068, lon: -43.1729 },
+  RN: { lat: -5.7945, lon: -35.2110 },
+  RS: { lat: -30.0346, lon: -51.2177 },
+  RO: { lat: -8.7619, lon: -63.9039 },
+  RR: { lat: 2.8235, lon: -60.6758 },
+  SC: { lat: -27.5954, lon: -48.5480 },
+  SP: { lat: -23.5505, lon: -46.6333 },
+  SE: { lat: -10.9472, lon: -37.0731 },
+  TO: { lat: -10.2491, lon: -48.3243 },
+};
+
+/**
+ * Devolve as coordenadas lat/lon de um município ou de sua UF (capital) usando a heurística do projeto.
+ */
+export function obterCoordenadasMunicipioOuUf(
+  municipioStr?: string,
+  ufStr?: string
+): { lat: number; lon: number; origem: 'Município' | 'Estado' } | null {
+  const m = (municipioStr || '').trim();
+  const u = (ufStr || '').trim().toUpperCase();
+
+  if (m) {
+    const key = m.toLowerCase().replace('/', '-');
+    if (MUNICIPIOS[key]) {
+      return { ...MUNICIPIOS[key], origem: 'Município' };
+    }
+  }
+
+  const ufExtraida = ufDoMunicipio(m) || (u.length === 2 ? u : null);
+  if (ufExtraida && CAPITAIS_UF[ufExtraida]) {
+    return { ...CAPITAIS_UF[ufExtraida], origem: 'Estado' };
+  }
+
+  return null;
 }
 
 /** Devolve a âncora do município (se conhecido). Aceita com ou sem UF. */

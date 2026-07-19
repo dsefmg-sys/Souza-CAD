@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MUNICIPIOS } from '@/lib/topo/municipios';
+import { MUNICIPIOS, obterCoordenadasMunicipioOuUf } from '@/lib/topo/municipios';
 import type { PerfilUso } from '@/lib/store/perfilUso';
 import { MapPin, Users, Crown, Shield, CheckCircle2, AlertTriangle } from 'lucide-react';
 
@@ -32,7 +32,7 @@ interface ClientePonto {
   perfil: PerfilUso;
   lat: number;
   lon: number;
-  origem: 'GPS' | 'Município' | 'Estimado';
+  origem: 'GPS' | 'Município' | 'Estado' | 'Estimado';
 }
 
 export default function MapaClientesSaaS({ perfis }: Props) {
@@ -43,16 +43,26 @@ export default function MapaClientesSaaS({ perfis }: Props) {
         return { perfil: p, lat: p.lat, lon: p.lon, origem: 'GPS' };
       }
 
-      // 2. Tentar município
-      const muniKey = (p.municipio || '').trim().toLowerCase();
-      if (muniKey && MUNICIPIOS[muniKey]) {
-        const m = MUNICIPIOS[muniKey];
-        return { perfil: p, lat: m.lat + (idx % 5) * 0.005, lon: m.lon + (idx % 3) * 0.005, origem: 'Município' };
+      // 2. Tentar município ou estado com a regra do projeto (lastIndexOf('-'))
+      const rawMuni = (p.municipio || '').trim();
+      const rawUf = (p.uf || '').trim();
+
+      const coords = obterCoordenadasMunicipioOuUf(rawMuni, rawUf);
+      if (coords) {
+        // Dispersão sutil de pontos para clientes na mesma cidade/estado não encavalarem
+        const jitterLat = ((idx * 17) % 7 - 3) * 0.006;
+        const jitterLon = ((idx * 23) % 7 - 3) * 0.006;
+        return {
+          perfil: p,
+          lat: coords.lat + jitterLat,
+          lon: coords.lon + jitterLon,
+          origem: coords.origem
+        };
       }
 
-      // 3. Fallback regional (Região de Espera Feliz-MG / Brasil)
-      const baseLat = -20.6506 + (idx * 0.04) % 1.5;
-      const baseLon = -41.9094 + (idx * 0.06) % 1.5;
+      // 3. Fallback regional (Brasil central)
+      const baseLat = -15.7942 + ((idx * 13) % 9 - 4) * 0.2;
+      const baseLon = -47.8822 + ((idx * 19) % 9 - 4) * 0.2;
       return { perfil: p, lat: baseLat, lon: baseLon, origem: 'Estimado' };
     });
   }, [perfis]);

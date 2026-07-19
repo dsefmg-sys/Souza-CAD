@@ -74,50 +74,131 @@ interface BaseArgs {
   modoTratamentoAusente?: ModoTratamentoAusente;
 }
 
-/** Aplica o papel timbrado executivo (moldura sutil, faixa de topo verde esmeralda/dourada com as cores da marca SOUZA CAD e rodapé de segurança). */
-function aplicarPapelTimbrado(doc: jsPDF) {
+function hexParaRgb(hex?: string): { r: number; g: number; b: number } {
+  if (!hex || typeof hex !== 'string') return { r: 14, g: 138, b: 86 }; // Verde Esmeralda Marca #0e8a56
+  const clean = hex.replace('#', '').trim();
+  if (clean.length === 3) {
+    const r = parseInt(clean[0] + clean[0], 16);
+    const g = parseInt(clean[1] + clean[1], 16);
+    const b = parseInt(clean[2] + clean[2], 16);
+    if (!isNaN(r) && !isNaN(g) && !isNaN(b)) return { r, g, b };
+  } else if (clean.length === 6) {
+    const r = parseInt(clean.substring(0, 2), 16);
+    const g = parseInt(clean.substring(2, 4), 16);
+    const b = parseInt(clean.substring(4, 6), 16);
+    if (!isNaN(r) && !isNaN(g) && !isNaN(b)) return { r, g, b };
+  }
+  return { r: 14, g: 138, b: 86 };
+}
+
+function obterDimensoesBase64(dataUrl: string): { w: number; h: number } | null {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  try {
+    const base64Str = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+    const binary = atob(base64Str);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+
+    // PNG signature (0x89 0x50 0x4E 0x47)
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+      const view = new DataView(bytes.buffer);
+      const w = view.getUint32(16, false);
+      const h = view.getUint32(20, false);
+      if (w > 0 && h > 0) return { w, h };
+    }
+
+    // JPEG signature (0xFF 0xD8)
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+      let offset = 2;
+      while (offset < len - 8) {
+        if (bytes[offset] !== 0xff) break;
+        const marker = bytes[offset + 1];
+        if (marker === 0xc0 || marker === 0xc2) {
+          const view = new DataView(bytes.buffer);
+          const h = view.getUint16(offset + 5, false);
+          const w = view.getUint16(offset + 7, false);
+          if (w > 0 && h > 0) return { w, h };
+        }
+        const length = (bytes[offset + 2] << 8) + bytes[offset + 3];
+        offset += 2 + length;
+      }
+    }
+  } catch (e) {
+    console.warn("Erro ao obter dimensões da imagem base64:", e);
+  }
+  return null;
+}
+
+/** Aplica o papel timbrado executivo com as cores personalizadas do escritório/logo. */
+function aplicarPapelTimbrado(doc: jsPDF, esc?: EscritorioData) {
   const larg = doc.internal.pageSize.getWidth();
   const alt = doc.internal.pageSize.getHeight();
 
-  // Faixa de topo executiva nas cores oficiais da marca SOUZA CAD (Verde Esmeralda + Dourado)
-  doc.setFillColor(14, 138, 86); // Verde Esmeralda Marca #0e8a56
+  const primary = hexParaRgb(esc?.corPrimaria);
+  const secondary = hexParaRgb(esc?.corSecundaria || '#f59e0b');
+
+  // Faixa de topo executiva em 2 tons elegantes com a cor da marca da empresa
+  doc.setFillColor(primary.r, primary.g, primary.b);
   doc.rect(0, 0, larg, 3.5, 'F');
-  doc.setFillColor(245, 158, 11); // Dourado Marca #f59e0b
+  doc.setFillColor(secondary.r, secondary.g, secondary.b);
   doc.rect(0, 3.5, larg, 1.2, 'F');
 
-  // Moldura perimetral sutil de papel timbrado com toque esmeralda
-  doc.setDrawColor(209, 250, 229); // emerald-100
+  // Moldura perimetral sutil de papel timbrado com suavidade proporcional à cor primária
+  const borderR = Math.min(245, primary.r + 190);
+  const borderG = Math.min(245, primary.g + 190);
+  const borderB = Math.min(245, primary.b + 190);
+  doc.setDrawColor(borderR, borderG, borderB);
   doc.setLineWidth(0.35);
   doc.rect(8, 8, larg - 16, alt - 16);
 
   // Rodapé de segurança do papel timbrado
-  doc.setDrawColor(167, 243, 208); // emerald-200
+  doc.setDrawColor(Math.min(230, primary.r + 160), Math.min(230, primary.g + 160), Math.min(230, primary.b + 160));
   doc.setLineWidth(0.25);
   doc.line(18, alt - 12, larg - 18, alt - 12);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.setTextColor(100, 116, 139); // slate-500
-  doc.text('Documento gerado pelo Souza-CAD • Sistema Profissional de Georreferenciamento & Topografia', larg / 2, alt - 7, { align: 'center' });
+  doc.setTextColor(100, 116, 139);
+  const nomeEmpresa = esc?.nome ? `${esc.nome} • ` : '';
+  doc.text(`${nomeEmpresa}Documento gerado pelo Souza-CAD • Sistema Profissional de Georreferenciamento`, larg / 2, alt - 7, { align: 'center' });
   doc.setTextColor(0, 0, 0);
 }
 
 function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, larg: number): number {
-  aplicarPapelTimbrado(doc);
+  aplicarPapelTimbrado(doc, esc);
   let y = margem + 3;
   if (esc.logoDataUrl) {
     try {
       const fmt = esc.logoDataUrl.includes('image/png') ? 'PNG' : 'JPEG';
-      doc.addImage(esc.logoDataUrl, fmt, larg / 2 - 18, y, 36, 15);
-      y += 18;
+      let w = 36;
+      let h = 15;
+      const dim = obterDimensoesBase64(esc.logoDataUrl);
+      if (dim && dim.w > 0 && dim.h > 0) {
+        const ratio = dim.w / dim.h;
+        if (ratio > 36 / 15) {
+          w = 36;
+          h = 36 / ratio;
+        } else {
+          h = 15;
+          w = 15 * ratio;
+        }
+      }
+      doc.addImage(esc.logoDataUrl, fmt, larg / 2 - w / 2, y, w, h);
+      y += h + 3;
     } catch (err) {
       console.warn("Erro ao renderizar logo no PDF:", err);
     }
   }
+
+  const primary = hexParaRgb(esc?.corPrimaria);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+  doc.setTextColor(primary.r, primary.g, primary.b);
   doc.text(esc.nome || 'Escritório', larg / 2, y + 4, { align: 'center' });
+
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-  // Endereço + cidade/UF/CEP numa linha só; documentos, inscrições e contatos noutras.
+  doc.setTextColor(71, 85, 105);
+
   const cidadeUf = [esc.cidade, esc.uf].filter(Boolean).join('-');
   const localLinha = [esc.endereco, [cidadeUf, esc.cep].filter(Boolean).join('  ')].filter(Boolean).join(' — ');
   const docsLinha = [
@@ -133,7 +214,11 @@ function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, la
   const linhas = [esc.ramo, localLinha, docsLinha, contatoLinha].filter(Boolean) as string[];
   y += 9;
   linhas.forEach((l) => { doc.text(l, larg / 2, y, { align: 'center' }); y += 4.2; });
-  doc.setDrawColor(180); doc.line(margem, y + 1, larg - margem, y + 1);
+
+  doc.setDrawColor(primary.r, primary.g, primary.b);
+  doc.setLineWidth(0.4);
+  doc.line(margem, y + 1, larg - margem, y + 1);
+  doc.setTextColor(0, 0, 0);
   return y + 8;
 }
 
@@ -181,14 +266,25 @@ function decorarDoc(doc: jsPDF) {
   } as unknown as typeof doc.text;
 }
 
-/** Adiciona imagem de assinatura PNG sem achatar ou distorcer sua proporção de aspecto (max 50mm x 18mm). */
+/** Adiciona imagem de assinatura PNG sem achatar ou distorcer sua proporção de aspecto (max 48mm x 18mm). */
 function adicionarAssinaturaSemAchatamento(doc: jsPDF, dataUrl: string, xCentral: number, yLinha: number, maxW: number = 48, maxH: number = 18) {
   try {
     const fmt = dataUrl.includes('image/png') ? 'PNG' : 'JPEG';
-    const w = maxW;
-    const h = maxH;
+    let w = maxW;
+    let h = maxH;
+    const dim = obterDimensoesBase64(dataUrl);
+    if (dim && dim.w > 0 && dim.h > 0) {
+      const ratio = dim.w / dim.h;
+      if (ratio > maxW / maxH) {
+        w = maxW;
+        h = maxW / ratio;
+      } else {
+        h = maxH;
+        w = maxH * ratio;
+      }
+    }
     // Desenha centralizado sobre a linha de assinatura sem achatar
-    doc.addImage(dataUrl, fmt, xCentral - w / 2, yLinha - h - 1, w, h);
+    doc.addImage(dataUrl, fmt, xCentral - w / 2, yLinha - h - 0.5, w, h);
   } catch (e) {
     console.warn("Erro ao desenhar assinatura automática:", e);
   }

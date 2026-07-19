@@ -1099,19 +1099,19 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <Label className="text-xs font-semibold">Razão Social / Nome do Escritório</Label>
                   <Input value={esc.nome} onChange={(e) => changeEsc('nome', e.target.value)} placeholder="Ex.: Souza Gestão Fundiária Ltda" title="Nome oficial da empresa (ou seu nome, se você é autônomo). Aparece no cabeçalho das peças." />
                 </div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/90 border-b pb-1 pt-1">Marca (cores da interface)</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600/90 border-b pb-1 pt-1">Marca & Papel Timbrado</div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Cor Primária (Tema)</Label>
+                    <Label className="text-xs font-semibold">Cor Primária (Tema & Timbrado)</Label>
                     <div className="flex gap-2 items-center">
                       <input
                         type="color"
-                        value={esc.corPrimaria || '#15803d'}
+                        value={esc.corPrimaria || '#0e8a56'}
                         onChange={(e) => changeEsc('corPrimaria', e.target.value)}
                         className="size-8 rounded-md border cursor-pointer p-0 bg-transparent"
                       />
                       <Input
-                        value={esc.corPrimaria || '#15803d'}
+                        value={esc.corPrimaria || '#0e8a56'}
                         onChange={(e) => changeEsc('corPrimaria', e.target.value.toUpperCase())}
                         className="h-8 text-xs font-mono uppercase"
                         maxLength={7}
@@ -1123,12 +1123,12 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     <div className="flex gap-2 items-center">
                       <input
                         type="color"
-                        value={esc.corSecundaria || '#16a34a'}
+                        value={esc.corSecundaria || '#f59e0b'}
                         onChange={(e) => changeEsc('corSecundaria', e.target.value)}
                         className="size-8 rounded-md border cursor-pointer p-0 bg-transparent"
                       />
                       <Input
-                        value={esc.corSecundaria || '#16a34a'}
+                        value={esc.corSecundaria || '#f59e0b'}
                         onChange={(e) => changeEsc('corSecundaria', e.target.value.toUpperCase())}
                         className="h-8 text-xs font-mono uppercase"
                         maxLength={7}
@@ -1137,10 +1137,8 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   </div>
                 </div>
                 <p className="text-[10px] leading-snug text-muted-foreground">
-                  Estas cores pintam só a interface do app (botões, destaques), nunca as peças técnicas
-                  impressas — a planta e os documentos não mudam de cor. Se você escolher uma cor muito
-                  clara ou muito escura (branco, preto, amarelo), o app ajusta o brilho dela sozinho pra
-                  não sumir no tema claro nem no escuro. Ainda assim, prefira uma cor de contraste médio.
+                  A Cor Primária define os destaques da interface e também a cor oficial do papel timbrado
+                  e cabeçalhos dos documentos PDF gerados em Gestão. Escolha a cor predominante da sua marca ou logotipo.
                 </p>
                 {prefs.modo === 'simples' ? (
                   <>
