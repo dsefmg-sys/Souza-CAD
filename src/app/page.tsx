@@ -1244,8 +1244,8 @@ export default function EditorPage() {
     try { if (active) setSetupOk(souMaster() || localStorage.getItem('metrica.setupFeito') === '1'); } catch { if (active) setSetupOk(true); }
     // registra/atualiza o perfil de uso (o titular acompanha empresa, RT, projetos)
     const esc = carregarEscritorio(); const tec = carregarTecnico();
-    const muniUsar = esc.cidade || esc.municipio || imovel?.municipio || '';
-    const ufUsar = esc.uf || imovel?.uf || '';
+    const muniUsar = esc.cidade || imovel?.municipio || '';
+    const ufUsar = esc.uf || ufDoMunicipio(imovel?.municipio) || '';
     sincronizarPerfil({
       ultimoAcessoEm: Date.now(),
       empresaNome: esc.nome,
