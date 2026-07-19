@@ -11,41 +11,36 @@ interface LandingPageProps {
 }
 
 function InteractiveImageWindow({ src, alt }: { src: string; alt: string }) {
-  const [translateY, setTranslateY] = useState(0);
+  const [isBottom, setIsBottom] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current || !imgRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const mouseRatioY = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
-    const overflowY = imgRef.current.offsetHeight - rect.height;
-    if (overflowY > 0) {
-      setTranslateY(-Math.round(mouseRatioY * overflowY));
-    }
+  const togglePosicao = () => {
+    setIsBottom((prev) => !prev);
   };
 
-  const handleMouseLeave = () => {
-    setTranslateY(0);
+  const getTranslateY = () => {
+    if (!isBottom || !containerRef.current || !imgRef.current) return 0;
+    const overflowY = imgRef.current.offsetHeight - containerRef.current.offsetHeight;
+    return overflowY > 0 ? -Math.round(overflowY) : 0;
   };
 
   return (
     <div
       ref={containerRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="w-full h-[260px] sm:h-[350px] md:h-[440px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative cursor-ns-resize group"
+      onClick={togglePosicao}
+      className="w-full h-[260px] sm:h-[350px] md:h-[440px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative cursor-pointer group select-none"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
         src={src}
         alt={alt}
-        style={{ transform: `translate3d(0, ${translateY}px, 0)` }}
-        className="w-full h-auto block pointer-events-none"
+        style={{ transform: `translate3d(0, ${getTranslateY()}px, 0)` }}
+        className="w-full h-auto block pointer-events-none transition-transform duration-500 ease-in-out"
       />
-      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-slate-950/85 border border-slate-800 text-[10px] font-bold text-slate-300 opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none backdrop-blur-sm shadow-md">
-        ↕ Mova o mouse para rolar a imagem
+      <div className="absolute top-3 right-3 px-3 py-1.5 rounded-full bg-slate-950/90 border border-emerald-500/40 text-[10px] sm:text-xs font-bold text-emerald-300 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all pointer-events-none backdrop-blur-md shadow-lg flex items-center gap-1.5">
+        <span>{isBottom ? '▲ Clique para ver o topo' : '▼ Clique para ver a base'}</span>
       </div>
     </div>
   );
@@ -56,15 +51,15 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
   const [modalIndiqueAberto, setModalIndiqueAberto] = useState(false);
   const [textoCopiado, setTextoCopiado] = useState(false);
 
-  const mensagemRecomendacao = `🚀 *Conheça o Souza-CAD!* Software Profissional de Engenharia Topográfica e Georreferenciamento SIGEF / INCRA.
+  const mensagemRecomendacao = `Conheça o Souza-CAD — Software Profissional de Engenharia Topográfica e Georreferenciamento SIGEF / INCRA.
 
-✨ *Recursos em Segundos:*
+Recursos Principais:
 • Geração automática da Planilha ODS oficial do SIGEF
 • Requerimentos Cartorários (Retificação, Usucapião, Desmembramento)
 • Prancha Oficial com Modelo Digital de Relevo 3D
 • Leitura inteligente de documentos por IA
 
-👉 Teste agora gratuitamente no seu navegador:
+Acesse agora e teste gratuitamente no seu navegador:
 https://souzacad--souza-cad.us-east4.hosted.app/`;
 
   const indicarAmigo = () => {
@@ -489,7 +484,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
 
       {/* SEÇÃO 7: CREDENCIAMENTO PIONEIRO & CTA FINAL */}
       <section id="sec-6" className="landing-snap-sec min-h-screen w-full flex flex-col justify-between items-center relative pt-20 pb-6 text-center overflow-hidden">
-        {/* VÍDEO DE FUNDO NO FINAL (VÍDEO 2) - LARGURA TOTAL 100% */}
+        {/* VÍDEO DE FUNDO NO FINAL (VÍDEO 2) - ALTA VISIBILIDADE 75% */}
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <video
             ref={(el) => { if (el) el.playbackRate = 0.75; }}
@@ -497,15 +492,15 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             loop
             muted
             playsInline
-            className="w-full h-full object-cover opacity-20 filter contrast-110 brightness-95 saturate-125"
+            className="w-full h-full object-cover opacity-75 filter contrast-110 brightness-95 saturate-125"
           >
             <source src="/marca/video2.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-slate-950" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950" />
         </div>
 
         <div className="w-full max-w-3xl px-4 sm:px-6 space-y-6 my-auto relative z-10">
-          <div className="bg-slate-900/90 border border-emerald-500/30 p-6 sm:p-10 rounded-3xl shadow-2xl space-y-6 backdrop-blur-xl">
+          <div className="bg-slate-900/90 border border-emerald-500/40 p-6 sm:p-10 rounded-3xl shadow-2xl space-y-6 backdrop-blur-xl">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4 text-left">
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-wide flex items-center gap-2">
@@ -524,16 +519,21 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
               </div>
             </div>
 
-            <div className="space-y-2 text-left">
-              <div className="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
+            {/* BARRA DE ALTA PROCURA EM ALTA */}
+            <div className="space-y-3 text-left">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-amber-500/20 border border-emerald-500/40 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse">
+                  <Zap className="size-3.5 text-amber-400 fill-amber-400" />
+                  <span>EM ALTA — ALTA PROCURA</span>
+                </span>
+                <span className="text-emerald-400 font-mono font-black">{estaEsgotado ? 'Plano Comercial Ativado' : `Restam apenas ${vagasRestantes} vagas gratuitas`}</span>
+              </div>
+
+              <div className="h-3.5 bg-slate-950 rounded-full overflow-hidden border border-emerald-500/40 p-0.5 shadow-inner">
                 <div 
-                  className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300 rounded-full transition-all duration-1000"
+                  className="h-full bg-gradient-to-r from-emerald-500 via-teal-300 to-amber-400 rounded-full transition-all duration-1000 shadow-[0_0_12px_rgba(16,185,129,0.8)]"
                   style={{ width: `${estaEsgotado ? 100 : Math.min(100, (numUsuarios / vagasTotais) * 100)}%` }}
                 />
-              </div>
-              <div className="text-xs text-emerald-300 font-bold uppercase tracking-wider flex items-center justify-between">
-                <span>{estaEsgotado ? 'Plano Comercial Ativado' : `Restam apenas ${vagasRestantes} vagas gratuitas`}</span>
-                <span>Acesso Imediato</span>
               </div>
             </div>
 
@@ -561,7 +561,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
       {/* MODAL CONVIDATIVO: INDIQUE UM AMIGO */}
       {modalIndiqueAberto && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 text-left text-white">
+          <div className="relative w-full max-w-2xl bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 text-left text-white">
             <button
               type="button"
               onClick={() => setModalIndiqueAberto(false)}
@@ -575,17 +575,17 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
                 <Share2 className="size-6" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-white uppercase tracking-wide">
+                <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-wide">
                   Indique o Souza-CAD
                 </h3>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs sm:text-sm text-slate-300">
                   Compartilhe com amigos, colegas e grupos de agrimensura no WhatsApp!
                 </p>
               </div>
             </div>
 
-            {/* CAIXA DE TEXTO COPIÁVEL */}
-            <div className="relative rounded-2xl border border-slate-800 bg-slate-950 p-4 font-mono text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-all max-h-48 overflow-y-auto scroll-fino">
+            {/* CAIXA DE TEXTO COPIÁVEL ESPAÇOSA E SEM ROLAGEM */}
+            <div className="relative rounded-2xl border border-slate-800 bg-slate-950 p-5 font-mono text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap select-all">
               {mensagemRecomendacao}
             </div>
 
