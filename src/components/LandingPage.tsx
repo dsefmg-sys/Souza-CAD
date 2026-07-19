@@ -1,6 +1,7 @@
 'use client';
 
-import { Shield, Zap, Compass, Users, CheckCircle, Smartphone, Monitor } from 'lucide-react';
+import { useState } from 'react';
+import { Shield, Zap, Compass, Users, CheckCircle, Smartphone, Monitor, FileText, Layers, Settings, Eye } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 
 interface LandingPageProps {
@@ -10,6 +11,8 @@ interface LandingPageProps {
 }
 
 export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingPageProps) {
+  const [abaPreview, setAbaPreview] = useState<'gestao' | 'modulos' | 'config'>('gestao');
+
   // Lógica de vagas dinâmicas baseada na quantidade de usuários cadastrados
   let vagasTotais = 50;
   if (numUsuarios >= 50 && numUsuarios < 100) {
@@ -66,8 +69,10 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
       </header>
 
       {/* ── CONTEÚDO PRINCIPAL ── */}
-      <main className="flex-grow flex items-center justify-center max-w-5xl mx-auto w-full px-6 py-8 md:py-12 z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      <main className="flex-grow flex flex-col items-center justify-center max-w-6xl mx-auto w-full px-6 py-8 md:py-12 z-10 space-y-16">
+        
+        {/* HERO SECTION */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center w-full">
           
           {/* Coluna Esquerda: Chamada, História, Métricas */}
           <div className="lg:col-span-7 space-y-6 text-left">
@@ -186,6 +191,106 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </div>
 
         </div>
+
+        {/* ── SHOWCASE VISUAL DA INTERFACE ── */}
+        <section className="w-full space-y-6 pt-4 border-t border-slate-900/80">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider text-emerald-400">
+              <Eye className="size-3" /> Módulos & Interface em Ação
+            </div>
+            <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+              Conheça a poder operacional do Souza-CAD
+            </h2>
+            <p className="text-xs text-slate-400 max-w-xl mx-auto">
+              Tudo o que você precisa para gerenciar contratos, emitir recibos, calcular erratas e automatizar o georreferenciamento numa única tela.
+            </p>
+          </div>
+
+          {/* Abas do Preview */}
+          <div className="flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setAbaPreview('gestao')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                abaPreview === 'gestao'
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                  : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <FileText className="size-4" />
+              <span>Gestão do Projeto & Contratos</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAbaPreview('modulos')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                abaPreview === 'modulos'
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                  : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Layers className="size-4" />
+              <span>Erratas & Malha SIGEF</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAbaPreview('config')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                abaPreview === 'config'
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                  : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Settings className="size-4" />
+              <span>Configurações & Marca</span>
+            </button>
+          </div>
+
+          {/* Moldura Glassmorphism de Janela de Software */}
+          <div className="relative rounded-2xl border border-slate-800 bg-slate-900/80 p-2 md:p-3 shadow-[0_0_90px_rgba(16,185,129,0.12)] backdrop-blur-xl overflow-hidden">
+            {/* Header de Moldura de Janela (estilo CAD) */}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800/80 mb-2">
+              <div className="flex items-center gap-2">
+                <span className="size-3 rounded-full bg-rose-500/80 inline-block" />
+                <span className="size-3 rounded-full bg-amber-500/80 inline-block" />
+                <span className="size-3 rounded-full bg-emerald-500/80 inline-block" />
+              </div>
+              <span className="text-[10px] font-mono text-slate-400">
+                {abaPreview === 'gestao' && 'Souza-CAD — Módulo de Gestão Financeira e Documentos'}
+                {abaPreview === 'modulos' && 'Souza-CAD — Automação de Erratas e Vértices Confrontantes'}
+                {abaPreview === 'config' && 'Souza-CAD — Configurações da Empresa e Assinatura Digital'}
+              </span>
+              <div className="size-3" />
+            </div>
+
+            {/* Imagem do Preview */}
+            <div className="relative rounded-xl overflow-hidden border border-slate-800/60 bg-slate-950 flex items-center justify-center min-h-[320px] max-h-[520px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={
+                  abaPreview === 'gestao' ? '/marca/preview_gestao.png' :
+                  abaPreview === 'modulos' ? '/marca/preview_modulos.png' :
+                  '/marca/preview_config.png'
+                }
+                alt="Demonstração do Módulo Souza-CAD"
+                className="w-full h-auto object-contain max-h-[500px] transition-all duration-300 transform hover:scale-[1.01]"
+              />
+            </div>
+
+            {/* Legenda Explicativa */}
+            <div className="mt-3 px-3 py-2 bg-slate-950/40 rounded-lg border border-slate-850 flex items-center justify-between text-[11px] text-slate-400">
+              <span>
+                {abaPreview === 'gestao' && '✔ Emissão instantânea de Recibos, Contratos de Prestação de Serviços, Propostas e Declarações em PDF.'}
+                {abaPreview === 'modulos' && '✔ Gerador de Errata para Cartório em Word (.docx) e importador oficial de confrontantes do INCRA.'}
+                {abaPreview === 'config' && '✔ Personalização completa da sua empresa com Logotipo, Cores e Assinatura Digital em documentos.'}
+              </span>
+              <span className="text-emerald-400 font-bold text-[10px] uppercase tracking-wider shrink-0 ml-4">Interativo & Automático</span>
+            </div>
+          </div>
+        </section>
+
       </main>
 
       {/* ── FOOTER ── */}
