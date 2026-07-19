@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown, Monitor } from 'lucide-react';
+import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown, Monitor, X } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
-const bp = process.env.NEXT_PUBLIC_BASE_PATH || '';
+const bp = (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/$/, '');
 
 interface LandingPageProps {
   onPioneiro: () => void;
@@ -524,12 +523,12 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
               </div>
             </div>
 
-            {/* BARRA DE ALTA PROCURA EM ALTA */}
+            {/* BARRA DE VAGAS LIMITADAS */}
             <div className="space-y-3 text-left">
               <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-amber-500/20 border border-emerald-500/40 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse">
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
                   <Zap className="size-3.5 text-amber-400 fill-amber-400" />
-                  <span>EM ALTA — ALTA PROCURA</span>
+                  <span>VAGAS LIMITADAS</span>
                 </span>
                 <span className="text-emerald-400 font-mono font-black">{estaEsgotado ? 'Plano Comercial Ativado' : `Restam apenas ${vagasRestantes} vagas gratuitas`}</span>
               </div>
@@ -570,9 +569,9 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <button
               type="button"
               onClick={() => setModalIndiqueAberto(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
             >
-              ✕
+              <X className="size-4" />
             </button>
 
             <div className="flex items-center gap-3">
@@ -636,9 +635,9 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
           <button
             type="button"
             onClick={() => setLightboxImg(null)}
-            className="absolute top-6 right-6 z-10 px-4 py-2 rounded-2xl bg-slate-900 border border-slate-700 text-white font-bold text-xs hover:border-emerald-400 transition-all cursor-pointer shadow-2xl"
+            className="absolute top-6 right-6 z-10 px-4 py-2 rounded-2xl bg-slate-900 border border-slate-700 text-white font-bold text-xs hover:border-emerald-400 transition-all cursor-pointer shadow-2xl flex items-center gap-1.5"
           >
-            ✕ Fechar Imagem (ESC)
+            <X className="size-3.5" /> Fechar Imagem (ESC)
           </button>
           <div className="max-w-[95vw] max-h-[92vh] overflow-auto rounded-2xl border border-emerald-500/40 bg-slate-950 shadow-[0_0_80px_rgba(16,185,129,0.3)] p-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}

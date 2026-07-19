@@ -1014,7 +1014,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                             }`}
                           >
                             <option value="pago" className="text-emerald-400 font-bold bg-zinc-900">Pago (Ok)</option>
-                            <option value="atrasado" className="text-red-400 font-bold bg-zinc-900">Atrasado (🚨)</option>
+                            <option value="atrasado" className="text-red-400 font-bold bg-zinc-900">Atrasado</option>
                             <option value="isento" className="text-zinc-400 font-bold bg-zinc-900">Isento (Free)</option>
                           </select>
                         </td>

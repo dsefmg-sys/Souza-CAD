@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
-import { FileSignature, UserPlus, Trash2, Scale } from 'lucide-react';
+import { FileSignature, UserPlus, Trash2, Scale, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { confirmar, escolher, avisar } from '@/lib/ui/dialogos';
 import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
@@ -412,8 +412,8 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                         className={`h-8 text-xs font-bold transition-all shadow-sm flex items-center justify-between px-2 ${ativo ? cfg.active : cfg.inactive}`}
                       >
                         <span className="truncate">{o.rotulo}</span>
-                        <span className={`text-[10px] ml-1 font-black ${ativo ? 'opacity-100' : 'opacity-30'}`}>
-                          {ativo ? '✓' : '+'}
+                        <span className={`ml-1 font-black ${ativo ? 'opacity-100' : 'opacity-30'}`}>
+                          {ativo ? <Check className="size-3.5" /> : '+'}
                         </span>
                       </Button>
                     );

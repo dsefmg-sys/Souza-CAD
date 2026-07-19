@@ -1238,8 +1238,8 @@ export default function Map3DViewer({
 
                   {calcVolumeAtivo && captureIncluirTerraplanagem && (volumes.corte + volumes.aterro) > 0 && (
                     <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-2.5 text-[10px] space-y-0.5">
-                      <div className="flex justify-between"><span className="text-red-500 font-bold">✂ Corte</span><span className="font-mono">{(volumes.corte * fatorEmpolamento).toFixed(1)} m³</span></div>
-                      <div className="flex justify-between"><span className="text-blue-500 font-bold">⬇ Aterro</span><span className="font-mono">{volumes.aterro.toFixed(1)} m³</span></div>
+                      <div className="flex justify-between"><span className="text-red-500 font-bold">Corte</span><span className="font-mono">{(volumes.corte * fatorEmpolamento).toFixed(1)} m³</span></div>
+                      <div className="flex justify-between"><span className="text-blue-500 font-bold">Aterro</span><span className="font-mono">{volumes.aterro.toFixed(1)} m³</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Platô</span><span className="font-mono">{zRef.toFixed(2)} m</span></div>
                     </div>
                   )}
@@ -1419,7 +1419,7 @@ export default function Map3DViewer({
 
         {/* Dica do scroll click do mouse */}
         <div className="mt-auto pt-3 border-t border-border/60 text-[9.5px] text-muted-foreground/80 leading-relaxed font-semibold italic flex items-start gap-1.5 bg-slate-500/5 dark:bg-white/5 rounded-xl p-2.5">
-          <span className="text-amber-500 font-bold shrink-0">★ Dica:</span>
+          <span className="text-amber-500 font-bold shrink-0">Dica:</span>
           <span>Clique com o botão central do mouse (scroll click) sobre o mapa/terreno para alternar instantaneamente entre os modos 2D e 3D.</span>
         </div>
       </div>

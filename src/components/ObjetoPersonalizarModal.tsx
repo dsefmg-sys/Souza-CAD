@@ -763,10 +763,10 @@ export function ObjetoPersonalizarModal({
                       <div className="flex justify-between"><span className="text-muted-foreground">Platô</span><span className="font-mono font-bold">{plantaConfig.print3dZRef.toFixed(2)} m</span></div>
                     )}
                     {plantaConfig.print3dVolumeCorte != null && (
-                      <div className="flex justify-between"><span className="text-red-600 font-bold">✂ Corte</span><span className="font-mono font-bold">{plantaConfig.print3dVolumeCorte.toFixed(1)} m³</span></div>
+                      <div className="flex justify-between"><span className="text-red-600 font-bold">Corte</span><span className="font-mono font-bold">{plantaConfig.print3dVolumeCorte.toFixed(1)} m³</span></div>
                     )}
                     {plantaConfig.print3dVolumeAterro != null && (
-                      <div className="flex justify-between"><span className="text-blue-600 font-bold">⬇ Aterro</span><span className="font-mono font-bold">{plantaConfig.print3dVolumeAterro.toFixed(1)} m³</span></div>
+                      <div className="flex justify-between"><span className="text-blue-600 font-bold">Aterro</span><span className="font-mono font-bold">{plantaConfig.print3dVolumeAterro.toFixed(1)} m³</span></div>
                     )}
                   </div>
                 )}

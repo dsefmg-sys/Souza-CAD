@@ -9,7 +9,7 @@
  * <Logo /> mostra só o ícone. <LogoHorizontal /> mostra o logo com o nome.
  * <FundoRedeMarca /> desenha o fundo de rede (splash) atrás do login.
  */
-const bp = process.env.NEXT_PUBLIC_BASE_PATH || '';
+const bp = (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/$/, '');
 
 export function Logo({ className = 'size-8' }: { className?: string }) {
   // Ícone SIMPLES em SVG (compasso): nítido em qualquer tamanho, inclusive minúsculo no cabeçalho e

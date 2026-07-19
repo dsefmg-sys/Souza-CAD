@@ -156,7 +156,7 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
         .btn-sec { background: #64748b; }
       </style></head><body>
       <div class="no-print">
-        <button class="btn-action" onclick="window.print()">📄 Baixar PDF / Imprimir A4</button>
+        <button class="btn-action" onclick="window.print()">Baixar PDF / Imprimir A4</button>
         <button class="btn-action btn-sec" onclick="window.close()">Fechar</button>
       </div>
       <div class="header-container">

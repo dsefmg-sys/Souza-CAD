@@ -325,11 +325,10 @@ function IconeCota({ className }: { className?: string }) {
   );
 }
 
-// Exibe o atalho como parte do texto entre parênteses em tom dourado (ex.: PONTOS (F2), LINHA (LN))
 function Atalho({ k, className }: { k: string; className?: string }) {
   if (!k) return null;
   return (
-    <span className={`pointer-events-none text-[8.5px] font-sans font-black tracking-wider uppercase px-1.5 py-[1px] leading-none rounded bg-black/10 dark:bg-white/15 border border-current/25 text-current opacity-90 shrink-0 select-none ml-auto transition-all ${className ?? ''}`}>
+    <span className={`pointer-events-none text-[8.5px] font-sans font-black tracking-wider uppercase px-1.5 py-[1px] leading-none rounded bg-black/15 dark:bg-white/20 text-current opacity-90 shrink-0 select-none ml-auto transition-all ${className ?? ''}`}>
       {k.toUpperCase()}
     </span>
   );
@@ -10998,7 +10997,7 @@ function PainelConferencia({
                   reconciliado ? 'text-emerald-500' : 'text-amber-500'
                 }`} />
                 Reconciliação de Área/Perímetro com o SIGEF
-                {reconciliado && <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">Conciliado ✔</span>}
+                {reconciliado && <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">Conciliado</span>}
               </h3>
               <p className="text-[10px] text-muted-foreground hidden sm:block">
                 Valores recalculados pelo SIGEF pós-ODS (utilizados nas peças se ativado).

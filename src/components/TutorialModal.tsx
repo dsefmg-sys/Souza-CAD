@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   ChevronLeft, ChevronRight, CircleCheck, MessageCircle, GraduationCap,
-  Sparkles, Play, Pause, Square, BookUser, X, Volume2
+  Sparkles, Play, Pause, Square, BookUser, X, Volume2, Lock
 } from 'lucide-react';
 import { carregarWhatsappSuporte, carregarWhatsappSuporteNome, linkWhatsapp } from '@/lib/store/suporte';
 import { TEMAS_AJUDA } from '@/lib/ajuda/temas';
@@ -499,21 +499,21 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
             {p.texto.includes('Folha Travada') || p.texto.includes('Trava da Folha') ? (
               (() => {
                 // Separa o texto principal do bloco da Trava
-                const partes = p.texto.split(/\n\n(?=(?:⚠️|🔒|Na mesma região|Na mesma Barra))/);
+                const partes = p.texto.split(/\n\n(?=(?:Na mesma região|Na mesma Barra))/);
                 return (
                   <div className="space-y-2">
                     <p className="text-xs font-semibold leading-relaxed text-muted-foreground text-left whitespace-pre-line">{partes[0]}</p>
                     {partes.slice(1).map((parte, i) => (
                       <div key={i} className="rounded-xl border border-amber-500/40 bg-amber-500/8 dark:bg-amber-500/10 px-4 py-3 text-left space-y-1.5">
                         <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                          <span className="text-base">🔒</span> Botão Folha Travada
+                          <Lock className="size-3.5 text-amber-500" /> Botão Folha Travada
                         </div>
                         <p className="text-[11px] font-semibold leading-relaxed text-amber-900 dark:text-amber-200 whitespace-pre-line">
                           {parte
-                            .replace(/^⚠️ Botão Folha Travada — essencial ao editar a planta:\n/, '')
-                            .replace(/^⚠️ Botão Trava da Folha — essencial ao editar a planta:\n/, '')
+                            .replace(/^(?:⚠️\s*)?Botão Folha Travada — essencial ao editar a planta:\n/, '')
+                            .replace(/^(?:⚠️\s*)?Botão Trava da Folha — essencial ao editar a planta:\n/, '')
                             .replace(/^Na mesma região da barra lateral esquerda, em Visualização e Navegação, fica o botão Folha Travada\. /, '')
-                            .replace(/^Na mesma Barra de Controle flutuante, você encontra o botão 🔒 Trava da Folha — um dos controles mais importantes do sistema\.\n/, '')}
+                            .replace(/^Na mesma Barra de Controle flutuante, você encontra o botão (?:\u{1F512}\s*)?Trava da Folha — um dos controles mais importantes do sistema\.\n/u, '')}
                         </p>
                       </div>
                     ))}
