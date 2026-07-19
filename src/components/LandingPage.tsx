@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown, Monitor } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
+const bp = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 interface LandingPageProps {
   onPioneiro: () => void;
@@ -13,16 +14,17 @@ interface LandingPageProps {
 function InteractiveImageWindow({ src, alt, onExpand }: { src: string; alt: string; onExpand?: (src: string) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const resolvedSrc = src.startsWith('/') ? `${bp}${src}` : src;
 
   return (
     <div
       ref={containerRef}
-      className="w-full h-[320px] sm:h-[460px] md:h-[580px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative select-none group"
+      className="w-full h-[320px] sm:h-[460px] md:h-[580px] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-slate-950 relative select-none group"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
-        src={src}
+        src={resolvedSrc}
         alt={alt}
         style={{
           imageRendering: '-webkit-optimize-contrast',
@@ -33,7 +35,7 @@ function InteractiveImageWindow({ src, alt, onExpand }: { src: string; alt: stri
       {onExpand && (
         <button
           type="button"
-          onClick={() => onExpand(src)}
+          onClick={() => onExpand(resolvedSrc)}
           className="absolute top-3 right-3 px-3.5 py-1.5 rounded-full bg-slate-950/90 border border-emerald-500/40 text-[10px] sm:text-xs font-bold text-emerald-300 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all pointer-events-auto backdrop-blur-md shadow-lg cursor-pointer"
         >
           VER
@@ -226,33 +228,33 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
       </div>
 
       {/* HEADER FIXO NO TOPO */}
-      <header className="fixed top-0 left-0 right-0 max-w-7xl mx-auto w-full px-6 py-4 flex items-center justify-between z-40 bg-slate-950/85 backdrop-blur-md border-b border-slate-900/60">
-        <div className="flex items-center gap-3 group cursor-default">
-          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 group-hover:border-emerald-400/60 group-hover:bg-emerald-500/20 transition-all duration-300 shadow-md">
-            <Compass className="size-5 text-emerald-400 group-hover:rotate-45 transition-transform duration-500" />
+      <header className="fixed top-4 left-1/2 -translate-x-1/2 max-w-5xl w-[92%] px-5 py-2.5 flex items-center justify-between z-40 bg-zinc-950/65 dark:bg-zinc-900/65 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl">
+        <div className="flex items-center gap-2.5 group cursor-default">
+          <div className="p-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 group-hover:border-emerald-400/60 group-hover:bg-emerald-500/20 transition-all duration-300 shadow-md">
+            <Compass className="size-4.5 text-emerald-400 group-hover:rotate-45 transition-transform duration-500" />
           </div>
-          <div>
-            <span className="text-lg font-black tracking-widest text-white font-mono">SOUZA <span className="text-emerald-400">CAD</span></span>
-            <span className="block text-[9px] font-bold uppercase tracking-wider text-emerald-400/90">Engenharia &amp; Georreferenciamento</span>
+          <div className="text-left">
+            <span className="text-base font-black tracking-wide text-white">SOUZA <span className="text-emerald-400">CAD</span></span>
+            <span className="block text-[8.5px] font-semibold uppercase tracking-wider text-emerald-400/85">Georreferenciamento</span>
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={indicarAmigo}
-            className="group px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold transition-all duration-300 cursor-pointer flex items-center gap-1.5 hover:bg-emerald-500/20 uppercase tracking-wider font-mono shadow-sm"
+            className="group px-3.5 py-1.5 rounded-full border border-white/10 bg-white/5 text-white/90 text-xs font-semibold hover:bg-white/10 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
           >
             <Share2 className="size-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">INDIQUE UM AMIGO</span>
+            <span className="hidden sm:inline">Indicar a um amigo</span>
           </button>
 
           <button
             type="button"
             onClick={onPioneiro}
-            className="group px-4 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-black transition-all duration-300 cursor-pointer flex items-center gap-1.5 hover:bg-emerald-500 hover:scale-[1.02] active:scale-[0.98] uppercase tracking-wider font-mono shadow-lg btn-shimmer-effect"
+            className="group px-4 py-1.5 rounded-full bg-emerald-600 text-white text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-1.5 hover:bg-emerald-500 hover:scale-[1.02] active:scale-[0.98] shadow-md btn-shimmer-effect"
           >
             <Zap className="size-3.5" />
-            <span>PIONEIRO ({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span>
+            <span>Pioneiro ({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span>
           </button>
         </div>
       </header>
@@ -269,7 +271,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             playsInline
             className="w-full h-full object-cover opacity-50 filter contrast-110 brightness-95 saturate-125"
           >
-            <source src="/marca/video1.mp4" type="video/mp4" />
+            <source src={`${bp}/marca/video1.mp4`} type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/45 to-slate-950" />
         </div>
@@ -309,7 +311,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <div className="absolute -bottom-5 -right-2 sm:-bottom-6 sm:-right-6 z-20 w-44 sm:w-72 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/marca/preview_requerimento_modal.png"
+                src={`${bp}/marca/preview_requerimento_modal.png`}
                 alt="Requerimento ao Cartório e Atos Cumulativos"
                 className="w-full h-auto object-contain block"
               />
@@ -327,7 +329,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/marca/fundo-sigef-campo-hd.jpg"
+            src={`${bp}/marca/fundo-sigef-campo-hd.jpg`}
             alt=""
             className="w-full h-full object-cover opacity-45 sm:opacity-55 filter contrast-120 saturate-120 brightness-95"
           />
@@ -392,7 +394,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
       {/* SEÇÃO 4: HISTÓRIA DO CRIADOR */}
       <section id="sec-3" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-4xl mx-auto text-center border-b border-slate-900/60">
         <div className="w-full space-y-6">
-          <div className="group bg-slate-900/80 border border-slate-800/80 p-8 sm:p-12 rounded-3xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden transition-all duration-500 hover:border-emerald-500/40 hover:shadow-2xl shadow-xl">
+          <div className="group bg-white/5 border border-white/10 p-8 sm:p-12 rounded-3xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden transition-all duration-500 hover:border-emerald-500/45 hover:shadow-emerald-500/5 hover:shadow-2xl shadow-2xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-700" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
               <Shield className="size-5 text-emerald-400" /> A história por trás da ferramenta
@@ -436,7 +438,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <div className="absolute -bottom-6 -left-3 sm:-bottom-8 sm:-left-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/marca/preview_pecas.png"
+                src={`${bp}/marca/preview_pecas.png`}
                 alt="Pacote de Peças Técnicas ZIP"
                 className="w-full h-auto object-contain block"
               />
@@ -473,7 +475,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <div className="absolute -bottom-6 -right-3 sm:-bottom-8 sm:-right-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/marca/preview_conselhos.png"
+                src={`${bp}/marca/preview_conselhos.png`}
                 alt="Habilitação Profissional CFT/CREA"
                 className="w-full h-auto object-contain block"
               />
@@ -497,13 +499,13 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             playsInline
             className="w-full h-full object-cover opacity-75 filter contrast-110 brightness-95 saturate-125"
           >
-            <source src="/marca/video2.mp4" type="video/mp4" />
+            <source src={`${bp}/marca/video2.mp4`} type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950" />
         </div>
 
         <div className="w-full max-w-3xl px-4 sm:px-6 space-y-6 my-auto relative z-10">
-          <div className="bg-slate-900/90 border border-emerald-500/40 p-6 sm:p-10 rounded-3xl shadow-2xl space-y-6 backdrop-blur-xl">
+          <div className="bg-zinc-950/70 border border-white/10 p-6 sm:p-10 rounded-3xl shadow-2xl space-y-6 backdrop-blur-2xl">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4 text-left">
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-wide flex items-center gap-2">
@@ -643,7 +645,8 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <img
               src={lightboxImg}
               alt="Visualização HD em Tela Cheia"
-              className="w-full h-auto max-h-[88vh] object-contain rounded-xl block mx-auto filter contrast-105"
+              style={{ imageRendering: '-webkit-optimize-contrast' }}
+              className="max-w-full h-auto max-h-[88vh] object-contain rounded-xl block mx-auto filter contrast-105"
             />
           </div>
         </div>

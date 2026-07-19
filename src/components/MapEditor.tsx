@@ -2310,7 +2310,7 @@ export default function MapEditor(props: Props) {
           <button
             type="button"
             onClick={onAtivar3D}
-            className="h-10 px-4 gap-2 text-xs font-black uppercase tracking-wider flex items-center justify-center bg-slate-900/80 hover:bg-slate-900/90 text-amber-400 border border-white/10 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 select-none"
+            className="h-9 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wider flex items-center justify-center bg-slate-900/80 hover:bg-slate-900/90 text-amber-400 border border-white/10 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 select-none"
             title="Alternar para visualização 3D do terreno e polígono (Botão Central do Mouse)"
           >
             <Box className="size-4 text-amber-500 animate-pulse" /> <span>Visualizar 3D</span>

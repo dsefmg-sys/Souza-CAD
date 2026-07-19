@@ -1650,7 +1650,7 @@ export default function Map3DViewer({
       <div className="absolute bottom-14 left-4 z-[2500] flex gap-2">
         <Button
           size="sm"
-          className="h-10 px-4 gap-2 text-xs font-black uppercase tracking-wider flex items-center justify-center bg-slate-900/80 hover:bg-slate-900/90 text-emerald-400 border border-white/10 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95"
+          className="h-9 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wider flex items-center justify-center bg-slate-900/80 hover:bg-slate-900/90 text-emerald-400 border border-white/10 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95"
           onClick={onVoltar2D}
           title="Voltar ao modo Mapa 2D (Botão Central do Mouse)"
         >

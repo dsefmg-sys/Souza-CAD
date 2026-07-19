@@ -6982,7 +6982,22 @@ export default function EditorPage() {
           </button>
           {perfilMenuAberto && (
             <div className={`absolute right-0 top-full pt-2 ${Z_CLASSES.DROPDOWN_MENU}`}>
-              <div className="w-80 max-w-[95vw] overflow-hidden rounded-2xl border border-slate-200/90 dark:border-zinc-800 bg-white/98 dark:bg-zinc-950/98 p-2 shadow-2xl backdrop-blur-2xl space-y-1">
+              <div className="w-80 max-w-[95vw] overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 p-2.5 shadow-2xl backdrop-blur-2xl space-y-1">
+                {user && (
+                  <div className="flex items-center gap-3 px-3 py-2 bg-slate-500/5 dark:bg-white/5 border border-white/5 rounded-xl mb-1.5 select-none">
+                    {user?.photoURL && !avatarQuebrado ? (
+                      <img src={user.photoURL} alt="Perfil" className="size-9 rounded-full object-cover border border-white/25" onError={() => setAvatarQuebrado(true)} />
+                    ) : (
+                      <span className="flex size-9 items-center justify-center rounded-full border border-white/15 bg-primary/20 text-xs font-black text-primary">
+                        {(user?.displayName || user?.email || 'V').slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                    <div className="flex flex-col min-w-0 text-left">
+                      <span className="text-[11px] font-black text-foreground truncate">{user?.displayName || 'Profissional'}</span>
+                      <span className="text-[9.5px] text-muted-foreground truncate">{user?.email}</span>
+                    </div>
+                  </div>
+                )}
                 {nuvemDisponivel && !user && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); definirModoEntrada('login'); }}
                     className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 active:scale-98 transition-all whitespace-nowrap">
@@ -7193,19 +7208,47 @@ export default function EditorPage() {
                           <Sparkles className="text-violet-500 shrink-0 size-3.5" /> <span>USAR IA</span>
                           <Atalho k="IA" />
                         </Button>
-                        <div className="grid grid-cols-2 gap-1 col-span-2">
-                          <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="w-full">
-                            <Button size="sm" variant="secondary" className="relative w-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 gap-1" title="Acessar o SIGEF (INCRA) para certificação eletrônica do imóvel">
-                              <ExternalLink className="size-3.5 text-emerald-500" /> <span>SIGEF</span>
-                              <Atalho k="SG" />
-                            </Button>
-                          </a>
-                          <a href={tecnico?.conselho === 'CREA' ? 'https://www.confea.org.br/' : 'https://sincet.haia.com.br/app/'} target="_blank" rel="noopener noreferrer" className="w-full">
-                            <Button size="sm" variant="secondary" className="relative w-full text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 gap-1" title={`Emitir ${rotulosProfissional(tecnico).termo} oficial (${rotulosProfissional(tecnico).conselho})`}>
-                              <ExternalLink className="size-3.5 text-blue-500" /> <span>{rotulosProfissional(tecnico).termo === 'ART' ? 'Emitir ART' : 'Emitir TRT'}</span>
-                            </Button>
-                          </a>
-                        </div>
+                        <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="w-full">
+                          <Button size="sm" variant="secondary" className="relative w-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 gap-1" title="Acessar o SIGEF (INCRA) para certificação eletrônica do imóvel">
+                            <ExternalLink className="size-3.5 text-emerald-500" /> <span>SIGEF</span>
+                            <Atalho k="SG" />
+                          </Button>
+                        </a>
+                        <a href={tecnico?.conselho === 'CREA' ? 'https://www.confea.org.br/' : 'https://sincet.haia.com.br/app/'} target="_blank" rel="noopener noreferrer" className="w-full">
+                          <Button size="sm" variant="secondary" className="relative w-full text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 gap-1" title={`Emitir ${rotulosProfissional(tecnico).termo} oficial (${rotulosProfissional(tecnico).conselho})`}>
+                            <ExternalLink className="size-3.5 text-blue-500" /> <span>{rotulosProfissional(tecnico).termo === 'ART' ? 'Emitir ART' : 'Emitir TRT'}</span>
+                          </Button>
+                        </a>
+                        <Button size="sm" variant={curvaConfigAberta ? 'default' : 'secondary'} className={`relative ${curvaConfigAberta ? COR_ATIVO : ''}`} onClick={() => setCurvaConfigAberta((v) => !v)} title={`Curvas de Nível (${obterAtalhoLateral('curvas_nivel', 'cn')}): traçar curvas de nível e relevo planialtimétrico.`}>
+                          <IconeCurvasNivel className={curvaConfigAberta ? 'text-white shrink-0' : 'text-indigo-500 shrink-0'} /> <span className="truncate">Curvas</span>
+                          <Atalho k={obterAtalhoLateral('curvas_nivel', 'cn')} />
+                        </Button>
+                        <Button size="sm" variant="secondary" className="relative text-lime-600 dark:text-lime-400 hover:bg-lime-500/20" title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (CR)" onClick={() => setCarAberto(true)}>
+                          <Leaf className="size-3.5 text-lime-500 shrink-0" /> <span className="truncate">CAR</span>
+                          <Atalho k="CR" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={histCount === 0}
+                          className={`relative w-full px-1 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          onClick={desfazer}
+                          title={histCount > 0 ? `Desfazer (${obterAtalhoLateral('desfazer', 'dz')} / Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
+                        >
+                          <Undo2 className="size-3.5" /> <span>Desfazer</span>
+                          <Atalho k={obterAtalhoLateral('desfazer', 'dz')} />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={redoCount === 0}
+                          className={`relative w-full px-1 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          onClick={refazer}
+                          title={redoCount > 0 ? `Refazer (${obterAtalhoLateral('refazer', 'ry')} / Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
+                        >
+                          <Redo2 className="size-3.5" /> <span>Refazer</span>
+                          <Atalho k={obterAtalhoLateral('refazer', 'ry')} />
+                        </Button>
                       </div>
                       {glebas.length > 1 && (
                         <div className="flex flex-wrap gap-1 items-center justify-between border-t pt-1.5 mt-0.5">
@@ -7218,42 +7261,6 @@ export default function EditorPage() {
                           </div>
                         </div>
                       )}
-                    </div>
-
-                    {/* CARD 2: VISUALIZAÇÃO & NAVEGAÇÃO (SEM TÍTULO) */}
-                    <div className="flex flex-col gap-1 border rounded-lg p-1 bg-muted/10 shadow-2xs">
-                      <div className="grid grid-cols-2 gap-1 [&>button]:h-7.5 [&>button]:w-full [&>button]:justify-center [&>button]:px-1 [&>button]:gap-0.5 [&_svg]:size-3.5 [&>button]:min-w-0 [&_span]:text-[9px] [&_span]:font-bold [&_span]:uppercase [&_span]:truncate [&_span]:text-center">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={histCount === 0}
-                          className={`relative h-7.5 w-full px-1 justify-center transition-opacity ${histCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
-                          onClick={desfazer}
-                          title={histCount > 0 ? `Desfazer (${obterAtalhoLateral('desfazer', 'dz')} / Ctrl+Z) — ${histCount} ação(ões) no histórico` : 'Nada para desfazer'}
-                        >
-                          <Undo2 className="size-3.5" /> <span>Desfazer</span>
-                          <Atalho k={obterAtalhoLateral('desfazer', 'dz')} />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={redoCount === 0}
-                          className={`relative h-7.5 w-full px-1 justify-center transition-opacity ${redoCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
-                          onClick={refazer}
-                          title={redoCount > 0 ? `Refazer (${obterAtalhoLateral('refazer', 'ry')} / Ctrl+Y) — ${redoCount} ação(ões) disponível(is)` : 'Nada para refazer'}
-                        >
-                          <Redo2 className="size-3.5" /> <span>Refazer</span>
-                          <Atalho k={obterAtalhoLateral('refazer', 'ry')} />
-                        </Button>
-                        <Button size="sm" variant={curvaConfigAberta ? 'default' : 'secondary'} className={`relative ${curvaConfigAberta ? COR_ATIVO : ''}`} onClick={() => setCurvaConfigAberta((v) => !v)} title={`Curvas de Nível (${obterAtalhoLateral('curvas_nivel', 'cn')}): traçar curvas de nível e relevo planialtimétrico.`}>
-                          <IconeCurvasNivel className={curvaConfigAberta ? 'text-white shrink-0' : 'text-indigo-500 shrink-0'} /> <span className="truncate">Curvas</span>
-                          <Atalho k={obterAtalhoLateral('curvas_nivel', 'cn')} />
-                        </Button>
-                        <Button size="sm" variant="secondary" className="relative text-lime-600 dark:text-lime-400 hover:bg-lime-500/20" title="CAR — Cadastro Ambiental Rural: reserva legal, módulos fiscais e APP (CR)" onClick={() => setCarAberto(true)}>
-                          <Leaf className="size-3.5 text-lime-500 shrink-0" /> <span className="truncate">CAR</span>
-                          <Atalho k="CR" />
-                        </Button>
-                      </div>
                     </div>
 
                     {/* CARD 3: FERRAMENTAS DE DESENHO */}
