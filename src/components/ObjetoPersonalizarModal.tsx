@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Z_CLASSES } from '@/lib/ui/zlayers';
 import type { ObjetoDesenho, PlantaConfig, EscritorioData, ImovelData } from '@/lib/topo/types';
 
-type ItemTextoOverride = { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number };
+type ItemTextoOverride = { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number; fundoBranco?: boolean };
 
 interface ObjetoPersonalizarModalProps {
   objPersonalizarId: string | null;
@@ -73,6 +73,73 @@ export function ObjetoPersonalizarModal({
       </div>
 
       {(() => {
+        if (objPersonalizarId === 'planta.centroInfo' || objPersonalizarId === 'planta:titulo_imovel') {
+          const idCentro = 'planta.centroInfo';
+          const ovCentro = plantaConfig.textos?.[idCentro] || {};
+          const escCentro = ovCentro.escala ?? 1.0;
+          const negCentro = ovCentro.negrito ?? false;
+          const fundoBranco = ovCentro.fundoBranco ?? false;
+          const largCentro = ovCentro.larguraChars ?? 0;
+
+          return (
+            <div className="space-y-4">
+              <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Texto Central do Imóvel</div>
+
+              {/* Fundo Sólido Branco */}
+              <label className="flex items-center gap-2 cursor-pointer py-1">
+                <input
+                  type="checkbox"
+                  checked={fundoBranco}
+                  onChange={(e) => patchTextoPlanta(idCentro, { fundoBranco: e.target.checked })}
+                  className="rounded border-zinc-300 text-primary focus:ring-primary size-4"
+                />
+                <span className="font-semibold text-foreground">Fundo sólido branco (sobrepõe curvas)</span>
+              </label>
+
+              {/* Negrito */}
+              <label className="flex items-center gap-2 cursor-pointer py-1">
+                <input
+                  type="checkbox"
+                  checked={negCentro}
+                  onChange={(e) => patchTextoPlanta(idCentro, { negrito: e.target.checked })}
+                  className="rounded border-zinc-300 text-primary focus:ring-primary size-4"
+                />
+                <span className="font-semibold text-foreground">Texto em Negrito</span>
+              </label>
+
+              {/* Tamanho do Texto */}
+              <div className="space-y-1">
+                <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                  <span>Tamanho do Texto</span>
+                  <span>{escCentro.toFixed(2)}x</span>
+                </div>
+                <div className="flex gap-1">
+                  <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idCentro, { escala: Math.max(0.4, +(escCentro - 0.05).toFixed(2)) })}>A−</button>
+                  <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idCentro, { escala: Math.min(3.0, +(escCentro + 0.05).toFixed(2)) })}>A+</button>
+                  <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idCentro, { escala: 1.0 })}>Reset</button>
+                </div>
+              </div>
+
+              {/* Quebra de Linha (Largura em Chars) */}
+              <div className="space-y-1">
+                <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
+                  <span>Limitar largura da linha</span>
+                  <span>{largCentro > 0 ? `${largCentro} chars` : 'Sem limite'}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="120"
+                  step="5"
+                  value={largCentro}
+                  onChange={(e) => patchTextoPlanta(idCentro, { larguraChars: Number(e.target.value) })}
+                  className="w-full h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+              </div>
+            </div>
+          );
+        }
+
         // Se for um elemento especial da planta
         if (objPersonalizarId.startsWith('planta:')) {
           const tipoPlanta = objPersonalizarId.replace('planta:', '');

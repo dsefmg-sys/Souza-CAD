@@ -97,7 +97,7 @@ interface Props {
 }
 
 /** Ajuste salvo de um texto (conteúdo/escala/negrito/deslocamento). */
-export type TextoOverride = { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number };
+export type TextoOverride = { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number; fundoBranco?: boolean };
 
 const LAUDO_PADRAO = 'Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.';
 const CONFRONT_PADRAO = 'Concordamos com as medidas apresentadas nesta planta e no memorial anexo nos trechos de confrontação com nosso imóvel (§10 do art. 213 da LRP).';
@@ -242,6 +242,18 @@ function Ted(props: {
        onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id, conteudo); } : undefined}
        onContextMenu={ed ? (e) => { e.preventDefault(); e.stopPropagation(); onMenu?.(id, conteudo, e.clientX, e.clientY); } : undefined}
        onPointerDown={ed ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}>
+      {ov?.fundoBranco && (
+        <rect
+          x={anchor === 'middle' ? posX - textW / 2 - 5 : anchor === 'end' ? posX - textW - 5 : posX - 5}
+          y={posY - fz * 0.9}
+          width={textW + 10}
+          height={textH + 4}
+          fill="#ffffff"
+          stroke={isSelected ? '#2563eb' : 'none'}
+          strokeWidth={0.8}
+          rx={2}
+        />
+      )}
       {halo && (
         <text x={posX} y={posY} fontSize={fz} fontWeight={peso} textAnchor={anchor} fill="#fff" stroke="#fff" strokeWidth={2.6} strokeLinejoin="round">
           {lines.map((line, i) => (
@@ -351,6 +363,7 @@ export default function Planta({
 
   const escalaDenomRef = useRef(0); // escala atual lida pelo handler da roda (evita depender do valor no efeito)
   const dragRef = useRef<null | { kind: 'objPonto' | 'objCorpo' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf' | 'selecao'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number; snapped?: boolean; lastGeo?: { lat: number; lon: number } }>(null);
+  const ultimoCliqueRef = useRef<{ tempo: number; x: number; y: number } | null>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
   // Arraste suave: em vez de atualizar o estado a cada micro-movimento do mouse (que redesenha o
   // SVG inteiro e trava), juntamos as atualizações e aplicamos no máximo uma por quadro de tela.
@@ -786,6 +799,66 @@ export default function Planta({
     const norte = maxY - (u.y - offY) / escala;
     return utmParaGeo(leste, norte, zona, hemisferio);
   }
+  function detectarElementoSvg(u: { x: number; y: number }): string | null {
+    // 1. Rosa dos ventos
+    if (verNortes) {
+      const offsetRosa = getOverride('planta.rosaDosVentos');
+      const rcx = (DRAW.x1 - 72) + (offsetRosa.dx ?? 0);
+      const rcy = (DRAW.y0 + 74) + (offsetRosa.dy ?? 0);
+      if (Math.hypot(u.x - rcx, u.y - rcy) < 55) {
+        return 'planta:rosa';
+      }
+    }
+
+    // 2. Planta de Situação
+    const w1 = 244;
+    const hBox = 190;
+    const x1 = DRAW.x0 + 10;
+    const y0 = 897;
+    if (u.x >= x1 && u.x <= x1 + w1 && u.y >= y0 && u.y <= y0 + hBox) {
+      return 'planta:situacao';
+    }
+
+    // 3. MDR (print3d)
+    if (print3dUrl && config.mostrarPrint3D !== false) {
+      const id3D = 'planta.print3d';
+      const offset3D = getOverride(id3D);
+      const esc3D = (offset3D as any).escala ?? 1.0;
+      const temTerrap = config.print3dMostrarTerraplanagem && (config.print3dVolumeCorte != null || config.print3dVolumeAterro != null);
+      const extraH = temTerrap ? 36 : 0;
+      const baseX = (DRAW.x0 + 40) + (offset3D.dx ?? 0);
+      let baseY = (DRAW.y1 - 220 - extraH) + (offset3D.dy ?? 0);
+      const w3D = 240 * esc3D;
+      const h3D = 160 * esc3D;
+      if (u.x >= baseX && u.x <= baseX + w3D && u.y >= baseY && u.y <= baseY + h3D + extraH) {
+        return 'planta:print3d';
+      }
+    }
+
+    // 4. Escala Gráfica
+    const idEscala = 'planta.escalaGrafica';
+    const offset = getOverride(idEscala);
+    const bx = (DRAW.x0 + 22) + (offset.dx ?? 0);
+    const by = (DRAW.y1 - 40) + (offset.dy ?? 0);
+    if (u.x >= bx && u.x <= bx + 160 && u.y >= by - 20 && u.y <= by + 20) {
+      return 'planta:escala';
+    }
+
+    // 5. Polígono central (texto info)
+    const anelValido = vertices.filter((v) => v.tipo !== 'V');
+    const cx = anelValido.length > 0 ? anelValido.reduce((s, p) => s + sx(p.leste), 0) / anelValido.length : (DRAW.x0 + DRAW.x1) / 2;
+    const cy = anelValido.length > 0 ? anelValido.reduce((s, p) => s + sy(p.norte), 0) / anelValido.length : (DRAW.y0 + DRAW.y1) / 2;
+    const idCentro = 'planta.centroInfo';
+    const ov = getOverride(idCentro);
+    const px = cx + (ov.dx ?? 0);
+    const py = cy + (ov.dy ?? 0);
+    if (Math.hypot(u.x - px, u.y - py) < 50) {
+      return 'planta.centroInfo'; // Rótulo central do imóvel
+    }
+
+    return null;
+  }
+
   function plantaDown(e: ReactPointerEvent) {
     if (!editavel) return;
     if (e.button === 1) {
@@ -796,6 +869,26 @@ export default function Planta({
     }
     if (e.button !== 0) return; // botão do meio/direito não arrasta itens
     const u = svgPonto(e); if (!u) return;
+
+    // Detecção manual de duplo clique
+    const agora = Date.now();
+    const isDblClick = ultimoCliqueRef.current && 
+      (agora - ultimoCliqueRef.current.tempo < 350) &&
+      (Math.hypot(u.x - ultimoCliqueRef.current.x, u.y - ultimoCliqueRef.current.y) < 15);
+    
+    ultimoCliqueRef.current = { tempo: agora, x: u.x, y: u.y };
+
+    if (isDblClick) {
+      const elemId = detectarElementoSvg(u);
+      e.stopPropagation();
+      if (elemId) {
+        onDblClickObjeto?.(elemId);
+      } else {
+        // Se deu duplo clique no fundo, abre a configuração da MALHA / GRADE
+        onDblClickObjeto?.('planta:grade');
+      }
+      return;
+    }
     if (modo === 'multi') {
       if (u.x >= DRAW.x0 && u.x <= DRAW.x1 && u.y >= DRAW.y0 && u.y <= DRAW.y1) {
         dragRef.current = { kind: 'selecao', id: 'box-select', dx: 0, dy: 0 };

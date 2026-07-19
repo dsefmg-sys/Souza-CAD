@@ -400,7 +400,7 @@ export interface PlantaConfig {
   textoLaudo?: string;         // texto do laudo técnico (carimbo)
   textoConfrontantes?: string; // declaração dos confrontantes (carimbo)
   // ajustes por texto (chave = id do texto na planta): conteúdo, escala própria e negrito
-  textos?: Record<string, { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }>;
+  textos?: Record<string, { texto?: string; escala?: number; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number; fundoBranco?: boolean }>;
   // imagem da planta de situação (data URL) — salva junto do projeto pra não precisar recapturar
   situacaoDataUrl?: string;
   mostrarQuadroAreas?: boolean; // quadro-resumo de área/perímetro de todos os polígonos do desenho

@@ -1649,6 +1649,9 @@ export default function EditorPage() {
       case 'car':
         setCarAberto(true);
         break;
+      case 'altitude':
+        setAltitudeModalAberta(true);
+        break;
       case 'navegar':
         setModo('navegar');
         break;
@@ -1803,6 +1806,8 @@ export default function EditorPage() {
       dz: 'desfazer',
       ry: 'refazer',
       cn: 'curvas_nivel',
+      al: 'altitude',
+      sg: 'cert',
     };
 
     const acao = aliasesExtra[cmd] || prefs.atalhosComando?.[cmd] || ATALHOS_COMANDO_PADRAO[cmd];
