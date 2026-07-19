@@ -4925,14 +4925,22 @@ export default function EditorPage() {
 
     return (leste: number, norte: number) => {
       let sumW = 0, sumZ = 0;
+      let minD2 = Infinity;
+      let closestDiff = diffs[0].diff;
+
       for (const d of diffs) {
         const dist2 = (leste - d.x) ** 2 + (norte - d.y) ** 2;
-        if (dist2 < 4) return d.diff;
-        const w = 1 / (dist2 + 25);
+        if (dist2 < minD2) {
+          minD2 = dist2;
+          closestDiff = d.diff;
+        }
+        if (dist2 < 1) return d.diff;
+        // Ponderação espacial por distância inversa (p=2) com epsilon 0.1
+        const w = 1 / (dist2 + 0.1);
         sumW += w;
         sumZ += d.diff * w;
       }
-      return sumW > 0 ? sumZ / sumW : diffs[0].diff;
+      return sumW > 0 ? sumZ / sumW : closestDiff;
     };
   }
 
@@ -10174,9 +10182,7 @@ export default function EditorPage() {
               <span className="inline-block size-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span>DADOS FICTÍCIOS — Sem validade legal</span>
             </div>
-          ) : (
-            <span className="text-slate-400 text-xs font-medium">Pronto</span>
-          )}
+          ) : null}
 
           {/* Caixa de Entrada de Comandos CAD */}
           <div className="flex items-center gap-1 border-l border-slate-850 pl-2.5 shrink-0 select-text">
@@ -10197,6 +10203,13 @@ export default function EditorPage() {
               placeholder="Comando (ex: cc, rt, pl)"
               className="bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-sky-500 focus:bg-slate-950 text-slate-100 placeholder-slate-650 px-1.5 py-0.5 rounded text-[9px] w-36 font-mono outline-none transition-all select-text"
             />
+          </div>
+
+          {/* Fuso UTM do Projeto com texto em cor branca ao lado direito do campo de comandos */}
+          <div className="flex items-center gap-1 border-l border-slate-800 pl-2 shrink-0">
+            <span className="text-white font-mono font-extrabold text-[10px] bg-slate-800/80 border border-slate-700/80 px-2 py-0.5 rounded uppercase tracking-wider whitespace-nowrap" title={`Projeção Cartográfica: Fuso ${zona}${hemisferio} (UTM/SIRGAS 2000)`}>
+              Fuso {zona}{hemisferio}
+            </span>
           </div>
         </div>
 

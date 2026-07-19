@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Palette, X, RefreshCw, Copy, Plus, Trash2 } from 'lucide-react';
+import { Palette, X, RefreshCw, Copy, Plus, Minus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Z_CLASSES } from '@/lib/ui/zlayers';
@@ -141,8 +141,8 @@ export function ObjetoPersonalizarModal({
         }
 
         // Se for um elemento especial da planta
-        if (objPersonalizarId.startsWith('planta:')) {
-          const tipoPlanta = objPersonalizarId.replace('planta:', '');
+        if (objPersonalizarId.startsWith('planta:') || objPersonalizarId.startsWith('planta.')) {
+          const tipoPlanta = objPersonalizarId.replace(/^planta[:.]/, '');
 
           if (tipoPlanta === 'situacao') {
             return (
@@ -771,34 +771,71 @@ export function ObjetoPersonalizarModal({
                   </div>
                 )}
 
-                {/* Tamanho */}
-                <div className="space-y-1">
-                  <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
-                    <span>Tamanho</span><span>{esc3D.toFixed(2)}x</span>
+                {/* Ajuste de Tamanho do MDR com botões + e - */}
+                <div className="space-y-2 rounded-lg border bg-muted/30 p-2.5">
+                  <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase tracking-wider">
+                    <span>Tamanho do MDR</span>
+                    <span className="font-mono font-bold text-foreground">{(esc3D * 100).toFixed(0)}% ({esc3D.toFixed(2)}x)</span>
                   </div>
-                  <input type="range" min="0.4" max="3.0" step="0.05"
-                    value={esc3D}
-                    onChange={(e) => patchTextoPlanta(id3D, { escala: +Number(e.target.value).toFixed(2) })}
-                    className="w-full h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-primary" />
-                  <div className="flex gap-1">
-                    <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: Math.max(0.4, +(esc3D - 0.1).toFixed(2)) })}>A−</button>
-                    <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: Math.min(3.0, +(esc3D + 0.1).toFixed(2)) })}>A+</button>
-                    <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(id3D, { escala: 1.0 })}>Reset</button>
+
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="size-8 font-extrabold text-sm shrink-0"
+                      onClick={() => patchTextoPlanta(id3D, { escala: Math.max(0.3, +(esc3D - 0.1).toFixed(2)) })}
+                      title="Diminuir tamanho do MDR (−)"
+                    >
+                      <Minus className="size-4" />
+                    </Button>
+
+                    <input
+                      type="range"
+                      min="0.3"
+                      max="3.0"
+                      step="0.05"
+                      value={esc3D}
+                      onChange={(e) => patchTextoPlanta(id3D, { escala: +Number(e.target.value).toFixed(2) })}
+                      className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="size-8 font-extrabold text-sm shrink-0"
+                      onClick={() => patchTextoPlanta(id3D, { escala: Math.min(3.0, +(esc3D + 0.1).toFixed(2)) })}
+                      title="Aumentar tamanho do MDR (+)"
+                    >
+                      <Plus className="size-4" />
+                    </Button>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      className="text-[10px] text-muted-foreground hover:text-foreground underline font-semibold"
+                      onClick={() => patchTextoPlanta(id3D, { escala: 1.0 })}
+                    >
+                      Redefinir para 100%
+                    </button>
                   </div>
                 </div>
 
-                {/* Apagar MDR */}
+                {/* Apagar MDR (Lata de Lixo) */}
                 {onRemoverPrint3D && (
                   <Button
                     size="sm"
                     variant="destructive"
-                    className="w-full font-bold text-[11px]"
+                    className="w-full font-bold text-xs gap-1.5 shadow-sm mt-2"
                     onClick={() => {
                       onRemoverPrint3D();
                       setObjPersonalizarId(null);
+                      setObjetoSelId(null);
                     }}
                   >
-                    <Trash2 className="size-3.5 mr-1" /> Apagar MDR da Planta
+                    <Trash2 className="size-4" /> Apagar MDR da Planta
                   </Button>
                 )}
               </div>

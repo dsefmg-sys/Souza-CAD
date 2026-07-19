@@ -292,14 +292,22 @@ export default function Map3DViewer({
 
     return (leste: number, norte: number) => {
       let sumW = 0, sumZ = 0;
+      let minD2 = Infinity;
+      let closestDiff = diffs[0].diff;
+
       for (const d of diffs) {
         const dist2 = (leste - d.x) ** 2 + (norte - d.y) ** 2;
+        if (dist2 < minD2) {
+          minD2 = dist2;
+          closestDiff = d.diff;
+        }
         if (dist2 < 1) return d.diff;
-        const w = 1 / (dist2 + 25);
+        // Ponderação espacial por distância inversa (p=2) com epsilon 0.1
+        const w = 1 / (dist2 + 0.1);
         sumW += w;
         sumZ += d.diff * w;
       }
-      return sumW > 0 ? sumZ / sumW : diffs[0].diff;
+      return sumW > 0 ? sumZ / sumW : closestDiff;
     };
   }, [vertices, gradeAltimetrica]);
 
