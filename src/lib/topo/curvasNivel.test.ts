@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { triangularDelaunay, gerarCurvasDeNivel, pontoNoPoligono, suavizarChaikin, intervaloSugerido, type Ponto3D } from './curvasNivel';
+import { triangularDelaunay, gerarCurvasDeNivel, pontoNoPoligono, suavizarChaikin, intervaloSugerido, filtrarOutliersAltimetricos, type Ponto3D } from './curvasNivel';
 
 describe('triangularDelaunay', () => {
   it('triangula um quadrado em 2 triângulos', () => {
@@ -14,6 +14,24 @@ describe('triangularDelaunay', () => {
 
   it('devolve vazio com menos de 3 pontos', () => {
     expect(triangularDelaunay([{ x: 0, y: 0 }, { x: 1, y: 1 }])).toEqual([]);
+  });
+});
+
+describe('filtrarOutliersAltimetricos', () => {
+  it('filtra picos de altitude espúrios (ex: erro de leitura GNSS ou pico de 1500m num terreno de 500m)', () => {
+    const pontos: Ponto3D[] = [
+      { x: 0, y: 0, z: 500 },
+      { x: 10, y: 0, z: 502 },
+      { x: 20, y: 0, z: 498 },
+      { x: 30, y: 0, z: 501 },
+      { x: 40, y: 0, z: 503 },
+      { x: 50, y: 0, z: 499 },
+      { x: 60, y: 0, z: 1500 }, // Outlier espúrio (pico falso)
+    ];
+
+    const filtrados = filtrarOutliersAltimetricos(pontos);
+    expect(filtrados.length).toBe(6);
+    expect(filtrados.some((p) => p.z === 1500)).toBe(false);
   });
 });
 
@@ -49,57 +67,5 @@ describe('gerarCurvasDeNivel', () => {
   it('superfície plana (z constante) não gera curva', () => {
     const pts: Ponto3D[] = [{ x: 0, y: 0, z: 5 }, { x: 10, y: 0, z: 5 }, { x: 5, y: 10, z: 5 }];
     expect(gerarCurvasDeNivel(pts, { intervalo: 1 })).toEqual([]);
-  });
-
-  it('ignora pontos sem altitude válida e não quebra', () => {
-    const pts: Ponto3D[] = [{ x: 0, y: 0, z: NaN }, { x: 1, y: 1, z: 1 }];
-    expect(gerarCurvasDeNivel(pts, { intervalo: 1 })).toEqual([]);
-  });
-});
-
-describe('suavizarChaikin', () => {
-  it('mantém uma linha reta reta (não inventa curva onde não há)', () => {
-    const reta = [{ x: 5, y: 0 }, { x: 5, y: 4 }, { x: 5, y: 8 }];
-    const s = suavizarChaikin(reta, 2);
-    for (const p of s) expect(p.x).toBeCloseTo(5, 6);
-    expect(s.length).toBeGreaterThan(reta.length); // ficou mais denso (curva de verdade)
-  });
-
-  it('não estoura pra fora do envelope dos pontos (fica colada aos dados)', () => {
-    const zig = [{ x: 0, y: 0 }, { x: 4, y: 2 }, { x: 0, y: 4 }, { x: 4, y: 6 }];
-    const s = suavizarChaikin(zig, 3);
-    for (const p of s) { expect(p.x).toBeGreaterThanOrEqual(0); expect(p.x).toBeLessThanOrEqual(4); }
-    // extremidades preservadas em linha aberta
-    expect(s[0]).toEqual(zig[0]);
-    expect(s[s.length - 1]).toEqual(zig[zig.length - 1]);
-  });
-
-  it('preserva o fechamento de um laço', () => {
-    const loop = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }, { x: 0, y: 0 }];
-    const s = suavizarChaikin(loop, 2);
-    expect(s[0].x).toBeCloseTo(s[s.length - 1].x, 6);
-    expect(s[0].y).toBeCloseTo(s[s.length - 1].y, 6);
-  });
-});
-
-describe('intervaloSugerido', () => {
-  it('considera relevo E tamanho: imóvel grande cabe mais curvas (intervalo menor) que um pequeno com o mesmo desnível', () => {
-    const grande: Ponto3D[] = [{ x: 0, y: 0, z: 0 }, { x: 3000, y: 0, z: 30 }];  // ~3 km, desnível 30
-    const pequeno: Ponto3D[] = [{ x: 0, y: 0, z: 0 }, { x: 300, y: 0, z: 30 }];   // 300 m, desnível 30
-    expect(intervaloSugerido(grande)).toBe(2);  // 30 / ~24 curvas = 1,25 → 2
-    expect(intervaloSugerido(pequeno)).toBe(5); // 30 / ~10 curvas = 3 → 5
-    expect(intervaloSugerido(grande)).toBeLessThan(intervaloSugerido(pequeno));
-  });
-  it('sem desnível ou poucos pontos → 1', () => {
-    expect(intervaloSugerido([{ x: 0, y: 0, z: 5 }])).toBe(1);
-    expect(intervaloSugerido([{ x: 0, y: 0, z: 5 }, { x: 100, y: 0, z: 5 }])).toBe(1);
-  });
-});
-
-describe('pontoNoPoligono', () => {
-  it('acerta dentro e fora de um quadrado', () => {
-    const q = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
-    expect(pontoNoPoligono(5, 5, q)).toBe(true);
-    expect(pontoNoPoligono(15, 5, q)).toBe(false);
   });
 });

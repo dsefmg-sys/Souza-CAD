@@ -1795,7 +1795,7 @@ export default function EditorPage() {
       cr: 'circulo',
       rc: 'arco',
       ac: 'arco',
-      sv: 'selecao_varios', // sv = selecionar vários (legacy)
+      sl: 'selecao_varios', // sl = selecionar vários
       md: 'medir',
       me: 'medir',
       pr: 'paralela',
@@ -1808,7 +1808,7 @@ export default function EditorPage() {
       // Barra Lateral Esquerda e Outros Comandos
       gt: 'gestao',
       nv: 'novo',
-      sl: 'salvar',
+      sv: 'salvar', // sv = salvar
       pc: 'precificacao',
       pt: 'pontos_banco',
       bp: 'pontos_banco',
@@ -7151,11 +7151,11 @@ export default function EditorPage() {
                           variant="secondary"
                           onClick={salvar}
                           disabled={processando}
-                          title={salvarLaranja ? `Salvar projeto atual (${obterAtalhoLateral('salvar', 'sl')}) - Modificações pendentes de salvamento!` : `Projeto salvo e sincronizado (${obterAtalhoLateral('salvar', 'sl')})`}
+                          title={salvarLaranja ? `Salvar projeto atual (${obterAtalhoLateral('salvar', 'sv')}) - Modificações pendentes de salvamento!` : `Projeto salvo e sincronizado (${obterAtalhoLateral('salvar', 'sv')})`}
                           className={`relative transition-all duration-300 ${salvarLaranja ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold border-transparent shadow-md shadow-emerald-500/20' : ''}`}
                         >
                           <Save className={salvarLaranja ? 'text-white animate-pulse' : 'text-emerald-500'} /> <span>SALVAR</span>
-                          <Atalho k={obterAtalhoLateral('salvar', 'sl')} />
+                          <Atalho k={obterAtalhoLateral('salvar', 'sv')} />
                         </Button>
                         <Button size="sm" variant="secondary" className="relative" onClick={() => setPrecoSugAberto(true)} title={`Precificação: quanto cobrar por este imóvel (${obterAtalhoLateral('precificacao', 'pc')})`}>
                           <PencilRuler className="text-amber-400" /> <span>Precificação</span>
@@ -7273,9 +7273,9 @@ export default function EditorPage() {
                             <Spline className={modo === 'arco' ? 'text-white shrink-0' : 'text-sky-400 shrink-0'} /> <span className="truncate">Arco</span>
                             <Atalho k={obterAtalhoLateral('arco', 'ac')} />
                           </Button>
-                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'secondary'} className={`relative ${modo === 'multi' ? COR_ATIVO : ''}`} onClick={() => { alternarModo('multi'); }} title={`Seleção Múltipla (${obterAtalhoLateral('selecao_varios', 'sv')}): clique em elementos ou abra uma caixa de seleção para selecionar vários vértices/objetos de uma vez.`}>
+                          <Button size="sm" variant={modo === 'multi' ? 'default' : 'secondary'} className={`relative ${modo === 'multi' ? COR_ATIVO : ''}`} onClick={() => { alternarModo('multi'); }} title={`Seleção Múltipla (${obterAtalhoLateral('selecao_varios', 'sl')}): clique em elementos ou abra uma caixa de seleção para selecionar vários vértices/objetos de uma vez.`}>
                             <span className="truncate text-[9px] font-bold text-fuchsia-400">Sel. Vários</span>
-                            <Atalho k={obterAtalhoLateral('selecao_varios', 'sv')} />
+                            <Atalho k={obterAtalhoLateral('selecao_varios', 'sl')} />
                           </Button>
                           <Button size="sm" variant={modo === 'medir' ? 'default' : 'secondary'} className={`relative ${modo === 'medir' ? COR_ATIVO : ''}`} onClick={() => alternarModo('medir', true)} title={`Régua de Medição (${obterAtalhoLateral('medir', 'md')}): meça distâncias e azimutes entre pontos no mapa com alta precisão.`}>
                             <Ruler className={modo === 'medir' ? 'text-white shrink-0' : 'text-amber-400 shrink-0'} /> <span className="truncate">Medir</span>
@@ -8868,7 +8868,7 @@ export default function EditorPage() {
       {/* Modal de Configuração e Geração de Curvas de Nível */}
       {/* Modal de Configuração e Geração de Curvas de Nível */}
       <Dialog open={curvaConfigAberta} onOpenChange={setCurvaConfigAberta}>
-        <DialogContent className="max-w-md bg-card p-4 rounded-xl border shadow-2xl">
+        <DialogContent className="sm:max-w-md bg-card p-4 rounded-xl border shadow-2xl fixed top-4 right-4 translate-x-0 translate-y-0 left-auto bottom-auto max-h-[90vh] overflow-y-auto z-[1300]">
           <DialogHeader className="pb-2 border-b">
             <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
               <IconeCurvasNivel className="size-4 text-indigo-500" />

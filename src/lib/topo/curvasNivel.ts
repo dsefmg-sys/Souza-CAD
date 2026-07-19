@@ -208,12 +208,34 @@ export interface OpcoesCurvas {
 }
 
 /**
+ * Filtra inteligentemente altitudes aberrantes / espúrias (picos, erros de gravação GNSS, 0m acidentais)
+ * utilizando a métrica estatística robusta MAD (Median Absolute Deviation).
+ */
+export function filtrarOutliersAltimetricos(pontos: Ponto3D[]): Ponto3D[] {
+  if (pontos.length < 5) return pontos; // poucos pontos: não descarta nada pra não perder dados
+
+  const zs = pontos.map((p) => p.z).sort((a, b) => a - b);
+  const mid = Math.floor(zs.length / 2);
+  const mediana = zs.length % 2 !== 0 ? zs[mid] : (zs[mid - 1] + zs[mid]) / 2;
+
+  // Desvio absoluto da mediana (MAD)
+  const desvios = pontos.map((p) => Math.abs(p.z - mediana)).sort((a, b) => a - b);
+  const mad = desvios.length % 2 !== 0 ? desvios[mid] : (desvios[mid - 1] + desvios[mid]) / 2;
+
+  // Limite de tolerância altimétrica: mínimo 10m de variação natural do relevo ou 3.5 * MAD
+  const tol = Math.max(10.0, mad * 3.5);
+
+  return pontos.filter((p) => Math.abs(p.z - mediana) <= tol);
+}
+
+/**
  * Gera as curvas de nível dos pontos (com x,y,z em metros). Devolve uma lista de polilinhas, cada
  * uma com o nível (altitude) correspondente.
  */
 export function gerarCurvasDeNivel(pontos: Ponto3D[], opcoes: OpcoesCurvas): CurvaNivel[] {
   const intervalo = opcoes.intervalo;
-  const pts = pontos.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
+  const ptsValidos = pontos.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
+  const pts = filtrarOutliersAltimetricos(ptsValidos);
   if (pts.length < 3 || !(intervalo > 0)) return [];
 
   // Deduplicação espacial por coordenadas planas (com tolerância de 1mm = 0.001)
