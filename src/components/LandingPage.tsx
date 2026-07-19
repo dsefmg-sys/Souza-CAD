@@ -58,7 +58,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
       // Executa o pulo de seção com uma rolada leve
       if (e.deltaY > 0) {
         setActiveSection((prev) => {
-          const next = Math.min(5, prev + 1);
+          const next = Math.min(6, prev + 1);
           scrollToSec(next);
           return next;
         });
@@ -155,7 +155,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
       {/* NAVEGADOR DE SEÇÕES COM PONTINHOS LATERAIS FLUTUANTES */}
       <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex flex-col gap-3">
-        {[0, 1, 2, 3, 4, 5].map((idx) => (
+        {[0, 1, 2, 3, 4, 5, 6].map((idx) => (
           <button
             key={idx}
             type="button"
@@ -240,14 +240,41 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
         </button>
       </section>
 
-      {/* SEÇÃO 2: INTERFACE COMPLETA & RELEVO 3D */}
+      {/* SEÇÃO 2: GEORREFERENCIAMENTO SIGEF / INCRA */}
       <section id="sec-1" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
+        <div className="max-w-5xl mx-auto space-y-6 w-full">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+            <Award className="size-4" /> Pensado para Georreferenciamento SIGEF / INCRA
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-black text-white">
+            100% Projetado para Georreferenciamento de Imóveis Rurais
+          </h2>
+          <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
+            Geração automática da Planilha ODS oficial para certificação eletrônica, conferência visual de vértices, códigos de limites/métodos e total conformidade com a 3ª edição da norma técnica do INCRA.
+          </p>
+
+          <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/marca/preview_sigef.png"
+              alt="Conferência da Planilha SIGEF e Geração ODS no Souza-CAD"
+              className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
+            />
+          </div>
+        </div>
+        <button type="button" onClick={() => scrollToSec(2)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+          <ChevronDown className="size-6" />
+        </button>
+      </section>
+
+      {/* SEÇÃO 3: INTERFACE COMPLETA & RELEVO 3D */}
+      <section id="sec-2" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
         <div className="max-w-5xl mx-auto space-y-6 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
             <Box className="size-4" /> Interface Completa &amp; Relevo 3D
           </div>
           <h2 className="text-2xl sm:text-4xl font-black text-white">
-            Interface CAD Completa &amp; Modelo Digital de Relevo 3D
+            Modelo Digital de Relevo 3D Integrado à Prancha Oficial
           </h2>
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
             Incorpore o Modelo Digital de Relevo 3D com malha TIN wireframe, diagnósticos de altimetria e convenções cartográficas na sua prancha final.
@@ -262,13 +289,13 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             />
           </div>
         </div>
-        <button type="button" onClick={() => scrollToSec(2)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+        <button type="button" onClick={() => scrollToSec(3)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
           <ChevronDown className="size-6" />
         </button>
       </section>
 
-      {/* SEÇÃO 3: HISTÓRIA DO CRIADOR */}
-      <section id="sec-2" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-4xl mx-auto text-center border-b border-slate-900/60">
+      {/* SEÇÃO 4: HISTÓRIA DO CRIADOR */}
+      <section id="sec-3" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-4xl mx-auto text-center border-b border-slate-900/60">
         <div className="w-full space-y-6">
           <div className="group bg-slate-900/80 border border-slate-800/80 p-8 sm:p-12 rounded-3xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden transition-all duration-500 hover:border-emerald-500/40 hover:shadow-2xl shadow-xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-700" />
@@ -280,17 +307,17 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </p>
             <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-slate-400 font-medium border-t border-slate-800 gap-2">
               <span className="font-bold text-white">— {autorHistoria}</span>
-              <span className="text-emerald-400 font-bold">Engenharia & Desenvolvimento</span>
+              <span className="text-emerald-400 font-bold">Engenharia &amp; Desenvolvimento</span>
             </div>
           </div>
         </div>
-        <button type="button" onClick={() => scrollToSec(3)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+        <button type="button" onClick={() => scrollToSec(4)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
           <ChevronDown className="size-6" />
         </button>
       </section>
 
-      {/* SEÇÃO 4: REQUERIMENTOS & PEÇAS ZIP */}
-      <section id="sec-3" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
+      {/* SEÇÃO 5: REQUERIMENTOS & PEÇAS ZIP */}
+      <section id="sec-4" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
         <div className="max-w-5xl mx-auto space-y-6 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
             <FileCode className="size-4" /> Cartório &amp; Requerimentos Jurídicos
@@ -313,13 +340,13 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </div>
           </div>
         </div>
-        <button type="button" onClick={() => scrollToSec(4)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+        <button type="button" onClick={() => scrollToSec(5)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
           <ChevronDown className="size-6" />
         </button>
       </section>
 
-      {/* SEÇÃO 5: HABILITAÇÃO PROFISSIONAL & MARCA */}
-      <section id="sec-4" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
+      {/* SEÇÃO 6: HABILITAÇÃO PROFISSIONAL & MARCA */}
+      <section id="sec-5" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
         <div className="max-w-5xl mx-auto space-y-6 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
             <AwardIcon className="size-4" /> CFT, CFTA &amp; CREA + Sua Marca
@@ -342,13 +369,13 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </div>
           </div>
         </div>
-        <button type="button" onClick={() => scrollToSec(5)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+        <button type="button" onClick={() => scrollToSec(6)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
           <ChevronDown className="size-6" />
         </button>
       </section>
 
-      {/* SEÇÃO 6: CREDENCIAMENTO PIONEIRO & CTA FINAL */}
-      <section id="sec-5" className="landing-snap-sec min-h-screen w-full flex flex-col justify-between items-center relative pt-20 pb-6 px-4 sm:px-6 max-w-5xl mx-auto text-center">
+      {/* SEÇÃO 7: CREDENCIAMENTO PIONEIRO & CTA FINAL */}
+      <section id="sec-6" className="landing-snap-sec min-h-screen w-full flex flex-col justify-between items-center relative pt-20 pb-6 px-4 sm:px-6 max-w-5xl mx-auto text-center">
         <div className="w-full max-w-3xl space-y-6 my-auto">
           <div className="bg-slate-900/90 border border-emerald-500/30 p-6 sm:p-10 rounded-3xl shadow-2xl space-y-6 backdrop-blur-xl">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4 text-left">
