@@ -21,7 +21,7 @@ function InteractiveImageWindow({ src, alt }: { src: string; alt: string }) {
     const mouseRatioY = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
     const overflowY = imgRef.current.offsetHeight - rect.height;
     if (overflowY > 0) {
-      setTranslateY(-mouseRatioY * overflowY);
+      setTranslateY(-Math.round(mouseRatioY * overflowY));
     }
   };
 
@@ -34,17 +34,17 @@ function InteractiveImageWindow({ src, alt }: { src: string; alt: string }) {
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="w-full h-[280px] sm:h-[380px] md:h-[460px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative cursor-ns-resize group"
+      className="w-full h-[260px] sm:h-[350px] md:h-[440px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative cursor-ns-resize group"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
         src={src}
         alt={alt}
-        style={{ transform: `translateY(${translateY}px)` }}
-        className="w-full h-auto block transition-transform duration-200 ease-out pointer-events-none"
+        style={{ transform: `translate3d(0, ${translateY}px, 0)` }}
+        className="w-full h-auto block pointer-events-none"
       />
-      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-[10px] font-bold text-slate-300 opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none backdrop-blur-sm shadow-md">
+      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-slate-950/85 border border-slate-800 text-[10px] font-bold text-slate-300 opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none backdrop-blur-sm shadow-md">
         ↕ Mova o mouse para rolar a imagem
       </div>
     </div>
@@ -265,7 +265,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
       </header>
 
       {/* SEÇÃO 1: HERO & PREVIEW INICIAL */}
-      <section id="sec-0" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-24 pb-12 text-center border-b border-slate-900/60 overflow-hidden">
+      <section id="sec-0" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-16 sm:pt-20 pb-8 text-center border-b border-slate-900/60 overflow-hidden">
         {/* VÍDEO DE FUNDO NO INÍCIO (VÍDEO 1) - LARGURA TOTAL 100% */}
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <video
@@ -281,42 +281,38 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/45 to-slate-950" />
         </div>
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-5 w-full relative z-10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 space-y-3.5 w-full relative z-10">
           {/* AVISO RECOMENDAÇÃO MOBILE */}
-          <div className="flex md:hidden items-center justify-center gap-2 px-3.5 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-semibold max-w-lg mx-auto text-left leading-tight shadow-sm">
-            <Monitor className="size-4 shrink-0 text-amber-400" />
+          <div className="flex md:hidden items-center justify-center gap-2 px-3 py-1.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px] font-semibold max-w-md mx-auto text-left leading-tight shadow-sm">
+            <Monitor className="size-3.5 shrink-0 text-amber-400" />
             <span>
-              <strong>Dica de Uso:</strong> Para melhor experiência na edição de mapas e plantas A3, acesse pelo seu computador ou notebook.
+              <strong>Dica de Uso:</strong> Para melhor experiência na edição de mapas e plantas A3, acesse pelo computador.
             </span>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-300 shadow-sm">
-            <FileSpreadsheet className="size-4 text-emerald-400" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-black uppercase tracking-wider text-emerald-300 shadow-sm">
+            <FileSpreadsheet className="size-3.5 text-emerald-400" />
             <span>Requerimentos Cartorários &amp; Planilha ODS SIGEF em Minutos</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white leading-[1.08] tracking-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white leading-[1.1] tracking-tight">
             {titulo}
           </h1>
 
-          <p className="text-base sm:text-xl text-slate-300 leading-relaxed font-medium max-w-3xl mx-auto">
+          <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-medium max-w-2xl mx-auto">
             {subtitulo}
           </p>
 
-          {/* CONTAINER COM EFEITO DE SOBREPOSIÇÃO DE IMAGENS (PRINCIPAL + FLUTUANTE SOBREPOSTA NO CANTO INFERIOR DIREITO) */}
-          <div className="relative w-full max-w-5xl mx-auto mt-4">
-            {/* PRIMEIRA IMAGEM (PRINCIPAL - OCUPA MAIOR ESPAÇO) */}
-            <div className="group w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_requerimento.png"
-                alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
-                className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
-              />
-            </div>
+          {/* CONTAINER COM EFEITO DE SOBREPOSIÇÃO E JANELA INTERATIVA (ROLAGEM DO MOUSE SEM DESFOQUE) */}
+          <div className="relative w-full max-w-5xl mx-auto mt-2">
+            {/* PRIMEIRA IMAGEM (PRINCIPAL COM JANELA INTERATIVA DE ROLAGEM INSTANTÂNEA) */}
+            <InteractiveImageWindow
+              src="/marca/preview_requerimento.png"
+              alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
+            />
 
             {/* SEGUNDA IMAGEM (FLUTUANTE SOBREPOSTA NO CANTO INFERIOR DIREITO - MESMO TAMANHO E ESTILO DAS OUTRAS SEÇÕES) */}
-            <div className="absolute -bottom-6 -right-3 sm:-bottom-8 sm:-right-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
+            <div className="absolute -bottom-5 -right-2 sm:-bottom-6 sm:-right-6 z-20 w-44 sm:w-72 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_requerimento_modal.png"
@@ -360,12 +356,10 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             Geração automática da Planilha ODS oficial para certificação eletrônica, conferência visual de vértices, códigos de limites/métodos e total conformidade com a 3ª edição da norma técnica do INCRA.
           </p>
 
-          <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="w-full max-w-5xl mx-auto mt-4">
+            <InteractiveImageWindow
               src="/marca/preview_sigef.png"
               alt="Conferência da Planilha SIGEF e Geração ODS no Souza-CAD"
-              className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
             />
           </div>
         </div>
@@ -387,12 +381,10 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             Incorpore o Modelo Digital de Relevo 3D com malha TIN wireframe, diagnósticos de altimetria e convenções cartográficas na sua prancha final.
           </p>
 
-          <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="w-full max-w-5xl mx-auto mt-4">
+            <InteractiveImageWindow
               src="/marca/preview_mapa2d.png"
               alt="Interface Completa e Relevo 3D Souza-CAD"
-              className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
             />
           </div>
         </div>
@@ -474,15 +466,10 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
 
           {/* CONTAINER COM IMAGEM PRINCIPAL DE CONFIGURAÇÃO E PRIMEIRA IMAGEM DE CONSELHOS FLUTUANTE SOBREPOSTA À DIREITA */}
           <div className="relative w-full max-w-5xl mx-auto mt-4">
-            {/* SEGUNDA IMAGEM (PRINCIPAL - OCUPA MAIOR ESPAÇO) */}
-            <div className="group w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_config.png"
-                alt="Personalização de Marca e Assinatura Digital"
-                className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
-              />
-            </div>
+            <InteractiveImageWindow
+              src="/marca/preview_config.png"
+              alt="Personalização de Marca e Assinatura Digital"
+            />
 
             {/* PRIMEIRA IMAGEM (FLUTUANTE SOBREPOSTA À DIREITA - MESMO TAMANHO E SEM TÍTULO) */}
             <div className="absolute -bottom-6 -right-3 sm:-bottom-8 sm:-right-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
