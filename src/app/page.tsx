@@ -8280,7 +8280,7 @@ export default function EditorPage() {
                       print3dUrl={print3dUrl}
                       onRemoverPrint3D={() => { setPrint3dUrl(undefined); setPlantaConfig((c) => ({ ...c, print3dDataUrl: undefined })); }}
                       onAtualizarSituacao={gerarSituacaoPlanta}
-                      onEditarConfrontante={editarConfrontantePlanta} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf} />
+                      onEditarConfrontante={editarConfrontantePlanta} onMoverRotuloConf={onMoverRotulo} onTamRotuloConf={ajustarTamRotuloConf} onAjustarDivisaConf={ajustarDivisaConf} />
                     </ErrorBoundary>
                   </div>
                 )}
@@ -10066,15 +10066,15 @@ export default function EditorPage() {
       {/* Barra de Status e Notificações Inteligente (oculta se o vídeo de intro ou a landing page estiverem ativos) */}
       {!introTocando && !landingPageAberta && (
         <div
-          className="no-print fixed bottom-0 right-0 z-[2000] flex h-7 items-center justify-between bg-slate-950 text-slate-300 text-[10px] font-medium border-t border-slate-800 shadow-lg px-3 select-none"
+          className="no-print fixed bottom-0 right-0 z-[2000] flex h-8 min-h-[32px] items-center justify-between bg-slate-950 text-slate-300 text-[10px] font-medium border-t border-slate-800 shadow-lg px-3 select-none overflow-hidden whitespace-nowrap"
           style={{ left: toolWEfetivo }}
         >
         {/* Lado Esquerdo: Mensagem de Status Ativa / Alerta ou Modo Atual */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
           {msg ? (
-            <div className="flex items-center gap-1.5 text-amber-400 font-bold animate-pulse">
-              <span className="inline-block size-1.5 rounded-full bg-amber-400" />
-              <span>{msg}</span>
+            <div className="flex items-center gap-1.5 text-amber-400 font-bold animate-pulse truncate">
+              <span className="inline-block size-1.5 rounded-full bg-amber-400 shrink-0" />
+              <span className="truncate">{msg}</span>
             </div>
           ) : imovel.ficticio ? (
             <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">

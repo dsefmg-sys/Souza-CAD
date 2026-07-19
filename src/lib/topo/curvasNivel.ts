@@ -262,19 +262,17 @@ export function gerarCurvasDeNivel(pontos: Ponto3D[], opcoes: OpcoesCurvas): Cur
   for (const t of tris) {
     const A = dedup[t[0]], B = dedup[t[1]], C = dedup[t[2]];
 
-    // Filtra arestas excessivamente longas se triangulação estiver desativada/restringida
-    if (maxAresta2 < Infinity) {
-      const dAB2 = (A.x - B.x) ** 2 + (A.y - B.y) ** 2;
-      const dBC2 = (B.x - C.x) ** 2 + (B.y - C.y) ** 2;
-      const dCA2 = (C.x - A.x) ** 2 + (C.y - A.y) ** 2;
-      if (dAB2 > maxAresta2 || dBC2 > maxAresta2 || dCA2 > maxAresta2) continue;
-    }
-
     // Recorte ao(s) polígono(s) do imóvel: só triângulos com centro dentro da área levantada
     if (listaPoligonos.length > 0) {
       const cx = (A.x + B.x + C.x) / 3, cy = (A.y + B.y + C.y) / 3;
       const dentro = listaPoligonos.some(poly => pontoNoPoligono(cx, cy, poly));
       if (!dentro) continue;
+    } else if (maxAresta2 < Infinity) {
+      // Filtra arestas excessivamente longas se NÃO houver polígono delimitador
+      const dAB2 = (A.x - B.x) ** 2 + (A.y - B.y) ** 2;
+      const dBC2 = (B.x - C.x) ** 2 + (B.y - C.y) ** 2;
+      const dCA2 = (C.x - A.x) ** 2 + (C.y - A.y) ** 2;
+      if (dAB2 > maxAresta2 || dBC2 > maxAresta2 || dCA2 > maxAresta2) continue;
     }
 
     const zlo = Math.min(A.z, B.z, C.z);

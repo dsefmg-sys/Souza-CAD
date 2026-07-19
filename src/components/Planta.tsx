@@ -1935,7 +1935,7 @@ export default function Planta({
         return (
           <g key={i}
             style={editavel ? { cursor: 'move' } : undefined}
-            onDoubleClick={editavel ? (e) => { e.stopPropagation(); onEditarConfrontante?.(c.id); } : undefined}
+            onDoubleClick={editavel ? (e) => { e.stopPropagation(); onEditarConfrontante?.(c.id); onDblClickObjeto?.('planta:confrontantes'); } : undefined}
             onContextMenu={editavel && onConfrontanteMenu ? (e) => { e.preventDefault(); e.stopPropagation(); onConfrontanteMenu(c.id, c.nome, e.clientX, e.clientY); } : undefined}
             onPointerDown={editavel ? (e) => {
               e.stopPropagation();
@@ -3659,7 +3659,9 @@ function CarimboA3(props: {
       {/* ── CARD C: DECLARAÇÃO DOS CONFRONTANTES ──────────────────────────── */}
       <g>
         <rect x={lx} y={Y_CONF} width={wBox} height={110} rx={6} ry={6} fill="none" stroke="#475569" strokeWidth={0.8} />
-        <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:confrontantes'); }} style={{ cursor: 'pointer' }}>
+        <g onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:confrontantes'); }}
+           onDoubleClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:confrontantes'); onDblClickObjeto?.('planta:confrontantes'); }}
+           style={{ cursor: 'pointer' }}>
           {Cab(Y_CONF, 'DECLARAÇÃO DOS CONFRONTANTES', 'carimbo.tituloConf')}
         </g>
 
@@ -3695,7 +3697,7 @@ function CarimboA3(props: {
             <g key={idConf} id={idConf}
                style={ed?.ativo ? { cursor: 'move' } : undefined}
                onClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:confrontantes'); }}
-               onDoubleClick={ed?.ativo ? (e) => { e.stopPropagation(); onSelecObjeto?.('planta:confrontantes'); } : undefined}
+               onDoubleClick={(e) => { e.stopPropagation(); onSelecObjeto?.('planta:confrontantes'); onDblClickObjeto?.('planta:confrontantes'); }}
                onContextMenu={ed?.ativo ? (e) => { e.preventDefault(); e.stopPropagation(); ed.onMenu?.(idConf, txtConf, e.clientX, e.clientY); } : undefined}
                onPointerDown={ed?.ativo ? (e) => { e.stopPropagation(); ed.onDragStart?.(idConf, e); } : undefined}>
               <TextoQuebrado x={pxConf} y={pyConf} fontSize={fsConf(8.5) * (ovConf.escala ?? 1)} larguraChars={capChars(fsConf(8.5) * (ovConf.escala ?? 1), ovConf.larguraChars ?? 68)} textAnchor="middle" texto={txtConf} lineHeight={1.35} maxHeight={70} centrarEmAltura={70} />
