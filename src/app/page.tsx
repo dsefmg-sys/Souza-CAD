@@ -7266,7 +7266,7 @@ export default function EditorPage() {
           const rotulo = toolWEfetivo >= 104;
           return (
             <>
-              <aside style={{ width: toolWEfetivo }} className={`sidebar-lateral no-print scrollbar-none relative flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r bg-card p-0.5 sm:p-1 [&_button]:h-6.5 sm:[&_button]:h-7 [&_button]:min-h-[22px] [&_button]:py-0 [&_button]:px-1 [&_button]:text-[9.5px] sm:[&_button]:text-[10px] [&_button_svg]:size-3 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
+              <aside style={{ width: toolWEfetivo }} className={`sidebar-lateral no-print scrollbar-none relative z-20 flex shrink-0 flex-col gap-0.5 overflow-y-auto border-r bg-card p-0.5 sm:p-1 [&_button]:h-6.5 sm:[&_button]:h-7 [&_button]:min-h-[22px] [&_button]:py-0 [&_button]:px-1 [&_button]:text-[9.5px] sm:[&_button]:text-[10px] [&_button_svg]:size-3 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
                 {vista === '3d' ? (
                   <div id="sidebar-3d-portal-target" className="flex-1 flex flex-col gap-3 py-1 text-xs" />
                 ) : (
@@ -7868,27 +7868,27 @@ export default function EditorPage() {
                   </div>
                 )}
 
-                {/* RODAPÉ FIXO: apenas Calc, Tema, Planos e Demo */}
-                <div className="mt-auto border-t pt-1.5 px-1">
+                {/* RODAPÉ INTEGRADO: Calc, Tema, Planos e Demo */}
+                <div className="mt-1.5 border-t pt-1.5 px-1">
                   <div className={`grid gap-1 ${telaEstreita ? 'grid-cols-1' : 'grid-cols-2'}`}>
                     {([
-                      ['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-4" />, () => setCalcAberta(true), 'text-indigo-600 dark:text-indigo-400', 'CC'],
-                      ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-4" /> : <Sun key="i" className="size-4" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')), 'text-slate-500', 'TM'],
-                      ['Planos', 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-4" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400', 'PL'],
+                      ['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-3.5" />, () => setCalcAberta(true), 'text-indigo-600 dark:text-indigo-400', 'CC'],
+                      ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-3.5" /> : <Sun key="i" className="size-3.5" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')), 'text-slate-500', 'TM'],
+                      ['Planos', 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-3.5" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400', 'PL'],
                     ] as [string, string, React.ReactNode, () => void, string, string][]).map(([rotuloBtn, dica, icone, acao, cor, atalhoKey]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline"
-                        className={`h-10 min-w-0 flex-row gap-1.5 overflow-hidden px-2 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:${cor} [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
+                        className={`!h-8.5 min-w-0 flex-row gap-1.5 overflow-hidden px-2 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-2xs [&_svg]:${cor} [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
                         title={dica} onClick={acao}>
                         <span className={cor}>{icone}</span>
                         <div className={`flex items-center gap-0.5 min-w-0 truncate ${telaEstreita ? 'hidden' : ''}`}>
-                          <span className={`truncate text-center text-[10.5px] font-semibold leading-none`}>{rotuloBtn}</span>
+                          <span className={`truncate text-center text-[10px] font-bold leading-none`}>{rotuloBtn}</span>
                           <Atalho k={atalhoKey} />
                         </div>
                       </Button>
                     ))}
                     {/* Demo: clique normal = projeto padrão, segurar = projeto GRANDE com complexidade configurável */}
                     <Button size="sm" variant="outline"
-                      className={`h-10 min-w-0 flex-row gap-1.5 overflow-hidden px-2 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-sm [&_svg]:text-amber-600 dark:[&_svg]:text-amber-400 [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
+                      className={`!h-8.5 min-w-0 flex-row gap-1.5 overflow-hidden px-2 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-2xs [&_svg]:text-amber-600 dark:[&_svg]:text-amber-400 [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
                       title="Clique = demo normal · Segure = demo GRANDE (pergunta multiplicador de complexidade p/ teste de performance)"
                       onPointerDown={(e) => {
                         const timer = window.setTimeout(async () => {
