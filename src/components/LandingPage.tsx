@@ -204,7 +204,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
       {/* SEÇÃO 1: HERO & PREVIEW INICIAL */}
       <section id="sec-0" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-24 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
-        <div className="max-w-4xl mx-auto space-y-5">
+        <div className="max-w-5xl mx-auto space-y-5 w-full">
           {/* AVISO RECOMENDAÇÃO MOBILE */}
           <div className="flex md:hidden items-center justify-center gap-2 px-3.5 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-semibold max-w-lg mx-auto text-left leading-tight shadow-sm">
             <Monitor className="size-4 shrink-0 text-amber-400" />
@@ -215,7 +215,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-300 shadow-sm">
             <FileSpreadsheet className="size-4 text-emerald-400" />
-            <span>Planilha ODS Padrão INCRA & SIGEF em Minutos</span>
+            <span>Requerimentos Cartorários &amp; Planilha ODS SIGEF em Minutos</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white leading-[1.08] tracking-tight">
@@ -226,12 +226,12 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             {subtitulo}
           </p>
 
-          <div className="group w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 mt-4 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
+          <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 mt-4 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/marca/preview_mapa2d.png"
-              alt="Interface completa do Souza-CAD"
-              className="w-full h-auto max-h-[42vh] object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
+              src="/marca/preview_requerimento.png"
+              alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
+              className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
             />
           </div>
         </div>
@@ -240,25 +240,25 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
         </button>
       </section>
 
-      {/* SEÇÃO 2: RELEVO 3D & PRANCHA A3 */}
+      {/* SEÇÃO 2: INTERFACE COMPLETA & RELEVO 3D */}
       <section id="sec-1" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-            <Box className="size-4" /> Modelo Digital de Relevo (MDR 3D) na Prancha
+            <Box className="size-4" /> Interface Completa &amp; Relevo 3D
           </div>
           <h2 className="text-2xl sm:text-4xl font-black text-white">
-            Modelo Digital de Relevo 3D Integrado à Prancha Oficial
+            Interface CAD Completa &amp; Modelo Digital de Relevo 3D
           </h2>
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
-            Incorpore o Modelo Digital de Relevo 3D com malha TIN wireframe, diagrama de convergência magnética e convenções cartográficas na sua prancha final.
+            Incorpore o Modelo Digital de Relevo 3D com malha TIN wireframe, diagnósticos de altimetria e convenções cartográficas na sua prancha final.
           </p>
 
-          <div className="group w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
+          <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/marca/preview_mdr_planta.png"
-              alt="MDR 3D e Convenções na Prancha A3"
-              className="w-full h-auto max-h-[46vh] object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01]"
+              src="/marca/preview_mapa2d.png"
+              alt="Interface Completa e Relevo 3D Souza-CAD"
+              className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
             />
           </div>
         </div>
@@ -291,25 +291,25 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
       {/* SEÇÃO 4: REQUERIMENTOS & PEÇAS ZIP */}
       <section id="sec-3" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-            <FileCode className="size-4" /> Cartório & Requerimentos Jurídicos
+            <FileCode className="size-4" /> Cartório &amp; Requerimentos Jurídicos
           </div>
           <h2 className="text-2xl sm:text-4xl font-black text-white">
-            Requerimentos ao Cartório & Download do Pacote ZIP
+            Requerimentos ao Cartório &amp; Download do Pacote ZIP
           </h2>
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
             Gere minutas prontas para Retificação, Doação, Usucapião, Desmembramento e a Planta A3 com todas as peças compactadas num único Pacote ZIP.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left w-full">
             <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_requerimento.png" alt="Requerimentos Cartorários" className="w-full h-auto max-h-[36vh] object-contain" />
+              <img src="/marca/preview_pecas.png" alt="Menu de Peças Técnicas ZIP" className="w-full h-auto max-h-[46vh] object-contain block" />
             </div>
             <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_pecas.png" alt="Menu de Peças Técnicas ZIP" className="w-full h-auto max-h-[36vh] object-contain" />
+              <img src="/marca/preview_mdr_planta.png" alt="Prancha A3 Oficial" className="w-full h-auto max-h-[46vh] object-contain block" />
             </div>
           </div>
         </div>
@@ -320,9 +320,9 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
       {/* SEÇÃO 5: HABILITAÇÃO PROFISSIONAL & MARCA */}
       <section id="sec-4" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6 w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-            <AwardIcon className="size-4" /> CFT, CFTA & CREA + Sua Marca
+            <AwardIcon className="size-4" /> CFT, CFTA &amp; CREA + Sua Marca
           </div>
           <h2 className="text-2xl sm:text-4xl font-black text-white">
             ART e TRT Automáticos com a Sua Marca em Tudo
@@ -331,14 +331,14 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             Suporte nativo para conselhos profissionais, assinatura digital cadastrada e inserção da sua logomarca em todas as peças geradas.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left w-full">
             <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_conselhos.png" alt="Habilitação Profissional" className="w-full h-auto max-h-[36vh] object-contain" />
+              <img src="/marca/preview_conselhos.png" alt="Habilitação Profissional" className="w-full h-auto max-h-[46vh] object-contain block" />
             </div>
             <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_config.png" alt="Personalização de Marca" className="w-full h-auto max-h-[36vh] object-contain" />
+              <img src="/marca/preview_config.png" alt="Personalização de Marca" className="w-full h-auto max-h-[46vh] object-contain block" />
             </div>
           </div>
         </div>
