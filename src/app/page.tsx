@@ -324,12 +324,12 @@ function IconeCota({ className }: { className?: string }) {
   );
 }
 
-// Exibe o atalho em badge dourado com 20% de transparência (ex.: F2, LN, DM)
+// Exibe o atalho como parte do texto entre parênteses em tom dourado (ex.: PONTOS (F2), LINHA (LN))
 function Atalho({ k, className }: { k: string; className?: string }) {
   if (!k) return null;
   return (
-    <span className={`pointer-events-none text-[8.5px] font-black tracking-tight shrink-0 select-none ml-1 px-1 py-0.2 rounded-xs bg-amber-500/20 text-amber-500 border border-amber-500/30 ${className ?? ''}`}>
-      {k.toUpperCase()}
+    <span className={`pointer-events-none text-[8.5px] font-black tracking-tighter text-amber-500 shrink-0 select-none ml-0.5 ${className ?? ''}`}>
+      ({k.toUpperCase()})
     </span>
   );
 }
@@ -1085,6 +1085,10 @@ export default function EditorPage() {
   const [landingPageAberta, setLandingPageAberta] = useState(() => {
     if (typeof window === 'undefined') return true;
     try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('landing') === 'true' || urlParams.has('landing')) {
+        return true;
+      }
       const fechadaNestaSessao = sessionStorage.getItem('metrica:landing_page_fechada');
       return !fechadaNestaSessao;
     } catch {
@@ -1093,15 +1097,19 @@ export default function EditorPage() {
   });
   const [introTocando, setIntroTocando] = useState(() => {
     if (typeof window === 'undefined') return false;
-    // Espelha a lógica do IntroVideo: se a abertura JÁ tocou nesta sessão (ex.: rodou na tela de
-    // login antes do app montar), ela não está rodando agora. Sem isso, o app perde o aviso de
-    // "abertura fechada" (disparado cedo demais) e esconde pra sempre tudo que depende de !introTocando
-    // — inclusive as pílulas de áudio de introdução e tutorial.
     try { if (sessionStorage.getItem('metrica:intro_tocada_sessao')) return false; } catch { /* ignore */ }
     return carregarPreferencias().introVideoAtiva;
   }); // enquanto a abertura roda, escondemos a chave de modo
   useEffect(() => { try { const p = carregarPreferencias(); setModoApp(p.modo); setTempoCompletoMs(p.tempoCompletoMs || 0); } catch { /* ignore */ } }, []);
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('landing') === 'true' || urlParams.has('landing')) {
+          setLandingPageAberta(true);
+        }
+      } catch { /* ignore */ }
+    }
     const h = (e: Event) => setIntroTocando(!!(e as CustomEvent<boolean>).detail);
     window.addEventListener('souzacad:intro', h);
     const s = () => setLandingPageAberta(true);
@@ -6739,21 +6747,21 @@ export default function EditorPage() {
               <GraduationCap className="size-3 shrink-0 animate-pulse text-sky-100" /> INÍCIO
               <Atalho k="F1" />
             </Button>
-            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
             <Etapa st={etapas.txt} tituloEtapa="1. Importação de Pontos" explicacao="Carregue as coordenadas obtidas no campo (TXT/CSV). O sistema lê altitudes, códigos SIGEF e plota o perímetro no mapa de satélite automaticamente.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_IMPORT} gap-0.5`} disabled={processando} title="Enviar os pontos do seu levantamento (arquivo TXT/CSV do GNSS) para o desenho — oferece salvar o anterior" onClick={iniciarImportTxt}>
                 <Upload /> PONTOS
                 <Atalho k="F2" />
               </Button>
             </Etapa>
-            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
             <Etapa st={etapas.sigef} tituloEtapa="2. Integração SIGEF / Vizinhos" explicacao="Consulte e importe os imóveis certificados confrontantes direto da malha oficial do INCRA, efetuando o casamento perfeito dos vértices vizinhos.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_VIZINHO} gap-0.5`} title="Integração SIGEF: buscar vizinhos, importar arquivos de confrontação e casar vértices" onClick={() => setSigefMenuAberto(true)}>
                 <Download /> SIGEF
                 <Atalho k="F3" />
               </Button>
             </Etapa>
-            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
           </>
         )}
 
@@ -6766,7 +6774,7 @@ export default function EditorPage() {
                 <Atalho k="F4" />
               </Button>
             </Etapa>
-            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
           </>
         )}
 
@@ -6779,14 +6787,14 @@ export default function EditorPage() {
                 <Atalho k="F5" />
               </Button>
             </Etapa>
-            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
             <Etapa st={etapas.divisas} tituloEtapa="5. Tipo de Divisas" explicacao="Defina o tipo físico de cada limite (muro, cerca de arame, córrego, etc.). O padrão é applied na planta e descrito na narrativa do memorial.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_DIVISA} ${modo === 'divisa' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`} title="Pintar divisa: escolha o tipo e clique os vértices (no sentido horário)" onClick={() => { setVista('mapa'); setModo(modo === 'divisa' ? 'navegar' : 'divisa'); }}>
                 <Paintbrush className="size-3 shrink-0" /> DIVISAS
                 <Atalho k="F6" />
               </Button>
             </Etapa>
-            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
           </>
         )}
 
@@ -6799,19 +6807,19 @@ export default function EditorPage() {
                 <Atalho k="F7" />
               </Button>
             </Etapa>
-            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
             <Etapa st={etapas.ods} tituloEtapa="7. Geração de Planilha ODS" explicacao="Exporte a planilha oficial de credenciamento do SIGEF (.ods) com validações automáticas de altitude, método de posicionamento e código dos vértices.">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-0.5`} title="Conferir e baixar a planilha SIGEF (.ods)" onClick={() => setPlanilhaConfAberta(true)}>
                 <Download /> ODS
                 <Atalho k="F8" />
               </Button>
             </Etapa>
-            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
             <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA} gap-0.5`} title="Conferir o projeto: limites legais de precisão, conflitos de divisa e conciliar área/perímetro com o SIGEF antes de baixar as peças" onClick={() => setConferirAberto(true)}>
               <CheckCircle2 /> CONFERIR
               <Atalho k="F9" />
             </Button>
-            <ChevronRight className="mx-1.5 size-3.5 shrink-0 self-center text-amber-500/80" aria-hidden />
+            <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
             {/* PEÇAS: botão final sem seta após ele */}
             <div ref={pecasBtnRef} className="relative shrink-0">
               <Button size="sm" className={`relative shrink-0 ${PREM_BTN} ${COR_PECA_OURO} gap-0.5`} title="Peças técnicas: memorial, planta, requerimento, anuência e errata" onClick={alternarMenuPecas}>
@@ -6882,6 +6890,13 @@ export default function EditorPage() {
         )}
        </div>
 
+        {/* Fuso UTM do Projeto no Canto Direito do Cabeçalho */}
+        <div className="hidden sm:flex shrink-0 items-center px-2 border-l self-stretch">
+          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap" title={`Projeção Cartográfica do Projeto: Fuso ${zona}${hemisferio} (UTM/SIRGAS 2000)`}>
+            Fuso {zona}{hemisferio}
+          </span>
+        </div>
+
         {/* Bolinha do perfil, à direita do cabeçalho: só a foto, sem o nome. Abre ao passar o mouse. */}
         <div className="relative flex shrink-0 items-center border-l px-2 self-stretch"
           onMouseEnter={() => setPerfilMenuAberto(true)}
@@ -6899,24 +6914,24 @@ export default function EditorPage() {
           </button>
           {perfilMenuAberto && (
             <div className={`absolute right-0 top-full pt-1.5 ${Z_CLASSES.DROPDOWN_MENU}`}>
-              <div className="w-72 overflow-hidden rounded-xl border bg-background/98 p-1.5 shadow-2xl backdrop-blur-xl space-y-0.5">
+              <div className="w-80 max-w-[95vw] overflow-hidden rounded-xl border bg-background/98 p-1.5 shadow-2xl backdrop-blur-xl space-y-0.5">
                 {nuvemDisponivel && !user && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); definirModoEntrada('login'); }}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-primary hover:bg-primary/10 whitespace-nowrap">
-                    <LogIn className="size-4 shrink-0" /> <span className="truncate whitespace-nowrap">Fazer login</span>
+                    <LogIn className="size-4 shrink-0" /> <span className="whitespace-nowrap">Fazer login</span>
                   </button>
                 )}
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted font-medium whitespace-nowrap">
-                  <Settings className="size-4 text-muted-foreground shrink-0" /> <span className="truncate whitespace-nowrap">Ajustes Gerais do Projeto</span>
+                  <Settings className="size-4 text-muted-foreground shrink-0" /> <span className="whitespace-nowrap">Ajustes Gerais do Projeto</span>
                 </button>
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); setTrtAberto(true); }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                  <UserCheck className="size-4 text-emerald-500 shrink-0" /> <span className="truncate whitespace-nowrap">Responsável Técnico ({rotulosProfissional(tecnico).conselho})</span>
+                  <UserCheck className="size-4 text-emerald-500 shrink-0" /> <span className="whitespace-nowrap">Responsável Técnico ({rotulosProfissional(tecnico).conselho})</span>
                 </button>
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); window.open('/?landing=true', '_blank'); }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                  <ExternalLink className="size-4 text-emerald-500 shrink-0" /> <span className="truncate whitespace-nowrap">Ir para o Site (Landing Page)</span>
+                  <ExternalLink className="size-4 text-emerald-500 shrink-0" /> <span className="whitespace-nowrap">Ir para o Site (Landing Page)</span>
                 </button>
                 
                 {souMaster() && (
