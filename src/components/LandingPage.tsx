@@ -98,7 +98,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
   // Fallbacks de textos
   const titulo = texts.titulo || 'Otimize 5 horas de projeto em apenas 20 minutos.';
   const subtitulo = texts.subtitulo || 'Gere a planilha ODS oficial no padrão SIGEF/INCRA em minutos, memoriais descritivos perimétricos, plantas topográficas completas (A3/A0), requerimentos cartorários, erratas, contratos e recibos numa única plataforma.';
-  const historia = texts.historia || 'Depois de anos empreendendo e vivenciando na prática os desafios reais de campo, o refazimento de projetos no CAD tradicional e o preenchimento exaustivo de planilhas, decidi usar meus conhecimentos de programação para desenvolver uma solução definitiva. O Souza-CAD transforma um processo manual e exaustivo em minutos de trabalho inteligente, proporcionando agilidade, autonomia e total segurança técnica para o seu escritório.';
+  const historia = texts.historia || 'Depois de anos empreendendo e vivenciando na prática os desafios reais de campo, os altos custos e a baixa performance dos softwares de CAD tradicionais e o preenchimento exaustivo de planilhas, decidi usar meus conhecimentos de programação para desenvolver uma solução definitiva. O Souza-CAD transforma um processo manual e exaustivo em minutos de trabalho inteligente, proporcionando agilidade, autonomia e total segurança técnica para o seu escritório.';
   const autorHistoria = texts.autorHistoria || 'Souza-CAD — Software Profissional de Engenharia Topográfica';
   const itensCheck = texts.itensCheck && texts.itensCheck.length === 4 ? texts.itensCheck : [
     'Georreferenciamento Rural: Memoriais e geração de planilha ODS para SIGEF.',
@@ -178,7 +178,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </div>
           <div>
             <span className="text-lg font-black tracking-widest text-white font-mono">SOUZA <span className="text-emerald-400">CAD</span></span>
-            <span className="block text-[9px] font-bold uppercase tracking-wider text-emerald-400/90">Engenharia & Georreferenciamento</span>
+            <span className="block text-[9px] font-bold uppercase tracking-wider text-emerald-400/90">Engenharia &amp; Georreferenciamento</span>
           </div>
         </div>
         <div className="flex items-center gap-2.5">
@@ -226,13 +226,23 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             {subtitulo}
           </p>
 
-          <div className="group w-full max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 mt-4 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/marca/preview_requerimento.png"
-              alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
-              className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left w-full max-w-5xl mx-auto mt-4">
+            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/marca/preview_requerimento.png"
+                alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
+                className="w-full h-auto max-h-[46vh] object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
+              />
+            </div>
+            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/marca/preview_requerimento_modal.png"
+                alt="Requerimento ao Cartório e Atos Cumulativos no Souza-CAD"
+                className="w-full h-auto max-h-[46vh] object-contain transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
+              />
+            </div>
           </div>
         </div>
         <button type="button" onClick={() => scrollToSec(1)} className="absolute bottom-4 animate-bounce text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
@@ -247,7 +257,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             <Award className="size-4" /> Pensado para Georreferenciamento SIGEF / INCRA
           </div>
           <h2 className="text-2xl sm:text-4xl font-black text-white">
-            100% Projetado para Georreferenciamento de Imóveis Rurais
+            100% Projetado para Georreferenciamento de Imóveis Rurais SIGEF
           </h2>
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
             Geração automática da Planilha ODS oficial para certificação eletrônica, conferência visual de vértices, códigos de limites/métodos e total conformidade com a 3ª edição da norma técnica do INCRA.
@@ -306,7 +316,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
               &ldquo;{historia}&rdquo;
             </p>
             <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-slate-400 font-medium border-t border-slate-800 gap-2">
-              <span className="font-bold text-white">— {autorHistoria}</span>
+              <span className="font-bold text-white">{autorHistoria}</span>
               <span className="text-emerald-400 font-bold">Engenharia &amp; Desenvolvimento</span>
             </div>
           </div>
@@ -336,7 +346,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </div>
             <div className="group rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 transition-all duration-500 hover:border-emerald-500/40">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_mdr_planta.png" alt="Prancha A3 Oficial" className="w-full h-auto max-h-[46vh] object-contain block" />
+              <img src="/marca/preview_planta_a3.png" alt="Prancha A3 Oficial" className="w-full h-auto max-h-[46vh] object-contain block" />
             </div>
           </div>
         </div>

@@ -242,6 +242,16 @@ function Ted(props: {
        onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id, conteudo); } : undefined}
        onContextMenu={undefined}
        onPointerDown={ed ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}>
+      {/* Hit box invisível para garantir captura de cliques e arraste em todo o rótulo */}
+      <rect
+        x={anchor === 'middle' ? posX - textW / 2 - 6 : anchor === 'end' ? posX - textW - 6 : posX - 6}
+        y={posY - fz * 0.9}
+        width={textW + 12}
+        height={textH + 6}
+        fill="#ffffff"
+        fillOpacity={0.001}
+        style={{ pointerEvents: 'all', cursor: ed ? 'move' : undefined }}
+      />
       {ov?.fundoBranco && (
         <rect
           x={anchor === 'middle' ? posX - textW / 2 - 5 : anchor === 'end' ? posX - textW - 5 : posX - 5}
@@ -2027,7 +2037,7 @@ export default function Planta({
               folhaLast.current = u;
               captura(e);
             } : undefined}>
-            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="transparent" stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} />
+            <rect x={px - half - 8} y={top} width={boxW} height={boxH} fill="#ffffff" fillOpacity={0.001} stroke="#cbd5e1" strokeWidth={0.7} rx={4} ry={4} style={{ pointerEvents: 'all' }} />
             {placedElements}
           </g>
         );
