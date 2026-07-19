@@ -97,6 +97,38 @@ export default function IntroVideo() {
       </div>
 
       <div className="relative z-10 w-[min(90vw,960px)]">
+        {/* CARD VÍDEO FLUTUANTE 1 (Canto Superior Esquerdo - Sobreposto com Bom Gosto) */}
+        <div className="absolute -top-5 -left-3 sm:-top-7 sm:-left-7 z-30 w-32 sm:w-52 aspect-video rounded-xl overflow-hidden border border-emerald-400/45 bg-black/90 shadow-[0_10px_30px_rgba(0,0,0,0.85)] backdrop-blur-md transition-all duration-300 hover:scale-105 group pointer-events-auto">
+          <video
+            ref={(el) => { if (el) el.playbackRate = 0.75; }}
+            src="/marca/video1.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+          />
+          <div className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-emerald-950/85 border border-emerald-500/30 text-[9px] sm:text-[10px] font-black uppercase text-emerald-300 tracking-wider backdrop-blur-sm shadow-sm">
+            Recursos 1
+          </div>
+        </div>
+
+        {/* CARD VÍDEO FLUTUANTE 2 (Canto Superior Direito - Sobreposto com Bom Gosto) */}
+        <div className="absolute -top-5 -right-3 sm:-top-7 sm:-right-7 z-30 w-32 sm:w-52 aspect-video rounded-xl overflow-hidden border border-emerald-400/45 bg-black/90 shadow-[0_10px_30px_rgba(0,0,0,0.85)] backdrop-blur-md transition-all duration-300 hover:scale-105 group pointer-events-auto">
+          <video
+            ref={(el) => { if (el) el.playbackRate = 0.75; }}
+            src="/marca/video2.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+          />
+          <div className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-md bg-emerald-950/85 border border-emerald-500/30 text-[9px] sm:text-[10px] font-black uppercase text-emerald-300 tracking-wider backdrop-blur-sm shadow-sm">
+            Recursos 2
+          </div>
+        </div>
+
         {/* Moldura do vídeo: cantos arredondados, borda e brilho verdes — sem zoom no vídeo */}
         <div className="relative overflow-hidden rounded-2xl border border-emerald-400/30 bg-black shadow-[0_0_90px_rgba(16,185,129,0.28)]">
           {/* Cobertura que some quando o vídeo realmente começa a rodar */}

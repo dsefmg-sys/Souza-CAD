@@ -203,22 +203,23 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
       </header>
 
       {/* SEÇÃO 1: HERO & PREVIEW INICIAL */}
-      <section id="sec-0" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-24 pb-12 px-4 sm:px-6 max-w-6xl mx-auto text-center border-b border-slate-900/60">
-        {/* VÍDEO DE FUNDO NO INÍCIO (VÍDEO 1) */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      <section id="sec-0" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-24 pb-12 text-center border-b border-slate-900/60 overflow-hidden">
+        {/* VÍDEO DE FUNDO NO INÍCIO (VÍDEO 1) - LARGURA TOTAL 100% */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <video
+            ref={(el) => { if (el) el.playbackRate = 0.75; }}
             autoPlay
             loop
             muted
             playsInline
-            className="w-full h-full object-cover opacity-20 filter contrast-125 brightness-90 saturate-150"
+            className="w-full h-full object-cover opacity-50 filter contrast-110 brightness-95 saturate-125"
           >
             <source src="/marca/video1.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/60 to-slate-950" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/45 to-slate-950" />
         </div>
 
-        <div className="max-w-5xl mx-auto space-y-5 w-full relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-5 w-full relative z-10">
           {/* AVISO RECOMENDAÇÃO MOBILE */}
           <div className="flex md:hidden items-center justify-center gap-2 px-3.5 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-semibold max-w-lg mx-auto text-left leading-tight shadow-sm">
             <Monitor className="size-4 shrink-0 text-amber-400" />
@@ -399,22 +400,23 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
       </section>
 
       {/* SEÇÃO 7: CREDENCIAMENTO PIONEIRO & CTA FINAL */}
-      <section id="sec-6" className="landing-snap-sec min-h-screen w-full flex flex-col justify-between items-center relative pt-20 pb-6 px-4 sm:px-6 max-w-5xl mx-auto text-center">
-        {/* VÍDEO DE FUNDO NO FINAL (VÍDEO 2) */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      <section id="sec-6" className="landing-snap-sec min-h-screen w-full flex flex-col justify-between items-center relative pt-20 pb-6 text-center overflow-hidden">
+        {/* VÍDEO DE FUNDO NO FINAL (VÍDEO 2) - LARGURA TOTAL 100% */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
           <video
+            ref={(el) => { if (el) el.playbackRate = 0.75; }}
             autoPlay
             loop
             muted
             playsInline
-            className="w-full h-full object-cover opacity-25 filter contrast-125 brightness-90 saturate-150"
+            className="w-full h-full object-cover opacity-50 filter contrast-110 brightness-95 saturate-125"
           >
             <source src="/marca/video2.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-slate-950" />
         </div>
 
-        <div className="w-full max-w-3xl space-y-6 my-auto relative z-10">
+        <div className="w-full max-w-3xl px-4 sm:px-6 space-y-6 my-auto relative z-10">
           <div className="bg-slate-900/90 border border-emerald-500/30 p-6 sm:p-10 rounded-3xl shadow-2xl space-y-6 backdrop-blur-xl">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-4 text-left">
               <div>
@@ -462,7 +464,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
         </div>
 
         {/* FOOTER */}
-        <footer className="w-full pt-4 border-t border-slate-900/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2 shrink-0 relative z-10">
+        <footer className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-4 border-t border-slate-900/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2 shrink-0 relative z-10">
           <span>&copy; {new Date().getFullYear()} Souza-CAD. Todos os direitos reservados.</span>
           <span>Desenvolvido para alta performance em georreferenciamento.</span>
         </footer>
