@@ -234,8 +234,8 @@ export interface LandingPageTexts {
 export const LANDING_PADRAO: LandingPageTexts = {
   titulo: 'Otimize 5 horas de projeto em apenas 20 minutos.',
   subtitulo: 'Um sistema planialtimétrico e de georreferenciamento de imóveis rurais completo e intuitivo, feito sob medida para as reais necessidades de agrimensores, técnicos e engenheiros brasileiros.',
-  historia: 'Depois de 14 anos empreendendo na área de agrimensura, enfrentando o cansaço de refazer projetos manuais no CAD tradicional e preencher planilhas repetitivas, decidi aprender a programar para criar a ferramenta que eu mesmo precisava para ter liberdade, agilidade e total segurança técnica. O Souza-CAD transforma um processo manual e exaustivo de 5 horas em apenas 20 minutos de trabalho eficiente.',
-  autorHistoria: 'Agrimensor Programador & Criador do Souza-CAD',
+  historia: 'Depois de anos empreendendo e vivenciando na prática os desafios reais de campo, o refazimento de projetos no CAD tradicional e o preenchimento exaustivo de planilhas, decidi usar meus conhecimentos de programação para desenvolver uma solução definitiva. O Souza-CAD transforma um processo manual e exaustivo em minutos de trabalho inteligente, proporcionando agilidade, autonomia e total segurança técnica para o seu escritório.',
+  autorHistoria: 'Souza-CAD — Software Profissional de Engenharia Topográfica',
   itensCheck: [
     'Georreferenciamento Rural: Memoriais e geração de planilha ODS para SIGEF.',
     'Planialtimetria Precisa: Curvas de nível automáticas a partir de altitude online.',

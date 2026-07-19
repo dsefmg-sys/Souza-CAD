@@ -64,8 +64,8 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
   // Fallbacks de textos
   const titulo = texts.titulo || 'Otimize 5 horas de projeto em apenas 20 minutos.';
   const subtitulo = texts.subtitulo || 'Gere a planilha ODS oficial no padrão SIGEF/INCRA em minutos, memoriais descritivos perimétricos, plantas topográficas completas (A3/A0), requerimentos cartorários, erratas, contratos e recibos numa única plataforma.';
-  const historia = texts.historia || 'Depois de 14 anos empreendendo e prestando serviços técnicos com comprometimento e responsabilidade no mercado, enfrentando os desafios reais de campo, refazer projetos manuais no CAD tradicional e preencher planilhas repetitivas, decidi aprender a programar para criar a ferramenta que eu mesmo precisava para ter liberdade, agilidade e total segurança técnica. O Souza-CAD transforma um processo manual e exaustivo de 5 horas em apenas 20 minutos de trabalho eficiente.';
-  const autorHistoria = texts.autorHistoria || 'Darlan Souza — Agrimensor Programador & Criador do Souza-CAD';
+  const historia = texts.historia || 'Depois de anos empreendendo e vivenciando na prática os desafios reais de campo, o refazimento de projetos no CAD tradicional e o preenchimento exaustivo de planilhas, decidi usar meus conhecimentos de programação para desenvolver uma solução definitiva. O Souza-CAD transforma um processo manual e exaustivo em minutos de trabalho inteligente, proporcionando agilidade, autonomia e total segurança técnica para o seu escritório.';
+  const autorHistoria = texts.autorHistoria || 'Souza-CAD — Software Profissional de Engenharia Topográfica';
   const itensCheck = texts.itensCheck && texts.itensCheck.length === 4 ? texts.itensCheck : [
     'Georreferenciamento Rural: Memoriais e geração de planilha ODS para SIGEF.',
     'Planialtimetria Precisa: Curvas de nível automáticas a partir de altitude online.',
@@ -238,7 +238,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </p>
             <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-slate-400 font-medium border-t border-slate-800 gap-2">
               <span className="font-bold text-white">— {autorHistoria}</span>
-              <span className="text-emerald-400 font-bold">14 Anos de Experiência Prática</span>
+              <span className="text-emerald-400 font-bold">Engenharia & Desenvolvimento</span>
             </div>
           </div>
         </div>
