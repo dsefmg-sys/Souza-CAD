@@ -152,14 +152,19 @@ export default function IntroVideo() {
           {/* Compartilhar */}
           <button
             onClick={() => {
+              const appUrl = 'https://souzacad--souza-cad.us-east4.hosted.app/';
+              const textoWhats = `Estou usando esse sistema, você deveria experimentar: ${appUrl}`;
               if (typeof navigator !== 'undefined') {
-                void navigator.clipboard.writeText("https://metrica.souzacad.com.br");
+                void navigator.clipboard.writeText(appUrl);
                 setCopiado(true);
                 setTimeout(() => setCopiado(false), 2000);
               }
+              if (typeof window !== 'undefined') {
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoWhats)}`, '_blank');
+              }
             }}
-            className="relative flex h-9 items-center justify-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 text-xs font-semibold text-white/90 backdrop-blur transition-colors hover:bg-white/20"
-            title="Compartilhar link do Souza-CAD com amigos agrimensores"
+            className="relative flex h-9 items-center justify-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/20 px-3.5 text-xs font-semibold text-emerald-300 backdrop-blur transition-colors hover:bg-emerald-500/30 cursor-pointer"
+            title="Compartilhar no WhatsApp"
           >
             <Share2 className="size-4" />
             <span>{copiado ? 'Link Copiado!' : 'Compartilhar'}</span>
