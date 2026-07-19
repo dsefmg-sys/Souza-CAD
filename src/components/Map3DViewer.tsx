@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RotateCcw, Download, Navigation, Wand2, RefreshCw, Camera, X, Map, Layers, Shovel, Pickaxe } from 'lucide-react';
@@ -147,6 +148,10 @@ export default function Map3DViewer({
   // Escala vertical: por padrão FIEL (1:1, mostra o imóvel como ele é). O botão "Realce" liga um
   // destaque fixo e discreto pra enxergar o relevo em terreno plano — sem cursor de números.
   const [realce, setRealce] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const FATOR_REALCE = 3.0;
   const exagero = realce ? FATOR_REALCE : 1.0;
 
@@ -1099,6 +1104,339 @@ export default function Map3DViewer({
     .map((s) => `rgb(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]}) ${Math.round(s.t * 100)}%`)
     .join(', ')})`;
 
+  const renderControles = () => {
+    const content = (
+      <div className="flex flex-col gap-3 text-xs text-slate-650 dark:text-slate-400">
+        <div className="space-y-1 text-[11px] leading-relaxed">
+          <p>• Arraste (ou um dedo) para girar</p>
+          <p>• Botão direito + arrastar: pan (mover)</p>
+          <p>• Rolagem ou pinça para zoom</p>
+        </div>
+
+        {/* Presets de Câmera */}
+        <div className="space-y-1.5 pt-1.5 border-t border-border/60">
+          <span className="font-bold text-[9px] uppercase tracking-wider text-muted-foreground block">Ângulos de Câmera</span>
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              type="button"
+              onClick={() => { yawRef.current = 0; pitchRef.current = 0.05; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
+              className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50 cursor-pointer active:scale-95"
+              title="Visão Geral Superior (Planta 3D)"
+            >
+              Superior
+            </button>
+            <button
+              type="button"
+              onClick={() => { yawRef.current = -0.7; pitchRef.current = 0.75; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
+              className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50 cursor-pointer active:scale-95"
+              title="Visão Isométrica 3D"
+            >
+              Isométrica
+            </button>
+            <button
+              type="button"
+              onClick={() => { yawRef.current = 0; pitchRef.current = 1.45; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
+              className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50 cursor-pointer active:scale-95"
+              title="Visão de Perfil do Relevo"
+            >
+              Perfil
+            </button>
+          </div>
+        </div>
+
+        {/* Opções de Exibição de Rótulos */}
+        <div className="space-y-1.5 pt-1.5 border-t border-border/60">
+          <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium">
+            <span>Rótulos & Altitudes 3D</span>
+            <input type="checkbox" checked={mostrarLabels3D} onChange={(e) => setMostrarLabels3D(e.target.checked)} className="size-3.5 accent-primary cursor-pointer" />
+          </label>
+          {mostrarLabels3D && (
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-[10px] text-slate-500 pl-1.5">
+              <span>Placas em Volta (Badges)</span>
+              <input type="checkbox" checked={mostrarPillsLabels} onChange={(e) => setMostrarPillsLabels(e.target.checked)} className="size-3.5 accent-primary cursor-pointer" />
+            </label>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => { setAutoGirar((a) => !a); marcarInteracao(); }}
+          className={`flex items-center justify-center gap-1.5 h-8 rounded-lg text-[10px] font-bold transition-all active:scale-98 border ${autoGirar ? 'bg-emerald-600 text-white border-transparent' : 'text-muted-foreground border-border/60 hover:bg-muted/60'}`}
+          title="Gira o modelo sozinho quando você não está mexendo"
+        >
+          <RefreshCw className={`size-3 ${autoGirar ? 'animate-spin [animation-duration:3s]' : ''}`} /> Rotação Automática
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setCalcVolumeAtivo((v) => !v); marcarInteracao(); }}
+          className={`flex items-center justify-center gap-1.5 h-8 rounded-lg text-[10px] font-bold transition-all active:scale-98 border ${calcVolumeAtivo ? 'bg-blue-600 text-white border-transparent' : 'text-blue-500 border-blue-500/30 hover:bg-blue-500/10'}`}
+          title="Ativa o cálculo e visualização de volumes de terraplenagem"
+        >
+          <Shovel className="size-3" /> Terraplenagem (Cubagem)
+        </button>
+
+        {onCapture && (
+          <>
+            <button
+              type="button"
+              onClick={() => setCaptureDialogAberto(true)}
+              className="flex items-center justify-center gap-1.5 h-8 rounded-lg text-[10px] font-bold transition-all active:scale-98 border text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+              title="Captura o estado atual do modelo 3D e insere como um quadro móvel na planta"
+            >
+              <Camera className="size-3" /> Inserir Print na Planta
+            </button>
+
+            {/* Dialog de configuração antes de inserir o print do MDR na planta */}
+            {captureDialogAberto && (
+              <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150" onClick={() => setCaptureDialogAberto(false)}>
+                <div className="bg-background border border-border rounded-2xl shadow-2xl p-5 w-84 space-y-4 animate-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-sm text-foreground">Inserir Modelo 3D na Planta</h3>
+                    <button type="button" onClick={() => setCaptureDialogAberto(false)} className="text-muted-foreground hover:text-foreground rounded-full p-1"><X className="size-4" /></button>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">A captura do modelo 3D será gerada com fundo transparente e inserida como imagem móvel na prancha.</p>
+
+                  <div className="space-y-2.5 rounded-xl bg-muted/30 p-3">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Enquadramento da Captura</span>
+                      <select
+                        value={modoEnquadramentoCapture}
+                        onChange={(e) => setModoEnquadramentoCapture(e.target.value as 'camera' | 'imovel_completo')}
+                        className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-primary focus:outline-none cursor-pointer"
+                      >
+                        <option value="camera">Manter Ângulo Atual da Câmera (Recomendado)</option>
+                        <option value="imovel_completo">Visão Geral Superior (Planta 3D)</option>
+                      </select>
+                    </div>
+
+                    <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium border-t border-border/30 pt-2">
+                      <span>Ajustar largura/altura ao imóvel (sem vazios)</span>
+                      <input type="checkbox" checked={captureRecortarBordas} onChange={(e) => setCaptureRecortarBordas(e.target.checked)} className="size-3.5 accent-primary cursor-pointer" />
+                    </label>
+
+                    <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium border-t border-border/30 pt-2">
+                      <span>Incluir curvas de nível</span>
+                      <input type="checkbox" checked={mostrarCurvasNoCapture} onChange={(e) => setMostrarCurvasNoCapture(e.target.checked)} className="size-3.5 accent-primary cursor-pointer" />
+                    </label>
+
+                    {mostrarCurvasNoCapture && (
+                      <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium pl-2">
+                        <span className="text-muted-foreground">Exibir altitudes nas curvas</span>
+                        <input type="checkbox" checked={mostrarAltitudesNoCapture} onChange={(e) => setMostrarAltitudesNoCapture(e.target.checked)} className="size-3.5 accent-primary cursor-pointer" />
+                      </label>
+                    )}
+
+                    {calcVolumeAtivo && (volumes.corte + volumes.aterro) > 0 && (
+                      <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium border-t border-border/30 pt-2">
+                        <span>Incluir dados de terraplanagem</span>
+                        <input type="checkbox" checked={captureIncluirTerraplanagem} onChange={(e) => setCaptureIncluirTerraplanagem(e.target.checked)} className="size-3.5 accent-primary cursor-pointer" />
+                      </label>
+                    )}
+                  </div>
+
+                  {calcVolumeAtivo && captureIncluirTerraplanagem && (volumes.corte + volumes.aterro) > 0 && (
+                    <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-2.5 text-[10px] space-y-0.5">
+                      <div className="flex justify-between"><span className="text-red-500 font-bold">✂ Corte</span><span className="font-mono">{(volumes.corte * fatorEmpolamento).toFixed(1)} m³</span></div>
+                      <div className="flex justify-between"><span className="text-blue-500 font-bold">⬇ Aterro</span><span className="font-mono">{volumes.aterro.toFixed(1)} m³</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Platô</span><span className="font-mono">{zRef.toFixed(2)} m</span></div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setCaptureDialogAberto(false)}
+                      className="flex-1 h-8 rounded-lg border text-[11px] font-bold hover:bg-muted transition-colors cursor-pointer">
+                      Cancelar
+                    </button>
+                    <button type="button"
+                      onClick={() => {
+                        const canvas = canvasRef.current;
+                        if (!canvas) return;
+
+                        const yawOld = yawRef.current;
+                        const pitchOld = pitchRef.current;
+                        const zoomOld = zoomRef.current;
+
+                        if (modoEnquadramentoCapture === 'imovel_completo') {
+                          yawRef.current = 0;
+                          pitchRef.current = 0.85;
+                          zoomRef.current = 0.95;
+                        }
+
+                        captureModeRef.current = true;
+                        marcarInteracao();
+
+                        requestAnimationFrame(() => {
+                          requestAnimationFrame(() => {
+                            const dataUrl = captureRecortarBordas ? recortaCanvasVisivel(canvas) : canvas.toDataURL('image/png');
+                            captureModeRef.current = false;
+                            yawRef.current = yawOld;
+                            pitchRef.current = pitchOld;
+                            zoomRef.current = zoomOld;
+                            marcarInteracao();
+
+                            const meta = (calcVolumeAtivo && captureIncluirTerraplanagem && (volumes.corte + volumes.aterro) > 0)
+                              ? { volCorte: +(volumes.corte * fatorEmpolamento).toFixed(2), volAterro: +volumes.aterro.toFixed(2), zRef: +zRef.toFixed(2) }
+                              : undefined;
+                            onCapture!(dataUrl, meta);
+                            setCaptureDialogAberto(false);
+                          });
+                        });
+                      }}
+                      className="flex-1 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+                      <Camera className="size-3.5" /> Capturar e Inserir
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Visualização & Diagnósticos */}
+        <div className="space-y-1.5 pt-2 border-t border-border/60">
+          <span className="font-bold text-[9px] uppercase tracking-wider text-muted-foreground">Exibição & Diagnóstico</span>
+          <div className="space-y-1.5">
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-semibold">
+              <span>Paredes Laterais</span>
+              <input
+                type="checkbox"
+                checked={mostrarParedes}
+                onChange={(e) => setMostrarParedes(e.target.checked)}
+                className="rounded border-muted text-primary focus:ring-primary size-3.5 cursor-pointer"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-semibold">
+              <span>Malha TIN (Wireframe)</span>
+              <input
+                type="checkbox"
+                checked={mostrarTin}
+                onChange={(e) => setMostrarTin(e.target.checked)}
+                className="rounded border-muted text-primary focus:ring-primary size-3.5 cursor-pointer"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-semibold">
+              <span>Curvas de Nível 3D</span>
+              <input
+                type="checkbox"
+                checked={mostrarCurvas3D}
+                onChange={(e) => setMostrarCurvas3D(e.target.checked)}
+                className="rounded border-muted text-primary focus:ring-primary size-3.5 cursor-pointer"
+              />
+            </label>
+            {mostrarCurvas3D && (
+              <label className="flex items-center justify-between gap-2 cursor-pointer text-[10px] font-medium pl-1.5">
+                <span className="text-muted-foreground">Mostrar Altitudes nas Curvas</span>
+                <input
+                  type="checkbox"
+                  checked={mostrarAltitudesCurvas}
+                  onChange={(e) => setMostrarAltitudesCurvas(e.target.checked)}
+                  className="rounded border-muted text-primary focus:ring-primary size-3.5 cursor-pointer"
+                />
+              </label>
+            )}
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-semibold" title="Destaca vértices que estão com altitude zero no desenho">
+              <span>Destacar Cota Zero</span>
+              <input
+                type="checkbox"
+                checked={destacarErros}
+                onChange={(e) => setDestacarErros(e.target.checked)}
+                className="rounded border-muted text-primary focus:ring-primary size-3.5 cursor-pointer"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-semibold" title="Mostra os rótulos de nome e cota dos vértices no modelo 3D">
+              <span>Mostrar Rótulos</span>
+              <input
+                type="checkbox"
+                checked={mostrarLabels3D}
+                onChange={(e) => setMostrarLabels3D(e.target.checked)}
+                className="rounded border-muted text-primary focus:ring-primary size-3.5 cursor-pointer"
+              />
+            </label>
+          </div>
+        </div>
+
+        {hasZ && (
+          <div className="space-y-1.5 pt-2 border-t border-border/60">
+            <Label className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Escala vertical</Label>
+            <div className="flex rounded-lg border border-border/60 p-0.5 gap-0.5 bg-muted/40">
+              <button
+                type="button"
+                onClick={() => setRealce(false)}
+                className={`flex-1 h-6 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${!realce ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:bg-muted/60'}`}
+                title="Escala verdadeira 1:1 — mostra o imóvel como ele é"
+              >
+                Real
+              </button>
+              <button
+                type="button"
+                onClick={() => setRealce(true)}
+                className={`flex-1 h-6 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${realce ? 'bg-amber-600 text-white' : 'text-muted-foreground hover:bg-muted/60'}`}
+                title="Realça o relevo pra enxergar melhor em terreno plano (não é a escala real)"
+              >
+                Realce
+              </button>
+            </div>
+          </div>
+        )}
+
+        {verticesSemCota > 0 && onCompletarAltitudes && (
+          <div className="space-y-1.5 pt-2 border-t border-border/60">
+            <p className="text-[10px] leading-snug text-amber-600 dark:text-amber-400">
+              {verticesSemCota} vértice(s) sem altitude — o relevo fica incompleto.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 w-full gap-1.5 text-[10px] font-bold border-amber-600/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/5 cursor-pointer"
+              onClick={onCompletarAltitudes}
+              title="Calcula a cota que falta a partir dos pontos que têm altitude (marcada como calculada; reversível)"
+            >
+              <Wand2 className="size-3" /> Completar altitudes
+            </Button>
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-2 border-t border-border/60">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-full gap-1.5 text-[10px] font-bold cursor-pointer"
+            onClick={() => { yawRef.current = -0.5; pitchRef.current = 0.8; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
+          >
+            <RotateCcw className="size-3" /> Resetar
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-full gap-1.5 text-[10px] font-bold border-amber-600/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/5 cursor-pointer"
+            onClick={handleBaixarKml}
+          >
+            <Download className="size-3" /> Baixar KML
+          </Button>
+        </div>
+
+        {/* Dica do scroll click do mouse */}
+        <div className="mt-auto pt-3 border-t border-border/60 text-[9.5px] text-muted-foreground/80 leading-relaxed font-semibold italic flex items-start gap-1.5 bg-slate-500/5 dark:bg-white/5 rounded-xl p-2.5">
+          <span className="text-amber-500 font-bold shrink-0">★ Dica:</span>
+          <span>Clique com o botão central do mouse (scroll click) sobre o mapa/terreno para alternar instantaneamente entre os modos 2D e 3D.</span>
+        </div>
+      </div>
+    );
+
+    const target = typeof window !== 'undefined' ? document.getElementById('sidebar-3d-portal-target') : null;
+    if (mounted && target) {
+      return createPortal(content, target);
+    }
+
+    return (
+      <div className="absolute top-4 right-4 flex flex-col gap-2.5 p-3 rounded-xl bg-background/90 backdrop-blur border border-border/80 shadow-lg max-w-xs text-xs text-muted-foreground z-40">
+        {content}
+      </div>
+    );
+  };
+
   return (
     <div className="relative w-full h-full min-h-[400px] flex-grow flex flex-col rounded-xl border border-border overflow-hidden select-none">
       {/* Canvas principal */}
@@ -1270,322 +1608,8 @@ export default function Map3DViewer({
         </div>
       )}
 
-      {/* Controles de overlay superior direito */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2.5 p-3 rounded-xl bg-background/90 backdrop-blur border border-border/80 shadow-lg max-w-xs text-xs text-muted-foreground z-40">
-        <span className="font-extrabold text-foreground uppercase tracking-wider text-[10px] block border-b pb-1">Controles do Relevo 3D</span>
-        
-        <div className="space-y-1">
-          <p>• Arraste (ou um dedo) para girar</p>
-          <p>• Botão direito + arrastar: pan (mover)</p>
-          <p>• Rolagem ou pinça para zoom</p>
-        </div>
-
-        {/* Presets de Câmera */}
-        <div className="space-y-1 pt-1.5 border-t border-border/60">
-          <span className="font-bold text-[9px] uppercase tracking-wider text-muted-foreground block">Ângulos de Câmera</span>
-          <div className="grid grid-cols-3 gap-1">
-            <button
-              type="button"
-              onClick={() => { yawRef.current = 0; pitchRef.current = 0.05; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
-              className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50"
-              title="Visão Geral Superior (Planta 3D)"
-            >
-              Superior
-            </button>
-            <button
-              type="button"
-              onClick={() => { yawRef.current = -0.7; pitchRef.current = 0.75; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
-              className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50"
-              title="Visão Isométrica 3D"
-            >
-              Isométrica
-            </button>
-            <button
-              type="button"
-              onClick={() => { yawRef.current = 0; pitchRef.current = 1.45; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
-              className="h-6 rounded bg-muted/60 hover:bg-muted text-[9px] font-bold text-foreground transition-colors border border-border/50"
-              title="Visão de Perfil do Relevo"
-            >
-              Perfil
-            </button>
-          </div>
-        </div>
-
-        {/* Opções de Exibição de Rótulos */}
-        <div className="space-y-1 pt-1.5 border-t border-border/60">
-          <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium">
-            <span>Rótulos & Altitudes 3D</span>
-            <input type="checkbox" checked={mostrarLabels3D} onChange={(e) => setMostrarLabels3D(e.target.checked)} className="size-3.5 accent-primary" />
-          </label>
-          {mostrarLabels3D && (
-            <label className="flex items-center justify-between gap-2 cursor-pointer text-[10px] text-muted-foreground pl-1">
-              <span>Placas em Volta (Badges)</span>
-              <input type="checkbox" checked={mostrarPillsLabels} onChange={(e) => setMostrarPillsLabels(e.target.checked)} className="size-3.5 accent-primary" />
-            </label>
-          )}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => { setAutoGirar((a) => !a); marcarInteracao(); }}
-          className={`flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold transition-colors border ${autoGirar ? 'bg-emerald-600 text-white border-transparent' : 'text-muted-foreground border-border/60 hover:bg-muted/60'}`}
-          title="Gira o modelo sozinho quando você não está mexendo"
-        >
-          <RefreshCw className={`size-3 ${autoGirar ? 'animate-spin [animation-duration:3s]' : ''}`} /> Rotação Automática
-        </button>
-
-        <button
-          type="button"
-          onClick={() => { setCalcVolumeAtivo((v) => !v); marcarInteracao(); }}
-          className={`flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold transition-colors border ${calcVolumeAtivo ? 'bg-blue-600 text-white border-transparent' : 'text-blue-500 border-blue-500/30 hover:bg-blue-500/10'}`}
-          title="Ativa o cálculo e visualização de volumes de terraplenagem"
-        >
-          <Shovel className="size-3" /> Terraplenagem (Cubagem)
-        </button>
-
-        {onCapture && (
-          <>
-            <button
-              type="button"
-              onClick={() => setCaptureDialogAberto(true)}
-              className="flex items-center justify-center gap-1.5 h-7 rounded-lg text-[10px] font-bold transition-colors border text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
-              title="Captura o estado atual do modelo 3D e insere como um quadro móvel na planta"
-            >
-              <Camera className="size-3" /> Inserir Print na Planta
-            </button>
-
-            {/* Dialog de configuração do capture MDR */}
-            {captureDialogAberto && (
-              <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150" onClick={() => setCaptureDialogAberto(false)}>
-                <div className="bg-background border border-border rounded-2xl shadow-2xl p-5 w-84 space-y-4 animate-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-extrabold text-sm text-foreground">Inserir Modelo 3D na Planta</h3>
-                    <button type="button" onClick={() => setCaptureDialogAberto(false)} className="text-muted-foreground hover:text-foreground rounded-full p-1"><X className="size-4" /></button>
-                  </div>
-
-                  <p className="text-[11px] text-muted-foreground">A captura do modelo 3D será gerada com fundo transparente e inserida como imagem móvel na prancha.</p>
-
-                  <div className="space-y-2.5 rounded-xl bg-muted/30 p-3">
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Enquadramento da Captura</span>
-                      <select
-                        value={modoEnquadramentoCapture}
-                        onChange={(e) => setModoEnquadramentoCapture(e.target.value as 'camera' | 'imovel_completo')}
-                        className="h-8 w-full rounded border bg-background px-2 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                      >
-                        <option value="camera">Manter Ângulo Atual da Câmera (Recomendado)</option>
-                        <option value="imovel_completo">Visão Geral Superior (Planta 3D)</option>
-                      </select>
-                    </div>
-
-                    <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium border-t border-border/30 pt-2">
-                      <span>Ajustar largura/altura ao imóvel (sem vazios)</span>
-                      <input type="checkbox" checked={captureRecortarBordas} onChange={(e) => setCaptureRecortarBordas(e.target.checked)} className="size-3.5 accent-primary" />
-                    </label>
-
-                    <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium border-t border-border/30 pt-2">
-                      <span>Incluir curvas de nível</span>
-                      <input type="checkbox" checked={mostrarCurvasNoCapture} onChange={(e) => setMostrarCurvasNoCapture(e.target.checked)} className="size-3.5 accent-primary" />
-                    </label>
-
-                    {mostrarCurvasNoCapture && (
-                      <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium pl-2">
-                        <span className="text-muted-foreground">Exibir altitudes nas curvas</span>
-                        <input type="checkbox" checked={mostrarAltitudesNoCapture} onChange={(e) => setMostrarAltitudesNoCapture(e.target.checked)} className="size-3.5 accent-primary" />
-                      </label>
-                    )}
-
-                    {calcVolumeAtivo && (volumes.corte + volumes.aterro) > 0 && (
-                      <label className="flex items-center justify-between gap-2 cursor-pointer text-[11px] font-medium border-t border-border/30 pt-2">
-                        <span>Incluir dados de terraplanagem</span>
-                        <input type="checkbox" checked={captureIncluirTerraplanagem} onChange={(e) => setCaptureIncluirTerraplanagem(e.target.checked)} className="size-3.5 accent-primary" />
-                      </label>
-                    )}
-                  </div>
-
-                  {calcVolumeAtivo && captureIncluirTerraplanagem && (volumes.corte + volumes.aterro) > 0 && (
-                    <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-2.5 text-[10px] space-y-0.5">
-                      <div className="flex justify-between"><span className="text-red-500 font-bold">✂ Corte</span><span className="font-mono">{(volumes.corte * fatorEmpolamento).toFixed(1)} m³</span></div>
-                      <div className="flex justify-between"><span className="text-blue-500 font-bold">⬇ Aterro</span><span className="font-mono">{volumes.aterro.toFixed(1)} m³</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Platô</span><span className="font-mono">{zRef.toFixed(2)} m</span></div>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setCaptureDialogAberto(false)}
-                      className="flex-1 h-8 rounded-lg border text-[11px] font-bold hover:bg-muted transition-colors">
-                      Cancelar
-                    </button>
-                    <button type="button"
-                      onClick={() => {
-                        const canvas = canvasRef.current;
-                        if (!canvas) return;
-
-                        const yawOld = yawRef.current;
-                        const pitchOld = pitchRef.current;
-                        const zoomOld = zoomRef.current;
-
-                        if (modoEnquadramentoCapture === 'imovel_completo') {
-                          yawRef.current = 0;
-                          pitchRef.current = 0.85;
-                          zoomRef.current = 0.95;
-                        }
-
-                        captureModeRef.current = true;
-                        marcarInteracao();
-
-                        requestAnimationFrame(() => {
-                          requestAnimationFrame(() => {
-                            const dataUrl = captureRecortarBordas ? recortaCanvasVisivel(canvas) : canvas.toDataURL('image/png');
-                            captureModeRef.current = false;
-                            yawRef.current = yawOld;
-                            pitchRef.current = pitchOld;
-                            zoomRef.current = zoomOld;
-                            marcarInteracao();
-
-                            const meta = (calcVolumeAtivo && captureIncluirTerraplanagem && (volumes.corte + volumes.aterro) > 0)
-                              ? { volCorte: +(volumes.corte * fatorEmpolamento).toFixed(2), volAterro: +volumes.aterro.toFixed(2), zRef: +zRef.toFixed(2) }
-                              : undefined;
-                            onCapture!(dataUrl, meta);
-                            setCaptureDialogAberto(false);
-                          });
-                        });
-                      }}
-                      className="flex-1 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors flex items-center justify-center gap-1.5">
-                      <Camera className="size-3.5" /> Capturar e Inserir
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Visualização & Diagnósticos */}
-        <div className="space-y-1.5 pt-2 border-t border-border/60">
-          <span className="font-bold text-[9px] uppercase tracking-wider text-muted-foreground">Exibição & Diagnóstico</span>
-          <div className="space-y-1.5">
-            <label className="flex items-center justify-between gap-2 cursor-pointer text-xs">
-              <span>Paredes Laterais</span>
-              <input
-                type="checkbox"
-                checked={mostrarParedes}
-                onChange={(e) => setMostrarParedes(e.target.checked)}
-                className="rounded border-muted text-primary focus:ring-primary size-3.5"
-              />
-            </label>
-            <label className="flex items-center justify-between gap-2 cursor-pointer text-xs">
-              <span>Malha TIN (Wireframe)</span>
-              <input
-                type="checkbox"
-                checked={mostrarTin}
-                onChange={(e) => setMostrarTin(e.target.checked)}
-                className="rounded border-muted text-primary focus:ring-primary size-3.5"
-              />
-            </label>
-            <label className="flex items-center justify-between gap-2 cursor-pointer text-xs">
-              <span>Curvas de Nível 3D</span>
-              <input
-                type="checkbox"
-                checked={mostrarCurvas3D}
-                onChange={(e) => setMostrarCurvas3D(e.target.checked)}
-                className="rounded border-muted text-primary focus:ring-primary size-3.5"
-              />
-            </label>
-            {mostrarCurvas3D && (
-              <label className="flex items-center justify-between gap-2 cursor-pointer text-xs pl-2">
-                <span className="text-muted-foreground">Mostrar Altitudes nas Curvas</span>
-                <input
-                  type="checkbox"
-                  checked={mostrarAltitudesCurvas}
-                  onChange={(e) => setMostrarAltitudesCurvas(e.target.checked)}
-                  className="rounded border-muted text-primary focus:ring-primary size-3.5"
-                />
-              </label>
-            )}
-            <label className="flex items-center justify-between gap-2 cursor-pointer text-xs" title="Destaca vértices que estão com altitude zero no desenho">
-              <span>Destacar Cota Zero</span>
-              <input
-                type="checkbox"
-                checked={destacarErros}
-                onChange={(e) => setDestacarErros(e.target.checked)}
-                className="rounded border-muted text-primary focus:ring-primary size-3.5"
-              />
-            </label>
-            <label className="flex items-center justify-between gap-2 cursor-pointer text-xs" title="Mostra os rótulos de nome e cota dos vértices no modelo 3D">
-              <span>Mostrar Rótulos</span>
-              <input
-                type="checkbox"
-                checked={mostrarLabels3D}
-                onChange={(e) => setMostrarLabels3D(e.target.checked)}
-                className="rounded border-muted text-primary focus:ring-primary size-3.5"
-              />
-            </label>
-          </div>
-        </div>
-
-        {hasZ && (
-          <div className="space-y-1.5 pt-2 border-t border-border/60">
-            <Label className="text-[10px] font-bold text-[#87a992]">Escala vertical</Label>
-            <div className="flex rounded-lg border border-border/60 p-0.5 gap-0.5">
-              <button
-                type="button"
-                onClick={() => setRealce(false)}
-                className={`flex-1 h-6 rounded-md text-[10px] font-bold transition-colors ${!realce ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:bg-muted/60'}`}
-                title="Escala verdadeira 1:1 — mostra o imóvel como ele é"
-              >
-                Real
-              </button>
-              <button
-                type="button"
-                onClick={() => setRealce(true)}
-                className={`flex-1 h-6 rounded-md text-[10px] font-bold transition-colors ${realce ? 'bg-amber-600 text-white' : 'text-muted-foreground hover:bg-muted/60'}`}
-                title="Realça o relevo pra enxergar melhor em terreno plano (não é a escala real)"
-              >
-                Realce
-              </button>
-            </div>
-          </div>
-        )}
-
-        {verticesSemCota > 0 && onCompletarAltitudes && (
-          <div className="space-y-1.5 pt-2 border-t border-border/60">
-            <p className="text-[10px] leading-snug text-amber-600 dark:text-amber-400">
-              {verticesSemCota} vértice(s) sem altitude — o relevo fica incompleto.
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 w-full gap-1.5 text-[10px] font-bold border-amber-600/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/5"
-              onClick={onCompletarAltitudes}
-              title="Calcula a cota que falta a partir dos pontos que têm altitude (marcada como calculada; reversível)"
-            >
-              <Wand2 className="size-3" /> Completar altitudes
-            </Button>
-          </div>
-        )}
-
-
-
-        <div className="flex gap-2 pt-2 border-t border-border/60">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 w-full gap-1.5 text-[10px] font-bold"
-            onClick={() => { yawRef.current = -0.5; pitchRef.current = 0.8; zoomRef.current = 1.0; panXRef.current = 0; panYRef.current = 0; marcarInteracao(); }}
-          >
-            <RotateCcw className="size-3" /> Resetar
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 w-full gap-1.5 text-[10px] font-bold border-amber-600/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/5"
-            onClick={handleBaixarKml}
-          >
-            <Download className="size-3" /> Baixar KML
-          </Button>
-        </div>
-      </div>
+      {/* Controles do 3D renderizados via Portal na barra lateral esquerda */}
+      {renderControles()}
 
       {/* Legenda de altitude (canto inferior direito) */}
       {temEscalaZ && !calcVolumeAtivo && (
@@ -1626,11 +1650,11 @@ export default function Map3DViewer({
       <div className="absolute bottom-14 left-4 z-[2500] flex gap-2">
         <Button
           size="sm"
-          className="h-9 px-4 gap-1.5 font-bold shadow-md bg-[#10b981] hover:bg-[#059669] text-white"
+          className="h-10 px-4 gap-2 text-xs font-black uppercase tracking-wider flex items-center justify-center bg-slate-900/80 hover:bg-slate-900/90 text-emerald-400 border border-white/10 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95"
           onClick={onVoltar2D}
           title="Voltar ao modo Mapa 2D (Botão Central do Mouse)"
         >
-          <Map className="size-4" /> 2D
+          <Map className="size-4 text-emerald-500" /> Voltar ao 2D
         </Button>
       </div>
     </div>

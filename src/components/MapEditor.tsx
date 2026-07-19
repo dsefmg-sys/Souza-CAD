@@ -2306,14 +2306,14 @@ export default function MapEditor(props: Props) {
       )}
 
       {onAtivar3D && (
-        <div className={`absolute left-2 z-[2500] transition-all duration-200 ${modo === 'medir' ? 'bottom-44' : 'bottom-14'}`}>
+        <div className={`absolute left-2.5 z-[2500] transition-all duration-200 ${modo === 'medir' ? 'bottom-44' : 'bottom-14'}`}>
           <button
             type="button"
             onClick={onAtivar3D}
-            className="h-10 px-4 gap-1.5 text-xs font-black uppercase tracking-wider flex items-center justify-center bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-[0_4px_0_#92400e] active:shadow-none border-b-4 border-amber-800 active:border-b-0 active:translate-y-[4px] rounded-xl transition-all duration-75 select-none"
+            className="h-10 px-4 gap-2 text-xs font-black uppercase tracking-wider flex items-center justify-center bg-slate-900/80 hover:bg-slate-900/90 text-amber-400 border border-white/10 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 select-none"
             title="Alternar para visualização 3D do terreno e polígono (Botão Central do Mouse)"
           >
-            <Box className="size-4 shrink-0" /> <span>3D</span>
+            <Box className="size-4 text-amber-500 animate-pulse" /> <span>Visualizar 3D</span>
           </button>
         </div>
       )}

@@ -556,7 +556,7 @@ export function ObjetoPersonalizarModal({
           }
 
           if (tipoPlanta === 'rosa') {
-            const idRosa = 'planta.rosa';
+            const idRosa = 'planta.rosaDosVentos';
             const ovRosa = plantaConfig.textos?.[idRosa];
             const escRosa = ovRosa?.escala ?? 1.0;
             return (

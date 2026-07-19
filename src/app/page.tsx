@@ -6981,36 +6981,36 @@ export default function EditorPage() {
             )}
           </button>
           {perfilMenuAberto && (
-            <div className={`absolute right-0 top-full pt-1.5 ${Z_CLASSES.DROPDOWN_MENU}`}>
-              <div className="w-80 max-w-[95vw] overflow-hidden rounded-xl border bg-background/98 p-1.5 shadow-2xl backdrop-blur-xl space-y-0.5">
+            <div className={`absolute right-0 top-full pt-2 ${Z_CLASSES.DROPDOWN_MENU}`}>
+              <div className="w-80 max-w-[95vw] overflow-hidden rounded-2xl border border-slate-200/90 dark:border-zinc-800 bg-white/98 dark:bg-zinc-950/98 p-2 shadow-2xl backdrop-blur-2xl space-y-1">
                 {nuvemDisponivel && !user && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); definirModoEntrada('login'); }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-primary hover:bg-primary/10 whitespace-nowrap">
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 active:scale-98 transition-all whitespace-nowrap">
                     <LogIn className="size-4 shrink-0" /> <span className="whitespace-nowrap">Fazer login</span>
                   </button>
                 )}
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted font-medium whitespace-nowrap">
-                  <Settings className="size-4 text-muted-foreground shrink-0" /> <span className="whitespace-nowrap">Ajustes Gerais do Projeto</span>
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-500/10 active:scale-98 transition-all whitespace-nowrap">
+                  <Settings className="size-4 text-slate-500 dark:text-slate-400 shrink-0" /> <span className="whitespace-nowrap">Ajustes Gerais do Projeto</span>
                 </button>
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); setTrtAberto(true); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 active:scale-98 transition-all whitespace-nowrap">
                   <UserCheck className="size-4 text-emerald-500 shrink-0" /> <span className="whitespace-nowrap">Responsável Técnico ({rotulosProfissional(tecnico).conselho})</span>
                 </button>
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); window.open('/?landing=true', '_blank'); }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                  <ExternalLink className="size-4 text-emerald-500 shrink-0" /> <span className="whitespace-nowrap">Ir para o Site (Landing Page)</span>
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-500/10 active:scale-98 transition-all whitespace-nowrap">
+                  <ExternalLink className="size-4 text-slate-500 dark:text-slate-400 shrink-0" /> <span className="whitespace-nowrap">Ir para o Site (Landing Page)</span>
                 </button>
                 
                 {souMaster() && (
-                  <div className="flex flex-col gap-1 border-t border-b py-2 px-3 my-1 bg-amber-500/5 rounded-lg">
-                    <span className="text-[9.5px] uppercase font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                      <Monitor className="size-3" /> Resolução / Display
+                  <div className="flex flex-col gap-1.5 border-t border-b border-slate-100 dark:border-zinc-800 py-2.5 px-3 my-1 bg-amber-500/5 rounded-xl">
+                    <span className="text-[9.5px] uppercase font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5 tracking-wider">
+                      <Monitor className="size-3.5 text-amber-500" /> Resolução / Display
                     </span>
                     <select
                       value={simuladorResolucao}
                       onChange={(e) => setSimuladorResolucao(e.target.value as any)}
-                      className="w-full h-7 text-[10.5px] font-bold rounded border bg-background px-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                      className="w-full h-8 text-[11px] font-bold rounded-lg border border-slate-200 dark:border-zinc-800 bg-background px-2 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                     >
                       <option value="off">Nativa (Tela Cheia)</option>
                       <option value="fullhd">Full HD (1920px)</option>
@@ -7020,77 +7020,77 @@ export default function EditorPage() {
                     </select>
                   </div>
                 )}
-
+ 
                 {/* PAINEL DE AJUSTES DE ESCALA (+ / -) */}
-                <div className="border-t border-b py-2 px-2.5 my-1 space-y-1.5 bg-muted/20 rounded-lg">
-                  <span className="text-[9.5px] uppercase font-extrabold text-muted-foreground tracking-wider block border-b pb-1">
+                <div className="border-t border-b border-slate-100 dark:border-zinc-800 py-2.5 px-3 my-1 space-y-2 bg-slate-500/5 dark:bg-white/5 rounded-xl">
+                  <span className="text-[9.5px] uppercase font-black text-slate-500 dark:text-slate-400 tracking-wider block border-b border-slate-100 dark:border-zinc-800 pb-1">
                     Ajustes de Escala da Planta & Texto
                   </span>
-
+ 
                   {/* Texto da Interface */}
-                  <div className="flex items-center justify-between text-[10.5px] font-semibold">
-                    <span className="text-foreground whitespace-nowrap">Interface Geral:</span>
-                    <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
+                    <span className="whitespace-nowrap">Interface Geral:</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button"
                         onClick={(e) => { e.stopPropagation(); setEscalaInterface((prev) => Math.max(0.85, Number((prev - 0.05).toFixed(2)))); }}
-                        className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted" title="Diminuir texto">-</button>
-                      <span className="w-8 text-center text-[10px] font-mono font-bold">{Math.round(escalaInterface * 100)}%</span>
+                        className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all" title="Diminuir">-</button>
+                      <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round(escalaInterface * 100)}%</span>
                       <button type="button"
                         onClick={(e) => { e.stopPropagation(); setEscalaInterface((prev) => Math.min(1.3, Number((prev + 0.05).toFixed(2)))); }}
-                        className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted" title="Aumentar texto">+</button>
+                        className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all" title="Aumentar">+</button>
                     </div>
                   </div>
-
+ 
                   {/* Rótulos da Planta */}
-                  <div className="flex items-center justify-between text-[10.5px] font-semibold">
-                    <span className="text-foreground whitespace-nowrap">Rótulos e Nomes:</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.5, Number(((c.escalaTextos ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">-</button>
-                      <span className="w-8 text-center text-[10px] font-mono font-bold">{Math.round((plantaConfig.escalaTextos ?? 1) * 100)}%</span>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, Number(((c.escalaTextos ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">+</button>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
+                    <span className="whitespace-nowrap">Rótulos e Nomes:</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.5, Number(((c.escalaTextos ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">-</button>
+                      <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaTextos ?? 1) * 100)}%</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.min(2.5, Number(((c.escalaTextos ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">+</button>
                     </div>
                   </div>
-
+ 
                   {/* Símbolos e Vértices */}
-                  <div className="flex items-center justify-between text-[10.5px] font-semibold">
-                    <span className="text-foreground whitespace-nowrap">Símbolos e Vértices:</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.max(0.5, Number(((c.escalaVertices ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">-</button>
-                      <span className="w-8 text-center text-[10px] font-mono font-bold">{Math.round((plantaConfig.escalaVertices ?? 1) * 100)}%</span>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.min(2.5, Number(((c.escalaVertices ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">+</button>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
+                    <span className="whitespace-nowrap">Símbolos e Vértices:</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.max(0.5, Number(((c.escalaVertices ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">-</button>
+                      <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaVertices ?? 1) * 100)}%</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.min(2.5, Number(((c.escalaVertices ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">+</button>
                     </div>
                   </div>
-
+ 
                   {/* Tabelas e Quadros */}
-                  <div className="flex items-center justify-between text-[10.5px] font-semibold">
-                    <span className="text-foreground whitespace-nowrap">Tabelas e Quadros:</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.max(0.5, Number(((c.escalaTabelas ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">-</button>
-                      <span className="w-8 text-center text-[10px] font-mono font-bold">{Math.round((plantaConfig.escalaTabelas ?? 1) * 100)}%</span>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.min(2.5, Number(((c.escalaTabelas ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">+</button>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
+                    <span className="whitespace-nowrap">Tabelas e Quadros:</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.max(0.5, Number(((c.escalaTabelas ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">-</button>
+                      <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaTabelas ?? 1) * 100)}%</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.min(2.5, Number(((c.escalaTabelas ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">+</button>
                     </div>
                   </div>
-
+ 
                   {/* Confrontantes */}
-                  <div className="flex items-center justify-between text-[10.5px] font-semibold">
-                    <span className="text-foreground whitespace-nowrap">Confrontantes:</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.max(0.5, Number(((c.escalaConfront ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">-</button>
-                      <span className="w-8 text-center text-[10px] font-mono font-bold">{Math.round((plantaConfig.escalaConfront ?? 1) * 100)}%</span>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.min(2.5, Number(((c.escalaConfront ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-5 items-center justify-center rounded border bg-background text-xs font-bold hover:bg-muted">+</button>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
+                    <span className="whitespace-nowrap">Confrontantes:</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.max(0.5, Number(((c.escalaConfront ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">-</button>
+                      <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaConfront ?? 1) * 100)}%</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.min(2.5, Number(((c.escalaConfront ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 bg-background text-xs font-black hover:bg-muted active:scale-90 transition-all">+</button>
                     </div>
                   </div>
                 </div>
-
+ 
                 {souMaster() && user && !entrouSemLogin && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); setModoMaster('gerir'); }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-muted whitespace-nowrap">
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-amber-600 dark:text-amber-500 hover:bg-amber-500/10 active:scale-98 transition-all whitespace-nowrap">
                     <ShieldCheck className="size-4 text-amber-500 shrink-0" /> <span className="truncate whitespace-nowrap">Gerir SaaS</span>
                   </button>
                 )}
                 {nuvemDisponivel && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); limparConfigLocalNaSaida(); sair(); definirModoEntrada('boasVindas'); }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-red-600 hover:bg-red-500/10 dark:text-red-400 whitespace-nowrap">
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-red-650 hover:bg-red-500/10 dark:text-red-400 active:scale-98 transition-all whitespace-nowrap">
                     <LogOut className="size-4 shrink-0" /> <span className="truncate whitespace-nowrap">{user ? 'Sair da Conta' : 'Voltar ao Início'}</span>
                   </button>
                 )}
@@ -7135,8 +7135,12 @@ export default function EditorPage() {
           return (
             <>
               <aside style={{ width: toolWEfetivo }} className={`sidebar-lateral no-print scroll-fino relative flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-card p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
-                {/* DADOS E AÇÕES DO PROJETO */}
-                {rotulo ? (
+                {vista === '3d' ? (
+                  <div id="sidebar-3d-portal-target" className="flex-1 flex flex-col gap-3 py-1 text-xs" />
+                ) : (
+                  <>
+                    {/* DADOS E AÇÕES DO PROJETO */}
+                    {rotulo ? (
                   <div className="flex flex-col gap-2 text-xs">
 
                      {/* CARD 1: GESTÃO DO PROJETO */}
@@ -7527,61 +7531,61 @@ export default function EditorPage() {
                             </div>
                           )}
                           {objetoSelId && (
-                            <Button size="sm" variant="ghost" className="col-span-3 w-full justify-start text-red-500 hover:text-red-600 text-[11px] gap-2" onClick={apagarObjetoSel} title="Apagar objeto selecionado">
+                            <Button size="sm" variant="ghost" className="col-span-3 w-full justify-start text-red-500 hover:text-red-650 text-[11px] gap-2" onClick={apagarObjetoSel} title="Apagar objeto selecionado">
                               <Trash2 className="size-3.5 text-destructive" /> Apagar objeto
                             </Button>
                           )}
                         </div>
 
-                        {/* MÉTRICAS DO LEVANTAMENTO: Layout do Mockup */}
+                        {/* MÉTRICAS DO LEVANTAMENTO: Layout Compacto iOS */}
                         {(res || chaveTopoVisivel || vista === 'planta') && (
-                          <div className="mt-1.5 rounded-xl border border-slate-300/80 dark:border-border/80 bg-slate-100/90 dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 overflow-hidden shadow-sm">
-                            <div className="flex items-center gap-2 bg-slate-200/80 dark:bg-slate-950/60 px-3 py-2 border-b border-slate-300/80 dark:border-slate-800/80">
-                              <BarChart3 className="size-4 text-emerald-600 dark:text-emerald-500 shrink-0" />
-                              <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                                MÉTRICAS
+                          <div className="mt-1 rounded-xl border border-slate-200 dark:border-border/80 bg-slate-100/70 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 overflow-hidden shadow-xs">
+                            <div className="flex items-center gap-1.5 bg-slate-200/50 dark:bg-slate-950/40 px-2.5 py-1 border-b border-slate-250 dark:border-slate-800/80">
+                              <BarChart3 className="size-3.5 text-emerald-600 dark:text-emerald-500 shrink-0" />
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-350">
+                                Métricas do Imóvel
                               </span>
                             </div>
-                            <div className="p-2.5 space-y-2">
+                            <div className="p-1.5">
                               {res && (
-                                <div className="space-y-2">
-                                  {/* ÁREA (HA) */}
-                                  <div className="rounded-lg bg-slate-200/50 dark:bg-slate-950/40 border border-slate-300/70 dark:border-slate-800/60 p-2.5 space-y-2">
-                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                                      ÁREA (HA)
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  {/* COLUNA ÁREA */}
+                                  <div className="rounded-lg bg-white/60 dark:bg-slate-950/30 border border-slate-200/85 dark:border-slate-850/60 p-1.5">
+                                    <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
+                                      Área (ha)
                                     </div>
-                                    <div className="flex items-center justify-between text-xs font-bold px-0.5">
-                                      <div className="flex items-baseline gap-1.5">
-                                        <span className="text-slate-500 dark:text-slate-400 font-semibold text-[11px]">Sistema:</span>
-                                        <span className="font-mono text-slate-900 dark:text-white text-sm font-extrabold">
+                                    <div className="space-y-0.5 text-[10px] font-bold">
+                                      <div className="flex justify-between items-baseline gap-1">
+                                        <span className="text-slate-400 dark:text-slate-500 font-semibold text-[9px]">Sist:</span>
+                                        <span className="font-mono text-slate-800 dark:text-white font-extrabold text-[9.5px]">
                                           {numBR(res.areaHa, casasTela(4))}
                                         </span>
                                       </div>
-                                      <div className="flex items-baseline gap-1.5">
-                                        <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">SIGEF:</span>
-                                        <span className="font-mono text-emerald-600 dark:text-emerald-400 text-sm font-extrabold">
+                                      <div className="flex justify-between items-baseline gap-1">
+                                        <span className="text-emerald-650 dark:text-emerald-505 font-bold text-[9px]">SIGEF:</span>
+                                        <span className="font-mono text-emerald-600 dark:text-emerald-400 font-extrabold text-[9.5px]">
                                           {numBR(valoresEfetivos(res, imovel).areaHa, casasTela(4))}
                                         </span>
                                       </div>
                                     </div>
                                   </div>
 
-                                  {/* PERÍMETRO (M) */}
-                                  <div className="rounded-lg bg-slate-200/50 dark:bg-slate-950/40 border border-slate-300/70 dark:border-slate-800/60 p-2.5 space-y-2">
-                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                                      PERÍMETRO (M)
+                                  {/* COLUNA PERÍMETRO */}
+                                  <div className="rounded-lg bg-white/60 dark:bg-slate-950/30 border border-slate-200/85 dark:border-slate-850/60 p-1.5">
+                                    <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
+                                      Perímetro (m)
                                     </div>
-                                    <div className="flex items-center justify-between text-xs font-bold px-0.5">
-                                      <div className="flex items-baseline gap-1.5">
-                                        <span className="text-slate-500 dark:text-slate-400 font-semibold text-[11px]">Sistema:</span>
-                                        <span className="font-mono text-slate-900 dark:text-white text-sm font-extrabold">
-                                          {numBR(res.perimetro)}
+                                    <div className="space-y-0.5 text-[10px] font-bold">
+                                      <div className="flex justify-between items-baseline gap-1">
+                                        <span className="text-slate-400 dark:text-slate-500 font-semibold text-[9px]">Sist:</span>
+                                        <span className="font-mono text-slate-800 dark:text-white font-extrabold text-[9.5px]">
+                                          {numBR(res.perimetro, 2)}
                                         </span>
                                       </div>
-                                      <div className="flex items-baseline gap-1.5">
-                                        <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">SIGEF:</span>
-                                        <span className="font-mono text-emerald-600 dark:text-emerald-400 text-sm font-extrabold">
-                                          {numBR(valoresEfetivos(res, imovel).perimetro)}
+                                      <div className="flex justify-between items-baseline gap-1">
+                                        <span className="text-emerald-650 dark:text-emerald-505 font-bold text-[9px]">SIGEF:</span>
+                                        <span className="font-mono text-emerald-600 dark:text-emerald-400 font-extrabold text-[9.5px]">
+                                          {numBR(valoresEfetivos(res, imovel).perimetro, 2)}
                                         </span>
                                       </div>
                                     </div>
@@ -7832,6 +7836,8 @@ export default function EditorPage() {
                     </Button>
                   </div>
                 </div>
+                  </>
+                )}
                 {!telaEstreita && toolWEfetivo > 0 && (
                   <div
                     onMouseDown={(e) => { e.preventDefault(); setAsideDragging(true); }}
@@ -8303,28 +8309,6 @@ export default function EditorPage() {
 
           {vista === 'planta' && (
             <div id="planta-print" className="relative h-full select-none overflow-hidden bg-neutral-200 dark:bg-neutral-800" onWheel={onPlantaWheel}>
-              {/* Botão flutuante iOS para travar/destravar folha */}
-              <button
-                type="button"
-                onClick={() => {
-                  const nova = !folhaTravada;
-                  setFolhaTravada(nova);
-                  if (!nova) setModo('navegar');
-                }}
-                className={`absolute top-4 right-4 z-20 flex size-12 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-all duration-300 active:scale-90 select-none ${
-                  folhaTravada
-                    ? 'bg-slate-900/50 hover:bg-slate-900/60 border-slate-700/30 text-emerald-400 opacity-50 hover:opacity-85'
-                    : 'bg-emerald-600/70 hover:bg-emerald-600/80 border-emerald-500/30 text-white animate-pulse shadow-emerald-500/20'
-                }`}
-                title={folhaTravada ? "Folha Travada: clique para destravar a movimentação do carimbo/rosa/escala" : "Folha Destravada: clique para travar e proteger as posições"}
-              >
-                {folhaTravada ? (
-                  <Lock className="size-5" />
-                ) : (
-                  <LockOpen className="size-5" />
-                )}
-              </button>
-
               {/* folha DESTRAVADA: borda verde-clara pulsante avisando que dá pra arrastar (não vai no PDF) */}
               {!folhaTravada && <div className="pointer-events-none absolute inset-0 z-[5] animate-pulse rounded-sm ring-4 ring-inset ring-green-400/70" />}
               {/* controles da planta movidos para a coluna esquerda; aqui a folha fica limpa */}
@@ -8335,7 +8319,25 @@ export default function EditorPage() {
                 title={editarPlanta ? 'Modo edição: arraste itens; botão do meio do mouse dá pan; role para dar zoom' : 'Role para dar zoom; arraste para mover'}>
                 {plantaDark && <style>{`#planta-print .a3-dark{filter:invert(1) hue-rotate(180deg)}#planta-print .a3-dark image{filter:invert(1) hue-rotate(180deg)}`}</style>}
                 {res && tecnico && escritorio && (
-                  <div className={`bg-white shadow ${plantaDark ? 'a3-dark' : ''}`} style={{ width: 1587, height: 1123, transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'left top' }}>
+                  <div className={`relative bg-white shadow ${plantaDark ? 'a3-dark' : ''}`} style={{ width: 1587, height: 1123, transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'left top' }}>
+                    {/* Botão de Trava/Destrava fixado no canto superior esquerdo da planta (canto do desenho) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nova = !folhaTravada;
+                        setFolhaTravada(nova);
+                        if (!nova) setModo('navegar');
+                      }}
+                      className="absolute left-[42px] top-[42px] z-50 flex size-9 items-center justify-center rounded-full bg-slate-900/50 hover:bg-slate-900/70 border border-white/20 shadow-md backdrop-blur-xs transition-all active:scale-90 cursor-pointer text-white opacity-50 hover:opacity-100 select-none print:hidden"
+                      title={folhaTravada ? "Folha Travada: clique para destravar a movimentação do carimbo/rosa/escala" : "Folha Destravada: clique para travar e proteger as posições"}
+                    >
+                      {folhaTravada ? (
+                        <Lock className="size-4.5" />
+                      ) : (
+                        <LockOpen className="size-4.5" />
+                      )}
+                    </button>
+
                     <ErrorBoundary onReset={() => setVista('mapa')}>
                     <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                       confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
@@ -10470,10 +10472,11 @@ export default function EditorPage() {
             <button
               type="button"
               onClick={() => setProjetosModalAberto(true)}
-              className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors flex items-center gap-1 cursor-pointer outline-none"
+              className="px-2 py-0.5 rounded text-slate-350 hover:text-white hover:bg-slate-800/80 transition-colors flex items-center gap-1.5 cursor-pointer outline-none border border-slate-700/40 bg-slate-900/30 text-[9.5px] font-black uppercase tracking-wider"
               title="Abrir Lista de Projetos Salvos"
             >
-              <FolderOpen className="size-3.5" />
+              <FolderOpen className="size-3.5 text-indigo-400" />
+              <span>PROJETOS</span>
             </button>
             <button
               type="button"
