@@ -1221,34 +1221,38 @@ export default function EditorPage() {
   const corrigirLatLonRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    let active = true;
     setTecnico(carregarTecnico());
     setEscritorio(carregarEscritorio());
-    cadProp.listar().then(setSugProp).catch(() => {});
-    cadConf.listar().then(setSugConf).catch(() => {});
-    cadCart.listar().then((cs) => { setSugCns(cs.map((c) => c.cns).filter(Boolean)); setSugCartorios(cs); }).catch(() => {});
-    totalPontosRegistrados().then(setTotalPontos).catch(() => {});
+    cadProp.listar().then((res) => { if (active) setSugProp(res); }).catch(() => {});
+    cadConf.listar().then((res) => { if (active) setSugConf(res); }).catch(() => {});
+    cadCart.listar().then((cs) => { if (active) { setSugCns(cs.map((c) => c.cns).filter(Boolean)); setSugCartorios(cs); } }).catch(() => {});
+    totalPontosRegistrados().then((t) => { if (active) setTotalPontos(t); }).catch(() => {});
     const t = (localStorage.getItem('metrica.tema') as 'claro' | 'escuro') || 'escuro';
-    setTema(t);
+    if (active) setTema(t);
     setPlantaConfig(carregarPlantaPadrao()); // ajustes-padrão da planta (trabalhos futuros)
     iniciarCoresDivisa(); // aplica as cores de divisa personalizadas do projetista
     setTiposDivisaCustom(carregarTiposDivisaCustom());
-    obterContagemUsuarios().then(setNumUsuariosTotal).catch(() => {});
-    carregarLandingPageTexts().then(setLandingTexts).catch(() => {});
+    obterContagemUsuarios().then((n) => { if (active) setNumUsuariosTotal(n); }).catch(() => {});
+    carregarLandingPageTexts().then((txts) => { if (active) setLandingTexts(txts); }).catch(() => {});
     setPrefs(carregarPreferencias()); // preferências de interface (ícones do cabeçalho etc.)
     // condições de uso: o aceite é registrado discretamente no primeiro acesso (PrimeiroAcessoModal);
     // o texto mora em Ajustes → Sobre o sistema — sem tela bloqueando (decisão do dono, 05/07/2026)
     // primeiro acesso: só pede cadastro pra quem não é o titular e ainda não configurou
-    try { setSetupOk(souMaster() || localStorage.getItem('metrica.setupFeito') === '1'); } catch { setSetupOk(true); }
+    try { if (active) setSetupOk(souMaster() || localStorage.getItem('metrica.setupFeito') === '1'); } catch { if (active) setSetupOk(true); }
     // registra/atualiza o perfil de uso (o titular acompanha empresa, RT, projetos)
     const esc = carregarEscritorio(); const tec = carregarTecnico();
     sincronizarPerfil({ ultimoAcessoEm: Date.now(), empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {});
-    try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 480) setToolW(w); } catch { /* ignore */ }
+    try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 480 && active) setToolW(w); } catch { /* ignore */ }
     // tamNomes e escalaInterface já nascem com o valor salvo (lazy init do useState, acima).
-    try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680) setAsideW(w); } catch { /* ignore */ }
+    try { const w = Number(localStorage.getItem('metrica.asideW')); if (w >= 300 && w <= 680 && active) setAsideW(w); } catch { /* ignore */ }
     // começa com uma gleba
     const g = glebaDe(1, [], [], {}, 'Parcela 1');
-    setGlebas([g]);
-    setGlebaAtivaId(g.id);
+    if (active) {
+      setGlebas([g]);
+      setGlebaAtivaId(g.id);
+    }
+    return () => { active = false; };
   }, []);
 
   // 1. Ao logar, carrega o tema da nuvem primeiro e sincroniza dados locais offline
