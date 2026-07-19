@@ -303,15 +303,20 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             {subtitulo}
           </p>
 
-          {/* CONTAINER COM IMAGEM PRINCIPAL E SEGUNDA IMAGEM FLUTUANTE NO CANTO SUPERIOR DIREITO */}
+          {/* CONTAINER COM EFEITO DE SOBREPOSIÇÃO DE IMAGENS (PRINCIPAL + FLUTUANTE SOBREPOSTA NO CANTO INFERIOR DIREITO) */}
           <div className="relative w-full max-w-5xl mx-auto mt-4">
-            <InteractiveImageWindow
-              src="/marca/preview_requerimento.png"
-              alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
-            />
+            {/* PRIMEIRA IMAGEM (PRINCIPAL - OCUPA MAIOR ESPAÇO) */}
+            <div className="group w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/marca/preview_requerimento.png"
+                alt="Requerimentos e Minutas Cartorárias do Souza-CAD"
+                className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
+              />
+            </div>
 
-            {/* SEGUNDA IMAGEM (FLUTUANTE NO CANTO SUPERIOR DIREITO - SEM CORTES / OBJECT-CONTAIN) */}
-            <div className="absolute -top-6 -right-3 sm:-top-8 sm:-right-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
+            {/* SEGUNDA IMAGEM (FLUTUANTE SOBREPOSTA NO CANTO INFERIOR DIREITO - MESMO TAMANHO E ESTILO DAS OUTRAS SEÇÕES) */}
+            <div className="absolute -bottom-6 -right-3 sm:-bottom-8 sm:-right-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/marca/preview_requerimento_modal.png"
@@ -328,27 +333,20 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
 
       {/* SEÇÃO 2: GEORREFERENCIAMENTO SIGEF / INCRA */}
       <section id="sec-1" className="landing-snap-sec min-h-screen w-full flex flex-col justify-center items-center relative pt-20 pb-12 text-center border-b border-slate-900/60 overflow-hidden">
-        {/* IMAGEM DE FUNDO AMBIENTAL EM ALTA RESOLUÇÃO NA SEÇÃO SIGEF/INCRA (SEC-1) - LARGURA E ALTURA TOTAL */}
+        {/* IMAGEM DE FUNDO AMBIENTAL EM ALTA DEFINIÇÃO NA SEÇÃO SIGEF/INCRA (SEC-1) */}
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/marca/fundo-sigef-campo-hd.jpg"
             alt=""
-            className="w-full h-full object-cover opacity-50 sm:opacity-60 filter blur-[2px] contrast-115 saturate-125"
+            className="w-full h-full object-cover opacity-45 sm:opacity-55 filter contrast-120 saturate-120 brightness-95"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/75 via-slate-950/50 to-slate-950" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/55 to-slate-950" />
         </div>
 
-        {/* FEIXE DE LUZES OPACAS VARRENDO DA ESQUERDA PARA A DIREITA (70% OPACIDADE / MOVIMENTO & VELOCIDADE) */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-[2] opacity-70">
-          <div
-            className="absolute top-0 bottom-0 w-[45vw] bg-gradient-to-r from-transparent via-emerald-400/35 to-transparent -skew-x-12 blur-xl"
-            style={{ animation: 'varreLuzesSigef 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite' }}
-          />
-          <div
-            className="absolute top-0 bottom-0 w-[25vw] bg-gradient-to-r from-transparent via-teal-300/30 to-transparent -skew-x-12 blur-lg"
-            style={{ animation: 'varreLuzesSigef 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.6s' }}
-          />
+        {/* BRILHO AMBIENTAL SUAVE NO CENTRO */}
+        <div className="absolute inset-0 pointer-events-none z-[1] flex items-center justify-center">
+          <div className="w-[60vw] h-[60vh] bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
         </div>
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-6 w-full relative z-10">
@@ -512,7 +510,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             loop
             muted
             playsInline
-            className="w-full h-full object-cover opacity-50 filter contrast-110 brightness-95 saturate-125"
+            className="w-full h-full object-cover opacity-20 filter contrast-110 brightness-95 saturate-125"
           >
             <source src="/marca/video2.mp4" type="video/mp4" />
           </video>
