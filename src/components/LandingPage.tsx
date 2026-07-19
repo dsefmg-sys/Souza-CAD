@@ -351,17 +351,32 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             Requerimentos ao Cartório &amp; Download do Pacote ZIP
           </h2>
           <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
-            Gere minutas prontas para Retificação, Doação, Usucapião, Desmembramento e a Planta A3 com todas as peças compactadas num único Pacote ZIP.
+            Gere minutas prontas para Retificação, Doação, Usucapião, Desmembramento e a Planta com todas as peças compactadas num único Pacote ZIP.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left w-full max-w-6xl mx-auto">
-            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
+          {/* CONTAINER COM IMAGEM PRINCIPAL DA PLANTA E PRIMEIRA IMAGEM FLUTUANTE SOBREPOSTA */}
+          <div className="relative w-full max-w-5xl mx-auto mt-4">
+            {/* SEGUNDA IMAGEM (PRINCIPAL - OCUPA MAIOR ESPAÇO) */}
+            <div className="group w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_pecas.png" alt="Menu de Peças Técnicas ZIP" className="w-full h-full object-cover object-top block" />
+              <img
+                src="/marca/preview_planta_a3.png"
+                alt="Planta Oficial do Imóvel"
+                className="w-full h-auto max-h-[50vh] sm:max-h-[55vh] object-contain sm:object-cover transition-transform duration-700 ease-out group-hover:scale-[1.01] block"
+              />
             </div>
-            <div className="group rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 transition-all duration-500 hover:border-emerald-500/40 hover:-translate-y-1 h-[260px] sm:h-[320px] md:h-[380px]">
+
+            {/* PRIMEIRA IMAGEM (FLUTUANTE COMO DETALHAMENTO SOBREPOSTO) */}
+            <div className="absolute -bottom-6 -left-3 sm:-bottom-8 sm:-left-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/marca/preview_planta_a3.png" alt="Prancha A3 Oficial" className="w-full h-full object-cover object-top block" />
+              <img
+                src="/marca/preview_pecas.png"
+                alt="Pacote de Peças Técnicas ZIP"
+                className="w-full h-auto object-cover block"
+              />
+              <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-lg bg-emerald-950/90 border border-emerald-500/30 text-[10px] sm:text-xs font-black uppercase text-emerald-300 tracking-wider backdrop-blur-sm shadow-md">
+                Pacote ZIP de Peças Técnicas
+              </div>
             </div>
           </div>
         </div>

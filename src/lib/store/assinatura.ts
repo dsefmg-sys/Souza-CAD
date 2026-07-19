@@ -64,7 +64,7 @@ export const CONFIG_ASSINATURA_PADRAO: ConfigAssinatura = {
       ativo: true,
       recursos: [
         'Importa o TXT do GNSS e calcula a área no SGL (padrão SIGEF)',
-        'Memorial descritivo, planilha SIGEF (.ods) e planta A3 em PDF',
+        'Memorial descritivo, planilha SIGEF (.ods) e planta em PDF',
         'Requerimento, errata e anuência prontos pro cartório',
         'Busca vizinhos certificados no INCRA e casa os vértices',
         'Leitor de documentos por IA, editor de DXF e módulo financeiro',

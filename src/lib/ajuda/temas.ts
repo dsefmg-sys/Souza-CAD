@@ -93,7 +93,7 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
   },
   {
     id: 'planta',
-    titulo: 'Planta A3',
+    titulo: 'Planta',
     iniciante:
       'A planta do SOUZA CAD sai em A3 deitada: desenho à esquerda, carimbo à direita com dados, declarações e laudo. Embaixo, satélite, convenções e coordenadas. Quase tudo se arrasta — textos, rótulos, blocos — e a posição fica salva no projeto. As marcas no topo são guias de dobra pra caber em pasta A4. Lembre: pra mexer no layout, destrave a folha na barra lateral.',
     experiente:
