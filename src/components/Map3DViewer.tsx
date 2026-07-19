@@ -264,12 +264,13 @@ export default function Map3DViewer({
      
   }, [pontos3D, vertices]);
 
-  // Offset entre vértices levantados (RTK) e a grade DEM online, para que os pontos de grade
-  // amarelos desenhados em 3D fiquem EXATAMENTE sobre a superfície do terreno.
-  const avgOffsetGrade = useMemo(() => {
+  // Interpolação IDW do offset entre altitudes RTK medidas no campo e o DEM online.
+  // Resolve a diferença de inclinação/datum entre a base online e o RTK ao longo do imóvel.
+  const obterOffsetLocal = useMemo(() => {
     const vtxsComElev = vertices.filter((v) => v.elevacao && Math.abs(v.elevacao) > 0.001);
-    if (vtxsComElev.length === 0 || gradeAltimetrica.length === 0) return 0;
-    let sum = 0, count = 0;
+    if (vtxsComElev.length === 0 || gradeAltimetrica.length === 0) return () => 0;
+
+    const diffs: { x: number; y: number; diff: number }[] = [];
     for (const v of vtxsComElev) {
       let minD2 = Infinity, closestZ: number | null = null;
       for (const g of gradeAltimetrica) {
@@ -282,11 +283,24 @@ export default function Map3DViewer({
         }
       }
       if (closestZ !== null && Math.abs(closestZ) > 0.001) {
-        sum += (v.elevacao! - closestZ);
-        count++;
+        diffs.push({ x: v.leste, y: v.norte, diff: v.elevacao! - closestZ });
       }
     }
-    return count > 0 ? sum / count : 0;
+
+    if (diffs.length === 0) return () => 0;
+    if (diffs.length === 1) return () => diffs[0].diff;
+
+    return (leste: number, norte: number) => {
+      let sumW = 0, sumZ = 0;
+      for (const d of diffs) {
+        const dist2 = (leste - d.x) ** 2 + (norte - d.y) ** 2;
+        if (dist2 < 1) return d.diff;
+        const w = 1 / (dist2 + 25);
+        sumW += w;
+        sumZ += d.diff * w;
+      }
+      return sumW > 0 ? sumZ / sumW : diffs[0].diff;
+    };
   }, [vertices, gradeAltimetrica]);
 
   const temSuperficie = superficie.tris.length > 0;
@@ -887,7 +901,7 @@ export default function Map3DViewer({
       // 4b. Desenha os pontos da grade altimétrica em 3D
       if (gradeAltimetrica && gradeAltimetrica.length > 0) {
         gradeAltimetrica.forEach((g) => {
-          const zEfetivo = g.elevacao + avgOffsetGrade;
+          const zEfetivo = g.elevacao + obterOffsetLocal(g.leste, g.norte);
           const proj = project(g.leste, g.norte, zEfetivo);
           
           // Desenha bolinha amarela pequena
@@ -997,9 +1011,9 @@ export default function Map3DViewer({
     const dy = e.clientY - dragRef.current.startY;
 
     if (dragRef.current.button === 2) {
-      const sens = 1.0 / zoomRef.current;
-      panXRef.current = dragRef.current.startPanX + dx * sens;
-      panYRef.current = dragRef.current.startPanY + dy * sens;
+      // Pan 1:1 rápido e responsivo mesmo com zoom muito próximo
+      panXRef.current = dragRef.current.startPanX + dx;
+      panYRef.current = dragRef.current.startPanY + dy;
     } else {
       yawRef.current = dragRef.current.startYaw + dx * 0.007;
       pitchRef.current = aplicarPitch(dragRef.current.startPitch + dy * 0.007);
@@ -1013,7 +1027,23 @@ export default function Map3DViewer({
   };
 
   const handleWheel = (e: React.WheelEvent) => {
-    zoomRef.current = aplicarZoom(zoomRef.current - e.deltaY * 0.001);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) - canvas.width / 2;
+      const mouseY = (e.clientY - rect.top) - canvas.height / 2;
+
+      const oldZoom = zoomRef.current;
+      const newZoom = aplicarZoom(oldZoom - e.deltaY * 0.0012);
+      if (newZoom !== oldZoom) {
+        const factor = newZoom / oldZoom;
+        panXRef.current = mouseX - factor * (mouseX - panXRef.current);
+        panYRef.current = mouseY - factor * (mouseY - panYRef.current);
+        zoomRef.current = newZoom;
+      }
+    } else {
+      zoomRef.current = aplicarZoom(zoomRef.current - e.deltaY * 0.0012);
+    }
     marcarInteracao();
   };
 

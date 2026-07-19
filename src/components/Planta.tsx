@@ -2175,8 +2175,8 @@ export default function Planta({
             )}
             <Ted
               {...tProps(idCentro)}
-              x={px}
-              y={py}
+              x={cx}
+              y={cy}
               base={linhasBase.join('\n')}
               size={fs(11)}
               bold={neg}
