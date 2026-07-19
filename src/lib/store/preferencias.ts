@@ -112,6 +112,7 @@ export const ATALHOS_COMANDO_PADRAO: Record<string, string> = {
   cn: 'curvas_nivel',
   at: 'altitude',
   aj: 'ajustes',
+  em: 'emitir_profissional',
 };
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {

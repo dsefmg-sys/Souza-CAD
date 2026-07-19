@@ -1670,6 +1670,10 @@ export default function EditorPage() {
       case 'cert':
         window.open("https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3", "_blank", "noopener,noreferrer");
         break;
+      case 'emitir_profissional':
+        const urlEmitir = tecnico?.conselho === 'CREA' ? 'https://www.confea.org.br/' : 'https://sincet.haia.com.br/app/';
+        window.open(urlEmitir, "_blank", "noopener,noreferrer");
+        break;
       case 'car':
         setCarAberto(true);
         break;
@@ -1832,6 +1836,7 @@ export default function EditorPage() {
       cn: 'curvas_nivel',
       al: 'altitude',
       sg: 'cert',
+      em: 'emitir_profissional',
     };
 
     const acao = aliasesExtra[cmd] || prefs.atalhosComando?.[cmd] || ATALHOS_COMANDO_PADRAO[cmd];
@@ -7255,6 +7260,7 @@ export default function EditorPage() {
                         <a href={tecnico?.conselho === 'CREA' ? 'https://www.confea.org.br/' : 'https://sincet.haia.com.br/app/'} target="_blank" rel="noopener noreferrer" className="w-full">
                           <Button size="sm" variant="secondary" className="relative w-full text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 gap-1" title={`Emitir ${rotulosProfissional(tecnico).termo} oficial (${rotulosProfissional(tecnico).conselho})`}>
                             <ExternalLink className="size-3.5 text-blue-500" /> <span>{rotulosProfissional(tecnico).termo === 'ART' ? 'Emitir ART' : 'Emitir TRT'}</span>
+                            <Atalho k="EM" />
                           </Button>
                         </a>
                         <Button size="sm" variant={curvaConfigAberta ? 'default' : 'secondary'} className={`relative ${curvaConfigAberta ? COR_ATIVO : ''}`} onClick={() => setCurvaConfigAberta((v) => !v)} title={`Curvas de Nível (${obterAtalhoLateral('curvas_nivel', 'cn')}): traçar curvas de nível e relevo planialtimétrico.`}>
@@ -10110,150 +10116,163 @@ export default function EditorPage() {
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
 
       <Dialog open={tutorialF1Aberto} onOpenChange={setTutorialF1Aberto}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-6 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-y-auto">
-          <DialogHeader className="shrink-0 pb-4 border-b border-slate-800 flex items-center justify-between">
+        <DialogContent className="max-w-5xl lg:max-w-6xl max-h-[95vh] flex flex-col p-5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-y-auto">
+          <DialogHeader className="shrink-0 pb-3 border-b border-slate-800 flex items-center justify-between">
             <DialogTitle className="text-base font-black uppercase tracking-wider text-sky-400 flex items-center gap-2">
               <GraduationCap className="size-5" />
               Início — Fluxo de Trabalho do Georreferenciamento
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-5 py-4">
-            {/* Banner principal: fluxo esquerda → direita */}
-            <div className="bg-gradient-to-r from-sky-600/20 to-emerald-600/20 border border-sky-500/40 rounded-xl p-4">
-              <h4 className="font-bold text-sm flex items-center gap-2 mb-2 text-sky-300">
-                <Info className="size-4 shrink-0" />
-                Siga os botões da esquerda para a direita!
-              </h4>
-              <p className="text-[11px] leading-relaxed text-slate-200">
-                O cabeçalho do aplicativo foi projetado como uma <strong className="text-sky-300">linha do tempo visual</strong>.
-                Cada botão representa uma etapa do georreferenciamento, ordenada
-                {' '}<strong className="text-amber-300">da esquerda para a direita</strong>{' '}na ordem exata em que deve ser executada.
-                Basta avançar botão a botão — o app constrói, valida e preenche as peças automaticamente.
-              </p>
-              <div className="mt-2.5 flex items-center gap-1 text-[10px] font-bold text-slate-400 flex-wrap">
-                {['INÍCIO','PONTOS','SIGEF','DADOS','CONFRO','DIVISAS','ART/TRT','ODS','CONFERIR','PEÇAS'].map((s, i, arr) => (
-                  <span key={s} className="flex items-center gap-1">
-                    <span className="bg-slate-800 text-sky-300 px-1.5 py-0.5 rounded text-[9px] font-mono">{s}</span>
-                    {i < arr.length - 1 && <span className="text-amber-500">›</span>}
-                  </span>
-                ))}
+          <div className="space-y-4 py-3">
+            {/* Banner principal + Banner destacado para o botão de Guias em grid de 2 colunas no desktop */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Banner principal: fluxo esquerda → direita */}
+              <div className="bg-gradient-to-r from-sky-600/20 to-emerald-600/20 border border-sky-500/40 rounded-xl p-3.5 flex flex-col justify-center">
+                <h4 className="font-bold text-xs flex items-center gap-2 mb-1 text-sky-300">
+                  <Info className="size-3.5 shrink-0" />
+                  Siga os botões da esquerda para a direita!
+                </h4>
+                <p className="text-[10.5px] leading-relaxed text-slate-200">
+                  O cabeçalho do aplicativo foi projetado como uma <strong className="text-sky-300">linha do tempo visual</strong>.
+                  Cada botão representa uma etapa do georreferenciamento, ordenada
+                  {' '}<strong className="text-amber-300">da esquerda para a direita</strong>{' '} na ordem exata.
+                  Basta avançar botão a botão — o app valida e preenche as peças automaticamente.
+                </p>
+                <div className="mt-2 flex items-center gap-1 text-[9.5px] font-bold text-slate-400 flex-wrap">
+                  {['INÍCIO','PONTOS','SIGEF','DADOS','CONFRO','DIVISAS','ART/TRT','ODS','CONFERIR','PEÇAS'].map((s, i, arr) => (
+                    <span key={s} className="flex items-center gap-1">
+                      <span className="bg-slate-800 text-sky-300 px-1 py-0.5 rounded text-[8px] font-mono">{s}</span>
+                      {i < arr.length - 1 && <span className="text-amber-500">›</span>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Banner destacado para o botão de Guias */}
+              <div className="bg-gradient-to-r from-indigo-950 to-indigo-900 border-2 border-indigo-500/80 rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-xl select-none">
+                <div className="flex items-start gap-2.5">
+                  <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-full shrink-0 border border-indigo-500/20">
+                    <HelpCircle className="size-4.5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-xs text-indigo-200 uppercase tracking-wider">
+                      Manual de Habilitação & Guias do Usuário
+                    </h4>
+                    <p className="text-[10.5px] text-slate-300 mt-0.5 leading-relaxed">
+                      Consulte o manual interativo completo e os guias passo a passo para dominar o fluxo de certificação do SIGEF.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => { setTutorialF1Aberto(false); setTutorialAberto(true); }}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2 rounded-lg border-0 shadow-lg shrink-0 uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all h-8"
+                >
+                  <HelpCircle className="size-3.5" /> Abrir Guias e Manuais
+                </Button>
               </div>
             </div>
 
-            {/* Banner destacado para o botão de Guias */}
-            <div className="bg-gradient-to-r from-indigo-950 to-indigo-900 border-2 border-indigo-500/80 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl select-none animate-in fade-in duration-300">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-full shrink-0 border border-indigo-500/20">
-                  <HelpCircle className="size-6 text-indigo-400" />
-                </div>
+            {/* Grid 3 colunas no desktop para os 9 passos */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* Passo 1 */}
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">1</div>
                 <div>
-                  <h4 className="font-extrabold text-sm text-indigo-200 uppercase tracking-wider">
-                    Manual de Habilitação & Guias do Usuário
-                  </h4>
-                  <p className="text-[11px] text-slate-300 mt-1 leading-relaxed max-w-lg">
-                    Consulte o manual interativo completo e os guias passo a passo para dominar a plataforma e o fluxo de certificação do SIGEF.
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                onClick={() => { setTutorialF1Aberto(false); setTutorialAberto(true); }}
-                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-2.5 rounded-lg border-0 shadow-lg shrink-0 uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all"
-              >
-                <HelpCircle className="size-4" /> Abrir Guias e Manuais
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
-                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">1</div>
-                <div>
-                  <h5 className="font-bold text-xs text-slate-200">PONTOS (F2)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">PONTOS (F2)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
                     Importe o arquivo TXT ou CSV gerado pelo receptor GNSS. É a base do desenho que carregará todas as coordenadas.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
-                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">2</div>
+              {/* Passo 2 */}
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">2</div>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-200">SIGEF (F3)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                    Consulte confrontantes oficiais no SIGEF. Baixe limites certificados vizinhos para evitar sobreposições e inconsistências.
+                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">SIGEF (F3)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                    Consulte confrontantes oficiais no SIGEF. Baixe limites certificados vizinhos para evitar sobreposições.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
-                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">3</div>
+              {/* Passo 3 */}
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">3</div>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-200">DADOS (F4)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                    Preencha as informações gerais do imóvel, proprietário e responsável técnico para preenchimento automático das peças e carimbo.
+                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">DADOS (F4)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                    Preencha as informações gerais do imóvel, proprietário e RT para preenchimento automático das peças e carimbo.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
-                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">4</div>
+              {/* Passo 4 */}
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">4</div>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-200">CONFRO (F5)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                    Associe os confrontantes proprietários a cada trecho da divisa. Clique nos vértices correspondentes no sentido horário.
+                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">CONFRO (F5)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                    Associe os confrontantes proprietários a cada trecho da divisa. Pinte no mapa no sentido horário.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
-                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">5</div>
+              {/* Passo 5 */}
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">5</div>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-200">DIVISAS (F6)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                    Selecione a representação física de cada limite (muro, cerca, córrego, etc.) e pinte no mapa no sentido horário.
+                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">DIVISAS (F6)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                    Selecione a representação física de cada limite (muro, cerca, córrego, etc.) e pinte no mapa.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
-                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">6</div>
+              {/* Passo 6 */}
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">6</div>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-200">ART/TRT (F7)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                    Insira o número de registro da sua anotação ou termo de responsabilidade técnica para emissão legal dos documentos.
+                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">ART/TRT (F7)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                    Insira o número de registro da sua anotação ou termo de responsabilidade técnica para emissão dos documentos.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
-                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">7</div>
+              {/* Passo 7 */}
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">7</div>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-200">ODS (F8)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">ODS (F8)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
                     Exporte a planilha ODS estruturada no padrão SIGEF/INCRA para iniciar o credenciamento nacional.
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-3">
-                <div className="size-7 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">8</div>
+              {/* Passo 8 */}
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">8</div>
                 <div>
-                  <h5 className="font-bold text-xs text-slate-200">CONFERIR (F9)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                    Realize a checagem eletrônica das tolerâncias, precisões e discrepâncias geodésicas antes de emitir os relatórios.
+                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">CONFERIR (F9)</h5>
+                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                    Realize a checagem eletrônica das tolerâncias, precisões e discrepâncias geodésicas pré-exportação.
                   </p>
                 </div>
               </div>
-            </div>
 
-            <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3.5 flex gap-3.5">
-              <div className="size-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">9</div>
-              <div>
-                <h5 className="font-bold text-xs text-amber-400">PEÇAS TÉCNICAS (F10)</h5>
-                <p className="text-[10px] text-slate-300 mt-1 leading-relaxed">
-                  Baixe as peças em lote (Pacote ZIP) ou individualmente: Memorial Descritivo (.docx), Planta (.svg), Requerimento e Declarações.
-                </p>
+              {/* Passo 9 */}
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                <div className="size-6.5 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">9</div>
+                <div>
+                  <h5 className="font-bold text-[11px] text-amber-400 uppercase tracking-wide">PEÇAS TÉCNICAS (F10)</h5>
+                  <p className="text-[10px] text-slate-300 mt-1 leading-normal">
+                    Baixe as peças em lote (Pacote ZIP) ou individualmente: Memorial, Planta SVG, Requerimento e Declarações.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
