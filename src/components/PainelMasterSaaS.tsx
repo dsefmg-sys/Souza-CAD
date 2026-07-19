@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+const MapaClientesSaaS = dynamic(() => import('@/components/MapaClientesSaaS'), { ssr: false });
 import {
   Users, Crown, RefreshCw, Shield, Sparkles,
   DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin, Copy, Plus, Youtube, Cloud
@@ -773,11 +776,13 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     </div>
                   </div>
                 </div>
-
               </div>
             </div>
           )}
         </div>
+
+        {/* ─── Mapa de Clientes SaaS (Geolocalização) ─── */}
+        <MapaClientesSaaS perfis={perfis} />
 
         {/* ─── Tabela CRM e Faturamento ─── */}
         <div className="flex-1 border border-zinc-800 rounded-xl bg-zinc-900/20 shadow-lg overflow-hidden flex flex-col">

@@ -322,46 +322,31 @@ function AjustarLimites({ vertices, referencias = [] }: { vertices: Vertex[]; re
 
 /** Botão de GPS "minha localização" no canto do mapa: centraliza no ponto do aparelho e marca com
  *  um ponto azul. É o que transforma o app num auxiliar de campo — o agrimensor se vê no terreno. */
-function ControleGPS() {
+/** Auto-localiza o mapa no GPS do usuário ao abrir sem vértices prévios. */
+function AutoLocalizarGPS({ vertices }: { vertices: Vertex[] }) {
   const map = useMap();
   useEffect(() => {
-    let marcador: L.CircleMarker | null = null;
-    let circulo: L.Circle | null = null;
-    const icone = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
-    const ctrl = new L.Control({ position: 'bottomright' });
-    ctrl.onAdd = () => {
-      const btn = L.DomUtil.create('button', 'leaflet-bar') as HTMLButtonElement;
-      btn.type = 'button';
-      btn.title = 'Minha localização (GPS)';
-      btn.setAttribute('aria-label', 'Minha localização (GPS)');
-      btn.style.cssText = 'width:40px;height:40px;margin-bottom:56px;display:flex;align-items:center;justify-content:center;background:#fff;color:#111;cursor:pointer;border:none;';
-      btn.innerHTML = icone;
-      L.DomEvent.disableClickPropagation(btn);
-      L.DomEvent.on(btn, 'click', (e) => {
-        L.DomEvent.stop(e);
-        if (!navigator.geolocation) { avisar({ titulo: 'Localização', mensagem: 'Este aparelho não oferece localização por GPS.' }); return; }
-        btn.innerHTML = '…';
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-            const precisao = pos.coords.accuracy || 0;
-            map.setView(ll, Math.max(map.getZoom(), 17));
-            if (marcador) marcador.remove();
-            if (circulo) circulo.remove();
-            // Círculo azul-claro do raio de precisão (metros): mostra a incerteza da leitura de GPS.
-            if (precisao > 0) circulo = L.circle(ll, { radius: precisao, color: '#3b82f6', weight: 1, fillColor: '#3b82f6', fillOpacity: 0.12 }).addTo(map);
-            marcador = L.circleMarker(ll, { radius: 7, color: '#1d4ed8', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.9 }).addTo(map);
-            btn.innerHTML = icone;
-          },
-          () => { btn.innerHTML = icone; avisar({ titulo: 'Localização', mensagem: 'Não consegui obter sua localização. Ative o GPS e permita o acesso ao local.' }); },
-          { enableHighAccuracy: true, timeout: 12000 },
-        );
-      });
-      return btn;
-    };
-    ctrl.addTo(map);
-    return () => { if (marcador) marcador.remove(); if (circulo) circulo.remove(); ctrl.remove(); };
-  }, [map]);
+    if (typeof window === 'undefined' || !navigator.geolocation) return;
+    if (vertices && vertices.length > 0) return;
+    const jaPediu = localStorage.getItem('metrica:gps_startup_solicitado');
+    if (jaPediu === 'denied') return;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        map.setView(ll, 16);
+        try {
+          localStorage.setItem('metrica:cliente_gps', JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude, ts: Date.now() }));
+        } catch {}
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          localStorage.setItem('metrica:gps_startup_solicitado', 'denied');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [map, vertices]);
   return null;
 }
 
@@ -1518,7 +1503,7 @@ export default function MapEditor(props: Props) {
       </LayersControl>
 
       <AjustarLimites vertices={validos} referencias={referencias} />
-      <ControleGPS />
+      <AutoLocalizarGPS vertices={vertices} />
       <Centralizar sig={centralizarSig} vertices={vertices} />
       <VerZoom onZoom={setZoom} />
       <CaixaSelecao ativo={modo === 'multi'} vertices={[...validos, ...verticesIgnorados]} objetos={objetos} onBoxSelect={onBoxSelect} onBoxSelectObj={onBoxSelectObj} />

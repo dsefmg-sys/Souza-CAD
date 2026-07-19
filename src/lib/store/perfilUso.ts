@@ -28,6 +28,10 @@ export interface PerfilUso {
   atrasadoDesde?: number | null;
   observacoesAdmin?: string;
   workspaceUid?: string;
+  lat?: number;
+  lon?: number;
+  municipio?: string;
+  uf?: string;
 }
 
 const CACHE = 'metrica.perfilUso';
