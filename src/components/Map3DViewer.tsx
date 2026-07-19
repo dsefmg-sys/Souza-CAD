@@ -1481,22 +1481,7 @@ export default function Map3DViewer({
           </div>
         )}
 
-        {/* Botão de geração automática de curvas de nível com configurações calculadas para este imóvel */}
-        {onGerarCurvas && (
-          <div className="space-y-1.5 pt-2 border-t border-border/60">
-            <p className="text-[10px] leading-snug text-indigo-600 dark:text-indigo-400 font-medium">
-              Gere curvas de nível com intervalo e grade calculados automaticamente para este imóvel.
-            </p>
-            <Button
-              size="sm"
-              className="h-8 w-full gap-1.5 text-[10px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white border-0"
-              onClick={onGerarCurvas}
-              title="Busca os dados de altitude online e gera as curvas de nível com configurações ótimas calculadas para este imóvel"
-            >
-              <RefreshCw className="size-3" /> Gerar Curvas de Nível
-            </Button>
-          </div>
-        )}
+
 
         <div className="flex gap-2 pt-2 border-t border-border/60">
           <Button

@@ -1,6 +1,6 @@
 'use client';
 
-import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, MapPin, Map, Download, Award as AwardIcon, FileCheck, FileCode } from 'lucide-react';
+import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, MapPin, Map, Download, Award as AwardIcon, FileCheck, FileCode, Share2 } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 
 interface LandingPageProps {
@@ -10,6 +10,15 @@ interface LandingPageProps {
 }
 
 export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingPageProps) {
+  const indicarAmigo = () => {
+    const msg = 'Confira o Souza-CAD, a plataforma de georreferenciamento e topografia mais rápida do mercado!';
+    const url = typeof window !== 'undefined' ? window.location.origin : 'https://souza-cad.vercel.app';
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({ title: 'Souza-CAD', text: msg, url }).catch(() => {});
+    } else {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${msg} ${url}`)}`, '_blank');
+    }
+  };
   // Escassez de vagas de pioneiros
   let vagasTotais = 50;
   if (numUsuarios >= 50 && numUsuarios < 100) {
@@ -97,6 +106,16 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={indicarAmigo}
+            className="group relative px-4 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-2 hover:bg-emerald-500/20 hover:border-emerald-400/50 uppercase tracking-wider font-mono shadow-sm"
+            title="Compartilhar o Souza-CAD com colegas agrimensores e topógrafos"
+          >
+            <Share2 className="size-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <span>INDIQUE PARA UM AMIGO</span>
+          </button>
+
           <button
             type="button"
             onClick={onPioneiro}

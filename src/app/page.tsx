@@ -10,7 +10,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff,
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
-  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor,
+  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -34,6 +34,7 @@ import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
 import MemorialPreviewModal from '@/components/MemorialPreviewModal';
 import ConsultarModal from '@/components/ConsultarModal';
+import AltitudeModal from '@/components/AltitudeModal';
 import { Packer } from 'docx';
 import { gerarAnuenciaDocumento, gerarAnuenciaLoteDocumento } from '@/lib/export/anuencia';
 import { gerarContratoPdf, gerarPropostaPdf } from '@/lib/export/financeiro';
@@ -4781,7 +4782,8 @@ export default function EditorPage() {
   const [ajusteAltCm, setAjusteAltCm] = useState('');
   const [desconsiderarVerticesLevantados, setDesconsiderarVerticesLevantados] = useState(false);
   const [incluirDivisaNasCurvas, setIncluirDivisaNasCurvas] = useState(true);
-  const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState(0); // 0 = Auto (calcula espaçamento ótimo de acordo com o tamanho do imóvel e resolução 30m)
+  const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState(30); // 30m = Nativo Satélite (Copernicus DEM 30m)
+  const [altitudeModalAberta, setAltitudeModalAberta] = useState(false);
   const [modeloElevacao, setModeloElevacao] = useState<'copernicus_dem_30' | 'alos_dem_30' | 'srtm_gld3'>('copernicus_dem_30');
   const [glebaCurvaAlvo, setGlebaCurvaAlvo] = useState<string>('todas');
   const [curvaUsarTriangulacao, setCurvaUsarTriangulacao] = useState<boolean>(false); // padrão: dados online (não triangulação local)
@@ -4901,7 +4903,7 @@ export default function EditorPage() {
         poligono,
         poligonos,
         usarTriangulacao: false,
-        passosSuavizacao: 4,
+        passosSuavizacao: 2,
       });
       if (!curvas.length) {
         aviso('Não consegui traçar curvas com esses pontos. Tente um intervalo menor nas configurações de Curvas de Nível.');
@@ -6770,6 +6772,10 @@ export default function EditorPage() {
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted font-bold text-emerald-600 dark:text-emerald-400">
                   <UserCheck className="size-4 text-emerald-500" /> Responsável Técnico (RT)
                 </button>
+                <button type="button" onClick={() => { setPerfilMenuAberto(false); window.open('/?landing=true', '_blank'); }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted font-semibold text-emerald-600 dark:text-emerald-400">
+                  <ExternalLink className="size-4 text-emerald-500" /> Ir para o Site (Landing Page)
+                </button>
                 {souMaster() && (
                   <div className="flex flex-col gap-1 border-t border-b py-2 px-3 my-1">
                     <span className="text-[10px] uppercase font-bold text-amber-500 flex items-center gap-1">
@@ -6913,6 +6919,9 @@ export default function EditorPage() {
                         <Button size="sm" variant="secondary" className="relative" onClick={() => setPrecoSugAberto(true)} title={`Precificação: quanto cobrar por este imóvel (${obterAtalhoLateral('precificacao', 'pc')})`}>
                           <PencilRuler className="text-amber-400" /> <span>Precificação</span>
                           <Atalho k={obterAtalhoLateral('precificacao', 'pc')} />
+                        </Button>
+                        <Button size="sm" variant="secondary" className="relative" onClick={() => setAltitudeModalAberta(true)} title="Gestão de altitudes dos vértices e ajuste global (+/- cm)">
+                          <Mountain className="text-indigo-500" /> <span>Altitude</span>
                         </Button>
                         {completo && (
                           <Button size="sm" variant="secondary" className="relative" onClick={abrirGestaoPontos} title={`Banco de pontos (${obterAtalhoLateral('pontos_banco', 'pt')})`}>
@@ -7292,8 +7301,7 @@ export default function EditorPage() {
                           )}
                         </div>
 
-                        {/* MÉTRICAS DO LEVANTAMENTO: Área, Perímetro, Modo e Escala — exibidos
-                            abaixo de Desenho e Geometria e acima de Curvas de Nível */}
+                        {/* MÉTRICAS DO LEVANTAMENTO: Área, Perímetro, Modo e Escala */}
                         {(res || chaveTopoVisivel || vista === 'planta') && (
                           <div className="mt-1.5 rounded-lg border border-border/80 bg-background/50 overflow-hidden shadow-xs">
                             <div className="flex items-center justify-between bg-muted/30 px-2.5 py-1.5 border-b border-border/60">
@@ -7306,7 +7314,6 @@ export default function EditorPage() {
                               {/* Área e Perímetro */}
                               {res && (
                                 <div className="space-y-1.5">
-                                  {/* Valores Calculados pelo Sistema */}
                                   <div className="grid grid-cols-2 gap-1.5">
                                     <div className="flex flex-col items-center justify-center rounded-lg bg-muted/40 border border-border/50 py-2 px-1">
                                       <span className="text-[8px] font-extrabold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Área (Sistema)</span>
@@ -7323,34 +7330,8 @@ export default function EditorPage() {
                                       </div>
                                     </div>
                                   </div>
-
-                                  {/* Valores Oficiais Conciliados com o SIGEF (se existirem) */}
-                                  {((imovel.areaSigefHa != null && imovel.areaSigefHa > 0) || (imovel.perimetroSigef != null && imovel.perimetroSigef > 0)) && (
-                                    <div className="grid grid-cols-2 gap-1.5 border-t border-dashed border-border/60 pt-1.5">
-                                      <div className={`flex flex-col items-center justify-center rounded-lg py-2 px-1 transition-all ${imovel.usarValoresSigef ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-muted/30 border border-border/50 opacity-75'}`}>
-                                        <span className="text-[8px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Área (SIGEF)</span>
-                                        <div className="flex items-baseline justify-center gap-1 mt-0.5">
-                                          <span className="text-[13px] font-black text-foreground leading-tight tracking-tight">
-                                            {imovel.areaSigefHa ? numBR(imovel.areaSigefHa, 4) : '—'}
-                                          </span>
-                                          <span className="text-[10px] font-bold text-muted-foreground">ha</span>
-                                        </div>
-                                      </div>
-                                      <div className={`flex flex-col items-center justify-center rounded-lg py-2 px-1 transition-all ${imovel.usarValoresSigef ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-muted/30 border border-border/50 opacity-75'}`}>
-                                        <span className="text-[8px] font-extrabold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Perímetro (SIGEF)</span>
-                                        <div className="flex items-baseline justify-center gap-1 mt-0.5">
-                                          <span className="text-[13px] font-black text-foreground leading-tight tracking-tight">
-                                            {imovel.perimetroSigef ? numBR(imovel.perimetroSigef) : '—'}
-                                          </span>
-                                          <span className="text-[10px] font-bold text-muted-foreground">m</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
                                 </div>
                               )}
-
-
 
                               {/* Escala da Planta (só no modo Planta) */}
                               {vista === 'planta' && (
@@ -7379,14 +7360,14 @@ export default function EditorPage() {
                           </div>
                         )}
 
-                        {/* Curvas de nível (planialtimétrico): triangula os pontos com altitude e traça as isolinhas */}
+                        {/* Curvas de Nível (planialtimétrico) */}
                         <div className="mt-1.5 rounded-lg border border-border/80 bg-background/50 overflow-hidden shadow-xs">
                           <button type="button"
                             onClick={() => setCurvaConfigAberta((v) => !v)}
                             className="relative flex w-full items-center justify-between bg-muted/20 px-2.5 py-1.5 text-[10px] font-extrabold uppercase text-foreground hover:bg-muted/40 transition-colors">
                             <span className="flex items-center gap-1.5">
                               <IconeCurvasNivel className="size-3.5 text-indigo-500" />
-                              Curvas de nível
+                              Curvas de Nível
                             </span>
                             <span className="flex items-center gap-1.5">
                               <span className="text-[8px] font-extrabold text-amber-500 font-mono">{obterAtalhoLateral('curvas_nivel', 'cn')}</span>
@@ -7395,142 +7376,87 @@ export default function EditorPage() {
                           </button>
 
                           {curvaConfigAberta && (
-                            <div className="p-2 space-y-2.5 bg-muted/5 animate-in slide-in-from-top-1 fade-in duration-200">
+                            <div className="p-2 space-y-2 bg-muted/5 animate-in slide-in-from-top-1 fade-in duration-200">
                               
-                              {/* Seção 1: Intervalo e Sugestão */}
-                              <div className="space-y-1">
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Parâmetros do Relevo</span>
-                                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/20 p-1.5">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] font-medium shrink-0">Intervalo:</span>
-                                    <div className="flex items-center gap-0.5">
-                                      <button type="button"
-                                        onClick={() => setIntervaloCurva((c) => Math.max(0.1, +(c - 1).toFixed(2)))}
-                                        className="h-6 w-6 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none">-</button>
-                                      <input type="number" min={0.1} step={1} value={intervaloCurva}
-                                        onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))}
-                                        className="h-6 w-11 rounded-sm border border-input bg-background px-1 text-center text-[10px] font-bold"
-                                        title="Intervalo entre as curvas de nível (metros)" />
-                                      <button type="button"
-                                        onClick={() => setIntervaloCurva((c) => +(c + 1).toFixed(2))}
-                                        className="h-6 w-6 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none">+</button>
-                                    </div>
-                                    <span className="text-[10px] text-muted-foreground">m</span>
-                                  </div>
-                                  <button type="button" onClick={sugerirIntervaloCurva}
-                                    title="Sugerir intervalo pelo desnível (mira ~12 curvas)"
-                                    className="h-6 rounded-sm bg-indigo-500 hover:bg-indigo-600 text-white px-2 text-[9px] font-bold shadow-xs transition-colors">
-                                    Sugerir
-                                  </button>
+                              {/* Linha 1: Intervalo (m) + Botão Sugerir */}
+                              <div className="flex items-center justify-between gap-1.5 rounded-md bg-muted/20 p-1.5">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] font-bold text-foreground shrink-0">Intervalo:</span>
+                                  <button type="button"
+                                    onClick={() => setIntervaloCurva((c) => Math.max(0.1, +(c - 1).toFixed(2)))}
+                                    className="size-5 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none flex items-center justify-center">-</button>
+                                  <input type="number" min={0.1} step={1} value={intervaloCurva}
+                                    onChange={(e) => setIntervaloCurva(Math.max(0.1, Number(e.target.value) || 1))}
+                                    className="h-5 w-10 rounded-sm border border-input bg-background px-1 text-center text-[10px] font-bold"
+                                    title="Intervalo entre as curvas de nível (metros)" />
+                                  <button type="button"
+                                    onClick={() => setIntervaloCurva((c) => +(c + 1).toFixed(2))}
+                                    className="size-5 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none flex items-center justify-center">+</button>
+                                  <span className="text-[9px] text-muted-foreground font-mono">m</span>
+                                </div>
+                                <button type="button" onClick={sugerirIntervaloCurva}
+                                  title="Sugerir intervalo pelo desnível"
+                                  className="h-5 rounded-sm bg-indigo-600 hover:bg-indigo-700 text-white px-2 text-[9px] font-bold shadow-xs transition-colors">
+                                  Sugerir
+                                </button>
+                              </div>
+
+                              {/* Linha 2: Linha Mestra & Espessura */}
+                              <div className="grid grid-cols-2 gap-1 bg-muted/20 p-1.5 rounded-md">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="text-[9px] font-medium text-muted-foreground">Mestra:</span>
+                                  <input type="number" min={1} step={1} value={curvaMestraCada}
+                                    onChange={(e) => setCurvaMestraCada(Math.max(1, Math.round(Number(e.target.value) || 5)))}
+                                    className="h-5 w-8 rounded-sm border border-input bg-background text-center text-[9px] font-bold"
+                                    title="Curva mestra a cada N curvas" />
+                                </div>
+                                <div className="flex items-center justify-end gap-0.5">
+                                  {(['fina', 'media', 'grossa'] as const).map((e) => (
+                                    <button key={e} type="button" onClick={() => setCurvaEspessura(e)}
+                                      className={`h-5 px-1 text-[8px] font-bold rounded transition-colors ${curvaEspessura === e ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900' : 'hover:bg-muted text-foreground'}`}>
+                                      {e === 'fina' ? 'F' : e === 'media' ? 'M' : 'G'}
+                                    </button>
+                                  ))}
                                 </div>
                               </div>
 
-                              {/* Seção 2: Linha Mestra */}
-                              <div className="space-y-1">
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Destaque de Curvas</span>
-                                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/20 p-1.5">
-                                  <span className="text-[10px] font-medium">Linha mestra a cada:</span>
-                                  <div className="flex items-center gap-0.5">
-                                    <button type="button"
-                                      onClick={() => setCurvaMestraCada((c) => Math.max(1, c - 1))}
-                                      className="h-6 w-6 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none">-</button>
-                                    <input type="number" min={1} step={1} value={curvaMestraCada}
-                                      onChange={(e) => setCurvaMestraCada(Math.max(1, Math.round(Number(e.target.value) || 5)))}
-                                      className="h-6 w-9 rounded-sm border border-input bg-background text-center text-[10px] font-bold"
-                                      title="Curva mestra (mais grossa e destacada) a cada N curvas" />
-                                    <button type="button"
-                                      onClick={() => setCurvaMestraCada((c) => c + 1)}
-                                      className="h-6 w-6 rounded-sm bg-background border hover:bg-muted text-[10px] font-bold select-none">+</button>
-                                  </div>
-                                  <span className="text-[10px] text-muted-foreground">curvas</span>
+                              {/* Linha 3: Fonte DEM & Espaçamento */}
+                              <div className="space-y-1 bg-muted/20 p-1.5 rounded-md text-[9px]">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-muted-foreground">Fonte DEM:</span>
+                                  <select
+                                    value={modeloElevacao}
+                                    onChange={(e) => {
+                                      setModeloElevacao(e.target.value as any);
+                                      setGradeAltimetrica([]);
+                                    }}
+                                    className="h-5 rounded border bg-background px-1 text-[9px] font-bold focus:ring-1 focus:ring-primary focus:outline-none w-28"
+                                  >
+                                    <option value="copernicus_dem_30">Copernicus 30m</option>
+                                    <option value="alos_dem_30">ALOS 3D 30m</option>
+                                    <option value="srtm_gld3">SRTM 30m</option>
+                                  </select>
+                                </div>
+                                <div className="flex items-center justify-between border-t border-border/20 pt-1">
+                                  <span className="font-medium text-muted-foreground">Grade:</span>
+                                  <select
+                                    value={gradeDensidadeMetros}
+                                    onChange={(e) => {
+                                      setGradeDensidadeMetros(Number(e.target.value));
+                                      setGradeAltimetrica([]);
+                                    }}
+                                    className="h-5 rounded border bg-background px-1 text-[9px] font-bold focus:ring-1 focus:ring-primary focus:outline-none"
+                                  >
+                                    <option value={30}>Nativo Satélite (30m)</option>
+                                    <option value={20}>Denso (20m)</option>
+                                    <option value={50}>Médio (50m)</option>
+                                    <option value={100}>Esparso (100m)</option>
+                                  </select>
                                 </div>
                               </div>
 
-                              {/* Seção 3: Espessura */}
-                              <div className="space-y-1">
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Nitidez dos Traços</span>
-                                <div className="flex items-center justify-between gap-1 rounded-md bg-muted/20 p-1.5">
-                                  <span className="text-[10px] font-medium">Espessura:</span>
-                                  <div className="flex gap-0.5">
-                                    {(['fina', 'media', 'grossa'] as const).map((e) => (
-                                      <button key={e} type="button" onClick={() => setCurvaEspessura(e)}
-                                        className={`h-6 rounded-sm border px-2 text-[9px] font-bold transition-colors ${curvaEspessura === e ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900 border-transparent' : 'bg-background hover:bg-muted text-foreground'}`}>
-                                        {e === 'fina' ? 'Fina' : e === 'media' ? 'Média' : 'Grossa'}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Seção 4: Cores das Linhas */}
-                              <div className="space-y-1">
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Esquema de Cores</span>
-                                <div className="rounded-md bg-muted/20 p-1.5 space-y-1.5">
-                                  <label className="flex items-center justify-between text-[10px] font-medium cursor-pointer">
-                                    <span>Cores automáticas</span>
-                                    <input type="checkbox" checked={curvaCorAuto} onChange={(e) => setCurvaCorAuto(e.target.checked)} className="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-primary" />
-                                  </label>
-                                  
-                                  {!curvaCorAuto && (
-                                    <div className="space-y-1.5 border-t border-border/30 pt-1.5 animate-in fade-in duration-150">
-                                      <label className="flex items-center justify-between text-[10px] font-medium">
-                                        <span>Linha Fina (Intermediária):</span>
-                                        <input type="color" value={curvaCorFina} onChange={(e) => setCurvaCorFina(e.target.value)} className="h-5 w-8 cursor-pointer rounded border bg-background p-0" title="Cor das curvas finas/intermediárias" />
-                                      </label>
-                                      <label className="flex items-center justify-between text-[10px] font-medium">
-                                        <span>Linha Grossa (Mestra):</span>
-                                        <input type="color" value={curvaCorMestra} onChange={(e) => setCurvaCorMestra(e.target.value)} className="h-5 w-8 cursor-pointer rounded border bg-background p-0" title="Cor das curvas mestras/grossas" />
-                                      </label>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="space-y-1 mt-1">
-                                <div className="rounded-md bg-muted/20 p-1.5 space-y-1.5">
-                                  <label className="flex items-center justify-between text-[10px] font-medium cursor-pointer" title="Ignora as altitudes dos vértices do perímetro e utiliza apenas altitudes obtidas online">
-                                    <span>Desconsiderar altitude dos vértices</span>
-                                    <input type="checkbox" checked={desconsiderarVerticesLevantados} onChange={(e) => setDesconsiderarVerticesLevantados(e.target.checked)} className="size-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 accent-primary" />
-                                  </label>
-                                  <div className="flex items-center justify-between text-[10px] font-medium border-t border-border/20 pt-1.5">
-                                    <span title="Escolha a fonte dos dados de altitude para o relevo">Fonte de Altitudes</span>
-                                    <select
-                                      value={modeloElevacao}
-                                      onChange={(e) => {
-                                        setModeloElevacao(e.target.value as 'copernicus_dem_30' | 'alos_dem_30' | 'srtm_gld3');
-                                        setGradeAltimetrica([]); // limpa para forçar busca nova com a nova fonte
-                                      }}
-                                      className="h-6 rounded border bg-background px-1 text-[9px] focus:ring-1 focus:ring-primary focus:outline-none w-28"
-                                    >
-                                      <option value="copernicus_dem_30">Copernicus 30m</option>
-                                      <option value="alos_dem_30">ALOS 3D 30m</option>
-                                      <option value="srtm_gld3">SRTM 30m (NASA)</option>
-                                    </select>
-                                  </div>
-                                  <div className="flex items-center justify-between text-[10px] font-medium border-t border-border/20 pt-1.5">
-                                    <span title="Distância em metros entre os pontos de altitude da grade online. Menor = curvas mais realistas, porém exige mais processamento.">Espaçamento da Grade</span>
-                                    <select
-                                      value={gradeDensidadeMetros}
-                                      onChange={(e) => {
-                                        const val = Number(e.target.value);
-                                        setGradeDensidadeMetros(val);
-                                        setGradeAltimetrica([]);
-                                      }}
-                                      className="h-6 rounded border bg-background px-1 text-[9px] focus:ring-1 focus:ring-primary focus:outline-none"
-                                    >
-                                      <option value={0}>Auto ({calcularEspacamentoGradeAuto(vertices)}m)</option>
-                                      <option value={15}>Adensado (15m)</option>
-                                      <option value={20}>Denso (20m)</option>
-                                      <option value={30}>Nativo Satélite (30m)</option>
-                                      <option value={50}>Médio (50m)</option>
-                                      <option value={100}>Esparso (100m)</option>
-                                    </select>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Ações */}
-                              <div className="grid grid-cols-2 gap-1 pt-1">
+                              {/* Botões Ação */}
+                              <div className="grid grid-cols-2 gap-1 pt-0.5">
                                 <Button type="button" onClick={gerarCurvasNivel}
                                   className="h-7 bg-primary text-primary-foreground hover:bg-primary/90 font-bold border-0 shadow-xs rounded-md flex items-center justify-center gap-1 text-[10px]">
                                   <IconeCurvasNivel className="size-3.5" /> Gerar
@@ -7540,40 +7466,6 @@ export default function EditorPage() {
                                   <Trash2 className="size-3.5" /> Apagar
                                 </Button>
                               </div>
-
-                              <div className="space-y-1 border-t border-border/40 pt-2">
-                                <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">Ajustar Altitude Global dos Vértices</span>
-                                <div className="flex items-center justify-between gap-1.5 rounded-md bg-muted/20 p-1.5">
-                                  <div className="flex items-center gap-1">
-                                    <input
-                                      type="number"
-                                      step={1}
-                                      value={ajusteAltCm}
-                                      onChange={(e) => setAjusteAltCm(e.target.value)}
-                                      className="h-6 w-14 rounded-sm border border-input bg-background text-center text-[10px] font-bold"
-                                      placeholder="Ex: -15"
-                                      title="Valor em centímetros para somar ou subtrair da altitude de todos os pontos"
-                                    />
-                                    <span className="text-[10px] text-muted-foreground">cm</span>
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    className="h-6 px-2 text-[9px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white border-0 shadow-xs"
-                                    onClick={() => {
-                                      const cm = parseFloat(ajusteAltCm);
-                                      if (isNaN(cm)) {
-                                        aviso("Digite um valor em centímetros.");
-                                        return;
-                                      }
-                                      ajustarAltitudesGlobais(cm);
-                                    }}
-                                  >
-                                    Aplicar
-                                  </Button>
-                                </div>
-                              </div>
-
                             </div>
                           )}
                         </div>
@@ -9079,6 +8971,17 @@ export default function EditorPage() {
         <TrtModal open={trtAberto} onOpenChange={setTrtAberto} imovel={imovel} tecnico={tecnico} onChangeImovel={setImovel}
           areaHa={res ? valoresEfetivos(res, imovel).areaHa : 0} perimetro={res ? valoresEfetivos(res, imovel).perimetro : 0} />
       </ErrorBoundary>
+      <AltitudeModal
+        open={altitudeModalAberta}
+        onOpenChange={setAltitudeModalAberta}
+        vertices={vertices}
+        onAtualizarVertice={(id, novaAlt) => {
+          setVertices((vs) => vs.map((v) => (v.id === id ? { ...v, altitude: novaAlt, elevacao: novaAlt } : v)));
+        }}
+        onAplicarAjusteGlobal={ajustarAltitudesGlobais}
+        onBuscarAltitudesOnline={gerarCurvasNivel}
+        processando={processando}
+      />
       <Dialog open={conferirAberto} onOpenChange={setConferirAberto}>
         <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-6 rounded-xl bg-background shadow-2xl overflow-hidden">
           <DialogHeader className="shrink-0 pb-4 border-b border-border/60">

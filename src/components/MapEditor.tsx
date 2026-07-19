@@ -2056,18 +2056,20 @@ export default function MapEditor(props: Props) {
           }} />
       ))}
 
-      {/* Grade de altitudes online (se houver dados) */}
+      {/* Grade de altitudes online (se houver dados) — texto BRANCO sem caixa de fundo */}
       {camadasVisiveis.curvas !== false && gradeAltimetrica && gradeAltimetrica.map((g, idx) => (
         <CircleMarker
           key={`grade-alt-${idx}`}
           center={[g.lat, g.lon]}
-          radius={4.5}
+          radius={3.5}
           pane="markerPane"
-          pathOptions={{ color: '#ffffff', fillColor: '#facc15', fillOpacity: 0.95, weight: 1.5 }}
+          pathOptions={{ color: '#ffffff', fillColor: '#38bdf8', fillOpacity: 0.9, weight: 1.2 }}
           interactive={true}
         >
-          <Tooltip permanent direction="top" className="bg-background/95 text-foreground border border-yellow-500/55 text-[8px] font-mono px-1 py-0.5 rounded shadow-xs" offset={[0, -2]}>
-            <span>{g.elevacao.toFixed(1)}m</span>
+          <Tooltip permanent direction="top" className="!bg-transparent !border-0 !shadow-none font-mono text-[9px] font-black text-white p-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]" offset={[0, -3]}>
+            <span style={{ color: '#ffffff', textShadow: '-1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000, 1px 1px 2px #000, 0 0 4px #000' }}>
+              {g.elevacao.toFixed(1)}m
+            </span>
           </Tooltip>
         </CircleMarker>
       ))}
