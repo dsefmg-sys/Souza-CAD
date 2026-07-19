@@ -7305,7 +7305,7 @@ export default function EditorPage() {
                           </Button>
                           </>)}
                           {modo === 'simbolo' && (
-                            <div className="col-span-3 grid grid-cols-5 gap-1 rounded-sm border bg-muted/40 p-1">
+                            <div className="col-span-2 grid grid-cols-5 gap-1 rounded-sm border bg-muted/40 p-1">
                               {SIMBOLOS.map((s) => (
                                 <button key={s.chave} type="button" title={s.rotulo}
                                   className={`flex flex-col items-center justify-center rounded-sm p-1 hover:bg-background transition-all ${simboloSel === s.chave ? 'bg-background ring-1 ring-primary' : ''}`}
@@ -7317,7 +7317,7 @@ export default function EditorPage() {
                             </div>
                           )}
                           {modo === 'paralela' && (
-                            <div className="col-span-3 flex items-center justify-between gap-2 rounded-sm border bg-muted/40 p-1.5 animate-in fade-in duration-200">
+                            <div className="col-span-2 flex items-center justify-between gap-2 rounded-sm border bg-muted/40 p-1.5 animate-in fade-in duration-200">
                               <span className="text-[9px] font-semibold text-muted-foreground">{segmentoSelecionado ? '2) Clique no lado da paralela:' : '1) Clique em uma linha/aresta'}</span>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-[9px] font-bold text-muted-foreground">Afast (m):</span>
@@ -7334,29 +7334,29 @@ export default function EditorPage() {
                             </div>
                           )}
                           {modo === 'dividir' && (
-                            <div className="col-span-3 rounded-sm border border-cyan-500/40 bg-cyan-500/10 px-2 py-1.5 text-[9px] text-cyan-600 dark:text-cyan-400 font-semibold animate-in fade-in duration-200">
+                            <div className="col-span-2 rounded-sm border border-cyan-500/40 bg-cyan-500/10 px-2 py-1.5 text-[9px] text-cyan-600 dark:text-cyan-400 font-semibold animate-in fade-in duration-200">
                               Clique sobre um segmento (divisa) do perímetro ativo para dividi-lo.
                             </div>
                           )}
                           {modo === 'trim' && (
-                            <div className="col-span-3 rounded-sm border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-[9px] text-red-600 dark:text-red-400 font-semibold animate-in fade-in duration-200">
+                            <div className="col-span-2 rounded-sm border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-[9px] text-red-600 dark:text-red-400 font-semibold animate-in fade-in duration-200">
                               {linhaLimite
                                 ? '2) Clique no segmento de polilinha que deseja aparar (Trim).'
                                 : '1) Clique em qualquer linha para usar como limite de corte.'}
                             </div>
                           )}
                           {modo === 'extend' && (
-                            <div className="col-span-3 rounded-sm border border-blue-500/40 bg-blue-500/10 px-2 py-1.5 text-[9px] text-blue-600 dark:text-blue-400 font-semibold animate-in fade-in duration-200">
+                            <div className="col-span-2 rounded-sm border border-blue-500/40 bg-blue-500/10 px-2 py-1.5 text-[9px] text-blue-600 dark:text-blue-400 font-semibold animate-in fade-in duration-200">
                               {linhaLimite
                                 ? '2) Clique perto da ponta de uma polilinha para prolongá-la até o limite.'
                                 : '1) Clique em qualquer linha para usar como limite de extensão.'}
                             </div>
                           )}
                           {modo === 'multi' && (
-                            <div className="col-span-3 grid grid-cols-3 gap-1 rounded-sm border bg-muted/40 p-1">
+                            <div className="col-span-2 flex flex-col gap-1 rounded-sm border bg-muted/40 p-1.5 animate-in fade-in duration-200">
                               {selMulti.size > 0 || objSelMulti.size > 0 ? (
-                                <>
-                                  <Button size="sm" variant="destructive" className={selMulti.size > 0 ? "col-span-2 h-7 text-[10px] font-bold gap-1" : "col-span-3 h-7 text-[10px] font-bold gap-1"} onClick={apagarMultiSelecionados}>
+                                <div className="grid grid-cols-2 gap-1">
+                                  <Button size="sm" variant="destructive" className={selMulti.size > 0 ? "h-7 text-[10px] font-bold gap-1" : "col-span-2 h-7 text-[10px] font-bold gap-1"} onClick={apagarMultiSelecionados}>
                                     <Trash2 className="size-3" /> Apagar ({selMulti.size + objSelMulti.size})
                                   </Button>
                                   {selMulti.size > 0 && (
@@ -7364,11 +7364,11 @@ export default function EditorPage() {
                                       <Copy className="size-3" /> Copiar
                                     </Button>
                                   )}
-                                </>
+                                </div>
                               ) : (
-                                <span className="col-span-3 text-[9px] text-muted-foreground text-center py-1 font-semibold">Clique nos itens ou arraste uma caixa para selecioná-los.</span>
+                                <span className="text-[9px] text-muted-foreground text-center py-1 font-semibold">Clique nos itens ou arraste uma caixa para selecioná-los.</span>
                               )}
-                              <div className="col-span-3 mt-1.5 flex flex-col gap-1 border-t pt-1.5">
+                              <div className="mt-1 flex flex-col gap-1 border-t pt-1.5">
                                 <div className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-wider text-left">Selecionar por Tipo:</div>
                                 <div className="grid grid-cols-2 gap-1 text-foreground">
                                   <button type="button" className="h-6 rounded bg-background hover:bg-muted border text-[9px] font-bold transition-all" onClick={() => {
@@ -7400,17 +7400,17 @@ export default function EditorPage() {
                             </div>
                           )}
                           {modo === 'copiar_base' && (
-                            <div className="col-span-3 rounded-sm border border-violet-500/40 bg-violet-500/10 px-2 py-1.5 text-[9px] text-violet-600 dark:text-violet-400 font-semibold animate-in fade-in duration-200">
+                            <div className="col-span-2 rounded-sm border border-violet-500/40 bg-violet-500/10 px-2 py-1.5 text-[9px] text-violet-600 dark:text-violet-400 font-semibold animate-in fade-in duration-200">
                               1) Clique em um vértice (ou ponto do mapa) para servir como referência base.
                             </div>
                           )}
                           {modo === 'copiar_destino' && (
-                            <div className="col-span-3 rounded-sm border border-violet-500/40 bg-violet-500/10 px-2 py-1.5 text-[9px] text-violet-600 dark:text-violet-400 font-semibold animate-in fade-in duration-200">
+                            <div className="col-span-2 rounded-sm border border-violet-500/40 bg-violet-500/10 px-2 py-1.5 text-[9px] text-violet-600 dark:text-violet-400 font-semibold animate-in fade-in duration-200">
                               2) Mova o cursor e clique no mapa para colar a cópia transladada.
                             </div>
                           )}
                           {objSel?.tipo === 'texto' && (
-                            <div className="col-span-3 grid grid-cols-3 gap-1 mt-1">
+                            <div className="col-span-2 grid grid-cols-2 gap-1 mt-1">
                               <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: Math.max(6, (objSel.tamanho ?? 12) - 2) })} title="Diminuir texto"><span className="font-bold font-mono">A-</span></Button>
                               <Button size="sm" variant="outline" onClick={() => editarObjetoSel({ tamanho: (objSel.tamanho ?? 12) + 2 })} title="Aumentar texto"><span className="font-bold font-mono">A+</span></Button>
                               <Button size="sm" variant="outline" onClick={async () => { const t = await perguntar({ titulo: 'Editar texto', valorInicial: objSel.texto ?? '', multiline: true }); if (t != null) editarObjetoSel({ texto: t }); }} title="Editar texto"><Pencil className="size-3.5 text-cyan-500" /></Button>
