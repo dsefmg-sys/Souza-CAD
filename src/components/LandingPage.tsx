@@ -1,6 +1,6 @@
 'use client';
 
-import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, MapPin, Map, Download, Award as AwardIcon } from 'lucide-react';
+import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, MapPin, Map, Download, Award as AwardIcon, FileCheck, FileCode } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 
 interface LandingPageProps {
@@ -79,7 +79,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
         </div>
       </header>
 
-      {/* ── ROLAGEM VERTICAL EM GRANDES SEÇÕES AMPLAS & LEGÍVEIS ── */}
+      {/* ── ROLAGEM VERTICAL EM GRANDES SEÇÕES PERSUASIVAS & LEGÍVEIS ── */}
       <main className="relative flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-16 z-10 space-y-28 text-center">
         
         {/* 1. SEÇÃO HERO: TÍTULO PRINCIPAL & SUBTÍTULO */}
@@ -98,39 +98,22 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </p>
         </section>
 
-        {/* 2. 🌟 LOGO APÓS O TÍTULO: AS DUAS IMAGENS MAIS BONITAS E MARCANTES DO SISTEMA 🌟 */}
-        <section className="w-full space-y-16 pt-2">
+        {/* 2. 🌟 DEMONSTRAÇÃO VISUAL IMPACTANTE (IMAGENS REAIS DO SISTEMA LOGO APÓS O HERO) 🌟 */}
+        <section className="w-full space-y-20 pt-2">
           
-          {/* IMAGEM MARCANTE 1: MODELO DIGITAL DE RELEVO 3D & CURVAS DE NÍVEL */}
+          {/* IMAGEM MARCANTE 1: EDITOR 2D GIS COM IMAGEM DE SATÉLITE & DELIMITAÇÃO PERIMÉTRICA */}
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-              <Box className="size-4" /> Relevo 3D & Curvas de Nível Automáticas
-            </div>
-            <h2 className="text-2xl sm:text-4xl font-black text-white">
-              Visualização Tridimensional de Terreno & Cubagem
-            </h2>
-
-            {/* Imagem Gigante Nítida 1 */}
-            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-slate-950">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_3d.png"
-                alt="Relevo 3D e Curvas de Nível no Souza-CAD"
-                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
-              />
-            </div>
-          </div>
-
-          {/* IMAGEM MARCANTE 2: EDITOR DE MAPA GIS 2D COM SATÉLITE & CONFRONTANTES */}
-          <div className="space-y-4 pt-4">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
               <MapPin className="size-4" /> Editor 2D GIS & Imagem de Satélite
             </div>
             <h2 className="text-2xl sm:text-4xl font-black text-white">
               Delimitação Perimétrica & Vértices Oficiais no Mapa
             </h2>
+            <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
+              Visualização GIS direta sobre imagem de satélite com malha perimétrica, cálculo automático de área, azimutes, distâncias e confrontantes.
+            </p>
 
-            {/* Imagem Gigante Nítida 2 */}
+            {/* Imagem Real 1: Satélite 2D */}
             <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-slate-950">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -141,9 +124,49 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </div>
           </div>
 
+          {/* IMAGEM MARCANTE 2: MODELO DIGITAL DE RELEVO (MDR 3D) INTEGRADO NA PRANCHA A3 */}
+          <div className="space-y-4 pt-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+              <Box className="size-4" /> Modelo Digital de Relevo (MDR 3D) na Prancha
+            </div>
+            <h2 className="text-2xl sm:text-4xl font-black text-white">
+              Relevo 3D, Situação & Convenções em Layout Oficial
+            </h2>
+            <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
+              Incorpore o Modelo Digital de Relevo 3D com malha TIN wireframe, diagrama de convergência magnética e convenções cartográficas na sua prancha final.
+            </p>
+
+            {/* Imagem Real 2: MDR 3D na Prancha */}
+            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-slate-950">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/marca/preview_mdr_planta.png"
+                alt="MDR 3D e Convenções na Prancha A3 no Souza-CAD"
+                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+              />
+            </div>
+          </div>
+
         </section>
 
-        {/* 3. CAIXA DE PIONEIROS & CTA PRINCIPAL */}
+        {/* 3. A HISTÓRIA DO CRIADOR (DARLAN SOUZA - 14 ANOS DE PRÁTICA TÉCNICA) */}
+        <section className="w-full max-w-4xl mx-auto py-2">
+          <div className="bg-slate-900/80 border border-slate-800/80 p-8 sm:p-12 rounded-3xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+              <Shield className="size-5" /> A história por trás da ferramenta
+            </h3>
+            <p className="text-base sm:text-xl text-slate-200 leading-relaxed italic">
+              &ldquo;{historia}&rdquo;
+            </p>
+            <div className="pt-4 flex items-center justify-between text-sm text-slate-400 font-medium border-t border-slate-850">
+              <span className="font-bold text-white">— {autorHistoria}</span>
+              <span className="text-emerald-400 font-bold">14 Anos de Experiência Prática</span>
+            </div>
+          </div>
+        </section>
+
+        {/* 4. CAIXA DE ESCASSEZ & CREDENCIAMENTO PIONEIRO */}
         <section className="w-full max-w-3xl mx-auto">
           <div className="bg-slate-900/90 border border-emerald-500/30 p-8 sm:p-12 rounded-3xl shadow-[0_0_70px_rgba(16,185,129,0.2)] space-y-8 backdrop-blur-xl relative overflow-hidden">
             
@@ -198,45 +221,49 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </div>
         </section>
 
-        {/* 4. SEÇÃO DA HISTÓRIA DO CRIADOR (DARLAN SOUZA) - POSICIONADA ABAIXO DAS IMAGENS PRINCIPAIS */}
-        <section className="w-full max-w-4xl mx-auto py-2">
-          <div className="bg-slate-900/80 border border-slate-800/80 p-8 sm:p-12 rounded-3xl text-left space-y-6 backdrop-blur-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-            <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-              <Shield className="size-5" /> A história por trás da ferramenta
-            </h3>
-            <p className="text-base sm:text-xl text-slate-200 leading-relaxed italic">
-              &ldquo;{historia}&rdquo;
-            </p>
-            <div className="pt-4 flex items-center justify-between text-sm text-slate-400 font-medium border-t border-slate-850">
-              <span className="font-bold text-white">— {autorHistoria}</span>
-              <span className="text-emerald-400 font-bold">14 Anos de Experiência Prática</span>
-            </div>
-          </div>
-        </section>
-
-        {/* 5. 📸 IMAGENS ENVIADAS PARA FICAR LOGO ABAIXO DA HISTÓRIA 📸 */}
-        
-        {/* PLANTA TOPOGRÁFICA OFICIAL A3 PRONTA & MENU DE PEÇAS TÉCNICAS (PACOTE ZIP) */}
-        <section className="w-full space-y-12 pt-8 border-t border-slate-900/80">
+        {/* 5. MÓDULOS DE AUTOMAÇÃO DE CARTÓRIO & PEÇAS TÉCNICAS */}
+        <section className="w-full space-y-20 pt-8 border-t border-slate-900/80">
           
-          <div className="max-w-3xl mx-auto space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-              <Map className="size-4" /> Peças Técnicas & Download do Pacote ZIP
+          {/* MÓDULO DE REQUERIMENTOS CARTORÁRIOS MULTI-ATOS */}
+          <div className="space-y-6">
+            <div className="max-w-3xl mx-auto space-y-3">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+                <FileCode className="size-4" /> Cartório & Requerimentos Jurídicos
+              </div>
+              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+                Requerimentos ao Cartório com Enquadramento Jurídico
+              </h2>
+              <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
+                Gere minutas prontas em Word (.docx) para Retificação Simples, Doação, Compra e Venda, Remembramento, Desmembramento e Usucapião com a fundamentação legal de registros públicos.
+              </p>
             </div>
-            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-              Planta Topográfica Oficial A3 Pronta & Geração em Lote
-            </h2>
-            <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
-              Gere de uma só vez a Planta Topográfica A3/A0 impressa, Memorial Descritivo, Requerimento Cartorário, Cartas de Anuência e Errata Perimetral compactados num único Pacote ZIP.
-            </p>
+
+            {/* Imagem Real do Requerimento Multi-atos */}
+            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-slate-950">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/marca/preview_requerimento.png"
+                alt="Requerimentos ao Cartório Multi-Atos no Souza-CAD"
+                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+              />
+            </div>
           </div>
 
-          {/* Imagem Real da Planta A3 Oficial */}
-          <div className="space-y-4">
-            <h3 className="text-xl font-black text-white text-left max-w-5xl mx-auto flex items-center gap-2">
-              <Check className="size-5 text-emerald-400" /> Prancha A3 Oficial com Carimbo, Coordenadas e Convenções
-            </h3>
+          {/* PLANTA TOPOGRÁFICA OFICIAL A3 & EXPORTAÇÃO EM LOTE (PACOTE ZIP) */}
+          <div className="space-y-8 pt-4">
+            <div className="max-w-3xl mx-auto space-y-3">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+                <Map className="size-4" /> Peças Técnicas & Download do Pacote ZIP
+              </div>
+              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+                Planta Topográfica Oficial A3 Pronta & Geração em Lote
+              </h2>
+              <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
+                Gere de uma só vez a Planta Topográfica A3/A0 impressa, Memorial Descritivo, Requerimento Cartorário, Cartas de Anuência e Errata Perimetral compactados num único Pacote ZIP.
+              </p>
+            </div>
+
+            {/* Imagem Real da Planta A3 Oficial */}
             <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800 bg-white">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -245,115 +272,116 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
                 className="w-full h-auto object-contain opacity-100 transition-all duration-300"
               />
             </div>
-          </div>
 
-          {/* Imagem Real do Menu de Peças Técnicas (ZIP) */}
-          <div className="space-y-4 pt-6 max-w-3xl mx-auto">
-            <h3 className="text-xl font-black text-white text-left flex items-center gap-2">
-              <Download className="size-5 text-emerald-400" /> Exportação em Lote & Baixar Pacote ZIP
-            </h3>
-            <div className="w-full rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(16,185,129,0.18)] border border-slate-800 bg-slate-950 p-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_pecas.png"
-                alt="Menu de Peças Técnicas e Pacote ZIP no Souza-CAD"
-                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
-              />
+            {/* Imagem Real do Menu de Peças Técnicas (ZIP) */}
+            <div className="space-y-4 pt-6 max-w-3xl mx-auto">
+              <h3 className="text-xl font-black text-white text-left flex items-center gap-2">
+                <Download className="size-5 text-emerald-400" /> Exportação em Lote & Baixar Pacote ZIP
+              </h3>
+              <div className="w-full rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(16,185,129,0.18)] border border-slate-800 bg-slate-950 p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/marca/preview_pecas.png"
+                  alt="Menu de Peças Técnicas e Pacote ZIP no Souza-CAD"
+                  className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                />
+              </div>
             </div>
           </div>
 
-        </section>
-
-        {/* SUPORTE COMPLETO A CONSELHOS PROFISSIONAIS (CFT, CFTA, CREA) */}
-        <section className="w-full space-y-8 pt-8 border-t border-slate-900/80 max-w-4xl mx-auto">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-              <AwardIcon className="size-4" /> Habilitação Profissional
-            </div>
-            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-              Suporte para CFT, CFTA, CREA ou Duplo Registro
-            </h2>
-            <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
-              Escolha seu conselho e categoria profissional para emissão automática de TRT (CFT/CFTA) ou ART (CREA) em todas as peças geradas pelo sistema.
-            </p>
-          </div>
-
-          {/* Imagem Real do Dropdown de Conselhos */}
-          <div className="w-full max-w-2xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(16,185,129,0.18)] border border-slate-800 bg-slate-950 p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/marca/preview_conselhos.png"
-              alt="Categorias Profissionais e Conselhos CFT, CFTA, CREA no Souza-CAD"
-              className="w-full h-auto object-contain opacity-100 transition-all duration-300"
-            />
-          </div>
-        </section>
-
-        {/* OUTROS MÓDULOS ESPECIALIZADOS (GESTÃO, ERRATAS, MARCA) */}
-        <section className="w-full space-y-16 pt-8 border-t border-slate-900/80">
-          
-          {/* MÓDULO DE GESTÃO DO PROJETO & DOCUMENTOS */}
-          <div className="space-y-6">
-            <div className="max-w-3xl mx-auto space-y-3">
+          {/* SUPORTE COMPLETO A CONSELHOS PROFISSIONAIS (CFT, CFTA, CREA) */}
+          <div className="space-y-6 pt-4 max-w-4xl mx-auto">
+            <div className="space-y-3">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-                <FileText className="size-4" /> Gestão do Projeto & Documentos
+                <AwardIcon className="size-4" /> Habilitação Profissional
               </div>
               <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                Recibos, Contratos & Declarações com 1 Clique
+                Suporte para CFT, CFTA, CREA ou Duplo Registro
               </h2>
+              <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-medium">
+                Escolha seu conselho e categoria profissional para emissão automática de TRT (CFT/CFTA) ou ART (CREA) em todas as peças geradas pelo sistema.
+              </p>
             </div>
 
-            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
+            {/* Imagem Real do Dropdown de Conselhos */}
+            <div className="w-full max-w-2xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(16,185,129,0.18)] border border-slate-800 bg-slate-950 p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/marca/preview_gestao.png"
-                alt="Gestão do Projeto, Recibos e Contratos no Souza-CAD"
+                src="/marca/preview_conselhos.png"
+                alt="Categorias Profissionais e Conselhos CFT, CFTA, CREA no Souza-CAD"
                 className="w-full h-auto object-contain opacity-100 transition-all duration-300"
               />
             </div>
           </div>
 
-          {/* AUTOMACÃO DE ERRATAS E MALHA SIGEF */}
-          <div className="space-y-6 pt-4">
-            <div className="max-w-3xl mx-auto space-y-3">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-                <Layers className="size-4" /> Cartório & Malha SIGEF/INCRA
+          {/* GESTÃO FINANCEIRA, MALHA SIGEF & CONFIGURAÇÃO DA MARCA */}
+          <div className="space-y-16 pt-6">
+            
+            {/* GESTÃO DO PROJETO & CONTRATOS */}
+            <div className="space-y-4">
+              <div className="max-w-3xl mx-auto space-y-3">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+                  <FileText className="size-4" /> Gestão do Projeto & Documentos
+                </div>
+                <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+                  Recibos, Contratos & Declarações com 1 Clique
+                </h2>
               </div>
-              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                Erratas para Cartório & Vértices Confrontantes
-              </h2>
-            </div>
 
-            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_modulos.png"
-                alt="Automação de Erratas e Malha SIGEF no Souza-CAD"
-                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
-              />
-            </div>
-          </div>
-
-          {/* PERSONALIZAÇÃO DA MARCA E CONFIGURAÇÕES */}
-          <div className="space-y-6 pt-4">
-            <div className="max-w-3xl mx-auto space-y-3">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-                <Settings className="size-4" /> Sua Marca & Identidade
+              <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/marca/preview_gestao.png"
+                  alt="Gestão do Projeto, Recibos e Contratos no Souza-CAD"
+                  className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                />
               </div>
-              <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-                A Sua Empresa em Todas as Peças Técnicas
-              </h2>
             </div>
 
-            <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_config.png"
-                alt="Configurações da Empresa e Assinatura Digital no Souza-CAD"
-                className="w-full h-auto object-contain opacity-100 transition-all duration-300"
-              />
+            {/* AUTOMACÃO DE ERRATAS E MALHA SIGEF */}
+            <div className="space-y-4 pt-4">
+              <div className="max-w-3xl mx-auto space-y-3">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+                  <Layers className="size-4" /> Cartório & Malha SIGEF/INCRA
+                </div>
+                <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+                  Erratas para Cartório & Vértices Confrontantes
+                </h2>
+              </div>
+
+              <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/marca/preview_modulos.png"
+                  alt="Automação de Erratas e Malha SIGEF no Souza-CAD"
+                  className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                />
+              </div>
             </div>
+
+            {/* PERSONALIZAÇÃO DA MARCA */}
+            <div className="space-y-4 pt-4">
+              <div className="max-w-3xl mx-auto space-y-3">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+                  <Settings className="size-4" /> Sua Marca & Identidade
+                </div>
+                <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+                  A Sua Empresa em Todas as Peças Técnicas
+                </h2>
+              </div>
+
+              <div className="w-full max-w-5xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.2)] border border-slate-800 bg-slate-950">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/marca/preview_config.png"
+                  alt="Configurações da Empresa e Assinatura Digital no Souza-CAD"
+                  className="w-full h-auto object-contain opacity-100 transition-all duration-300"
+                />
+              </div>
+            </div>
+
           </div>
+
         </section>
 
         {/* 6. SEÇÃO FINAL: VALIDAÇÕES TÉCNICAS E CTA DE CREDENCIAMENTO */}
