@@ -10,7 +10,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Search,
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
-  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain,
+  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain, LayoutGrid,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -6904,7 +6904,7 @@ export default function EditorPage() {
                           setDadosMenuAberto(false);
                           setPlantaConfig((c) => ({ ...c, mostrarQuadroAreas: true }));
                           setVista('planta');
-                          avise('Quadro de Áreas inserido na prancha.');
+                          aviso('Quadro de Áreas inserido na prancha.');
                         }}
                         className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-colors text-left"
                       >
@@ -6920,7 +6920,7 @@ export default function EditorPage() {
                           setDadosMenuAberto(false);
                           setPlantaConfig((c) => ({ ...c, mostrarRoteiro: true }));
                           setVista('planta');
-                          avise('Roteiro Perimétrico inserido na prancha.');
+                          aviso('Roteiro Perimétrico inserido na prancha.');
                         }}
                         className="w-full flex items-center gap-2 px-2.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg transition-colors text-left"
                       >
@@ -10463,157 +10463,161 @@ export default function EditorPage() {
 
       {/* Barra de Status e Notificações Inteligente (oculta se o vídeo de intro ou a landing page estiverem ativos) */}
       {!introTocando && !landingPageAberta && (
-        <div
-          className="no-print fixed bottom-0 right-0 z-[2000] flex h-8 min-h-[32px] items-center justify-between bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-[10px] font-medium border-t border-slate-200 dark:border-slate-800 shadow-lg px-3 select-none overflow-hidden whitespace-nowrap"
-          style={{ left: toolWEfetivo }}
-        >
-        {/* Lado Esquerdo: Mensagem de Status Ativa / Alerta ou Modo Atual */}
-        <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
-          {msg ? (
-            <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold animate-pulse truncate">
-              <span className="inline-block size-1.5 rounded-full bg-amber-500 shrink-0" />
-              <span className="truncate">{msg}</span>
-            </div>
-          ) : imovel.ficticio ? (
-            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
-              <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>DADOS FICTÍCIOS — Sem validade legal</span>
-            </div>
-          ) : null}
-
-          {/* Caixa de Entrada de Comandos CAD */}
-          <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-850 pl-2.5 shrink-0 select-text">
-            <span className="text-slate-500 font-mono text-[9px] font-bold">&gt;</span>
-            <input
-              ref={comandoInputRef}
-              type="text"
-              value={comandoInput}
-              onChange={(e) => setComandoInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  executarComando(comandoInput);
-                } else if (e.key === 'Escape') {
-                  setComandoInput('');
-                  if (comandoInputRef.current) comandoInputRef.current.blur();
-                }
-              }}
-              placeholder="Comando (ex: cc, rt, pl)"
-              className="bg-slate-200/70 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 focus:border-sky-500 focus:bg-slate-100 dark:focus:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-500 px-1.5 py-0.5 rounded text-[9px] w-36 font-mono outline-none transition-all select-text"
-            />
-          </div>
-
-          {/* Fuso UTM do Projeto com texto legível ao lado direito do campo de comandos */}
-          <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-800 pl-2 shrink-0">
-            <span className="text-slate-900 dark:text-white font-mono font-extrabold text-[10px] bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/80 px-2 py-0.5 rounded uppercase tracking-wider whitespace-nowrap" title={`Projeção Cartográfica: Fuso ${zona}${hemisferio} (UTM/SIRGAS 2000)`}>
-              Fuso {zona}{hemisferio}
-            </span>
-          </div>
-
-          {/* Próximo Passo Sugerido ou Mensagem de Desfazer / Ação (Substituição Temporária) — Posicionado perto do Fuso */}
+        <>
           <div
-            onClick={() => setExplicacaoPassoAberto(true)}
-            className="flex items-center gap-1.5 border-l border-slate-300 dark:border-slate-800 pl-2.5 shrink-0 cursor-pointer select-none group"
-            title="Clique para abrir a explicação completa deste passo"
+            className="no-print fixed bottom-0 right-0 z-[2000] flex h-8 min-h-[32px] items-center justify-between bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 text-[10px] font-medium border-t border-slate-200 dark:border-slate-800 shadow-lg px-3 select-none overflow-hidden whitespace-nowrap"
+            style={{ left: toolWEfetivo }}
           >
-            <span className={`inline-block size-1.5 rounded-full shrink-0 ${msg ? 'bg-amber-500 animate-ping' : 'bg-sky-500 animate-pulse'}`} />
-            <span className={`font-black text-[9.5px] transition-all max-w-[280px] sm:max-w-[420px] truncate ${msg ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-sky-700 dark:text-sky-300 group-hover:underline'}`}>
-              {msg ? msg : `Próximo Passo Sugerido: ${dicaFluxo.resumo.replace(/^Próximo passo:\s*/i, '')}`}
-            </span>
-            {!msg && <Info className="size-3 text-sky-500 opacity-80 group-hover:opacity-100 shrink-0" />}
-          </div>
-        </div>
+            {/* Lado Esquerdo: Mensagem de Status Ativa / Alerta ou Modo Atual */}
+            <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
+              {msg ? (
+                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold animate-pulse truncate">
+                  <span className="inline-block size-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <span className="truncate">{msg}</span>
+                </div>
+              ) : imovel.ficticio ? (
+                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>DADOS FICTÍCIOS — Sem validade legal</span>
+                </div>
+              ) : null}
 
-        {/* Lado Direito: Estatísticas em tempo real & Status de Salvamento */}
-<div className="flex items-center gap-4 shrink-0 divide-x divide-slate-800 text-slate-400 text-[9px] font-mono">
-          {/* Seleção Atual */}
-          {objetoSelId && (
-            <div className="pl-4 text-amber-300 font-semibold">
-              Selecionado: {
-                objetoSelId.startsWith('planta:situacao') ? 'Desenho de Situação' :
-                objetoSelId.startsWith('planta:rosa') ? 'Rosa dos Ventos' :
-                objetoSelId.startsWith('planta:escala') ? 'Barra de Escala' :
-                objetoSelId.startsWith('planta:poligono_sigef') ? 'Polígono SIGEF' :
-                objetoSelId.startsWith('planta:laudo') ? 'Laudo Técnico' :
-                objetoSelId.startsWith('planta:declaracoes') ? 'Declarações' :
-                objetoSelId.startsWith('planta:convençoes') ? 'Convenções' :
-                objetoSelId.startsWith('planta:coordenadas') ? 'Tabela de Coordenadas' :
-                objetoSelId.startsWith('planta:carimbo') ? 'Carimbo da Prancha' :
-                'Elemento Vetorial'
-              }
-            </div>
-          )}
-          {selecionadoId && (
-            <div className="pl-4 text-sky-400 font-semibold">
-              Vértice: {vertices.find(v => v.id === selecionadoId)?.nome || 'Selecionado'}
-            </div>
-          )}
+              {/* Caixa de Entrada de Comandos CAD */}
+              <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-850 pl-2.5 shrink-0 select-text">
+                <span className="text-slate-500 font-mono text-[9px] font-bold">&gt;</span>
+                <input
+                  ref={comandoInputRef}
+                  type="text"
+                  value={comandoInput}
+                  onChange={(e) => setComandoInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      executarComando(comandoInput);
+                    } else if (e.key === 'Escape') {
+                      setComandoInput('');
+                      if (comandoInputRef.current) comandoInputRef.current.blur();
+                    }
+                  }}
+                  placeholder="Comando (ex: cc, rt, pl)"
+                  className="bg-slate-200/70 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700 focus:border-sky-500 focus:bg-slate-100 dark:focus:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-500 px-1.5 py-0.5 rounded text-[9px] w-36 font-mono outline-none transition-all select-text"
+                />
+              </div>
 
-          {/* Status do Banco de Dados */}
-          <div className="pl-4 flex items-center gap-1.5">
-            {salvarLaranja ? (
-              <span className="text-amber-600 dark:text-amber-500 font-extrabold flex items-center gap-1">
-                <span className="size-1.5 rounded-full bg-amber-500 animate-ping" />
-                Modificações locais pendentes
-              </span>
-            ) : (
-              <span className="text-emerald-700 dark:text-emerald-400 font-extrabold flex items-center gap-1">
-                <span className="size-1.5 rounded-full bg-emerald-500" />
-                Sincronizado na Nuvem
-              </span>
-            )}
+              {/* Fuso UTM do Projeto com texto legível ao lado direito do campo de comandos */}
+              <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-800 pl-2 shrink-0">
+                <span className="text-slate-900 dark:text-white font-mono font-extrabold text-[10px] bg-slate-200 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700/80 px-2 py-0.5 rounded uppercase tracking-wider whitespace-nowrap" title={`Projeção Cartográfica: Fuso ${zona}${hemisferio} (UTM/SIRGAS 2000)`}>
+                  Fuso {zona}{hemisferio}
+                </span>
+              </div>
+
+              {/* Próximo Passo Sugerido ou Mensagem de Desfazer / Ação (Substituição Temporária) — Posicionado perto do Fuso */}
+              <div
+                onClick={() => setExplicacaoPassoAberto(true)}
+                className="flex items-center gap-1.5 border-l border-slate-300 dark:border-slate-800 pl-2.5 shrink-0 cursor-pointer select-none group"
+                title="Clique para abrir a explicação completa deste passo"
+              >
+                <span className={`inline-block size-1.5 rounded-full shrink-0 ${msg ? 'bg-amber-500 animate-ping' : 'bg-sky-500 animate-pulse'}`} />
+                <span className={`font-black text-[9.5px] transition-all max-w-[280px] sm:max-w-[420px] truncate ${msg ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-sky-700 dark:text-sky-300 group-hover:underline'}`}>
+                  {msg ? msg : `Próximo Passo Sugerido: ${dicaFluxo.resumo.replace(/^Próximo passo:\s*/i, '')}`}
+                </span>
+                {!msg && <Info className="size-3 text-sky-500 opacity-80 group-hover:opacity-100 shrink-0" />}
+              </div>
+            </div>
+
+            {/* Lado Direito: Estatísticas em tempo real & Status de Salvamento */}
+            <div className="flex items-center gap-4 shrink-0 divide-x divide-slate-800 text-slate-400 text-[9px] font-mono">
+              {/* Seleção Atual */}
+              {objetoSelId && (
+                <div className="pl-4 text-amber-300 font-semibold">
+                  Selecionado: {
+                    objetoSelId.startsWith('planta:situacao') ? 'Desenho de Situação' :
+                    objetoSelId.startsWith('planta:rosa') ? 'Rosa dos Ventos' :
+                    objetoSelId.startsWith('planta:escala') ? 'Barra de Escala' :
+                    objetoSelId.startsWith('planta:poligono_sigef') ? 'Polígono SIGEF' :
+                    objetoSelId.startsWith('planta:laudo') ? 'Laudo Técnico' :
+                    objetoSelId.startsWith('planta:declaracoes') ? 'Declarações' :
+                    objetoSelId.startsWith('planta:convençoes') ? 'Convenções' :
+                    objetoSelId.startsWith('planta:coordenadas') ? 'Tabela de Coordenadas' :
+                    objetoSelId.startsWith('planta:carimbo') ? 'Carimbo da Prancha' :
+                    'Elemento Vetorial'
+                  }
+                </div>
+              )}
+              {selecionadoId && (
+                <div className="pl-4 text-sky-400 font-semibold">
+                  Vértice: {vertices.find(v => v.id === selecionadoId)?.nome || 'Selecionado'}
+                </div>
+              )}
+
+              {/* Status do Banco de Dados */}
+              <div className="pl-4 flex items-center gap-1.5">
+                {salvarLaranja ? (
+                  <span className="text-amber-600 dark:text-amber-500 font-extrabold flex items-center gap-1">
+                    <span className="size-1.5 rounded-full bg-amber-500 animate-ping" />
+                    Modificações locais pendentes
+                  </span>
+                ) : (
+                  <span className="text-emerald-700 dark:text-emerald-400 font-extrabold flex items-center gap-1">
+                    <span className="size-1.5 rounded-full bg-emerald-500" />
+                    Sincronizado na Nuvem
+                  </span>
+                )}
+              </div>
+
+              {/* Botão de Ajustes e Configurações no fim da Barra de Status */}
+              <div className="pl-3 border-l border-slate-300 dark:border-slate-800 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setProjetosModalAberto(true)}
+                  className="px-2.5 py-1 rounded-lg text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer outline-none border border-slate-400/50 dark:border-slate-700/60 bg-slate-200/90 dark:bg-slate-900/60 text-[9.5px] font-black uppercase tracking-wider shadow-2xs"
+                  title="Abrir Lista de Projetos Salvos"
+                >
+                  <FolderOpen className="size-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>PROJETOS</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfigAberta(true)}
+                  className="p-1 rounded text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer outline-none"
+                  title="Ajustes e Configurações Gerais do App (F12)"
+                >
+                  <Settings className="size-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Botão de Ajustes e Configurações no fim da Barra de Status */}
-          <div className="pl-3 border-l border-slate-300 dark:border-slate-800 flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setProjetosModalAberto(true)}
-              className="px-2.5 py-1 rounded-lg text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer outline-none border border-slate-400/50 dark:border-slate-700/60 bg-slate-200/90 dark:bg-slate-900/60 text-[9.5px] font-black uppercase tracking-wider shadow-2xs"
-              title="Abrir Lista de Projetos Salvos"
-            >
-              <FolderOpen className="size-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>PROJETOS</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfigAberta(true)}
-              className="p-1 rounded text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer outline-none"
-              title="Ajustes e Configurações Gerais do App (F12)"
-            >
-              <Settings className="size-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-      {/* Modal Dialog de Explicação Detalhada do Passo Atual */}
-      <Dialog open={explicacaoPassoAberto} onOpenChange={setExplicacaoPassoAberto}>
-        <DialogContent className="max-w-md bg-slate-900 border border-slate-800 text-slate-100 p-5 rounded-2xl shadow-2xl">
-          <DialogHeader className="pb-3 border-b border-slate-800">
-            <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-sky-400">
-              <GraduationCap className="size-5 text-sky-400" />
-              Como Proceder — Passo {dicaFluxo.passo} de 9
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-3 space-y-2">
-            <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-              <Info className="size-4 text-amber-400 shrink-0" />
-              {dicaFluxo.resumo}
-            </div>
-            <p className="text-xs text-slate-200 leading-relaxed font-sans bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              {dicaFluxo.detalhe}
-            </p>
-          </div>
-          <div className="flex justify-end pt-2 border-t border-slate-800">
-            <Button
-              type="button"
-              onClick={() => setExplicacaoPassoAberto(false)}
-              className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-5 py-2 rounded-lg border-0 shadow-md"
-            >
-              Entendido
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          {/* Modal Dialog de Explicação Detalhada do Passo Atual */}
+          <Dialog open={explicacaoPassoAberto} onOpenChange={setExplicacaoPassoAberto}>
+            <DialogContent className="max-w-md bg-slate-900 border border-slate-800 text-slate-100 p-5 rounded-2xl shadow-2xl">
+              <DialogHeader className="pb-3 border-b border-slate-800">
+                <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-sky-400">
+                  <GraduationCap className="size-5 text-sky-400" />
+                  Como Proceder — Passo {dicaFluxo.passo} de 9
+                </DialogTitle>
+              </DialogHeader>
+              <div className="py-3 space-y-2">
+                <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <Info className="size-4 text-amber-400 shrink-0" />
+                  {dicaFluxo.resumo}
+                </div>
+                <p className="text-xs text-slate-200 leading-relaxed font-sans bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                  {dicaFluxo.detalhe}
+                </p>
+              </div>
+              <div className="flex justify-end pt-2 border-t border-slate-800">
+                <Button
+                  type="button"
+                  onClick={() => setExplicacaoPassoAberto(false)}
+                  className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs px-5 py-2 rounded-lg border-0 shadow-md"
+                >
+                  Entendido
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </div>
   );
 }

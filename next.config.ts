@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   outputFileTracingRoot: process.cwd(),
+  output: 'standalone',
   // Servir num caminho (ex.: /souzacad). Para subdomínio próprio, deixe vazio.
   ...(basePath ? { basePath, assetPrefix: basePath } : {}),
   eslint: {
