@@ -45,60 +45,78 @@ export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, r
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col bg-background shadow-2xl p-6 rounded-xl overflow-hidden">
-        <DialogHeader className="border-b pb-3">
-          <DialogTitle className="flex items-center gap-2 text-lg font-black text-foreground">
-            <FileSpreadsheet className="size-5.5 text-primary" /> Conferência da Planilha SIGEF
+      <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col bg-background/95 backdrop-blur-2xl shadow-2xl p-6 rounded-2xl border border-emerald-500/20 overflow-hidden">
+        <DialogHeader className="border-b border-border/50 pb-3 flex flex-row items-center justify-between">
+          <DialogTitle className="flex items-center gap-2.5 text-base font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            <FileSpreadsheet className="size-5.5 text-emerald-500" /> Conferência da Planilha SIGEF / INCRA
           </DialogTitle>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              {linhas.length} Vértices Pronto(s)
+            </span>
+          </div>
         </DialogHeader>
 
-        <p className="text-xs text-muted-foreground">Confira as informações da planilha antes de baixar. Para corrigir qualquer dado, ajuste diretamente os campos do imóvel nas abas correspondentes.</p>
+        <p className="text-xs text-muted-foreground leading-snug">
+          Pré-visualize a estrutura oficial do arquivo ODS antes da exportação. Todos os dados são sincronizados automaticamente com os campos do seu projeto.
+        </p>
 
-        {/* Metadados organizados em card colorido */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/10 p-3.5 text-xs md:grid-cols-3">
+        {/* Metadados organizados em card colorido vibrante */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 text-xs shadow-xs">
           {idt.map(([k, v]) => (
-            <div key={k} className="flex justify-between gap-2 border-b border-dashed border-border/50 py-1">
-              <span className="text-muted-foreground font-semibold">{k}</span>
-              <span className="truncate text-right font-semibold text-foreground" title={v}>{v}</span>
+            <div key={k} className="flex flex-col gap-0.5 border-b md:border-b-0 border-emerald-500/10 pb-1.5 md:pb-0">
+              <span className="text-[10px] uppercase font-extrabold tracking-wider text-emerald-700 dark:text-emerald-400">{k}</span>
+              <span className="truncate font-black text-foreground text-xs" title={v}>{v}</span>
             </div>
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border/80 my-2">
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border/80 my-2 shadow-inner bg-card">
           <table className="w-full text-[11px] font-mono">
-            <thead className="sticky top-0 bg-muted/95 text-[10px] uppercase text-muted-foreground shadow-sm">
+            <thead className="sticky top-0 bg-zinc-900 text-white text-[10px] uppercase tracking-wider shadow-md z-10">
               <tr>
-                <th className="px-2 py-2 text-left">Código</th>
-                <th className="px-2 py-2 text-left">Longitude</th>
-                <th className="px-2 py-2 text-left">Latitude</th>
-                <th className="px-2 py-2 text-right">Alt.</th>
-                <th className="px-2 py-2 text-center">Método</th>
-                <th className="px-2 py-2 text-center">Limite</th>
-                <th className="px-2 py-2 text-left">Confrontante</th>
+                <th className="px-3 py-2 text-left font-black">Código</th>
+                <th className="px-3 py-2 text-left font-black">Longitude (E)</th>
+                <th className="px-3 py-2 text-left font-black">Latitude (N)</th>
+                <th className="px-3 py-2 text-right font-black">Alt. (m)</th>
+                <th className="px-3 py-2 text-center font-black">Método</th>
+                <th className="px-3 py-2 text-center font-black">Limite</th>
+                <th className="px-3 py-2 text-left font-black">Confrontante Oficial</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {linhas.map((l, i) => (
-                <tr key={i} className="hover:bg-muted/40 transition-colors">
-                  <td className="px-2 py-1.5 font-bold text-foreground">{l.codigo}</td>
-                  <td className="px-2 py-1.5">{l.longitude}</td>
-                  <td className="px-2 py-1.5">{l.latitude}</td>
-                  <td className="px-2 py-1.5 text-right">{l.altitude}</td>
-                  <td className="px-2 py-1.5 text-center font-semibold text-sky-600 dark:text-sky-400">{l.metodo}</td>
-                  <td className="px-2 py-1.5 text-center font-semibold text-amber-600 dark:text-amber-400">{l.tipoLimite}</td>
-                  <td className="px-2 py-1.5 truncate max-w-[200px]" title={`${l.confrontante}${l.matricula ? ` · Matrícula ${l.matricula}` : ''}`}>{l.confrontante || '—'}{l.matricula ? ` · Mat. ${l.matricula}` : ''}</td>
+                <tr key={i} className={`hover:bg-emerald-500/5 transition-colors ${i % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}>
+                  <td className="px-3 py-2 font-black text-foreground text-xs">{l.codigo}</td>
+                  <td className="px-3 py-2 text-emerald-700 dark:text-emerald-300 font-semibold">{l.longitude}</td>
+                  <td className="px-3 py-2 text-emerald-700 dark:text-emerald-300 font-semibold">{l.latitude}</td>
+                  <td className="px-3 py-2 text-right font-mono font-bold">{l.altitude}</td>
+                  <td className="px-3 py-2 text-center">
+                    <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                      {l.metodo}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      {l.tipoLimite}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 truncate max-w-[240px] font-semibold" title={`${l.confrontante}${l.matricula ? ` · Matrícula ${l.matricula}` : ''}`}>
+                    {l.confrontante || <span className="text-muted-foreground italic">— Sem confrontante</span>}
+                    {l.matricula ? <span className="text-xs text-muted-foreground"> · Mat. {l.matricula}</span> : ''}
+                  </td>
                 </tr>
               ))}
-              {linhas.length === 0 && <tr><td colSpan={7} className="p-4 text-center text-muted-foreground font-medium">Sem dados — importe pontos e defina os confrontantes.</td></tr>}
+              {linhas.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground font-semibold">Nenhum vértice cadastrado no perímetro atual. Importe os vértices para visualização.</td></tr>}
             </tbody>
           </table>
         </div>
 
         <div className="flex items-center justify-between gap-2 pt-3 border-t shrink-0">
-          <span className="text-xs text-muted-foreground font-semibold">{linhas.length} vértice(s)</span>
+          <span className="text-xs text-muted-foreground font-bold">{linhas.length} vértice(s) prontos para exportação ODS</span>
           <div className="flex items-center gap-2">
-            <Button size="sm" disabled={!linhas.length} onClick={onBaixar} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-9 shadow-md hover:shadow-lg px-4">
-              <Download className="size-4" /> Baixar Planilha (.ods)
+            <Button size="sm" disabled={!linhas.length} onClick={onBaixar} className="bg-emerald-600 hover:bg-emerald-700 text-white font-black h-9 shadow-md hover:shadow-lg px-5 gap-1.5 rounded-xl">
+              <Download className="size-4" /> Baixar Planilha SIGEF (.ods)
             </Button>
           </div>
         </div>

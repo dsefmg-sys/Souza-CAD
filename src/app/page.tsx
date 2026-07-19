@@ -329,7 +329,7 @@ function IconeCota({ className }: { className?: string }) {
 function Atalho({ k, className }: { k: string; className?: string }) {
   if (!k) return null;
   return (
-    <span className={`pointer-events-none text-[8.5px] font-sans font-black tracking-widest uppercase px-1.5 py-0.5 rounded bg-slate-900/5 dark:bg-white/10 border border-slate-950/10 dark:border-white/15 text-foreground/80 dark:text-foreground/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_1px_1px_rgba(0,0,0,0.06)] dark:shadow-none shrink-0 select-none ml-auto transition-all ${className ?? ''}`}>
+    <span className={`pointer-events-none text-[8.5px] font-sans font-black tracking-wider uppercase px-1.5 py-[1px] leading-none rounded bg-black/10 dark:bg-white/15 border border-current/25 text-current opacity-90 shrink-0 select-none ml-auto transition-all ${className ?? ''}`}>
       {k.toUpperCase()}
     </span>
   );
@@ -7082,7 +7082,7 @@ export default function EditorPage() {
                   </span>
  
                   {/* Texto da Interface */}
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 font-bold">
                     <span className="whitespace-nowrap">Interface Geral:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button"
@@ -7096,7 +7096,7 @@ export default function EditorPage() {
                   </div>
  
                   {/* Rótulos da Planta */}
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 font-bold">
                     <span className="whitespace-nowrap">Rótulos e Nomes:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.5, Number(((c.escalaTextos ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
@@ -7106,7 +7106,7 @@ export default function EditorPage() {
                   </div>
  
                   {/* Símbolos e Vértices */}
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 font-bold">
                     <span className="whitespace-nowrap">Símbolos e Vértices:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.max(0.5, Number(((c.escalaVertices ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
@@ -7116,7 +7116,7 @@ export default function EditorPage() {
                   </div>
  
                   {/* Tabelas e Quadros */}
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 font-bold">
                     <span className="whitespace-nowrap">Tabelas e Quadros:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.max(0.5, Number(((c.escalaTabelas ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
@@ -7126,7 +7126,7 @@ export default function EditorPage() {
                   </div>
  
                   {/* Confrontantes */}
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-350">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 font-bold">
                     <span className="whitespace-nowrap">Confrontantes:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.max(0.5, Number(((c.escalaConfront ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
@@ -7188,7 +7188,7 @@ export default function EditorPage() {
           const rotulo = toolWEfetivo >= 104;
           return (
             <>
-              <aside style={{ width: toolWEfetivo }} className={`sidebar-lateral no-print scroll-fino relative flex shrink-0 flex-col gap-1.5 overflow-y-auto border-r bg-card p-1.5 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
+              <aside style={{ width: toolWEfetivo }} className={`sidebar-lateral no-print scroll-fino relative flex shrink-0 flex-col gap-1 overflow-y-auto border-r bg-card p-1 [&_button]:h-7 sm:[&_button]:h-8 [&_button]:min-h-[26px] [&_button]:px-1.5 [&_button]:text-[10px] sm:[&_button]:text-[11px] [&_button_svg]:size-3.5 ${toolWEfetivo === 0 ? '!p-0 !border-0 overflow-hidden' : ''}`}>
                 {vista === '3d' ? (
                   <div id="sidebar-3d-portal-target" className="flex-1 flex flex-col gap-3 py-1 text-xs" />
                 ) : (
@@ -7585,14 +7585,11 @@ export default function EditorPage() {
 
                         {/* MÉTRICAS DO LEVANTAMENTO: Layout Compacto iOS */}
                         {(res || chaveTopoVisivel || vista === 'planta') && (
-                          <div className="mt-1 rounded-xl border border-slate-200 dark:border-border/80 bg-slate-100/70 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 overflow-hidden shadow-xs">
-                            <div className="flex items-center gap-1.5 bg-slate-200/50 dark:bg-slate-950/40 px-2.5 py-1 border-b border-slate-250 dark:border-slate-800/80">
-                              <BarChart3 className="size-3.5 text-emerald-600 dark:text-emerald-500 shrink-0" />
-                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-350">
-                                Métricas do Imóvel
-                              </span>
-                            </div>
-                            <div className="p-1.5">
+                          <div className="mt-1 flex flex-col gap-1 border rounded-lg p-1 bg-muted/10 shadow-2xs">
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b text-muted-foreground select-none flex items-center">
+                              <span>Métricas do Imóvel</span>
+                            </span>
+                            <div className="p-0.5">
                               {res && (
                                 <div className="grid grid-cols-2 gap-1.5">
                                   {/* COLUNA ÁREA */}
@@ -10448,9 +10445,9 @@ export default function EditorPage() {
 
           {/* Guia de Próximos Passos Dinâmico (Substituindo Estatísticas Físicas) */}
           <div className="relative group pl-4 py-0.5 flex items-center gap-1.5 cursor-help select-none shrink-0">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
-            <span className="text-sky-300 font-semibold max-w-[200px] sm:max-w-[260px] md:max-w-[320px] truncate text-[9px] transition-all">
-              Próximo Passo Sugerido: {dicaFluxo.resumo}
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse shrink-0" />
+            <span className="text-sky-700 dark:text-sky-300 font-extrabold max-w-[200px] sm:max-w-[260px] md:max-w-[320px] truncate text-[9px] transition-all">
+              Próximo Passo Sugerido: {dicaFluxo.resumo.replace(/^Próximo passo:\s*/i, '')}
             </span>
 
             {/* Popover/Tooltip de Dica de Fluxo Avançada */}
@@ -10459,10 +10456,10 @@ export default function EditorPage() {
                 <GraduationCap className="size-4 text-sky-400 animate-bounce" />
                 Como Proceder - Passo {dicaFluxo.passo} de 9
               </div>
-              <p className="text-[10px] font-medium leading-relaxed font-sans text-slate-350 select-text">
+              <p className="text-[10px] font-medium leading-relaxed font-sans text-slate-200 select-text">
                 {dicaFluxo.detalhe}
               </p>
-              <div className="mt-2.5 pt-1.5 border-t border-slate-850 text-[8px] text-slate-500 flex justify-between font-mono">
+              <div className="mt-2.5 pt-1.5 border-t border-slate-850 text-[8px] text-slate-400 flex justify-between font-mono">
                 <span>Fluxo do Souza-CAD</span>
                 <span>Passe o mouse para ler</span>
               </div>
@@ -10472,12 +10469,12 @@ export default function EditorPage() {
           {/* Status do Banco de Dados */}
           <div className="pl-4 flex items-center gap-1.5">
             {salvarLaranja ? (
-              <span className="text-amber-500 font-bold flex items-center gap-1">
+              <span className="text-amber-600 dark:text-amber-500 font-extrabold flex items-center gap-1">
                 <span className="size-1.5 rounded-full bg-amber-500 animate-ping" />
                 Modificações locais pendentes
               </span>
             ) : (
-              <span className="text-emerald-500 flex items-center gap-1">
+              <span className="text-emerald-700 dark:text-emerald-400 font-extrabold flex items-center gap-1">
                 <span className="size-1.5 rounded-full bg-emerald-500" />
                 Sincronizado na Nuvem
               </span>
@@ -10485,20 +10482,20 @@ export default function EditorPage() {
           </div>
 
           {/* Botão de Ajustes e Configurações no fim da Barra de Status */}
-          <div className="pl-3 border-l border-slate-800 flex items-center gap-1.5">
+          <div className="pl-3 border-l border-slate-300 dark:border-slate-800 flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setProjetosModalAberto(true)}
-              className="px-2 py-0.5 rounded text-slate-350 hover:text-white hover:bg-slate-800/80 transition-colors flex items-center gap-1.5 cursor-pointer outline-none border border-slate-700/40 bg-slate-900/30 text-[9.5px] font-black uppercase tracking-wider"
+              className="px-2.5 py-1 rounded-lg text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer outline-none border border-slate-400/50 dark:border-slate-700/60 bg-slate-200/90 dark:bg-slate-900/60 text-[9.5px] font-black uppercase tracking-wider shadow-2xs"
               title="Abrir Lista de Projetos Salvos"
             >
-              <FolderOpen className="size-3.5 text-indigo-400" />
+              <FolderOpen className="size-3.5 text-indigo-600 dark:text-indigo-400" />
               <span>PROJETOS</span>
             </button>
             <button
               type="button"
               onClick={() => setConfigAberta(true)}
-              className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors flex items-center gap-1 cursor-pointer outline-none"
+              className="p-1 rounded text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer outline-none"
               title="Ajustes e Configurações Gerais do App (F12)"
             >
               <Settings className="size-3.5" />
