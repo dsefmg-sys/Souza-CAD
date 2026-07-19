@@ -1069,12 +1069,12 @@ export default function EditorPage() {
   const [modoApp, setModoApp] = useState<'simples' | 'medio' | 'completo'>('simples');
   const [, setTempoCompletoMs] = useState(0);
   const [landingPageAberta, setLandingPageAberta] = useState(() => {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined') return true;
     try {
-      const vista = localStorage.getItem('metrica:landing_page_vista');
-      return !vista;
+      const fechadaNestaSessao = sessionStorage.getItem('metrica:landing_page_fechada');
+      return !fechadaNestaSessao;
     } catch {
-      return false;
+      return true;
     }
   });
   const [introTocando, setIntroTocando] = useState(() => {
@@ -9809,6 +9809,7 @@ export default function EditorPage() {
             texts={landingTexts}
             onPioneiro={() => {
               try {
+                sessionStorage.setItem('metrica:landing_page_fechada', 'true');
                 localStorage.setItem('metrica:landing_page_vista', 'true');
               } catch { /* ignore */ }
               setLandingPageAberta(false);
