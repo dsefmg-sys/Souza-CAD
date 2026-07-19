@@ -1,6 +1,6 @@
 'use client';
 
-import { Shield, Zap, Compass, Users, CheckCircle, Smartphone, ArrowRight, Award, Check, FileText, Layers, Settings, Eye, FileSpreadsheet, FileCheck } from 'lucide-react';
+import { Shield, Zap, Compass, Users, CheckCircle, Smartphone, ArrowRight, Award, Check, FileText, Layers, Settings, FileSpreadsheet, FileCheck, Map, CheckCircle2 } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 
 interface LandingPageProps {
@@ -27,7 +27,7 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
 
   // Fallbacks de textos
   const titulo = texts.titulo || 'Otimize 5 horas de projeto em apenas 20 minutos.';
-  const subtitulo = texts.subtitulo || 'Um sistema planialtimétrico e de georreferenciamento de imóveis rurais completo e intuitivo, feito sob medida para as reais necessidades de agrimensores, técnicos e engenheiros brasileiros.';
+  const subtitulo = texts.subtitulo || 'Gere a planilha ODS oficial no padrão SIGEF/INCRA em minutos, memoriais descritivos perimétricos, plantas topográficas completas (A3/A0), requerimentos cartorários, erratas, contratos e recibos numa única plataforma.';
   const historia = texts.historia || 'Depois de 14 anos empreendendo na área de agrimensura, enfrentando o cansaço de refazer projetos manuais no CAD tradicional e preencher planilhas repetitivas, decidi aprender a programar para criar a ferramenta que eu mesmo precisava para ter liberdade, agilidade e total segurança técnica. O Souza-CAD transforma um processo manual e exaustivo de 5 horas em apenas 20 minutos de trabalho eficiente.';
   const autorHistoria = texts.autorHistoria || 'Agrimensor Programador & Criador do Souza-CAD';
   const itensCheck = texts.itensCheck && texts.itensCheck.length === 4 ? texts.itensCheck : [
@@ -91,22 +91,56 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
         </div>
       </header>
 
-      {/* ── ESTRUTURA EXTENSA EM ROLAGEM VERTICAL (LONG SCROLL LAYOUT ESPAÇADO) ── */}
-      <main className="relative flex-grow w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-16 z-10 space-y-24 text-center">
+      {/* ── ESTRUTURA EXTENSA EM ROLAGEM VERTICAL (COM IMAGENS LIVRES EM LARGURA TOTAL DA TELA) ── */}
+      <main className="relative flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 md:py-16 z-10 space-y-28 text-center">
         
-        {/* 1. SEÇÃO HERO: TÍTULO & SUBTÍTULO AMPLO */}
-        <section className="max-w-4xl mx-auto space-y-6 pt-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-xs font-black uppercase tracking-wider text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-            <Zap className="size-4" /> Tecnologia Criada por Agrimensor para Agrimensores
+        {/* 1. SEÇÃO HERO: DESTAQUE PARA PLANILHA ODS INCRA EM MINUTOS & PEÇAS TÉCNICAS */}
+        <section className="max-w-4xl mx-auto space-y-6 pt-2">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-xs font-black uppercase tracking-wider text-emerald-300 shadow-[0_0_25px_rgba(16,185,129,0.2)]">
+            <FileSpreadsheet className="size-4 text-emerald-400" />
+            <span>Geração de Planilha ODS Padrão INCRA & SIGEF em Minutos</span>
           </div>
 
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white leading-[1.08] tracking-tight drop-shadow-md">
             {titulo}
           </h1>
 
-          <p className="text-lg sm:text-xl text-slate-300 leading-relaxed font-medium max-w-3xl mx-auto">
+          <p className="text-base sm:text-xl text-slate-200 leading-relaxed font-medium max-w-3xl mx-auto">
             {subtitulo}
           </p>
+
+          {/* Três Pilares de Produção Rápida */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 max-w-3xl mx-auto text-left">
+            <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-emerald-500/30 flex items-center gap-3 shadow-lg">
+              <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 shrink-0">
+                <FileSpreadsheet className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-xs">Planilha ODS INCRA</h3>
+                <p className="text-[10px] text-slate-400">Pronta para o SIGEF em minutos</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-emerald-500/30 flex items-center gap-3 shadow-lg">
+              <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 shrink-0">
+                <Map className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-xs">Planta A3/A0 SVG/PDF</h3>
+                <p className="text-[10px] text-slate-400">Prancha técnica completa</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-emerald-500/30 flex items-center gap-3 shadow-lg">
+              <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 shrink-0">
+                <FileCheck className="size-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-xs">Memoriais & Erratas</h3>
+                <p className="text-[10px] text-slate-400">Formatados para o cartório</p>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* 2. SEÇÃO DE VAGAS DE USUÁRIO PIONEIRO (DESTAQUE CENTRAL ESPAÇADO) */}
@@ -164,73 +198,59 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </div>
         </section>
 
-        {/* 3. SEÇÃO DESTACADA 1: MÓDULO DE GESTÃO FINANCEIRA E CONTRATOS (COM IMAGEM REAL GIGANTE) */}
+        {/* 3. SEÇÃO DESTACADA: PLANTA TOPOGRÁFICA PRONTA (IMAGEM LIMPA E GIGANTE NA LARGURA DA TELA TODA — SEM JANELA) */}
         <section className="w-full space-y-8 pt-6 border-t border-slate-900/80">
           <div className="max-w-3xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
-              <FileText className="size-4" /> Gestão do Projeto & Documentos
+              <Map className="size-4" /> Planta Topográfica Pronta & Layouts
             </div>
             <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-              Recibos, Contratos & Declarações com 1 Clique
+              Prancha A3/A0 Completa Gerada no Sistema
             </h2>
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-medium">
-              Emissão formal em PDF de recibos de quitação, contratos de prestação de serviços de agrimensura, propostas comerciais e declarações cartorárias com dados e assinatura digital preenchidos automaticamente.
+              Desenho vetorial de alta precisão com carimbo oficial, rosa dos ventos, escala gráfica, grade de coordenadas UTM e convenções topográficas gerados automaticamente.
             </p>
           </div>
 
-          {/* IMAGEM GIGANTE REAL NÍTIDA 1: preview_gestao.png */}
-          <div className="relative rounded-3xl border border-emerald-500/30 bg-slate-900/90 p-3 sm:p-4 shadow-[0_0_90px_rgba(16,185,129,0.2)] backdrop-blur-xl overflow-hidden max-w-5xl mx-auto">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 mb-3">
-              <div className="flex items-center gap-2">
-                <span className="size-3 rounded-full bg-rose-500/80 inline-block" />
-                <span className="size-3 rounded-full bg-amber-500/80 inline-block" />
-                <span className="size-3 rounded-full bg-emerald-500/80 inline-block" />
-                <span className="ml-2 text-xs sm:text-sm font-bold text-slate-200">Souza-CAD — Módulo de Gestão Financeira e Documentos</span>
-              </div>
-              <span className="text-xs font-mono text-emerald-400 font-bold px-2.5 py-0.5 rounded bg-slate-950 border border-slate-800">
-                Gestão & Financeiro
-              </span>
-            </div>
-
-            <div className="relative rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center min-h-[380px] md:min-h-[560px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_gestao.png"
-                alt="Gestão do Projeto, Recibos e Contratos no Souza-CAD"
-                className="w-full h-auto object-contain max-h-[580px] opacity-100 transition-all duration-300"
-              />
-            </div>
+          {/* IMAGEM DIRETA EM LARGURA TOTAL DA TELA (SEM JANELA / MOLDURA) */}
+          <div className="w-full max-w-6xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800/80 bg-slate-950">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/marca/splash.png"
+              alt="Planta Topográfica Pronta no Souza-CAD"
+              className="w-full h-auto object-contain max-h-[680px] opacity-100 transition-all duration-300"
+            />
           </div>
 
           {/* Destaques em Cards Espaçados */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto text-left">
             <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
               <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 w-fit">
-                <FileCheck className="size-5" />
+                <Compass className="size-5" />
               </div>
-              <h3 className="font-bold text-white text-base">Recibos Formais em PDF</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">Geração de recibos de quitação numerados sequencialmente com assinatura digital.</p>
+              <h3 className="font-bold text-white text-base">Rosa dos Ventos & Escala</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">Cálculo dinâmico da escala gráfica e orientação do Norte de acordo com o perímetro.</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
               <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 w-fit">
-                <FileText className="size-5" />
+                <Layers className="size-5" />
               </div>
-              <h3 className="font-bold text-white text-base">Contratos & Propostas</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">Elaboração de contratos de prestação de serviços com cláusulas formais e prazos do projeto.</p>
+              <h3 className="font-bold text-white text-base">Tabela de Coordenadas</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">Geração da tabela de vértices com azimutes, distâncias, coordenadas N/E e confrontantes.</p>
             </div>
 
             <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
               <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 w-fit">
-                <Shield className="size-5" />
+                <CheckCircle2 className="size-5" />
               </div>
-              <h3 className="font-bold text-white text-base">Declarações Avulsas</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">Emissão de declarações de respeito de limites, posse, espólio e sobreposição de divisas.</p>
+              <h3 className="font-bold text-white text-base">Exportação DXF / PDF / KML</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">Compatibilidade total para abrir no AutoCAD, Google Earth e leitores de PDF.</p>
             </div>
           </div>
         </section>
 
-        {/* 4. SEÇÃO DA HISTÓRIA DO CRIADOR (ESPAÇADO E BEM LEVADO) */}
+        {/* 4. SEÇÃO DA HISTÓRIA DO CRIADOR */}
         <section className="w-full max-w-4xl mx-auto py-4">
           <div className="bg-slate-900/80 border border-slate-800/80 p-8 sm:p-12 rounded-3xl text-left space-y-5 backdrop-blur-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -247,7 +267,32 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
           </div>
         </section>
 
-        {/* 5. SEÇÃO DESTACADA 2: AUTOMACÃO DE ERRATAS E CONFRONTANTES (COM IMAGEM REAL GIGANTE) */}
+        {/* 5. SEÇÃO DESTACADA: MÓDULO DE GESTÃO FINANCEIRA E CONTRATOS (IMAGEM LIMPA E GIGANTE NA LARGURA DA TELA TODA — SEM JANELA) */}
+        <section className="w-full space-y-8 pt-6 border-t border-slate-900/80">
+          <div className="max-w-3xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
+              <FileText className="size-4" /> Gestão do Projeto & Documentos
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
+              Recibos, Contratos & Declarações com 1 Clique
+            </h2>
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-medium">
+              Emissão formal em PDF de recibos de quitação, contratos de prestação de serviços de agrimensura, propostas comerciais e declarações cartorárias com dados e assinatura digital preenchidos automaticamente.
+            </p>
+          </div>
+
+          {/* IMAGEM DIRETA EM LARGURA TOTAL DA TELA (SEM JANELA / MOLDURA) */}
+          <div className="w-full max-w-6xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800/80 bg-slate-950">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/marca/preview_gestao.png"
+              alt="Gestão do Projeto, Recibos e Contratos no Souza-CAD"
+              className="w-full h-auto object-contain max-h-[680px] opacity-100 transition-all duration-300"
+            />
+          </div>
+        </section>
+
+        {/* 6. SEÇÃO DESTACADA: AUTOMACÃO DE ERRATAS E CONFRONTANTES (IMAGEM LIMPA E GIGANTE NA LARGURA DA TELA TODA — SEM JANELA) */}
         <section className="w-full space-y-8 pt-6 border-t border-slate-900/80">
           <div className="max-w-3xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
@@ -261,59 +306,18 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </p>
           </div>
 
-          {/* IMAGEM GIGANTE REAL NÍTIDA 2: preview_modulos.png */}
-          <div className="relative rounded-3xl border border-emerald-500/30 bg-slate-900/90 p-3 sm:p-4 shadow-[0_0_90px_rgba(16,185,129,0.2)] backdrop-blur-xl overflow-hidden max-w-5xl mx-auto">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 mb-3">
-              <div className="flex items-center gap-2">
-                <span className="size-3 rounded-full bg-rose-500/80 inline-block" />
-                <span className="size-3 rounded-full bg-amber-500/80 inline-block" />
-                <span className="size-3 rounded-full bg-emerald-500/80 inline-block" />
-                <span className="ml-2 text-xs sm:text-sm font-bold text-slate-200">Souza-CAD — Automação de Erratas e Vértices Confrontantes</span>
-              </div>
-              <span className="text-xs font-mono text-emerald-400 font-bold px-2.5 py-0.5 rounded bg-slate-950 border border-slate-800">
-                Cartório & SIGEF
-              </span>
-            </div>
-
-            <div className="relative rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center min-h-[380px] md:min-h-[560px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_modulos.png"
-                alt="Automação de Erratas e Malha SIGEF no Souza-CAD"
-                className="w-full h-auto object-contain max-h-[580px] opacity-100 transition-all duration-300"
-              />
-            </div>
-          </div>
-
-          {/* Destaques em Cards Espaçados */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto text-left">
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 w-fit">
-                <FileSpreadsheet className="size-5" />
-              </div>
-              <h3 className="font-bold text-white text-base">Erratas em Word (.docx)</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">Geradas prontas para protocolo em cartório com atalhos de preenchimento rápido.</p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 w-fit">
-                <Compass className="size-5" />
-              </div>
-              <h3 className="font-bold text-white text-base">Busca Online do INCRA</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">Importação automática dos polígonos certificados confrontantes por localização.</p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 w-fit">
-                <CheckCircle className="size-5" />
-              </div>
-              <h3 className="font-bold text-white text-base">Vértices Virtuais (V)</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">Cálculo de interseções e afastamento de alinhamentos para cantos inacessíveis.</p>
-            </div>
+          {/* IMAGEM DIRETA EM LARGURA TOTAL DA TELA (SEM JANELA / MOLDURA) */}
+          <div className="w-full max-w-6xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800/80 bg-slate-950">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/marca/preview_modulos.png"
+              alt="Automação de Erratas e Malha SIGEF no Souza-CAD"
+              className="w-full h-auto object-contain max-h-[680px] opacity-100 transition-all duration-300"
+            />
           </div>
         </section>
 
-        {/* 6. SEÇÃO DESTACADA 3: PERSONALIZAÇÃO DA MARCA E CONFIGURAÇÕES (COM IMAGEM REAL GIGANTE) */}
+        {/* 7. SEÇÃO DESTACADA: PERSONALIZAÇÃO DA MARCA E CONFIGURAÇÕES (IMAGEM LIMPA E GIGANTE NA LARGURA DA TELA TODA — SEM JANELA) */}
         <section className="w-full space-y-8 pt-6 border-t border-slate-900/80">
           <div className="max-w-3xl mx-auto space-y-3">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-wider text-emerald-400">
@@ -327,59 +331,18 @@ export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingP
             </p>
           </div>
 
-          {/* IMAGEM GIGANTE REAL NÍTIDA 3: preview_config.png */}
-          <div className="relative rounded-3xl border border-emerald-500/30 bg-slate-900/90 p-3 sm:p-4 shadow-[0_0_90px_rgba(16,185,129,0.2)] backdrop-blur-xl overflow-hidden max-w-5xl mx-auto">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 mb-3">
-              <div className="flex items-center gap-2">
-                <span className="size-3 rounded-full bg-rose-500/80 inline-block" />
-                <span className="size-3 rounded-full bg-amber-500/80 inline-block" />
-                <span className="size-3 rounded-full bg-emerald-500/80 inline-block" />
-                <span className="ml-2 text-xs sm:text-sm font-bold text-slate-200">Souza-CAD — Configurações da Empresa e Assinatura Digital</span>
-              </div>
-              <span className="text-xs font-mono text-emerald-400 font-bold px-2.5 py-0.5 rounded bg-slate-950 border border-slate-800">
-                Marca & Configuração
-              </span>
-            </div>
-
-            <div className="relative rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center min-h-[380px] md:min-h-[560px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/marca/preview_config.png"
-                alt="Configurações da Empresa e Assinatura Digital no Souza-CAD"
-                className="w-full h-auto object-contain max-h-[580px] opacity-100 transition-all duration-300"
-              />
-            </div>
-          </div>
-
-          {/* Destaques em Cards Espaçados */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto text-left">
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 w-fit">
-                <Settings className="size-5" />
-              </div>
-              <h3 className="font-bold text-white text-base">Logotipo Personalizado</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">Exibido automaticamente no carimbo oficial da prancha A3/A0 impressa.</p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 w-fit">
-                <Check className="size-5" />
-              </div>
-              <h3 className="font-bold text-white text-base">Assinatura Digital PNG</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">Aplicação em memoriais, recibos, contratos e requerimentos.</p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 space-y-2">
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 w-fit">
-                <Users className="size-5" />
-              </div>
-              <h3 className="font-bold text-white text-base">Conselhos & Registros</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">Suporte total para CFT, CREA, CFTA e credenciamento oficial no INCRA.</p>
-            </div>
+          {/* IMAGEM DIRETA EM LARGURA TOTAL DA TELA (SEM JANELA / MOLDURA) */}
+          <div className="w-full max-w-6xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(16,185,129,0.22)] border border-slate-800/80 bg-slate-950">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/marca/preview_config.png"
+              alt="Configurações da Empresa e Assinatura Digital no Souza-CAD"
+              className="w-full h-auto object-contain max-h-[680px] opacity-100 transition-all duration-300"
+            />
           </div>
         </section>
 
-        {/* 7. SEÇÃO FINAL: VALIDAÇÕES TÉCNICAS E CTA DE CREDENCIAMENTO */}
+        {/* 8. SEÇÃO FINAL: VALIDAÇÕES TÉCNICAS E CTA DE CREDENCIAMENTO */}
         <section className="w-full max-w-4xl mx-auto space-y-8 pt-8 border-t border-slate-900/80">
           <div className="text-center space-y-3">
             <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
