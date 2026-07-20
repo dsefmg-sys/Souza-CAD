@@ -75,7 +75,7 @@ export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, r
 
         <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border/80 my-2 shadow-inner bg-card">
           <table className="w-full text-[11px] font-mono">
-            <thead className="sticky top-0 bg-zinc-900 text-white text-[10px] uppercase tracking-wider shadow-md z-10">
+            <thead className="sticky top-0 bg-slate-200 text-slate-800 dark:bg-zinc-900 dark:text-white text-[10px] uppercase tracking-wider shadow-md z-10">
               <tr>
                 <th className="px-3 py-2 text-left font-black">Código</th>
                 <th className="px-3 py-2 text-left font-black">Longitude (E)</th>

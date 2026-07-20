@@ -7177,9 +7177,15 @@ export default function EditorPage() {
                     <LogIn className="size-4 shrink-0" /> <span className="whitespace-nowrap">Fazer login</span>
                   </button>
                 )}
+                {souMaster() && user && !entrouSemLogin && (
+                  <button type="button" onClick={() => { setPerfilMenuAberto(false); setModoMaster('gerir'); }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-amber-600 dark:text-amber-500 hover:bg-amber-500/10 active:scale-98 transition-all whitespace-nowrap">
+                    <ShieldCheck className="size-4 text-amber-500 shrink-0" /> <span className="truncate whitespace-nowrap">Gerir SaaS</span>
+                  </button>
+                )}
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); setConfigAba(undefined); setConfigAberta(true); }}
                   className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-500/10 active:scale-98 transition-all whitespace-nowrap">
-                  <Settings className="size-4 text-slate-500 dark:text-slate-400 shrink-0" /> <span className="whitespace-nowrap">Ajustes Gerais do Projeto</span>
+                  <Settings className="size-4 text-slate-500 dark:text-slate-400 shrink-0" /> <span className="whitespace-nowrap">Ajustes Gerais</span>
                 </button>
                 <button type="button" onClick={() => { setPerfilMenuAberto(false); setTrtAberto(true); }}
                   className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 active:scale-98 transition-all whitespace-nowrap">
@@ -7300,13 +7306,7 @@ export default function EditorPage() {
                     </div>
                   </div>
                 </div>
- 
-                {souMaster() && user && !entrouSemLogin && (
-                  <button type="button" onClick={() => { setPerfilMenuAberto(false); setModoMaster('gerir'); }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-amber-600 dark:text-amber-500 hover:bg-amber-500/10 active:scale-98 transition-all whitespace-nowrap">
-                    <ShieldCheck className="size-4 text-amber-500 shrink-0" /> <span className="truncate whitespace-nowrap">Gerir SaaS</span>
-                  </button>
-                )}
+
                 {nuvemDisponivel && (
                   <button type="button" onClick={() => { setPerfilMenuAberto(false); limparConfigLocalNaSaida(); sair(); setLandingPageAberta(true); definirModoEntrada('login'); }}
                     className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-red-650 hover:bg-red-500/10 dark:text-red-400 active:scale-98 transition-all whitespace-nowrap">
@@ -10562,20 +10562,8 @@ export default function EditorPage() {
           >
             {/* Lado Esquerdo: Mensagem de Status Ativa / Alerta ou Modo Atual */}
             <div className="flex items-center gap-2 min-w-0 overflow-hidden whitespace-nowrap">
-              {msg ? (
-                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold animate-pulse truncate">
-                  <span className="inline-block size-1.5 rounded-full bg-amber-500 shrink-0" />
-                  <span className="truncate">{msg}</span>
-                </div>
-              ) : imovel.ficticio ? (
-                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
-                  <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>DADOS FICTÍCIOS — Sem validade legal</span>
-                </div>
-              ) : null}
-
-              {/* Caixa de Entrada de Comandos CAD */}
-              <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-850 pl-2.5 shrink-0 select-text">
+              {/* Caixa de Entrada de Comandos CAD (sem nenhuma informação à sua esquerda) */}
+              <div className="flex items-center gap-1 shrink-0 select-text">
                 <span className="text-slate-500 font-mono text-[9px] font-bold">&gt;</span>
                 <input
                   ref={comandoInputRef}
@@ -10602,14 +10590,14 @@ export default function EditorPage() {
                 </span>
               </div>
 
-              {/* Próximo Passo Sugerido ou Mensagem de Desfazer / Ação (Substituição Temporária) — Posicionado perto do Fuso */}
+              {/* Próximo Passo Sugerido ou Mensagem de Status (Substituição Temporária) */}
               <div
                 onClick={() => setExplicacaoPassoAberto(true)}
                 className="flex items-center gap-1.5 border-l border-slate-300 dark:border-slate-800 pl-2.5 shrink-0 cursor-pointer select-none group"
                 title="Clique para abrir a explicação completa deste passo"
               >
-                <span className={`inline-block size-1.5 rounded-full shrink-0 ${msg ? 'bg-amber-500 animate-ping' : 'bg-sky-500 animate-pulse'}`} />
-                <span className={`font-black text-[9.5px] transition-all max-w-[280px] sm:max-w-[420px] truncate ${msg ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-sky-700 dark:text-sky-300 group-hover:underline'}`}>
+                <span className={`inline-block size-1.5 rounded-full shrink-0 ${msg ? 'bg-amber-500 animate-ping' : imovel.ficticio ? 'bg-emerald-500 animate-pulse' : 'bg-sky-500 animate-pulse'}`} />
+                <span className={`font-black text-[9.5px] transition-all max-w-[280px] sm:max-w-[420px] truncate ${msg ? 'text-amber-600 dark:text-amber-400 font-extrabold' : imovel.ficticio ? 'text-emerald-600 dark:text-emerald-400' : 'text-sky-700 dark:text-sky-300 group-hover:underline'}`}>
                   {msg ? msg : `Próximo Passo Sugerido: ${dicaFluxo.resumo.replace(/^Próximo passo:\s*/i, '')}`}
                 </span>
                 {!msg && <Info className="size-3 text-sky-500 opacity-80 group-hover:opacity-100 shrink-0" />}

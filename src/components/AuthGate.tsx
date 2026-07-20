@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { LogIn, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,11 +26,31 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
 
-  // Login OBRIGATÓRIO quando há nuvem configurada. Sem Firebase (ambiente sem variáveis), segue local.
-  if (!disponivel || user) return <>{children}</>;
+  const [landingFechada, setLandingFechada] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('landing') === 'true' || urlParams.has('landing')) return false;
+      return sessionStorage.getItem('metrica:landing_page_fechada') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const fechar = () => setLandingFechada(true);
+    const abrir = () => setLandingFechada(false);
+    window.addEventListener('souzacad:fechar-landing', fechar);
+    window.addEventListener('souzacad:ver-site', abrir);
+    return () => {
+      window.removeEventListener('souzacad:fechar-landing', fechar);
+      window.removeEventListener('souzacad:ver-site', abrir);
+    };
+  }, []);
+
+  // Exibe a LandingPage em primeiro lugar para visitantes não autenticados.
+  if (!disponivel || user || !landingFechada) return <>{children}</>;
   if (carregando) {
-    // Tela de carregamento NEUTRA (preta), sem a arte estática — assim nenhuma imagem aparece antes
-    // do vídeo de abertura, que também começa no preto. A transição fica limpa: preto → vídeo.
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black">
         <span className="text-xs font-medium tracking-wide text-white/40">Carregando…</span>
@@ -64,6 +84,17 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       <IntroVideo />
       <FundoRedeMarca />
       <div className="relative z-10 w-full max-w-sm space-y-4 rounded-lg border border-white/10 bg-background/95 p-6 shadow-2xl backdrop-blur-sm">
+        <button
+          type="button"
+          onClick={() => {
+            try { sessionStorage.removeItem('metrica:landing_page_fechada'); } catch { /* ignore */ }
+            setLandingFechada(false);
+            window.dispatchEvent(new CustomEvent('souzacad:ver-site'));
+          }}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer mb-1"
+        >
+          <ArrowLeft className="size-3.5" /> Voltar para a Apresentação (Site)
+        </button>
         <div className="space-y-2 text-center">
           <LogoHorizontal className="mx-auto h-12" />
           <p className="text-xs text-muted-foreground">Entre para acessar seus projetos e cadastros na nuvem.</p>

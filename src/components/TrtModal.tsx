@@ -31,10 +31,6 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
   const linkEmitir = isCrea ? 'https://servicos-crea-mg.sitac.com.br/index.php' : 'https://servicos.sinceti.net.br/';
 
   const linhas: { label: string; valor: string; cor: string; copiavel: boolean }[] = [
-    { label: 'Responsável técnico', valor: tecnico?.nome ?? '', cor: 'border-l-indigo-500', copiavel: false },
-    { label: 'Título profissional', valor: credencial.formacao || '', cor: 'border-l-indigo-500', copiavel: false },
-    { label: rot.registro, valor: credencial.registro || '', cor: 'border-l-sky-500', copiavel: false },
-    { label: 'Credenciamento INCRA', valor: tecnico?.credenciamentoIncra ?? '', cor: 'border-l-amber-500', copiavel: false },
     { label: 'Atividade técnica', valor: 'Georreferenciamento de imóvel rural — levantamento topográfico georreferenciado (SIGEF/INCRA)', cor: 'border-l-emerald-500', copiavel: true },
     { label: 'Proprietário / contratante', valor: imovel.proprietario, cor: 'border-l-blue-500', copiavel: true },
     { label: 'CPF/CNPJ do Titular', valor: imovel.cpfProprietario, cor: 'border-l-blue-500', copiavel: true },

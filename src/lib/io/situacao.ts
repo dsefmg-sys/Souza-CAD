@@ -26,9 +26,9 @@ function carregarTile(url: string): Promise<HTMLImageElement | null> {
   });
 }
 
-/** Escolhe o zoom para o bbox caber em ~alvoPx pixels. */
+/** Escolhe o zoom para o bbox caber em ~alvoPx pixels (limitado a max 17 para evitar tiles 404 em regiões com cobertura restrita). */
 function escolherZoom(spanLon: number, alvoPx: number): number {
-  for (let z = 19; z >= 8; z--) {
+  for (let z = 17; z >= 8; z--) {
     const px = (spanLon / 360) * Math.pow(2, z) * TILE;
     if (px <= alvoPx) return z;
   }
@@ -40,87 +40,91 @@ export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number
   const pts = rings.flat();
   if (typeof document === 'undefined' || pts.length < 3) return null;
   const alvoPx = opts.alvoPx ?? 1024;     // resolução-alvo (nitidez)
-  const pad = opts.padding ?? 1.1;       // folga ao redor do imóvel (enquadramento)
+  const pad = opts.padding ?? 1.25;       // folga ao redor do imóvel (enquadramento)
   const aspecto = opts.aspecto ?? 232 / 168; // mesma proporção do quadro na planta (sem cortar)
 
   let minLat = Math.min(...pts.map((p) => p.lat));
   let maxLat = Math.max(...pts.map((p) => p.lat));
   let minLon = Math.min(...pts.map((p) => p.lon));
   let maxLon = Math.max(...pts.map((p) => p.lon));
-  // centro e meias-extensões com folga
+
+  // centro e meias-extensões com folga.
+  // IMPORTANTE: Para lotes pequenos (ex.: 100m² - 500m²), estabelece uma meia-extensão mínima de ~0.0015° (~150m-200m)
+  // para garantir que a planta de situação mostre arruamento e contexto da vizinhança.
   const cLat = (minLat + maxLat) / 2, cLon = (minLon + maxLon) / 2;
   const latRad = (cLat * Math.PI) / 180;
-  let halfLon = ((maxLon - minLon) / 2) * (1 + pad) || 0.0008;
-  let halfLat = ((maxLat - minLat) / 2) * (1 + pad) || 0.0008;
+
+  const MIN_HALF_SPAN = 0.0015; // ~150-200m de raio mínimo de contexto
+  let halfLon = Math.max(((maxLon - minLon) / 2) * (1 + pad), MIN_HALF_SPAN);
+  let halfLat = Math.max(((maxLat - minLat) / 2) * (1 + pad), MIN_HALF_SPAN);
+
   // ajusta para a proporção do quadro (em metros aprox.: 1° lon ~ cos(lat)·1° lat)
   const wM = halfLon * Math.cos(latRad), hM = halfLat;
   if (wM / hM < aspecto) halfLon = (aspecto * hM) / Math.cos(latRad); else halfLat = (wM / aspecto);
   minLon = cLon - halfLon; maxLon = cLon + halfLon;
   minLat = cLat - halfLat; maxLat = cLat + halfLat;
 
-  const z = escolherZoom(maxLon - minLon, alvoPx);
-  const pxMin = lonToGlobalPx(minLon, z), pxMax = lonToGlobalPx(maxLon, z);
-  const pyMin = latToGlobalPx(maxLat, z), pyMax = latToGlobalPx(minLat, z); // lat maior = py menor
-  const w = Math.min(2000, Math.ceil(pxMax - pxMin));
-  const h = Math.min(2000, Math.ceil(pyMax - pyMin));
-  if (w < 8 || h < 8) return null;
+  const zoomInicial = escolherZoom(maxLon - minLon, alvoPx);
 
-  const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  ctx.fillStyle = '#dfe7ef'; ctx.fillRect(0, 0, w, h);
+  // Tenta o zoom ideal e faz fallback para níveis menores (z-1, z-2...) caso os tiles no nível z falhem (404/CORS)
+  for (let z = zoomInicial; z >= 12; z--) {
+    const pxMin = lonToGlobalPx(minLon, z), pxMax = lonToGlobalPx(maxLon, z);
+    const pyMin = latToGlobalPx(maxLat, z), pyMax = latToGlobalPx(minLat, z); // lat maior = py menor
+    const w = Math.min(2000, Math.ceil(pxMax - pxMin));
+    const h = Math.min(2000, Math.ceil(pyMax - pyMin));
+    if (w < 8 || h < 8) continue;
 
-  const tx0 = Math.floor(pxMin / TILE), tx1 = Math.floor(pxMax / TILE);
-  const ty0 = Math.floor(pyMin / TILE), ty1 = Math.floor(pyMax / TILE);
-  const nTiles = Math.max(0, (tx1 - tx0 + 1) * (ty1 - ty0 + 1));
-  if (nTiles === 0 || nTiles > 160) return null; // proteção
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) continue;
+    ctx.fillStyle = '#dfe7ef'; ctx.fillRect(0, 0, w, h);
 
-  let carregados = 0;
-  const cargas: Promise<void>[] = [];
-  for (let tx = tx0; tx <= tx1; tx++) {
-    for (let ty = ty0; ty <= ty1; ty++) {
-      cargas.push(carregarTile(URL_ESRI(z, tx, ty)).then((img) => {
-        if (img) { ctx.drawImage(img, tx * TILE - pxMin, ty * TILE - pyMin); carregados++; }
-      }));
+    const tx0 = Math.floor(pxMin / TILE), tx1 = Math.floor(pxMax / TILE);
+    const ty0 = Math.floor(pyMin / TILE), ty1 = Math.floor(pyMax / TILE);
+    const nTiles = Math.max(0, (tx1 - tx0 + 1) * (ty1 - ty0 + 1));
+    if (nTiles === 0 || nTiles > 160) continue;
+
+    let carregados = 0;
+    const cargas: Promise<void>[] = [];
+    for (let tx = tx0; tx <= tx1; tx++) {
+      for (let ty = ty0; ty <= ty1; ty++) {
+        cargas.push(carregarTile(URL_ESRI(z, tx, ty)).then((img) => {
+          if (img) { ctx.drawImage(img, tx * TILE - pxMin, ty * TILE - pyMin); carregados++; }
+        }));
+      }
     }
-  }
-  await Promise.all(cargas);
-  // Exige a MAIORIA dos tiles (não só "pelo menos 1") — com rede instável/CORS parcial, é comum
-  // só uma fração pequena carregar; antes disso já "passava" e salvava uma imagem quase toda no
-  // fundo cinza-claro de preenchimento (ctx.fillStyle acima), sem avisar ninguém. Isso é o que o
-  // dono via como "só um fundo claro" (10/07/2026) — o app achava que tinha dado certo.
-  if (carregados < nTiles * 0.6) return null;
+    await Promise.all(cargas);
 
-  // contorno de cada gleba em BRANCO com linha forte (halo escuro + leve preenchimento) e os
-  // vértices marcados — mostra ao cartório, com nitidez, onde o imóvel está.
-  const esc = w / 1000; // espessuras proporcionais à resolução
-  rings.forEach((anel) => {
-    const xy = anel.map((p) => [lonToGlobalPx(p.lon, z) - pxMin, latToGlobalPx(p.lat, z) - pyMin] as const);
-    const traco = () => { ctx.beginPath(); xy.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y))); ctx.closePath(); };
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    traco(); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
-    traco(); ctx.strokeStyle = 'rgba(0,0,0,0.65)'; ctx.lineWidth = 11 * esc; ctx.stroke();   // halo
-    traco(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5.2 * esc; ctx.stroke();          // branco forte
-    // vértices
-    xy.forEach(([x, y]) => {
-      ctx.beginPath(); ctx.arc(x, y, 5.2 * esc, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff'; ctx.fill();
-      ctx.lineWidth = 1.5 * esc; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.stroke();
+    // Se menos de 50% dos tiles foram carregados (servidor sem alta resolução nessa coordenada), tenta zoom menor
+    if (carregados < Math.max(1, nTiles * 0.5)) continue;
+
+    // contorno de cada gleba em BRANCO com linha forte (halo escuro + leve preenchimento) e os
+    // vértices marcados — mostra ao cartório, com nitidez, onde o imóvel está.
+    const esc = w / 1000; // espessuras proporcionais à resolução
+    rings.forEach((anel) => {
+      const xy = anel.map((p) => [lonToGlobalPx(p.lon, z) - pxMin, latToGlobalPx(p.lat, z) - pyMin] as const);
+      const traco = () => { ctx.beginPath(); xy.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y))); ctx.closePath(); };
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      traco(); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
+      traco(); ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 11 * esc; ctx.stroke();   // halo
+      traco(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5.2 * esc; ctx.stroke();          // branco forte
+      // vértices
+      xy.forEach(([x, y]) => {
+        ctx.beginPath(); ctx.arc(x, y, 5.2 * esc, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff'; ctx.fill();
+        ctx.lineWidth = 1.5 * esc; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.stroke();
+      });
     });
-  });
 
-  // Reduz a qualidade JPEG progressivamente até caber no orçamento (padrão 700.000 caracteres —
-  // o mesmo limite que page.tsx usava pra decidir se salvava no projeto). Antes, uma imagem grande
-  // demais era gerada normalmente e só DEPOIS descartada em silêncio na hora de salvar (o dono via
-  // a situação bonita na hora, mas ela sumia — virava "Situação Indisponível" — ao reabrir o
-  // projeto). Gerar já dentro do orçamento evita esse descarte silencioso.
-  const orcamentoChars = opts.orcamentoChars ?? 700_000;
-  try {
-    for (const qualidade of [0.9, 0.75, 0.6, 0.45, 0.3]) {
-      const url = canvas.toDataURL('image/jpeg', qualidade);
-      if (url.length <= orcamentoChars) return url;
-    }
-    return null; // nem na qualidade mínima coube — melhor sem situação do que salvar truncada
-  } catch { return null; } // canvas tainted (CORS) — sai sem situação
+    const orcamentoChars = opts.orcamentoChars ?? 700_000;
+    try {
+      for (const qualidade of [0.9, 0.75, 0.6, 0.45, 0.3]) {
+        const url = canvas.toDataURL('image/jpeg', qualidade);
+        if (url.length <= orcamentoChars) return url;
+      }
+    } catch { continue; }
+  }
+
+  return null;
 }

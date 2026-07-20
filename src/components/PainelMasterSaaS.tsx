@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Fragment } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1142,7 +1142,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                     const subRowAberta = !!empresaMembrosAberta[p.uid];
 
                     return (
-                      <tbody key={p.uid} className="border-b border-zinc-800/40">
+                      <Fragment key={p.uid}>
                         <tr className={`transition-colors ${isMinhaEmpresa ? 'bg-emerald-950/45 border-l-4 border-l-emerald-500 font-semibold' : 'hover:bg-zinc-900/30'}`}>
                           <td className="px-4 py-2.5 w-10 text-center">
                             <input
@@ -1332,7 +1332,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                             </td>
                           </tr>
                         )}
-                      </tbody>
+                      </Fragment>
                     );
                   })}
                 </tbody>

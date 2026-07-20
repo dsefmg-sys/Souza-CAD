@@ -71,9 +71,9 @@ export default function DialogosHost() {
                   key={op.chave}
                   variant={v}
                   className={`h-11 w-full justify-center px-4 text-xs sm:text-sm font-extrabold tracking-wide transition-all shadow-sm active:scale-[0.98] ${
-                    isDefault ? '!bg-emerald-500 hover:!bg-emerald-400 !text-zinc-950 font-black shadow-emerald-500/20' :
-                    isDestructive ? '!bg-red-600 hover:!bg-red-700 !text-white font-extrabold shadow-red-600/20' :
-                    isOutline ? '!bg-slate-800 hover:!bg-slate-700 !text-slate-100 !border-slate-700 font-extrabold' : ''
+                    isDefault ? 'bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-zinc-950 font-black shadow-emerald-500/20' :
+                    isDestructive ? 'bg-red-600 hover:bg-red-700 text-white font-extrabold shadow-red-600/20' :
+                    isOutline ? 'bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100 dark:border-slate-700 font-extrabold' : ''
                   }`}
                   onClick={() => responder(op.chave)}
                 >
