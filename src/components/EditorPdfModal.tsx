@@ -530,8 +530,8 @@ export default function EditorPdfModal({ aberto, onFechar, onExtrairComIA }: Pro
                     multiple
                     className="hidden"
                     onChange={(e) => {
-                      if (e.target.files) {
-                        setArquivosUnir((prev) => [...prev, ...Array.from(e.target.files)]);
+                      if (e.target.files && e.target.files.length > 0) {
+                        setArquivosUnir((prev) => [...prev, ...Array.from(e.target.files!)]);
                       }
                     }}
                   />
