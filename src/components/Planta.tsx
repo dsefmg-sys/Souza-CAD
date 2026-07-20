@@ -13,6 +13,7 @@ import { rotuloPapelProprietario } from '@/lib/export/papelProprietario';
 import type { ObjetoDesenho } from '@/lib/topo/types';
 import { calcularAreaSgl } from '@/lib/topo/sgl';
 import { carregarPreferencias, type PreferenciasApp } from '@/lib/store/preferencias';
+import { iniciarDoNorteHorario } from '@/lib/topo/vertices';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -1099,7 +1100,17 @@ export default function Planta({
   const desenhoPts = desenhoAtual.map((p) => { const u = geoParaUtm(p.lat, p.lon, zona, hemisferio); return { x: sx(u.leste), y: sy(u.norte) }; });
 
   // ---- cálculo de nortes e coordenadas ----
-  const vref = vertices[0];
+  const vref: Vertex = useMemo(() => {
+    if (!vertices || vertices.length === 0) {
+      return {
+        id: 'vref_fallback', ordem: 0, nome: 'V1', codigoCampo: '', norte: 0, leste: 0, elevacao: 0,
+        lat: 0, lon: 0, tipo: 'P', codigoSigef: 'V1', isDivisa: false
+      };
+    }
+    if (vertices.length < 3) return vertices[0];
+    const ordenados = iniciarDoNorteHorario(vertices);
+    return ordenados[0] ?? vertices[0];
+  }, [vertices]);
   const conv = convergenciaMeridiana(vref.lat, vref.lon, zona);
   // Declinação magnética: usa o valor informado no imóvel se houver; senão, estima pela posição
   // (lat/lon) do vértice de referência — no Brasil ela nunca é zero (fica ~10° a 25° oeste), então

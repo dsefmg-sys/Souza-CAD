@@ -2338,7 +2338,8 @@ export default function EditorPage() {
     // o histórico NÃO atravessa glebas: um desfazer depois da troca restauraria os vértices da
     // OUTRA gleba dentro desta (corrupção silenciosa) — melhor recomeçar o histórico
     histRef.current = []; redoRef.current = [];
-    setVertices(g.vertices);
+    const vsOrdenados = g.vertices.length >= 3 ? iniciarDoNorteHorario(g.vertices) : g.vertices;
+    setVertices(vsOrdenados);
     setConfrontantes(g.confrontantes);
     setConfrontantePorLado(g.confrontantePorLado);
     setObjetos(g.objetos ?? []);
