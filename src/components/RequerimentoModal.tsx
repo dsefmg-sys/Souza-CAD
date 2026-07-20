@@ -238,8 +238,8 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   const [mostrarDicas, setMostrarDicas] = useState(true);
 
   const localTipoAto = localTiposAtos.find((a) => a === 'venda' || a === 'doacao' || a === 'usucapiao') || localTiposAtos[0];
-  // Partes adicionais = mais de uma pessoa do lado do REQUERENTE ou TRANSMITENTE (ex.: cônjuges, coproprietários).
-  const permiteVariasPartes = localTipoAto === 'venda' || localTipoAto === 'doacao' || localTipoAto === 'unificacao' || localTipoAto === 'retificacao';
+  // Permite partes adicionais em todos os tipos de ato (venda, doação, unificação, retificação, desmembramento, usucapião).
+  const permiteVariasPartes = true;
 
   useEffect(() => { setMostrarDicas(carregarPreferencias().mostrarDicasEducativas); }, []);
 
@@ -254,17 +254,19 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     });
   }
 
-  function addParte() { setLocalPartesAdicionais((ps) => [...ps, { ...PESSOA_VAZIA, papel: 'requerente' }]); }
+  function addParte(papel: 'requerente' | 'transmitente' = 'requerente', pre?: Partial<PessoaQualificada>) {
+    setLocalPartesAdicionais((ps) => [...ps, { ...PESSOA_VAZIA, papel, ...pre }]);
+  }
   function setParte(i: number, p: PessoaQualificada) { setLocalPartesAdicionais((ps) => ps.map((x, k) => (k === i ? p : x))); }
   function rmParte(i: number) { setLocalPartesAdicionais((ps) => ps.filter((_, k) => k !== i)); }
 
   const rotulos = {
-    venda: { req: 'Requerente (adquirente / comprador)', trans: 'Proprietário registral (transmitente / vendedor)' },
-    doacao: { req: 'Requerente (donatário)', trans: 'Doador (proprietário registral)' },
-    unificacao: { req: 'Requerente (proprietário)', trans: 'Coproprietário / cônjuge (se houver)' },
-    desmembramento: { req: 'Requerente (proprietário)', trans: 'Coproprietário / cônjuge (se houver)' },
-    usucapiao: { req: 'Requerente (usucapiente)', trans: 'Titular registral / confrontante (se houver)' },
-    retificacao: { req: 'Requerente (proprietário / possuidor)', trans: 'Cônjuge / Coproprietário (se houver - opcional)' },
+    venda: { req: 'Requerente (adquirente / comprador principal)', trans: 'Proprietário registral (transmitente / vendedor principal)' },
+    doacao: { req: 'Requerente (donatário principal)', trans: 'Doador (proprietário registral principal)' },
+    unificacao: { req: 'Requerente (proprietário principal)', trans: 'Coproprietário / cônjuge (se houver)' },
+    desmembramento: { req: 'Requerente (proprietário principal)', trans: 'Coproprietário / cônjuge (se houver)' },
+    usucapiao: { req: 'Requerente (usucapiente principal)', trans: 'Titular registral / confrontante (se houver)' },
+    retificacao: { req: 'Requerente (proprietário / possuidor principal)', trans: 'Cônjuge / Coproprietário (se houver - opcional)' },
   }[localTipoAto] ?? { req: 'Requerente', trans: 'Coproprietário (se houver)' };
 
   useEffect(() => {
@@ -282,7 +284,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           cpf: p.cpf,
           conjugeNome: p.conjugeNome || '',
           conjugeCpf: p.conjugeCpf || '',
-          papel: 'transmitente' as const
+          papel: (localTipoAto === 'venda' ? 'requerente' : 'transmitente') as const
         }));
       }
       setLocalPartesAdicionais(iniciais);
@@ -588,12 +590,73 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           {/* Partes Adicionais */}
           {permiteVariasPartes && (
             <div className="space-y-3 rounded-lg border border-dashed p-3 bg-muted/5">
-              <div className="flex items-center justify-between border-b pb-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block leading-none">Partes adicionais</span>
-                  <span className="text-[9px] text-muted-foreground block leading-tight mt-1">Para conjugar mais proprietários/vendedores ou compradores no documento.</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block leading-none">
+                    Partes adicionais (Co-compradores / Donatários / Coproprietários)
+                  </span>
+                  <span className="text-[9px] text-muted-foreground block leading-tight mt-1">
+                    Adicione quantos compradores, vendedores ou coproprietários desejar no requerimento.
+                  </span>
                 </div>
-                <Button type="button" size="sm" variant="outline" onClick={addParte} className="h-7 text-xs"><UserPlus className="size-3 mr-1" /> Adicionar pessoa</Button>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {sugProp.length > 0 && (
+                    <select
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        if (!id) return;
+                        const p = sugProp.find((s) => s.id === id);
+                        if (p) {
+                          addParte(localTipoAto === 'venda' || localTipoAto === 'doacao' ? 'requerente' : 'transmitente', {
+                            nome: p.nome,
+                            cpf: p.cpf,
+                            rg: p.rg || '',
+                            nacionalidade: p.nacionalidade || 'Brasileira',
+                            naturalidade: p.naturalidade || '',
+                            dataNascimento: p.dataNascimento || '',
+                            profissao: p.profissao || '',
+                            estadoCivil: p.estadoCivil || '',
+                            conjugeNome: p.conjugeNome || '',
+                            conjugeCpf: p.conjugeCpf || '',
+                            filiacao: p.filiacao || '',
+                            endereco: p.endereco || '',
+                            cidadeUf: p.cidadeUf || '',
+                            cep: p.cep || '',
+                          });
+                        }
+                        e.target.value = '';
+                      }}
+                      className="h-7 rounded border bg-background px-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/40 focus:ring-1 focus:ring-primary cursor-pointer"
+                    >
+                      <option value="">+ Puxar do Banco de Cadastros ({sugProp.length})...</option>
+                      {sugProp.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nome} ({s.cpf || 'Sem CPF'})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => addParte('requerente')}
+                    className="h-7 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                  >
+                    <UserPlus className="size-3 mr-1" />
+                    + {localTipoAto === 'venda' ? 'Comprador Adicional' : localTipoAto === 'doacao' ? 'Donatário Adicional' : 'Requerente Adicional'}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => addParte('transmitente')}
+                    className="h-7 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                  >
+                    <UserPlus className="size-3 mr-1" />
+                    + {localTipoAto === 'venda' ? 'Vendedor Adicional' : localTipoAto === 'doacao' ? 'Doador Adicional' : 'Transmitente Adicional'}
+                  </Button>
+                </div>
               </div>
               {localPartesAdicionais.map((p, i) => (
                 <div key={i} className="space-y-1 rounded-lg border p-3 bg-background/50">
