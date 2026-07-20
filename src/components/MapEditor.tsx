@@ -342,6 +342,7 @@ function AutoResizeMap() {
 function AutoLocalizarGPS({ vertices }: { vertices: Vertex[] }) {
   const map = useMap();
   useEffect(() => {
+    let montado = true;
     if (typeof window === 'undefined' || !navigator.geolocation) return;
     if (vertices && vertices.length > 0) return;
     const jaPediu = localStorage.getItem('metrica:gps_startup_solicitado');
@@ -349,11 +350,15 @@ function AutoLocalizarGPS({ vertices }: { vertices: Vertex[] }) {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-        map.setView(ll, 16);
+        if (!montado) return;
         try {
+          if (!map) return;
+          const container = map.getContainer();
+          if (!container || !(map as any)._mapPane) return;
+          const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+          map.setView(ll, 16);
           localStorage.setItem('metrica:cliente_gps', JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude, ts: Date.now() }));
-        } catch {}
+        } catch { /* ignore Leaflet desmontado */ }
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
@@ -362,6 +367,10 @@ function AutoLocalizarGPS({ vertices }: { vertices: Vertex[] }) {
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
+
+    return () => {
+      montado = false;
+    };
   }, [map, vertices]);
   return null;
 }
@@ -506,8 +515,12 @@ function CliqueMapa({ modo, onInserir, onCliqueDesenho, onCancelDesenho, onDblCl
 function FocoMap({ latLng }: { latLng: [number, number] | null }) {
   const map = useMap();
   useEffect(() => {
-    if (latLng) {
-      map.setView(latLng, 18, { animate: true });
+    if (latLng && map) {
+      try {
+        const container = map.getContainer();
+        if (!container || !(map as any)._mapPane) return;
+        map.setView(latLng, 18, { animate: true });
+      } catch { /* ignore Leaflet desmontado */ }
     }
   }, [latLng, map]);
   return null;
