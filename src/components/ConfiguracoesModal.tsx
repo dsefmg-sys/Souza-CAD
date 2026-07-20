@@ -493,28 +493,49 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     flash('Modelo SIGEF restaurado.');
   }
 
+  function compactarUpload(file: File, maxDim = 600): Promise<string> {
+    return new Promise((resolve) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const raw = String(r.result || '');
+        if (!raw) return resolve('');
+        const img = new Image();
+        img.onload = () => {
+          let w = img.naturalWidth || img.width;
+          let h = img.naturalHeight || img.height;
+          if (!w || !h) return resolve(raw);
+          if (w <= maxDim && h <= maxDim && file.size < 80 * 1024) return resolve(raw);
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            else { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(raw);
+          ctx.drawImage(img, 0, 0, w, h);
+          const isPng = file.type === 'image/png';
+          const res = isPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.82);
+          resolve(res.length < raw.length ? res : raw);
+        };
+        img.onerror = () => resolve(raw);
+        img.src = raw;
+      };
+      r.readAsDataURL(file);
+    });
+  }
+
   function lerLogo(file: File) {
-    if (file.size > 500 * 1024) {
-      flash('Logotipo muito grande! Limite de 500 KB para evitar lentidão.');
-      return;
-    }
-    const r = new FileReader();
-    r.onload = () => {
-      changeEsc('logoDataUrl', String(r.result));
-    };
-    r.readAsDataURL(file);
+    compactarUpload(file, 600).then((res) => {
+      if (res) changeEsc('logoDataUrl', res);
+    });
   }
 
   function lerAssinatura(file: File) {
-    if (file.size > 500 * 1024) {
-      flash('Assinatura muito grande! Limite de 500 KB para evitar lentidão.');
-      return;
-    }
-    const r = new FileReader();
-    r.onload = () => {
-      changeEsc('assinaturaDataUrl', String(r.result));
-    };
-    r.readAsDataURL(file);
+    compactarUpload(file, 600).then((res) => {
+      if (res) changeEsc('assinaturaDataUrl', res);
+    });
   }
 
   const getTabIcon = (a: AbaConfig) => {

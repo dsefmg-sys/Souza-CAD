@@ -170,10 +170,11 @@ function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, la
   let y = margem + 3;
   if (esc.logoDataUrl) {
     try {
-      const fmt = esc.logoDataUrl.includes('image/png') ? 'PNG' : 'JPEG';
+      const logoOtimizada = otimizarImagemBase64(esc.logoDataUrl) || esc.logoDataUrl;
+      const fmt = logoOtimizada.includes('image/png') ? 'PNG' : 'JPEG';
       let w = 36;
       let h = 15;
-      const dim = obterDimensoesBase64(esc.logoDataUrl);
+      const dim = obterDimensoesBase64(logoOtimizada);
       if (dim && dim.w > 0 && dim.h > 0) {
         const ratio = dim.w / dim.h;
         if (ratio > 36 / 15) {
@@ -184,7 +185,7 @@ function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, la
           w = 15 * ratio;
         }
       }
-      doc.addImage(esc.logoDataUrl, fmt, larg / 2 - w / 2, y, w, h);
+      doc.addImage(logoOtimizada, fmt, larg / 2 - w / 2, y, w, h, undefined, 'FAST');
       y += h + 3;
     } catch (err) {
       console.warn("Erro ao renderizar logo no PDF:", err);
@@ -266,13 +267,58 @@ function decorarDoc(doc: jsPDF) {
   } as unknown as typeof doc.text;
 }
 
+/** Otimiza e reduz imagens base64 pesadas antes de gravar no PDF */
+function otimizarImagemBase64(dataUrl?: string, maxDim = 600, qualidade = 0.82): string {
+  if (!dataUrl || typeof dataUrl !== 'string') return '';
+  if (dataUrl.length < 40000) return dataUrl;
+  if (typeof window === 'undefined' || typeof document === 'undefined') return dataUrl;
+  try {
+    const img = new Image();
+    img.src = dataUrl;
+    if (!img.complete || !img.naturalWidth) return dataUrl;
+
+    let w = img.naturalWidth;
+    let h = img.naturalHeight;
+    if (w <= maxDim && h <= maxDim && dataUrl.length < 100000) return dataUrl;
+
+    if (w > maxDim || h > maxDim) {
+      if (w > h) {
+        h = Math.round((h * maxDim) / w);
+        w = maxDim;
+      } else {
+        w = Math.round((w * maxDim) / h);
+        h = maxDim;
+      }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const isPng = dataUrl.includes('image/png');
+    if (isPng) {
+      const pngRes = canvas.toDataURL('image/png');
+      if (pngRes.length > 0 && pngRes.length < dataUrl.length) return pngRes;
+    }
+    const jpgRes = canvas.toDataURL('image/jpeg', qualidade);
+    return jpgRes.length < dataUrl.length ? jpgRes : dataUrl;
+  } catch (e) {
+    console.warn("Erro ao otimizar imagem para PDF:", e);
+    return dataUrl;
+  }
+}
+
 /** Adiciona imagem de assinatura PNG sem achatar ou distorcer sua proporção de aspecto (max 48mm x 18mm). */
 function adicionarAssinaturaSemAchatamento(doc: jsPDF, dataUrl: string, xCentral: number, yLinha: number, maxW: number = 48, maxH: number = 18) {
   try {
-    const fmt = dataUrl.includes('image/png') ? 'PNG' : 'JPEG';
+    const assOtimizada = otimizarImagemBase64(dataUrl, 600, 0.82) || dataUrl;
+    const fmt = assOtimizada.includes('image/png') ? 'PNG' : 'JPEG';
     let w = maxW;
     let h = maxH;
-    const dim = obterDimensoesBase64(dataUrl);
+    const dim = obterDimensoesBase64(assOtimizada);
     if (dim && dim.w > 0 && dim.h > 0) {
       const ratio = dim.w / dim.h;
       if (ratio > maxW / maxH) {
@@ -284,7 +330,7 @@ function adicionarAssinaturaSemAchatamento(doc: jsPDF, dataUrl: string, xCentral
       }
     }
     // Desenha centralizado sobre a linha de assinatura sem achatar
-    doc.addImage(dataUrl, fmt, xCentral - w / 2, yLinha - h - 0.5, w, h);
+    doc.addImage(assOtimizada, fmt, xCentral - w / 2, yLinha - h - 0.5, w, h, undefined, 'FAST');
   } catch (e) {
     console.warn("Erro ao desenhar assinatura automática:", e);
   }

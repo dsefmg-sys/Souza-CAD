@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     }
 
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
-    pdf.addImage(pngBase64, 'PNG', 0, 0, 420, 297);
+    pdf.addImage(pngBase64, 'PNG', 0, 0, 420, 297, undefined, 'FAST');
     
     const arrayBuffer = pdf.output('arraybuffer');
     const buffer = Buffer.from(arrayBuffer);
