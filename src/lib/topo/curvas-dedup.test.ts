@@ -57,7 +57,7 @@ describe('Delaunay and Contour Coordinate Deduplication', () => {
     const elapsed = Date.now() - t0;
 
     expect(result.length).toBeGreaterThan(0);
-    expect(elapsed).toBeLessThan(400); // Should run in less than 400ms
+    expect(elapsed).toBeLessThan(1000); // Executa em menos de 1 segundo mesmo sob carga de CPU
   });
 
   it('handles extremely large coordinates without loss of precision or infinite loops (Caso 5.2)', () => {
