@@ -10511,8 +10511,22 @@ export default function EditorPage() {
           </div>
         </>
       )}
-      <AssinaturaModal open={assinaturaAberta} onOpenChange={setAssinaturaAberta} />
-      <PrimeiroAcessoModal open={!setupOk && !entrouSemLogin} onConcluir={() => { try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ } const tec = carregarTecnico(); const esc = carregarEscritorio(); setTecnico(tec); setEscritorio(esc); setSetupOk(true); empurrarConfigParaNuvem().catch(() => {}); sincronizarPerfil({ empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {}); }} onVoltarLogin={() => { limparConfigLocalNaSaida(); sair(); }} />
+      <PrimeiroAcessoModal
+        open={!setupOk}
+        onConcluir={() => {
+          try { localStorage.setItem('metrica.setupFeito', '1'); } catch { /* ignore */ }
+          const tec = carregarTecnico(); const esc = carregarEscritorio();
+          setTecnico(tec); setEscritorio(esc);
+          setSetupOk(true);
+          empurrarConfigParaNuvem().catch(() => {});
+          sincronizarPerfil({ empresaNome: esc.nome, empresaCnpj: esc.cnpj, rtNome: tec.nome, rtCft: tec.cft }).catch(() => {});
+          // Carrega o Projeto Modelo (DEMO) automaticamente para o novo usuário no encerramento do cadastro
+          void carregarProjetoFicticio({ semAvisoConfirmacao: true });
+        }}
+        onVoltarLogin={() => {
+          limparConfigLocalNaSaida(); sair();
+        }}
+      />
 
 
       <PontosBancoModal open={pontosAberto} onOpenChange={setPontosAberto} />
