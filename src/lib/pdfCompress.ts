@@ -1,22 +1,20 @@
 /**
- * Compressão e Manipulação de PDF no cliente (navegador).
+ * Suite Completa de Manipulação e Otimização de PDF no Cliente (Navegador).
  *
- * Funcionalidades:
- *   1. Compressão inteligente com preservação visual (downscale + re-codificação JPEG).
- *   2. Fusão / Junção de PDFs (Merge).
- *   3. Divisão / Seleção de Páginas (Split / Extract).
+ * Funcionalidades Práticas:
+ *   1. Reduzir Peso (Compressão com presets práticos).
+ *   2. Organizar & Reordenar Páginas (Miniaturas, girar 90/180°, mover, excluir).
+ *   3. Unir Vários PDFs (Merge).
+ *   4. Dividir / Extrair Páginas Específicas.
  *
- * Tudo roda localmente no navegador — 100% privado, sem tráfego desnecessário na nuvem.
+ * 100% no navegador — seguro, privado e rápido.
  */
 
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, degrees } from 'pdf-lib';
 
 export interface CompressPdfOptions {
-  /** Peso máximo desejado em bytes. Se null/0, usa preset equilibrado. */
   targetBytes?: number | null;
-  /** Nível de qualidade: 'alta' (100% DPI), 'media' (equilibrado), 'maxima_compressao' (~100 DPI) */
   presetQuality?: 'alta' | 'media' | 'maxima_compressao';
-  /** Callback de progresso (mensagens para UI). */
   onProgress?: (message: string) => void;
 }
 
@@ -28,6 +26,15 @@ export interface CompressPdfResult {
   reachedTarget: boolean;
   scale: number;
   quality: number;
+}
+
+export interface MiniaturaPagina {
+  index: number;
+  numPagina: number;
+  dataUrl: string;
+  largura: number;
+  altura: number;
+  rotacao: number; // 0, 90, 180, 270
 }
 
 const PRESETS_QUALITY = {
@@ -99,7 +106,7 @@ export async function compressPdf(
   const { targetBytes, presetQuality = 'media', onProgress } = options;
   const initialBytes = file.size;
 
-  onProgress?.('Carregando biblioteca PDF...');
+  onProgress?.('Preparando documento...');
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
@@ -109,7 +116,7 @@ export async function compressPdf(
 
   try {
     for (let i = 1; i <= pdf.numPages; i++) {
-      onProgress?.(`Renderizando página ${i}/${pdf.numPages}...`);
+      onProgress?.(`Otimizando página ${i} de ${pdf.numPages}...`);
       const page = await pdf.getPage(i);
       const unit = page.getViewport({ scale: 1 });
       let scale = BASE_RENDER_SCALE;
@@ -130,10 +137,10 @@ export async function compressPdf(
   }
 
   const preset = PRESETS_QUALITY[presetQuality] || PRESETS_QUALITY.media;
-  onProgress?.('Comprimindo páginas...');
+  onProgress?.('Reduzindo peso...');
   const { blobs } = await encodeAtPreset(pages, preset);
 
-  onProgress?.('Gerando PDF otimizado...');
+  onProgress?.('Finalizando PDF otimizado...');
   const bytes = await buildPdf(pages, blobs);
   const finalBytes = bytes.byteLength;
   const percentualEconomia = Math.max(0, Math.round(((initialBytes - finalBytes) / initialBytes) * 100));
@@ -147,6 +154,73 @@ export async function compressPdf(
     scale: preset.d,
     quality: preset.q,
   };
+}
+
+/** Gera miniaturas leves (data URLs) para visualização rápida das páginas. */
+export async function gerarMiniaturasPdf(
+  file: File,
+  onProgress?: (msg: string) => void
+): Promise<MiniaturaPagina[]> {
+  onProgress?.('Carregando miniaturas...');
+  const pdfjs = await import('pdfjs-dist');
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+
+  const data = new Uint8Array(await file.arrayBuffer());
+  const pdf = await pdfjs.getDocument({ data }).promise;
+  const miniaturas: MiniaturaPagina[] = [];
+
+  try {
+    for (let i = 1; i <= pdf.numPages; i++) {
+      onProgress?.(`Gerando miniatura da página ${i}/${pdf.numPages}...`);
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 0.35 }); // Escala leve para miniatura rápida
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        await page.render({ canvasContext: ctx, viewport } as any).promise;
+        miniaturas.push({
+          index: i - 1,
+          numPagina: i,
+          dataUrl: canvas.toDataURL('image/jpeg', 0.7),
+          largura: Math.ceil(viewport.width),
+          altura: Math.ceil(viewport.height),
+          rotacao: 0,
+        });
+      }
+    }
+  } finally {
+    (pdf as any).destroy?.();
+  }
+
+  return miniaturas;
+}
+
+/** Reorganiza, gira e constrói o PDF final a partir da ordem visual das páginas. */
+export async function reorganizarPdf(
+  file: File,
+  paginasOrdem: { indexOriginal: number; rotacao: number }[],
+  onProgress?: (msg: string) => void
+): Promise<Uint8Array> {
+  onProgress?.('Reorganizando páginas...');
+  const fileBytes = await file.arrayBuffer();
+  const srcDoc = await PDFDocument.load(fileBytes);
+  const outDoc = await PDFDocument.create();
+
+  for (let i = 0; i < paginasOrdem.length; i++) {
+    onProgress?.(`Processando página ${i + 1} de ${paginasOrdem.length}...`);
+    const item = paginasOrdem[i];
+    const [copiedPage] = await outDoc.copyPages(srcDoc, [item.indexOriginal]);
+    if (item.rotacao !== 0) {
+      const currentRot = copiedPage.getRotation().angle;
+      copiedPage.setRotation(degrees((currentRot + item.rotacao) % 360));
+    }
+    outDoc.addPage(copiedPage);
+  }
+
+  onProgress?.('Gerando PDF reorganizado...');
+  return outDoc.save();
 }
 
 /** Junta múltiplos arquivos PDF em um só documento. */
