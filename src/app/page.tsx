@@ -6874,10 +6874,17 @@ export default function EditorPage() {
                 <Button
                   size="sm"
                   className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`}
-                  title="Dados do projeto e tabelas da prancha (F4)"
-                  onClick={alternarMenuDados}
+                  title="Dados do imóvel, proprietário e responsável técnico (F4)"
+                  onClick={() => { setPainelAberto(true); setAba('imovel'); }}
                 >
-                  <Database /> DADOS <ChevronDown className="size-3" />
+                  <Database /> DADOS
+                  <span
+                    onClick={(e) => { e.stopPropagation(); alternarMenuDados(); }}
+                    className="ml-0.5 p-0.5 hover:bg-white/20 rounded transition-colors"
+                    title="Opções de tabelas na prancha"
+                  >
+                    <ChevronDown className="size-3" />
+                  </span>
                   <Atalho k="F4" />
                 </Button>
                 {dadosMenuAberto && dadosMenuPos && (
@@ -8669,8 +8676,8 @@ export default function EditorPage() {
                 </>
               )}
 
-              {/* Controles de tutoriais e áudios de ajuda (Sempre visível) */}
-              {!introTocando && (
+              {/* Controles de tutoriais e áudios de ajuda (Ocultos no modo de pintura de divisas/confrontantes para despoluir a barra) */}
+              {!introTocando && modo !== 'confrontante' && modo !== 'divisa' && (
                 <>
                   <div className="h-4 w-px bg-border shrink-0" />
                   <div className="flex items-center gap-1 shrink-0">

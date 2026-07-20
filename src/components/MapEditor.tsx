@@ -317,6 +317,19 @@ function AjustarLimites({ vertices, referencias = [] }: { vertices: Vertex[]; re
       }
     } catch { /* coords inválidas */ }
   }, [vertices, referencias, map]);
+function AutoResizeMap() {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const container = map.getContainer();
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      try { map.invalidateSize(); } catch {}
+    });
+    observer.observe(container);
+    try { map.invalidateSize(); } catch {}
+    return () => observer.disconnect();
+  }, [map]);
   return null;
 }
 
@@ -1473,7 +1486,8 @@ export default function MapEditor(props: Props) {
 
   return (
     <div
-      style={{ width: '100%', height: '100%', position: 'relative' }}
+      style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: '#090d16' }}
+      className="h-full w-full flex-1 min-h-0 bg-[#090d16] overflow-hidden"
       onAuxClick={(e) => {
         if (e.button === 1 && onAtivar3D) {
           e.preventDefault();
@@ -1481,7 +1495,8 @@ export default function MapEditor(props: Props) {
         }
       }}
     >
-      <MapContainer center={centro} zoom={validos.length ? 16 : zoomPadrao} maxZoom={28} style={{ height: '100%', width: '100%' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
+      <MapContainer center={centro} zoom={validos.length ? 16 : zoomPadrao} maxZoom={28} style={{ height: '100%', width: '100%', background: '#090d16' }} scrollWheelZoom zoomControl={false} doubleClickZoom={false}>
+      <AutoResizeMap />
       <CursorMapa ativo={modo !== 'navegar' && !bloqueado} />
       {isDesenho && (
         <style dangerouslySetInnerHTML={{ __html: `

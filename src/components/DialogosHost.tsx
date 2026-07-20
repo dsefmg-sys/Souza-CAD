@@ -60,13 +60,28 @@ export default function DialogosHost() {
         )}
 
         {estado.modo === 'choice' ? (
-          <div className="mt-1 flex flex-col gap-2">
-            {estado.opcoes.map((op) => (
-              <Button key={op.chave} variant={op.variant ?? 'default'} className="h-10 w-full justify-center text-sm" onClick={() => responder(op.chave)}>
-                {op.label}
-              </Button>
-            ))}
-            <Button variant="ghost" size="sm" className="mt-1 w-full text-muted-foreground" onClick={() => responder(null)}>
+          <div className="mt-2 flex flex-col gap-2.5">
+            {estado.opcoes.map((op) => {
+              const v = op.variant ?? 'default';
+              const isDefault = v === 'default';
+              const isDestructive = v === 'destructive';
+              const isOutline = v === 'outline';
+              return (
+                <Button
+                  key={op.chave}
+                  variant={v}
+                  className={`h-11 w-full justify-center px-4 text-xs sm:text-sm font-extrabold tracking-wide transition-all shadow-sm active:scale-[0.98] ${
+                    isDefault ? '!bg-emerald-500 hover:!bg-emerald-400 !text-zinc-950 font-black shadow-emerald-500/20' :
+                    isDestructive ? '!bg-red-600 hover:!bg-red-700 !text-white font-extrabold shadow-red-600/20' :
+                    isOutline ? '!bg-slate-800 hover:!bg-slate-700 !text-slate-100 !border-slate-700 font-extrabold' : ''
+                  }`}
+                  onClick={() => responder(op.chave)}
+                >
+                  {op.label}
+                </Button>
+              );
+            })}
+            <Button variant="ghost" size="sm" className="mt-1 w-full text-xs font-semibold text-muted-foreground hover:text-foreground" onClick={() => responder(null)}>
               {estado.cancelLabel}
             </Button>
           </div>

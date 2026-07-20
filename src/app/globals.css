@@ -52,11 +52,19 @@
     border-color: hsl(var(--border));
   }
   html, body {
-    /* nenhuma página deve gerar rolagem LATERAL: o editor é tela cheia e as demais só rolam
-       na vertical. Sem isto, um elemento que passa alguns pixels da largura cria uma barra
-       horizontal e um "bloco vazio" à direita no app inteiro. */
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow: hidden;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+  .leaflet-container {
+    height: 100% !important;
+    width: 100% !important;
+    background-color: #090d16 !important;
   }
   body {
     background-color: hsl(var(--background));
