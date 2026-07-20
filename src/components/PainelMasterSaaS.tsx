@@ -53,6 +53,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [msg, setMsg] = useState('');
   const [busca, setBusca] = useState('');
   const [configExpandido, setConfigExpandido] = useState(true);
+  const [empresaMembrosAberta, setEmpresaMembrosAberta] = useState<Record<string, boolean>>({});
 
   // "Ver projetos" de um cliente: diagnóstico só-leitura (nunca abre no editor de verdade — evita
   // qualquer risco de salvar/mexer no trabalho de outra pessoa). Ajuda a ver onde ele travou sem
@@ -851,14 +852,17 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                   {perfisFiltrados.map((p) => {
                     const ativo = (agora - (p.ultimoAcessoEm ?? p.ultimoProjetoEm ?? 0)) < DIAS_ATIVO;
                     const status = p.statusPagamento || 'atrasado';
-                    // Etapa 2b: cobrança é da EMPRESA. Quem é membro (vinculado a outra conta) não
-                    // edita faturamento próprio aqui — segue o status de quem ele ajuda. Editar só
-                    // faz sentido na linha do DONO (workspaceUid vazio ou apontando pra si mesmo).
                     const souMembro = !!p.workspaceUid && p.workspaceUid !== p.uid;
                     const dono = souMembro ? perfis.find((x) => x.uid === p.workspaceUid) : null;
+                    const meuUid = auth()?.currentUser?.uid;
+                    const meuEmail = auth()?.currentUser?.email?.toLowerCase();
+                    const isMinhaEmpresa = (p.uid && p.uid === meuUid) || (p.workspaceUid && p.workspaceUid === meuUid) || (!!meuEmail && p.email?.toLowerCase() === meuEmail);
+                    const membrosDaEmpresa = perfis.filter((x) => x.workspaceUid === p.uid && x.uid !== p.uid);
+                    const totalUsuariosEmpresa = 1 + membrosDaEmpresa.length;
+
                     if (souMembro) {
                       return (
-                        <tr key={p.uid} className="hover:bg-zinc-900/30 transition-colors">
+                        <tr key={p.uid} className={`transition-colors ${isMinhaEmpresa ? 'bg-emerald-950/40 border-l-4 border-l-emerald-500' : 'hover:bg-zinc-900/30'}`}>
                           <td className="px-4 py-2.5 w-10 text-center">
                             <input
                               type="checkbox"
@@ -875,7 +879,14 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                             />
                           </td>
                           <td className="px-4 py-2.5">
-                            <div className="font-bold text-white leading-tight text-sm">{p.empresaNome || 'Sem Empresa'}</div>
+                            <div className="font-bold text-white leading-tight text-sm flex items-center gap-1.5 flex-wrap">
+                              <span>{p.empresaNome || 'Sem Empresa'}</span>
+                              {isMinhaEmpresa && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-400">
+                                  <Shield className="size-3" /> Sua Empresa (Membro)
+                                </span>
+                              )}
+                            </div>
                             <div className="text-xs text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
                           </td>
                           <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">
@@ -930,135 +941,201 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                         </tr>
                       );
                     }
+
+                    const subRowAberta = !!empresaMembrosAberta[p.uid];
+
                     return (
-                      <tr key={p.uid} className="hover:bg-zinc-900/30 transition-colors">
-                        <td className="px-4 py-2.5 w-10 text-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedUids.includes(p.uid)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedUids((prev) => [...prev, p.uid]);
-                                setComunicadoExpandido(true);
-                              } else {
-                                setSelectedUids((prev) => prev.filter((id) => id !== p.uid));
-                              }
-                            }}
-                            className="rounded text-zinc-950 focus:ring-emerald-500 size-4 mt-0.5 border-zinc-750 accent-emerald-500 cursor-pointer"
-                          />
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="font-bold text-white leading-tight text-sm">{p.empresaNome || 'Sem Empresa'}</div>
-                          <div className="text-xs text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
-                        </td>
-                        <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">
-                          <div>{p.email || '—'}</div>
-                          {p.ultimoAcessoEm ? (
-                            <div className="text-amber-400 font-semibold mt-0.5">login {dataBR(p.ultimoAcessoEm)}</div>
-                          ) : null}
-                        </td>
-                        <td className="px-2 py-2.5 text-center">
-                          <button type="button" title="Ver projetos salvos na nuvem deste cliente" onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)} className="inline-flex items-center justify-center gap-1 font-extrabold text-emerald-400 hover:text-emerald-300 hover:underline text-xs bg-emerald-950/40 border border-emerald-800/40 px-2 py-1 rounded-md transition-colors"><Cloud className="size-3.5 text-emerald-400 shrink-0" /> <span>{p.totalProjetos ?? 0}</span></button>
-                        </td>
-                        
-                        {/* CRM: Mensalidade */}
-                        <td className="px-2 py-2.5 text-center">
-                          <input
-                            type="number"
-                            defaultValue={p.mensalidade !== undefined ? p.mensalidade : 150}
-                            onBlur={(e) => {
-                              const val = e.target.value !== '' ? Number(e.target.value) : 150;
-                              if (val !== p.mensalidade) {
-                                atualizarClienteCRM(p.uid, { mensalidade: val });
-                              }
-                            }}
-                            className="w-20 h-9 text-center bg-zinc-950 border border-zinc-800 rounded-lg text-white px-1.5 text-xs font-bold focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
-                          />
-                        </td>
+                      <tbody key={p.uid} className="border-b border-zinc-800/40">
+                        <tr className={`transition-colors ${isMinhaEmpresa ? 'bg-emerald-950/45 border-l-4 border-l-emerald-500 font-semibold' : 'hover:bg-zinc-900/30'}`}>
+                          <td className="px-4 py-2.5 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedUids.includes(p.uid)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedUids((prev) => [...prev, p.uid]);
+                                  setComunicadoExpandido(true);
+                                } else {
+                                  setSelectedUids((prev) => prev.filter((id) => id !== p.uid));
+                                }
+                              }}
+                              className="rounded text-zinc-950 focus:ring-emerald-500 size-4 mt-0.5 border-zinc-750 accent-emerald-500 cursor-pointer"
+                            />
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="font-bold text-white leading-tight text-sm flex items-center gap-1.5 flex-wrap">
+                              <span>{p.empresaNome || 'Sem Empresa'}</span>
+                              {isMinhaEmpresa && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-400">
+                                  <Shield className="size-3" /> Sua Empresa (Matriz SaaS)
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
+                            <button
+                              type="button"
+                              onClick={() => setEmpresaMembrosAberta((prev) => ({ ...prev, [p.uid]: !prev[p.uid] }))}
+                              className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-extrabold text-emerald-400 hover:text-emerald-300 hover:underline transition-colors"
+                            >
+                              <Users className="size-3" /> {totalUsuariosEmpresa} usuário{totalUsuariosEmpresa > 1 ? 's' : ''} cadastrado{totalUsuariosEmpresa > 1 ? 's' : ''}
+                              {subRowAberta ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                            </button>
+                          </td>
+                          <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">
+                            <div>{p.email || '—'}</div>
+                            {p.ultimoAcessoEm ? (
+                              <div className="text-amber-400 font-semibold mt-0.5">login {dataBR(p.ultimoAcessoEm)}</div>
+                            ) : null}
+                          </td>
+                          <td className="px-2 py-2.5 text-center">
+                            <button type="button" title="Ver projetos salvos na nuvem deste cliente" onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)} className="inline-flex items-center justify-center gap-1 font-extrabold text-emerald-400 hover:text-emerald-300 hover:underline text-xs bg-emerald-950/40 border border-emerald-800/40 px-2 py-1 rounded-md transition-colors"><Cloud className="size-3.5 text-emerald-400 shrink-0" /> <span>{p.totalProjetos ?? 0}</span></button>
+                          </td>
+                          
+                          {/* CRM: Mensalidade */}
+                          <td className="px-2 py-2.5 text-center">
+                            <input
+                              type="number"
+                              defaultValue={p.mensalidade !== undefined ? p.mensalidade : 150}
+                              onBlur={(e) => {
+                                const val = e.target.value !== '' ? Number(e.target.value) : 150;
+                                if (val !== p.mensalidade) {
+                                  atualizarClienteCRM(p.uid, { mensalidade: val });
+                                }
+                              }}
+                              className="w-20 h-9 text-center bg-zinc-950 border border-zinc-800 rounded-lg text-white px-1.5 text-xs font-bold focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
+                            />
+                          </td>
 
-                        {/* CRM: Dia Vencimento */}
-                        <td className="px-2 py-2.5 text-center">
-                          <input
-                            type="number"
-                            min="1"
-                            max="31"
-                            defaultValue={p.vencimentoDia || 10}
-                            onBlur={(e) => {
-                              const val = e.target.value !== '' ? Number(e.target.value) : 10;
-                              if (val !== p.vencimentoDia) {
-                                atualizarClienteCRM(p.uid, { vencimentoDia: val });
-                              }
-                            }}
-                            className="w-16 h-9 text-center bg-zinc-950 border border-zinc-800 rounded-lg text-white px-1 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
-                          />
-                        </td>
+                          {/* CRM: Dia Vencimento */}
+                          <td className="px-2 py-2.5 text-center">
+                            <input
+                              type="number"
+                              min="1"
+                              max="31"
+                              defaultValue={p.vencimentoDia || 10}
+                              onBlur={(e) => {
+                                const val = e.target.value !== '' ? Number(e.target.value) : 10;
+                                if (val !== p.vencimentoDia) {
+                                  atualizarClienteCRM(p.uid, { vencimentoDia: val });
+                                }
+                              }}
+                              className="w-16 h-9 text-center bg-zinc-950 border border-zinc-800 rounded-lg text-white px-1 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
+                            />
+                          </td>
 
-                        {/* CRM: Status Faturamento Select */}
-                        <td className="px-2 py-2.5 text-center">
-                          <select
-                            value={status}
-                            onChange={(e) => {
-                              const newStatus = e.target.value as 'pago' | 'atrasado' | 'isento';
-                              const patch: Partial<PerfilUso> = { statusPagamento: newStatus };
-                              if (newStatus === 'atrasado') {
-                                patch.atrasadoDesde = Date.now();
-                              } else {
-                                patch.atrasadoDesde = null;
-                              }
-                              atualizarClienteCRM(p.uid, patch);
-                            }}
-                            className={`w-28 h-9 rounded-lg px-2 text-xs font-bold bg-zinc-950 border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 cursor-pointer transition-colors ${
-                              status === 'pago' ? 'text-emerald-400 border-emerald-500/40' :
-                              status === 'isento' ? 'text-zinc-400 border-zinc-500/40' :
-                              'text-red-400 border-red-500/40'
-                            }`}
-                          >
-                            <option value="pago" className="text-emerald-400 font-bold bg-zinc-900">Pago (Ok)</option>
-                            <option value="atrasado" className="text-red-400 font-bold bg-zinc-900">Atrasado</option>
-                            <option value="isento" className="text-zinc-400 font-bold bg-zinc-900">Isento (Free)</option>
-                          </select>
-                        </td>
+                          {/* CRM: Status Faturamento Select */}
+                          <td className="px-2 py-2.5 text-center">
+                            <select
+                              value={status}
+                              onChange={(e) => {
+                                const newStatus = e.target.value as 'pago' | 'atrasado' | 'isento';
+                                const patch: Partial<PerfilUso> = { statusPagamento: newStatus };
+                                if (newStatus === 'atrasado') {
+                                  patch.atrasadoDesde = Date.now();
+                                } else {
+                                  patch.atrasadoDesde = null;
+                                }
+                                atualizarClienteCRM(p.uid, patch);
+                              }}
+                              className={`w-28 h-9 rounded-lg px-2 text-xs font-bold bg-zinc-950 border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 cursor-pointer transition-colors ${
+                                status === 'pago' ? 'text-emerald-400 border-emerald-500/40' :
+                                status === 'isento' ? 'text-zinc-400 border-zinc-500/40' :
+                                'text-red-400 border-red-500/40'
+                              }`}
+                            >
+                              <option value="pago" className="text-emerald-400 font-bold bg-zinc-900">Pago (Ok)</option>
+                              <option value="atrasado" className="text-red-400 font-bold bg-zinc-900">Atrasado</option>
+                              <option value="isento" className="text-zinc-400 font-bold bg-zinc-900">Isento (Free)</option>
+                            </select>
+                          </td>
 
-                        {/* CRM: Observações */}
-                        <td className="px-4 py-2.5">
-                          <input
-                            type="text"
-                            placeholder="Anotações internas..."
-                            defaultValue={p.observacoesAdmin || ''}
-                            onBlur={(e) => {
-                              const val = e.target.value;
-                              if (val !== (p.observacoesAdmin || '')) {
-                                atualizarClienteCRM(p.uid, { observacoesAdmin: val });
-                              }
-                            }}
-                            className="w-full h-9 bg-zinc-950 border border-zinc-800 rounded-lg text-white px-3 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 placeholder-zinc-700 transition-colors"
-                          />
-                        </td>
+                          {/* CRM: Observações */}
+                          <td className="px-4 py-2.5">
+                            <input
+                              type="text"
+                              placeholder="Anotações internas..."
+                              defaultValue={p.observacoesAdmin || ''}
+                              onBlur={(e) => {
+                                const val = e.target.value;
+                                if (val !== (p.observacoesAdmin || '')) {
+                                  atualizarClienteCRM(p.uid, { observacoesAdmin: val });
+                                }
+                              }}
+                              className="w-full h-9 bg-zinc-950 border border-zinc-800 rounded-lg text-white px-3 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 placeholder-zinc-700 transition-colors"
+                            />
+                          </td>
 
-                        <td className="px-4 py-2.5 text-center">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-zinc-450 border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
-                        </td>
-                        <td className="px-4 py-2.5 text-center flex justify-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg"
-                            title="Ver os projetos deste cliente (só leitura) — pra achar onde ele travou"
-                            onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)}
-                          >
-                            <FolderOpen className="size-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg"
-                            title="Excluir cadastro permanentemente"
-                            onClick={() => deletarCliente(p.uid, p.email || p.empresaNome)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </td>
-                      </tr>
+                          <td className="px-4 py-2.5 text-center">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-zinc-450 border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-center flex justify-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg"
+                              title="Ver os projetos deste cliente (só leitura) — pra achar onde ele travou"
+                              onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)}
+                            >
+                              <FolderOpen className="size-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg"
+                              title="Excluir cadastro permanentemente"
+                              onClick={() => deletarCliente(p.uid, p.email || p.empresaNome)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </td>
+                        </tr>
+
+                        {subRowAberta && (
+                          <tr className="bg-zinc-950/90 border-t border-emerald-500/30">
+                            <td colSpan={10} className="p-3 pl-8">
+                              <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-2.5 shadow-md">
+                                <div className="flex items-center justify-between text-xs font-black uppercase text-emerald-400 tracking-wider">
+                                  <span className="flex items-center gap-1.5"><Users className="size-4 text-emerald-400" /> Lista Enxuta de Usuários — {p.empresaNome || 'Empresa'} ({totalUsuariosEmpresa})</span>
+                                  <span className="text-[10px] text-zinc-400 normal-case font-mono">Workspace ID: {p.workspaceUid || p.uid}</span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                  {/* Titular / Dono */}
+                                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-emerald-500/40 bg-zinc-900 text-xs shadow-2xs">
+                                    <div className="min-w-0 pr-2">
+                                      <div className="font-bold text-white flex items-center gap-1.5 truncate">
+                                        <span className="truncate">{p.rtNome || p.email || 'Titular'}</span>
+                                        <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-1.5 py-0.2 rounded font-black uppercase shrink-0">Dono</span>
+                                      </div>
+                                      <div className="text-[10px] text-zinc-400 truncate select-all">{p.email || 'sem e-mail'}</div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      <div className="text-[10px] font-mono text-emerald-400 font-extrabold">{p.totalProjetos ?? 0} proj.</div>
+                                      <div className="text-[9px] text-zinc-500">{dataBR(p.ultimoAcessoEm)}</div>
+                                    </div>
+                                  </div>
+
+                                  {/* Membros vinculados */}
+                                  {membrosDaEmpresa.map((m) => (
+                                    <div key={m.uid} className="flex items-center justify-between p-2.5 rounded-lg border border-zinc-800 bg-zinc-900 text-xs shadow-2xs">
+                                      <div className="min-w-0 pr-2">
+                                        <div className="font-bold text-white flex items-center gap-1.5 truncate">
+                                          <span className="truncate">{m.rtNome || m.email || 'Membro Auxiliar'}</span>
+                                          <span className="text-[9px] bg-zinc-800 text-zinc-400 px-1.5 py-0.2 rounded font-bold uppercase shrink-0">Auxiliar</span>
+                                        </div>
+                                        <div className="text-[10px] text-zinc-400 truncate select-all">{m.email || 'sem e-mail'}</div>
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        <div className="text-[10px] font-mono text-zinc-400">{m.totalProjetos ?? 0} proj.</div>
+                                        <div className="text-[9px] text-zinc-500">{dataBR(m.ultimoAcessoEm)}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
                     );
                   })}
                 </tbody>

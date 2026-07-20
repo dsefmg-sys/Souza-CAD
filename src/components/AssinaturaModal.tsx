@@ -411,28 +411,38 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
                 )}
 
                 <div className="space-y-2">
-                  {atribuicoesLista.map(([email, at]) => (
-                    <div key={email} className="flex flex-wrap items-center gap-2 p-2 rounded-xl border border-border/60 bg-card">
-                      <span className="min-w-[160px] flex-1 truncate text-xs font-bold font-mono text-foreground" title={email}>{email}</span>
-                      <select
-                        className="h-8 rounded-lg border bg-background px-2 text-xs font-bold outline-none"
-                        value={at.planoId}
-                        onChange={(e) => setAtribuicao(email, e.target.value, at.nivelPct)}
-                      >
-                        {cfg.planos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                      </select>
-                      <select
-                        className="h-8 rounded-lg border bg-background px-2 text-xs font-bold outline-none"
-                        value={at.nivelPct}
-                        onChange={(e) => setAtribuicao(email, at.planoId, Number(e.target.value))}
-                      >
-                        {cfg.niveis.map((n, i) => <option key={i} value={n.pct}>{n.pct}% ({n.rotulo})</option>)}
-                      </select>
-                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10" onClick={() => removerAtribuicao(email)}>
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  ))}
+                  {atribuicoesLista.map(([email, at]) => {
+                    const isMinhaConta = user?.email && email.toLowerCase() === user.email.toLowerCase();
+                    return (
+                      <div key={email} className={`flex flex-wrap items-center gap-2 p-2.5 rounded-xl border transition-colors ${isMinhaConta ? 'bg-emerald-500/10 border-emerald-500/40 ring-1 ring-emerald-500/30' : 'border-border/60 bg-card'}`}>
+                        <div className="flex items-center gap-2 flex-1 min-w-[160px]">
+                          <span className="truncate text-xs font-bold font-mono text-foreground" title={email}>{email}</span>
+                          {isMinhaConta && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 shrink-0">
+                              <ShieldCheck className="size-3" /> Sua Empresa (Admin SaaS)
+                            </span>
+                          )}
+                        </div>
+                        <select
+                          className="h-8 rounded-lg border bg-background px-2 text-xs font-bold outline-none"
+                          value={at.planoId}
+                          onChange={(e) => setAtribuicao(email, e.target.value, at.nivelPct)}
+                        >
+                          {cfg.planos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        </select>
+                        <select
+                          className="h-8 rounded-lg border bg-background px-2 text-xs font-bold outline-none"
+                          value={at.nivelPct}
+                          onChange={(e) => setAtribuicao(email, at.planoId, Number(e.target.value))}
+                        >
+                          {cfg.niveis.map((n, i) => <option key={i} value={n.pct}>{n.pct}% ({n.rotulo})</option>)}
+                        </select>
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10" onClick={() => removerAtribuicao(email)}>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 pt-1">
