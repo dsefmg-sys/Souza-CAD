@@ -295,6 +295,7 @@ export interface ImovelData {
   cns: string;                // "03.886-9"
   codigoImovelIncra: string;  // SNCR/INCRA "9501143617043"
   proprietario: string;       // "Juraci Francisco de Sales"
+  posseiro?: string;          // nome do posseiro/possuidor quando em regime de posse
   cpfProprietario: string;
   tipoPessoa: 'Física' | 'Jurídica' | 'Espólio';
   inventarianteNome?: string;
