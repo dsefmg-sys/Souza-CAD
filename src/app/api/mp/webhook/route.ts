@@ -22,6 +22,10 @@ function resolverAlvoCobranca(externalReference: string): { tipo: 'empresa'; id:
   return { tipo: 'empresa', id: externalReference };
 }
 
+export async function GET() {
+  return NextResponse.json({ status: 'ok', service: 'mp-webhook' });
+}
+
 export async function POST(req: NextRequest) {
   const secret = process.env.MP_WEBHOOK_SECRET;
   if (!secret) {

@@ -6858,7 +6858,7 @@ export default function EditorPage() {
       {/* Cabeçalho = FLUXO DO TRABALHO (desktop). No celular ele NÃO existe na tela inicial (a
           MobileHome, centralizada, já basta) — no mapa aparece só a barrinha fina logo abaixo. */}
       {!telaEstreita && (
-      <header className="no-print flex items-stretch border-b">
+      <header className="no-print relative z-40 flex items-stretch border-b">
         <div className="flex shrink-0 items-center gap-1.5 border-r pl-2 pr-2.5 cursor-pointer hover:bg-muted/30 select-none transition-colors"
           onClick={() => setHistoriaAberta(true)}
           title="Conheça a história do Souza CAD e compartilhe">
@@ -6869,7 +6869,7 @@ export default function EditorPage() {
 
           </span>
         </div>
-        <div className="flex flex-1 items-center gap-0.5 overflow-hidden px-1 py-1 [&_button]:h-6.5 [&_button]:px-1.5 [&_button]:text-[9px] [&_button_svg]:size-2.5 [&_button]:gap-0.5">
+        <div className="flex flex-1 items-center gap-0.5 overflow-x-auto scrollbar-none px-1 py-1 [&_button]:h-6.5 [&_button]:px-1.5 [&_button]:text-[9px] [&_button_svg]:size-2.5 [&_button]:gap-0.5">
 
         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}

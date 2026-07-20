@@ -6,6 +6,10 @@ import { obterConfigSmtp } from '@/lib/server/emailSmtp';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+export async function GET() {
+  return NextResponse.json({ status: 'ok', service: 'saas-enviar-email' });
+}
+
 export async function POST(req: Request) {
   const session = await verifySession(req);
   if (!session || !session.admin) {
