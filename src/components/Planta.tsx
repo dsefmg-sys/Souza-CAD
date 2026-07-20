@@ -1107,13 +1107,14 @@ export default function Planta({
         lat: 0, lon: 0, tipo: 'P', codigoSigef: 'V1', isDivisa: false
       };
     }
+    const norteCalculado = vertices.length >= 3 ? iniciarDoNorteHorario(vertices)[0] : vertices[0];
     if (config?.verticeReferenciaId) {
       const custom = vertices.find((v) => v.id === config.verticeReferenciaId);
-      if (custom) return custom;
+      if (custom && norteCalculado && custom.id === norteCalculado.id) {
+        return custom;
+      }
     }
-    if (vertices.length < 3) return vertices[0];
-    const ordenados = iniciarDoNorteHorario(vertices);
-    return ordenados[0] ?? vertices[0];
+    return norteCalculado ?? vertices[0];
   }, [vertices, config?.verticeReferenciaId]);
   const conv = convergenciaMeridiana(vref.lat, vref.lon, zona);
   // Declinação magnética: usa o valor informado no imóvel se houver; senão, estima pela posição

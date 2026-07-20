@@ -236,8 +236,17 @@ export function linhasConferencia(
   tec: TecnicoData, cnsImovel: string, imoveisCadastrados?: ImovelCad[]
 ): LinhaConferencia[] {
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
-  return res.vertices.map((v, i) => {
-    const conf = confrontantePorLado[i] ? mapaC.get(confrontantePorLado[i]) : undefined;
+  const ordenados = res.vertices.length >= 3 ? iniciarDoNorteHorario(res.vertices) : res.vertices;
+  const idxOriginal = ordenados.map((v) => res.vertices.findIndex((x) => x.id === v.id));
+  const cplReindexado: Record<number, string> = {};
+  idxOriginal.forEach((origIdx, novoIdx) => {
+    const cid = confrontantePorLado[origIdx];
+    if (cid) cplReindexado[novoIdx] = cid;
+  });
+
+  return ordenados.map((v, i) => {
+    const cid = cplReindexado[i] ?? null;
+    const conf = cid ? mapaC.get(cid) : undefined;
     const mat = conf?.matricula ? formatMatricula(conf.matricula) : '';
     return {
       codigo: v.codigoSigef,

@@ -276,10 +276,14 @@ export function iniciarDoNorteHorario(vertices: Vertex[]): Vertex[] {
   
   const valorNorte = (v: Vertex) => {
     if (Number.isFinite(v.norte) && v.norte !== 0) return v.norte;
-    if (Number.isFinite(v.lat)) return v.lat;
+    if (Number.isFinite(v.lat) && v.lat !== 0) return v.lat;
     return 0;
   };
-  const valorLeste = (v: Vertex) => (Number.isFinite(v.leste) && v.leste !== 0 ? v.leste : v.lon ?? 0);
+  const valorLeste = (v: Vertex) => {
+    if (Number.isFinite(v.lon) && v.lon !== 0) return v.lon;
+    if (Number.isFinite(v.leste) && v.leste !== 0) return v.leste;
+    return 0;
+  };
 
   let idx = 0;
   for (let i = 1; i < anel.length; i++) {

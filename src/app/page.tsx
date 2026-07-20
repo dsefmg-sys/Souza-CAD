@@ -1221,6 +1221,17 @@ export default function EditorPage() {
   }, [user]);
   const [plantaConfig, setPlantaConfig] = useState<PlantaConfig>({});
 
+  // Sempre que os vértices da gleba ativa forem alterados ou carregados, garante que o vértice de referência
+  // da planta seja mantido sincronizado para o vértice mais ao Norte recém-calculado.
+  useEffect(() => {
+    if (!vertices || vertices.length < 3) return;
+    const ordenados = iniciarDoNorteHorario(vertices);
+    const norteId = ordenados[0]?.id;
+    if (norteId && plantaConfig.verticeReferenciaId !== norteId) {
+      setPlantaConfig((prev) => ({ ...prev, verticeReferenciaId: norteId }));
+    }
+  }, [vertices, plantaConfig.verticeReferenciaId]);
+
   // Assinatura do conteúdo do projeto, pra acender o disquete laranja quando há mudança não salva.
   // (Lógica extraída pra src/lib/hooks/useAutoSave.ts — inclui glebas INTEIRO, não só IDs,
   // pra detectar edições em glebas inativas também.)

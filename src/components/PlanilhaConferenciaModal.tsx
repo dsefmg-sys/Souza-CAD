@@ -47,7 +47,7 @@ export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, r
     ['Município(s)', imovel.municipio || '—'],
     ['Área SGL', ef ? `${numBR(ef.areaHa, 4)} ha` : '—'],
     ['Perímetro', ef ? `${numBR(ef.perimetro)} m` : '—'],
-    ['Vértice Ref. (Norte)', vRef ? (vRef.codigoSigef || vRef.nome || '—') : '—'],
+    ['Vértice Ref. (Norte)', vRef ? (vRef.codigoSigef || vRef.nome || vRef.codigoCampo || '—') : '—'],
   ];
 
   return (

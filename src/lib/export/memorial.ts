@@ -18,7 +18,8 @@ export function orientarResultadoParaNorte(
 ): { res: ResultadoCalculo; cpl: Record<number, string> } {
   if (!res || !res.vertices || res.vertices.length < 3) return { res, cpl };
   const ordenados = iniciarDoNorteHorario(res.vertices);
-  if (ordenados[0]?.id === res.vertices[0]?.id) return { res, cpl };
+  const saoIguais = ordenados.length === res.vertices.length && ordenados.every((v, i) => v.id === res.vertices[i].id);
+  if (saoIguais) return { res, cpl };
 
   const cplReindexado: Record<number, string> = {};
   ordenados.forEach((v, novoIdx) => {
