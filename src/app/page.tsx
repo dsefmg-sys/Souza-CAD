@@ -33,6 +33,7 @@ const CarModal = dynamic(() => import('@/components/CarModal'), { ssr: false });
 import TrtModal from '@/components/TrtModal';
 import ErrataModal from '@/components/ErrataModal';
 import MemorialPreviewModal from '@/components/MemorialPreviewModal';
+import { gerarMemorialDocx } from '@/lib/export/memorial';
 import ConsultarModal from '@/components/ConsultarModal';
 import AltitudeModal from '@/components/AltitudeModal';
 import { Packer } from 'docx';
