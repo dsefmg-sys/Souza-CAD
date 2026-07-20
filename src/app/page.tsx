@@ -429,7 +429,10 @@ export default function EditorPage() {
       const abrindo = !v;
       if (abrindo && pecasBtnRef.current) {
         const r = pecasBtnRef.current.getBoundingClientRect();
-        setPecasMenuPos({ top: r.bottom + 4, right: Math.max(4, window.innerWidth - r.right) });
+        const winW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+        const rightPos = Math.max(8, winW - r.right);
+        const topPos = Math.max(40, r.bottom + 4);
+        setPecasMenuPos({ top: topPos, right: rightPos });
       }
       return abrindo;
     });

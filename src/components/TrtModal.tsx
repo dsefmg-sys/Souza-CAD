@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, CheckCheck } from 'lucide-react';
+import { Copy, CheckCheck, Award, ExternalLink, ShieldCheck, FileCheck2, Building2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { ImovelData, TecnicoData } from '@/lib/topo/types';
@@ -20,33 +20,30 @@ interface Props {
 
 export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, perimetro, onChangeImovel }: Props) {
   const [copiado, setCopiado] = useState<string | null>(null);
-  // Quando o profissional tem mais de uma formação/registro cadastrado (Configurações → Pessoal),
-  // ele escolhe aqui qual credencial está citando NESTA peça — a principal ou uma das extras.
-  // As demais peças (memorial, planta etc.) continuam sempre usando a formação principal.
   const extras = tecnico?.registrosExtras ?? [];
-  const [credencialIdx, setCredencialIdx] = useState(-1); // -1 = formação principal do técnico
+  const [credencialIdx, setCredencialIdx] = useState(-1);
   const credencial = credencialIdx >= 0 && extras[credencialIdx]
     ? extras[credencialIdx]
     : { formacao: tecnico?.formacao ?? '', conselho: tecnico?.conselho ?? 'CFT', registro: tecnico?.cft ?? '' };
   const rot = rotulosProfissional({ conselho: credencial.conselho });
-  // Onde emitir o termo: TRT do técnico via SINCETI; ART do engenheiro via CREA-MG (portal SITAC).
-  const linkEmitir = rot.termo === 'ART' ? 'https://servicos-crea-mg.sitac.com.br/index.php' : 'https://servicos.sinceti.net.br/';
+  const isCrea = rot.termo === 'ART';
+  const linkEmitir = isCrea ? 'https://servicos-crea-mg.sitac.com.br/index.php' : 'https://servicos.sinceti.net.br/';
 
-  const linhas: [string, string][] = [
-    ['Responsável técnico', tecnico?.nome ?? ''],
-    ['Título profissional', credencial.formacao || ''],
-    [rot.registro, credencial.registro || ''],
-    ['Credenciamento INCRA', tecnico?.credenciamentoIncra ?? ''],
-    ['Atividade técnica', 'Georreferenciamento de imóvel rural — levantamento topográfico georreferenciado (SIGEF/INCRA)'],
-    ['Proprietário / contratante', imovel.proprietario],
-    ['CPF/CNPJ', imovel.cpfProprietario],
-    ['Imóvel', imovel.denominacao],
-    ['Matrícula', imovel.matricula],
-    ['Código do Imóvel (SNCR/INCRA)', imovel.codigoImovelIncra],
-    ['Cartório (CNS)', imovel.cns],
-    ['Município/UF', imovel.municipio],
-    ['Área (ha)', `${numBR(areaHa, 4)} ha`],
-    ['Perímetro (m)', `${numBR(perimetro)} m`],
+  const linhas: { label: string; valor: string; cor: string }[] = [
+    { label: 'Responsável técnico', valor: tecnico?.nome ?? '', cor: 'border-l-indigo-500' },
+    { label: 'Título profissional', valor: credencial.formacao || '', cor: 'border-l-indigo-500' },
+    { label: rot.registro, valor: credencial.registro || '', cor: 'border-l-sky-500' },
+    { label: 'Credenciamento INCRA', valor: tecnico?.credenciamentoIncra ?? '', cor: 'border-l-amber-500' },
+    { label: 'Atividade técnica', valor: 'Georreferenciamento de imóvel rural — levantamento topográfico georreferenciado (SIGEF/INCRA)', cor: 'border-l-emerald-500' },
+    { label: 'Proprietário / contratante', valor: imovel.proprietario, cor: 'border-l-blue-500' },
+    { label: 'CPF/CNPJ do Titular', valor: imovel.cpfProprietario, cor: 'border-l-blue-500' },
+    { label: 'Imóvel', valor: imovel.denominacao, cor: 'border-l-purple-500' },
+    { label: 'Matrícula', valor: imovel.matricula, cor: 'border-l-purple-500' },
+    { label: 'Código do Imóvel (SNCR/INCRA)', valor: imovel.codigoImovelIncra, cor: 'border-l-amber-500' },
+    { label: 'Cartório (CNS)', valor: imovel.cns, cor: 'border-l-teal-500' },
+    { label: 'Município/UF', valor: imovel.municipio, cor: 'border-l-teal-500' },
+    { label: 'Área (ha)', valor: `${numBR(areaHa, 4)} ha`, cor: 'border-l-emerald-500' },
+    { label: 'Perímetro (m)', valor: `${numBR(perimetro)} m`, cor: 'border-l-emerald-500' },
   ];
 
   function copiar(texto: string, chave: string) {
@@ -57,30 +54,49 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
         ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
         document.body.appendChild(ta); ta.focus(); ta.select();
         document.execCommand('copy'); document.body.removeChild(ta); ok();
-      } catch { /* navegador não permitiu copiar */ }
+      } catch { /* erro */ }
     };
     if (navigator.clipboard?.writeText) navigator.clipboard.writeText(texto).then(ok).catch(fallback);
     else fallback();
   }
+
   function copiarTudo() {
-    const txt = linhas.map(([k, v]) => `${k}: ${v || '—'}`).join('\n');
+    const txt = linhas.map(({ label, valor }) => `${label}: ${valor || '—'}`).join('\n');
     copiar(txt, '__tudo__');
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Dados para o {rot.termo}</DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[88vh] flex flex-col p-5 bg-background shadow-2xl rounded-2xl border border-border">
+        <DialogHeader className="shrink-0 pb-3 border-b border-border/60 flex flex-row items-center justify-between">
+          <DialogTitle className="flex items-center gap-2.5 text-base font-black uppercase tracking-wider text-foreground">
+            <div className={`flex size-9 items-center justify-center rounded-xl ${isCrea ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400' : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'}`}>
+              <Award className="size-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span>Dados Oficiais para a {rot.termo}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${isCrea ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400' : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'}`}>
+                  {rot.conselho}
+                </span>
+              </div>
+              <p className="text-[11px] font-normal text-muted-foreground normal-case">
+                Copie os campos preenchidos e abra o sistema do conselho ({isCrea ? 'CREA-MG / SITAC' : 'CFT / SINCETI'}) para emissão.
+              </p>
+            </div>
+          </DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground">Confira e copie os campos para preencher a {rot.termoExtenso} ({rot.termo}) no conselho.</p>
-        {/* Só aparece pra quem tem mais de uma formação cadastrada (Configurações → Pessoal) —
-            escolhe qual credencial está citando NESTA peça. */}
+
+        {/* Escolha de credencial (se tiver extras) */}
         {extras.length > 0 && (
-          <div className="flex items-center gap-2 rounded-sm border bg-muted/20 p-2">
-            <label className="shrink-0 text-xs font-semibold text-muted-foreground">Emitir como</label>
-            <select className="h-8 flex-1 rounded-sm border bg-background px-2 text-sm"
-              value={credencialIdx} onChange={(e) => setCredencialIdx(Number(e.target.value))}>
+          <div className="flex items-center gap-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-2.5 shrink-0">
+            <Building2 className="size-4 text-indigo-500 shrink-0" />
+            <label className="shrink-0 text-xs font-bold text-indigo-600 dark:text-indigo-400">Emitir como:</label>
+            <select
+              className="h-8 flex-1 rounded-lg border border-indigo-500/30 bg-background px-3 text-xs font-bold text-foreground outline-none focus:ring-1 focus:ring-indigo-500"
+              value={credencialIdx}
+              onChange={(e) => setCredencialIdx(Number(e.target.value))}
+            >
               <option value={-1}>{tecnico?.formacao || 'Formação principal'} — {tecnico?.conselho ?? 'CFT'}{tecnico?.cft ? ` (${tecnico.cft})` : ''}</option>
               {extras.map((r, i) => (
                 <option key={i} value={i}>{r.formacao || r.conselho} — {r.conselho}{r.registro ? ` (${r.registro})` : ''}</option>
@@ -88,31 +104,69 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
             </select>
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-sm border p-3 bg-muted/20 overflow-y-auto">
-          {linhas.map(([k, v]) => (
-            <div key={k} className="flex items-center justify-between gap-2 p-2 border rounded-sm bg-background text-sm">
-              <div className="min-w-0"><div className="text-[10px] uppercase text-muted-foreground">{k}</div><div className="truncate font-medium">{v || '—'}</div></div>
-              <Button size="sm" variant="ghost" className="h-8 w-8 p-0 shrink-0" onClick={() => copiar(v, k)} title="Copiar">{copiado === k ? <CheckCheck className="text-primary size-4" /> : <Copy className="size-4" />}</Button>
+
+        {/* Grid colorido de campos */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-3 rounded-xl border border-border/80 bg-slate-500/5 overflow-y-auto min-h-0 flex-1">
+          {linhas.map(({ label, valor, cor }) => (
+            <div
+              key={label}
+              className={`group flex items-center justify-between gap-2 p-2.5 border border-border/60 border-l-4 ${cor} rounded-xl bg-card hover:bg-muted/40 transition-all shadow-2xs`}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="text-[9.5px] uppercase font-black tracking-wider text-muted-foreground">{label}</div>
+                <div className="truncate text-xs font-extrabold text-foreground mt-0.5" title={valor}>
+                  {valor || <span className="text-muted-foreground/60 font-normal italic">DADO AUSENTE</span>}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0 shrink-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                onClick={() => copiar(valor, label)}
+                title={`Copiar ${label}`}
+              >
+                {copiado === label ? <CheckCheck className="size-3.5 text-emerald-500 animate-in zoom-in-50" /> : <Copy className="size-3.5" />}
+              </Button>
             </div>
           ))}
         </div>
-        <div className="flex justify-between items-center mt-3 border-t pt-3">
-          <a href={linkEmitir} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="default" className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1">
-              EMITIR {rot.termo}
+
+        {/* Barra de ação inferior */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/60 shrink-0">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <a href={linkEmitir} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-initial">
+              <Button
+                size="sm"
+                className={`w-full h-9 gap-1.5 font-black uppercase text-xs tracking-wider shadow-md active:scale-98 transition-all ${
+                  isCrea ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                }`}
+              >
+                <ExternalLink className="size-4" /> Abrir Portal {isCrea ? 'CREA-MG' : 'SINCETI'}
+              </Button>
+            </a>
+            <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs font-bold" onClick={copiarTudo}>
+              {copiado === '__tudo__' ? <CheckCheck className="size-4 text-emerald-500" /> : <Copy className="size-4" />} Copiar Tudo
             </Button>
-          </a>
-          <Button size="sm" className="gap-1" onClick={copiarTudo}>{copiado === '__tudo__' ? <CheckCheck className="size-4" /> : <Copy className="size-4" />} Copiar tudo</Button>
-        </div>
-        {/* Nº do TRT emitido — no FIM; vira dado do projeto e aparece na planta na hora */}
-        <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-2 rounded-lg border p-3 bg-muted/10 shadow-sm">
-          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Nº do {rot.termo} emitido:</label>
-          <input
-            className="flex-1 w-full rounded-md border bg-background px-3 py-1.5 text-xs font-mono font-bold focus:ring-1 focus:ring-primary"
-            placeholder={`ex.: BR2026123456 (TRT) ou MG202698765 (ART). Cole aqui para vincular à planta e peças`}
-            value={imovel.numeroTrt ?? ''}
-            onChange={(e) => onChangeImovel?.({ ...imovel, numeroTrt: e.target.value })}
-          />
+          </div>
+
+          {/* Campo de vinculo de numero TRT/ART */}
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-1 max-w-md bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-1.5">
+            <FileCheck2 className="size-4 text-amber-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[9px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">Nº do {rot.termo} Emitido</div>
+              <input
+                className="w-full bg-transparent border-0 outline-none text-xs font-mono font-bold text-foreground placeholder:text-muted-foreground/60 focus:ring-0 p-0"
+                placeholder={`Cole o número da ${rot.termo} para o carimbo da planta`}
+                value={imovel.numeroTrt ?? ''}
+                onChange={(e) => onChangeImovel?.({ ...imovel, numeroTrt: e.target.value })}
+              />
+            </div>
+            {imovel.numeroTrt && (
+              <span className="flex items-center gap-1 text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full shrink-0">
+                <ShieldCheck className="size-3" /> VINCULADO
+              </span>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
