@@ -317,6 +317,9 @@ function AjustarLimites({ vertices, referencias = [] }: { vertices: Vertex[]; re
       }
     } catch { /* coords inválidas */ }
   }, [vertices, referencias, map]);
+  return null;
+}
+
 function AutoResizeMap() {
   const map = useMap();
   useEffect(() => {

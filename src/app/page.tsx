@@ -10765,7 +10765,7 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
               value={imovel.comarca ?? ''}
               onChange={(v) => set('comarca', v)}
               placeholder={sugCartorios.find((x) => x.cns === imovel.cns)?.municipio || imovel.municipio || "Comarca (ex.: Manhumirim-MG)"}
-              dica="Deixe em branco para usar a comarca automática do cartório (CNS) ou do município"
+              aviso="Deixe em branco para usar a comarca automática do cartório (CNS) ou do município"
             />
           </div>
         </div>
