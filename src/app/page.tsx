@@ -275,8 +275,8 @@ const MUNICIPIOS_ATALHO = ['Espera Feliz-MG', 'Dores do Rio Preto-ES', 'Caiana-M
 const COR_IMPORT = 'bg-sky-500 hover:bg-sky-600 dark:bg-sky-600 dark:hover:bg-sky-700 text-white border-transparent';       // entrada de dados
 const COR_VIZINHO = 'bg-teal-600 hover:bg-teal-700 dark:bg-teal-700 dark:hover:bg-teal-800 text-white border-transparent'; // vizinho certificado (SIGEF/INCRA)
 const COR_DADOS = 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-800 text-white border-transparent'; // cadastro e IA
-const COR_CONFRO = 'bg-blue-800 hover:bg-blue-900 text-white border-transparent';
-const COR_DIVISA = 'bg-indigo-700 hover:bg-indigo-800 text-white border-transparent';
+const COR_CONFRO = 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white border-transparent';
+const COR_DIVISA = 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-800 dark:hover:bg-indigo-900 text-white border-transparent';
 const COR_PECA = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; // peças de saída — cor de ação principal (verde da marca)
 const COR_PECA_OURO = 'bg-gradient-to-r from-amber-500 via-yellow-600 to-amber-600 hover:from-amber-600 hover:via-yellow-700 hover:to-amber-700 text-white border-transparent shadow font-extrabold hover:scale-[1.02] active:scale-95 transition-all duration-150';
 const COR_ATIVO = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent shadow-xs'; // botões ativos da lateral esquerda
@@ -6907,8 +6907,8 @@ export default function EditorPage() {
         {/* 1) Importar e checar vizinhos — TXT e SIGEF são tarefas de escritório, escondidas no celular. */}
         {!telaEstreita && (
           <>
-            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-slate-900 hover:bg-slate-800 text-emerald-400 font-extrabold border-emerald-500/40 gap-0.5`} title="Início — Guia do fluxo de trabalho passo a passo (F1)" onClick={() => setTutorialF1Aberto(true)}>
-              <GraduationCap className="size-3 shrink-0 animate-pulse text-emerald-400" /> INÍCIO
+            <Button size="sm" className={`relative shrink-0 ${PREM_BTN} bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-emerald-400 dark:border-emerald-500/40 font-extrabold gap-0.5`} title="Início — Guia do fluxo de trabalho passo a passo (F1)" onClick={() => setTutorialF1Aberto(true)}>
+              <GraduationCap className="size-3 shrink-0 animate-pulse text-emerald-600 dark:text-emerald-400" /> INÍCIO
               <Atalho k="F1" />
             </Button>
             <ChevronRight className="-mx-0.5 size-2.5 shrink-0 self-center text-amber-500/70" aria-hidden />
@@ -8589,10 +8589,10 @@ export default function EditorPage() {
                 title={folhaTravada ? "Folha Travada: clique para destravar a movimentação do carimbo, rosa dos ventos e tabelas" : "Folha Destravada: clique para travar e proteger as posições"}
                 className={`flex h-7 items-center gap-1 rounded-full border px-2 text-[10px] font-bold shadow-xs transition-all shrink-0 ${
                   folhaTravada
-                    ? 'border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                    ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
                     : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 ring-1 ring-emerald-500/30'
                 }`}>
-                {folhaTravada ? <Lock className="size-3.5 text-slate-300" /> : <LockOpen className="size-3.5 text-emerald-500" />}
+                {folhaTravada ? <Lock className="size-3.5 text-slate-600 dark:text-slate-300" /> : <LockOpen className="size-3.5 text-emerald-500" />}
                 <span>{folhaTravada ? 'TRAVADA' : 'DESTRAVADA'}</span>
               </button>
 
