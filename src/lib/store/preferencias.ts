@@ -78,8 +78,8 @@ export const ATALHOS_F_PADRAO: Record<string, string> = {
   F8: 'ods',
   F9: 'conferir',
   F10: 'pecas',
-  F11: 'cert',
-  F12: 'car',
+  F11: 'nenhum',
+  F12: 'nenhum',
 };
 
 export const ATALHOS_COMANDO_PADRAO: Record<string, string> = {

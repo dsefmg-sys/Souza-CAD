@@ -1924,10 +1924,12 @@ export default function EditorPage() {
       const k = e.key;
 
       if (k.match(/^F(1[0-2]|[1-9])$/)) {
-        e.preventDefault();
-        const acao = prefs.atalhosF?.[k] || ATALHOS_F_PADRAO[k];
-        if (acao) executarAcao(acao);
-        return;
+        const acao = prefs.atalhosF?.[k] ?? ATALHOS_F_PADRAO[k];
+        if (acao && acao !== 'nenhum') {
+          e.preventDefault();
+          executarAcao(acao);
+          return;
+        }
       }
       else if ((e.ctrlKey || e.metaKey) && e.altKey && (k === '+' || k === '=')) {
         e.preventDefault();
@@ -7889,8 +7891,8 @@ export default function EditorPage() {
                     )}
                     <Button size="sm" variant={modo === 'simbolo' ? 'default' : 'ghost'} onClick={() => setElementosAberto((v) => !v)} title="Elementos"><svg viewBox="-14 -14 28 28" className="size-4" dangerouslySetInnerHTML={{ __html: simboloSvgInterno('arvore') }} /></Button>
                     <Button size="sm" variant={modo === 'inserir' ? 'default' : 'ghost'} onClick={() => alternarModo('inserir')} title="Inserir vértice"><Plus /></Button>
-                    <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => alternarModo('considerar')} title="Considerar (F11)"><Plus /><Atalho k="F11" /></Button>
-                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => alternarModo('ignorar')} title="Ignorar (F12)"><EyeOff /><Atalho k="F12" /></Button>
+                    <Button size="sm" variant={modo === 'considerar' ? 'default' : 'ghost'} onClick={() => alternarModo('considerar')} title="Considerar"><Plus /></Button>
+                    <Button size="sm" variant={modo === 'ignorar' ? 'default' : 'ghost'} onClick={() => alternarModo('ignorar')} title="Ignorar"><EyeOff /></Button>
                     <Button size="sm" variant={modo === 'apagar' ? 'default' : 'ghost'} onClick={() => alternarModo('apagar')} title="Apagar vértice"><Trash2 /></Button>
                     <Button size="sm" variant={modo === 'medir' ? 'default' : 'ghost'} onClick={() => alternarModo('medir', true)} title="Medir / Régua"><Ruler /></Button>
                     <Button size="sm" variant={modo === 'multi' ? 'default' : 'ghost'} onClick={() => alternarModo('multi')} title="Selecionar vários">
@@ -10614,7 +10616,7 @@ export default function EditorPage() {
                   type="button"
                   onClick={() => setConfigAberta(true)}
                   className="p-1 rounded text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer outline-none"
-                  title="Ajustes e Configurações Gerais do App (F12)"
+                  title="Ajustes e Configurações Gerais do App"
                 >
                   <Settings className="size-3.5" />
                 </button>
