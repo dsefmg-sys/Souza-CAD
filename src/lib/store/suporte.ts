@@ -232,7 +232,7 @@ export interface LandingPageTexts {
 }
 
 export const LANDING_PADRAO: LandingPageTexts = {
-  titulo: 'Otimize 5 horas de projeto em apenas 20 minutos.',
+  titulo: 'Agilize a produção da sua Planta, Memorial Descritivo, ODS e Requerimento em 10X.',
   subtitulo: 'Um sistema planialtimétrico e de georreferenciamento de imóveis rurais completo e intuitivo, feito sob medida para as reais necessidades de agrimensores, técnicos e engenheiros brasileiros.',
   historia: 'Depois de anos empreendendo e vivenciando na prática os desafios reais de campo, o refazimento de projetos no CAD tradicional e o preenchimento exaustivo de planilhas, decidi usar meus conhecimentos de programação para desenvolver uma solução definitiva. O Souza-CAD transforma um processo manual e exaustivo em minutos de trabalho inteligente, proporcionando agilidade, autonomia e total segurança técnica para o seu escritório.',
   autorHistoria: 'Souza-CAD — Software Profissional de Engenharia Topográfica',

@@ -1122,7 +1122,11 @@ export default function EditorPage() {
   });
   const [introTocando, setIntroTocando] = useState(() => {
     if (typeof window === 'undefined') return false;
-    try { if (sessionStorage.getItem('metrica:intro_tocada_sessao')) return false; } catch { /* ignore */ }
+    try {
+      const fechadaNestaSessao = sessionStorage.getItem('metrica:landing_page_fechada');
+      if (!fechadaNestaSessao) return false;
+      if (sessionStorage.getItem('metrica:intro_tocada_sessao')) return false;
+    } catch { /* ignore */ }
     return carregarPreferencias().introVideoAtiva;
   }); // enquanto a abertura roda, escondemos a chave de modo
   useEffect(() => { try { const p = carregarPreferencias(); setModoApp(p.modo); setTempoCompletoMs(p.tempoCompletoMs || 0); } catch { /* ignore */ } }, []);

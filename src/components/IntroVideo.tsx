@@ -16,6 +16,9 @@ import { carregarPreferencias } from '@/lib/store/preferencias';
 export default function IntroVideo() {
   const [aberto, setAberto] = useState(() => {
     if (typeof window === 'undefined') return false;
+    // Usuários que estão na Landing Page (não logados ou vendo o site) abrem direto na Landing Page
+    const landingFechada = sessionStorage.getItem('metrica:landing_page_fechada');
+    if (!landingFechada) return false;
     const jaTocou = sessionStorage.getItem('metrica:intro_tocada_sessao');
     if (jaTocou) return false;
     return carregarPreferencias().introVideoAtiva;
