@@ -61,7 +61,7 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
   const meuPreco = minha.plano ? precoNoNivel(minha.plano.precoCheio, minha.nivelPct) : 0;
   const link = linkWhatsapp(zap);
   const linkAssinar = link
-    ? `${link}?text=${encodeURIComponent(`Olá! Quero assinar o Métrica${minha.plano ? ` — plano ${minha.plano.nome}` : ''}. Meu e-mail: ${user?.email ?? ''}`)}`
+    ? `${link}?text=${encodeURIComponent(`Olá! Quero assinar o Souza-CAD${minha.plano ? ` — plano ${minha.plano.nome}` : ''}. Meu e-mail: ${user?.email ?? ''}`)}`
     : null;
 
   async function salvar() {
@@ -109,7 +109,7 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span>{admin ? 'Gestão de Cobrança & Planos' : 'Planos e Assinatura Métrica'}</span>
+                  <span>{admin ? 'Gestão de Cobrança & Planos' : 'Planos e Assinatura Souza-CAD'}</span>
                   {admin && (
                     <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9.5px] font-black uppercase text-amber-600 dark:text-amber-400">
                       PAINEL SAAS MASTER

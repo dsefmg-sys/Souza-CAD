@@ -242,7 +242,7 @@ export default function EditorPdfModal({ aberto, onFechar, onExtrairComIA }: Pro
             </div>
             <div>
               <DialogTitle className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                Editor de PDF Métrica <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full uppercase font-extrabold tracking-wider">Ferramenta Integrada</span>
+                Editor de PDF <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full uppercase font-extrabold tracking-wider">Ferramenta Integrada</span>
               </DialogTitle>
               <p className="text-xs text-zinc-400">
                 Otimize o tamanho de matrículas, reordene páginas, gire escaneamentos e una documentos sem sair do sistema

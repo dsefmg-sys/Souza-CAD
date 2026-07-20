@@ -70,7 +70,7 @@ export const CONFIG_ASSINATURA_PADRAO: ConfigAssinatura = {
   planos: [
     {
       id: 'autonomo',
-      nome: 'Métrica Autônomo',
+      nome: 'Souza-CAD Autônomo',
       descricao: 'Para o profissional que assina sozinho os seus trabalhos.',
       precoCheio: 129,
       compromissoMinimoMeses: 0,
@@ -86,7 +86,7 @@ export const CONFIG_ASSINATURA_PADRAO: ConfigAssinatura = {
     },
     {
       id: 'escritorio',
-      nome: 'Métrica Escritório',
+      nome: 'Souza-CAD Escritório',
       descricao: 'Para a empresa com mais de um técnico assinando.',
       precoCheio: 249,
       compromissoMinimoMeses: 0,
@@ -108,7 +108,7 @@ export const CONFIG_ASSINATURA_PADRAO: ConfigAssinatura = {
   ],
   nivelPadraoPct: 20,
   textoPrecoAgressivo:
-    'Você está num preço reduzido, pensado só pra cobrir os custos operacionais do Métrica enquanto ' +
+    'Você está num preço reduzido, pensado só pra cobrir os custos operacionais do Souza-CAD enquanto ' +
     'ele cresce. É um valor baixo de propósito, pra você adotar a ferramenta sem peso. Conforme a ' +
     'parceria se firma, o valor sobe aos poucos até o preço cheio.',
   atribuicoes: {},

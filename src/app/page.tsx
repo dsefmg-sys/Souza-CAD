@@ -7959,7 +7959,7 @@ export default function EditorPage() {
                       ['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-3.5" />, () => setCalcAberta(true), 'text-indigo-600 dark:text-indigo-400', 'CC'],
                       ['Editor PDF', 'Comprimir, unir e extrair páginas de PDF (matrículas e peças)', <FileText key="i" className="size-3.5" />, () => setEditorPdfAberto(true), 'text-rose-600 dark:text-rose-400', 'PDF'],
                       ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-3.5" /> : <Sun key="i" className="size-3.5" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')), 'text-slate-500', 'TM'],
-                      ['Planos', 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-3.5" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400', 'PL'],
+                      ['Planos', 'Planos e assinatura do Souza-CAD', <CreditCard key="i" className="size-3.5" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400', 'PL'],
                     ] as [string, string, React.ReactNode, () => void, string, string][]).map(([rotuloBtn, dica, icone, acao, cor, atalhoKey]) => (
                       <Button key={rotuloBtn} size="sm" variant="outline"
                         className={`!h-8.5 min-w-0 flex-row gap-1.5 overflow-hidden px-2 rounded-lg border border-border/80 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:border-primary/30 transition-all duration-200 active:scale-95 shadow-2xs [&_svg]:${cor} [&_svg]:transition-transform [&_svg]:duration-200 hover:[&_svg]:scale-110`}
