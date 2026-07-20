@@ -284,7 +284,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           cpf: p.cpf,
           conjugeNome: p.conjugeNome || '',
           conjugeCpf: p.conjugeCpf || '',
-          papel: (localTipoAto === 'venda' ? 'requerente' : 'transmitente') as const
+          papel: (localTipoAto === 'venda' ? 'requerente' : 'transmitente') as 'requerente' | 'transmitente'
         }));
       }
       setLocalPartesAdicionais(iniciais);
