@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
-import { FileWarning, Plus, Trash2 } from 'lucide-react';
+import { FileWarning, Plus, Trash2, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { confirmar } from '@/lib/ui/dialogos';
 import { Button } from '@/components/ui/button';
@@ -118,10 +118,13 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
       <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col bg-background border border-border text-foreground rounded-2xl p-4 md:p-6 shadow-2xl" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
-        <DialogHeader className="shrink-0 pb-2 border-b border-border/60">
-          <DialogTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
+        <DialogHeader className="shrink-0 flex flex-row items-center justify-between border-b pb-3 border-border/60">
+          <DialogTitle className="flex items-center gap-2.5 text-base font-black uppercase tracking-wider text-foreground">
             <FileWarning className="size-5.5 text-amber-500 animate-pulse" /> Errata para o Cartório
           </DialogTitle>
+          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs tracking-wider gap-1.5 shadow-md active:scale-98" onClick={gerar}>
+            <Download className="size-4" /> Baixar Errata (.docx)
+          </Button>
         </DialogHeader>
         
         <p className="text-xs md:text-sm text-muted-foreground shrink-0 leading-relaxed pt-2">
@@ -202,8 +205,8 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
 
         {/* Rodapé Fixo */}
         <div className="flex items-center justify-between border-t border-border/60 pt-4 mt-auto shrink-0">
-          <Button onClick={gerar} size="sm" className="h-11 px-5 text-xs font-black uppercase tracking-wider bg-amber-600 hover:bg-amber-700 text-white border-none transition-colors shadow-md hover:shadow-lg">
-            <FileWarning className="size-4.5 mr-1.5" /> Gerar Documento Errata (.docx)
+          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs tracking-wider gap-1.5 shadow-md active:scale-98" onClick={gerar}>
+            <Download className="size-4" /> Baixar Errata (.docx)
           </Button>
           {msg && (
             <span className={`text-xs md:text-sm font-bold bg-[#07170d]/10 border border-border/80 px-3.5 py-1.5 rounded-lg ${

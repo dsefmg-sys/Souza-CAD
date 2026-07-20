@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
-import { FileSignature, UserPlus, Trash2, Scale, Check } from 'lucide-react';
+import { FileSignature, UserPlus, Trash2, Scale, Check, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { confirmar, escolher, avisar } from '@/lib/ui/dialogos';
 import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
@@ -381,8 +381,13 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
       <DialogContent className="w-[92vw] max-w-[1240px] max-h-[88vh] flex flex-col p-4 sm:p-5 overflow-hidden shadow-2xl" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
-        <DialogHeader className="shrink-0">
-          <DialogTitle>Requerimento ao cartório (retificação e atos cumulativos)</DialogTitle>
+        <DialogHeader className="shrink-0 flex flex-row items-center justify-between border-b pb-3 border-border/60">
+          <DialogTitle className="flex items-center gap-2.5 text-base font-black uppercase tracking-wider text-foreground">
+            <FileSignature className="size-5 text-emerald-600 dark:text-emerald-400" /> Requerimento ao cartório (retificação e atos cumulativos)
+          </DialogTitle>
+          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs tracking-wider gap-1.5 shadow-md active:scale-98" onClick={gerar}>
+            <Download className="size-4" /> Baixar Requerimento (.docx)
+          </Button>
         </DialogHeader>
         <datalist id="lista-pessoas">{sugProp.map((p) => <option key={p.id} value={p.nome} />)}</datalist>
 
@@ -616,10 +621,11 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
           )}
         </div>
 
-        {/* Rodapé Fixo */}
-        <div className="flex items-center justify-between border-t pt-3 mt-auto shrink-0">
-          <Button onClick={gerar}><FileSignature /> Gerar requerimento (.docx)</Button>
-          {msg && <span className="text-sm text-primary font-semibold">{msg}</span>}
+        <div className="flex items-center justify-between border-t border-border/60 pt-3 mt-auto shrink-0">
+          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs tracking-wider gap-1.5 shadow-md active:scale-98" onClick={gerar}>
+            <Download className="size-4" /> Baixar Requerimento (.docx)
+          </Button>
+          {msg && <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{msg}</span>}
         </div>
       </DialogContent>
     </Dialog>

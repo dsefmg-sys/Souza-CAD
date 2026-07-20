@@ -53,15 +53,10 @@ export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, r
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col bg-background/95 backdrop-blur-2xl shadow-2xl p-6 rounded-2xl border border-emerald-500/20 overflow-hidden">
-        <DialogHeader className="border-b border-border/50 pb-3 flex flex-row items-center justify-between">
+        <DialogHeader className="border-b border-border/50 pb-3">
           <DialogTitle className="flex items-center gap-2.5 text-base font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
             <FileSpreadsheet className="size-5.5 text-emerald-500" /> Conferência da Planilha SIGEF / INCRA
           </DialogTitle>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              {linhas.length} Vértices Pronto(s)
-            </span>
-          </div>
         </DialogHeader>
 
         <p className="text-xs text-muted-foreground leading-snug">
