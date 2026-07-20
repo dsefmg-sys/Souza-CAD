@@ -1371,9 +1371,6 @@ export default function EditorPage() {
         garantirEmpresaDoWorkspace().then(() => minhaEmpresa()).then(setEmpresaAtual).catch(() => {});
       }).catch(() => {});
 
-      carregarPerfilNuvem(user.uid).then(setPerfil).catch(() => {});
-      carregarAssinaturaNuvem().then(setConfigAssinatura).catch(() => {});
-
       sincronizarProjetosLocalParaNuvem().then(() => {
         atualizarLista();
       }).catch(() => {});
