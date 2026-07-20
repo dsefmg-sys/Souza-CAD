@@ -60,6 +60,7 @@ import LandingPage from '@/components/LandingPage';
 import { TutorialAudioPill } from '@/components/IntroAudio';
 import ImportPreviewModal, { type SelecaoImport as ImportSelecao } from '@/components/ImportPreviewModal';
 import CalculadoraModal from '@/components/CalculadoraModal';
+import EditorPdfModal from '@/components/EditorPdfModal';
 import VerticeVirtualModal, { type DadosVerticeVirtual } from '@/components/VerticeVirtualModal';
 import PrecoSugeridoModal from '@/components/PrecoSugeridoModal';
 import ConfrontanteEditModal from '@/components/ConfrontanteEditModal';
@@ -776,6 +777,7 @@ export default function EditorPage() {
   const [trtAberto, setTrtAberto] = useState(false);
   const [conferirAberto, setConferirAberto] = useState(false);
   const [calcAberta, setCalcAberta] = useState(false);
+  const [editorPdfAberto, setEditorPdfAberto] = useState(false);
   const [vvAberto, setVvAberto] = useState(false);
   const [vvBase, setVvBase] = useState<{ leste: number; norte: number; elevacao?: number } | null>(null);
   const [dxfEditorAberto, setDxfEditorAberto] = useState(false);
@@ -7943,6 +7945,7 @@ export default function EditorPage() {
                   <div className={`grid gap-1 ${telaEstreita ? 'grid-cols-1' : 'grid-cols-2'}`}>
                     {([
                       ['Calc.', 'Calculadora: converter coordenada, distância e azimute', <Ruler key="i" className="size-3.5" />, () => setCalcAberta(true), 'text-indigo-600 dark:text-indigo-400', 'CC'],
+                      ['Editor PDF', 'Comprimir, unir e extrair páginas de PDF (matrículas e peças)', <FileText key="i" className="size-3.5" />, () => setEditorPdfAberto(true), 'text-rose-600 dark:text-rose-400', 'PDF'],
                       ['Tema', 'Tema claro/escuro', tema === 'claro' ? <Moon key="i" className="size-3.5" /> : <Sun key="i" className="size-3.5" />, () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')), 'text-slate-500', 'TM'],
                       ['Planos', 'Planos e assinatura do Métrica', <CreditCard key="i" className="size-3.5" />, () => setAssinaturaAberta(true), 'text-emerald-600 dark:text-emerald-400', 'PL'],
                     ] as [string, string, React.ReactNode, () => void, string, string][]).map(([rotuloBtn, dica, icone, acao, cor, atalhoKey]) => (
@@ -8805,6 +8808,9 @@ export default function EditorPage() {
       />
       <ErrorBoundary onReset={() => setCalcAberta(false)}>
         <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
+      </ErrorBoundary>
+      <ErrorBoundary onReset={() => setEditorPdfAberto(false)}>
+        <EditorPdfModal aberto={editorPdfAberto} onFechar={() => setEditorPdfAberto(false)} onExtrairComIA={() => { setIaArquivoInicial(null); setIaAberta(true); }} />
       </ErrorBoundary>
       <VerticeVirtualModal
         open={vvAberto}
