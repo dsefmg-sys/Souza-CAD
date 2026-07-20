@@ -274,17 +274,29 @@ export function iniciarDoNorteHorario(vertices: Vertex[]): Vertex[] {
   }
   let anel = area2 > 0 ? [...vertices].reverse() : [...vertices];
   
-  // O SIGEF exige iniciar pelo vértice mais ao norte e a oeste nas coordenadas geodésicas (latitude/longitude).
-  // Comparamos os floats diretamente: maior latitude = mais ao norte (funciona para o hemisfério sul).
-  // Se a diferença for microscópica (<= 1e-9 graus, ou ~0.1mm), o desempate é pelo mais a oeste (menor longitude).
+  // Função auxiliar para obter o valor de Norte efetivo (UTM Norte ou latitude algebricamente assinada).
+  // No Hemisfério Sul, maior Norte UTM ou latitude mais próxima do Equador (-20.730493° > -20.730501°) indica posição mais ao Norte.
+  const valorNorte = (v: Vertex) => {
+    if (Number.isFinite(v.norte) && v.norte !== 0) return v.norte;
+    if (!Number.isFinite(v.lat)) return 0;
+    return v.lat > 0 ? -v.lat : v.lat;
+  };
+  const valorLeste = (v: Vertex) => (Number.isFinite(v.leste) && v.leste !== 0 ? v.leste : v.lon ?? 0);
+
   let idx = 0;
   for (let i = 1; i < anel.length; i++) {
     const v = anel[i], m = anel[idx];
-    const diffLat = v.lat - m.lat;
-    if (diffLat > 1e-9) {
+    const nV = valorNorte(v);
+    const nM = valorNorte(m);
+    const diffN = nV - nM;
+
+    if (diffN > 1e-4) {
       idx = i;
-    } else if (Math.abs(diffLat) <= 1e-9 && v.lon < m.lon) {
-      idx = i;
+    } else if (Math.abs(diffN) <= 1e-4) {
+      // Em caso de empate de Norte, desempata pelo mais a OESTE (menor Leste / menor Longitude)
+      if (valorLeste(v) < valorLeste(m)) {
+        idx = i;
+      }
     }
   }
   anel = [...anel.slice(idx), ...anel.slice(0, idx)];
