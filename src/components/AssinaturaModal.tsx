@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/firebase/auth';
 import { souMaster, carregarWhatsappSuporte, linkWhatsapp } from '@/lib/store/suporte';
 import {
   carregarConfigAssinatura, salvarConfigAssinatura, precoNoNivel, formatBRL, atribuicaoDe,
-  CONFIG_ASSINATURA_PADRAO, type ConfigAssinatura,
+  CONFIG_ASSINATURA_PADRAO, type ConfigAssinatura, validarCupom
 } from '@/lib/store/assinatura';
 
 interface Props {
@@ -28,12 +28,34 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
   // Se for admin, ele pode alternar entre ver como Admin ou ver a "Visão do Cliente (Preview)"
   const [abaAdmin, setAbaAdmin] = useState<'admin' | 'cliente'>('admin');
 
+  const [cupomTexto, setCupomTexto] = useState('');
+  const [cupomAplicado, setCupomAplicado] = useState<{ codigo: string; pctDesconto: number; mensagem: string } | null>(null);
+  const [erroCupom, setErroCupom] = useState('');
+
   useEffect(() => {
     if (!open) return;
     setMsg('');
+    setCupomTexto('');
+    setCupomAplicado(null);
+    setErroCupom('');
     carregarConfigAssinatura().then(setCfg).catch(() => {});
     carregarWhatsappSuporte().then(setZap).catch(() => {});
   }, [open]);
+
+  function aplicarCupom() {
+    setErroCupom('');
+    const res = validarCupom(cfg, cupomTexto);
+    if (res.valido && res.cupom) {
+      setCupomAplicado({
+        codigo: res.cupom.codigo,
+        pctDesconto: res.cupom.pctDesconto,
+        mensagem: res.mensagem,
+      });
+    } else {
+      setCupomAplicado(null);
+      setErroCupom(res.mensagem);
+    }
+  }
 
   const minha = atribuicaoDe(cfg, user?.email);
   const meuPreco = minha.plano ? precoNoNivel(minha.plano.precoCheio, minha.nivelPct) : 0;
@@ -169,10 +191,37 @@ export default function AssinaturaModal({ open, onOpenChange }: Props) {
                 </div>
               )}
 
+              {/* Box de Inserção de Cupom de Desconto */}
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+                <Label className="text-xs font-bold text-amber-500 uppercase tracking-wider flex items-center gap-1">
+                  <Sparkles className="size-3.5" /> Possui um Cupom de Desconto?
+                </Label>
+                <div className="flex gap-2 mt-1.5">
+                  <Input
+                    placeholder="Digite seu cupom (ex.: SOUZA50)"
+                    value={cupomTexto}
+                    onChange={(e) => setCupomTexto(e.target.value.toUpperCase())}
+                    className="h-8 text-xs font-mono font-bold uppercase bg-background border-border text-foreground"
+                  />
+                  <Button size="sm" onClick={aplicarCupom} className="h-8 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-extrabold text-xs">
+                    Aplicar
+                  </Button>
+                </div>
+                {cupomAplicado && (
+                  <p className="text-xs font-bold text-emerald-500 mt-1.5">{cupomAplicado.mensagem}</p>
+                )}
+                {erroCupom && (
+                  <p className="text-xs font-bold text-red-500 mt-1.5">{erroCupom}</p>
+                )}
+              </div>
+
               {/* Grid de Planos com Design Moderno */}
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {cfg.planos.filter((p) => p.ativo).map((p, idx) => {
-                  const seu = precoNoNivel(p.precoCheio, minha.nivelPct);
+                  let seu = precoNoNivel(p.precoCheio, minha.nivelPct);
+                  if (cupomAplicado) {
+                    seu = Math.round((seu * (100 - cupomAplicado.pctDesconto)) / 100 * 100) / 100;
+                  }
                   const cheio = p.precoCheio;
                   const eDestaque = idx === 1 || p.nome.toLowerCase().includes('profissional');
 

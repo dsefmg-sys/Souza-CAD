@@ -36,6 +36,17 @@ export interface AtribuicaoUsuario {
   nivelPct: number;
 }
 
+export interface CupomDesconto {
+  id: string;
+  codigo: string;             // ex.: "SOUZA50", "DESCONTO12M" (sempre maiúsculo)
+  pctDesconto: number;        // ex.: 50 = 50% de desconto
+  tipoValidade: '12meses' | 'permanente' | 'unico';
+  validadeAteMs?: number;     // timestamp limite (opcional) de validade
+  usosMaximos?: number;       // quantidade máxima de resgates (opcional)
+  usosAtuais: number;
+  ativo: boolean;
+}
+
 export interface ConfigAssinatura {
   planos: PlanoAssinatura[];
   niveis: NivelFidelidade[];
@@ -46,6 +57,8 @@ export interface ConfigAssinatura {
   /** e-mail (minúsculo) -> plano + nível. O admin promove o usuário aqui. */
   atribuicoes: Record<string, AtribuicaoUsuario>;
   ocultarCobranca?: boolean;
+  /** Cupons de desconto ativos do SaaS. */
+  cupons?: Record<string, CupomDesconto>;
 }
 
 // ---- valores SUGERIDOS (o dono ajusta tudo na tela de Cobrança) ----
@@ -188,5 +201,42 @@ export function verificarBloqueioFaturamento(params: {
   return {
     bloqueadoPorFaturamento: diasRestantes <= 0,
     diasAtrasoRestantes: diasRestantes,
+  };
+}
+
+export function validarCupom(
+  cfg: ConfigAssinatura,
+  codigoBruto: string
+): { valido: boolean; mensagem: string; cupom?: CupomDesconto } {
+  if (!codigoBruto || !codigoBruto.trim()) {
+    return { valido: false, mensagem: 'Informe o código do cupom.' };
+  }
+  const cod = codigoBruto.trim().toUpperCase();
+  const cupons = cfg.cupons || {};
+  const cupom = cupons[cod];
+
+  if (!cupom || !cupom.ativo) {
+    return { valido: false, mensagem: 'Cupom inválido ou inativo.' };
+  }
+
+  if (cupom.validadeAteMs && Date.now() > cupom.validadeAteMs) {
+    return { valido: false, mensagem: 'Este cupom já expirou.' };
+  }
+
+  if (cupom.usosMaximos && cupom.usosAtuais >= cupom.usosMaximos) {
+    return { valido: false, mensagem: 'Limite de resgates deste cupom atingido.' };
+  }
+
+  const descTipo =
+    cupom.tipoValidade === '12meses'
+      ? `${cupom.pctDesconto}% OFF por 12 meses`
+      : cupom.tipoValidade === 'permanente'
+      ? `${cupom.pctDesconto}% OFF permanente`
+      : `${cupom.pctDesconto}% OFF de uso único`;
+
+  return {
+    valido: true,
+    mensagem: `Cupom "${cupom.codigo}" ativado! (${descTipo})`,
+    cupom,
   };
 }

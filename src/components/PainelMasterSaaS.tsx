@@ -15,7 +15,7 @@ import { collection, getCountFromServer } from 'firebase/firestore';
 import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
 import { listarProjetosDoUsuario, salvarProjeto, novoId } from '@/lib/store/projects';
 import type { Projeto } from '@/lib/topo/types';
-import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, CONFIG_ASSINATURA_PADRAO } from '@/lib/store/assinatura';
+import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, type CupomDesconto, CONFIG_ASSINATURA_PADRAO, validarCupom } from '@/lib/store/assinatura';
 import { carregarWhatsappSuporte, salvarWhatsappSuporte, carregarWhatsappSuporteNome, salvarWhatsappSuporteNome, carregarGeminiApiKey, salvarGeminiApiKey, carregarAppUrl, salvarAppUrl, carregarModo3dAtivado, salvarModo3dAtivado, carregarConfigSmtp, salvarConfigSmtp, carregarYoutubePlaylist, salvarYoutubePlaylist, carregarVideosTutorial, salvarVideosTutorial, carregarLandingPageTexts, salvarLandingPageTexts, LANDING_PADRAO, type ConfigSmtp, type VideoTutorial, type LandingPageTexts } from '@/lib/store/suporte';
 import { auth, db as fdb, firebaseConfigurado } from '@/lib/firebase/client';
 import { confirmar, avisar } from '@/lib/ui/dialogos';
@@ -54,6 +54,78 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [busca, setBusca] = useState('');
   const [configExpandido, setConfigExpandido] = useState(true);
   const [empresaMembrosAberta, setEmpresaMembrosAberta] = useState<Record<string, boolean>>({});
+
+  // Cupons de desconto
+  const [novoCupomCodigo, setNovoCupomCodigo] = useState('');
+  const [novoCupomPct, setNovoCupomPct] = useState('50');
+  const [novoCupomTipo, setNovoCupomTipo] = useState<'12meses' | 'permanente' | 'unico'>('12meses');
+  const [novoCupomUsos, setNovoCupomUsos] = useState('');
+  const [novoCupomExpiraDias, setNovoCupomExpiraDias] = useState('');
+
+  async function criarCupom() {
+    if (!novoCupomCodigo.trim()) { flash('Digite o código do cupom.'); return; }
+    const cod = novoCupomCodigo.trim().toUpperCase();
+    const pct = Math.max(1, Math.min(100, Number(novoCupomPct) || 50));
+    const usos = Number(novoCupomUsos) > 0 ? Number(novoCupomUsos) : undefined;
+    const expiraMs = Number(novoCupomExpiraDias) > 0 ? Date.now() + Number(novoCupomExpiraDias) * 86400000 : undefined;
+
+    const cupons = cfg.cupons || {};
+    const novoCupom: CupomDesconto = {
+      id: cod,
+      codigo: cod,
+      pctDesconto: pct,
+      tipoValidade: novoCupomTipo,
+      validadeAteMs: expiraMs,
+      usosMaximos: usos,
+      usosAtuais: 0,
+      ativo: true,
+    };
+
+    const novaCfg: ConfigAssinatura = {
+      ...cfg,
+      cupons: {
+        ...cupons,
+        [cod]: novoCupom,
+      },
+    };
+
+    try {
+      await salvarConfigAssinatura(novaCfg);
+      setCfg(novaCfg);
+      setNovoCupomCodigo('');
+      flash(`Cupom "${cod}" criado com sucesso!`);
+    } catch {
+      flash('Erro ao salvar cupom.');
+    }
+  }
+
+  async function alternarStatusCupom(cod: string) {
+    const cupons = cfg.cupons || {};
+    if (!cupons[cod]) return;
+    const atualizado = { ...cupons[cod], ativo: !cupons[cod].ativo };
+    const novaCfg = { ...cfg, cupons: { ...cupons, [cod]: atualizado } };
+    try {
+      await salvarConfigAssinatura(novaCfg);
+      setCfg(novaCfg);
+      flash(`Cupom "${cod}" ${atualizado.ativo ? 'ativado' : 'desativado'}.`);
+    } catch {
+      flash('Erro ao atualizar cupom.');
+    }
+  }
+
+  async function removerCupom(cod: string) {
+    if (!(await confirmar({ titulo: 'Excluir cupom', mensagem: `Excluir o cupom "${cod}"?` }))) return;
+    const cupons = { ...(cfg.cupons || {}) };
+    delete cupons[cod];
+    const novaCfg = { ...cfg, cupons };
+    try {
+      await salvarConfigAssinatura(novaCfg);
+      setCfg(novaCfg);
+      flash(`Cupom "${cod}" removido.`);
+    } catch {
+      flash('Erro ao remover cupom.');
+    }
+  }
 
   // "Ver projetos" de um cliente: diagnóstico só-leitura (nunca abre no editor de verdade — evita
   // qualquer risco de salvar/mexer no trabalho de outra pessoa). Ajuda a ver onde ele travou sem
@@ -585,6 +657,88 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                       <textarea value={landingTexts.historia || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, historia: e.target.value }))} className="w-full h-20 p-2 text-xs rounded border border-zinc-800 bg-zinc-900 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
                     </div>
                   </div>
+                </div>
+
+                {/* Cupons de Desconto do SaaS */}
+                <div className="space-y-3 col-span-1 md:col-span-2 lg:col-span-4 border-t border-zinc-800/80 pt-4 mt-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <Sparkles className="size-4 text-amber-400" /> Gestão de Cupons de Desconto
+                      </Label>
+                      <p className="text-[10px] text-zinc-400">Crie cupons com desconto em %, validade programada (12 meses, permanente ou único) e limite de resgates.</p>
+                    </div>
+                  </div>
+
+                  {/* Formulário de Criação de Cupom */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 bg-zinc-950/80 p-3 rounded-xl border border-amber-500/20">
+                    <div>
+                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">Código do Cupom</Label>
+                      <Input placeholder="Ex.: SOUZA50" value={novoCupomCodigo} onChange={(e) => setNovoCupomCodigo(e.target.value.toUpperCase())} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-amber-400 font-mono font-bold" />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">Desconto (%)</Label>
+                      <Input type="number" min="1" max="100" placeholder="50" value={novoCupomPct} onChange={(e) => setNovoCupomPct(e.target.value)} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white font-bold" />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">Tipo de Validade</Label>
+                      <select value={novoCupomTipo} onChange={(e) => setNovoCupomTipo(e.target.value as any)} className="w-full h-8 text-xs bg-zinc-900 border border-zinc-800 text-white rounded px-2 outline-none">
+                        <option value="12meses">50% por 12 Meses</option>
+                        <option value="permanente">Desconto Permanente</option>
+                        <option value="unico">Uso Único</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">Expira em (Dias)</Label>
+                      <Input type="number" placeholder="Opcional (ex.: 30)" value={novoCupomExpiraDias} onChange={(e) => setNovoCupomExpiraDias(e.target.value)} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white" />
+                    </div>
+                    <div className="flex items-end">
+                      <Button size="sm" onClick={criarCupom} className="w-full bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black h-8 text-xs">
+                        <Plus className="size-3.5 mr-1" /> Criar Cupom
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Tabela de Cupons */}
+                  {cfg.cupons && Object.keys(cfg.cupons).length > 0 ? (
+                    <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950/60">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-zinc-900/80 text-[10px] uppercase font-bold text-zinc-400 border-b border-zinc-800">
+                          <tr>
+                            <th className="px-3 py-2">Código</th>
+                            <th className="px-3 py-2">Desconto</th>
+                            <th className="px-3 py-2">Regra</th>
+                            <th className="px-3 py-2">Validade / Expiração</th>
+                            <th className="px-3 py-2 text-right">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-800/50">
+                          {Object.values(cfg.cupons).map((cp) => (
+                            <tr key={cp.id} className="hover:bg-zinc-900/40">
+                              <td className="px-3 py-2 font-mono font-black text-amber-400">{cp.codigo}</td>
+                              <td className="px-3 py-2 font-bold text-emerald-400">{cp.pctDesconto}% OFF</td>
+                              <td className="px-3 py-2 text-zinc-300">
+                                {cp.tipoValidade === '12meses' ? '12 Meses' : cp.tipoValidade === 'permanente' ? 'Permanente' : 'Uso Único'}
+                              </td>
+                              <td className="px-3 py-2 text-zinc-400 text-[11px]">
+                                {cp.validadeAteMs ? dataBR(cp.validadeAteMs) : 'Sem expiração'}
+                              </td>
+                              <td className="px-3 py-2 text-right space-x-2">
+                                <Button size="sm" variant="outline" onClick={() => alternarStatusCupom(cp.codigo)} className={`h-6 text-[10px] px-2 ${cp.ativo ? 'border-emerald-500/40 text-emerald-400' : 'border-zinc-700 text-zinc-500'}`}>
+                                  {cp.ativo ? 'Ativo' : 'Inativo'}
+                                </Button>
+                                <button type="button" onClick={() => removerCupom(cp.codigo)} className="text-zinc-500 hover:text-red-400 transition-colors p-1">
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-zinc-500 italic">Nenhum cupom cadastrado ainda.</p>
+                  )}
                 </div>
 
                 {/* Ocultar cobrança */}

@@ -413,6 +413,8 @@ export interface PlantaConfig {
   mostrarCoordenadas?: boolean; // tabela de coordenadas dos vértices (UTM E/N, Altitude, Limite/Método)
   roteiroComConfrontante?: boolean; // inclui a coluna de confrontante no roteiro (padrão true)
   
+  verticeReferenciaId?: string; // ID do vértice customizado como referência (padrão: automático mais ao Norte)
+  
   // Customização de cores e espessuras das linhas e polígonos na planta
   corPoligono?: string;        // cor do perímetro principal, padrão "#7c2d12"
   larguraPoligono?: number;    // espessura da linha do perímetro principal, padrão 1.8
