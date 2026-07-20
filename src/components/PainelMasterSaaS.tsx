@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { collection, getCountFromServer } from 'firebase/firestore';
 import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
+import { atualizarEmpresaPorAdmin, isModuloHabilitado, obterCotaStorageEmpresa } from '@/lib/store/empresas';
+import { registrarAcaoAdmin, listarAcoesAdmin, type ActionLog } from '@/lib/store/actionLog';
 import { listarProjetosDoUsuario, salvarProjeto, novoId } from '@/lib/store/projects';
 import type { Projeto } from '@/lib/topo/types';
 import { carregarConfigAssinatura, salvarConfigAssinatura, type ConfigAssinatura, type CupomDesconto, CONFIG_ASSINATURA_PADRAO, validarCupom } from '@/lib/store/assinatura';
@@ -54,6 +56,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [busca, setBusca] = useState('');
   const [configExpandido, setConfigExpandido] = useState(true);
   const [empresaMembrosAberta, setEmpresaMembrosAberta] = useState<Record<string, boolean>>({});
+  const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
 
   // Cupons de desconto
   const [novoCupomCodigo, setNovoCupomCodigo] = useState('');
@@ -219,6 +222,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
       setSmtp(await carregarConfigSmtp());
       setYoutubeUrl(await carregarYoutubePlaylist());
       setVideos(await carregarVideosTutorial());
+      setActionLogs(await listarAcoesAdmin(25));
     } catch (e) {
       console.error(e);
     } finally {
@@ -402,10 +406,23 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
     try {
       await atualizarPerfilUsoPorAdmin(clientUid, patch);
       setPerfis((prev) => prev.map((p) => p.uid === clientUid ? { ...p, ...patch } : p));
+      await registrarAcaoAdmin('atualizar_cliente', `Atualizou perfil ${clientUid}: ${JSON.stringify(patch)}`);
       flash('Dados do cliente salvos!');
     } catch (e: unknown) {
       console.error(e);
       flash((e as Error).message || 'Erro ao salvar CRM.');
+    }
+  }
+
+  async function atualizarEmpresaCRM(empresaId: string, patch: any) {
+    try {
+      await atualizarEmpresaPorAdmin(empresaId, patch);
+      setPerfis((prev) => prev.map((p) => (p.uid === empresaId || p.workspaceUid === empresaId) ? { ...p, ...patch } : p));
+      await registrarAcaoAdmin('atualizar_empresa', `Atualizou empresa ${empresaId}: ${JSON.stringify(patch)}`);
+      flash('Dados da empresa salvos!');
+    } catch (e: unknown) {
+      console.error(e);
+      flash((e as Error).message || 'Erro ao salvar dados da empresa.');
     }
   }
 
@@ -938,6 +955,32 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
 
         {/* ─── Mapa de Clientes SaaS (Geolocalização) ─── */}
         <MapaClientesSaaS perfis={perfis} />
+
+        {/* ─── Logs de Auditoria Administrativa (Action Logs) ─── */}
+        {actionLogs.length > 0 && (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 shadow-lg backdrop-blur-sm">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-2 mb-3">
+              <h3 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <Shield className="size-3.5 text-amber-400" /> Logs de Auditoria Administrativa ({actionLogs.length})
+              </h3>
+              <span className="text-[10px] text-zinc-400">Histórico de ações recentes do Master</span>
+            </div>
+            <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 font-mono text-[11px]">
+              {actionLogs.map((log, i) => (
+                <div key={log.id || i} className="flex items-center justify-between bg-zinc-950/80 px-3 py-1.5 rounded border border-zinc-850/60">
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="text-amber-400 font-bold uppercase text-[9.5px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">{log.tipoAcao}</span>
+                    <span className="text-zinc-300 truncate" title={log.detalhes}>{log.detalhes}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 text-zinc-400 text-[10px]">
+                    <span>{log.autorEmail}</span>
+                    <span>{dataBR(log.timestamp)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ─── Tabela CRM e Faturamento ─── */}
         <div className="flex-1 border border-zinc-800 rounded-xl bg-zinc-900/20 shadow-lg overflow-hidden flex flex-col">

@@ -26,6 +26,25 @@ export interface Empresa {
   observacoesAdmin?: string;
   ultimoPagamentoId?: string;
   ultimoPagamentoEm?: number;
+  /** Status de ativação manual pelo administrador Master. (padrão: true) */
+  ativa?: boolean;
+  /** Módulos desativados para esta empresa (feature flags). ex.: ['ia', 'modo3d'] */
+  modulosOff?: string[];
+  /** Cota de armazenamento na nuvem em Gigabytes (padrão: 20GB para parceiros, 500GB para matriz). */
+  limiteStorageGb?: number;
+}
+
+/** Verifica se um módulo específico está habilitado para a empresa (ausência de modulosOff = tudo ativo). */
+export function isModuloHabilitado(empresa: Partial<Empresa> | null | undefined, moduloKey: string): boolean {
+  if (!empresa) return true;
+  const off = empresa.modulosOff || [];
+  return !off.includes(moduloKey);
+}
+
+/** Retorna a cota de armazenamento em GB para a empresa (padrão 20GB). */
+export function obterCotaStorageEmpresa(empresa: Partial<Empresa> | null | undefined): number {
+  if (!empresa) return 20;
+  return empresa.limiteStorageGb || 20;
 }
 
 /**
@@ -77,6 +96,8 @@ export async function garantirEmpresaDoWorkspace(): Promise<void> {
       membros: { [wsUid]: 'admin' },
       statusPagamento: migrado.statusPagamento ?? 'atrasado',
       atrasadoDesde: migrado.atrasadoDesde ?? null,
+      ativa: true,
+      limiteStorageGb: 20,
       ...(migrado.mensalidade != null ? { mensalidade: migrado.mensalidade } : {}),
       ...(migrado.vencimentoDia != null ? { vencimentoDia: migrado.vencimentoDia } : {}),
       ...(migrado.observacoesAdmin ? { observacoesAdmin: migrado.observacoesAdmin } : {}),
@@ -114,11 +135,18 @@ export async function entrarComoMembro(empresaId: string): Promise<void> {
   } catch { /* offline/sem permissão — não bloqueia o vínculo em si, só a listagem de membros */ }
 }
 
-export async function atualizarEmpresaNaNuvem(patch: Partial<Pick<Empresa, 'nome'>>): Promise<void> {
+export async function atualizarEmpresaNaNuvem(patch: Partial<Empresa>): Promise<void> {
   if (!firebaseConfigurado) return;
   const wsUid = workspaceUidAtual();
   if (!wsUid) return;
   try {
     await updateDoc(doc(fdb()!, 'empresas', wsUid), patch);
+  } catch { /* ignore */ }
+}
+
+export async function atualizarEmpresaPorAdmin(empresaId: string, patch: Partial<Empresa>): Promise<void> {
+  if (!firebaseConfigurado || !empresaId) return;
+  try {
+    await updateDoc(doc(fdb()!, 'empresas', empresaId), patch);
   } catch { /* ignore */ }
 }

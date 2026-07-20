@@ -37,6 +37,22 @@ export async function POST(req: NextRequest) {
     if (Number.isFinite(m) && m > 0) mensalidadeServidor = m;
   } catch { /* falha ao checar não deve travar quem realmente pode pagar — segue com o padrão */ }
 
+  let cupomAplicado: { codigo: string; pctDesconto: number } | undefined;
+  try {
+    const body = await req.json().catch(() => ({}));
+    if (body.cupomCodigo && typeof body.cupomCodigo === 'string') {
+      const cod = body.cupomCodigo.trim().toUpperCase();
+      const cfgSnap = await getFirestore(getAdminApp()).collection('config').doc('assinatura').get();
+      if (cfgSnap.exists) {
+        const cupons = cfgSnap.data()?.cupons || {};
+        const cupom = cupons[cod];
+        if (cupom && cupom.ativo && (!cupom.validadeAteMs || Date.now() <= cupom.validadeAteMs)) {
+          cupomAplicado = { codigo: cupom.codigo, pctDesconto: cupom.pctDesconto };
+        }
+      }
+    }
+  } catch { /* ignore JSON parse failure */ }
+
   const client = getMercadoPagoClient();
   if (!client) {
     return NextResponse.json(
@@ -45,9 +61,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // O valor NÃO vem mais do corpo da requisição (o navegador podia adulterar): usa a mensalidade
-  // lida do banco e, na falta dela, o valor do plano Autônomo. Ignora qualquer `amount` do cliente.
-  const amount = mensalidadeServidor ?? 129;
+  // O valor usa a mensalidade lida do banco (ou R$ 129 padrão), aplicando o desconto do cupom se válido
+  let amount = mensalidadeServidor ?? 129;
+  if (cupomAplicado) {
+    amount = Math.max(1, amount * (1 - cupomAplicado.pctDesconto / 100));
+  }
   const origin = reqOrigin(req);
 
   try {

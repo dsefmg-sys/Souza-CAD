@@ -6545,7 +6545,7 @@ export default function EditorPage() {
 
   const objSel = objetos.find((o) => o.id === objetoSelId) ?? null;
 
-  const { bloqueadoPorFaturamento, diasAtrasoRestantes } = useMemo(() => {
+  const { bloqueadoPorFaturamento, diasAtrasoRestantes, motivoBloqueio } = useMemo(() => {
     const status = empresaAtual?.statusPagamento ?? perfil?.statusPagamento;
     const atrasadoDesdeBase = empresaAtual?.atrasadoDesde ?? perfil?.atrasadoDesde;
     return verificarBloqueioFaturamento({
@@ -6553,6 +6553,7 @@ export default function EditorPage() {
       atrasadoDesde: atrasadoDesdeBase,
       souMaster: souMaster(),
       ocultarCobranca: !!configAssinatura?.ocultarCobranca,
+      ativa: empresaAtual?.ativa ?? true,
     });
   }, [perfil, empresaAtual, configAssinatura]);
 

@@ -177,22 +177,30 @@ export function atribuicaoDe(cfg: ConfigAssinatura, email: string | null | undef
 export interface BloqueioFaturamentoResult {
   bloqueadoPorFaturamento: boolean;
   diasAtrasoRestantes: number;
+  motivoBloqueio: 'inativo' | 'inadimplente' | null;
 }
 
 /**
- * Verifica se a conta deve ser bloqueada por faturamento atrasado
- * e quantos dias de tolerância restam (de um total de 7 dias).
+ * Verifica se a conta deve ser bloqueada por desativação administrativa ou faturamento atrasado
+ * e quantos dias de tolerância restam (de um total de 15 dias).
  */
 export function verificarBloqueioFaturamento(params: {
   statusPagamento: string | null | undefined;
   atrasadoDesde: number | null | undefined;
   souMaster: boolean;
   ocultarCobranca: boolean;
+  ativa?: boolean;
   agora?: number;
 }): BloqueioFaturamentoResult {
-  const { statusPagamento, atrasadoDesde, souMaster: isMaster, ocultarCobranca, agora = Date.now() } = params;
-  if (!statusPagamento || statusPagamento !== 'atrasado' || isMaster || ocultarCobranca) {
-    return { bloqueadoPorFaturamento: false, diasAtrasoRestantes: 15 };
+  const { statusPagamento, atrasadoDesde, souMaster: isMaster, ocultarCobranca, ativa = true, agora = Date.now() } = params;
+  if (isMaster || ocultarCobranca) {
+    return { bloqueadoPorFaturamento: false, diasAtrasoRestantes: 15, motivoBloqueio: null };
+  }
+  if (ativa === false) {
+    return { bloqueadoPorFaturamento: true, diasAtrasoRestantes: 0, motivoBloqueio: 'inativo' };
+  }
+  if (!statusPagamento || statusPagamento !== 'atrasado') {
+    return { bloqueadoPorFaturamento: false, diasAtrasoRestantes: 15, motivoBloqueio: null };
   }
   const base = atrasadoDesde || agora;
   const diffMs = agora - base;
@@ -201,6 +209,7 @@ export function verificarBloqueioFaturamento(params: {
   return {
     bloqueadoPorFaturamento: diasRestantes <= 0,
     diasAtrasoRestantes: diasRestantes,
+    motivoBloqueio: diasRestantes <= 0 ? 'inadimplente' : null,
   };
 }
 

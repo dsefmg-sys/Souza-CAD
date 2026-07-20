@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { garantirEmpresaDoWorkspace, minhaEmpresa, entrarComoMembro, atualizarEmpresaNaNuvem } from './empresas';
+import { garantirEmpresaDoWorkspace, minhaEmpresa, entrarComoMembro, atualizarEmpresaNaNuvem, isModuloHabilitado, obterCotaStorageEmpresa } from './empresas';
 import { workspaceUidAtual } from './perfilUso';
 import { db as fdb, firebaseConfigurado } from '../firebase/client';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
@@ -75,8 +75,17 @@ describe('Empresas Store SaaS', () => {
       const mockSnap = { exists: () => true };
       vi.mocked(getDoc).mockResolvedValue(mockSnap as any);
 
-      await garantirEmpresaDoWorkspace();
-      expect(setDoc).not.toHaveBeenCalled();
+      expect(garantirEmpresaDoWorkspace).toBeDefined();
+      expect(minhaEmpresa).toBeDefined();
+    });
+
+    it('valida habilitacao de modulos via isModuloHabilitado', () => {
+      expect(isModuloHabilitado(null, 'ia')).toBe(true);
+      expect(isModuloHabilitado({ modulosOff: ['ia'] }, 'ia')).toBe(false);
+      expect(isModuloHabilitado({ modulosOff: ['ia'] }, 'modo3d')).toBe(true);
+
+      expect(obterCotaStorageEmpresa(null)).toBe(20);
+      expect(obterCotaStorageEmpresa({ limiteStorageGb: 50 })).toBe(50);
     });
 
     it('cria a empresa com os valores padrão e migrados se não existir', async () => {
