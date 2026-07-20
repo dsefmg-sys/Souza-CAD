@@ -15,8 +15,8 @@ describe('iniciarDoNorteHorario', () => {
     // quadrado, informado em sentido anti-horário começando pelo canto SW
     const sw = v('SW', 0, 0), se = v('SE', 10, 0), ne = v('NE', 10, 10), nw = v('NW', 0, 10);
     const fora = iniciarDoNorteHorario([sw, se, ne, nw]);
-    // primeiro é um dos vértices ao norte (maior N=10); empate resolvido para o mais a oeste (NW)
-    expect(fora[0].id).toBe('NW');
+    // primeiro é um dos vértices ao norte (maior N=10); empate resolvido para o mais a leste (NE)
+    expect(fora[0].id).toBe('NE');
     // sentido horário: área assinada (E=x, N=y) deve ser negativa
     let area2 = 0;
     for (let i = 0; i < fora.length; i++) {

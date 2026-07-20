@@ -9,6 +9,26 @@ import { carregarModelos, preencherModelo } from '../store/modelos';
 import { qualificacaoPapelProprietario } from './papelProprietario';
 import { compatibilizarWord2007 } from './compatWord2007';
 import { obterComarca } from '../topo/municipios';
+import { iniciarDoNorteHorario } from '../topo/vertices';
+import { calcular } from '../topo/calcular';
+
+export function orientarResultadoParaNorte(
+  res: ResultadoCalculo,
+  cpl: Record<number, string> = {}
+): { res: ResultadoCalculo; cpl: Record<number, string> } {
+  if (!res || !res.vertices || res.vertices.length < 3) return { res, cpl };
+  const ordenados = iniciarDoNorteHorario(res.vertices);
+  if (ordenados[0]?.id === res.vertices[0]?.id) return { res, cpl };
+
+  const cplReindexado: Record<number, string> = {};
+  ordenados.forEach((v, novoIdx) => {
+    const origIdx = res.vertices.findIndex((x) => x.id === v.id);
+    if (origIdx >= 0 && cpl[origIdx]) cplReindexado[novoIdx] = cpl[origIdx];
+  });
+
+  const resCalculado = calcular(ordenados, cplReindexado);
+  return { res: resCalculado, cpl: cplReindexado };
+}
 
 function coordTexto(v: Vertex): string {
   const lon = grausParaDMS(v.lon, { estilo: 'memorial', casas: 3 });
@@ -319,7 +339,8 @@ export interface MemorialInput {
 
 export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob> {
   const input = sanitizarProfundo(inputBruto);
-  const { res, imovel, tecnico, confrontantes, confrontantePorLado, requerente, transmitente, partesAdicionais, zonaUtm } = input;
+  const { res: resBruto, imovel, tecnico, confrontantes, confrontantePorLado: cplBruto, requerente, transmitente, partesAdicionais, zonaUtm } = input;
+  const { res, cpl: confrontantePorLado } = orientarResultadoParaNorte(resBruto, cplBruto);
   // Defesa final: nunca gerar memorial com lacuna de código de vértice.
   const semCodigo = res.vertices.filter((v) => !v.codigoSigef).length;
   if (semCodigo > 0) throw new Error(`${semCodigo} vértice(s) sem código. Renumere os vértices antes de gerar o memorial.`);

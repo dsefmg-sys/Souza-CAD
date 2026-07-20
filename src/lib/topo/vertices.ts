@@ -290,11 +290,11 @@ export function iniciarDoNorteHorario(vertices: Vertex[]): Vertex[] {
     const nM = valorNorte(m);
     const diffN = nV - nM;
 
-    if (diffN > 1e-4) {
+    if (diffN > 1e-6) {
       idx = i;
-    } else if (Math.abs(diffN) <= 1e-4) {
-      // Em caso de empate de Norte, desempata pelo mais a OESTE (menor Leste / menor Longitude)
-      if (valorLeste(v) < valorLeste(m)) {
+    } else if (Math.abs(diffN) <= 1e-6) {
+      // Em caso de empate de Norte, desempata pelo mais a LESTE (maior Leste / maior Longitude)
+      if (valorLeste(v) > valorLeste(m)) {
         idx = i;
       }
     }

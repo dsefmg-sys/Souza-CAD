@@ -2339,9 +2339,19 @@ export default function EditorPage() {
     // OUTRA gleba dentro desta (corrupção silenciosa) — melhor recomeçar o histórico
     histRef.current = []; redoRef.current = [];
     const vsOrdenados = g.vertices.length >= 3 ? iniciarDoNorteHorario(g.vertices) : g.vertices;
+    const cplReindexado: Record<number, string> = {};
+    if (g.confrontantePorLado) {
+      vsOrdenados.forEach((v, novoIdx) => {
+        const origIdx = g.vertices.findIndex((x) => x.id === v.id);
+        if (origIdx >= 0) {
+          const cid = g.confrontantePorLado[origIdx];
+          if (cid) cplReindexado[novoIdx] = cid;
+        }
+      });
+    }
     setVertices(vsOrdenados);
     setConfrontantes(g.confrontantes);
-    setConfrontantePorLado(g.confrontantePorLado);
+    setConfrontantePorLado(cplReindexado);
     setObjetos(g.objetos ?? []);
     setDesenhoBuffer([]);
     setObjetoSelId(null);
