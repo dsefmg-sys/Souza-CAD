@@ -8,6 +8,7 @@ import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, ImovelCad
 import { linhasConferencia } from '@/lib/export/sigefOds';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { numBR } from '@/lib/topo/geometry';
+import { iniciarDoNorteHorario } from '@/lib/topo/vertices';
 
 interface Props {
   open: boolean;
@@ -31,6 +32,11 @@ export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, r
   }, [res, confrontantes, confrontantePorLado, tecnico, imovel.cns, imoveisCadastrados]);
   const ef = res ? valoresEfetivos(res, imovel) : null;
 
+  const vRef = useMemo(() => {
+    if (!res?.vertices || res.vertices.length < 3) return null;
+    return iniciarDoNorteHorario(res.vertices)[0];
+  }, [res?.vertices]);
+
   const idt: [string, string][] = [
     ['Proprietário(a)', imovel.proprietario || '—'],
     ['CPF/CNPJ', imovel.cpfProprietario || '—'],
@@ -41,6 +47,7 @@ export default function PlanilhaConferenciaModal({ open, onOpenChange, imovel, r
     ['Município(s)', imovel.municipio || '—'],
     ['Área SGL', ef ? `${numBR(ef.areaHa, 4)} ha` : '—'],
     ['Perímetro', ef ? `${numBR(ef.perimetro)} m` : '—'],
+    ['Vértice Ref. (Norte)', vRef ? (vRef.codigoSigef || vRef.nome || '—') : '—'],
   ];
 
   return (

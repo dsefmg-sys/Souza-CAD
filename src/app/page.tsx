@@ -9456,6 +9456,7 @@ export default function EditorPage() {
               tecnico={tecnico}
               nomeProjeto={nomeProjeto}
               numGlebas={glebas.length}
+              glebas={glebas}
               projetoId={projetoId}
               onIrParaConflito={(lat, lon) => { setConferirAberto(false); setVista('mapa'); setFocoLatLng([lat, lon]); }}
               onReconciliar={() => setVerticesHashConferencia(
@@ -11122,7 +11123,7 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
 
 function PainelConferencia({
   vertices, res, imovel, confrontantes, confrontantePorLado, onChange, conflitos, onIrParaConflito, tecnico,
-  nomeProjeto, numGlebas, projetoId, onReconciliar, verticesHashConferencia
+  nomeProjeto, numGlebas, glebas, projetoId, onReconciliar, verticesHashConferencia
 }: {
   vertices: Vertex[]; res: ReturnType<typeof calcular> | null; imovel: ImovelData; confrontantes: Confrontante[]; confrontantePorLado: Record<number, string>; onChange: (i: ImovelData) => void;
   conflitos: ConflitoDivisa[];
@@ -11132,6 +11133,7 @@ function PainelConferencia({
   tecnico: TecnicoData | null;
   nomeProjeto: string;
   numGlebas: number;
+  glebas?: Gleba[];
   projetoId: string | null;
 }) {
   const problemas: Problema[] = conferir(vertices, res, imovel, confrontantes, confrontantePorLado, tecnico);
@@ -11148,6 +11150,21 @@ function PainelConferencia({
   const areaHa = res?.areaHa ?? 0;
   const perimetro = res?.perimetro ?? 0;
 
+  const vRefGlebas: [string, string][] = useMemo(() => {
+    if (glebas && glebas.length > 1) {
+      return glebas.map((g, idx) => {
+        const vs = g.vertices ?? [];
+        const vRefG = vs.length >= 3 ? iniciarDoNorteHorario(vs)[0] : vs[0];
+        const rotulo = `Vértice Ref. (${g.denominacao || g.parcela || `Gleba ${idx + 1}`})`;
+        const val = vRefG ? (vRefG.codigoSigef || vRefG.nome || '—') : '—';
+        return [rotulo, val];
+      });
+    }
+    const vRefMain = vertices.length >= 3 ? iniciarDoNorteHorario(vertices)[0] : vertices[0];
+    const val = vRefMain ? (vRefMain.codigoSigef || vRefMain.nome || '—') : '—';
+    return [['Vértice Ref. (Norte)', val]];
+  }, [glebas, vertices]);
+
   const det: [string, string][] = [
     ['Projeto', nomeProjeto || '—'],
     [imovel.tipoImovel === 'urbano' ? 'Lote/Imóvel' : 'Imóvel', imovel.denominacao || '—'],
@@ -11161,6 +11178,7 @@ function PainelConferencia({
     ['Responsável técnico', tecnico?.nome || '—'],
     ['Área SGL', `${numBR(areaHa, 4)} ha`],
     ['Perímetro', `${numBR(perimetro)} m`],
+    ...vRefGlebas,
     ['Vértices', String(vertices.length)],
     ['Confrontantes', String(confrontantes.length)],
     ['Glebas', String(numGlebas)],
