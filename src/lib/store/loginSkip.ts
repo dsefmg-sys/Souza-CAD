@@ -10,9 +10,9 @@ import { useSyncExternalStore } from 'react';
  *  - 'semLogin'   → entrou sem login; o app libera e mostra o aviso pra criar a conta
  * A barra inferior lê este modo pra decidir o aviso e, ao clicar, manda direto pro 'login'.
  */
-export type ModoEntrada = 'boasVindas' | 'login' | 'semLogin';
+export type ModoEntrada = 'login' | 'semLogin';
 
-let modo: ModoEntrada = 'boasVindas';
+let modo: ModoEntrada = 'login';
 const inscritos = new Set<() => void>();
 
 export function definirModoEntrada(valor: ModoEntrada): void {
@@ -25,6 +25,6 @@ export function useModoEntrada(): ModoEntrada {
   return useSyncExternalStore(
     (cb) => { inscritos.add(cb); return () => inscritos.delete(cb); },
     () => modo,
-    () => 'boasVindas',
+    () => 'login',
   );
 }

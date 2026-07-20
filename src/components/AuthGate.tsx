@@ -58,33 +58,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     await fazer(fn);
   }
 
-  // TELA 1 — BOAS-VINDAS (verde). Mensagem de apresentação + caminho de entrada.
-  if (modo === 'boasVindas') {
-    return (
-      <div className="relative flex h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-800 via-green-700 to-emerald-900 p-4">
-        <div className="relative z-10 w-full max-w-md space-y-6 text-center">
-          <LogoHorizontal className="mx-auto h-14" />
-          <h1 className="text-2xl font-bold text-white">Bem-vindo ao Souza CAD</h1>
-          <p className="text-sm leading-relaxed text-emerald-50/90">
-            Através da sua conta de usuário, você poderá gerenciar seus projetos de qualquer lugar
-            que estiver, e todas as suas configurações serão salvas, para que você faça o melhor uso
-            do software. Você encontrará também um botão de suporte e um campo para sugerir melhorias.
-          </p>
-          <div className="flex flex-col gap-3 pt-2">
-            <Button
-              className="w-full bg-emerald-300 text-emerald-950 hover:bg-emerald-200"
-              disabled={ocupado}
-              onClick={() => { setErro(''); definirModoEntrada('login'); }}
-            >
-              <LogIn /> Iniciar
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // TELA 2 — LOGIN.
+  // TELA DE LOGIN (Google ou E-mail)
   return (
     <div className="relative flex h-screen items-center justify-center p-4">
       <IntroVideo />
@@ -105,9 +79,6 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           </div>
         </div>
         {erro && <p className="text-xs text-destructive">{erro}</p>}
-        <button type="button" className="flex w-full items-center justify-center gap-1 text-center text-[11px] text-muted-foreground hover:text-foreground" onClick={() => { setErro(''); definirModoEntrada('boasVindas'); }}>
-          <ArrowLeft className="size-3" /> Voltar
-        </button>
       </div>
     </div>
   );

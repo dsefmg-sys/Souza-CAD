@@ -424,7 +424,8 @@ export default function EditorPage() {
   // corte. `pecasBtnRef` mede o botão; `pecasMenuPos` guarda onde ancorar.
   const pecasBtnRef = useRef<HTMLDivElement>(null);
   const [pecasMenuPos, setPecasMenuPos] = useState<{ top: number; right: number } | null>(null);
-  function alternarMenuPecas() {
+  function alternarMenuPecas(e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setPecasSheetAberto(true);
       return;
@@ -1122,6 +1123,22 @@ export default function EditorPage() {
     return carregarPreferencias().introVideoAtiva;
   }); // enquanto a abertura roda, escondemos a chave de modo
   useEffect(() => { try { const p = carregarPreferencias(); setModoApp(p.modo); setTempoCompletoMs(p.tempoCompletoMs || 0); } catch { /* ignore */ } }, []);
+  useEffect(() => {
+    if (!authCarregando) {
+      if (!user && nuvemDisponivel) {
+        setLandingPageAberta(true);
+      } else if (user) {
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          if (!urlParams.get('landing') && !urlParams.has('landing')) {
+            setLandingPageAberta(false);
+          }
+        } catch {
+          setLandingPageAberta(false);
+        }
+      }
+    }
+  }, [user, authCarregando, nuvemDisponivel]);
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -7103,7 +7120,7 @@ export default function EditorPage() {
           </button>
           {perfilMenuAberto && (
             <>
-              <div className="fixed inset-0 z-[9990]" onClick={() => setPerfilMenuAberto(false)} />
+              <div className={`fixed inset-0 ${Z_CLASSES.BACKDROP_DROPDOWN}`} onClick={() => setPerfilMenuAberto(false)} />
               <div className={`absolute right-0 top-full pt-2 ${Z_CLASSES.DROPDOWN_MENU}`}>
               <div className="w-80 max-w-[95vw] overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 p-2.5 shadow-2xl backdrop-blur-2xl space-y-1">
                 {user && (
@@ -7258,7 +7275,7 @@ export default function EditorPage() {
                   </button>
                 )}
                 {nuvemDisponivel && (
-                  <button type="button" onClick={() => { setPerfilMenuAberto(false); limparConfigLocalNaSaida(); sair(); definirModoEntrada('boasVindas'); }}
+                  <button type="button" onClick={() => { setPerfilMenuAberto(false); limparConfigLocalNaSaida(); sair(); setLandingPageAberta(true); definirModoEntrada('login'); }}
                     className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-red-650 hover:bg-red-500/10 dark:text-red-400 active:scale-98 transition-all whitespace-nowrap">
                     <LogOut className="size-4 shrink-0" /> <span className="truncate whitespace-nowrap">{user ? 'Sair da Conta' : 'Voltar ao Início'}</span>
                   </button>
@@ -8001,7 +8018,7 @@ export default function EditorPage() {
                 if (!nuvemDisponivel) return;
                 const ok = await confirmar({ titulo: 'Sair da conta', mensagem: user ? 'Deseja sair da sua conta?' : 'Voltar à tela inicial?', okLabel: user ? 'Sair' : 'Voltar' });
                 if (!ok) return;
-                limparConfigLocalNaSaida(); sair(); definirModoEntrada('boasVindas');
+                limparConfigLocalNaSaida(); sair(); setLandingPageAberta(true); definirModoEntrada('login');
               }}
               podeSair={nuvemDisponivel}
               onVerMapa={() => setMobileTela('mapa')}
