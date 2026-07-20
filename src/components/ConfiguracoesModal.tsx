@@ -576,7 +576,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[92vh] flex flex-col bg-background/95 backdrop-blur-md shadow-2xl p-0 overflow-hidden rounded-xl text-foreground border border-border/50">
+      <DialogContent className="max-w-5xl max-h-[88vh] flex flex-col bg-background/95 backdrop-blur-md shadow-2xl p-0 overflow-hidden rounded-xl text-foreground border border-border/50">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 shrink-0">
           <div className="flex items-center gap-2.5">
             <Settings className="size-5 text-indigo-500" />

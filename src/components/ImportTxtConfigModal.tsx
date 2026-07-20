@@ -217,7 +217,7 @@ export default function ImportTxtConfigModal({ open, onOpenChange, autoLoadFile,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[1040px]">
+      <DialogContent className="w-[92vw] max-w-[1000px] max-h-[88vh] flex flex-col p-4 sm:p-5 overflow-hidden shadow-2xl">
         <DialogHeader>
           <DialogTitle>Configurar importação de TXT</DialogTitle>
         </DialogHeader>

@@ -73,7 +73,7 @@ export default function AltitudeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[90vw] max-h-[88vh] flex flex-col p-6 rounded-2xl bg-background border border-border shadow-2xl overflow-hidden">
+      <DialogContent className="max-w-5xl w-[90vw] max-h-[85vh] flex flex-col p-5 rounded-2xl bg-background border border-border shadow-2xl overflow-hidden">
         <DialogHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/60">
           <DialogTitle className="text-base font-extrabold uppercase tracking-wide flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
             <Mountain className="size-5 text-indigo-500" />

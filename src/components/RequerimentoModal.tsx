@@ -380,7 +380,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
 
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
-      <DialogContent className="w-[95vw] max-w-[1400px] max-h-[95vh] flex flex-col p-6" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="w-[92vw] max-w-[1240px] max-h-[88vh] flex flex-col p-4 sm:p-5 overflow-hidden shadow-2xl" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="shrink-0">
           <DialogTitle>Requerimento ao cartório (retificação e atos cumulativos)</DialogTitle>
         </DialogHeader>

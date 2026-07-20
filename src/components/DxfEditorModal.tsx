@@ -367,7 +367,7 @@ export default function DxfEditorModal({ open, onOpenChange }: { open: boolean; 
 
   return (
     <Dialog open={open} onOpenChange={(val) => { if (!val) handleCloseRequest(); else onOpenChange(val); }}>
-      <DialogContent className="flex h-[92vh] w-[94vw] max-w-[94vw] flex-col p-3">
+      <DialogContent className="flex h-[88vh] w-[92vw] max-w-[1280px] flex-col p-3 rounded-xl border shadow-2xl">
         <DialogHeader className="border-b pb-2">
           <DialogTitle className="flex items-center gap-2 text-base font-bold"><PenTool className="size-5 text-primary" /> Editor de DXF (isolado — não afeta o projeto)</DialogTitle>
         </DialogHeader>

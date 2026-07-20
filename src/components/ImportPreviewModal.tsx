@@ -124,7 +124,7 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[98vh] w-[98vw] max-w-[98vw] flex-col p-4">
+      <DialogContent className="flex h-[88vh] w-[92vw] max-w-[1360px] flex-col p-4 rounded-xl shadow-2xl">
         <DialogHeader className="border-b pb-2">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold">
             <Eye className="size-5 text-primary" /> Prévia da importação — escolha o que entra

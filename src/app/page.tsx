@@ -8843,7 +8843,7 @@ export default function EditorPage() {
 
       {/* JANELA MODAL CENTRALIZADA DADOS DO IMÓVEL */}
       <Dialog open={painelAberto} onOpenChange={setPainelAberto}>
-        <DialogContent className="max-w-4xl h-[680px] max-h-[95vh] flex flex-col bg-card p-4 rounded-xl border shadow-2xl overflow-hidden">
+        <DialogContent className="max-w-4xl max-h-[88vh] flex flex-col bg-card p-4 rounded-xl border shadow-2xl overflow-hidden">
           <DialogHeader className="pb-2 border-b flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
               <Upload className="size-4 text-indigo-500" />
@@ -9372,7 +9372,7 @@ export default function EditorPage() {
         processando={processando}
       />
       <Dialog open={conferirAberto} onOpenChange={setConferirAberto}>
-        <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-4 sm:p-5 rounded-xl bg-background shadow-2xl overflow-hidden">
+        <DialogContent className="max-w-6xl max-h-[88vh] flex flex-col p-4 sm:p-5 rounded-xl bg-background shadow-2xl overflow-hidden">
           <DialogHeader className="shrink-0 pb-2.5 border-b border-border/60">
             <DialogTitle className="text-sm font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2.5">
               <CheckCircle2 className="size-5" /> Conferir Projeto e Dados Gerais
@@ -10189,7 +10189,7 @@ export default function EditorPage() {
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
 
       <Dialog open={tutorialF1Aberto} onOpenChange={setTutorialF1Aberto}>
-        <DialogContent className="max-w-5xl lg:max-w-6xl max-h-[95vh] flex flex-col p-5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-y-auto">
+        <DialogContent className="max-w-5xl lg:max-w-6xl max-h-[88vh] flex flex-col p-5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-y-auto">
           <DialogHeader className="shrink-0 pb-3 border-b border-slate-800 flex items-center justify-between">
             <DialogTitle className="text-base font-black uppercase tracking-wider text-sky-400 flex items-center gap-2">
               <GraduationCap className="size-5" />

@@ -185,7 +185,7 @@ export default function PrecoSugeridoModal({ open, onOpenChange, areaHa = 0 }: P
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col">
+      <DialogContent className="flex max-h-[88vh] max-w-5xl flex-col p-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="size-5 text-primary" /> Preço sugerido
