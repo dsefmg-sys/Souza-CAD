@@ -257,9 +257,11 @@ function cabecalhoTabelaDocx(imovel: ImovelData, areaHa: number, perimetro: numb
   const idMunicipal = isUrbano && imovel.inscricaoMunicipal
     ? ` / Insc.: ${imovel.inscricaoMunicipal}`
     : '';
-  const valMatricula = imovel.regimeTerra === 'posse' && !imovel.matricula 
-    ? 'Posse' 
+  const valMatricula = imovel.regimeTerra === 'posse' || !imovel.matricula 
+    ? (imovel.matricula || 'Posse (Sem Matrícula)')
     : `${imovel.matricula || '—'}${idMunicipal}`;
+  const valProprietario = (imovel.proprietario || imovel.posseiro || '—').trim();
+  const labelProprietario = imovel.regimeTerra === 'posse' || !imovel.proprietario ? 'Possuidor(a):' : 'Proprietário(a):';
 
   const rot = rotulosProfissional(tecnico);
   const termoVal = imovel.numeroTrt || tecnico.art || '';
@@ -292,7 +294,7 @@ function cabecalhoTabelaDocx(imovel: ImovelData, areaHa: number, perimetro: numb
       new TableRow({
         children: [
           celula(isUrbano ? 'Imóvel/Lote:' : 'Imóvel:', imovel.denominacao || '—', 60),
-          celula(imovel.regimeTerra === 'posse' ? 'Situação jurídica:' : 'Matrícula:', valMatricula, 40),
+          celula(imovel.regimeTerra === 'posse' || !imovel.matricula ? 'Situação jurídica:' : 'Matrícula:', valMatricula, 40),
         ],
       }),
       new TableRow({
@@ -303,7 +305,7 @@ function cabecalhoTabelaDocx(imovel: ImovelData, areaHa: number, perimetro: numb
       }),
       new TableRow({
         children: [
-          celula(imovel.regimeTerra === 'posse' ? 'Possuidor(a):' : 'Proprietário(a):', imovel.proprietario || '—', 60),
+          celula(labelProprietario, valProprietario, 60),
           celula(`${rot.termo}:`, termoVal, 40),
         ],
       }),
@@ -370,13 +372,13 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
   const modelos = carregarModelos();
   const varsModelo: Record<string, string> = {
     proprietario: imovel.tipoPessoa === 'Espólio' && imovel.inventarianteNome
-      ? `Espólio de ${imovel.proprietario}, representado por seu inventariante ${imovel.inventarianteNome}`
-      : (imovel.proprietario || ''),
+      ? `Espólio de ${imovel.proprietario || imovel.posseiro || ''}, representado por seu inventariante ${imovel.inventarianteNome}`
+      : (imovel.proprietario || imovel.posseiro || ''),
     cpf: imovel.tipoPessoa === 'Espólio' && imovel.inventarianteCpf
       ? `${imovel.cpfProprietario || '—'} (De Cujus) e CPF do Inventariante: ${imovel.inventarianteCpf}`
       : (imovel.cpfProprietario || ''),
     denominacao: imovel.denominacao || '',
-    matricula: imovel.matricula || '', cns: imovel.cns || '', municipio: imovel.municipio || '', comarca: obterComarca(imovel),
+    matricula: imovel.regimeTerra === 'posse' || !imovel.matricula ? (imovel.matricula || 'Posse (Sem Matrícula)') : (imovel.matricula || ''), cns: imovel.cns || '', municipio: imovel.municipio || '', comarca: obterComarca(imovel),
     area: `${numBR(efMod.areaHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : '',
     perimetro: `${numBR(efMod.perimetro)} m`, codigoIncra: imovel.codigoImovelIncra || '',
     tecnico: tecnico.nome || '', cft: tecnico.cft || '', numeroTrt: imovel.numeroTrt || tecnico.art || '',

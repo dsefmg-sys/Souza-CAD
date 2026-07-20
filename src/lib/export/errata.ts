@@ -52,12 +52,16 @@ export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
   c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 20 }, children: [new TextRun({ text: 'ERRATA FORMAL DE MEMORIAL DESCRITIVO E PROJETO TÉCNICO', bold: true, size: 24 })] }));
   c.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [new TextRun({ text: `AO OFICIAL DE REGISTRO DE IMÓVEIS DA COMARCA DE ${comarca.toUpperCase()}${uf ? ` – ${uf}` : ''}`, bold: true, size: 22 })] }));
 
+  const matTexto = imovel.regimeTerra === 'posse' || !imovel.matricula ? (imovel.matricula || 'Posse (Sem Matrícula)') : (imovel.matricula || '—');
+  const donoTexto = (imovel.proprietario || imovel.posseiro || '—').trim();
+  const donoRotulo = imovel.regimeTerra === 'posse' || !imovel.proprietario ? 'Possuidor(a)' : 'Proprietário(s)';
+
   // Referência
   c.push(par([
     t('Ref.: ', { bold: true }),
     t(`Imóvel: ${denom}`),
-    t(` | Matrícula: ${imovel.matricula || '—'}`),
-    t(` | Proprietário(s): ${imovel.proprietario || '—'}`),
+    t(` | Matrícula: ${matTexto}`),
+    t(` | ${donoRotulo}: ${donoTexto}`),
     t(` | Assunto: ${input.assunto || ASSUNTO_PADRAO}`),
   ]));
 

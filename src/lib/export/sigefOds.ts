@@ -186,12 +186,12 @@ function injetarIdentificacao(xml: string, imovel: ImovelData): string {
   const add = (ri: number, valor: string | undefined, ords: number[] = [1]) => {
     if (valor) trans[ri] = (row) => ords.reduce((r, o) => setCelulaTexto(r, o, valor), row);
   };
-  add(5, imovel.proprietario);        // Nome:
+  add(5, imovel.proprietario || imovel.posseiro || 'POSSEIRO');        // Nome:
   add(6, imovel.cpfProprietario);     // CPF:
   add(9, imovel.ficticio ? `(FICTICIO) ${imovel.denominacao}` : imovel.denominacao); // Denominação:
   add(12, imovel.codigoImovelIncra);  // Código do Imóvel (SNCR/INCRA):
   add(13, imovel.cns);                // Código do cartório (CNS):
-  add(14, imovel.matricula);          // Matrícula:
+  add(14, imovel.regimeTerra === 'posse' || !imovel.matricula ? (imovel.matricula || 'POSSE') : (imovel.matricula || 'POSSE'));          // Matrícula:
   add(16, imovel.municipio, [0, 1]);  // Município(s): duas células
   let novaTabela = tabela;
   // aplica TODOS de trás pra frente, usando os offsets originais (preencher célula vazia muda o

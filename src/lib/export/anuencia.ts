@@ -83,11 +83,11 @@ function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
         size: 22
       }),
       new TextRun({ text: imovel.denominacao || 'DADO AUSENTE', bold: true, size: 22 }),
-      new TextRun({ text: imovel.regimeTerra === 'posse' ? `, sob a posse de ` : `, de propriedade de `, size: 22 }),
+      new TextRun({ text: imovel.regimeTerra === 'posse' || !imovel.matricula ? `, sob a posse de ` : `, de propriedade de `, size: 22 }),
       new TextRun({
         text: imovel.tipoPessoa === 'Espólio' && imovel.inventarianteNome
-          ? `Espólio de ${imovel.proprietario}, representado por seu inventariante ${imovel.inventarianteNome}`
-          : (imovel.proprietario || 'DADO AUSENTE'),
+          ? `Espólio de ${imovel.proprietario || imovel.posseiro || 'DADO AUSENTE'}, representado por seu inventariante ${imovel.inventarianteNome}`
+          : (imovel.proprietario || imovel.posseiro || 'DADO AUSENTE'),
         bold: true,
         size: 22
       }),

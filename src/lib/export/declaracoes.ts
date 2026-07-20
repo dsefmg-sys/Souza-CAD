@@ -20,11 +20,16 @@ function varsDeclaracao(imovel: ImovelData, tecnico: TecnicoData, modo: ModoTrat
     if (modo === 'dado_ausente' && (!val || !val.trim() || val === '—')) return 'DADO AUSENTE';
     return val || '';
   };
+  const nomePropOuPosse = (imovel.proprietario || imovel.posseiro || '').trim();
+  const matTexto = imovel.regimeTerra === 'posse' || !imovel.matricula
+    ? (imovel.matricula || 'Posse (Sem Matrícula)')
+    : f(imovel.matricula);
+
   return {
-    proprietario: f(imovel.proprietario) || (modo === 'omitir' ? 'proprietário(a)' : ''),
+    proprietario: f(nomePropOuPosse) || (modo === 'omitir' ? (imovel.regimeTerra === 'posse' ? 'possuidor(a)' : 'proprietário(a)') : ''),
     cpf: f(imovel.cpfProprietario),
     denominacao: f(imovel.denominacao) || (modo === 'omitir' ? 'imóvel rural' : ''),
-    matricula: f(imovel.matricula),
+    matricula: matTexto,
     cns: f(imovel.cns),
     municipio: f(imovel.municipio) || (modo === 'omitir' ? 'município' : ''),
     comarca: f(obterComarca(imovel)) || (modo === 'omitir' ? 'comarca' : ''),

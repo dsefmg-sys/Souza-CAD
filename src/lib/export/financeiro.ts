@@ -29,12 +29,17 @@ function varsFinanceiro(a: {
   const esc = a.escritorio ?? {} as EscritorioData;
   const rep = [a.tecnico.nome, a.tecnico.formacao, a.tecnico.cft && `${rotulosProfissional(a.tecnico).registro} ${a.tecnico.cft}`].filter(Boolean).join(', ');
   
+  const nomePropOuPosse = (a.imovel.proprietario || a.imovel.posseiro || '').trim();
+  const matTexto = a.imovel.regimeTerra === 'posse' || !a.imovel.matricula
+    ? (a.imovel.matricula || 'Posse Sem Matrícula')
+    : f(a.imovel.matricula);
+
   return {
-    proprietario: f(a.imovel.proprietario),
+    proprietario: f(nomePropOuPosse) || (modo === 'dado_ausente' ? 'DADO AUSENTE' : 'Possuidor / Detentor'),
     cpfProprietario: f(a.imovel.cpfProprietario),
     cpf: f(a.imovel.cpfProprietario),
     denominacao: f(a.imovel.denominacao),
-    matricula: f(a.imovel.matricula),
+    matricula: matTexto,
     municipio: f(a.imovel.municipio),
     area: `${a.areaHa.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} ha`,
     perimetro: a.perimetro != null ? `${a.perimetro.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} m` : '',

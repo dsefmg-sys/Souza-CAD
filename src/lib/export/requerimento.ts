@@ -315,14 +315,16 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
 
   c.push(titulo('DA IDENTIFICAÇÃO DO IMÓVEL'));
   const origens = (imovel.matriculasOrigem ?? []).filter((m) => m.trim());
+  const propOuPosse = (imovel.proprietario || imovel.posseiro || '').trim();
   const donoNome = (tipoPrioritario === 'retificacao' && !transmitente.nome?.trim() && !permitirIncompleto)
-    ? (reqClonado.nome || f(imovel.proprietario))
-    : (transClonado.nome || f(imovel.proprietario));
+    ? (reqClonado.nome || f(propOuPosse))
+    : (transClonado.nome || f(propOuPosse));
+  const ehPosse = imovel.regimeTerra === 'posse' || !imovel.matricula;
 
   if (atos.includes('unificacao') && origens.length > 0) {
     c.push(par(`O imóvel resulta da unificação das matrículas nº ${origens.join(', nº ')}, situado no município de ${varsModelo.municipio}, passando a constituir uma só matrícula sob nº ${varsModelo.matricula}, Livro nº 2, em nome de ${donoNome}.`));
-  } else if (imovel.regimeTerra === 'posse') {
-    c.push(par(`O imóvel rural denominado ${varsModelo.denominacao}, situado no município de ${varsModelo.municipio}, é detido sob regime de posse por ${donoNome}${varsModelo.matricula && varsModelo.matricula !== 'DADO AUSENTE' ? `, com referência ao registro/transcrição nº ${varsModelo.matricula}` : ' (sem matrícula registrada)'}.`));
+  } else if (ehPosse) {
+    c.push(par(`O imóvel rural denominado ${varsModelo.denominacao}, situado no município de ${varsModelo.municipio}, é detido sob regime de posse por ${donoNome}${varsModelo.matricula && varsModelo.matricula !== 'DADO AUSENTE' && varsModelo.matricula !== 'Posse Sem Matrícula' ? `, com referência ao registro/transcrição nº ${varsModelo.matricula}` : ' (área de posse, sem matrícula registrada)'}.`));
   } else {
     c.push(par(`O imóvel rural denominado ${varsModelo.denominacao}, situado no município de ${varsModelo.municipio}, encontra-se registrado neste Cartório sob a matrícula nº ${varsModelo.matricula}, Livro nº 2, em nome de ${donoNome}.`));
   }
