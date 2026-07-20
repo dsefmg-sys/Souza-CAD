@@ -113,6 +113,8 @@ export const ATALHOS_COMANDO_PADRAO: Record<string, string> = {
   at: 'altitude',
   aj: 'ajustes',
   em: 'emitir_profissional',
+  ep: 'editor_pdf',
+  pd: 'editor_pdf',
 };
 
 export const PREFERENCIAS_PADRAO: PreferenciasApp = {

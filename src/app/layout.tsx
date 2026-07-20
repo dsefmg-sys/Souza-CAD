@@ -11,6 +11,10 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 export const metadata: Metadata = {
   title: 'Souza CAD — Peças técnicas de georreferenciamento',
   description: 'Importa TXT/DXF, calcula área SGL e gera memorial, planilha SIGEF, planta e requerimento.',
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-icon.png',
+  },
   other: {
     'color-scheme': 'dark light',
     'darkreader-lock': 'true',

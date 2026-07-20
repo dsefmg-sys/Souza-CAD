@@ -1503,8 +1503,15 @@ export default function EditorPage() {
         return;
       }
       const raw = localStorage.getItem(rascunhoKey());
-      if (raw && aplicarRascunho(JSON.parse(raw))) aviso('Trabalho anterior restaurado automaticamente.');
-    } catch { /* ignore */ }
+      if (raw && aplicarRascunho(JSON.parse(raw))) {
+        aviso('Trabalho anterior restaurado automaticamente.');
+      } else {
+        // Quando abrir o sistema sem rascunho anterior: abre o projeto de demonstração por padrão
+        void carregarProjetoFicticio({ semAvisoConfirmacao: true });
+      }
+    } catch {
+      void carregarProjetoFicticio({ semAvisoConfirmacao: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [temaCarregadoDaNuvem]);
 
@@ -1838,6 +1845,9 @@ export default function EditorPage() {
           return n;
         });
         break;
+      case 'editor_pdf':
+        setEditorPdfAberto(true);
+        break;
       default:
         break;
     }
@@ -1897,6 +1907,8 @@ export default function EditorPage() {
       al: 'altitude',
       sg: 'cert',
       em: 'emitir_profissional',
+      ep: 'editor_pdf',
+      pd: 'editor_pdf',
     };
 
     const acao = aliasesExtra[cmd] || prefs.atalhosComando?.[cmd] || ATALHOS_COMANDO_PADRAO[cmd];
@@ -1916,7 +1928,7 @@ export default function EditorPage() {
       rotulos: 'Rótulos', folha_travada: 'Travar Folha', curvas_nivel: 'Curvas de Nível',
       tutorial: 'Tutorial', pontos: 'Pontos', sigef: 'SIGEF', dados: 'Dados', confro: 'CONFRO',
       divisas: 'Divisas', trt: 'ART/TRT', ods: 'ODS', conferir: 'Conferir', pecas: 'Peças',
-      cert: 'CERT', car: 'CAR',
+      cert: 'CERT', car: 'CAR', editor_pdf: 'Editor de PDF',
     };
     dispararFeedbackAtalho(nomes[acao] || acao, 'ok');
   }
@@ -6139,8 +6151,8 @@ export default function EditorPage() {
   }
 
   // Carrega um projeto completo FICTÍCIO (demonstração). As peças saem marcadas como dados fictícios.
-  async function carregarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: number }) {
-    if (temConteudoTrabalho() && !(await confirmar({ titulo: 'Projeto de demonstração', mensagem: 'Carregar o projeto fictício de demonstração? O trabalho atual não salvo será descartado.', okLabel: 'Carregar demonstração' }))) return;
+  async function carregarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: number; semAvisoConfirmacao?: boolean }) {
+    if (!opts?.semAvisoConfirmacao && temConteudoTrabalho() && !(await confirmar({ titulo: 'Projeto de demonstração', mensagem: 'Carregar o projeto fictício de demonstração? O trabalho atual não salvo será descartado.', okLabel: 'Carregar demonstração' }))) return;
     const f = gerarProjetoFicticio(opts);
     const gleba: Gleba = { ...novaGlebaVazia(1), denominacao: f.imovel.denominacao, vertices: f.vertices, confrontantes: f.confrontantes, confrontantePorLado: f.confrontantePorLado };
     setProjetoId(null);
@@ -8547,6 +8559,7 @@ export default function EditorPage() {
           )}
           {(vista === 'mapa' || vista === 'planta') && !telaEstreita && (
             <div
+              suppressHydrationWarning
               style={{
                 position: 'fixed',
                 left: `${Math.max(toolWEfetivo + 12, Math.min(typeof window !== 'undefined' ? window.innerWidth - 200 : 800, Number.isFinite(posArea?.x) ? posArea.x : toolWEfetivo + 12))}px`,
@@ -9547,7 +9560,7 @@ export default function EditorPage() {
         return (
           <>
             <div className="fixed inset-0 z-[1190]" onClick={() => setPainelElem(null)} onContextMenu={(e) => { e.preventDefault(); setPainelElem(null); }} />
-            <div className="fixed z-[1200] w-56 rounded-md border bg-background p-2 text-sm shadow-xl"
+            <div className="fixed z-[1200] w-56 rounded-md border bg-background p-2 text-sm shadow-xl" suppressHydrationWarning
               style={{ left: Math.min(painelElem.x, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 240), top: Math.min(painelElem.y, (typeof window !== 'undefined' ? window.innerHeight : 9999) - 200) }}>
               <div className="mb-1.5 flex items-center justify-between border-b pb-1">
                 <span className="text-[11px] font-bold">Ponto {vAtual.nome || vAtual.codigoSigef}</span>
@@ -9578,7 +9591,7 @@ export default function EditorPage() {
         return (
           <>
             <div className="fixed inset-0 z-[1190]" onClick={() => setPainelElem(null)} onContextMenu={(e) => { e.preventDefault(); setPainelElem(null); }} />
-            <div className="fixed z-[1200] w-60 rounded-md border bg-background p-2 text-sm shadow-xl"
+            <div className="fixed z-[1200] w-60 rounded-md border bg-background p-2 text-sm shadow-xl" suppressHydrationWarning
               style={{ left: Math.min(painelElem.x, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 250), top: Math.min(painelElem.y, (typeof window !== 'undefined' ? window.innerHeight : 9999) - 240) }}>
               <div className="mb-1.5 flex items-center justify-between border-b pb-1">
                 <span className="text-[11px] font-bold">Divisa {vAtual.nome || vAtual.codigoSigef}</span>
@@ -9615,7 +9628,7 @@ export default function EditorPage() {
       {menuContexto && (
         <>
           <div className="fixed inset-0 z-[1190]" onClick={() => setMenuContexto(null)} onContextMenu={(e) => { e.preventDefault(); setMenuContexto(null); }} />
-          <div className="fixed z-[1200] w-52 overflow-hidden rounded-md border bg-background p-1 text-sm shadow-lg"
+          <div className="fixed z-[1200] w-52 overflow-hidden rounded-md border bg-background p-1 text-sm shadow-lg" suppressHydrationWarning
             style={{ left: Math.min(menuContexto.x, (typeof window !== 'undefined' ? window.innerWidth : 9999) - 220), top: menuContexto.y }}>
             
             {menuContexto.tipo === 'texto' && (

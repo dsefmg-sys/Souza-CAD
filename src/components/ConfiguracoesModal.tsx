@@ -79,6 +79,7 @@ const ACOES_ATALHOS: Record<string, string> = {
   curvas_nivel: 'Abrir/Fechar Curvas de Nível',
   altitude: 'Consultar/Definir Altitudes (AT)',
   ajustes: 'Ajustes / Configurações (AJ)',
+  editor_pdf: 'Editor de PDF (EP)',
   // ── Ferramentas de Desenho e Geometria ────────────────────────────────────
   navegar: 'Navegar / Modo Mover',
   linha: 'Desenhar Linha',
