@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ImovelData, TecnicoData, Confrontante, CorrecaoErrata, NaturezaCorrecao } from '@/lib/topo/types';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
+import { gerarErrataDocx } from '@/lib/export/errata';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { obterComarca } from '@/lib/topo/municipios';
 
@@ -98,7 +99,7 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
       } catch { /* fallback local */ }
 
       if (!blobBruto) {
-        blobBruto = await gerarErrataDocx({ imovel, tecnico, correcoes: validas, areaHa, acrescimoRT, dataExtenso: dataExtensoHoje(), comarca });
+        blobBruto = await gerarErrataDocx({ imovel, tecnico: tecnico!, correcoes: validas, areaHa, acrescimoRT, dataExtenso: dataExtensoHoje(), comarca });
       }
 
       const blob = await compatibilizarWord2007(blobBruto);

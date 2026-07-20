@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad, CorrecaoErrata, ProprietarioParte } from '@/lib/topo/types';
-import type { TipoAtoRequerimento } from '@/lib/export/requerimento';
+import { gerarRequerimentoDocx, type TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { numBR } from '@/lib/topo/geometry';
 import { obterComarca } from '@/lib/topo/municipios';
@@ -353,7 +353,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
 
       if (!blobBruto) {
         blobBruto = await gerarRequerimentoDocx({
-          imovel, tecnico, requerente: req, transmitente: trans, areaRealHa,
+          imovel, tecnico: tecnico!, requerente: req, transmitente: trans, areaRealHa,
           dataExtenso: dataExtensoHoje(), tipoAto: localTipoAto, tiposAtos: localTiposAtos,
           partesAdicionais: localPartesAdicionais, comarca, correcoes: correcoes || [],
           permitirIncompleto, modoTratamentoAusente
