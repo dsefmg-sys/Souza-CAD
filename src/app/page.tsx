@@ -1283,8 +1283,25 @@ export default function EditorPage() {
     return () => { active = false; };
   }, []);
 
-  // 1. Ao logar, carrega o tema da nuvem primeiro e sincroniza dados locais offline
   useEffect(() => {
+    if (!authCarregando) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const landingExplicit = urlParams.get('landing') === 'true' || urlParams.has('landing');
+        if (user) {
+          // Usuário LOGADO: entra direto no aplicativo sem exibir a landing page (a menos que solicitada na URL)
+          if (!landingExplicit) {
+            setLandingPageAberta(false);
+          }
+        } else {
+          // Usuário NÃO LOGADO: exibe a landing page por padrão
+          if (!sessionStorage.getItem('metrica:landing_page_fechada') || landingExplicit) {
+            setLandingPageAberta(true);
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
     if (user?.uid) {
       setTemaCarregadoDaNuvem(false);
       carregarTemaUsuario(user.uid).then((t) => {
@@ -1344,25 +1361,35 @@ export default function EditorPage() {
       // empresa dele (Configurações → Ajudantes/Equipe), aceita automaticamente e já pula direto
       // pro workspace dessa empresa — sem isso, um convidado cairia na tela de "criar empresa
       // nova" achando que precisa se cadastrar do zero.
-      aceitarConviteSePendente().then((empresaConvite) => {
-        if (empresaConvite) aviso(`Você foi vinculado automaticamente à empresa "${empresaConvite}".`);
-        // Cadastro do RT/escritório é POR CONTA (multi-empresa): puxa da nuvem, atualiza a tela e
-        // decide se ainda precisa do primeiro acesso. Se a conta for nova, o cache local é resetado
-        // (em branco), então um usuário nunca herda o cadastro de outro no mesmo navegador.
-        // `forcar=true` quando um convite ACABOU de ser aceito agora: garante que os dados de quem
-        // convidou substituem qualquer cadastro próprio que o convidado já tivesse feito antes.
-        puxarConfigDaNuvem(!!empresaConvite).then((configurado) => {
-          setTecnico(carregarTecnico());
-          setEscritorio(carregarEscritorio());
-          setSetupOk(souMaster() || configurado);
-        }).catch(() => {});
-        // Garante o documento da empresa (Etapa 2 do SaaS): só cria se quem logou for o DONO do
-        // workspace (não faz nada pra convidado/auxiliar — a empresa deles já deveria existir).
-        // Só DEPOIS de garantir é que busca — assim o dono já vê a própria empresa na 1ª visita.
-        garantirEmpresaDoWorkspace().then(() => minhaEmpresa()).then(setEmpresaAtual).catch(() => {});
-      }).catch(() => {});
+      carregarEmpresaConfig(user.uid).then((cfg) => {
+        if (!cfg) return;
+        if (cfg.logoDataUrl) {
+          const esc = carregarEscritorio();
+          const tec = carregarTecnico();
+          salvarEmpresa(esc.nome, esc.cnpj, cfg.logoDataUrl);
+          setEscritorio({ ...esc, logoDataUrl: cfg.logoDataUrl });
+        }
+        if (cfg.plantaConfig) {
+          salvarPlantaPadrao(cfg.plantaConfig);
+          setPlantaConfig(cfg.plantaConfig);
+        }
+        if (cfg.confrontantesCores) {
+          salvarCoresDivisa(cfg.confrontantesCores);
+        }
+        if (cfg.tiposDivisaCustom && cfg.tiposDivisaCustom.length > 0) {
+          salvarTiposDivisaCustom(cfg.tiposDivisaCustom);
+          setTiposDivisaCustom(cfg.tiposDivisaCustom);
+        }
+        if (cfg.tema && (cfg.tema === 'claro' || cfg.tema === 'escuro')) {
+          salvarTema(cfg.tema);
+          setTema(cfg.tema);
+        }
+        setTemaCarregadoDaNuvem(true);
+      }).catch(() => { setTemaCarregadoDaNuvem(true); });
 
-      // Sincroniza dados locais (salvos enquanto offline/sem permissão) com a nuvem
+      carregarPerfilNuvem(user.uid).then(setPerfil).catch(() => {});
+      carregarAssinaturaNuvem().then(setConfigAssinatura).catch(() => {});
+
       sincronizarProjetosLocalParaNuvem().then(() => {
         atualizarLista();
       }).catch(() => {});
@@ -1372,9 +1399,6 @@ export default function EditorPage() {
         cadCart.listar().then((cs) => { setSugCns(cs.map((c) => c.cns).filter(Boolean)); setSugCartorios(cs); }).catch(() => {});
       }).catch(() => {});
     } else if (!authCarregando) {
-      // Auth já resolveu e não há usuário logado (modo local): pode liberar a restauração do
-      // rascunho na chave 'local'. Enquanto a auth ainda carrega, NÃO liberamos — senão a tela
-      // restauraria cedo demais a chave errada e o trabalho salvo sob o uid se perderia.
       limparConfigLocalNaSaida();
       setTecnico(carregarTecnico());
       setEscritorio(carregarEscritorio());
