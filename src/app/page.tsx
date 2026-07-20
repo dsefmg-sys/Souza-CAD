@@ -425,17 +425,20 @@ export default function EditorPage() {
   const pecasBtnRef = useRef<HTMLDivElement>(null);
   const [pecasMenuPos, setPecasMenuPos] = useState<{ top: number; right: number } | null>(null);
   function alternarMenuPecas() {
-    setPecasMenuAberto((v) => {
-      const abrindo = !v;
-      if (abrindo && pecasBtnRef.current) {
-        const r = pecasBtnRef.current.getBoundingClientRect();
-        const winW = typeof window !== 'undefined' ? window.innerWidth : 1200;
-        const rightPos = Math.max(8, winW - r.right);
-        const topPos = Math.max(40, r.bottom + 4);
-        setPecasMenuPos({ top: topPos, right: rightPos });
-      }
-      return abrindo;
-    });
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setPecasSheetAberto(true);
+      return;
+    }
+    if (pecasBtnRef.current) {
+      const r = pecasBtnRef.current.getBoundingClientRect();
+      const winW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+      const rightPos = Math.max(8, winW - r.right);
+      const topPos = Math.max(40, r.bottom + 4);
+      setPecasMenuPos({ top: topPos, right: rightPos });
+    } else {
+      setPecasMenuPos({ top: 56, right: 16 });
+    }
+    setPecasMenuAberto((v) => !v);
   }
   const [pecasSheetAberto, setPecasSheetAberto] = useState(false); // janela de escolher peça no mobile (abre pela MobileHome)
   const [dadosMenuAberto, setDadosMenuAberto] = useState(false);
@@ -7002,10 +7005,10 @@ export default function EditorPage() {
                 <Download /> PEÇAS <ChevronDown className="size-3" />
                 <Atalho k="F10" />
               </Button>
-              {pecasMenuAberto && pecasMenuPos && (
+              {pecasMenuAberto && (
                 <>
                   <div className={`fixed inset-0 ${Z_CLASSES.BACKDROP_DROPDOWN}`} onClick={() => setPecasMenuAberto(false)} />
-                  <div style={{ position: 'fixed', top: pecasMenuPos.top, right: pecasMenuPos.right }} className={`${Z_CLASSES.DROPDOWN_MENU} w-64 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1.5 shadow-2xl backdrop-blur-xl space-y-1`}>
+                  <div style={{ position: 'fixed', top: pecasMenuPos?.top ?? 56, right: pecasMenuPos?.right ?? 16 }} className={`${Z_CLASSES.DROPDOWN_MENU} w-64 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-1.5 shadow-2xl backdrop-blur-xl space-y-1`}>
                     {/* Botão Baixar Tudo no topo do dropdown desktop (Destaque Principal) */}
                     <button type="button" disabled={processando} onClick={() => { baixarPacoteEntrega(); }}
                       className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 px-4 py-3 text-center text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 border border-amber-500/35 shadow-md transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">
