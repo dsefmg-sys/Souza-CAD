@@ -61,17 +61,26 @@ export function PecasSheetModal({
 
           {/* Lista de Peças */}
           {itensPecas.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border bg-background/60 p-2 text-left">
-              <span className="text-xs font-semibold text-foreground truncate pl-1" title={item.rotulo}>
+            <div
+              key={item.id}
+              onClick={() => {
+                onOpenChange(false);
+                if (item.onBaixar) item.onBaixar();
+                else item.onVisualizar();
+              }}
+              className="flex items-center justify-between gap-2 rounded-lg border bg-background/60 p-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer group"
+            >
+              <span className="text-xs font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate pl-1" title={item.rotulo}>
                 {item.rotulo}
               </span>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <Button
                   size="sm"
                   variant="outline"
                   className="h-8 gap-1 px-2.5 text-xs text-muted-foreground hover:text-foreground active:scale-[0.97]"
                   title="Visualizar ou editar no navegador"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onOpenChange(false);
                     item.onVisualizar();
                   }}
@@ -83,7 +92,8 @@ export function PecasSheetModal({
                     size="sm"
                     className="h-8 gap-1 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-emerald-700 dark:hover:bg-emerald-800 active:scale-[0.97]"
                     title="Baixar arquivo"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       onOpenChange(false);
                       item.onBaixar?.();
                     }}

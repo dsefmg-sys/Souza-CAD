@@ -7027,17 +7027,25 @@ export default function EditorPage() {
                     {itensPecas
                       .filter((item) => ['memorial_normal', 'memorial_servidao', 'planta', 'requerimento', 'anuencia', 'errata'].includes(item.id))
                       .map((item) => (
-                        <div key={item.id} className="flex items-center justify-between gap-1.5 rounded-lg px-2 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-                          <span className="text-xs font-semibold text-zinc-950 dark:text-zinc-50 truncate pl-1" title={item.rotulo}>
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setPecasMenuAberto(false);
+                            if (item.onBaixar) item.onBaixar();
+                            else item.onVisualizar();
+                          }}
+                          className="flex items-center justify-between gap-1.5 rounded-lg px-2 py-1.5 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 transition-colors cursor-pointer group"
+                        >
+                          <span className="text-xs font-semibold text-zinc-950 dark:text-zinc-50 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate pl-1" title={item.rotulo}>
                             {item.rotulo.replace(' (.docx)', '').replace(' (PDF)', '')}
                           </span>
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                             <Button
                               size="icon"
                               variant="ghost"
                               className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted"
                               title="Visualizar ou editar no navegador"
-                              onClick={() => { setPecasMenuAberto(false); item.onVisualizar(); }}
+                              onClick={(e) => { e.stopPropagation(); setPecasMenuAberto(false); item.onVisualizar(); }}
                             >
                               <Eye className="size-3.5" />
                             </Button>
@@ -7047,7 +7055,7 @@ export default function EditorPage() {
                                 variant="ghost"
                                 className="size-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400 dark:hover:text-emerald-300"
                                 title="Baixar arquivo"
-                                onClick={() => { setPecasMenuAberto(false); item.onBaixar?.(); }}
+                                onClick={(e) => { e.stopPropagation(); setPecasMenuAberto(false); item.onBaixar?.(); }}
                               >
                                 <Download className="size-3.5" />
                               </Button>
@@ -7070,8 +7078,15 @@ export default function EditorPage() {
 
         {/* Bolinha do perfil, à direita do cabeçalho: só a foto, sem o nome. Abre ao clicar. */}
         <div className="relative flex shrink-0 items-center border-l px-2 self-stretch">
-          <button type="button" onClick={() => setPerfilMenuAberto((v) => !v)} title="Sua conta"
-            className="rounded-full transition-transform hover:scale-105">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPerfilMenuAberto((v) => !v);
+            }}
+            title="Sua conta"
+            className="rounded-full transition-transform hover:scale-105 cursor-pointer"
+          >
             {user?.photoURL && !avatarQuebrado ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={user.photoURL} alt="Perfil" className="size-7 rounded-full border border-border object-cover" onError={() => setAvatarQuebrado(true)} />
@@ -7082,7 +7097,9 @@ export default function EditorPage() {
             )}
           </button>
           {perfilMenuAberto && (
-            <div className={`absolute right-0 top-full pt-2 ${Z_CLASSES.DROPDOWN_MENU}`}>
+            <>
+              <div className="fixed inset-0 z-[9990]" onClick={() => setPerfilMenuAberto(false)} />
+              <div className={`absolute right-0 top-full pt-2 ${Z_CLASSES.DROPDOWN_MENU}`}>
               <div className="w-80 max-w-[95vw] overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 p-2.5 shadow-2xl backdrop-blur-2xl space-y-1">
                 {user && (
                   <div className="flex items-center gap-3 px-3 py-2 bg-slate-500/5 dark:bg-white/5 border border-white/5 rounded-xl mb-1.5 select-none">
@@ -7243,7 +7260,8 @@ export default function EditorPage() {
                 )}
               </div>
             </div>
-          )}
+          </>
+        )}
         </div>
 
        {/* (o botão "Dados do Projeto" foi para a barra flutuante, ao lado do DETALHES) */}
@@ -8858,7 +8876,7 @@ export default function EditorPage() {
 
       {/* JANELA MODAL CENTRALIZADA DADOS DO IMÓVEL */}
       <Dialog open={painelAberto} onOpenChange={setPainelAberto}>
-        <DialogContent className="max-w-4xl max-h-[88vh] flex flex-col bg-card p-4 rounded-xl border shadow-2xl overflow-hidden">
+        <DialogContent className="max-w-4xl h-[84vh] max-h-[780px] min-h-[580px] flex flex-col bg-card p-4 rounded-xl border shadow-2xl overflow-hidden">
           <DialogHeader className="pb-2 border-b flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
               <Upload className="size-4 text-indigo-500" />

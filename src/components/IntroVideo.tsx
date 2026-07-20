@@ -49,14 +49,16 @@ export default function IntroVideo() {
     if (!aberto || !videoRef.current) return;
     const v = videoRef.current;
     let cancelado = false;
+    try { v.currentTime = 0; } catch {}
     v.muted = true;
     v.play().then(() => {
       if (cancelado) return;
+      setTocando(true);
       if (comSom) {
         v.muted = false;
         v.play().catch(() => { v.muted = true; setComSom(false); });
       }
-    }).catch(() => { /* nem mudo tocou; o usuário pode pular */ });
+    }).catch(() => { /* falha no play */ });
     return () => { cancelado = true; };
   }, [aberto, comSom]);
 
@@ -100,18 +102,14 @@ export default function IntroVideo() {
 
         {/* Moldura do vídeo: cantos arredondados, borda e brilho verdes — sem zoom no vídeo */}
         <div className="relative overflow-hidden rounded-2xl border border-emerald-400/30 bg-black shadow-[0_0_90px_rgba(16,185,129,0.28)]">
-          {/* Cobertura que some quando o vídeo realmente começa a rodar */}
-          {!tocando && <div className="absolute inset-0 z-10 bg-[#0a1f14]" />}
           <video
             ref={videoRef}
             src="/marca/intro.mp4"
-            className="aspect-video w-full object-cover transition-opacity duration-150"
-            style={{ opacity: tocando ? 1 : 0 }}
-            autoPlay
+            className="aspect-video w-full object-cover"
             muted
             playsInline
             preload="auto"
-            onPlaying={() => setTocando(true)}
+            onPlay={() => setTocando(true)}
             onEnded={fechar}
             onError={fechar}
           />
