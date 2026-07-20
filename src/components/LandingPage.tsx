@@ -7,6 +7,7 @@ const bp = (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/$/, '');
 
 interface LandingPageProps {
   onPioneiro: () => void;
+  onAbrirLogin?: () => void;
   numUsuarios: number;
   texts: LandingPageTexts;
 }
@@ -45,7 +46,7 @@ function InteractiveImageWindow({ src, alt, onExpand }: { src: string; alt: stri
   );
 }
 
-export default function LandingPage({ onPioneiro, numUsuarios, texts }: LandingPageProps) {
+export default function LandingPage({ onPioneiro, onAbrirLogin, numUsuarios, texts }: LandingPageProps) {
   const [activeSection, setActiveSection] = useState(0);
   const [modalIndiqueAberto, setModalIndiqueAberto] = useState(false);
   const [textoCopiado, setTextoCopiado] = useState(false);
@@ -78,7 +79,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
     if (typeof window !== 'undefined') {
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagemRecomendacao)}`, '_blank');
     }
-  };
+  }
 
   const scrollToSec = (idx: number) => {
     const el = document.getElementById(`sec-${idx}`);
@@ -87,50 +88,53 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
     }
   };
 
-  // Observa a seção visível para atualizar os pontinhos laterais e gerencia rolada leve no mouse
+  // Monitora a seção visível atual ao rolar para atualizar os marcadores laterais
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            const id = entry.target.id;
-            const idx = parseInt(id.replace('sec-', ''), 10);
-            if (!isNaN(idx)) setActiveSection(idx);
+            const idStr = entry.target.id;
+            if (idStr.startsWith('sec-')) {
+              const secNum = parseInt(idStr.replace('sec-', ''), 10);
+              if (!isNaN(secNum)) {
+                setActiveSection(secNum);
+              }
+            }
           }
         });
       },
-      { threshold: 0.4 }
+      { threshold: 0.45 }
     );
 
-    const sections = document.querySelectorAll('.landing-snap-sec');
-    sections.forEach((sec) => observer.observe(sec));
-
-    let cooldown = false;
-    let timeoutId: NodeJS.Timeout | null = null;
+    document.querySelectorAll('.landing-snap-sec').forEach((sec) => {
+      observer.observe(sec);
+    });
 
     const handleWheel = (e: WheelEvent) => {
-      if (cooldown) return;
-      if (Math.abs(e.deltaY) < 10) return; // ignora micro tremores
+      if (Math.abs(e.deltaY) < 15) return;
+      if (timeoutId) clearTimeout(timeoutId);
 
-      // Executa o pulo de seção com uma rolada leve
-      if (e.deltaY > 0) {
-        setActiveSection((prev) => {
-          const next = Math.min(6, prev + 1);
-          scrollToSec(next);
-          return next;
-        });
-      } else {
-        setActiveSection((prev) => {
-          const next = Math.max(0, prev - 1);
-          scrollToSec(next);
-          return next;
-        });
-      }
-
-      cooldown = true;
       timeoutId = setTimeout(() => {
-        cooldown = false;
-      }, 550);
+        const secs = document.querySelectorAll('.landing-snap-sec');
+        if (secs.length === 0) return;
+
+        let currentIdx = 0;
+        secs.forEach((sec, idx) => {
+          const rect = sec.getBoundingClientRect();
+          if (rect.top <= window.innerHeight * 0.4 && rect.bottom >= window.innerHeight * 0.4) {
+            currentIdx = idx;
+          }
+        });
+
+        if (e.deltaY > 0 && currentIdx < secs.length - 1) {
+          secs[currentIdx + 1].scrollIntoView({ behavior: 'smooth' });
+        } else if (e.deltaY < 0 && currentIdx > 0) {
+          secs[currentIdx - 1].scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 40);
     };
 
     window.addEventListener('wheel', handleWheel, { passive: true });
@@ -154,7 +158,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
   // Fallbacks de textos
   const titulo = texts.titulo || 'Otimize 5 horas de projeto em apenas 20 minutos.';
   const subtitulo = texts.subtitulo || 'Gere a planilha ODS oficial no padrão SIGEF/INCRA em minutos, memoriais descritivos perimétricos, plantas topográficas completas (A3/A0), requerimentos cartorários, erratas, contratos e recibos numa única plataforma.';
-  const historia = texts.historia || 'Depois de anos empreendendo e vivenciando na prática os desafios reais de campo, os altos custos e a baixa performance dos softwares de CAD tradicionais e o preenchimento exaustivo de planilhas, decidi usar meus conhecimentos de programação para desenvolver uma solução definitiva. O Souza-CAD transforma um processo manual e exaustivo em minutos de trabalho inteligente, proporcionando agilidade, autonomia e total segurança técnica para o seu escritório.';
+  const historia = texts.historia || 'Depois de anos empreendendo e vivenciando na prática os desafios reais de campo, os altos custos e a baixa performance dos softwares de CAD tradicionais e o preenchimento exaustivo de planilhas, decidi usar meus conhecimentos de programação para desenvolver uma solução definitiva. O Souza-CAD transforma um processo manual e exaustivo em minutos de trabalho inteligente, passando agilidade, autonomia e total segurança técnica para o seu escritório.';
   const autorHistoria = texts.autorHistoria || 'Souza-CAD — Software Profissional de Engenharia Topográfica';
   const itensCheck = texts.itensCheck && texts.itensCheck.length === 4 ? texts.itensCheck : [
     'Georreferenciamento Rural: Memoriais e geração de planilha ODS para SIGEF.',
@@ -177,21 +181,65 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
           50% { transform: translateY(-8px); }
         }
         @keyframes ambient-glow {
-          0%, 100% { opacity: 0.15; transform: scale(1); }
-          50% { opacity: 0.25; transform: scale(1.05); }
+          0%, 100% { opacity: 0.35; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.08); }
         }
-        @keyframes btn-shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
+        .animate-float-subtle {
+          animation: float-subtle 4s ease-in-out infinite;
         }
-        .animate-float-subtle { animation: float-subtle 7s ease-in-out infinite; }
-        .animate-ambient-glow { animation: ambient-glow 10s ease-in-out infinite; }
+        .animate-ambient-glow {
+          animation: ambient-glow 8s ease-in-out infinite;
+        }
         .btn-shimmer-effect {
-          background-size: 200% 100%;
-          background-image: linear-gradient(110deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0) 100%);
+          position: relative;
+          overflow: hidden;
         }
-        .btn-shimmer-effect:hover { animation: btn-shimmer 2s infinite; }
+        .btn-shimmer-effect::after {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: linear-gradient(
+            60deg,
+            transparent 30%,
+            rgba(255, 255, 255, 0.25) 50%,
+            transparent 70%
+          );
+          transform: rotate(30deg);
+          animation: shimmer-anim 4s infinite;
+        }
+        @keyframes shimmer-anim {
+          0% { transform: translateX(-100%) rotate(30deg); }
+          20%, 100% { transform: translateX(100%) rotate(30deg); }
+        }
       `}</style>
+
+      {/* MODAL / OVERLAY DA IMAGEM EXPANDIDA EM TELA CHEIA */}
+      {lightboxImg && (
+        <div
+          className="fixed inset-0 z-[100000] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 cursor-zoom-out"
+          onClick={() => setLightboxImg(null)}
+        >
+          <div className="relative max-w-7xl max-h-[92vh] overflow-auto rounded-2xl border border-emerald-500/30 bg-slate-900 shadow-2xl p-2 select-none">
+            <button
+              type="button"
+              onClick={() => setLightboxImg(null)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-slate-950/80 text-white hover:bg-emerald-600 transition-colors cursor-pointer border border-white/10"
+              title="Fechar"
+            >
+              <X className="size-5" />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxImg}
+              alt="Visualização expandida"
+              className="w-full h-auto max-h-[88vh] object-contain rounded-xl"
+            />
+          </div>
+        </div>
+      )}
 
       {/* BACKGROUND DE CURVAS DE NÍVEL SVG */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-15 animate-ambient-glow">
@@ -226,7 +274,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
         ))}
       </div>
 
-      {/* HEADER FIXO NO TOPO */}
+      {/* CABEÇALHO FLUTUANTE DE ALTA RESO */}
       <header className="fixed top-4 left-1/2 -translate-x-1/2 max-w-5xl w-[92%] px-5 py-2.5 flex items-center justify-between z-40 bg-zinc-950/65 dark:bg-zinc-900/65 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl">
         <div className="flex items-center gap-2.5 group cursor-default">
           <div className="p-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 group-hover:border-emerald-400/60 group-hover:bg-emerald-500/20 transition-all duration-300 shadow-md">
@@ -246,6 +294,16 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <Share2 className="size-3.5 text-emerald-400" />
             <span className="hidden sm:inline">Indicar a um amigo</span>
           </button>
+
+          {onAbrirLogin && (
+            <button
+              type="button"
+              onClick={onAbrirLogin}
+              className="px-3.5 py-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer shadow-sm"
+            >
+              Fazer Login
+            </button>
+          )}
 
           <button
             type="button"

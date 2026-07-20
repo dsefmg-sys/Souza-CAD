@@ -10279,8 +10279,19 @@ export default function EditorPage() {
                 localStorage.setItem('metrica:landing_page_vista', 'true');
               } catch { /* ignore */ }
               setLandingPageAberta(false);
-              // Dispara evento para o player de vídeo começar a tocar imediatamente
-              window.dispatchEvent(new CustomEvent('souzacad:ver-intro'));
+              if (!user) {
+                definirModoEntrada('login');
+              } else {
+                window.dispatchEvent(new CustomEvent('souzacad:ver-intro'));
+              }
+            }}
+            onAbrirLogin={() => {
+              try {
+                sessionStorage.setItem('metrica:landing_page_fechada', 'true');
+                localStorage.setItem('metrica:landing_page_vista', 'true');
+              } catch { /* ignore */ }
+              setLandingPageAberta(false);
+              definirModoEntrada('login');
             }}
           />
         </div>
