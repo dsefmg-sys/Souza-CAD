@@ -143,9 +143,8 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
   }, []);
 
   // Escassez de vagas de pioneiros
-  let vagasTotais = 50;
-  if (numUsuarios >= 50 && numUsuarios < 100) vagasTotais = 100;
-  else if (numUsuarios >= 100 && numUsuarios < 200) vagasTotais = 200;
+  let vagasTotais = 100;
+  if (numUsuarios >= 100 && numUsuarios < 200) vagasTotais = 200;
   else if (numUsuarios >= 200 && numUsuarios < 500) vagasTotais = 500;
   else if (numUsuarios >= 500) vagasTotais = 1000;
 
