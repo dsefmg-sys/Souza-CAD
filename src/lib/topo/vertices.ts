@@ -274,12 +274,10 @@ export function iniciarDoNorteHorario(vertices: Vertex[]): Vertex[] {
   }
   let anel = area2 > 0 ? [...vertices].reverse() : [...vertices];
   
-  // Função auxiliar para obter o valor de Norte efetivo (UTM Norte ou latitude algebricamente assinada).
-  // No Hemisfério Sul, maior Norte UTM ou latitude mais próxima do Equador (-20.730493° > -20.730501°) indica posição mais ao Norte.
   const valorNorte = (v: Vertex) => {
     if (Number.isFinite(v.norte) && v.norte !== 0) return v.norte;
-    if (!Number.isFinite(v.lat)) return 0;
-    return v.lat > 0 ? -v.lat : v.lat;
+    if (Number.isFinite(v.lat)) return v.lat;
+    return 0;
   };
   const valorLeste = (v: Vertex) => (Number.isFinite(v.leste) && v.leste !== 0 ? v.leste : v.lon ?? 0);
 

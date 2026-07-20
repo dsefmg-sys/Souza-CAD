@@ -2359,6 +2359,9 @@ export default function EditorPage() {
     // zerar aqui fazia os pontos sumirem ao trocar de gleba ou criar uma nova (bug 05/07/2026)
     setGlebaAtivaId(g.id);
     setSelecionadoId(null);
+    if (vsOrdenados[0]?.id) {
+      setPlantaConfig((prev) => ({ ...prev, verticeReferenciaId: vsOrdenados[0].id }));
+    }
     if (g.vertices.length >= 2) setCentralizarSig((n) => n + 1); // enquadra a gleba carregada
   }
   function trocarGleba(id: string) {
