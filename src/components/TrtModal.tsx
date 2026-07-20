@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Copy, CheckCheck, Award, ExternalLink, ShieldCheck, FileCheck2, Building2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Copy, CheckCheck, Award, ExternalLink, ShieldCheck, FileCheck2, Building2, Pencil, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import type { ImovelData, TecnicoData } from '@/lib/topo/types';
@@ -20,6 +20,7 @@ interface Props {
 
 export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, perimetro, onChangeImovel }: Props) {
   const [copiado, setCopiado] = useState<string | null>(null);
+  const trtInputRef = useRef<HTMLInputElement>(null);
   const extras = tecnico?.registrosExtras ?? [];
   const [credencialIdx, setCredencialIdx] = useState(-1);
   const credencial = credencialIdx >= 0 && extras[credencialIdx]
@@ -149,21 +150,54 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
             </Button>
           </div>
 
-          {/* Campo de vinculo de numero TRT/ART */}
-          <div className="flex items-center gap-2 w-full sm:w-auto flex-1 max-w-md bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-1.5">
+          {/* Campo de vinculo de numero TRT/ART (Totalmente Editavel) */}
+          <div
+            className="flex items-center gap-2 w-full sm:w-auto flex-1 max-w-md bg-amber-500/10 border border-amber-500/40 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 rounded-xl px-3 py-1.5 transition-all cursor-text"
+            onClick={() => trtInputRef.current?.focus()}
+          >
             <FileCheck2 className="size-4 text-amber-500 shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="text-[9px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">Nº do {rot.termo} Emitido</div>
+              <div className="text-[9px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 flex items-center justify-between">
+                <span>Nº do {rot.termo} Emitido (Editável)</span>
+              </div>
               <input
+                ref={trtInputRef}
                 className="w-full bg-transparent border-0 outline-none text-xs font-mono font-bold text-foreground placeholder:text-muted-foreground/60 focus:ring-0 p-0"
-                placeholder={`Cole o número da ${rot.termo} para o carimbo da planta`}
+                placeholder={`Cole ou digite o nº da ${rot.termo} (ex.: CFT2605777798)`}
                 value={imovel.numeroTrt ?? ''}
                 onChange={(e) => onChangeImovel?.({ ...imovel, numeroTrt: e.target.value })}
               />
             </div>
-            {imovel.numeroTrt && (
-              <span className="flex items-center gap-1 text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full shrink-0">
-                <ShieldCheck className="size-3" /> VINCULADO
+            {imovel.numeroTrt ? (
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    trtInputRef.current?.focus();
+                    trtInputRef.current?.select();
+                  }}
+                  className="flex items-center gap-1 text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                  title="Número vinculado à planta! Clique para editar a qualquer momento"
+                >
+                  <ShieldCheck className="size-3" /> VINCULADO <Pencil className="size-2.5 ml-0.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChangeImovel?.({ ...imovel, numeroTrt: '' });
+                    trtInputRef.current?.focus();
+                  }}
+                  className="size-5 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  title="Limpar número do TRT/ART"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full shrink-0">
+                Digite ou cole
               </span>
             )}
           </div>
