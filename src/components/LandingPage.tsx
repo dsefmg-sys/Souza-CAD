@@ -201,6 +201,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
           left: -50%;
           width: 200%;
           height: 200%;
+          pointer-events: none;
           background: linear-gradient(
             60deg,
             transparent 30%,
@@ -275,7 +276,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
       </div>
 
       {/* CABEÇALHO FLUTUANTE DE ALTA RESO */}
-      <header className="fixed top-4 left-1/2 -translate-x-1/2 max-w-5xl w-[92%] px-5 py-2.5 flex items-center justify-between z-40 bg-zinc-950/65 dark:bg-zinc-900/65 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl">
+      <header className="fixed top-4 left-1/2 -translate-x-1/2 max-w-5xl w-[92%] px-5 py-2.5 flex items-center justify-between z-[60] bg-zinc-950/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl pointer-events-auto select-none">
         <div className="flex items-center gap-2.5 group cursor-default">
           <div className="p-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 group-hover:border-emerald-400/60 group-hover:bg-emerald-500/20 transition-all duration-300 shadow-md">
             <Compass className="size-4.5 text-emerald-400 group-hover:rotate-45 transition-transform duration-500" />
@@ -285,11 +286,15 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             <span className="block text-[8.5px] font-semibold uppercase tracking-wider text-emerald-400/85">Georreferenciamento</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 relative z-10">
           <button
             type="button"
-            onClick={indicarAmigo}
-            className="group px-3.5 py-1.5 rounded-full border border-white/10 bg-white/5 text-white/90 text-xs font-semibold hover:bg-white/10 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              indicarAmigo();
+            }}
+            className="group px-3.5 py-1.5 rounded-full border border-white/10 bg-white/5 text-white/90 text-xs font-semibold hover:bg-white/10 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm relative z-10 pointer-events-auto"
           >
             <Share2 className="size-3.5 text-emerald-400" />
             <span className="hidden sm:inline">Indicar a um amigo</span>
@@ -298,8 +303,12 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
           {onAbrirLogin && (
             <button
               type="button"
-              onClick={onAbrirLogin}
-              className="px-3.5 py-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer shadow-sm"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onAbrirLogin();
+              }}
+              className="px-3.5 py-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 hover:border-emerald-400 active:scale-95 transition-all cursor-pointer shadow-sm relative z-10 pointer-events-auto"
             >
               Fazer Login
             </button>
@@ -307,8 +316,12 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
 
           <button
             type="button"
-            onClick={onPioneiro}
-            className="group px-4 py-1.5 rounded-full bg-emerald-600 text-white text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-1.5 hover:bg-emerald-500 hover:scale-[1.02] active:scale-[0.98] shadow-md btn-shimmer-effect"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onPioneiro();
+            }}
+            className="group px-4 py-1.5 rounded-full bg-emerald-600 text-white text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-1.5 hover:bg-emerald-500 hover:scale-[1.02] active:scale-[0.98] shadow-md btn-shimmer-effect relative z-10 pointer-events-auto"
           >
             <Zap className="size-3.5" />
             <span>Pioneiro ({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span>
