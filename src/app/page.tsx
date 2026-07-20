@@ -1361,31 +1361,15 @@ export default function EditorPage() {
       // empresa dele (Configurações → Ajudantes/Equipe), aceita automaticamente e já pula direto
       // pro workspace dessa empresa — sem isso, um convidado cairia na tela de "criar empresa
       // nova" achando que precisa se cadastrar do zero.
-      carregarEmpresaConfig(user.uid).then((cfg) => {
-        if (!cfg) return;
-        if (cfg.logoDataUrl) {
-          const esc = carregarEscritorio();
-          const tec = carregarTecnico();
-          salvarEmpresa(esc.nome, esc.cnpj, cfg.logoDataUrl);
-          setEscritorio({ ...esc, logoDataUrl: cfg.logoDataUrl });
-        }
-        if (cfg.plantaConfig) {
-          salvarPlantaPadrao(cfg.plantaConfig);
-          setPlantaConfig(cfg.plantaConfig);
-        }
-        if (cfg.confrontantesCores) {
-          salvarCoresDivisa(cfg.confrontantesCores);
-        }
-        if (cfg.tiposDivisaCustom && cfg.tiposDivisaCustom.length > 0) {
-          salvarTiposDivisaCustom(cfg.tiposDivisaCustom);
-          setTiposDivisaCustom(cfg.tiposDivisaCustom);
-        }
-        if (cfg.tema && (cfg.tema === 'claro' || cfg.tema === 'escuro')) {
-          salvarTema(cfg.tema);
-          setTema(cfg.tema);
-        }
-        setTemaCarregadoDaNuvem(true);
-      }).catch(() => { setTemaCarregadoDaNuvem(true); });
+      aceitarConviteSePendente().then((empresaConvite) => {
+        if (empresaConvite) aviso(`Você foi vinculado automaticamente à empresa "${empresaConvite}".`);
+        puxarConfigDaNuvem(!!empresaConvite).then((configurado) => {
+          setTecnico(carregarTecnico());
+          setEscritorio(carregarEscritorio());
+          setSetupOk(souMaster() || configurado);
+        }).catch(() => {});
+        garantirEmpresaDoWorkspace().then(() => minhaEmpresa()).then(setEmpresaAtual).catch(() => {});
+      }).catch(() => {});
 
       carregarPerfilNuvem(user.uid).then(setPerfil).catch(() => {});
       carregarAssinaturaNuvem().then(setConfigAssinatura).catch(() => {});
