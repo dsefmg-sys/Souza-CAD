@@ -275,8 +275,8 @@ export function iniciarDoNorteHorario(vertices: Vertex[]): Vertex[] {
   let anel = area2 > 0 ? [...vertices].reverse() : [...vertices];
   
   const valorNorte = (v: Vertex) => {
-    if (Number.isFinite(v.norte) && v.norte !== 0) return v.norte;
     if (Number.isFinite(v.lat) && v.lat !== 0) return v.lat;
+    if (Number.isFinite(v.norte) && v.norte !== 0) return v.norte;
     return 0;
   };
   const valorLeste = (v: Vertex) => {
