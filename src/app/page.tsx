@@ -10279,6 +10279,7 @@ export default function EditorPage() {
                 localStorage.setItem('metrica:landing_page_vista', 'true');
               } catch { /* ignore */ }
               setLandingPageAberta(false);
+              window.dispatchEvent(new CustomEvent('souzacad:fechar-landing'));
               if (!user) {
                 definirModoEntrada('login');
               } else {
@@ -10291,6 +10292,7 @@ export default function EditorPage() {
                 localStorage.setItem('metrica:landing_page_vista', 'true');
               } catch { /* ignore */ }
               setLandingPageAberta(false);
+              window.dispatchEvent(new CustomEvent('souzacad:fechar-landing'));
               definirModoEntrada('login');
             }}
           />
