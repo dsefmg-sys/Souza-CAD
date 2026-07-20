@@ -30,39 +30,43 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
   const isCrea = rot.termo === 'ART';
   const linkEmitir = isCrea ? 'https://servicos-crea-mg.sitac.com.br/index.php' : 'https://servicos.sinceti.net.br/';
 
-  const linhas: { label: string; valor: string; cor: string }[] = [
-    { label: 'Responsável técnico', valor: tecnico?.nome ?? '', cor: 'border-l-indigo-500' },
-    { label: 'Título profissional', valor: credencial.formacao || '', cor: 'border-l-indigo-500' },
-    { label: rot.registro, valor: credencial.registro || '', cor: 'border-l-sky-500' },
-    { label: 'Credenciamento INCRA', valor: tecnico?.credenciamentoIncra ?? '', cor: 'border-l-amber-500' },
-    { label: 'Atividade técnica', valor: 'Georreferenciamento de imóvel rural — levantamento topográfico georreferenciado (SIGEF/INCRA)', cor: 'border-l-emerald-500' },
-    { label: 'Proprietário / contratante', valor: imovel.proprietario, cor: 'border-l-blue-500' },
-    { label: 'CPF/CNPJ do Titular', valor: imovel.cpfProprietario, cor: 'border-l-blue-500' },
-    { label: 'Imóvel', valor: imovel.denominacao, cor: 'border-l-purple-500' },
-    { label: 'Matrícula', valor: imovel.matricula, cor: 'border-l-purple-500' },
-    { label: 'Código do Imóvel (SNCR/INCRA)', valor: imovel.codigoImovelIncra, cor: 'border-l-amber-500' },
-    { label: 'Cartório (CNS)', valor: imovel.cns, cor: 'border-l-teal-500' },
-    { label: 'Município/UF', valor: imovel.municipio, cor: 'border-l-teal-500' },
-    { label: 'Área (ha)', valor: `${numBR(areaHa, 4)} ha`, cor: 'border-l-emerald-500' },
-    { label: 'Perímetro (m)', valor: `${numBR(perimetro)} m`, cor: 'border-l-emerald-500' },
+  const linhas: { label: string; valor: string; cor: string; copiavel: boolean }[] = [
+    { label: 'Responsável técnico', valor: tecnico?.nome ?? '', cor: 'border-l-indigo-500', copiavel: false },
+    { label: 'Título profissional', valor: credencial.formacao || '', cor: 'border-l-indigo-500', copiavel: false },
+    { label: rot.registro, valor: credencial.registro || '', cor: 'border-l-sky-500', copiavel: false },
+    { label: 'Credenciamento INCRA', valor: tecnico?.credenciamentoIncra ?? '', cor: 'border-l-amber-500', copiavel: false },
+    { label: 'Atividade técnica', valor: 'Georreferenciamento de imóvel rural — levantamento topográfico georreferenciado (SIGEF/INCRA)', cor: 'border-l-emerald-500', copiavel: true },
+    { label: 'Proprietário / contratante', valor: imovel.proprietario, cor: 'border-l-blue-500', copiavel: true },
+    { label: 'CPF/CNPJ do Titular', valor: imovel.cpfProprietario, cor: 'border-l-blue-500', copiavel: true },
+    { label: 'Imóvel', valor: imovel.denominacao, cor: 'border-l-purple-500', copiavel: true },
+    { label: 'Matrícula', valor: imovel.matricula, cor: 'border-l-purple-500', copiavel: true },
+    { label: 'Código do Imóvel (SNCR/INCRA)', valor: imovel.codigoImovelIncra, cor: 'border-l-amber-500', copiavel: true },
+    { label: 'Cartório (CNS)', valor: imovel.cns, cor: 'border-l-teal-500', copiavel: true },
+    { label: 'Município/UF', valor: imovel.municipio, cor: 'border-l-teal-500', copiavel: true },
+    { label: 'Área (ha)', valor: `${numBR(areaHa, 4)} ha`, cor: 'border-l-emerald-500', copiavel: true },
+    { label: 'Perímetro (m)', valor: `${numBR(perimetro)} m`, cor: 'border-l-emerald-500', copiavel: true },
   ];
 
   function copiar(texto: string, chave: string) {
+    const txtFinal = texto.toUpperCase();
     const ok = () => { setCopiado(chave); setTimeout(() => setCopiado(null), 1500); };
     const fallback = () => {
       try {
         const ta = document.createElement('textarea');
-        ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        ta.value = txtFinal; ta.style.position = 'fixed'; ta.style.opacity = '0';
         document.body.appendChild(ta); ta.focus(); ta.select();
         document.execCommand('copy'); document.body.removeChild(ta); ok();
       } catch { /* erro */ }
     };
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(texto).then(ok).catch(fallback);
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txtFinal).then(ok).catch(fallback);
     else fallback();
   }
 
   function copiarTudo() {
-    const txt = linhas.map(({ label, valor }) => `${label}: ${valor || '—'}`).join('\n');
+    const txt = linhas
+      .filter((l) => l.copiavel && l.valor)
+      .map(({ label, valor }) => `${label}: ${valor.toUpperCase()}`)
+      .join('\n');
     copiar(txt, '__tudo__');
   }
 
@@ -94,13 +98,13 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
             <Building2 className="size-4 text-indigo-500 shrink-0" />
             <label className="shrink-0 text-xs font-bold text-indigo-600 dark:text-indigo-400">Emitir como:</label>
             <select
-              className="h-8 flex-1 rounded-lg border border-indigo-500/30 bg-background px-3 text-xs font-bold text-foreground outline-none focus:ring-1 focus:ring-indigo-500"
+              className="h-8 flex-1 rounded-lg border border-indigo-500/30 bg-background px-3 text-xs font-bold uppercase text-foreground outline-none focus:ring-1 focus:ring-indigo-500"
               value={credencialIdx}
               onChange={(e) => setCredencialIdx(Number(e.target.value))}
             >
-              <option value={-1}>{tecnico?.formacao || 'Formação principal'} — {tecnico?.conselho ?? 'CFT'}{tecnico?.cft ? ` (${tecnico.cft})` : ''}</option>
+              <option value={-1}>{(tecnico?.formacao || 'Formação principal').toUpperCase()} — {tecnico?.conselho ?? 'CFT'}{tecnico?.cft ? ` (${tecnico.cft})` : ''}</option>
               {extras.map((r, i) => (
-                <option key={i} value={i}>{r.formacao || r.conselho} — {r.conselho}{r.registro ? ` (${r.registro})` : ''}</option>
+                <option key={i} value={i}>{(r.formacao || r.conselho).toUpperCase()} — {r.conselho}{r.registro ? ` (${r.registro})` : ''}</option>
               ))}
             </select>
           </div>
@@ -108,26 +112,28 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
 
         {/* Grid colorido de campos */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-3 rounded-xl border border-border/80 bg-slate-500/5 overflow-y-auto min-h-0 flex-1">
-          {linhas.map(({ label, valor, cor }) => (
+          {linhas.map(({ label, valor, cor, copiavel }) => (
             <div
               key={label}
               className={`group flex items-center justify-between gap-2 p-2.5 border border-border/60 border-l-4 ${cor} rounded-xl bg-card hover:bg-muted/40 transition-all shadow-2xs`}
             >
               <div className="min-w-0 flex-1">
                 <div className="text-[9.5px] uppercase font-black tracking-wider text-muted-foreground">{label}</div>
-                <div className="truncate text-xs font-extrabold text-foreground mt-0.5" title={valor}>
-                  {valor || <span className="text-muted-foreground/60 font-normal italic">DADO AUSENTE</span>}
+                <div className="truncate text-xs font-extrabold uppercase text-foreground mt-0.5" title={valor ? valor.toUpperCase() : ''}>
+                  {valor ? valor.toUpperCase() : <span className="text-muted-foreground/60 font-normal italic normal-case">DADO AUSENTE</span>}
                 </div>
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 w-7 p-0 shrink-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                onClick={() => copiar(valor, label)}
-                title={`Copiar ${label}`}
-              >
-                {copiado === label ? <CheckCheck className="size-3.5 text-emerald-500 animate-in zoom-in-50" /> : <Copy className="size-3.5" />}
-              </Button>
+              {copiavel && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0 shrink-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                  onClick={() => copiar(valor, label)}
+                  title={`Copiar ${label}`}
+                >
+                  {copiado === label ? <CheckCheck className="size-3.5 text-emerald-500 animate-in zoom-in-50" /> : <Copy className="size-3.5" />}
+                </Button>
+              )}
             </div>
           ))}
         </div>
