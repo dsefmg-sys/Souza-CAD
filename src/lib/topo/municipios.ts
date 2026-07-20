@@ -4,6 +4,7 @@
 // capitais de todos os estados + DF (para o app funcionar em qualquer lugar do Brasil, não só na
 // região de Espera Feliz — um agrimensor de outro estado sempre tem uma âncora próxima o bastante).
 import { utmParaGeo } from './coords';
+import type { ImovelData, CartorioCad } from './types';
 
 export const MUNICIPIOS: Record<string, { lat: number; lon: number }> = {
   'espera feliz-mg': { lat: -20.6506, lon: -41.9094 },
@@ -190,4 +191,34 @@ export function ancoraMunicipio(nome: string): { lat: number; lon: number } | nu
     if (kSemUf === semUf) return v;
   }
   return null;
+}
+
+/**
+ * Resolve a comarca correta do imóvel segundo a hierarquia inteligente de fontes:
+ * 1. `imovel.comarca` (comarca digitada especificamente para este imóvel)
+ * 2. `cartorio.municipio` (município do Cartório de Registro de Imóveis selecionado por CNS)
+ * 3. `padroesComarca` (comarca padrão configurada nas opções do escritório/sistema)
+ * 4. `imovel.municipio` (fallback final caso nenhuma fonte anterior esteja preenchida)
+ */
+export function obterComarca(
+  imovel?: Partial<ImovelData> | null,
+  padroesComarca?: string | null,
+  cartorios?: CartorioCad[] | null
+): string {
+  if (imovel?.comarca?.trim()) {
+    return formatarNome(imovel.comarca.trim());
+  }
+  if (imovel?.cns && cartorios?.length) {
+    const cart = cartorios.find((c) => c.cns === imovel.cns);
+    if (cart?.municipio?.trim()) {
+      return formatarNome(cart.municipio.trim());
+    }
+  }
+  if (padroesComarca?.trim()) {
+    return formatarNome(padroesComarca.trim());
+  }
+  if (imovel?.municipio?.trim()) {
+    return formatarNome(imovel.municipio.trim());
+  }
+  return '—';
 }

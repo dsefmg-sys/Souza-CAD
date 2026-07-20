@@ -5,6 +5,7 @@ import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
 import { compatibilizarWord2007 } from './compatWord2007';
+import { obterComarca } from '../topo/municipios';
 
 export interface ErrataInput {
   imovel: ImovelData;
@@ -32,9 +33,9 @@ function secao(n: number, titulo: string) {
 export async function gerarErrataDocx(inputBruto: ErrataInput): Promise<Blob> {
   const input = sanitizarProfundo(inputBruto);
   const { imovel, tecnico, correcoes, areaHa } = input;
-  // UF vem do município do imóvel (ex.: "Espera Feliz-MG" → "MG"); não fica mais chumbado em MG.
   const uf = ((imovel.municipio || '').match(/-\s*([A-Za-z]{2})\s*$/)?.[1] || '').toUpperCase();
-  const comarca = (input.comarca || imovel.municipio || '—').replace(/\s*-\s*[A-Za-z]{2}\s*$/i, '').trim();
+  const comarcaRaw = input.comarca || obterComarca(imovel);
+  const comarca = comarcaRaw.replace(/\s*-\s*[A-Za-z]{2}\s*$/i, '').trim();
   const rot = rotulosProfissional(tecnico);
   const formacao = tecnico.formacao || 'Responsável Técnico';
   const modelos = carregarModelos();

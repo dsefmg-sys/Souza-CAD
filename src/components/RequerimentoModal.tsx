@@ -13,6 +13,7 @@ import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad, Corre
 import type { TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { numBR } from '@/lib/topo/geometry';
+import { obterComarca } from '@/lib/topo/municipios';
 import { carregarPreferencias } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { perguntarTratamentoAusentes, type CampoFaltante } from '@/lib/export/confirmarAusentes';
@@ -333,7 +334,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
 
     onChangePessoas(req, trans, localTipoAto, localPartesAdicionais, localTiposAtos);
     const padroes = carregarPadroes();
-    const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
+    const comarca = obterComarca(imovel, padroes.comarcaPadrao);
     try {
       const response = await fetch('/api/export/requerimento', {
         method: 'POST',

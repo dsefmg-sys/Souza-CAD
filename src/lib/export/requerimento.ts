@@ -6,6 +6,7 @@ import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo, preencherModeloParagrafos } from '../store/modelos';
 import { compatibilizarWord2007 } from './compatWord2007';
+import { obterComarca } from '../topo/municipios';
 
 export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao' | 'retificacao';
 
@@ -233,7 +234,7 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     assinaReq: rotuloPosse(rotOriginal.assinaReq),
     assinaTrans: rotuloPosse(rotOriginal.assinaTrans),
   } : rotOriginal;
-  const comarca = input.comarca || imovel.municipio || '—';
+  const comarca = input.comarca || obterComarca(imovel);
   const c: Paragraph[] = [];
 
   // Cálculo de divergência de área entre registro antigo e medição apurada

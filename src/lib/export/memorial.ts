@@ -8,6 +8,7 @@ import { sanitizarProfundo, sanitizarTexto } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
 import { qualificacaoPapelProprietario } from './papelProprietario';
 import { compatibilizarWord2007 } from './compatWord2007';
+import { obterComarca } from '../topo/municipios';
 
 function coordTexto(v: Vertex): string {
   const lon = grausParaDMS(v.lon, { estilo: 'memorial', casas: 3 });
@@ -353,7 +354,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
       ? `${imovel.cpfProprietario || '—'} (De Cujus) e CPF do Inventariante: ${imovel.inventarianteCpf}`
       : (imovel.cpfProprietario || ''),
     denominacao: imovel.denominacao || '',
-    matricula: imovel.matricula || '', cns: imovel.cns || '', municipio: imovel.municipio || '', comarca: imovel.municipio || '',
+    matricula: imovel.matricula || '', cns: imovel.cns || '', municipio: imovel.municipio || '', comarca: obterComarca(imovel),
     area: `${numBR(efMod.areaHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : '',
     perimetro: `${numBR(efMod.perimetro)} m`, codigoIncra: imovel.codigoImovelIncra || '',
     tecnico: tecnico.nome || '', cft: tecnico.cft || '', numeroTrt: imovel.numeroTrt || tecnico.art || '',

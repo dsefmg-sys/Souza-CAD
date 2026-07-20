@@ -20,22 +20,22 @@ export const Z_INDEX = {
   MAP_HINTS: 1100,
 
   /** Barras de ferramentas flutuantes (barra principal e barra de áudios no rodapé) */
-  FLOATING_TOOLBAR: 1160,
+  FLOATING_TOOLBAR: 3500,
 
   /** Backdrop invisível para fechar popups com clique fora */
-  BACKDROP_POPOVER: 1190,
+  BACKDROP_POPOVER: 3550,
 
   /** Menus de contexto de clique direito, painéis de duplo clique e players de áudio */
-  CONTEXT_MENU: 1200,
+  CONTEXT_MENU: 3580,
 
   /** Modal flutuante de ajuda/tutorial no canto */
-  TUTORIAL_PILL: 1250,
+  TUTORIAL_PILL: 3600,
 
   /** Overlay backdrop de menus dropdown (ex.: menu Peças) */
-  BACKDROP_DROPDOWN: 1290,
+  BACKDROP_DROPDOWN: 3650,
 
   /** Menus dropdown e popovers da barra de ferramentas (menu Peças, paleta de cores) */
-  DROPDOWN_MENU: 1300,
+  DROPDOWN_MENU: 3700,
 
   /** Toasts e mensagens de aviso do rodapé */
   TOAST_NOTIFICATION: 1500,
@@ -63,12 +63,12 @@ export const Z_CLASSES = {
   PANEL_OBJECT_PROPERTIES: 'z-[990]',
   MAP_CONTROLS: 'z-[1000]',
   MAP_HINTS: 'z-[1100]',
-  FLOATING_TOOLBAR: 'z-[1160]',
-  BACKDROP_POPOVER: 'z-[1190]',
-  CONTEXT_MENU: 'z-[1200]',
-  TUTORIAL_PILL: 'z-[1250]',
-  BACKDROP_DROPDOWN: 'z-[1290]',
-  DROPDOWN_MENU: 'z-[1300]',
+  FLOATING_TOOLBAR: 'z-[3500]',
+  BACKDROP_POPOVER: 'z-[3550]',
+  CONTEXT_MENU: 'z-[3580]',
+  TUTORIAL_PILL: 'z-[3600]',
+  BACKDROP_DROPDOWN: 'z-[3650]',
+  DROPDOWN_MENU: 'z-[3700]',
   TOAST_NOTIFICATION: 'z-[1500]',
   SIDEBAR_TOGGLE: 'z-[1999]',
   SIDEBAR_MOBILE: 'z-[2000]',

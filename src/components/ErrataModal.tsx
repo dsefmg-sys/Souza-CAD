@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import type { ImovelData, TecnicoData, Confrontante, CorrecaoErrata, NaturezaCorrecao } from '@/lib/topo/types';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { carregarPadroes } from '@/lib/store/padroes';
+import { obterComarca } from '@/lib/topo/municipios';
 
 interface Props {
   open: boolean;
@@ -84,7 +85,7 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
     const validas = correcoes.filter((c) => c.onde.trim() && c.passa.trim());
     if (!validas.length) { setMsg('Preencha ao menos uma correção (onde e o valor correto).'); return; }
     const padroes = carregarPadroes();
-    const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
+    const comarca = obterComarca(imovel, padroes.comarcaPadrao);
     try {
       const response = await fetch('/api/export/errata', {
         method: 'POST',

@@ -187,6 +187,7 @@ export interface ImovelCad {
   cns: string;
   codigoImovelIncra: string;
   municipio: string;
+  comarca?: string;
   projetoId?: string;
 }
 
@@ -303,6 +304,9 @@ export interface ImovelData {
   inventarianteNacionalidade?: string;
   comprador?: string;
   cpfComprador?: string;
+  // Contratante do serviço (quando for pessoa diferente do proprietário titular da matrícula)
+  contratante?: string;
+  cpfContratante?: string;
   // cônjuge do proprietário — qualifica e assina junto nas peças
   conjugeProprietario?: string;
   cpfConjugeProprietario?: string;
@@ -312,6 +316,7 @@ export interface ImovelData {
   // peças conforme o seu papel. Vazio/ausente = só o proprietário principal (comportamento antigo).
   proprietariosAdicionais?: ProprietarioParte[];
   municipio: string;          // "Espera Feliz-MG"
+  comarca?: string;            // Comarca do Cartório (ex.: "Carangola-MG" ou "Manhumirim-MG")
   local: string;              // "Córrego Ventania, Espera Feliz-MG"
   naturezaServico: string;    // "Particular"
   situacao: string;           // "Imóvel Registrado"

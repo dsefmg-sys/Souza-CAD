@@ -3,6 +3,7 @@ import type { ImovelData, TecnicoData } from '../topo/types';
 import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
+import { obterComarca } from '../topo/municipios';
 
 import type { ModoTratamentoAusente } from '../topo/types';
 
@@ -26,7 +27,7 @@ function varsDeclaracao(imovel: ImovelData, tecnico: TecnicoData, modo: ModoTrat
     matricula: f(imovel.matricula),
     cns: f(imovel.cns),
     municipio: f(imovel.municipio) || (modo === 'omitir' ? 'município' : ''),
-    comarca: f(imovel.municipio) || (modo === 'omitir' ? 'comarca' : ''),
+    comarca: f(obterComarca(imovel)) || (modo === 'omitir' ? 'comarca' : ''),
     codigoIncra: f(imovel.codigoImovelIncra),
     tecnico: f(tecnico.nome) || (modo === 'omitir' ? 'Responsável Técnico' : ''),
     cft: f(tecnico.cft),

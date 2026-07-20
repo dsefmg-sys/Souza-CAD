@@ -8413,24 +8413,6 @@ export default function EditorPage() {
                 {plantaDark && <style>{`#planta-print .a3-dark{filter:invert(1) hue-rotate(180deg)}#planta-print .a3-dark image{filter:invert(1) hue-rotate(180deg)}`}</style>}
                 {res && tecnico && escritorio && (
                   <div className={`relative bg-white shadow ${plantaDark ? 'a3-dark' : ''}`} style={{ width: 1587, height: 1123, transform: `translate(${plantaPan.x}px, ${plantaPan.y}px) scale(${plantaZoom})`, transformOrigin: 'left top' }}>
-                    {/* Botão de Trava/Destrava fixado no canto superior esquerdo da planta (canto do desenho) */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nova = !folhaTravada;
-                        setFolhaTravada(nova);
-                        if (!nova) setModo('navegar');
-                      }}
-                      className="absolute left-[42px] top-[42px] z-50 flex size-9 items-center justify-center rounded-full bg-slate-900/50 hover:bg-slate-900/70 border border-white/20 shadow-md backdrop-blur-xs transition-all active:scale-90 cursor-pointer text-white opacity-50 hover:opacity-100 select-none print:hidden"
-                      title={folhaTravada ? "Folha Travada: clique para destravar a movimentação do carimbo/rosa/escala" : "Folha Destravada: clique para travar e proteger as posições"}
-                    >
-                      {folhaTravada ? (
-                        <Lock className="size-4.5" />
-                      ) : (
-                        <LockOpen className="size-4.5" />
-                      )}
-                    </button>
-
                     <ErrorBoundary onReset={() => setVista('mapa')}>
                     <Planta vertices={vertices} res={res} imovel={imovel} tecnico={tecnico} escritorio={escritorio}
                       confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
@@ -8506,6 +8488,23 @@ export default function EditorPage() {
                 {vista === 'mapa' ? <Eye className="size-3.5" /> : <MapIcon className="size-3.5" />}
                 <span>{vista === 'mapa' ? 'PLANTA' : 'MAPA'}</span>
                 <span className="rounded-sm bg-black/20 px-1 font-mono text-[8px] font-semibold text-yellow-300">ESC</span>
+              </button>
+
+              {/* Trava/Destrava movimentação da folha / prancha */}
+              <button type="button"
+                onClick={() => {
+                  const nova = !folhaTravada;
+                  setFolhaTravada(nova);
+                  if (!nova) setModo('navegar');
+                }}
+                title={folhaTravada ? "Folha Travada: clique para destravar a movimentação do carimbo, rosa dos ventos e tabelas" : "Folha Destravada: clique para travar e proteger as posições"}
+                className={`flex h-7 items-center gap-1 rounded-full border px-2 text-[10px] font-bold shadow-xs transition-all shrink-0 ${
+                  folhaTravada
+                    ? 'border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                    : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 ring-1 ring-emerald-500/30'
+                }`}>
+                {folhaTravada ? <Lock className="size-3.5 text-slate-300" /> : <LockOpen className="size-3.5 text-emerald-500" />}
+                <span>{folhaTravada ? 'TRAVADA' : 'DESTRAVADA'}</span>
               </button>
 
               {/* Pintar Divisas/Confrontantes */}
@@ -10751,6 +10750,13 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
               </div>
             </div>
             <Campo label="Local (memorial / córrego / bairro)" value={imovel.local} onChange={onLocal} placeholder={imovel.municipio || 'Córrego...'} importante />
+            <Campo
+              label="Comarca do Cartório"
+              value={imovel.comarca ?? ''}
+              onChange={(v) => set('comarca', v)}
+              placeholder={sugCartorios.find((x) => x.cns === imovel.cns)?.municipio || imovel.municipio || "Comarca (ex.: Manhumirim-MG)"}
+              dica="Deixe em branco para usar a comarca automática do cartório (CNS) ou do município"
+            />
           </div>
         </div>
 
@@ -10846,6 +10852,11 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
           <div className="grid grid-cols-2 gap-2">
             <Campo label="Cônjuge do proprietário" value={imovel.conjugeProprietario ?? ''} onChange={(v) => set('conjugeProprietario', v)} />
             <Campo label="CPF do cônjuge" value={imovel.cpfConjugeProprietario ?? ''} onChange={(v) => set('cpfConjugeProprietario', v)} aviso={avisoDoc(imovel.cpfConjugeProprietario)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1 border-t border-dashed">
+            <Campo label="Contratante do serviço (se difere do dono)" value={imovel.contratante ?? ''} onChange={(v) => set('contratante', v)} placeholder="Ex.: herdeiro, posseiro, promitente..." />
+            <Campo label="CPF/CNPJ do contratante" value={imovel.cpfContratante ?? ''} onChange={(v) => set('cpfContratante', v)} aviso={avisoDoc(imovel.cpfContratante)} />
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1 border-t border-dashed">

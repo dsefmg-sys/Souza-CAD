@@ -11,6 +11,7 @@ import { rotulosProfissional } from '@/lib/topo/profissional';
 import { construirNarrativaSegmentos } from '@/lib/export/memorial';
 import { carregarModelos, preencherModelo } from '@/lib/store/modelos';
 import { numBR, formatMatricula } from '@/lib/topo/geometry';
+import { obterComarca } from '@/lib/topo/municipios';
 
 interface Props {
   open: boolean;
@@ -60,7 +61,7 @@ export default function MemorialPreviewModal({
     matricula: imovel.matricula || '',
     cns: imovel.cns || '',
     municipio: imovel.municipio || '',
-    comarca: imovel.municipio || '',
+    comarca: obterComarca(imovel),
     area: `${numBR(ef.areaHa, 4)} ha`,
     areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : '',
     perimetro: `${numBR(ef.perimetro)} m`,

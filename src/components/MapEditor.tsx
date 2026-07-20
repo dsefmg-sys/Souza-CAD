@@ -2306,7 +2306,7 @@ export default function MapEditor(props: Props) {
       )}
 
       {onAtivar3D && (
-        <div className={`absolute left-2.5 z-[2500] transition-all duration-200 ${modo === 'medir' ? 'bottom-44' : 'bottom-14'}`}>
+        <div className={`absolute left-2.5 z-[1800] transition-all duration-200 ${modo === 'medir' ? 'bottom-44' : 'bottom-14'}`}>
           <button
             type="button"
             onClick={onAtivar3D}

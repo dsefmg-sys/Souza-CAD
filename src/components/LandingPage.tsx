@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown, Monitor, X } from 'lucide-react';
+import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown, Monitor, Smartphone, X } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 const bp = (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/$/, '');
 
@@ -277,11 +277,14 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
         </div>
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 space-y-3.5 w-full relative z-10">
-          {/* AVISO RECOMENDAÇÃO MOBILE */}
-          <div className="flex md:hidden items-center justify-center gap-2 px-3 py-1.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px] font-semibold max-w-md mx-auto text-left leading-tight shadow-sm">
-            <Monitor className="size-3.5 shrink-0 text-amber-400" />
+          {/* AVISO RECOMENDAÇÃO MOBILE & PC */}
+          <div className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-slate-200 text-xs font-medium max-w-xl mx-auto text-left leading-snug shadow-md backdrop-blur-sm">
+            <div className="flex items-center gap-1 shrink-0 text-emerald-400 font-bold">
+              <Monitor className="size-4" />
+              <Smartphone className="size-4" />
+            </div>
             <span>
-              <strong>Dica de Uso:</strong> Para melhor experiência na edição de mapas e plantas A3, acesse pelo computador.
+              <strong className="text-white font-bold">Pronto para PC &amp; Celular:</strong> Crie, edite e processe mapas com poder total no <strong>Computador</strong>; consulte projetos, imóveis e baixe peças técnicas no <strong>Celular</strong> de onde estiver no campo.
             </span>
           </div>
 

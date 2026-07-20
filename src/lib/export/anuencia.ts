@@ -6,6 +6,7 @@ import { REPRES_LABEL } from '../topo/sigefVocab';
 import { rotuloPapelProprietario } from './papelProprietario';
 import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
+import { obterComarca } from '../topo/municipios';
 
 export interface AnuenciaInput {
   imovel: ImovelData;
@@ -22,8 +23,8 @@ export interface AnuenciaInput {
  *  individual quanto no documento único com todas as cartas (uma por confrontante). */
 function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
   const { imovel, tecnico, confrontante, verticesCompartilhados, comarca, dataExtenso, incluirVerticesLista } = sanitizarProfundo(input);
-
-  const local = comarca || imovel.municipio || 'DADO AUSENTE';
+  const comarcaEfetiva = comarca || obterComarca(imovel);
+  const local = comarcaEfetiva || 'DADO AUSENTE';
   const data = dataExtenso || 'DADO AUSENTE';
 
   const rotuloRT = rotulosProfissional(tecnico);
@@ -238,7 +239,7 @@ function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
 
   const fecho = preencherModelo(carregarModelos().anuenciaFecho, {
     denominacao: imovel.denominacao || '', proprietario: imovel.proprietario || '',
-    tecnico: tecnico.nome || '', municipio: imovel.municipio || '', comarca: comarca || imovel.municipio || '',
+    tecnico: tecnico.nome || '', municipio: imovel.municipio || '', comarca: comarcaEfetiva || imovel.municipio || '',
   });
   addP(fecho, false, AlignmentType.JUSTIFIED, 180, 22);
 
