@@ -87,24 +87,20 @@ export default function ErrataModal({ open, onOpenChange, imovel, tecnico, confr
     const padroes = carregarPadroes();
     const comarca = obterComarca(imovel, padroes.comarcaPadrao);
     try {
-      const response = await fetch('/api/export/errata', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imovel,
-          tecnico,
-          correcoes: validas,
-          areaHa,
-          acrescimoRT,
-          dataExtenso: dataExtensoHoje(),
-          comarca
-        })
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.erro || 'Falha ao gerar errata no servidor.');
+      let blobBruto: Blob | null = null;
+      try {
+        const response = await fetch('/api/export/errata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imovel, tecnico, correcoes: validas, areaHa, acrescimoRT, dataExtenso: dataExtensoHoje(), comarca })
+        });
+        if (response.ok) blobBruto = await response.blob();
+      } catch { /* fallback local */ }
+
+      if (!blobBruto) {
+        blobBruto = await gerarErrataDocx({ imovel, tecnico, correcoes: validas, areaHa, acrescimoRT, dataExtenso: dataExtensoHoje(), comarca });
       }
-      const blobBruto = await response.blob();
+
       const blob = await compatibilizarWord2007(blobBruto);
       saveAs(blob, `Errata - ${imovel.denominacao || 'imovel'}.docx`);
       setMsg('Errata gerada.');

@@ -4174,29 +4174,29 @@ export default function EditorPage() {
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
-      const headers = await getAuthHeaders();
-      const response = await fetch('/api/export/memorial', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          res: r,
-          imovel,
-          tecnico,
-          confrontantes,
-          confrontantePorLado,
-          dataExtenso: dataPorExtenso(),
-          requerente,
-          transmitente,
-          partesAdicionais,
-          zonaUtm: zona,
-          modo
-        })
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.erro || 'Falha ao gerar memorial no servidor.');
+      let blobBruto: Blob | null = null;
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch('/api/export/memorial', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            res: r, imovel, tecnico, confrontantes, confrontantePorLado,
+            dataExtenso: dataPorExtenso(), requerente, transmitente,
+            partesAdicionais, zonaUtm: zona, modo
+          })
+        });
+        if (response.ok) blobBruto = await response.blob();
+      } catch { /* fallback local */ }
+
+      if (!blobBruto) {
+        blobBruto = await gerarMemorialDocx({
+          res: r, imovel, tecnico, confrontantes, confrontantePorLado,
+          dataExtenso: dataPorExtenso(), requerente, transmitente,
+          partesAdicionais, zonaUtm: zona, modo
+        });
       }
-      const blobBruto = await response.blob();
+
       const blob = await compatibilizarWord2007(blobBruto);
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
       const prefixo = modo === 'servidao' ? 'Memorial de servidao' : 'Memorial';

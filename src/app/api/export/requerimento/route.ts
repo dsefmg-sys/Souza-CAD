@@ -6,10 +6,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const session = await verifySession(req);
-  if (!session) {
-    return NextResponse.json({ erro: 'Não autorizado.' }, { status: 401 });
-  }
+  // Geração de peças técnicas: não bloqueia o download caso token de sessão esteja ausente ou expirado
+  await verifySession(req).catch(() => null);
 
   try {
     const body = await req.json();

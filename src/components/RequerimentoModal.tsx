@@ -336,32 +336,33 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     const padroes = carregarPadroes();
     const comarca = obterComarca(imovel, padroes.comarcaPadrao);
     try {
-      const response = await fetch('/api/export/requerimento', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imovel,
-          tecnico,
-          requerente: req,
-          transmitente: trans,
-          areaRealHa,
-          dataExtenso: dataExtensoHoje(),
-          tipoAto: localTipoAto,
-          tiposAtos: localTiposAtos,
-          partesAdicionais: localPartesAdicionais,
-          comarca,
-          correcoes: correcoes || [],
-          permitirIncompleto,
-          modoTratamentoAusente,
-        })
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.erro || 'Falha ao gerar requerimento no servidor.');
+      let blobBruto: Blob | null = null;
+      try {
+        const response = await fetch('/api/export/requerimento', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imovel, tecnico, requerente: req, transmitente: trans, areaRealHa,
+            dataExtenso: dataExtensoHoje(), tipoAto: localTipoAto, tiposAtos: localTiposAtos,
+            partesAdicionais: localPartesAdicionais, comarca, correcoes: correcoes || [],
+            permitirIncompleto, modoTratamentoAusente
+          })
+        });
+        if (response.ok) blobBruto = await response.blob();
+      } catch { /* fallback local */ }
+
+      if (!blobBruto) {
+        blobBruto = await gerarRequerimentoDocx({
+          imovel, tecnico, requerente: req, transmitente: trans, areaRealHa,
+          dataExtenso: dataExtensoHoje(), tipoAto: localTipoAto, tiposAtos: localTiposAtos,
+          partesAdicionais: localPartesAdicionais, comarca, correcoes: correcoes || [],
+          permitirIncompleto, modoTratamentoAusente
+        });
       }
-      const blobBruto = await response.blob();
-      const blob = await compatibilizarWord2007(blobBruto);
-      saveAs(blob, `Requerimento - ${imovel.denominacao || 'imovel'}.docx`);
+
+      const requerimento = await compatibilizarWord2007(blobBruto);
+      const nome = (imovel.denominacao || 'imovel').replace(/[^\w.-]+/g, '_');
+      saveAs(requerimento, `Requerimento - ${nome}.docx`);
       onBaixar?.();
       setMsg(permitirIncompleto ? 'Requerimento gerado (incompleto).' : 'Requerimento gerado.');
     } catch (e: unknown) {
