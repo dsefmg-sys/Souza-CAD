@@ -138,6 +138,7 @@ import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as 
 import { exportarKML } from '@/lib/export/kml';
 import RelatorioSobreposicaoModal from '@/components/RelatorioSobreposicaoModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import ModalSeletorGlebasPecas from '@/components/ModalSeletorGlebasPecas';
 import JSZip from 'jszip';
 import { type TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
@@ -774,6 +775,8 @@ export default function EditorPage() {
   const [nomeProjeto, setNomeProjeto] = useState('');
   const [nomeProjetoManual, setNomeProjetoManual] = useState(false);
   const [reqAberto, setReqAberto] = useState(false);
+  const [seletorGlebasPecasAberto, setSeletorGlebasPecasAberto] = useState(false);
+  const [seletorGlebasPecasAction, setSeletorGlebasPecasAction] = useState<((glebasSel: Gleba[]) => void) | null>(null);
   const [anuenciaAberta, setAnuenciaAberta] = useState(false);
   const [modalSobreposicaoAberto, setModalSobreposicaoAberto] = useState(false);
   const [trtAberto, setTrtAberto] = useState(false);
@@ -4699,10 +4702,18 @@ export default function EditorPage() {
   }
 
   // Pacote de entrega num clique: memorial + planilha SIGEF + requerimento + planta (PDF), num zip só.
-  async function baixarPacoteEntrega() {
+  async function baixarPacoteEntrega(glebasAlvo?: Gleba[]) {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     if (!(await verificarConciliacaoSigef())) return;
     if (!(await verificarProntoParaExportar())) return;
+
+    const listaGlebasProj = sincronizarGlebas();
+    if (!glebasAlvo && listaGlebasProj.length > 1) {
+      setSeletorGlebasPecasAction(() => (glebasSel: Gleba[]) => baixarPacoteEntrega(glebasSel));
+      setSeletorGlebasPecasAberto(true);
+      return;
+    }
+    const listaGlebas = (glebasAlvo && glebasAlvo.length > 0) ? glebasAlvo : listaGlebasProj;
 
     const escolheuFormato = await escolher({
       titulo: 'Formato da Planta no Pacote ZIP',
@@ -4729,11 +4740,9 @@ export default function EditorPage() {
       }
     }
     setProcessando(true);
-    aviso(`Montando o pacote de entrega (memorial, planilha, requerimento e planta ${formatoFolha.toUpperCase()})…`);
+    aviso(`Montando o pacote de entrega (${listaGlebas.length} gleba(s), memorial, planilha, requerimento e planta ${formatoFolha.toUpperCase()})…`);
     try {
-      const vs = await comCodigos();
-      const r = calcular(vs, confrontantePorLado);
-      const ef = valoresEfetivos(r, imovel);
+      const zip = new JSZip();
       const nome = imovel.denominacao || nomeProjeto || 'imovel';
       const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
         let binary = '';
@@ -4744,58 +4753,74 @@ export default function EditorPage() {
         }
         return window.btoa(binary);
       };
-
       const headers = await getAuthHeaders();
-      const resMemorial = await fetch('/api/export/memorial', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          res: r,
-          imovel,
-          tecnico,
-          confrontantes,
-          confrontantePorLado,
-          dataExtenso: dataPorExtenso(),
-          requerente,
-          transmitente,
-          partesAdicionais
-        })
-      });
-      if (!resMemorial.ok) throw new Error('Falha ao gerar memorial no servidor.');
-      const memorialBlob = await resMemorial.blob();
-      const memorial = await compatibilizarWord2007(memorialBlob);
-
       const modeloProprio = await carregarModeloSigef();
       const modeloProprioBase64 = modeloProprio ? arrayBufferToBase64(modeloProprio) : undefined;
-      const ativa = glebas.find((g) => g.id === glebaAtivaId);
-      
-      const resOds = await fetch('/api/export/ods', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          tipo: 'unica',
-          res: r,
-          imovel,
-          tecnico,
-          confrontantes,
-          confrontantePorLado,
-          glebas: ativa ? [{
-            res: r,
-            confrontantes,
-            confrontantePorLado,
-            denominacao: ativa.denominacao || 'Parcela 1',
-            parcela: ativa.parcela || '001'
-          }] : undefined,
-          modeloProprioBase64
-        })
-      });
-      if (!resOds.ok) throw new Error('Falha ao gerar planilha no servidor.');
-      const ods = await resOds.blob();
+
+      let totalAreaRealHa = 0;
+
+      for (let i = 0; i < listaGlebas.length; i++) {
+        const g = listaGlebas[i];
+        const vsG = g.vertices.length >= 3 ? iniciarDoNorteHorario(g.vertices) : g.vertices;
+        const rG = calcular(vsG, g.confrontantePorLado ?? {});
+        const efG = valoresEfetivos(rG, imovel);
+        totalAreaRealHa += efG.areaHa;
+        const nomeGleba = g.denominacao || `Parcela_${i + 1}`;
+
+        // Memorial Descritivo por gleba
+        const resMemorial = await fetch('/api/export/memorial', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            res: rG,
+            imovel: { ...imovel, denominacao: nomeGleba },
+            tecnico,
+            confrontantes: g.confrontantes ?? confrontantes,
+            confrontantePorLado: g.confrontantePorLado ?? confrontantePorLado,
+            dataExtenso: dataPorExtenso(),
+            requerente,
+            transmitente,
+            partesAdicionais
+          })
+        });
+        if (resMemorial.ok) {
+          const memorialBlob = await resMemorial.blob();
+          const memorial = await compatibilizarWord2007(memorialBlob);
+          zip.file(`Memorial - ${limparNomeArquivo(nomeGleba)}.docx`, memorial);
+        }
+
+        // Planilha SIGEF ODS por gleba
+        const resOds = await fetch('/api/export/ods', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            tipo: 'unica',
+            res: rG,
+            imovel: { ...imovel, denominacao: nomeGleba },
+            tecnico,
+            confrontantes: g.confrontantes ?? confrontantes,
+            confrontantePorLado: g.confrontantePorLado ?? confrontantePorLado,
+            glebas: [{
+              res: rG,
+              confrontantes: g.confrontantes ?? confrontantes,
+              confrontantePorLado: g.confrontantePorLado ?? confrontantePorLado,
+              denominacao: nomeGleba,
+              parcela: g.parcela || String(i + 1).padStart(3, '0')
+            }],
+            modeloProprioBase64
+          })
+        });
+        if (resOds.ok) {
+          const ods = await resOds.blob();
+          zip.file(`SIGEF - ${limparNomeArquivo(nomeGleba)}.ods`, ods);
+        }
+      }
 
       const propComoParte: PessoaQualificada = { ...PESSOA_VAZIA, nome: imovel.proprietario || '—', cpf: imovel.cpfProprietario || '', cidadeUf: imovel.municipio || '' };
       const padroes = carregarPadroes();
       const comarca = padroes.comarcaPadrao || imovel.municipio || '—';
       
+      // Requerimento unificado cobrindo as glebas selecionadas
       const resReq = await fetch('/api/export/requerimento', {
         method: 'POST',
         headers,
@@ -4804,7 +4829,7 @@ export default function EditorPage() {
           tecnico,
           requerente: requerente ?? propComoParte,
           transmitente: transmitente ?? propComoParte,
-          areaRealHa: ef.areaHa,
+          areaRealHa: totalAreaRealHa || (res ? valoresEfetivos(res, imovel).areaHa : 0),
           dataExtenso: dataPorExtenso(),
           tipoAto,
           partesAdicionais,
@@ -4815,15 +4840,14 @@ export default function EditorPage() {
       const reqBlob = await resReq.blob();
       const requerimento = await compatibilizarWord2007(reqBlob);
       const planta = await gerarPlantaPdfBlob(formatoFolha);
-      const zip = new JSZip();
-      zip.file(`Memorial - ${nome}.docx`, memorial);
-      zip.file(`SIGEF - ${nome}.ods`, ods);
-      zip.file(`Requerimento - ${nome}.docx`, requerimento);
-      if (planta) zip.file(`Planta ${formatoFolha.toUpperCase()} - ${nome}.pdf`, planta);
+
+      zip.file(`Requerimento - ${limparNomeArquivo(nome)}.docx`, requerimento);
+      if (planta) zip.file(`Planta ${formatoFolha.toUpperCase()} - ${limparNomeArquivo(nome)}.pdf`, planta);
+
       const blob = await zip.generateAsync({ type: 'blob' });
       saveAs(blob, limparNomeArquivo(`Pacote de entrega - ${nome}.zip`));
       setBaixou((b) => ({ ...b, memorial: true, ods: true, req: true, planta: planta ? true : b.planta }));
-      aviso(planta ? `Pacote de entrega gerado com planta em ${formatoFolha.toUpperCase()}.` : 'Pacote gerado (a planta falhou ao rasterizar — gere-a à parte).');
+      aviso(planta ? `Pacote de entrega gerado (${listaGlebas.length} gleba(s)) com planta em ${formatoFolha.toUpperCase()}.` : 'Pacote gerado.');
     } catch (e) { aviso((e as Error).message || 'Erro ao montar o pacote.'); }
     finally { setProcessando(false); }
   }
@@ -9082,6 +9106,19 @@ export default function EditorPage() {
         sugProp={sugProp}
         correcoes={correcoes}
         onBaixar={() => setBaixou((b) => ({ ...b, req: true }))}
+        glebas={sincronizarGlebas()}
+        glebaAtivaId={glebaAtivaId}
+      />
+      <ModalSeletorGlebasPecas
+        open={seletorGlebasPecasAberto}
+        onOpenChange={setSeletorGlebasPecasAberto}
+        glebas={sincronizarGlebas()}
+        glebaAtivaId={glebaAtivaId}
+        onConfirmar={(glebasSel) => {
+          if (seletorGlebasPecasAction) {
+            seletorGlebasPecasAction(glebasSel);
+          }
+        }}
       />
       <ErrorBoundary onReset={() => setCalcAberta(false)}>
         <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />

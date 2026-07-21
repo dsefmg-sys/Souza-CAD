@@ -9,7 +9,7 @@ import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad, CorrecaoErrata, ProprietarioParte } from '@/lib/topo/types';
+import type { ImovelData, TecnicoData, PessoaQualificada, ProprietarioCad, CorrecaoErrata, ProprietarioParte, Gleba } from '@/lib/topo/types';
 import { gerarRequerimentoDocx, type TipoAtoRequerimento } from '@/lib/export/requerimento';
 import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 import { numBR } from '@/lib/topo/geometry';
@@ -106,6 +106,8 @@ interface Props {
   sugProp: ProprietarioCad[];
   correcoes: CorrecaoErrata[];
   onBaixar?: () => void;
+  glebas?: Gleba[];
+  glebaAtivaId?: string;
 }
 
 const CAMPOS: { k: keyof PessoaQualificada; label: string; span: string; importante?: boolean }[] = [
@@ -226,9 +228,13 @@ function transVazio(imovel: ImovelData): PessoaQualificada {
   return { ...PESSOA_VAZIA, nome: imovel.proprietario, cpf: imovel.cpfProprietario, cidadeUf: imovel.municipio || '' };
 }
 
-export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, tipoAto, tiposAtos, partesAdicionais, onChangePessoas, sugProp, correcoes, onBaixar }: Props) {
+export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, tipoAto, tiposAtos, partesAdicionais, onChangePessoas, sugProp, correcoes, onBaixar, glebas, glebaAtivaId }: Props) {
   const [req, setReq] = useState<PessoaQualificada>(requerente ?? PESSOA_VAZIA);
   const [trans, setTrans] = useState<PessoaQualificada>(transmitente ?? transVazio(imovel));
+  const [glebasSelecionadas, setGlebasSelecionadas] = useState<Set<string>>(() => {
+    if (glebas && glebas.length > 0) return new Set(glebas.map((g) => g.id));
+    return new Set();
+  });
   const [localTiposAtos, setLocalTiposAtos] = useState<TipoAtoRequerimento[]>(() => {
     if (tiposAtos && tiposAtos.length > 0) return tiposAtos;
     return [tipoAto || 'retificacao'];
@@ -440,6 +446,46 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                         </span>
                       );
                     })}
+                  </div>
+                )}
+
+                {/* Seletor de Glebas Incluídas no Requerimento */}
+                {glebas && glebas.length > 1 && (
+                  <div className="mt-3 space-y-1.5 border rounded-lg bg-indigo-500/5 border-indigo-500/20 p-2.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider block">
+                        Glebas / Parcelas no Requerimento
+                      </Label>
+                      <span className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400">
+                        {glebasSelecionadas.size} de {glebas.length} selec.
+                      </span>
+                    </div>
+                    <div className="space-y-1 max-h-36 overflow-y-auto">
+                      {glebas.map((g) => {
+                        const sel = glebasSelecionadas.has(g.id);
+                        return (
+                          <label key={g.id} className="flex items-center justify-between p-1.5 rounded-md border border-border/40 hover:bg-muted/40 cursor-pointer text-xs select-none">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={sel}
+                                onChange={() => {
+                                  const next = new Set(glebasSelecionadas);
+                                  if (next.has(g.id)) { if (next.size > 1) next.delete(g.id); }
+                                  else next.add(g.id);
+                                  setGlebasSelecionadas(next);
+                                }}
+                                className="size-3.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                              />
+                              <span className="font-bold text-foreground truncate text-[11px]">{g.denominacao}</span>
+                            </div>
+                            <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                              {g.vertices?.length ?? 0} pts
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
