@@ -1673,6 +1673,7 @@ export default function MapEditor(props: Props) {
             positions={pts}
             eventHandlers={{
               click: (e) => {
+                if (modo !== 'navegar') return;
                 e.originalEvent.stopPropagation();
                 if (gId && onCliqueUnicoGleba) {
                   onCliqueUnicoGleba(gId, e.originalEvent.clientX, e.originalEvent.clientY);
@@ -1681,6 +1682,7 @@ export default function MapEditor(props: Props) {
                 }
               },
               dblclick: (e) => {
+                if (modo !== 'navegar') return;
                 e.originalEvent.stopPropagation();
                 if (onAbrirGestaoGleba) {
                   onAbrirGestaoGleba(gId);

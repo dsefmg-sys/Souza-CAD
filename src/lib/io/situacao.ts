@@ -35,9 +35,11 @@ function escolherZoom(spanLon: number, alvoPx: number): number {
   return 8;
 }
 
-export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number; padding?: number; aspecto?: number; orcamentoChars?: number } = {}): Promise<string | null> {
-  const rings = aneis.filter((a) => a.length >= 3);
-  const pts = rings.flat();
+export type AnelSituacao = PontoGeo[] | { pts: PontoGeo[]; tipoGleba?: string };
+
+export async function gerarSituacao(aneis: AnelSituacao[], opts: { alvoPx?: number; padding?: number; aspecto?: number; orcamentoChars?: number } = {}): Promise<string | null> {
+  const normRings = aneis.map((a) => Array.isArray(a) ? { pts: a, tipoGleba: 'principal' } : a).filter((r) => r.pts && r.pts.length >= 3);
+  const pts = normRings.flatMap((r) => r.pts);
   if (typeof document === 'undefined' || pts.length < 3) return null;
   const alvoPx = opts.alvoPx ?? 1024;     // resolução-alvo (nitidez)
   const pad = opts.padding ?? 1.25;       // folga ao redor do imóvel (enquadramento)
@@ -101,19 +103,25 @@ export async function gerarSituacao(aneis: PontoGeo[][], opts: { alvoPx?: number
 
     // contorno de cada gleba em BRANCO com linha forte (halo escuro + leve preenchimento) e os
     // vértices marcados — mostra ao cartório, com nitidez, onde o imóvel está.
-    const esc = w / 1000; // espessuras proporcionais à resolução
-    rings.forEach((anel) => {
-      const xy = anel.map((p) => [lonToGlobalPx(p.lon, z) - pxMin, latToGlobalPx(p.lat, z) - pyMin] as const);
+    // Glebas auxiliares são desenhadas com linha mais fina que as ativas.
+    const esc = w / 1000;
+    normRings.forEach((ring) => {
+      const isAuxiliar = ring.tipoGleba === 'auxiliar';
+      const lineW = isAuxiliar ? 2.6 * esc : 5.2 * esc;
+      const haloW = isAuxiliar ? 6 * esc : 11 * esc;
+      const dotR = isAuxiliar ? 3.2 * esc : 5.2 * esc;
+
+      const xy = ring.pts.map((p) => [lonToGlobalPx(p.lon, z) - pxMin, latToGlobalPx(p.lat, z) - pyMin] as const);
       const traco = () => { ctx.beginPath(); xy.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y))); ctx.closePath(); };
       ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-      traco(); ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fill();
-      traco(); ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 11 * esc; ctx.stroke();   // halo
-      traco(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5.2 * esc; ctx.stroke();          // branco forte
+      traco(); ctx.fillStyle = isAuxiliar ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.14)'; ctx.fill();
+      traco(); ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = haloW; ctx.stroke();   // halo
+      traco(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = lineW; ctx.stroke();          // branco forte
       // vértices
       xy.forEach(([x, y]) => {
-        ctx.beginPath(); ctx.arc(x, y, 5.2 * esc, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(x, y, dotR, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff'; ctx.fill();
-        ctx.lineWidth = 1.5 * esc; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.stroke();
+        ctx.lineWidth = 1.2 * esc; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.stroke();
       });
     });
 

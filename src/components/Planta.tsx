@@ -375,7 +375,7 @@ export default function Planta({
   }, [editavel, modo]);
 
   const escalaDenomRef = useRef(0); // escala atual lida pelo handler da roda (evita depender do valor no efeito)
-  const dragRef = useRef<null | { kind: 'objPonto' | 'objCorpo' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf' | 'selecao'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number; snapped?: boolean; lastGeo?: { lat: number; lon: number } }>(null);
+  const dragRef = useRef<null | { kind: 'objPonto' | 'objCorpo' | 'rotConf' | 'rotVert' | 'folha' | 'ted' | 'divisaConf' | 'selecao' | 'textoPlanta'; id: string; idx?: number; dx?: number; dy?: number; vx?: number; vy?: number; baseX?: number; baseY?: number; absX?: number; absY?: number; snapped?: boolean; lastGeo?: { lat: number; lon: number } }>(null);
   const ultimoCliqueRef = useRef<{ tempo: number; x: number; y: number } | null>(null);
   const folhaLast = useRef<{ x: number; y: number } | null>(null);
   // Arraste suave: em vez de atualizar o estado a cada micro-movimento do mouse (que redesenha o
@@ -439,7 +439,7 @@ export default function Planta({
 
   // Estado para arrasto fluído/suave (evita recálculos geográficos pesados em tempo real)
   const [dragTemp, setDragTemp] = useState<{
-    kind: 'rotConf' | 'rotVert' | 'ted' | 'divisaConf' | 'folha' | 'objPonto' | 'objCorpo' | 'selecao';
+    kind: 'rotConf' | 'rotVert' | 'ted' | 'divisaConf' | 'folha' | 'objPonto' | 'objCorpo' | 'selecao' | 'textoPlanta';
     id: string;
     dx: number;
     dy: number;
@@ -1446,46 +1446,87 @@ export default function Planta({
           </g>
         )}
 
-      {/* demais glebas do imóvel (contorno + nome) */}
+      {/* demais glebas do imóvel (contorno + nome + texto central móvel) */}
       {outrasGlebas.map((g, i) => {
         if (g.pts.length < 3) return null;
         const isOculta = g.visivel === false;
         if (isOculta && isPrinting) return null;
 
         const pp = g.pts.map((p) => `${sx(p.leste).toFixed(1)},${sy(p.norte).toFixed(1)}`).join(' ');
-        const ccx = g.pts.reduce((s, p) => s + sx(p.leste), 0) / g.pts.length;
-        const ccy = g.pts.reduce((s, p) => s + sy(p.norte), 0) / g.pts.length;
+        const baseCcx = g.pts.reduce((s, p) => s + sx(p.leste), 0) / g.pts.length;
+        const baseCcy = g.pts.reduce((s, p) => s + sy(p.norte), 0) / g.pts.length;
+
+        const idGlebaTxt = `gleba:${g.id || i}`;
+        const ovGleba = textosOv[idGlebaTxt] || {};
+        const isDraggingTxt = dragTemp && dragTemp.kind === 'textoPlanta' && dragTemp.id === idGlebaTxt;
+        const ccx = baseCcx + (ovGleba.dx ?? 0) + (isDraggingTxt ? dragTemp.dx : 0);
+        const ccy = baseCcy + (ovGleba.dy ?? 0) + (isDraggingTxt ? dragTemp.dy : 0);
+
         const isAuxiliar = g.tipoGleba === 'auxiliar';
-        const ogCor = isOculta ? '#64748b' : (isAuxiliar ? '#d97706' : (config.corOutrasGlebas || '#c2410c'));
-        const ogFill = isOculta ? '#64748b' : (isAuxiliar ? '#f59e0b' : (config.corOutrasGlebas || '#f97316'));
+        const isAtivaOuPrincipal = g.tipoGleba === 'principal' || g.tipoGleba === undefined;
+        const ogCor = isOculta ? '#64748b' : (isAtivaOuPrincipal ? (config.corGlebasAtivas || '#1e3a8a') : (isAuxiliar ? '#d97706' : (config.corOutrasGlebas || '#c2410c')));
+        const ogFill = isOculta ? '#64748b' : (isAtivaOuPrincipal ? (config.corGlebasAtivas || '#3b82f6') : (isAuxiliar ? '#f59e0b' : (config.corOutrasGlebas || '#f97316')));
         const dashArray = isOculta ? '3 3' : (isAuxiliar ? '4 3' : '6 4');
         const fillOp = isOculta ? 0.03 : 0.06;
 
         return (
-          <g
-            key={`og${g.id || i}`}
-            className={isOculta ? 'animate-pulse opacity-75 cursor-pointer' : 'cursor-pointer'}
-            onClick={(e) => {
-              if (editavel && g.id) {
-                e.stopPropagation();
-                if (onCliqueUnicoGleba) {
-                  onCliqueUnicoGleba(g.id, e.clientX, e.clientY);
-                } else if (onAbrirGestaoGleba) {
+          <g key={`og${g.id || i}`}>
+            <polygon
+              points={pp}
+              fill={ogFill}
+              fillOpacity={fillOp}
+              stroke={ogCor}
+              strokeWidth={config.larguraOutrasGlebas ?? 1.2}
+              strokeDasharray={dashArray}
+              className={isOculta ? 'animate-pulse opacity-75 cursor-pointer' : 'cursor-pointer'}
+              onClick={(e) => {
+                if (modo !== 'navegar') return;
+                if (editavel && g.id) {
+                  e.stopPropagation();
+                  if (onCliqueUnicoGleba) {
+                    onCliqueUnicoGleba(g.id, e.clientX, e.clientY);
+                  } else if (onAbrirGestaoGleba) {
+                    onAbrirGestaoGleba(g.id);
+                  }
+                }
+              }}
+              onDoubleClick={(e) => {
+                if (modo !== 'navegar') return;
+                if (editavel && g.id && onAbrirGestaoGleba) {
+                  e.stopPropagation();
                   onAbrirGestaoGleba(g.id);
                 }
-              }
-            }}
-            onDoubleClick={(e) => {
-              if (editavel && g.id && onAbrirGestaoGleba) {
+              }}
+            />
+            {/* Texto central da gleba: MÓVEL e com DUPLO CLIQUE para Personalizar */}
+            <g
+              style={{ cursor: editavel ? 'move' : 'default' }}
+              onClick={(e) => {
+                if (modo !== 'navegar') return;
                 e.stopPropagation();
-                onAbrirGestaoGleba(g.id);
-              }
-            }}
-          >
-            <polygon points={pp} fill={ogFill} fillOpacity={fillOp} stroke={ogCor} strokeWidth={config.larguraOutrasGlebas ?? 1.2} strokeDasharray={dashArray} />
-            <text x={ccx} y={ccy} fontSize={fs(9.5)} fontWeight="bold" textAnchor="middle" fill={ogCor}>
-              {g.nome} {isOculta ? ' (OCULTA - NÃO IMPRESSA)' : isAuxiliar ? ' (Auxiliar)' : ''}
-            </text>
+                if (onSelecObjeto) onSelecObjeto(idGlebaTxt);
+              }}
+              onDoubleClick={(e) => {
+                if (modo !== 'navegar') return;
+                e.stopPropagation();
+                if (onDblClickObjeto) onDblClickObjeto(idGlebaTxt);
+                else if (onAbrirGestaoGleba && g.id) onAbrirGestaoGleba(g.id);
+              }}
+              onPointerDown={editavel ? (e) => {
+                if (modo !== 'navegar') return;
+                e.stopPropagation();
+                const u = svgPonto(e); if (!u) return;
+                const curDx = ovGleba.dx ?? 0, curDy = ovGleba.dy ?? 0;
+                dragRef.current = { kind: 'textoPlanta', id: idGlebaTxt, dx: 0, dy: 0, baseX: curDx, baseY: curDy };
+                setDragTemp({ kind: 'textoPlanta', id: idGlebaTxt, dx: 0, dy: 0, baseX: curDx, baseY: curDy });
+                folhaLast.current = u;
+                captura(e);
+              } : undefined}
+            >
+              <text x={ccx} y={ccy} fontSize={fs(9.5 * (ovGleba.escala ?? config.escalaTextoCentroGlebas ?? 1.0))} fontWeight="bold" textAnchor="middle" fill={ogCor}>
+                {g.nome} {isOculta ? ' (OCULTA - NÃO IMPRESSA)' : isAuxiliar ? ' (Auxiliar)' : ''}
+              </text>
+            </g>
           </g>
         );
       })}

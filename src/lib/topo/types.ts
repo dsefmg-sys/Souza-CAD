@@ -446,6 +446,8 @@ export interface PlantaConfig {
   sigefOpacidade?: number;
   /** Ocultar polígonos SIGEF importados na planta (checkbox no modal de personalização). */
   sigefOcultar?: boolean;
+  /** Cor do contorno de todas as glebas ativas/principais. */
+  corGlebasAtivas?: string;
   /** Escala do texto central de todas as glebas na planta. */
   escalaTextoCentroGlebas?: number;
 }

@@ -5946,8 +5946,8 @@ export default function EditorPage() {
     // todas as glebas (com 3+ vertices), para a situação mostrar os polígonos; e também os
     // polígonos DESENHADOS (polilinha fechada/preenchida) — assim um polígono novo aparece na situação.
     const aneis = [
-      ...gs.filter((g) => g.vertices.length >= 3).map((g) => g.vertices.map((v) => ({ lat: v.lat, lon: v.lon }))),
-      ...objetos.filter((o) => o.tipo === 'polilinha' && o.preenchido && o.pontos.length >= 3).map((o) => o.pontos.map((p) => ({ lat: p.lat, lon: p.lon }))),
+      ...gs.filter((g) => g.vertices.length >= 3).map((g) => ({ pts: g.vertices.map((v) => ({ lat: v.lat, lon: v.lon })), tipoGleba: g.tipoGleba })),
+      ...objetos.filter((o) => o.tipo === 'polilinha' && o.preenchido && o.pontos.length >= 3).map((o) => ({ pts: o.pontos.map((p) => ({ lat: p.lat, lon: p.lon })), tipoGleba: 'principal' })),
     ];
     // gerarSituacao já garante que a imagem cabe no documento da nuvem (reduz a qualidade sozinha
     // até caber, ou desiste) — antes essa checagem de tamanho era feita SÓ aqui, e uma imagem grande
@@ -10418,78 +10418,83 @@ export default function EditorPage() {
         const isVisivel = g.visivel !== false;
 
         return (
-          <div
-            className="fixed z-[9999] w-60 rounded-xl border border-border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-xs space-y-2 animate-in fade-in zoom-in-95 duration-150"
-            style={{ left: Math.min(window.innerWidth - 250, Math.max(10, menuRapidoGleba.x)), top: Math.min(window.innerHeight - 210, Math.max(10, menuRapidoGleba.y)) }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b pb-1.5 gap-1">
-              <span className="font-extrabold text-foreground truncate">{g.denominacao}</span>
-              <button type="button" className="text-muted-foreground hover:text-foreground shrink-0" onClick={() => setMenuRapidoGleba(null)}>
-                <X className="size-3.5" />
-              </button>
-            </div>
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={() => setMenuRapidoGleba(null)} />
+            <div
+              className="fixed z-[9999] w-64 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-background/98 backdrop-blur-xl p-3.5 shadow-2xl text-xs space-y-2.5 animate-in fade-in zoom-in-95 duration-150 select-none text-foreground"
+              style={{ left: Math.min(window.innerWidth - 270, Math.max(10, menuRapidoGleba.x)), top: Math.min(window.innerHeight - 240, Math.max(10, menuRapidoGleba.y)) }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b pb-2 gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-extrabold text-foreground truncate text-xs">{g.denominacao}</span>
+                </div>
+                <button type="button" className="text-muted-foreground hover:bg-muted p-1 rounded-full shrink-0 transition-colors cursor-pointer" onClick={() => setMenuRapidoGleba(null)}>
+                  <X className="size-3.5" />
+                </button>
+              </div>
 
-            <div className="space-y-1">
-              {!isAtiva && (
+              <div className="space-y-1.5 pt-0.5">
+                {!isAtiva && (
+                  <button
+                    type="button"
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+                    onClick={() => {
+                      trocarGleba(g.id);
+                      setMenuRapidoGleba(null);
+                      aviso(`Gleba "${g.denominacao}" definida como Ativa.`);
+                    }}
+                  >
+                    <Waypoints className="size-3.5" /> Ativar Gleba (Edição)
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-600 font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg border border-border/60 hover:bg-muted/70 font-semibold flex items-center justify-between transition-colors cursor-pointer"
                   onClick={() => {
-                    trocarGleba(g.id);
+                    alternarTipoGleba(g.id);
                     setMenuRapidoGleba(null);
-                    aviso(`Gleba "${g.denominacao}" definida como Ativa.`);
                   }}
                 >
-                  <Waypoints className="size-3.5" /> Ativar Gleba (Edição)
+                  <span className="text-foreground">Tipo de Gleba</span>
+                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                    isAuxiliar ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                  }`}>
+                    {isAuxiliar ? 'Auxiliar' : 'ATIVA'}
+                  </span>
                 </button>
-              )}
 
-              <button
-                type="button"
-                className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-muted font-semibold flex items-center justify-between transition-colors cursor-pointer"
-                onClick={() => {
-                  alternarTipoGleba(g.id);
-                  setMenuRapidoGleba(null);
-                }}
-              >
-                <span>Tipo de Gleba</span>
-                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
-                  isAuxiliar ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
-                }`}>
-                  {isAuxiliar ? 'Auxiliar' : 'ATIVA'}
-                </span>
-              </button>
+                <button
+                  type="button"
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg border border-border/60 hover:bg-muted/70 font-semibold flex items-center justify-between transition-colors cursor-pointer"
+                  onClick={() => {
+                    alternarVisibilidadeGleba(g.id);
+                    setMenuRapidoGleba(null);
+                  }}
+                >
+                  <span className="text-foreground">Visibilidade</span>
+                  <span className={`flex items-center gap-1 text-[10px] font-bold ${isVisivel ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {isVisivel ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                    {isVisivel ? 'Visível' : 'Oculta'}
+                  </span>
+                </button>
 
-              <button
-                type="button"
-                className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-muted font-semibold flex items-center justify-between transition-colors cursor-pointer"
-                onClick={() => {
-                  alternarVisibilidadeGleba(g.id);
-                  setMenuRapidoGleba(null);
-                }}
-              >
-                <span>Visibilidade</span>
-                <span className="flex items-center gap-1 text-[10px] font-bold">
-                  {isVisivel ? <Eye className="size-3.5 text-emerald-500" /> : <EyeOff className="size-3.5 text-red-500" />}
-                  {isVisivel ? 'Visível' : 'Oculta'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-2 border-t pt-1.5 transition-colors cursor-pointer"
-                onClick={() => {
-                  if (g.id !== glebaAtivaId) trocarGleba(g.id);
-                  setAba('glebas');
-                  setPainelAberto(true);
-                  setMenuRapidoGleba(null);
-                }}
-              >
-                <Palette className="size-3.5" /> Propriedades / Dados
-              </button>
+                <button
+                  type="button"
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold flex items-center gap-2 border border-border/40 transition-colors cursor-pointer mt-2"
+                  onClick={() => {
+                    if (g.id !== glebaAtivaId) trocarGleba(g.id);
+                    setAba('glebas');
+                    setPainelAberto(true);
+                    setMenuRapidoGleba(null);
+                  }}
+                >
+                  <Palette className="size-3.5 text-indigo-500" /> Propriedades / Configurações
+                </button>
+              </div>
             </div>
-          </div>
+          </>
         );
       })()}
 
