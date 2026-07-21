@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown, Monitor, Smartphone, X } from 'lucide-react';
+import { Shield, Zap, Compass, ArrowRight, Award, FileText, Layers, Settings, FileSpreadsheet, Check, Box, Map, Download, Award as AwardIcon, FileCode, Share2, ChevronDown, Monitor, Smartphone, X, ZoomIn } from 'lucide-react';
 import type { LandingPageTexts } from '@/lib/store/suporte';
 const bp = (process.env.NEXT_PUBLIC_BASE_PATH || '').replace(/\/$/, '');
 
@@ -20,7 +20,7 @@ function InteractiveImageWindow({ src, alt, onExpand }: { src: string; alt: stri
   return (
     <div
       ref={containerRef}
-      className="w-full h-[240px] sm:h-[360px] md:h-[440px] lg:h-[500px] max-h-[48vh] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-slate-950 relative select-none group"
+      className="w-full h-[340px] sm:h-[480px] md:h-[580px] lg:h-[650px] max-h-[62vh] sm:max-h-[66vh] rounded-3xl overflow-hidden shadow-[0_32px_64px_rgba(0,0,0,0.85)] border border-white/15 bg-slate-950/80 relative select-none group backdrop-blur-2xl transition-all duration-300 hover:border-emerald-500/40"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -37,9 +37,10 @@ function InteractiveImageWindow({ src, alt, onExpand }: { src: string; alt: stri
         <button
           type="button"
           onClick={() => onExpand(resolvedSrc)}
-          className="absolute top-3 right-3 px-3.5 py-1.5 rounded-full bg-slate-950/90 border border-emerald-500/40 text-[10px] sm:text-xs font-bold text-emerald-300 opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all pointer-events-auto backdrop-blur-md shadow-lg cursor-pointer"
+          className="absolute top-3.5 right-3.5 px-4 py-1.5 rounded-full bg-slate-900/80 border border-white/20 text-[11px] font-extrabold text-white opacity-90 group-hover:opacity-100 group-hover:bg-emerald-600 group-hover:border-emerald-400 group-hover:scale-105 transition-all pointer-events-auto backdrop-blur-xl shadow-xl cursor-pointer tracking-wider flex items-center gap-1.5"
         >
-          VER
+          <ZoomIn className="size-3.5 text-emerald-400 group-hover:text-white" />
+          <span>VER</span>
         </button>
       )}
     </div>
@@ -507,13 +508,13 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
               onExpand={setLightboxImg}
             />
 
-            {/* PRIMEIRA IMAGEM (FLUTUANTE COMO DETALHAMENTO SOBREPOSTO - SEM TÍTULO E SEM CORTES) */}
-            <div className="absolute -bottom-6 -left-3 sm:-bottom-8 sm:-left-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
+            {/* PRIMEIRA IMAGEM (FLUTUANTE COMO DETALHAMENTO SOBREPOSTO) */}
+            <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-4 z-20 w-36 sm:w-60 md:w-68 max-h-[82%] rounded-3xl overflow-hidden shadow-[0_32px_64px_rgba(0,0,0,0.95)] border-2 border-emerald-500/40 bg-slate-950/90 backdrop-blur-2xl transition-all duration-300 hover:scale-105 group flex flex-col">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`${bp}/marca/preview_pecas.png`}
                 alt="Pacote de Peças Técnicas ZIP"
-                className="w-full h-auto object-contain block"
+                className="w-full h-full object-cover object-top block"
               />
             </div>
           </div>
@@ -544,13 +545,13 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
               onExpand={setLightboxImg}
             />
 
-            {/* PRIMEIRA IMAGEM (FLUTUANTE SOBREPOSTA À DIREITA - MESMO TAMANHO E SEM TÍTULO) */}
-            <div className="absolute -bottom-6 -right-3 sm:-bottom-8 sm:-right-8 z-20 w-48 sm:w-80 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
+            {/* PRIMEIRA IMAGEM (FLUTUANTE SOBREPOSTA À DIREITA) */}
+            <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-4 z-20 w-36 sm:w-60 md:w-68 max-h-[82%] rounded-3xl overflow-hidden shadow-[0_32px_64px_rgba(0,0,0,0.95)] border-2 border-emerald-500/40 bg-slate-950/90 backdrop-blur-2xl transition-all duration-300 hover:scale-105 group flex flex-col">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`${bp}/marca/preview_conselhos.png`}
                 alt="Habilitação Profissional CFT/CREA"
-                className="w-full h-auto object-contain block"
+                className="w-full h-full object-cover object-top block"
               />
             </div>
           </div>
