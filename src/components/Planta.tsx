@@ -1204,7 +1204,7 @@ export default function Planta({
 
   // Pre-computação das caixas flutuantes que devem mascarar a grade (grid-mask)
   let areaTableBox: { left: number; top: number; width: number; height: number } | null = null;
-  if (config.mostrarQuadroAreas && resumoGlebas.length > 0) {
+  if (config.mostrarTabelasPlanta !== false && config.mostrarQuadroAreas && resumoGlebas.length > 0) {
     const idQ = 'planta.quadroAreas';
     const ovQ = getOverride(idQ);
     const bx = DRAW.x0 + 24 + (ovQ.dx ?? 0);
@@ -1213,30 +1213,27 @@ export default function Planta({
     const lh = fz + 5;
     const ch = 0.62 * fz;
     const WN = 16 * ch;
-    const WA = 11 * ch;
-    const WP = 10.5 * ch;
-    const wq = 8 + WN + WA + WP + 8;
-    const hq = (resumoGlebas.length + 3.4) * lh;
+    const WA = 12 * ch;
+    const WP = 12 * ch;
+    const wq = WN + WA + WP + 16;
+    const colH = Math.min(resumoGlebas.length, 18);
+    const hq = (colH + 2.5) * lh;
     areaTableBox = { left: bx, top: by, width: wq, height: hq };
   }
 
   let roteiroTableBox: { left: number; top: number; width: number; height: number } | null = null;
-  if (config.mostrarRoteiro && res.lados.length > 0) {
+  if (config.mostrarTabelasPlanta !== false && config.mostrarRoteiro && res.lados.length > 0) {
     const idR = 'planta.roteiro';
     const ovR = getOverride(idR);
-    const comConf = config.roteiroComConfrontante !== false;
     const fz = Math.max(6.5, (fonteRot - 1) * escTab);
     const lh = fz + 4;
     const ch = 0.62 * fz;
-    const WV = 13 * ch;
-    const WAZ = 11.5 * ch;
-    const WD = 10 * ch;
-    const WC = comConf ? 19.5 * ch : 0;
-    const colH = 18;
-    const numCols = Math.ceil(res.lados.length / colH);
-    const colW = 8 + WV + WAZ + WD + WC;
-    const gap = 10;
-    const wr = numCols * colW + (numCols - 1) * gap + 8;
+    const W_VTX = 7.5 * ch;
+    const W_AZ = 10 * ch;
+    const W_DIST = 9.5 * ch;
+    const W_CONF = (config.roteiroComConfrontante !== false ? 22 : 0) * ch;
+    const wr = W_VTX + W_AZ + W_DIST + W_CONF + 16;
+    const colH = 16;
     const hr = (Math.min(res.lados.length, colH) + 2.4) * lh;
     const bx = DRAW.x0 + 24 + (ovR.dx ?? 0);
     const by = DRAW.y1 - 24 - hr + (ovR.dy ?? 0);
@@ -1244,7 +1241,7 @@ export default function Planta({
   }
 
   let coordenadasTableBox: { left: number; top: number; width: number; height: number } | null = null;
-  if (config.mostrarCoordenadas && vertices.length > 0) {
+  if (config.mostrarTabelasPlanta !== false && config.mostrarCoordenadas && vertices.length > 0) {
     const idC = 'planta.coordenadas';
     const ovC = getOverride(idC);
     const fz = Math.max(6.5, (fonteRot - 1) * escTab);
@@ -1502,34 +1499,36 @@ export default function Planta({
             )}
 
             {/* Texto central da gleba: MÓVEL e com DUPLO CLIQUE para Personalizar */}
-            <g
-              style={{ cursor: editavel ? 'move' : 'default' }}
-              onClick={(e) => {
-                if (modo !== 'navegar') return;
-                e.stopPropagation();
-                if (onSelecObjeto) onSelecObjeto(idGlebaTxt);
-              }}
-              onDoubleClick={(e) => {
-                if (modo !== 'navegar') return;
-                e.stopPropagation();
-                if (onDblClickObjeto) onDblClickObjeto(idGlebaTxt);
-                else if (onAbrirGestaoGleba && g.id) onAbrirGestaoGleba(g.id);
-              }}
-              onPointerDown={editavel ? (e) => {
-                if (modo !== 'navegar') return;
-                e.stopPropagation();
-                const u = svgPonto(e); if (!u) return;
-                const curDx = ovGleba.dx ?? 0, curDy = ovGleba.dy ?? 0;
-                dragRef.current = { kind: 'textoPlanta', id: idGlebaTxt, dx: 0, dy: 0, baseX: curDx, baseY: curDy };
-                setDragTemp({ kind: 'textoPlanta', id: idGlebaTxt, dx: 0, dy: 0, baseX: curDx, baseY: curDy });
-                folhaLast.current = u;
-                captura(e);
-              } : undefined}
-            >
-              <text x={ccx} y={ccy} fontSize={fs(9.5 * (ovGleba.escala ?? config.escalaTextoCentroGlebas ?? 1.0))} fontWeight="bold" textAnchor="middle" fill={ogCor}>
-                {g.nome} {isOculta ? ' (OCULTA - NÃO IMPRESSA)' : isAuxiliar ? ' (Auxiliar)' : ''}
-              </text>
-            </g>
+            {config.mostrarTextosGlebas !== false && (
+              <g
+                style={{ cursor: editavel ? 'move' : 'default' }}
+                onClick={(e) => {
+                  if (modo !== 'navegar') return;
+                  e.stopPropagation();
+                  if (onSelecObjeto) onSelecObjeto(idGlebaTxt);
+                }}
+                onDoubleClick={(e) => {
+                  if (modo !== 'navegar') return;
+                  e.stopPropagation();
+                  if (onDblClickObjeto) onDblClickObjeto(idGlebaTxt);
+                  else if (onAbrirGestaoGleba && g.id) onAbrirGestaoGleba(g.id);
+                }}
+                onPointerDown={editavel ? (e) => {
+                  if (modo !== 'navegar') return;
+                  e.stopPropagation();
+                  const u = svgPonto(e); if (!u) return;
+                  const curDx = ovGleba.dx ?? 0, curDy = ovGleba.dy ?? 0;
+                  dragRef.current = { kind: 'textoPlanta', id: idGlebaTxt, dx: 0, dy: 0, baseX: curDx, baseY: curDy };
+                  setDragTemp({ kind: 'textoPlanta', id: idGlebaTxt, dx: 0, dy: 0, baseX: curDx, baseY: curDy });
+                  folhaLast.current = u;
+                  captura(e);
+                } : undefined}
+              >
+                <text x={ccx} y={ccy} fontSize={fs(9.5 * (ovGleba.escala ?? config.escalaTextoCentroGlebas ?? 1.0))} fontWeight="bold" textAnchor="middle" fill={ogCor}>
+                  {g.nome} {isOculta ? ' (OCULTA - NÃO IMPRESSA)' : isAuxiliar ? ' (Auxiliar)' : ''}
+                </text>
+              </g>
+            )}
           </g>
         );
       })}
@@ -2245,9 +2244,11 @@ export default function Planta({
                } : undefined}
                onDoubleClick={editavel && onDblClickVertice ? (e) => { e.stopPropagation(); onDblClickVertice(v, e.clientX, e.clientY); } : undefined}>
               {editavel && <circle cx={vx} cy={vy} r={8} fill="transparent" />}
-              <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} corCustom={v.tipo === 'M' ? config.corVerticeM : v.tipo === 'P' ? config.corVerticeP : undefined} />
+              {config.mostrarSimbolosVertices !== false && (
+                <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} corCustom={v.tipo === 'M' ? config.corVerticeM : v.tipo === 'P' ? config.corVerticeP : undefined} />
+              )}
             </g>
-            {(() => {
+            {config.mostrarRotulosPlanta !== false && (() => {
               // linha-guia tracejada ligando o rótulo ao seu vértice (deixa claro de quem é o nome).
               // Conecta no lado do rótulo (esquerdo OU direito) mais próximo do vértice — o texto é
               // ancorado à esquerda (x), então o canto direito fica em x + largura do texto.
@@ -2264,7 +2265,9 @@ export default function Planta({
               const ux = (alvoX - vx) / dGuia, uy = (midY - vy) / dGuia;
               return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={alvoX - ux * 3} y2={midY - uy * 3} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
             })()}
-            <Ted x={x} y={y} base={nomeVertice(v, i)} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
+            {config.mostrarRotulosPlanta !== false && (
+              <Ted x={x} y={y} base={nomeVertice(v, i)} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
+            )}
             {vsel && (
               <g style={{ pointerEvents: 'all' }} transform={`translate(${vx}, ${vy - 52})`}>
                 <rect x={-78} y={-30} width={156} height={62} rx={8} fill="#ffffff" fillOpacity={0.98} stroke="#94a3b8" strokeWidth={1} />

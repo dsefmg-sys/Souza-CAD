@@ -7466,9 +7466,9 @@ export default function EditorPage() {
                   <span className="text-[9.5px] uppercase font-black text-slate-500 dark:text-slate-400 tracking-wider block border-b border-slate-100 dark:border-zinc-800 pb-1">
                     Ajustes de Escala da Planta & Texto
                   </span>
- 
+
                   {/* Texto da Interface */}
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 font-bold">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200">
                     <span className="whitespace-nowrap">Interface Geral:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button"
@@ -7480,10 +7480,27 @@ export default function EditorPage() {
                         className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs" title="Aumentar">+</button>
                     </div>
                   </div>
- 
+
                   {/* Rótulos da Planta */}
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 font-bold">
-                    <span className="whitespace-nowrap">Rótulos e Nomes:</span>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPlantaConfig((c) => ({ ...c, mostrarRotulosPlanta: c.mostrarRotulosPlanta === false ? true : false }));
+                        }}
+                        className={`p-1 rounded-md border transition-colors cursor-pointer shrink-0 ${
+                          plantaConfig.mostrarRotulosPlanta !== false
+                            ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+                            : 'border-slate-300 dark:border-zinc-700 text-slate-400 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200'
+                        }`}
+                        title={plantaConfig.mostrarRotulosPlanta !== false ? 'Ocultar rótulos e nomes dos vértices/dimensões' : 'Exibir rótulos e nomes dos vértices/dimensões'}
+                      >
+                        {plantaConfig.mostrarRotulosPlanta !== false ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                      </button>
+                      <span className="whitespace-nowrap">Rótulos e Nomes:</span>
+                    </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextos: Math.max(0.5, Number(((c.escalaTextos ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
                       <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaTextos ?? 1) * 100)}%</span>
@@ -7492,8 +7509,25 @@ export default function EditorPage() {
                   </div>
  
                   {/* Símbolos e Vértices */}
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 font-bold">
-                    <span className="whitespace-nowrap">Símbolos e Vértices:</span>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPlantaConfig((c) => ({ ...c, mostrarSimbolosVertices: c.mostrarSimbolosVertices === false ? true : false }));
+                        }}
+                        className={`p-1 rounded-md border transition-colors cursor-pointer shrink-0 ${
+                          plantaConfig.mostrarSimbolosVertices !== false
+                            ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+                            : 'border-slate-300 dark:border-zinc-700 text-slate-400 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200'
+                        }`}
+                        title={plantaConfig.mostrarSimbolosVertices !== false ? 'Ocultar símbolos de marcos e pontos' : 'Exibir símbolos de marcos e pontos'}
+                      >
+                        {plantaConfig.mostrarSimbolosVertices !== false ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                      </button>
+                      <span className="whitespace-nowrap">Símbolos e Vértices:</span>
+                    </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaVertices: Math.max(0.5, Number(((c.escalaVertices ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
                       <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaVertices ?? 1) * 100)}%</span>
@@ -7502,18 +7536,52 @@ export default function EditorPage() {
                   </div>
  
                   {/* Tabelas e Quadros */}
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 font-bold">
-                    <span className="whitespace-nowrap">Tabelas e Quadros:</span>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPlantaConfig((c) => ({ ...c, mostrarTabelasPlanta: c.mostrarTabelasPlanta === false ? true : false }));
+                        }}
+                        className={`p-1 rounded-md border transition-colors cursor-pointer shrink-0 ${
+                          plantaConfig.mostrarTabelasPlanta !== false
+                            ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+                            : 'border-slate-300 dark:border-zinc-700 text-slate-400 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200'
+                        }`}
+                        title={plantaConfig.mostrarTabelasPlanta !== false ? 'Ocultar tabelas e quadros de dados na prancha' : 'Exibir tabelas e quadros de dados na prancha'}
+                      >
+                        {plantaConfig.mostrarTabelasPlanta !== false ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                      </button>
+                      <span className="whitespace-nowrap">Tabelas e Quadros:</span>
+                    </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.max(0.5, Number(((c.escalaTabelas ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
                       <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaTabelas ?? 1) * 100)}%</span>
                       <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTabelas: Math.min(2.5, Number(((c.escalaTabelas ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">+</button>
                     </div>
                   </div>
- 
+
                   {/* Textos do Interior das Glebas */}
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-                    <span className="whitespace-nowrap">Textos das Glebas:</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPlantaConfig((c) => ({ ...c, mostrarTextosGlebas: c.mostrarTextosGlebas === false ? true : false }));
+                        }}
+                        className={`p-1 rounded-md border transition-colors cursor-pointer shrink-0 ${
+                          plantaConfig.mostrarTextosGlebas !== false
+                            ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+                            : 'border-slate-300 dark:border-zinc-700 text-slate-400 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200'
+                        }`}
+                        title={plantaConfig.mostrarTextosGlebas !== false ? 'Ocultar textos centrais das glebas' : 'Exibir textos centrais das glebas'}
+                      >
+                        {plantaConfig.mostrarTextosGlebas !== false ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                      </button>
+                      <span className="whitespace-nowrap">Textos das Glebas:</span>
+                    </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextoCentroGlebas: Math.max(0.5, Number(((c.escalaTextoCentroGlebas ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs" title="Diminuir tamanho dos textos do interior das glebas">-</button>
                       <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaTextoCentroGlebas ?? 1) * 100)}%</span>

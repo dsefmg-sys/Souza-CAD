@@ -450,6 +450,14 @@ export interface PlantaConfig {
   corGlebasAtivas?: string;
   /** Escala do texto central de todas as glebas na planta. */
   escalaTextoCentroGlebas?: number;
+  /** Exibir ou ocultar rótulos de vértices e dimensões na planta. */
+  mostrarRotulosPlanta?: boolean;
+  /** Exibir ou ocultar os símbolos de vértices (M/P/V) na planta. */
+  mostrarSimbolosVertices?: boolean;
+  /** Exibir ou ocultar tabelas e quadros de dados na prancha. */
+  mostrarTabelasPlanta?: boolean;
+  /** Exibir ou ocultar textos do centro das glebas. */
+  mostrarTextosGlebas?: boolean;
 }
 
 /** Como os dados ausentes/não preenchidos no cadastro devem ser tratados na geração de documentos. */
@@ -531,6 +539,16 @@ export interface Gleba {
   objetos?: ObjetoDesenho[];   // desenho livre (linhas, textos, cotas)
   tipoGleba?: 'principal' | 'auxiliar'; // Principal (ativa) ou Auxiliar (complementar)
   visivel?: boolean;            // true (default): exibida na planta/mapa, false: ocultada
+  // Dados imobiliários/cartorários específicos da gleba (se vazios, herda os do imóvel do projeto)
+  matricula?: string;
+  cns?: string;
+  codigoImovelIncra?: string;
+  proprietario?: string;
+  cpfProprietario?: string;
+  conjugeProprietario?: string;
+  cpfConjugeProprietario?: string;
+  municipio?: string;
+  cartorio?: string;
 }
 
 /**
