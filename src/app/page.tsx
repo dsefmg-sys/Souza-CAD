@@ -261,7 +261,7 @@ function limparNomeArquivo(nome: string): string {
     .replace(/[çÇ]/g, (m) => (m === 'ç' ? 'c' : 'C'));
 }
 
-type Aba = 'imovel' | 'localizacao' | 'proprietario' | 'vertices' | 'confrontantes' | 'planta' | 'projetos';
+type Aba = 'imovel' | 'localizacao' | 'proprietario' | 'vertices' | 'confrontantes' | 'glebas' | 'planta' | 'projetos';
 
 // tons médios e suaves (funcionam no tema claro e escuro via opacidade)
 // municípios mais atendidos (atalho na importação; cada um ancora o fuso 23/24)
@@ -2440,6 +2440,26 @@ export default function EditorPage() {
   }
   function renomearGlebaAtiva(denominacao: string) {
     setGlebas(sincronizarGlebas().map((g) => (g.id === glebaAtivaId ? { ...g, denominacao } : g)));
+  }
+  function alternarTipoGleba(id: string) {
+    setGlebas((gs) => gs.map((g) => {
+      if (g.id === id) {
+        const novoTipo = g.tipoGleba === 'auxiliar' ? 'principal' : 'auxiliar';
+        aviso(`Gleba "${g.denominacao}" marcada como ${novoTipo === 'principal' ? 'Principal/Ativa' : 'Auxiliar/Complementar'}.`);
+        return { ...g, tipoGleba: novoTipo };
+      }
+      return g;
+    }));
+  }
+  function alternarVisibilidadeGleba(id: string) {
+    setGlebas((gs) => gs.map((g) => {
+      if (g.id === id) {
+        const novaVis = g.visivel === false ? true : false;
+        aviso(`Gleba "${g.denominacao}" ${novaVis ? 'exibida' : 'ocultada'} na planta/mapa.`);
+        return { ...g, visivel: novaVis };
+      }
+      return g;
+    }));
   }
   const glebaAtivaNome = glebas.find((g) => g.id === glebaAtivaId)?.denominacao ?? 'Parcela 1';
 
@@ -9096,6 +9116,7 @@ export default function EditorPage() {
               ['imovel', 'IMÓVEL', <BookUser key="i" className="size-3.5" />],
               ['localizacao', 'LOCALIZAÇÃO', <MapIcon key="i" className="size-3.5" />],
               ['proprietario', 'PROPRIETÁRIO', <Users key="i" className="size-3.5" />],
+              ['glebas', 'GLEBAS', <Waypoints key="i" className="size-3.5" />],
               ['vertices', 'VÉRTICES', <Waypoints key="i" className="size-3.5" />],
               ['confrontantes', 'CONFRONTANTES', <Users key="i" className="size-3.5" />],
               ['planta', 'PLANTA', <MapIcon key="i" className="size-3.5" />],
@@ -9133,6 +9154,19 @@ export default function EditorPage() {
                 onIa={() => { setIaArquivoInicial(null); setIaAberta(true); }}
                 projetoId={projetoId}
                 extrairDocumento={extrairDocumento}
+              />
+            )}
+
+            {aba === 'glebas' && (
+              <PainelGlebas
+                glebas={sincronizarGlebas()}
+                glebaAtivaId={glebaAtivaId}
+                onTrocarGleba={trocarGleba}
+                onNovaGleba={novaGleba}
+                onRemoverGleba={removerGleba}
+                onRenomearGleba={(id, nome) => setGlebas((gs) => gs.map((g) => (g.id === id ? { ...g, denominacao: nome } : g)))}
+                onAlternarTipoGleba={alternarTipoGleba}
+                onAlternarVisibilidadeGleba={alternarVisibilidadeGleba}
               />
             )}
 
@@ -12014,6 +12048,150 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
       <div className="space-y-1 rounded-sm border bg-muted/40 p-2 text-[11px] text-muted-foreground">
         <div>{temLogo ? 'Logotipo carregado (aparece no carimbo).' : 'Sem logotipo — suba a imagem em Config para preencher o carimbo.'}</div>
         <div>{temSituacao ? 'Planta de situação pronta.' : 'Situação não gerada — use "Gerar situação" na visão da planta.'}</div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------- Painel de Gestao de Glebas ----------------
+
+function PainelGlebas({
+  glebas,
+  glebaAtivaId,
+  onTrocarGleba,
+  onNovaGleba,
+  onRemoverGleba,
+  onRenomearGleba,
+  onAlternarTipoGleba,
+  onAlternarVisibilidadeGleba,
+}: {
+  glebas: Gleba[];
+  glebaAtivaId: string;
+  onTrocarGleba: (id: string) => void;
+  onNovaGleba: () => void;
+  onRemoverGleba: (id: string) => void;
+  onRenomearGleba: (id: string, nome: string) => void;
+  onAlternarTipoGleba: (id: string) => void;
+  onAlternarVisibilidadeGleba: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-4 text-xs">
+      <div className="flex items-center justify-between border-b pb-2">
+        <div>
+          <h3 className="font-extrabold text-sm uppercase tracking-wide text-foreground flex items-center gap-2">
+            <Waypoints className="size-4 text-indigo-500" /> Gestão de Glebas &amp; Desmembramento
+          </h3>
+          <p className="text-[11px] text-muted-foreground">
+            Gerencie as parcelas do projeto. Alterne entre Glebas Principais e Auxiliares/Complementares, ou oculte glebas para gerar diferentes plantas no mesmo projeto.
+          </p>
+        </div>
+        <Button size="sm" onClick={onNovaGleba} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1 text-xs shrink-0 cursor-pointer">
+          <Plus className="size-3.5" /> + Nova Gleba
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {glebas.map((g, idx) => {
+          const isAtiva = g.id === glebaAtivaId;
+          const isAuxiliar = g.tipoGleba === 'auxiliar';
+          const isVisivel = g.visivel !== false;
+          const numVerts = g.vertices?.length ?? 0;
+          const areaHa = g.vertices?.length >= 3 ? calcular(g.vertices, {}).areaHa : 0;
+
+          return (
+            <div
+              key={g.id}
+              className={`p-3 rounded-xl border transition-all space-y-2.5 ${
+                isAtiva
+                  ? 'border-indigo-500/60 bg-indigo-500/5 ring-1 ring-indigo-500/20'
+                  : 'border-border bg-card hover:bg-muted/30'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                    #{idx + 1}
+                  </span>
+                  <input
+                    type="text"
+                    value={g.denominacao || ''}
+                    onChange={(e) => onRenomearGleba(g.id, e.target.value)}
+                    className="font-bold text-xs bg-transparent border-b border-transparent hover:border-border focus:border-indigo-500 outline-none w-full truncate"
+                    placeholder="Nome da Gleba / Parcela"
+                  />
+                </div>
+                {isAtiva && (
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-600 text-white shrink-0">
+                    Ativa
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground border-y py-1.5 border-dashed">
+                <div>
+                  <span className="font-semibold text-foreground">{numVerts}</span> vértices
+                  {areaHa > 0 && <span className="ml-2 font-mono font-bold text-foreground">({numBR(areaHa, 4)} ha)</span>}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {/* Toggle Tipo: Principal vs Auxiliar */}
+                  <button
+                    type="button"
+                    onClick={() => onAlternarTipoGleba(g.id)}
+                    className={`px-2 py-0.5 text-[9px] font-bold rounded-full border transition-colors cursor-pointer ${
+                      isAuxiliar
+                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20'
+                        : 'border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20'
+                    }`}
+                    title="Clique para alternar entre Gleba Principal/Ativa e Auxiliar/Complementar"
+                  >
+                    {isAuxiliar ? 'Auxiliar' : 'Principal'}
+                  </button>
+
+                  {/* Toggle Visibilidade: Ocultar / Exibir */}
+                  <button
+                    type="button"
+                    onClick={() => onAlternarVisibilidadeGleba(g.id)}
+                    className={`p-1 rounded-md border transition-colors cursor-pointer ${
+                      isVisivel
+                        ? 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-muted'
+                        : 'border-red-500/40 bg-red-500/10 text-red-600 hover:bg-red-500/20'
+                    }`}
+                    title={isVisivel ? 'Gleba Visível na Planta/Mapa (clique para Ocultar)' : 'Gleba Ocultada na Planta/Mapa (clique para Exibir)'}
+                  >
+                    {isVisivel ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5 text-red-500" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                {!isAtiva ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[10px] font-bold text-indigo-600 border-indigo-500/30 hover:bg-indigo-500/10 gap-1 cursor-pointer"
+                    onClick={() => onTrocarGleba(g.id)}
+                  >
+                    Ativar Gleba
+                  </Button>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground italic">Gleba ativa em edição</span>
+                )}
+
+                {glebas.length > 1 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-500/10 gap-1 cursor-pointer"
+                    onClick={() => onRemoverGleba(g.id)}
+                    title="Excluir esta gleba"
+                  >
+                    <Trash2 className="size-3" /> Excluir
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

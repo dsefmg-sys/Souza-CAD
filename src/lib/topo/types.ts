@@ -525,6 +525,8 @@ export interface Gleba {
   confrontantes: Confrontante[];
   confrontantePorLado: Record<number, string>;
   objetos?: ObjetoDesenho[];   // desenho livre (linhas, textos, cotas)
+  tipoGleba?: 'principal' | 'auxiliar'; // Principal (ativa) ou Auxiliar (complementar)
+  visivel?: boolean;            // true (default): exibida na planta/mapa, false: ocultada
 }
 
 /**

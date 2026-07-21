@@ -35,7 +35,7 @@ interface Props {
   glebaNome?: string;
   dataExtenso?: string;
   situacaoUrl?: string;
-  outrasGlebas?: { nome: string; pts: { leste: number; norte: number }[] }[];
+  outrasGlebas?: { id?: string; nome: string; pts: { leste: number; norte: number }[]; tipoGleba?: 'principal' | 'auxiliar'; visivel?: boolean }[];
   verticesVizinho?: VerticeVizinho[]; // vértices de imóveis vizinhos certificados (desenho de apoio)
   parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
   resumoGlebas?: { nome: string; areaHa: number; perimetro: number }[]; // quadro de áreas
@@ -1438,15 +1438,20 @@ export default function Planta({
       {/* demais glebas do imóvel (contorno + nome) */}
       {outrasGlebas.map((g, i) => {
         if (g.pts.length < 3) return null;
+        if (g.visivel === false) return null;
         const pp = g.pts.map((p) => `${sx(p.leste).toFixed(1)},${sy(p.norte).toFixed(1)}`).join(' ');
         const ccx = g.pts.reduce((s, p) => s + sx(p.leste), 0) / g.pts.length;
         const ccy = g.pts.reduce((s, p) => s + sy(p.norte), 0) / g.pts.length;
-        const ogCor = config.corOutrasGlebas || '#c2410c';
-        const ogFill = config.corOutrasGlebas || '#f97316';
+        const isAuxiliar = g.tipoGleba === 'auxiliar';
+        const ogCor = isAuxiliar ? '#d97706' : (config.corOutrasGlebas || '#c2410c');
+        const ogFill = isAuxiliar ? '#f59e0b' : (config.corOutrasGlebas || '#f97316');
+        const dashArray = isAuxiliar ? '4 3' : '6 4';
         return (
           <g key={`og${i}`}>
-            <polygon points={pp} fill={ogFill} fillOpacity={0.06} stroke={ogCor} strokeWidth={config.larguraOutrasGlebas ?? 1.2} strokeDasharray="6 4" />
-            <text x={ccx} y={ccy} fontSize={fs(10)} fontWeight="bold" textAnchor="middle" fill={ogCor}>{g.nome}</text>
+            <polygon points={pp} fill={ogFill} fillOpacity={0.06} stroke={ogCor} strokeWidth={config.larguraOutrasGlebas ?? 1.2} strokeDasharray={dashArray} />
+            <text x={ccx} y={ccy} fontSize={fs(10)} fontWeight="bold" textAnchor="middle" fill={ogCor}>
+              {g.nome} {isAuxiliar ? '(Auxiliar)' : ''}
+            </text>
           </g>
         );
       })}
