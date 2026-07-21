@@ -102,9 +102,8 @@ input[type="number"] {
   border: none !important;
 }
 
-/* impressão da planta — folha A3 paisagem */
+/* impressão da planta — folha A3/A4 paisagem ajustável */
 @page {
-  size: A3 landscape;
   margin: 0;
 }
 @media print {

@@ -4449,7 +4449,12 @@ export default function EditorPage() {
       styleEl.id = 'print-page-style';
       document.head.appendChild(styleEl);
     }
-    styleEl.innerHTML = `@page { size: ${formatoFinal === 'a4' ? 'A4' : 'A3'} landscape; margin: 0; }`;
+    styleEl.innerHTML = `@page { size: ${formatoFinal === 'a4' ? '297mm 210mm' : '420mm 297mm'} landscape !important; margin: 0 !important; }
+@media print {
+  @page { size: ${formatoFinal === 'a4' ? '297mm 210mm' : '420mm 297mm'} landscape !important; margin: 0 !important; }
+  #planta-print { width: 100vw !important; height: 100vh !important; }
+  #planta-print svg { width: 100% !important; height: 100% !important; }
+}`;
     setTimeout(() => {
       window.print();
     }, 150);
@@ -8628,7 +8633,7 @@ export default function EditorPage() {
               style={{
                 position: 'fixed',
                 left: `${Math.max(toolWEfetivo + 12, Math.min(typeof window !== 'undefined' ? window.innerWidth - 200 : 800, Number.isFinite(posArea?.x) ? posArea.x : toolWEfetivo + 12))}px`,
-                top: `${Math.max(12, Math.min(typeof window !== 'undefined' ? window.innerHeight - 80 : 600, Number.isFinite(posArea?.y) ? posArea.y : 12))}px`,
+                top: `${Math.max(54, Math.min(typeof window !== 'undefined' ? window.innerHeight - 80 : 600, Number.isFinite(posArea?.y) ? posArea.y : 54))}px`,
                 maxWidth: `calc(100vw - ${toolWEfetivo + 24}px)`,
                 zIndex: 1160
               }}
@@ -9566,8 +9571,12 @@ export default function EditorPage() {
             aviso('Preencha o nome do confrontante.');
             return;
           }
-          setConfrontantes((cs) => cs.map((c) => (c.id === novo.id ? novo : c)));
+          setConfrontantes((cs) => {
+            const existe = cs.some((c) => c.id === novo.id);
+            return existe ? cs.map((c) => (c.id === novo.id ? novo : c)) : [...cs, novo];
+          });
           salvarConfCadastro(novo);
+          setConfEditId(null);
         }}
         onOpenChange={(o) => {
           if (!o) {

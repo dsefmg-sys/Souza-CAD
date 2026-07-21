@@ -1031,7 +1031,8 @@ export default function Planta({
       const dyFinal = pend ? pend.dy : (d.dy ?? 0);
       let finalX = (d.baseX ?? 0) + dxFinal;
       let finalY = (d.baseY ?? 0) + dyFinal;
-      if (d.kind === 'ted') {
+      if (d.kind === 'ted' || d.kind === 'rotVert') {
+        const idSalvar = d.kind === 'rotVert' ? `vert.${d.id}` : d.id;
         // Item de DESENHO (texto/cota/linha que o usuário adicionou) solto com o cursor FORA da
         // folha A3 é EXCLUÍDO. Textos do carimbo e rótulos de vértice/confrontante não são objetos,
         // então ficam protegidos.
@@ -1045,7 +1046,7 @@ export default function Planta({
             const b = textosOv[id] || {};
             onTextoMover?.(id, (b.dx ?? 0) + dxFinal, (b.dy ?? 0) + dyFinal);
           }
-        } else onTextoMover?.(d.id, finalX, finalY);
+        } else onTextoMover?.(idSalvar, finalX, finalY);
       } else if (d.kind === 'divisaConf' && d.vx != null && d.vy != null) {
         // a ponta não pode sair do quadro do desenho
         finalX = Math.max(DRAW.x0, Math.min(DRAW.x1, finalX));
@@ -1089,8 +1090,9 @@ export default function Planta({
         setBoxEnd(null);
       } else {
         const g = paraGeo({ x: finalX, y: finalY });
-        if (d.kind === 'rotConf') onMoverRotuloConf?.(d.id, g.lat, g.lon);
-        else if (d.kind === 'rotVert') onMoverRotuloVertice?.(d.id, g.lat, g.lon);
+        const k = (d as { kind: string }).kind;
+        if (k === 'rotConf') onMoverRotuloConf?.(d.id, g.lat, g.lon);
+        else if (k === 'rotVert') onMoverRotuloVertice?.(d.id, g.lat, g.lon);
       }
     }
     dragRef.current = null;

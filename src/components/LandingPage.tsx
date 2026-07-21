@@ -325,7 +325,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             className="group px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-emerald-600 text-white text-[11px] sm:text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-1 hover:bg-emerald-500 hover:scale-[1.02] active:scale-[0.98] shadow-md btn-shimmer-effect relative z-10 pointer-events-auto shrink-0"
           >
             <Zap className="size-3.5" />
-            <span>Seja um pioneiro <span className="hidden xs:inline">({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span></span>
+            <span>Seja um Pioneiro <span className="hidden xs:inline">({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span></span>
           </button>
         </div>
       </header>
