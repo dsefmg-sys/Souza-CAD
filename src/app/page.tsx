@@ -4077,7 +4077,7 @@ export default function EditorPage() {
     snap();
     const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
     const randomCor = gerarCorNovaConfrontante(confrontantes);
-    const novoConf: Confrontante = { id, nome: `Confrontante ${confrontantes.length + 1}`, cpf: '', matricula: '', cns: '', condicao: 'proprietario', cor: randomCor };
+    const novoConf: Confrontante = { id, nome: '', cpf: '', matricula: '', cns: '', condicao: 'proprietario', cor: randomCor };
     setConfrontantes((cs) => [...cs, novoConf]);
     setConfrontantePincelId(id);
     setConfEditId(id);
@@ -11623,7 +11623,7 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
     const randomCor = gerarCorNovaConfrontante(confrontantes);
     const novo: Confrontante = {
       id,
-      nome: `Confrontante ${confrontantes.length + 1}`,
+      nome: '',
       cpf: '',
       matricula: '',
       cns: '',
