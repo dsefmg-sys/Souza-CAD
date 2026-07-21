@@ -475,6 +475,7 @@ export default function EditorPage() {
   const vistaPlantaRef = useRef({ z: 1, x: 0, y: 0 });
   const [editarPlanta] = useState(true); // planta abre já no modo edição
   const [folhaTravada, setFolhaTravadaState] = useState(false);
+  const [ctrlPressionado, setCtrlPressionado] = useState(false);
   const setFolhaTravada = (valOrFunc: boolean | ((v: boolean) => boolean)) => {
     setFolhaTravadaState((prev) => {
       const next = typeof valOrFunc === 'function' ? valOrFunc(prev) : valOrFunc;
@@ -1945,6 +1946,9 @@ export default function EditorPage() {
   // atalhos remapeados em ordem crescente
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (e.key === 'Control' || e.key === 'Meta') {
+        setCtrlPressionado(true);
+      }
       // Se qualquer modal/diálogo estiver aberto (ex.: banco de pontos, ajustes, etc.), ignora os atalhos.
       if (typeof document !== 'undefined' && document.querySelector('[role="dialog"], [role="alertdialog"], .radix-portal')) {
         return;
@@ -2036,8 +2040,25 @@ export default function EditorPage() {
         else { e.preventDefault(); setVista((v) => (v === 'mapa' ? 'planta' : 'mapa')); }
       }
     }
+
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.key === 'Control' || e.key === 'Meta') {
+        setCtrlPressionado(false);
+      }
+    }
+
+    function onBlur() {
+      setCtrlPressionado(false);
+    }
+
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modo, desenhoBuffer, selMulti, objSelMulti, vertices, confrontantePorLado, desfazer, refazer, menuContexto, salvar, processando, prefs]);
 
@@ -8684,20 +8705,35 @@ export default function EditorPage() {
               </button>
 
               {/* Trava/Destrava movimentação da folha / prancha */}
-              <button type="button"
-                onClick={() => {
-                  const nova = !folhaTravada;
-                  setFolhaTravada(nova);
-                  if (!nova) setModo('navegar');
-                }}
-                title={folhaTravada ? "Folha Travada: clique para destravar a movimentação do carimbo, rosa dos ventos e tabelas" : "Folha Destravada: clique para travar e proteger as posições"}
-                className={`flex h-7 w-7 items-center justify-center rounded-full border shadow-xs transition-all shrink-0 ${
-                  folhaTravada
-                    ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
-                    : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 ring-1 ring-emerald-500/30'
-                }`}>
-                {folhaTravada ? <Lock className="size-3.5 text-slate-600 dark:text-slate-300" /> : <LockOpen className="size-3.5 text-emerald-500" />}
-              </button>
+              {(() => {
+                const travadaEfetiva = folhaTravada && !ctrlPressionado;
+                return (
+                  <button type="button"
+                    onClick={() => {
+                      const nova = !folhaTravada;
+                      setFolhaTravada(nova);
+                      if (!nova) setModo('navegar');
+                    }}
+                    title={
+                      ctrlPressionado
+                        ? "Folha Destravada (Ctrl pressionado): mova a prancha livremente"
+                        : travadaEfetiva
+                        ? "Folha Travada: clique para destravar ou segure Ctrl para mover"
+                        : "Folha Destravada: clique para travar e proteger as posições"
+                    }
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border shadow-xs transition-all shrink-0 ${
+                      travadaEfetiva
+                        ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                        : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 ring-1 ring-emerald-500/30'
+                    }`}>
+                    {travadaEfetiva ? (
+                      <Lock className="size-3.5 text-slate-600 dark:text-slate-300" />
+                    ) : (
+                      <LockOpen className={`size-3.5 text-emerald-500 ${ctrlPressionado ? 'animate-pulse scale-110' : ''}`} />
+                    )}
+                  </button>
+                );
+              })()}
 
               {/* Botão Imprimir Planta (apenas ícone de impressora) */}
               <button type="button"

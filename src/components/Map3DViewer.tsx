@@ -1398,6 +1398,19 @@ export default function Map3DViewer({
           </div>
         )}
 
+        {onGerarCurvas && (
+          <div className="pt-2 border-t border-border/60">
+            <Button
+              size="sm"
+              className="h-8 w-full gap-1.5 text-[10px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-sm"
+              onClick={onGerarCurvas}
+              title="Gerar e desenhar curvas de nível para este imóvel"
+            >
+              <Layers className="size-3.5" /> Gerar Curvas de Nível
+            </Button>
+          </div>
+        )}
+
         <div className="flex gap-2 pt-2 border-t border-border/60">
           <Button
             size="sm"
@@ -1646,16 +1659,26 @@ export default function Map3DViewer({
         </div>
       )}
 
-      {/* Botão de voltar no canto inferior esquerdo */}
-      <div className="absolute bottom-14 left-4 z-[2500] flex gap-2">
+      {/* Botões de ação no canto inferior esquerdo */}
+      <div className="absolute bottom-14 left-4 z-[2500] flex items-center gap-2">
         <Button
           size="sm"
-          className="h-9 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wider flex items-center justify-center bg-slate-900/80 hover:bg-slate-900/90 text-emerald-400 border border-white/10 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95"
+          className="h-9 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wider flex items-center justify-center bg-slate-900/80 hover:bg-slate-900/90 text-emerald-400 border border-white/10 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 cursor-pointer"
           onClick={onVoltar2D}
           title="Voltar ao modo Mapa 2D (Botão Central do Mouse)"
         >
           <Map className="size-4 text-emerald-500" /> Voltar ao 2D
         </Button>
+        {onGerarCurvas && (
+          <Button
+            size="sm"
+            className="h-9 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wider flex items-center justify-center bg-indigo-600/90 hover:bg-indigo-600 text-white border border-indigo-400/30 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+            onClick={onGerarCurvas}
+            title="Gerar Curvas de Nível para este terreno"
+          >
+            <Layers className="size-4 text-indigo-200" /> Gerar Curvas de Nível
+          </Button>
+        )}
       </div>
     </div>
   );
