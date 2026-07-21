@@ -64,6 +64,7 @@ interface Props {
   onMoverObjeto?: (id: string, dlat: number, dlon: number) => void; // move o objeto inteiro (arrastar o corpo)
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
   onAbrirGestaoGleba?: (id?: string) => void;
+  onCliqueUnicoGleba?: (id: string, x: number, y: number) => void;
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
   onRemoverSituacao?: () => void;      // clicar na imagem da situação mostra um X; o X chama isto
   situacaoStale?: boolean;             // desenho mudou desde a última captura do satélite
@@ -347,7 +348,7 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
-  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao, onAbrirGestaoGleba,
+  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao, onAbrirGestaoGleba, onCliqueUnicoGleba,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onConfrontanteMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onDblClickObjeto, onContextMenuVazio, onDblClickMalha, onCentralizarPlanta,
@@ -1465,9 +1466,13 @@ export default function Planta({
             key={`og${g.id || i}`}
             className={isOculta ? 'animate-pulse opacity-75 cursor-pointer' : 'cursor-pointer'}
             onClick={(e) => {
-              if (editavel && g.id && onAbrirGestaoGleba) {
+              if (editavel && g.id) {
                 e.stopPropagation();
-                onAbrirGestaoGleba(g.id);
+                if (onCliqueUnicoGleba) {
+                  onCliqueUnicoGleba(g.id, e.clientX, e.clientY);
+                } else if (onAbrirGestaoGleba) {
+                  onAbrirGestaoGleba(g.id);
+                }
               }
             }}
             onDoubleClick={(e) => {

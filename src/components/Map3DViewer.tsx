@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RotateCcw, Download, Navigation, Wand2, RefreshCw, Camera, X, Map, Layers, Shovel, Pickaxe } from 'lucide-react';
-import { type Vertex, type ObjetoDesenho, type ImovelData } from '@/lib/topo/types';
+import { type Vertex, type ObjetoDesenho, type ImovelData, type Gleba } from '@/lib/topo/types';
 import { triangularDelaunay, pontoNoPoligono, type Ponto3D } from '@/lib/topo/curvasNivel';
 import { exportarKML } from '@/lib/export/kml';
 
@@ -61,12 +61,12 @@ function recortaCanvasVisivel(canvas: HTMLCanvasElement, padding = 16): string {
     for (let y = 0; y < canvas.height; y++) {
       for (let x = 0; x < canvas.width; x++) {
         const alpha = data[(y * canvas.width + x) * 4 + 3];
-        if (alpha > 10) {
-          encontrouPixel = true;
+        if (alpha > 5) {
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
           if (y > maxY) maxY = y;
+          encontrouPixel = true;
         }
       }
     }
@@ -123,6 +123,8 @@ interface Map3DViewerProps {
   gradeAltimetrica?: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[];
   /** Dispara a geração automática de curvas de nível calculada para o imóvel (chama gerarCurvasNivel do editor). */
   onGerarCurvas?: () => void;
+  glebas?: Gleba[];
+  glebaAtivaId?: string;
 }
 
 export default function Map3DViewer({
@@ -136,6 +138,8 @@ export default function Map3DViewer({
   onCapture,
   gradeAltimetrica = [],
   onGerarCurvas,
+  glebas = [],
+  glebaAtivaId,
 }: Map3DViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Câmera em REFS (não em state): o laço de desenho lê direto a cada quadro, então girar/arrastar/zoom
@@ -148,6 +152,8 @@ export default function Map3DViewer({
   // Escala vertical: por padrão FIEL (1:1, mostra o imóvel como ele é). O botão "Realce" liga um
   // destaque fixo e discreto pra enxergar o relevo em terreno plano — sem cursor de números.
   const [realce, setRealce] = useState(false);
+  const [glebasVisiveis3D, setGlebasVisiveis3D] = useState<Set<string>>(() => new Set(glebas.map((g) => g.id)));
+  const [popoverGlebasAberto, setPopoverGlebasAberto] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -1395,6 +1401,61 @@ export default function Map3DViewer({
             >
               <Wand2 className="size-3" /> Completar altitudes
             </Button>
+          </div>
+        )}
+
+        {glebas.length > 0 && (
+          <div className="space-y-1.5 pt-2 border-t border-border/60">
+            <div className="flex items-center justify-between">
+              <Label className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Exibir Glebas em 3D</Label>
+              <button
+                type="button"
+                className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                onClick={() => {
+                  if (glebasVisiveis3D.size === glebas.length) setGlebasVisiveis3D(new Set());
+                  else setGlebasVisiveis3D(new Set(glebas.map((g) => g.id)));
+                }}
+              >
+                {glebasVisiveis3D.size === glebas.length ? 'Desmarcar' : 'TODAS'}
+              </button>
+            </div>
+            <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+              {glebas.map((g) => {
+                const isChecked = glebasVisiveis3D.has(g.id);
+                const isAtiva = g.id === glebaAtivaId;
+                const isAuxiliar = g.tipoGleba === 'auxiliar';
+                const isOculta = g.visivel === false;
+
+                return (
+                  <label key={g.id} className="flex items-center justify-between p-1 rounded-md border border-border/40 hover:bg-muted/40 cursor-pointer text-[10px]">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const next = new Set(glebasVisiveis3D);
+                          if (e.target.checked) next.add(g.id);
+                          else next.delete(g.id);
+                          setGlebasVisiveis3D(next);
+                        }}
+                        className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 size-3 cursor-pointer"
+                      />
+                      <span className="font-semibold text-foreground truncate max-w-[110px]">{g.denominacao}</span>
+                    </div>
+
+                    <span className={`text-[8px] font-black px-1.5 py-0.2 rounded-full uppercase shrink-0 ${
+                      isAtiva
+                        ? 'bg-indigo-600 text-white'
+                        : isOculta
+                        ? 'bg-slate-200 dark:bg-slate-800 text-slate-500'
+                        : 'bg-amber-500/10 text-amber-600 border border-amber-500/30'
+                    }`}>
+                      {isAtiva ? 'ATIVA' : isOculta ? 'OCULTA' : 'AUXILIAR'}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
         )}
 

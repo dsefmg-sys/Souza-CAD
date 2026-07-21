@@ -44,6 +44,7 @@ interface Props {
   onDblClick?: (lat: number, lon: number) => void;
   outrasGlebas?: ([number, number][] | { id?: string; nome?: string; pts: [number, number][]; tipoGleba?: 'principal' | 'auxiliar'; visivel?: boolean })[];
   onAbrirGestaoGleba?: (id?: string) => void;
+  onCliqueUnicoGleba?: (id: string, x: number, y: number) => void;
   objetos?: ObjetoDesenho[];
   desenhoAtual?: [number, number][];
   rotulos?: RotuloMapa[];
@@ -1323,7 +1324,7 @@ function TrimExtendController({
 
 export default function MapEditor(props: Props) {
   const {
-    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [], onAbrirGestaoGleba,
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [], onAbrirGestaoGleba, onCliqueUnicoGleba,
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, centroPadrao = null, zoomPadrao = 13, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
@@ -1653,7 +1654,7 @@ export default function MapEditor(props: Props) {
         );
       })}
 
-      {/* demais glebas (ativas, auxiliares e ocultas em cinza médio) */}
+      {/* demais glebas (ativas, auxiliares e ocultas em pontilhado branco) */}
       {outrasGlebas.map((g, i) => {
         const isStructured = !Array.isArray(g) && 'pts' in g;
         const pts = isStructured ? (g as { pts: [number, number][] }).pts : (g as [number, number][]);
@@ -1662,9 +1663,9 @@ export default function MapEditor(props: Props) {
         const gId = isStructured ? (g as { id?: string }).id : undefined;
         const isOculta = isStructured && (g as { visivel?: boolean }).visivel === false;
         const isAuxiliar = isStructured && (g as { tipoGleba?: string }).tipoGleba === 'auxiliar';
-        const cor = isOculta ? '#64748b' : (isAuxiliar ? '#d97706' : '#f97316');
+        const cor = isOculta ? '#ffffff' : (isAuxiliar ? '#d97706' : '#f97316');
         const dash = isOculta ? '4 4' : (isAuxiliar ? '4 3' : '6 4');
-        const opacidade = isOculta ? 0.04 : 0.08;
+        const opacidade = isOculta ? 0.05 : 0.08;
 
         return (
           <Polygon
@@ -1672,13 +1673,21 @@ export default function MapEditor(props: Props) {
             positions={pts}
             eventHandlers={{
               click: (e) => {
+                e.originalEvent.stopPropagation();
+                if (gId && onCliqueUnicoGleba) {
+                  onCliqueUnicoGleba(gId, e.originalEvent.clientX, e.originalEvent.clientY);
+                } else if (onAbrirGestaoGleba) {
+                  onAbrirGestaoGleba(gId);
+                }
+              },
+              dblclick: (e) => {
+                e.originalEvent.stopPropagation();
                 if (onAbrirGestaoGleba) {
-                  e.originalEvent.stopPropagation();
                   onAbrirGestaoGleba(gId);
                 }
               }
             }}
-            pathOptions={{ color: cor, weight: isOculta ? 1.4 : 1.8, fillColor: cor, fillOpacity: opacidade, dashArray: dash }}
+            pathOptions={{ color: cor, weight: isOculta ? 2 : 1.8, fillColor: cor, fillOpacity: opacidade, dashArray: dash }}
           />
         );
       })}

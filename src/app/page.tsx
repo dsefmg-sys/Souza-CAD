@@ -2438,6 +2438,7 @@ export default function EditorPage() {
     setGlebas(gs);
     if (id === glebaAtivaId) carregarGleba(gs[0]);
   }
+  const [menuRapidoGleba, setMenuRapidoGleba] = useState<{ id: string; x: number; y: number } | null>(null);
   function renomearGlebaAtiva(denominacao: string) {
     setGlebas(sincronizarGlebas().map((g) => (g.id === glebaAtivaId ? { ...g, denominacao } : g)));
   }
@@ -8269,6 +8270,8 @@ export default function EditorPage() {
                 onVoltar2D={() => setVista('mapa')}
                 gradeAltimetrica={gradeAltimetrica}
                 onGerarCurvas={gerarCurvasNivelAuto}
+                glebas={glebas}
+                glebaAtivaId={glebaAtivaId}
                 onCapture={(dataUrl, meta) => {
                   atualizarPlantaConfig((c) => ({
                     ...c,
@@ -8318,6 +8321,7 @@ export default function EditorPage() {
                   tipoGleba: g.tipoGleba,
                   visivel: g.visivel,
                 }))}
+                onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
                 onAbrirGestaoGleba={(id) => {
                   if (id) trocarGleba(id);
                   setAba('glebas');
@@ -8712,6 +8716,7 @@ export default function EditorPage() {
                       glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
                       requerente={requerente} transmitente={transmitente}
                       outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ id: g.id, nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })), tipoGleba: g.tipoGleba, visivel: g.visivel }))}
+                      onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
                       onAbrirGestaoGleba={(id) => {
                         if (id) trocarGleba(id);
                         setAba('glebas');
@@ -10403,6 +10408,90 @@ export default function EditorPage() {
           })}
         </defs>
       </svg>
+
+      {/* ── MENU RÁPIDO NO CLIQUE ÚNICO DA GLEBA ── */}
+      {menuRapidoGleba && (() => {
+        const g = glebas.find((x) => x.id === menuRapidoGleba.id);
+        if (!g) return null;
+        const isAtiva = g.id === glebaAtivaId;
+        const isAuxiliar = g.tipoGleba === 'auxiliar';
+        const isVisivel = g.visivel !== false;
+
+        return (
+          <div
+            className="fixed z-[9999] w-60 rounded-xl border border-border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-xs space-y-2 animate-in fade-in zoom-in-95 duration-150"
+            style={{ left: Math.min(window.innerWidth - 250, Math.max(10, menuRapidoGleba.x)), top: Math.min(window.innerHeight - 210, Math.max(10, menuRapidoGleba.y)) }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b pb-1.5 gap-1">
+              <span className="font-extrabold text-foreground truncate">{g.denominacao}</span>
+              <button type="button" className="text-muted-foreground hover:text-foreground shrink-0" onClick={() => setMenuRapidoGleba(null)}>
+                <X className="size-3.5" />
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              {!isAtiva && (
+                <button
+                  type="button"
+                  className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-600 font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                  onClick={() => {
+                    trocarGleba(g.id);
+                    setMenuRapidoGleba(null);
+                    aviso(`Gleba "${g.denominacao}" definida como Ativa.`);
+                  }}
+                >
+                  <Waypoints className="size-3.5" /> Ativar Gleba (Edição)
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-muted font-semibold flex items-center justify-between transition-colors cursor-pointer"
+                onClick={() => {
+                  alternarTipoGleba(g.id);
+                  setMenuRapidoGleba(null);
+                }}
+              >
+                <span>Tipo de Gleba</span>
+                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                  isAuxiliar ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+                }`}>
+                  {isAuxiliar ? 'Auxiliar' : 'ATIVA'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-muted font-semibold flex items-center justify-between transition-colors cursor-pointer"
+                onClick={() => {
+                  alternarVisibilidadeGleba(g.id);
+                  setMenuRapidoGleba(null);
+                }}
+              >
+                <span>Visibilidade</span>
+                <span className="flex items-center gap-1 text-[10px] font-bold">
+                  {isVisivel ? <Eye className="size-3.5 text-emerald-500" /> : <EyeOff className="size-3.5 text-red-500" />}
+                  {isVisivel ? 'Visível' : 'Oculta'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-2 border-t pt-1.5 transition-colors cursor-pointer"
+                onClick={() => {
+                  if (g.id !== glebaAtivaId) trocarGleba(g.id);
+                  setAba('glebas');
+                  setPainelAberto(true);
+                  setMenuRapidoGleba(null);
+                }}
+              >
+                <Palette className="size-3.5" /> Propriedades / Dados
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── OVERLAY DE FEEDBACK DE ATALHO (centro da tela, semi-transparente, grande) ── */}
       {feedbackAtalho && (
