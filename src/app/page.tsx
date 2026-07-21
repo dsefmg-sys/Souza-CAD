@@ -9157,25 +9157,56 @@ export default function EditorPage() {
             )}
 
             {aba === 'projetos' && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <SecaoTitulo>Projetos salvos</SecaoTitulo>
                 {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
-                {projetos.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg border p-2 bg-muted/10">
-                    <div className="min-w-0">
-                      <div className="w-full truncate text-xs font-bold">{p.nome}</div>
-                      <div className="text-[10px] text-muted-foreground">{contarVertices(p)} vértices</div>
+                {projetos.map((p) => {
+                  const pct = calcularProgressoProjeto(p);
+                  const areaHa = calcularAreaHaProjeto(p);
+                  return (
+                    <div key={p.id} className="p-3 rounded-xl border border-border/80 bg-muted/15 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="w-full truncate text-xs font-black uppercase text-foreground">{p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}</div>
+                          <div className="text-[10px] font-semibold text-primary/90 mt-0.5 truncate">
+                            👤 {p.imovel?.proprietario ? `Proprietário: ${p.imovel.proprietario}` : 'Proprietário não informado'}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold" onClick={() => { carregarProjetoComConfirmacao(p.id); setPainelAberto(false); }}>
+                            <FolderOpen className="size-3" /> Abrir
+                          </Button>
+                          <Button size="sm" variant="ghost" className="size-7 p-0 text-destructive" onClick={() => remover(p.id)} title="Excluir">
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] text-muted-foreground font-mono bg-background/60 p-2 rounded-lg border border-border/40">
+                        <div>📍 <strong className="text-foreground">{p.imovel?.municipio || 'Sem Município'}</strong></div>
+                        <div>📐 <strong className="text-foreground">{contarVertices(p)} vértices</strong></div>
+                        {areaHa > 0 && <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">🌾 Área: {areaHa.toFixed(4)} ha ({Math.round(areaHa * 10000).toLocaleString('pt-BR')} m²)</div>}
+                        <div>📅 Criado: <span className="font-sans font-medium">{p.criadoEm ? new Date(p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
+                        <div>💾 Salvo: <span className="font-sans font-medium">{p.atualizadoEm || p.criadoEm ? new Date(p.atualizadoEm || p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
+                      </div>
+
+                      <div className="space-y-1 pt-0.5">
+                        <div className="flex items-center justify-between text-[9.5px] font-bold">
+                          <span className="text-muted-foreground uppercase">Estado do Projeto</span>
+                          <span className={pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400'}>
+                            {pct}% Completo
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => { carregarProjetoComConfirmacao(p.id); setPainelAberto(false); }}>
-                        <FolderOpen className="size-3" /> Abrir
-                      </Button>
-                      <Button size="sm" variant="ghost" className="size-7 p-0 text-destructive" onClick={() => remover(p.id)}>
-                        <Trash2 className="size-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -9192,7 +9223,7 @@ export default function EditorPage() {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="py-4 flex-1 overflow-y-auto space-y-2">
+          <div className="py-4 flex-1 overflow-y-auto space-y-2.5">
             {projetos.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-sm font-semibold text-muted-foreground">Nenhum projeto salvo no Souza-CAD.</p>
@@ -9201,52 +9232,71 @@ export default function EditorPage() {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-2.5">
-                {projetos.map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => { carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
-                    className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-border/70 hover:border-indigo-500/50 hover:bg-indigo-500/5 bg-muted/10 cursor-pointer transition-all duration-200 group"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-xs font-black text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors uppercase truncate">
-                        {p.nome || 'Imóvel sem Nome'}
+              <div className="grid grid-cols-1 gap-3">
+                {projetos.map((p) => {
+                  const pct = calcularProgressoProjeto(p);
+                  const areaHa = calcularAreaHaProjeto(p);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => { carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
+                      className="p-3.5 rounded-xl border border-border/70 hover:border-indigo-500/50 hover:bg-indigo-500/5 bg-muted/10 cursor-pointer transition-all duration-200 group space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-xs font-black text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors uppercase truncate">
+                            {p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}
+                          </div>
+                          <div className="text-[10.5px] font-semibold text-indigo-600 dark:text-indigo-300 mt-0.5 truncate">
+                            👤 {p.imovel?.proprietario ? `Proprietário: ${p.imovel.proprietario}` : 'Proprietário não informado'}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-[10px] font-bold gap-1 bg-background hover:bg-indigo-600 hover:text-white transition-all shadow-xs border-border/80"
+                            onClick={(e) => { e.stopPropagation(); carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
+                          >
+                            <FolderOpen className="size-3" /> Abrir
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="size-8 p-0 text-destructive hover:bg-destructive/10"
+                            onClick={(e) => { e.stopPropagation(); remover(p.id); }}
+                            title="Excluir projeto"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground font-mono">
-                        <span className="bg-slate-250 dark:bg-slate-800 px-1.5 py-0.5 rounded text-foreground font-bold font-sans">
-                          {p.imovel?.municipio || 'Sem Município'}
-                        </span>
-                        <span>•</span>
-                        <span>{contarVertices(p)} vértices</span>
-                        {calcularAreaHaProjeto(p) > 0 && (
-                          <>
-                            <span>•</span>
-                            <span>{calcularAreaHaProjeto(p).toFixed(4)} ha</span>
-                          </>
-                        )}
+
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-muted-foreground font-mono bg-background/60 p-2 rounded-lg border border-border/40">
+                        <div>📍 <strong className="text-foreground">{p.imovel?.municipio || 'Sem Município'}</strong></div>
+                        <div>📐 <strong className="text-foreground">{contarVertices(p)} vértices</strong></div>
+                        {areaHa > 0 && <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">🌾 Área: {areaHa.toFixed(4)} ha ({Math.round(areaHa * 10000).toLocaleString('pt-BR')} m²)</div>}
+                        <div>📅 Criado: <span className="font-sans font-medium">{p.criadoEm ? new Date(p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
+                        <div>💾 Salvo: <span className="font-sans font-medium">{p.atualizadoEm || p.criadoEm ? new Date(p.atualizadoEm || p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
+                      </div>
+
+                      <div className="space-y-1 pt-0.5">
+                        <div className="flex items-center justify-between text-[10px] font-bold">
+                          <span className="text-muted-foreground uppercase tracking-wider">Estado do Projeto</span>
+                          <span className={pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : pct >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400'}>
+                            {pct}% Completo
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-[10px] font-bold gap-1 bg-background hover:bg-indigo-600 hover:text-white transition-all shadow-xs border-border/80"
-                        onClick={(e) => { e.stopPropagation(); carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
-                      >
-                        <FolderOpen className="size-3" /> Abrir
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="size-8 p-0 text-destructive hover:bg-destructive/10"
-                        onClick={(e) => { e.stopPropagation(); remover(p.id); }}
-                        title="Excluir projeto"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -11821,9 +11871,10 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
       </div>
       <div className="space-y-1 rounded-sm border p-2">
         <div className="text-[10px] uppercase text-muted-foreground">Nome dos vértices</div>
-        <select className="h-8 w-full rounded-sm border bg-background px-2 text-sm" value={config.estiloVertice ?? 'sigef'} onChange={(e) => set({ estiloVertice: e.target.value as 'sigef' | 'convencional' })}>
+        <select className="h-8 w-full rounded-sm border bg-background px-2 text-sm" value={config.estiloVertice ?? 'sigef'} onChange={(e) => set({ estiloVertice: e.target.value as 'sigef' | 'convencional' | 'v' })}>
           <option value="sigef">Código SIGEF (ex.: COIN-M-0017)</option>
-          <option value="convencional">Topografia convencional (P1, P2, P3…)</option>
+          <option value="convencional">Topografia convencional P (P1, P2, P3…)</option>
+          <option value="v">Topografia convencional V (V1, V2, V3…)</option>
         </select>
       </div>
       <div className="space-y-1 rounded-sm border p-2">
@@ -11911,6 +11962,19 @@ function calcularAreaHaProjeto(p: Projeto): number {
     sum += pts[i].leste * pts[next].norte - pts[next].leste * pts[i].norte;
   }
   return Math.abs(sum) / 20000; // M2 para Ha: dividir por 2 * 10000
+}
+
+function calcularProgressoProjeto(p: Projeto): number {
+  let score = 0;
+  const numVertices = contarVertices(p);
+  if (numVertices >= 3) score += 30;
+  if (p.imovel?.denominacao) score += 15;
+  if (p.imovel?.municipio) score += 10;
+  if (p.imovel?.proprietario) score += 20;
+  const hasConfrontantes = Object.keys(p.glebas?.[0]?.confrontantePorLado || p.confrontantePorLado || {}).length > 0;
+  if (hasConfrontantes) score += 15;
+  if (p.requerente?.nome) score += 10;
+  return Math.min(100, Math.max(10, score));
 }
 
 function distPontoSegmento(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {

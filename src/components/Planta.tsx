@@ -709,7 +709,11 @@ export default function Planta({
 
   const rotuloVert = initialRotuloVert.map((r) => ({ v: r.v, i: r.i, x: r.x, y: r.y }));
   // rótulo exibido do vértice: código SIGEF (padrão) ou P1, P2, P3… (topografia convencional)
-  const nomeVertice = (v: Vertex, i: number) => (config.estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || 'S/N'));
+  const nomeVertice = (v: Vertex, i: number) => {
+    if (config.estiloVertice === 'v') return `V${i + 1}`;
+    if (config.estiloVertice === 'convencional') return `P${i + 1}`;
+    return v.codigoSigef || 'S/N';
+  };
 
   const getOverride = (id: string) => {
     const base = textosOv[id] || {};

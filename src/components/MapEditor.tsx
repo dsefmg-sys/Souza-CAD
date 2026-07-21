@@ -19,6 +19,7 @@ import { snapUtm, type SegmentoSnap, type AlvoSnap, type SnapResult } from '@/li
 import { intersecaoRetasUtm } from '@/lib/topo/editing';
 import { avisar } from '@/lib/ui/dialogos';
 import { Z_CLASSES } from '@/lib/ui/zlayers';
+import { sincronizarPerfil } from '@/lib/store/perfilUso';
 
 export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir' | 'paralela' | 'dividir' | 'trim' | 'extend' | 'retangulo' | 'circulo' | 'arco' | 'copiar_base' | 'copiar_destino';
 
@@ -52,7 +53,7 @@ interface Props {
   zoomPadrao?: number;
   mostrarDivisaConf?: boolean;
   onAjustarDivisaConf?: (id: string, az: number, len: number) => void;
-  estiloVertice?: 'sigef' | 'convencional';
+  estiloVertice?: 'sigef' | 'convencional' | 'v';
   objetoSelId?: string | null;
   onMover: (id: string, lat: number, lon: number) => void;
   onSelecionar: (id: string) => void;
@@ -344,6 +345,27 @@ function AutoLocalizarGPS({ vertices }: { vertices: Vertex[] }) {
   useEffect(() => {
     let montado = true;
     if (typeof window === 'undefined' || !navigator.geolocation) return;
+
+    // Se o GPS já foi memorizado nesta máquina, reusa sem pedir permissão novamente!
+    const localGps = localStorage.getItem('metrica:cliente_gps');
+    if (localGps) {
+      try {
+        const { lat, lon } = JSON.parse(localGps);
+        if (lat && lon && Number.isFinite(lat) && Number.isFinite(lon)) {
+          if ((!vertices || vertices.length === 0) && map) {
+            try {
+              const container = map.getContainer();
+              if (container && (map as any)._mapPane) {
+                map.setView([lat, lon], 16);
+              }
+            } catch { /* ignore Leaflet desmontado */ }
+          }
+          sincronizarPerfil({ lat, lon });
+          return;
+        }
+      } catch { /* ignore */ }
+    }
+
     if (vertices && vertices.length > 0) return;
     const jaPediu = localStorage.getItem('metrica:gps_startup_solicitado');
     if (jaPediu === 'denied') return;
@@ -352,12 +374,16 @@ function AutoLocalizarGPS({ vertices }: { vertices: Vertex[] }) {
       (pos) => {
         if (!montado) return;
         try {
-          if (!map) return;
-          const container = map.getContainer();
-          if (!container || !(map as any)._mapPane) return;
-          const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-          map.setView(ll, 16);
-          localStorage.setItem('metrica:cliente_gps', JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude, ts: Date.now() }));
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          if (map) {
+            const container = map.getContainer();
+            if (container && (map as any)._mapPane) {
+              map.setView([lat, lon], 16);
+            }
+          }
+          localStorage.setItem('metrica:cliente_gps', JSON.stringify({ lat, lon, ts: Date.now() }));
+          sincronizarPerfil({ lat, lon });
         } catch { /* ignore Leaflet desmontado */ }
       },
       (err) => {
@@ -533,7 +559,7 @@ interface MarcadoresRotulosProps {
   camadasBloqueadas: Record<string, boolean>;
   mostrarRotulos: boolean;
   zoom: number;
-  estiloVertice: 'sigef' | 'convencional';
+  estiloVertice: 'sigef' | 'convencional' | 'v';
   tamNomes: number;
   fzZoom: number;
   dirsRotulo: [number, number][];
@@ -557,6 +583,11 @@ function MarcadoresRotulos({
   onMoverRotuloVertice,
 }: MarcadoresRotulosProps) {
   const map = useMap();
+  const formatarNome = (v: Vertex, i: number) => {
+    if (estiloVertice === 'v') return `V${i + 1}`;
+    if (estiloVertice === 'convencional') return `P${i + 1}`;
+    return v.codigoSigef || v.nome;
+  };
 
   return (
     <>
@@ -565,7 +596,7 @@ function MarcadoresRotulos({
           dos marcadores pra ficar por baixo do texto. */}
       {camadasVisiveis.divisas !== false && (mostrarRotulos && (zoom >= 15 || validos.length <= 20)) && validos.map((v, i) => {
         if (!v.posRotulo) return null;
-        const texto = estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome);
+        const texto = formatarNome(v, i);
         const { w, h } = estimarCaixaRotulo(texto, Math.round(tamNomes * fzZoom));
         const ponta = pontoGuiaMaisPerto(map, [v.lat, v.lon], [v.posRotulo.lat, v.posRotulo.lon], w, h, zoom);
         return (
@@ -584,7 +615,7 @@ function MarcadoresRotulos({
           draggable={modo === 'navegar' && !camadasBloqueadas.divisas}
           zIndexOffset={1000}
           icon={iconeNomeVertice(
-            estiloVertice === 'convencional' ? `P${i + 1}` : (v.codigoSigef || v.nome),
+            formatarNome(v, i),
             Math.round(tamNomes * fzZoom),
             v.posRotulo ? 0 : (dirsRotulo[i]?.[0] ?? 1),
             v.posRotulo ? 0 : (dirsRotulo[i]?.[1] ?? 0),

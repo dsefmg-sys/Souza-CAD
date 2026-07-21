@@ -20,7 +20,7 @@ function InteractiveImageWindow({ src, alt, onExpand }: { src: string; alt: stri
   return (
     <div
       ref={containerRef}
-      className="w-full h-[320px] sm:h-[460px] md:h-[580px] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-slate-950 relative select-none group"
+      className="w-full h-[240px] sm:h-[360px] md:h-[440px] lg:h-[500px] max-h-[48vh] rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-slate-950 relative select-none group"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -324,7 +324,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             className="group px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-emerald-600 text-white text-[11px] sm:text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-1 hover:bg-emerald-500 hover:scale-[1.02] active:scale-[0.98] shadow-md btn-shimmer-effect relative z-10 pointer-events-auto shrink-0"
           >
             <Zap className="size-3.5" />
-            <span>Pioneiro <span className="hidden xs:inline">({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span></span>
+            <span>Seja um pioneiro <span className="hidden xs:inline">({estaEsgotado ? vagasTotais : numUsuarios}/{vagasTotais})</span></span>
           </button>
         </div>
       </header>
@@ -367,12 +367,12 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
             {titulo}
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-medium max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-medium max-w-4xl mx-auto">
             {subtitulo}
           </p>
 
           {/* CONTAINER COM EFEITO DE SOBREPOSIÇÃO E JANELA INTERATIVA (ROLAGEM DO MOUSE SEM DESFOQUE) */}
-          <div className="relative w-full max-w-5xl mx-auto mt-2">
+          <div className="relative w-full max-w-5xl mx-auto mt-6 sm:mt-8">
             {/* PRIMEIRA IMAGEM (PRINCIPAL COM JANELA INTERATIVA DE ROLAGEM INSTANTÂNEA) */}
             <InteractiveImageWindow
               src="/marca/preview_requerimento.png"
@@ -380,8 +380,8 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
               onExpand={setLightboxImg}
             />
 
-            {/* SEGUNDA IMAGEM (FLUTUANTE SOBREPOSTA NO CANTO INFERIOR DIREITO - MESMO TAMANHO E ESTILO DAS OUTRAS SEÇÕES) */}
-            <div className="absolute -bottom-5 -right-2 sm:-bottom-6 sm:-right-6 z-20 w-44 sm:w-72 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
+            {/* SEGUNDA IMAGEM (FLUTUANTE SOBREPOSTA NO CANTO INFERIOR DIREITO - DENTRO DO PAINEL SEM EXCEDER PARA CIMA) */}
+            <div className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 z-20 w-36 sm:w-64 md:w-72 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`${bp}/marca/preview_requerimento_modal.png`}
@@ -421,7 +421,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
           <h2 className="text-2xl sm:text-4xl font-black text-white">
             100% Projetado para Georreferenciamento de Imóveis Rurais SIGEF
           </h2>
-          <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-slate-300 max-w-4xl mx-auto">
             Geração automática da Planilha ODS oficial para certificação eletrônica, conferência visual de vértices, códigos de limites/métodos e total conformidade com a 3ª edição da norma técnica do INCRA.
           </p>
 
@@ -447,7 +447,7 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
           <h2 className="text-2xl sm:text-4xl font-black text-white">
             Modelo Digital de Relevo 3D Integrado à Prancha Oficial
           </h2>
-          <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-slate-300 max-w-4xl mx-auto">
             Incorpore o Modelo Digital de Relevo 3D com malha TIN wireframe, diagnósticos de altimetria e convenções cartográficas na sua prancha final.
           </p>
 
