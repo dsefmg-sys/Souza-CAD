@@ -10,7 +10,7 @@ import {
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Search,
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Printer, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
-  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain, LayoutGrid,
+  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain, LayoutGrid, Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -537,6 +537,47 @@ export default function EditorPage() {
   // `sincronizarGlebas()` devolve a lista com a ativa atualizada a partir do estado de trabalho.
   const [glebas, setGlebas] = useState<Gleba[]>([]);
   const [glebaAtivaId, setGlebaAtivaId] = useState<string>('');
+  const [imoveis, setImoveis] = useState<ImovelData[]>([]);
+  const [imovelAtivoId, setImovelAtivoId] = useState<string>('imovel_1');
+
+  function sincronizarImoveis(): ImovelData[] {
+    const atvId = imovelAtivoId || 'imovel_1';
+    const imAtual = { ...imovel, id: atvId };
+    if (!imoveis.length) return [imAtual];
+    const existe = imoveis.some((x) => x.id === atvId);
+    if (!existe) return [...imoveis, imAtual];
+    return imoveis.map((im) => (im.id === atvId ? imAtual : im));
+  }
+
+  function novoImovel() {
+    const listaAtual = sincronizarImoveis();
+    const novoId = `imovel_${Date.now().toString(36)}`;
+    const novoIm: ImovelData = {
+      ...IMOVEL_VAZIO,
+      id: novoId,
+      denominacao: `Novo Imóvel ${listaAtual.length + 1}`,
+    };
+    const listaAtualizada = [...listaAtual, novoIm];
+    setImoveis(listaAtualizada);
+    setImovelAtivoId(novoId);
+    setImovel(novoIm);
+    aviso(`Novo Imóvel cadastrado no projeto.`);
+  }
+
+  function trocarImovelAtivo(id: string) {
+    const lista = sincronizarImoveis();
+    const alvo = lista.find((x) => x.id === id);
+    if (alvo) {
+      setImoveis(lista);
+      setImovelAtivoId(id);
+      setImovel(alvo);
+    }
+  }
+
+  function vincularGlebaImovel(glebaId: string, idImovel: string) {
+    setGlebas((gs) => gs.map((g) => (g.id === glebaId ? { ...g, imovelId: idImovel } : g)));
+    aviso(`Gleba vinculada ao Imóvel.`);
+  }
   // bloqueia trocar/criar gleba e importar enquanto uma operação assíncrona (importar/salvar)
   // está em andamento — evita corrida que jogaria dados na gleba errada.
   const [processando, setProcessando] = useState(false);
@@ -9385,6 +9426,11 @@ export default function EditorPage() {
                 glebas={sincronizarGlebas()}
                 glebaAtivaId={glebaAtivaId}
                 onTrocarGleba={trocarGleba}
+                imoveis={sincronizarImoveis()}
+                imovelAtivoId={imovelAtivoId}
+                onNovoImovel={novoImovel}
+                onTrocarImovelAtivo={trocarImovelAtivo}
+                onVincularGlebaImovel={vincularGlebaImovel}
               />
             )}
 
@@ -11406,7 +11452,7 @@ function Campo({ label, value, onChange, placeholder, list, aviso, importante }:
     </div>
   );
 }
-function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios, onIa, projetoId, extrairDocumento, glebas, glebaAtivaId, onTrocarGleba }: {
+function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios, onIa, projetoId, extrairDocumento, glebas, glebaAtivaId, onTrocarGleba, imoveis, imovelAtivoId, onNovoImovel, onTrocarImovelAtivo, onVincularGlebaImovel }: {
   aba?: Aba;
   imovel: ImovelData; onChange: (i: ImovelData) => void; onMunicipio: (s: string) => void; onLocal: (s: string) => void;
   nome: string; onNome: (v: string) => void;
@@ -11418,6 +11464,11 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
   glebas?: Gleba[];
   glebaAtivaId?: string;
   onTrocarGleba?: (id: string) => void;
+  imoveis?: ImovelData[];
+  imovelAtivoId?: string;
+  onNovoImovel?: () => void;
+  onTrocarImovelAtivo?: (id: string) => void;
+  onVincularGlebaImovel?: (glebaId: string, imovelId: string) => void;
 }) {
   const set = (k: keyof ImovelData, v: string) => onChange({ ...imovel, [k]: v });
   function setProprietario(v: string) {
@@ -11606,51 +11657,123 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
   // Padrão: aba === 'imovel' (Imóvel & Registro)
   return (
     <div className="space-y-3">
-      {/* Seletor de Glebas & Imóveis do Projeto */}
-      {glebas && glebas.length > 1 && (
-        <div className="border border-indigo-500/30 rounded-xl p-3 bg-indigo-500/5 space-y-2">
+      {/* Gestão de Imóveis e Glebas do Projeto */}
+      <div className="border border-indigo-500/30 rounded-xl p-3 bg-indigo-500/5 space-y-3">
+        {/* Seção de Imóveis */}
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="font-extrabold text-xs uppercase tracking-wider text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
-              <Waypoints className="size-4" /> Glebas &amp; Imóveis do Projeto ({glebas.length}) — Selecione para Editar Dados &amp; Matrícula
+            <span className="font-black text-xs uppercase tracking-wider text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+              <Building2 className="size-4 text-indigo-600 dark:text-indigo-400" /> Imóvel(is) do Projeto ({(imoveis || []).length || 1})
             </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onNovoImovel}
+              className="h-7 text-xs font-bold gap-1 cursor-pointer bg-white dark:bg-zinc-900 border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-zinc-800"
+            >
+              <Plus className="size-3.5" /> + Novo Imóvel
+            </Button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {glebas.map((g, idx) => {
-              const isEditando = g.id === glebaAtivaId;
-              const isAuxiliar = g.tipoGleba === 'auxiliar';
-              const isVisivel = g.visivel !== false;
-              return (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => onTrocarGleba?.(g.id)}
-                  className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
-                    isEditando
-                      ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm font-bold ring-2 ring-indigo-500/30'
-                      : 'border-slate-200 dark:border-zinc-700 bg-background hover:border-indigo-500/40 text-foreground'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-[10px] font-mono font-bold opacity-80">#{idx + 1}</span>
-                    <span className={`text-[8.5px] font-black uppercase px-1.5 py-0.2 rounded ${
-                      !isVisivel
-                        ? 'bg-red-500/20 text-red-700 dark:text-red-300'
-                        : isAuxiliar
-                        ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-                        : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                    }`}>
-                      {!isVisivel ? 'Oculta' : isAuxiliar ? 'Auxiliar' : 'Principal'}
-                    </span>
+
+          {(imoveis && imoveis.length > 1) && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {imoveis.map((im, idx) => {
+                const isEditando = im.id === (imovelAtivoId || 'imovel_1');
+                const numGlebasVinculadas = (glebas || []).filter((g) => (g.imovelId || 'imovel_1') === im.id).length;
+                return (
+                  <div
+                    key={im.id || idx}
+                    onClick={() => onTrocarImovelAtivo?.(im.id || '')}
+                    className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                      isEditando
+                        ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm font-bold ring-2 ring-indigo-500/30'
+                        : 'border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:border-indigo-500/40 text-foreground'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[10px] opacity-80">
+                      <span>Imóvel #{idx + 1}</span>
+                      <span>{numGlebasVinculadas} gleba(s)</span>
+                    </div>
+                    <div className="truncate text-xs font-extrabold mt-0.5" title={im.denominacao}>
+                      {im.denominacao || `Imóvel ${idx + 1}`}
+                    </div>
+                    {im.matricula && (
+                      <div className="text-[10px] opacity-90 truncate mt-0.5">
+                        Matrícula nº {im.matricula}
+                      </div>
+                    )}
                   </div>
-                  <div className="truncate text-xs font-bold mt-1" title={g.denominacao}>
-                    {g.denominacao || `Gleba ${idx + 1}`}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Seção de Seleção e Vínculo de Glebas */}
+        {glebas && glebas.length > 1 && (
+          <div className="pt-2 border-t border-indigo-500/20 space-y-2">
+            <span className="font-bold text-[11px] uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
+              Glebas do Projeto ({glebas.length}) — Selecione para Editar Vértices / Vincule ao Imóvel:
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              {glebas.map((g, idx) => {
+                const isEditando = g.id === glebaAtivaId;
+                const isAuxiliar = g.tipoGleba === 'auxiliar';
+                const isVisivel = g.visivel !== false;
+                const idImovelVinculado = g.imovelId || 'imovel_1';
+
+                return (
+                  <div
+                    key={g.id}
+                    className={`p-2.5 rounded-xl border transition-all space-y-1.5 ${
+                      isEditando
+                        ? 'border-indigo-600 bg-white dark:bg-zinc-900 ring-2 ring-indigo-500/30 shadow-xs'
+                        : 'border-slate-200 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onTrocarGleba?.(g.id)}
+                        className="font-bold text-xs text-left truncate hover:text-indigo-600 dark:hover:text-indigo-400 flex-1 cursor-pointer"
+                        title={g.denominacao}
+                      >
+                        #{idx + 1} {g.denominacao || `Gleba ${idx + 1}`}
+                      </button>
+                      <span className={`text-[8.5px] font-black uppercase px-1.5 py-0.2 rounded shrink-0 ${
+                        !isVisivel
+                          ? 'bg-red-500/20 text-red-700 dark:text-red-300'
+                          : isAuxiliar
+                          ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
+                          : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                      }`}>
+                        {!isVisivel ? 'Oculta' : isAuxiliar ? 'Auxiliar' : 'Principal'}
+                      </span>
+                    </div>
+
+                    {(imoveis && imoveis.length > 1) && (
+                      <div className="flex items-center gap-1 pt-1 border-t border-slate-100 dark:border-zinc-800">
+                        <span className="text-[9.5px] text-muted-foreground shrink-0">Vínculo:</span>
+                        <select
+                          value={idImovelVinculado}
+                          onChange={(e) => onVincularGlebaImovel?.(g.id, e.target.value)}
+                          className="h-6 text-[10px] font-bold rounded border border-slate-300 dark:border-zinc-700 bg-background px-1 w-full"
+                        >
+                          {imoveis.map((im, imIdx) => (
+                            <option key={im.id || imIdx} value={im.id || `imovel_${imIdx + 1}`}>
+                              Imóvel #{imIdx + 1}: {im.denominacao || 'Sem nome'}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Seletor Deslizante Rural / Urbano & Leitura com IA */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

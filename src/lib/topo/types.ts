@@ -290,6 +290,7 @@ export interface ProprietarioParte {
 
 /** Dados de identificação do imóvel (aba identificacao do SIGEF + memorial). */
 export interface ImovelData {
+  id?: string;
   denominacao: string;        // "Fazenda Ventania"
   matricula: string;          // "3470"
   cns: string;                // "03.886-9"
@@ -539,6 +540,7 @@ export interface Gleba {
   objetos?: ObjetoDesenho[];   // desenho livre (linhas, textos, cotas)
   tipoGleba?: 'principal' | 'auxiliar'; // Principal (ativa) ou Auxiliar (complementar)
   visivel?: boolean;            // true (default): exibida na planta/mapa, false: ocultada
+  imovelId?: string;           // ID do imóvel ao qual esta gleba está vinculada
   // Dados imobiliários/cartorários específicos da gleba (se vazios, herda os do imóvel do projeto)
   matricula?: string;
   cns?: string;
@@ -579,6 +581,7 @@ export interface Projeto {
   criadoEm: number;
   atualizadoEm: number;
   imovel: ImovelData;
+  imoveis?: ImovelData[];
   glebas: Gleba[];
   zonaUtm: number;
   hemisferio: 'N' | 'S';
