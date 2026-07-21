@@ -4077,7 +4077,7 @@ export default function EditorPage() {
     snap();
     const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
     const randomCor = gerarCorNovaConfrontante(confrontantes);
-    const novoConf: Confrontante = { id, nome: '', cpf: '', matricula: '', cns: '', condicao: 'proprietario', cor: randomCor };
+    const novoConf: Confrontante = { id, nome: `Confrontante ${confrontantes.length + 1}`, cpf: '', matricula: '', cns: '', condicao: 'proprietario', cor: randomCor };
     setConfrontantes((cs) => [...cs, novoConf]);
     setConfrontantePincelId(id);
     setConfEditId(id);
@@ -9580,13 +9580,6 @@ export default function EditorPage() {
         }}
         onOpenChange={(o) => {
           if (!o) {
-            const atual = confrontantes.find((c) => c.id === confEditId);
-            if (atual && !atual.nome.trim()) {
-              setConfrontantes((cs) => cs.filter((c) => c.id !== confEditId));
-              if (confrontantePincelId === confEditId) {
-                setConfrontantePincelId('');
-              }
-            }
             setConfEditId(null);
           }
         }}
@@ -11628,8 +11621,16 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
   const addConfrontante = () => {
     const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
     const randomCor = gerarCorNovaConfrontante(confrontantes);
-    onChange([...confrontantes, { id, nome: '', cpf: '', matricula: '', cns: '', condicao: 'proprietario', cor: randomCor }]);
-    onEditar?.(id);
+    const novo: Confrontante = {
+      id,
+      nome: `Confrontante ${confrontantes.length + 1}`,
+      cpf: '',
+      matricula: '',
+      cns: '',
+      condicao: 'proprietario',
+      cor: randomCor,
+    };
+    onChange([...confrontantes, novo]);
   };
 
   // Atalho pra bem público (estrada, rio...): já nasce com condicao='publico' (nunca assina) e um
@@ -11637,8 +11638,16 @@ function PainelConfrontantes({ confrontantes, onChange, mapa, lados, sugConf, on
   const addConfrontanteEspecial = (nomePadrao: string) => {
     const id = `c_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e4)}`;
     const randomCor = gerarCorNovaConfrontante(confrontantes);
-    onChange([...confrontantes, { id, nome: nomePadrao, cpf: '', matricula: '', cns: '', condicao: 'publico', cor: randomCor }]);
-    onEditar?.(id);
+    const novo: Confrontante = {
+      id,
+      nome: nomePadrao,
+      cpf: '',
+      matricula: '',
+      cns: '',
+      condicao: 'publico',
+      cor: randomCor,
+    };
+    onChange([...confrontantes, novo]);
   };
 
   return (
