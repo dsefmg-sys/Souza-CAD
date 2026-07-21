@@ -902,6 +902,13 @@ export default function Planta({
       }
       return;
     }
+    // Atalho Ctrl + Clique Esquerdo + Arraste: Move a prancha/folha inteira mesmo que travada ou sobre elementos
+    if ((e.ctrlKey || e.metaKey) && e.button === 0) {
+      dragRef.current = { kind: 'folha', id: '', dx: 0, dy: 0 };
+      folhaLast.current = u;
+      captura(e);
+      return;
+    }
     if (modo === 'multi') {
       if (u.x >= DRAW.x0 && u.x <= DRAW.x1 && u.y >= DRAW.y0 && u.y <= DRAW.y1) {
         dragRef.current = { kind: 'selecao', id: 'box-select', dx: 0, dy: 0 };
