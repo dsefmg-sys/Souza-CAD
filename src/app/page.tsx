@@ -12266,7 +12266,7 @@ function PainelGlebas({
             <Waypoints className="size-4 text-indigo-500" /> Gestão de Glebas &amp; Desmembramento
           </h3>
           <p className="text-[11px] text-muted-foreground">
-            Gerencie as parcelas do projeto. Alterne entre Glebas Principais e Auxiliares/Complementares, ou oculte glebas para gerar diferentes plantas no mesmo projeto.
+            Gerencie as parcelas do projeto. Glebas <b>ATIVAS</b> mostram vértices e divisas na planta. Glebas <b>AUXILIARES</b> aparecem na planta e situação com traço fino de apoio. Glebas <b>OCULTAS</b> não saem no PDF oficial.
           </p>
         </div>
         <Button size="sm" onClick={onNovaGleba} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1 text-xs shrink-0 cursor-pointer">
