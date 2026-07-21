@@ -1499,40 +1499,48 @@ export default function Planta({
             )}
 
             {/* Texto central da gleba: MÓVEL e com DUPLO CLIQUE para Personalizar */}
-            {config.mostrarTextosGlebas !== false && (
-              <g
-                style={{ cursor: editavel ? 'move' : 'default' }}
-                onClick={(e) => {
-                  if (modo !== 'navegar') return;
-                  e.stopPropagation();
-                  if (onSelecObjeto) onSelecObjeto(idGlebaTxt);
-                }}
-                onDoubleClick={(e) => {
-                  if (modo !== 'navegar') return;
-                  e.stopPropagation();
-                  if (onDblClickObjeto) onDblClickObjeto(idGlebaTxt);
-                  else if (onAbrirGestaoGleba && g.id) onAbrirGestaoGleba(g.id);
-                }}
-                onPointerDown={editavel ? (e) => {
-                  if (modo !== 'navegar') return;
-                  e.stopPropagation();
-                  const u = svgPonto(e); if (!u) return;
-                  const curDx = ovGleba.dx ?? 0, curDy = ovGleba.dy ?? 0;
-                  dragRef.current = { kind: 'textoPlanta', id: idGlebaTxt, dx: 0, dy: 0, baseX: curDx, baseY: curDy };
-                  setDragTemp({ kind: 'textoPlanta', id: idGlebaTxt, dx: 0, dy: 0, baseX: curDx, baseY: curDy });
-                  folhaLast.current = u;
-                  captura(e);
-                } : undefined}
-              >
-                <text x={ccx} y={ccy} fontSize={fs(9.5 * (ovGleba.escala ?? config.escalaTextoCentroGlebas ?? 1.0))} fontWeight="bold" textAnchor="middle" fill={ogCor}>
-                  {(g.nome || '').split('\n').map((linhaTxt, idxLinha) => (
-                    <tspan key={idxLinha} x={ccx} dy={idxLinha === 0 ? 0 : fs(9.5 * (ovGleba.escala ?? config.escalaTextoCentroGlebas ?? 1.0)) * 1.15}>
-                      {linhaTxt}{idxLinha === 0 && (isOculta ? ' (OCULTA - NÃO IMPRESSA)' : isAuxiliar ? ' (Auxiliar)' : '')}
-                    </tspan>
-                  ))}
-                </text>
-              </g>
-            )}
+            {config.mostrarTextosGlebas !== false && (() => {
+              const fsVal = fs(9.5 * (ovGleba.escala ?? config.escalaTextoCentroGlebas ?? 1.0));
+              const linhasGleba = [
+                ...(isOculta ? ['(OCULTA)'] : []),
+                ...(g.nome || '').split('\n').map((l, idx) => (idx === 0 && isAuxiliar ? `${l} (Auxiliar)` : l)),
+              ];
+
+              return (
+                <g
+                  style={{ cursor: editavel ? 'move' : 'default' }}
+                  onClick={(e) => {
+                    if (modo !== 'navegar') return;
+                    e.stopPropagation();
+                    if (onSelecObjeto) onSelecObjeto(idGlebaTxt);
+                  }}
+                  onDoubleClick={(e) => {
+                    if (modo !== 'navegar') return;
+                    e.stopPropagation();
+                    if (onDblClickObjeto) onDblClickObjeto(idGlebaTxt);
+                    else if (onAbrirGestaoGleba && g.id) onAbrirGestaoGleba(g.id);
+                  }}
+                  onPointerDown={editavel ? (e) => {
+                    if (modo !== 'navegar') return;
+                    e.stopPropagation();
+                    const u = svgPonto(e); if (!u) return;
+                    const curDx = ovGleba.dx ?? 0, curDy = ovGleba.dy ?? 0;
+                    dragRef.current = { kind: 'textoPlanta', id: idGlebaTxt, dx: 0, dy: 0, baseX: curDx, baseY: curDy };
+                    setDragTemp({ kind: 'textoPlanta', id: idGlebaTxt, dx: 0, dy: 0, baseX: curDx, baseY: curDy });
+                    folhaLast.current = u;
+                    captura(e);
+                  } : undefined}
+                >
+                  <text x={ccx} y={ccy} fontSize={fsVal} fontWeight="bold" textAnchor="middle" fill={ogCor}>
+                    {linhasGleba.map((linhaTxt, idxLinha) => (
+                      <tspan key={idxLinha} x={ccx} dy={idxLinha === 0 ? (isOculta ? -fsVal * 0.4 : 0) : fsVal * 1.15} fill={isOculta && idxLinha === 0 ? '#ef4444' : ogCor}>
+                        {linhaTxt}
+                      </tspan>
+                    ))}
+                  </text>
+                </g>
+              );
+            })()}
           </g>
         );
       })}
@@ -2197,7 +2205,16 @@ export default function Planta({
         if (vsv.length < 3) return null;
         const ccx = vsv.reduce((s, v) => s + sx(v.leste), 0) / vsv.length;
         const ccy = vsv.reduce((s, v) => s + sy(v.norte), 0) / vsv.length;
-        return vsv.filter((v) => v.tipo === 'M').map((v) => {
+        return vsv.filter((v) => {
+          if (v.tipo !== 'M') return false;
+          // Vértices que pertencem a glebas vizinhas NÃO OCULTAS não precisam da linha de troca de confrontante,
+          // pois as divisas do próprio polígono da gleba vizinha já mostram a transição.
+          const temGlebaVizinhaVisivel = outrasGlebas.some((g) => {
+            if (g.visivel === false) return false;
+            return g.pts && g.pts.some((p) => Math.hypot(p.leste - v.leste, p.norte - v.norte) < 0.1);
+          });
+          return !temGlebaVizinhaVisivel;
+        }).map((v) => {
           const vx = sx(v.leste), vy = sy(v.norte);
           // azimute: salvo, senão "pra fora" (vértice − centróide)
           let az = v.divisaConfAz;
