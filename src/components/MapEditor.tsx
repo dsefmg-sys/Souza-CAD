@@ -456,7 +456,7 @@ function CaixaSelecao({ ativo, vertices, objetos = [], onBoxSelect, onBoxSelectO
         if (dentro.length) onBoxSelect?.(dentro);
         // objetos do desenho (linha, texto, símbolo, cota, retângulo, arco...) com algum ponto na caixa.
         // Curva de nível fica de fora (não é editável).
-        const objDentro = objetos.filter((o) => o.curvaNivel == null && o.pontos.some((p) => Number.isFinite(p.lat) && b.contains([p.lat, p.lon]))).map((o) => o.id);
+        const objDentro = objetos.filter((o) => o.curvaNivel == null && Array.isArray(o.pontos) && o.pontos.some((p) => Number.isFinite(p.lat) && b.contains([p.lat, p.lon]))).map((o) => o.id);
         if (objDentro.length) onBoxSelectObj?.(objDentro);
       }
       setInicio(null); setAtual(null);
@@ -1829,7 +1829,7 @@ export default function MapEditor(props: Props) {
         const bloqueada = camadasBloqueadas[camadaKey] === true;
         const estiloCamada = estilosCamadas[camadaKey];
 
-        if (!visivel) return null;
+        if (!visivel || !Array.isArray(o.pontos) || o.pontos.length === 0) return null;
 
         const pos = o.pontos.map((p) => [p.lat, p.lon] as [number, number]);
         const sel = o.id === objetoSelId;

@@ -921,7 +921,7 @@ export default function Planta({
     // navegar: arrastar item mais próximo.
     // Prioridade 1: endpoint de qualquer objeto (vértice de controle).
     for (const o of objetos) {
-      if (o.curvaNivel != null) continue;
+      if (o.curvaNivel != null || !Array.isArray(o.pontos)) continue;
       for (let i = 0; i < o.pontos.length; i++) {
         if (Math.hypot(sx(o.pontos[i].leste) - u.x, sy(o.pontos[i].norte) - u.y) < 8) {
           dragRef.current = { kind: 'objPonto', id: o.id, idx: i, dx: 0, dy: 0 }; onSelecObjeto?.(o.id); captura(e); return;
@@ -938,7 +938,7 @@ export default function Planta({
       return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
     }
     for (const o of objetos) {
-      if (o.curvaNivel != null) continue;
+      if (o.curvaNivel != null || !Array.isArray(o.pontos)) continue;
       const sp = o.pontos.map((p) => ({ x: sx(p.leste), y: sy(p.norte) }));
       const hitThresh = 8;
       let hit = false;
@@ -1074,7 +1074,7 @@ export default function Planta({
           }
 
           const dentroObj = (objetos || []).filter((o) => {
-            if (o.curvaNivel != null) return false;
+            if (o.curvaNivel != null || !Array.isArray(o.pontos)) return false;
             return o.pontos.some((p) => {
               const ox = sx(p.leste);
               const oy = sy(p.norte);
