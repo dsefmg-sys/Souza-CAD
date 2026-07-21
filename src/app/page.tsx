@@ -4563,7 +4563,7 @@ export default function EditorPage() {
   }
 
   // Gera o PDF da planta como Blob (mesma rasterização do exportarPlanta), sem baixar — pro pacote.
-  function gerarPlantaPdfBlob(): Promise<Blob | null> {
+  function gerarPlantaPdfBlob(formato: 'a3' | 'a4' = 'a3'): Promise<Blob | null> {
     return new Promise((resolve) => {
       setVista('planta'); setObjetoSelId(null); setDesenhoBuffer([]);
       setTimeout(() => {
@@ -4585,7 +4585,7 @@ export default function EditorPage() {
           fetch('/api/export/pdf', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pngBase64: imgBase64 })
+            body: JSON.stringify({ pngBase64: imgBase64, formato })
           })
           .then((res) => {
             if (!res.ok) throw new Error();
@@ -4605,6 +4605,19 @@ export default function EditorPage() {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     if (!(await verificarConciliacaoSigef())) return;
     if (!(await verificarProntoParaExportar())) return;
+
+    const escolheuFormato = await escolher({
+      titulo: 'Formato da Planta no Pacote ZIP',
+      mensagem: 'Escolha o formato da prancha da planta para incluir no pacote de entrega (.zip):',
+      opcoes: [
+        { chave: 'a3', label: 'Prancha A3 (420 × 297 mm — Padrão Oficial)', variant: 'default' },
+        { chave: 'a4', label: 'Prancha A4 (297 × 210 mm — Folha Compacta)', variant: 'outline' },
+      ],
+      cancelLabel: 'Cancelar',
+    });
+    if (!escolheuFormato) return;
+    const formatoFolha = escolheuFormato as 'a3' | 'a4';
+
     if (!requerente || !requerente.nome) {
       const resp = await confirmar({
         titulo: 'Requerimento com dados incompletos',
@@ -4618,7 +4631,7 @@ export default function EditorPage() {
       }
     }
     setProcessando(true);
-    aviso('Montando o pacote de entrega (memorial, planilha, requerimento e planta)…');
+    aviso(`Montando o pacote de entrega (memorial, planilha, requerimento e planta ${formatoFolha.toUpperCase()})…`);
     try {
       const vs = await comCodigos();
       const r = calcular(vs, confrontantePorLado);
@@ -4703,16 +4716,16 @@ export default function EditorPage() {
       if (!resReq.ok) throw new Error('Falha ao gerar requerimento no servidor.');
       const reqBlob = await resReq.blob();
       const requerimento = await compatibilizarWord2007(reqBlob);
-      const planta = await gerarPlantaPdfBlob();
+      const planta = await gerarPlantaPdfBlob(formatoFolha);
       const zip = new JSZip();
       zip.file(`Memorial - ${nome}.docx`, memorial);
       zip.file(`SIGEF - ${nome}.ods`, ods);
       zip.file(`Requerimento - ${nome}.docx`, requerimento);
-      if (planta) zip.file(`Planta - ${nome}.pdf`, planta);
+      if (planta) zip.file(`Planta ${formatoFolha.toUpperCase()} - ${nome}.pdf`, planta);
       const blob = await zip.generateAsync({ type: 'blob' });
       saveAs(blob, limparNomeArquivo(`Pacote de entrega - ${nome}.zip`));
       setBaixou((b) => ({ ...b, memorial: true, ods: true, req: true, planta: planta ? true : b.planta }));
-      aviso(planta ? 'Pacote de entrega gerado com todas as peças.' : 'Pacote gerado (a planta falhou ao rasterizar — gere-a à parte).');
+      aviso(planta ? `Pacote de entrega gerado com planta em ${formatoFolha.toUpperCase()}.` : 'Pacote gerado (a planta falhou ao rasterizar — gere-a à parte).');
     } catch (e) { aviso((e as Error).message || 'Erro ao montar o pacote.'); }
     finally { setProcessando(false); }
   }
