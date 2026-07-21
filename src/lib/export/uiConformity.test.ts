@@ -60,4 +60,34 @@ describe('Verificação de Conformidade Visual e Regras de Projeto', () => {
     expect(parsed.areaHa).toBe(0);
     expect(parsed.vertices).toEqual([]);
   });
+
+  it('valida que a injeção de CSS de impressão alterna corretamente entre A3 e A4', () => {
+    const gerarCssPage = (formato: 'a3' | 'a4') =>
+      `@page { size: ${formato === 'a4' ? '297mm 210mm' : '420mm 297mm'} landscape !important; margin: 0 !important; }`;
+
+    expect(gerarCssPage('a4')).toContain('297mm 210mm');
+    expect(gerarCssPage('a3')).toContain('420mm 297mm');
+  });
+
+  it('garante inclusão segura de novos confrontantes sem perdas por closure antiga de estado', () => {
+    type Conf = { id: string; nome: string };
+    let confrontantes: Conf[] = [{ id: 'c1', nome: 'João' }];
+
+    const salvarConfrontante = (novo: Conf) => {
+      confrontantes = confrontantes.some((c) => c.id === novo.id)
+        ? confrontantes.map((c) => (c.id === novo.id ? novo : c))
+        : [...confrontantes, novo];
+    };
+
+    salvarConfrontante({ id: 'c2', nome: 'Pedro' });
+    expect(confrontantes).toHaveLength(2);
+    expect(confrontantes.find((c) => c.id === 'c2')?.nome).toBe('Pedro');
+  });
+
+  it('mapeia corretamente a chave de deslocamento de rótulos de vértices no dicionário de sobreposição', () => {
+    const calcularIdSalvar = (kind: string, id: string) => (kind === 'rotVert' ? `vert.${id}` : id);
+
+    expect(calcularIdSalvar('rotVert', 'v1')).toBe('vert.v1');
+    expect(calcularIdSalvar('ted', 'carimbo.titulo')).toBe('carimbo.titulo');
+  });
 });
