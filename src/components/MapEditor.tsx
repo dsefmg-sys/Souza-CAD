@@ -45,6 +45,7 @@ interface Props {
   outrasGlebas?: ([number, number][] | { id?: string; nome?: string; pts: [number, number][]; tipoGleba?: 'principal' | 'auxiliar'; visivel?: boolean })[];
   onAbrirGestaoGleba?: (id?: string) => void;
   onCliqueUnicoGleba?: (id: string, x: number, y: number) => void;
+  glebaAtivaId?: string;
   objetos?: ObjetoDesenho[];
   desenhoAtual?: [number, number][];
   rotulos?: RotuloMapa[];
@@ -1324,7 +1325,7 @@ function TrimExtendController({
 
 export default function MapEditor(props: Props) {
   const {
-    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [], onAbrirGestaoGleba, onCliqueUnicoGleba,
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [], onAbrirGestaoGleba, onCliqueUnicoGleba, glebaAtivaId,
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, centroPadrao = null, zoomPadrao = 13, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
@@ -1697,7 +1698,26 @@ export default function MapEditor(props: Props) {
       {/* polígono ativo */}
       {camadasVisiveis.divisas !== false && (
         anel.length >= 3 ? (
-          <Polygon positions={anel} pathOptions={{ color: estilosCamadas.divisas?.cor ?? '#facc15', weight: estilosCamadas.divisas?.espessura ?? 2, fillColor: estilosCamadas.divisas?.cor ?? '#facc15', fillOpacity: 0.12 }} />
+          <Polygon
+            positions={anel}
+            pathOptions={{ color: estilosCamadas.divisas?.cor ?? '#facc15', weight: estilosCamadas.divisas?.espessura ?? 2, fillColor: estilosCamadas.divisas?.cor ?? '#facc15', fillOpacity: 0.12 }}
+            eventHandlers={{
+              click: (e) => {
+                if (modo !== 'navegar') return;
+                e.originalEvent.stopPropagation();
+                if (onCliqueUnicoGleba) {
+                  onCliqueUnicoGleba(glebaAtivaId || 'ativa', e.originalEvent.clientX, e.originalEvent.clientY);
+                }
+              },
+              dblclick: (e) => {
+                if (modo !== 'navegar') return;
+                e.originalEvent.stopPropagation();
+                if (onAbrirGestaoGleba) {
+                  onAbrirGestaoGleba(glebaAtivaId);
+                }
+              }
+            }}
+          />
         ) : anel.length === 2 ? (
           <Polyline positions={anel} pathOptions={{ color: estilosCamadas.divisas?.cor ?? '#facc15', weight: estilosCamadas.divisas?.espessura ?? 2 }} />
         ) : null

@@ -65,6 +65,7 @@ interface Props {
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
   onAbrirGestaoGleba?: (id?: string) => void;
   onCliqueUnicoGleba?: (id: string, x: number, y: number) => void;
+  glebaAtivaId?: string;
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
   onRemoverSituacao?: () => void;      // clicar na imagem da situação mostra um X; o X chama isto
   situacaoStale?: boolean;             // desenho mudou desde a última captura do satélite
@@ -348,7 +349,7 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
-  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao, onAbrirGestaoGleba, onCliqueUnicoGleba,
+  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao, onAbrirGestaoGleba, onCliqueUnicoGleba, glebaAtivaId,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onConfrontanteMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onDblClickObjeto, onContextMenuVazio, onDblClickMalha, onCentralizarPlanta,
@@ -1481,13 +1482,9 @@ export default function Planta({
               className={isOculta ? 'animate-pulse opacity-75 cursor-pointer' : 'cursor-pointer'}
               onClick={(e) => {
                 if (modo !== 'navegar') return;
-                if (editavel && g.id) {
+                if (editavel && g.id && onCliqueUnicoGleba) {
                   e.stopPropagation();
-                  if (onCliqueUnicoGleba) {
-                    onCliqueUnicoGleba(g.id, e.clientX, e.clientY);
-                  } else if (onAbrirGestaoGleba) {
-                    onAbrirGestaoGleba(g.id);
-                  }
+                  onCliqueUnicoGleba(g.id, e.clientX, e.clientY);
                 }
               }}
               onDoubleClick={(e) => {
@@ -1583,7 +1580,21 @@ export default function Planta({
         fillOpacity={config.hachura && config.hachura !== 'nenhuma' ? 1 : 0.08}
         stroke={config.corPoligono || '#334155'} strokeWidth={config.larguraPoligono ?? 1.8}
         style={editavel ? { cursor: 'pointer' } : undefined}
-        onClick={editavel ? (e) => { e.stopPropagation(); setSelecionadoId('planta.poligono'); setModalGlebaAberto(true); } : undefined} />
+        onClick={(e) => {
+          if (modo !== 'navegar') return;
+          if (editavel && onCliqueUnicoGleba) {
+            e.stopPropagation();
+            onCliqueUnicoGleba(glebaAtivaId || 'ativa', e.clientX, e.clientY);
+          }
+        }}
+        onDoubleClick={(e) => {
+          if (modo !== 'navegar') return;
+          if (editavel && onAbrirGestaoGleba) {
+            e.stopPropagation();
+            onAbrirGestaoGleba(glebaAtivaId);
+          }
+        }}
+      />
       {selecionadoId === 'planta.poligono' && (
         <polygon points={pts} fill="none" stroke="#3b82f6" strokeWidth={1.2} strokeDasharray="5 3" pointerEvents="none" />
       )}

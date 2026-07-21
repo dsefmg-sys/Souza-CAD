@@ -8322,6 +8322,7 @@ export default function EditorPage() {
                   visivel: g.visivel,
                 }))}
                 onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
+                glebaAtivaId={glebaAtivaId}
                 onAbrirGestaoGleba={(id) => {
                   if (id) trocarGleba(id);
                   setAba('glebas');
@@ -8717,6 +8718,7 @@ export default function EditorPage() {
                       requerente={requerente} transmitente={transmitente}
                       outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ id: g.id, nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })), tipoGleba: g.tipoGleba, visivel: g.visivel }))}
                       onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
+                      glebaAtivaId={glebaAtivaId}
                       onAbrirGestaoGleba={(id) => {
                         if (id) trocarGleba(id);
                         setAba('glebas');
