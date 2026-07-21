@@ -719,12 +719,9 @@ export default function Planta({
     const base = textosOv[id] || {};
     const d = dragRef.current;
     if (d) {
-      const isDragVert = d.kind === 'rotVert' && id === `vert.${d.id}`;
+      const isDragVert = (d.kind === 'rotVert' || d.kind === 'rotConf') && id === `vert.${d.id}`;
       const isDragTed = d.kind === 'ted' && d.id === id;
-      if (isDragVert) {
-        return { ...base, dx: d.dx ?? 0, dy: d.dy ?? 0 };
-      }
-      if (isDragTed) {
+      if (isDragVert || isDragTed) {
         return { ...base, dx: (d.baseX ?? 0) + (d.dx ?? 0), dy: (d.baseY ?? 0) + (d.dy ?? 0) };
       }
       // arrastando um item da seleção múltipla: os OUTROS selecionados acompanham o mesmo delta
