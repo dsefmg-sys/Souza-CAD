@@ -25,17 +25,21 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const [landingFechada, setLandingFechada] = useState(() => {
-    if (typeof window === 'undefined') return false;
+  const [landingFechada, setLandingFechada] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('landing') === 'true' || urlParams.has('landing')) return false;
-      return sessionStorage.getItem('metrica:landing_page_fechada') === 'true';
+      if (urlParams.get('landing') !== 'true' && sessionStorage.getItem('metrica:landing_page_fechada') === 'true') {
+        setLandingFechada(true);
+      }
     } catch {
-      return false;
+      /* ignore */
     }
-  });
+  }, []);
 
   useEffect(() => {
     const fechar = () => setLandingFechada(true);
@@ -49,7 +53,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }, []);
 
   // Exibe a LandingPage em primeiro lugar para visitantes não autenticados.
-  if (!disponivel || user || !landingFechada) return <>{children}</>;
+  if (!mounted || !disponivel || user || !landingFechada) return <>{children}</>;
   if (carregando) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black">

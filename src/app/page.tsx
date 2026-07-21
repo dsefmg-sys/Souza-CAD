@@ -8,7 +8,7 @@ import {
   Upload, FileText, Map as MapIcon, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen,
   CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Search,
-  Moon, Sun, Pencil, PenTool, Lock, LockOpen, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
+  Moon, Sun, Pencil, PenTool, Lock, LockOpen, Printer, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
   Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain, LayoutGrid,
 } from 'lucide-react';
@@ -1107,19 +1107,7 @@ export default function EditorPage() {
   // Novo usuário começa no simples. Fica salvo nas preferências e vale no app inteiro.
   const [modoApp, setModoApp] = useState<'simples' | 'medio' | 'completo'>('simples');
   const [, setTempoCompletoMs] = useState(0);
-  const [landingPageAberta, setLandingPageAberta] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('landing') === 'true' || urlParams.has('landing')) {
-        return true;
-      }
-      const fechadaNestaSessao = sessionStorage.getItem('metrica:landing_page_fechada');
-      return !fechadaNestaSessao;
-    } catch {
-      return true;
-    }
-  });
+  const [landingPageAberta, setLandingPageAberta] = useState(true);
   const [introTocando, setIntroTocando] = useState(() => {
     if (typeof window === 'undefined') return false;
     try {
@@ -1152,6 +1140,11 @@ export default function EditorPage() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('landing') === 'true' || urlParams.has('landing')) {
           setLandingPageAberta(true);
+        } else {
+          const fechadaNestaSessao = sessionStorage.getItem('metrica:landing_page_fechada');
+          if (fechadaNestaSessao === 'true') {
+            setLandingPageAberta(false);
+          }
         }
       } catch { /* ignore */ }
     }
@@ -1296,10 +1289,18 @@ export default function EditorPage() {
     // o texto mora em Ajustes → Sobre o sistema — sem tela bloqueando (decisão do dono, 05/07/2026)
     // primeiro acesso: só pede cadastro pra quem não é o titular e ainda não configurou
     try { if (active) setSetupOk(souMaster() || localStorage.getItem('metrica.setupFeito') === '1'); } catch { if (active) setSetupOk(true); }
-    // registra/atualiza o perfil de uso (o titular acompanha empresa, RT, projetos)
     const esc = carregarEscritorio(); const tec = carregarTecnico();
-    const muniUsar = esc.cidade || imovel?.municipio || '';
-    const ufUsar = esc.uf || ufDoMunicipio(imovel?.municipio) || '';
+    const muniUsar = esc.cidade || tec.cidadeAssinatura || imovel?.municipio || '';
+    const ufUsar = esc.uf || ufDoMunicipio(muniUsar) || ufDoMunicipio(imovel?.municipio) || '';
+    let gpsLat: number | undefined;
+    let gpsLon: number | undefined;
+    try {
+      const g = JSON.parse(localStorage.getItem('metrica:cliente_gps') || '{}');
+      if (g.lat && g.lon && Number.isFinite(g.lat) && Number.isFinite(g.lon)) {
+        gpsLat = g.lat; gpsLon = g.lon;
+      }
+    } catch { /* ignore */ }
+
     sincronizarPerfil({
       ultimoAcessoEm: Date.now(),
       empresaNome: esc.nome,
@@ -1308,6 +1309,7 @@ export default function EditorPage() {
       rtCft: tec.cft,
       municipio: muniUsar,
       uf: ufUsar,
+      ...(gpsLat && gpsLon ? { lat: gpsLat, lon: gpsLon } : {}),
     }).catch(() => {});
     try { const w = Number(localStorage.getItem('metrica.toolW')); if (w >= 52 && w <= 480 && active) setToolW(w); } catch { /* ignore */ }
     // tamNomes e escalaInterface já nascem com o valor salvo (lazy init do useState, acima).
@@ -4360,14 +4362,30 @@ export default function EditorPage() {
     finally { setProcessando(false); }
   }
 
-  async function exportarPlanta() {
+  async function exportarPlanta(formatoSolicitado?: 'a3' | 'a4') {
     if (vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     if (!(await verificarConciliacaoSigef())) return;
     if (!(await verificarProntoParaExportar())) return;
+
+    let formatoFinal = formatoSolicitado;
+    if (!formatoFinal) {
+      const escolheu = await escolher({
+        titulo: 'Baixar PDF da Planta',
+        mensagem: 'Escolha o tamanho da folha da prancha para o arquivo PDF:',
+        opcoes: [
+          { chave: 'a3', label: 'Prancha A3 (420 × 297 mm — Padrão Oficial)', variant: 'default' },
+          { chave: 'a4', label: 'Prancha A4 (297 × 210 mm — Folha Compacta)', variant: 'outline' },
+        ],
+        cancelLabel: 'Cancelar',
+      });
+      if (!escolheu) return;
+      formatoFinal = escolheu as 'a3' | 'a4';
+    }
+
     await comCodigos();
     setVista('planta');
     setObjetoSelId(null); setDesenhoBuffer([]); // limpa realces de edição (a superfície de captura é invisível no PDF)
-    aviso('Gerando PDF da planta…');
+    aviso(`Gerando PDF da planta em ${formatoFinal.toUpperCase()}…`);
     setTimeout(() => {
       const svg = document.getElementById('planta-svg') as SVGSVGElement | null;
       if (!svg) { aviso('Abra a planta e tente de novo.'); return; }
@@ -4383,12 +4401,12 @@ export default function EditorPage() {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(url);
         
-        const pngBase64 = canvas.toDataURL('image/png');
+        const imgBase64 = canvas.toDataURL('image/jpeg', 0.92);
         getAuthHeaders().then((headers) => {
           fetch('/api/export/pdf', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ pngBase64 })
+            body: JSON.stringify({ pngBase64: imgBase64, formato: formatoFinal })
           })
           .then((res) => {
             if (!res.ok) throw new Error();
@@ -4396,16 +4414,45 @@ export default function EditorPage() {
           })
           .then((blob) => {
             const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
-            saveAs(blob, limparNomeArquivo(`Planta - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.pdf`));
+            saveAs(blob, limparNomeArquivo(`Planta ${formatoFinal?.toUpperCase()} - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.pdf`));
             setBaixou((b) => ({ ...b, planta: true }));
-            aviso('PDF da planta gerado.');
+            aviso(`PDF da planta (${formatoFinal?.toUpperCase()}) gerado.`);
           })
           .catch(() => aviso('Erro ao compilar o PDF da planta no servidor.'));
         });
       };
       img.onerror = () => { URL.revokeObjectURL(url); aviso('Não consegui rasterizar a planta.'); };
       img.src = url;
-    }, 450);
+    }, 100);
+  }
+
+  async function imprimirPlanta(formatoSolicitado?: 'a3' | 'a4') {
+    let formatoFinal = formatoSolicitado;
+    if (!formatoFinal) {
+      const escolheu = await escolher({
+        titulo: 'Imprimir Planta',
+        mensagem: 'Escolha o formato do papel para impressão:',
+        opcoes: [
+          { chave: 'a3', label: 'Imprimir em A3 (420 × 297 mm — Paisagem)', variant: 'default' },
+          { chave: 'a4', label: 'Imprimir em A4 (297 × 210 mm — Paisagem)', variant: 'outline' },
+        ],
+        cancelLabel: 'Cancelar',
+      });
+      if (!escolheu) return;
+      formatoFinal = escolheu as 'a3' | 'a4';
+    }
+
+    setVista('planta');
+    let styleEl = document.getElementById('print-page-style') as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'print-page-style';
+      document.head.appendChild(styleEl);
+    }
+    styleEl.innerHTML = `@page { size: ${formatoFinal === 'a4' ? 'A4' : 'A3'} landscape; margin: 0; }`;
+    setTimeout(() => {
+      window.print();
+    }, 150);
   }
 
   async function baixarRequerimentoDireto() {
@@ -4534,11 +4581,11 @@ export default function EditorPage() {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           URL.revokeObjectURL(url);
           
-          const pngBase64 = canvas.toDataURL('image/png');
+          const imgBase64 = canvas.toDataURL('image/jpeg', 0.92);
           fetch('/api/export/pdf', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pngBase64 })
+            body: JSON.stringify({ pngBase64: imgBase64 })
           })
           .then((res) => {
             if (!res.ok) throw new Error();
@@ -4549,7 +4596,7 @@ export default function EditorPage() {
         };
         img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
         img.src = url;
-      }, 500);
+      }, 100);
     });
   }
 
@@ -8600,13 +8647,20 @@ export default function EditorPage() {
                   if (!nova) setModo('navegar');
                 }}
                 title={folhaTravada ? "Folha Travada: clique para destravar a movimentação do carimbo, rosa dos ventos e tabelas" : "Folha Destravada: clique para travar e proteger as posições"}
-                className={`flex h-7 items-center gap-1 rounded-full border px-2 text-[10px] font-bold shadow-xs transition-all shrink-0 ${
+                className={`flex h-7 w-7 items-center justify-center rounded-full border shadow-xs transition-all shrink-0 ${
                   folhaTravada
                     ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
                     : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25 ring-1 ring-emerald-500/30'
                 }`}>
                 {folhaTravada ? <Lock className="size-3.5 text-slate-600 dark:text-slate-300" /> : <LockOpen className="size-3.5 text-emerald-500" />}
-                <span>{folhaTravada ? 'TRAVADA' : 'DESTRAVADA'}</span>
+              </button>
+
+              {/* Botão Imprimir Planta (apenas ícone de impressora) */}
+              <button type="button"
+                onClick={() => imprimirPlanta()}
+                title="Imprimir Planta (A3 / A4)"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 shadow-xs transition-all shrink-0">
+                <Printer className="size-3.5" />
               </button>
 
               {/* Pintar Divisas/Confrontantes */}

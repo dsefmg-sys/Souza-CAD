@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MUNICIPIOS, obterCoordenadasMunicipioOuUf } from '@/lib/topo/municipios';
@@ -35,6 +35,22 @@ interface ClientePonto {
   origem: 'GPS' | 'Município' | 'Estado' | 'Estimado';
 }
 
+function FitBoundsMap({ pontos }: { pontos: ClientePonto[] }) {
+  const map = useMap();
+  React.useEffect(() => {
+    if (!map || pontos.length === 0) return;
+    try {
+      const container = map.getContainer();
+      if (!container || !(map as any)._mapPane) return;
+      const bounds = L.latLngBounds(pontos.map((p) => [p.lat, p.lon]));
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+      }
+    } catch { /* ignore Leaflet unmounted */ }
+  }, [map, pontos]);
+  return null;
+}
+
 export default function MapaClientesSaaS({ perfis }: Props) {
   const pontos = useMemo<ClientePonto[]>(() => {
     return perfis.map((p, idx) => {
@@ -43,33 +59,35 @@ export default function MapaClientesSaaS({ perfis }: Props) {
         return { perfil: p, lat: p.lat, lon: p.lon, origem: 'GPS' };
       }
 
-      // 2. Tentar município ou estado com a regra do projeto (lastIndexOf('-'))
+      // 2. Tentar município ou estado com a regra do projeto
       const rawMuni = (p.municipio || '').trim();
       const rawUf = (p.uf || '').trim();
 
       const coords = obterCoordenadasMunicipioOuUf(rawMuni, rawUf);
       if (coords) {
-        // Dispersão sutil de pontos para clientes na mesma cidade/estado não encavalarem
-        const jitterLat = ((idx * 17) % 7 - 3) * 0.006;
-        const jitterLon = ((idx * 23) % 7 - 3) * 0.006;
+        // Dispersão espiral sutil em torno da cidade/estado para múltiplos clientes não encavalarem
+        const angle = (idx * 137.5 * Math.PI) / 180;
+        const radius = 0.003 + (idx % 10) * 0.002; // 300m a 2.5km
         return {
           perfil: p,
-          lat: coords.lat + jitterLat,
-          lon: coords.lon + jitterLon,
+          lat: coords.lat + Math.sin(angle) * radius,
+          lon: coords.lon + Math.cos(angle) * radius,
           origem: coords.origem
         };
       }
 
       // 3. Fallback regional (Brasil central)
-      const baseLat = -15.7942 + ((idx * 13) % 9 - 4) * 0.2;
-      const baseLon = -47.8822 + ((idx * 19) % 9 - 4) * 0.2;
+      const angle = (idx * 137.5 * Math.PI) / 180;
+      const radius = 0.05 + (idx % 10) * 0.04;
+      const baseLat = -15.7942 + Math.sin(angle) * radius;
+      const baseLon = -47.8822 + Math.cos(angle) * radius;
       return { perfil: p, lat: baseLat, lon: baseLon, origem: 'Estimado' };
     });
   }, [perfis]);
 
   const centro: [number, number] = pontos.length > 0
     ? [pontos[0].lat, pontos[0].lon]
-    : [-20.6506, -41.9094];
+    : [-15.7942, -47.8822];
 
   return (
     <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 shadow-2xl flex flex-col gap-3">
@@ -91,6 +109,7 @@ export default function MapaClientesSaaS({ perfis }: Props) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
+          <FitBoundsMap pontos={pontos} />
 
           {pontos.map((pt, i) => {
             const status = pt.perfil.statusPagamento || 'atrasado';
@@ -117,9 +136,13 @@ export default function MapaClientesSaaS({ perfis }: Props) {
                         E-mail: <strong className="text-slate-800">{pt.perfil.email}</strong>
                       </div>
                     )}
-                    {pt.perfil.municipio && (
+                    {pt.perfil.municipio ? (
                       <div className="text-xs text-slate-600 mb-0.5">
                         Cidade: <strong className="text-slate-800">{pt.perfil.municipio}</strong>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-amber-700 font-medium mb-0.5">
+                        Cidade: <span className="text-slate-500 italic">Não informada (Local estimado)</span>
                       </div>
                     )}
                     <div className="text-[10px] text-slate-500 mt-1 flex justify-between pt-1 border-t">

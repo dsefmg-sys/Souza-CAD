@@ -11,7 +11,8 @@ import {
   Users, Crown, RefreshCw, Shield, Sparkles,
   DollarSign, Calendar, AlertTriangle, LogOut, Search, TrendingUp, ChevronDown, ChevronUp, Trash2, Mail, Send, FolderOpen, X, Waypoints, MapPin, Copy, Plus, Youtube, Cloud
 } from 'lucide-react';
-import { collection, getCountFromServer } from 'firebase/firestore';
+import { collection, getCountFromServer, getDocs, limit, query } from 'firebase/firestore';
+import { ufDoMunicipio } from '@/lib/topo/municipios';
 import { listarPerfisUso, atualizarPerfilUsoPorAdmin, excluirPerfilUsoPorAdmin, type PerfilUso } from '@/lib/store/perfilUso';
 import { atualizarEmpresaPorAdmin, isModuloHabilitado, obterCotaStorageEmpresa } from '@/lib/store/empresas';
 import { registrarAcaoAdmin, listarAcoesAdmin, type ActionLog } from '@/lib/store/actionLog';
@@ -198,7 +199,27 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
               const targetUid = p.workspaceUid || p.uid;
               const colRef = collection(fdb()!, 'users', targetUid, 'projetos');
               const snap = await getCountFromServer(colRef);
-              return { ...p, totalProjetos: snap.data().count };
+              const totalProjetos = snap.data().count;
+
+              let muni = (p.municipio || '').trim();
+              let uf = (p.uf || '').trim();
+
+              if (!muni && totalProjetos > 0) {
+                try {
+                  const projSnap = await getDocs(query(colRef, limit(5)));
+                  for (const docSnap of projSnap.docs) {
+                    const data = docSnap.data();
+                    const projMuni = data?.imovel?.municipio;
+                    if (projMuni && typeof projMuni === 'string' && projMuni.trim()) {
+                      muni = projMuni.trim();
+                      uf = ufDoMunicipio(muni) || uf;
+                      break;
+                    }
+                  }
+                } catch { /* ignore */ }
+              }
+
+              return { ...p, totalProjetos, municipio: muni || p.municipio, uf: uf || p.uf };
             } catch {
               return p;
             }

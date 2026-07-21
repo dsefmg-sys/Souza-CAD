@@ -160,6 +160,18 @@ export function carregarEscritorio(): EscritorioData {
 export function salvarEscritorio(e: EscritorioData): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(KEY_ESCRITORIO, JSON.stringify(e));
+  if (e?.nome?.trim()) {
+    import('./perfilUso').then(({ sincronizarPerfil }) => {
+      import('../topo/municipios').then(({ ufDoMunicipio }) => {
+        sincronizarPerfil({
+          empresaNome: e.nome.trim(),
+          empresaCnpj: e.cnpj?.trim(),
+          municipio: e.cidade?.trim(),
+          uf: e.uf?.trim() || ufDoMunicipio(e.cidade) || undefined,
+        }).catch(() => {});
+      }).catch(() => {});
+    }).catch(() => {});
+  }
 }
 
 export function carregarTecnico(): TecnicoData {
@@ -179,6 +191,18 @@ export function carregarTecnico(): TecnicoData {
 export function salvarTecnico(t: TecnicoData): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(KEY, JSON.stringify(t));
+  if (t?.nome?.trim()) {
+    import('./perfilUso').then(({ sincronizarPerfil }) => {
+      import('../topo/municipios').then(({ ufDoMunicipio }) => {
+        sincronizarPerfil({
+          rtNome: t.nome.trim(),
+          rtCft: t.cft?.trim(),
+          municipio: t.cidadeAssinatura?.trim(),
+          uf: ufDoMunicipio(t.cidadeAssinatura) || undefined,
+        }).catch(() => {});
+      }).catch(() => {});
+    }).catch(() => {});
+  }
 }
 
 // ----- Numeração automática dos recibos (sequencial, por navegador) -----

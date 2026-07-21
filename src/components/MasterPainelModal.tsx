@@ -91,16 +91,19 @@ export default function MasterPainelModal({ open, onOpenChange }: Props) {
               <tbody>
                 {perfis.map((p) => {
                   const ativo = (agora - (p.ultimoAcessoEm ?? p.ultimoProjetoEm ?? 0)) < DIAS_ATIVO;
+                  const empDisplay = p.empresaNome || (p.rtNome ? `Escritório de ${p.rtNome}` : '—');
+                  const rtDisplay = p.rtNome || (p.empresaNome ? `RT da ${p.empresaNome}` : '—');
+
                   return (
-                    <tr key={p.uid} className="border-t">
-                      <td className="px-2 py-1 font-semibold">{p.empresaNome || '—'}</td>
-                      <td className="px-2 py-1">{p.rtNome || '—'}{p.rtCft ? ` · ${p.rtCft}` : ''}</td>
-                      <td className="px-2 py-1 text-muted-foreground">{p.email || '—'}</td>
-                      <td className="px-2 py-1 text-center">{p.totalProjetos ?? 0}</td>
-                      <td className="px-2 py-1 truncate">{p.ultimoProjetoNome || '—'}</td>
-                      <td className="px-2 py-1 text-center">{dataBR(p.ultimoProjetoEm)}</td>
-                      <td className="px-2 py-1 text-center">{p.termosVersao ? dataBR(p.termosAceitosEm) : 'não'}</td>
-                      <td className="px-2 py-1 text-center">
+                    <tr key={p.uid} className="border-t hover:bg-muted/40 transition-colors">
+                      <td className="px-2 py-1.5 font-semibold text-foreground">{empDisplay}</td>
+                      <td className="px-2 py-1.5">{rtDisplay}{p.rtCft ? ` · ${p.rtCft}` : ''}</td>
+                      <td className="px-2 py-1.5 text-muted-foreground">{p.email || '—'}</td>
+                      <td className="px-2 py-1.5 text-center font-bold text-foreground">{p.totalProjetos ?? 0}</td>
+                      <td className="px-2 py-1.5 truncate max-w-[160px]">{p.ultimoProjetoNome || '—'}</td>
+                      <td className="px-2 py-1.5 text-center">{dataBR(p.ultimoProjetoEm || p.ultimoAcessoEm)}</td>
+                      <td className="px-2 py-1.5 text-center">{p.termosVersao ? dataBR(p.termosAceitosEm) : 'não'}</td>
+                      <td className="px-2 py-1.5 text-center">
                         <span className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${ativo ? 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}`}>{ativo ? 'ativo' : 'inativo'}</span>
                       </td>
                     </tr>
