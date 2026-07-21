@@ -426,16 +426,29 @@ export function ObjetoPersonalizarModal({
             );
           }
 
-          if (tipoPlanta === 'confrontantes') {
+          if (tipoPlanta === 'confrontantes' || tipoPlanta === 'assinaturaConfrontante' || tipoPlanta === 'declConfrontantes') {
             const idConf = 'carimbo.declConfrontantes';
             const ovConf = plantaConfig.textos?.[idConf] || {};
             const txtConf = ovConf.texto || '';
             const escConf = ovConf.escala ?? 1.0;
             const largConf = ovConf.larguraChars ?? 68;
+            const mostrarAssinaturas = plantaConfig.mostrarAssinaturaConfrontantes !== false;
 
             return (
               <div className="space-y-4">
-                <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Tabela de Confrontantes</div>
+                <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Confrontantes e Assinaturas</div>
+
+                {/* Ocultar / Mostrar caixas de assinatura */}
+                <label className="flex items-center gap-2 cursor-pointer py-1.5 border-b pb-2">
+                  <input
+                    type="checkbox"
+                    checked={mostrarAssinaturas}
+                    onChange={(e) => setPlantaConfig((p: PlantaConfig) => ({ ...p, mostrarAssinaturaConfrontantes: e.target.checked }))}
+                    className="rounded border-zinc-300 text-primary focus:ring-primary size-4"
+                  />
+                  <span className="font-bold text-foreground">Exibir caixas de assinatura dos confrontantes</span>
+                </label>
+
                 <div className="space-y-1">
                   <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Texto de Declaração</Label>
                   <textarea
@@ -448,17 +461,18 @@ export function ObjetoPersonalizarModal({
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
-                      <span>Escala</span>
+                      <span>Tamanho do Texto / Caixas</span>
                       <span>{escConf.toFixed(2)}x</span>
                     </div>
                     <div className="flex gap-1">
-                      <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idConf, { escala: Math.max(0.4, +(escConf - 0.05).toFixed(2)) })}>−</button>
-                      <button type="button" className="h-6 px-1.5 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idConf, { escala: Math.min(2.5, +(escConf + 0.05).toFixed(2)) })}>+</button>
+                      <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idConf, { escala: Math.max(0.4, +(escConf - 0.05).toFixed(2)) })}>A−</button>
+                      <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idConf, { escala: Math.min(2.5, +(escConf + 0.05).toFixed(2)) })}>A+</button>
+                      <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors" onClick={() => patchTextoPlanta(idConf, { escala: 1.0 })}>Reset</button>
                     </div>
                   </div>
                   <div className="space-y-1">
                     <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
-                      <span>Largura</span>
+                      <span>Largura Máxima</span>
                       <span>{largConf} ch</span>
                     </div>
                     <div className="flex gap-1">

@@ -754,10 +754,8 @@ export default function Planta({
       const u = svgPonto(e); if (!u) return;
       if (id.startsWith('vert.')) {
         const vId = id.slice(5);
-        const rv = rotuloVert.find((x) => x.v.id === vId);
-        const baseX = rv?.x ?? 0;
-        const baseY = rv?.y ?? 0;
-        dragRef.current = { kind: 'rotVert', id: vId, dx: 0, dy: 0, baseX, baseY, absX: baseX, absY: baseY };
+        const ov = textosOv[id];
+        dragRef.current = { kind: 'rotVert', id: vId, dx: 0, dy: 0, baseX: ov?.dx ?? 0, baseY: ov?.dy ?? 0 };
         setDragTemp({ kind: 'rotVert', id: vId, dx: 0, dy: 0 });
       } else {
         // Ctrl/Cmd+clique: adiciona/remove da seleção múltipla (não arrasta ainda)
