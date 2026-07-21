@@ -7511,13 +7511,42 @@ export default function EditorPage() {
                     </div>
                   </div>
  
-                  {/* Confrontantes */}
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200 font-bold">
-                    <span className="whitespace-nowrap">Confrontantes:</span>
+                  {/* Textos do Interior das Glebas */}
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                    <span className="whitespace-nowrap">Textos das Glebas:</span>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.max(0.5, Number(((c.escalaConfront ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">-</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextoCentroGlebas: Math.max(0.5, Number(((c.escalaTextoCentroGlebas ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs" title="Diminuir tamanho dos textos do interior das glebas">-</button>
+                      <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaTextoCentroGlebas ?? 1) * 100)}%</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaTextoCentroGlebas: Math.min(2.5, Number(((c.escalaTextoCentroGlebas ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs" title="Aumentar tamanho dos textos do interior das glebas">+</button>
+                    </div>
+                  </div>
+
+                  {/* Caixas de Assinaturas de Confrontantes (com Ocultar/Exibir) */}
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const novaVis = plantaConfig.mostrarAssinaturaConfrontantes === false ? true : false;
+                          setPlantaConfig((c) => ({ ...c, mostrarAssinaturaConfrontantes: novaVis }));
+                          salvarPreferencias({ ...carregarPreferencias(), mostrarAssinaturaConfrontantes: novaVis });
+                        }}
+                        className={`p-1 rounded-md border transition-colors cursor-pointer shrink-0 ${
+                          plantaConfig.mostrarAssinaturaConfrontantes !== false
+                            ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+                            : 'border-slate-300 dark:border-zinc-700 text-slate-400 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200'
+                        }`}
+                        title={plantaConfig.mostrarAssinaturaConfrontantes !== false ? 'Ocultar TODAS as caixas de assinaturas dos confrontantes' : 'Exibir caixas de assinaturas dos confrontantes'}
+                      >
+                        {plantaConfig.mostrarAssinaturaConfrontantes !== false ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                      </button>
+                      <span className="whitespace-nowrap">Confrontantes:</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.max(0.5, Number(((c.escalaConfront ?? 1) - 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs" title="Diminuir tamanho das caixas de confrontantes">-</button>
                       <span className="w-8 text-center text-[10.5px] font-mono font-bold text-foreground">{Math.round((plantaConfig.escalaConfront ?? 1) * 100)}%</span>
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.min(2.5, Number(((c.escalaConfront ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs">+</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setPlantaConfig((c) => ({ ...c, escalaConfront: Math.min(2.5, Number(((c.escalaConfront ?? 1) + 0.1).toFixed(1))) })); }} className="flex size-6 items-center justify-center rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-200 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-black hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-90 transition-all shadow-2xs" title="Aumentar tamanho das caixas de confrontantes">+</button>
                     </div>
                   </div>
                 </div>

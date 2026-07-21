@@ -541,6 +541,7 @@ export default function Planta({
   const fonteRot = fs(config.fonteRotulos ?? 10);
   const escVert = config.escalaVertices && config.escalaVertices > 0 ? config.escalaVertices : 1; // tamanho dos símbolos de vértice
   const escTab = config.escalaTabelas && config.escalaTabelas > 0 ? config.escalaTabelas : 1; // fonte só das tabelas (roteiro, coordenadas, áreas)
+  const escConf = config.escalaConfront && config.escalaConfront > 0 ? config.escalaConfront : 1; // tamanho das caixas de confrontantes
   const textosOv = config.textos ?? {};
   const ef = valoresEfetivos(res, imovel);
   const mapaC = new Map(confrontantes.map((c) => [c.id, c]));
@@ -2038,7 +2039,7 @@ export default function Planta({
         ) || /^gleba\s*\d+/i.test(c.nome);
 
         if (ehConfrontanteInternoGlebas) return null;
-        const fz = c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteRot;
+        const fz = (c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteRot) * escConf;
         const todas = rotuloConfrontanteLinhas(c);
         // cônjuge só conta se a função realmente anexou as 2 linhas dele (não acontece em espólio)
         const temConjLinhas = !!c.conjugeNome && todas.length >= 2 && /^C[ôo]njuge:/i.test(todas[todas.length - 2]);
