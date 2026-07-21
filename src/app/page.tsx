@@ -9259,6 +9259,11 @@ export default function EditorPage() {
                 onRenomearGleba={(id, nome) => setGlebas((gs) => gs.map((g) => (g.id === id ? { ...g, denominacao: nome } : g)))}
                 onAlternarTipoGleba={alternarTipoGleba}
                 onAlternarVisibilidadeGleba={alternarVisibilidadeGleba}
+                onEditarDadosGleba={(id) => {
+                  if (id !== glebaAtivaId) trocarGleba(id);
+                  setAba('imovel');
+                  setPainelAberto(true);
+                }}
               />
             )}
 
@@ -12250,6 +12255,7 @@ function PainelGlebas({
   onRenomearGleba,
   onAlternarTipoGleba,
   onAlternarVisibilidadeGleba,
+  onEditarDadosGleba,
 }: {
   glebas: Gleba[];
   glebaAtivaId: string;
@@ -12259,6 +12265,7 @@ function PainelGlebas({
   onRenomearGleba: (id: string, nome: string) => void;
   onAlternarTipoGleba: (id: string) => void;
   onAlternarVisibilidadeGleba: (id: string) => void;
+  onEditarDadosGleba?: (id: string) => void;
 }) {
   return (
     <div className="space-y-4 text-xs">
@@ -12350,25 +12357,32 @@ function PainelGlebas({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                {!isAtiva ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-[10px] font-bold text-indigo-600 border-indigo-500/30 hover:bg-indigo-500/10 gap-1 cursor-pointer"
-                    onClick={() => onTrocarGleba(g.id)}
-                  >
-                    Ativar Gleba
-                  </Button>
-                ) : (
-                  <span className="text-[10px] text-muted-foreground italic">Gleba ativa em edição</span>
-                )}
+              <div className="flex items-center justify-between pt-1 gap-2">
+                <Button
+                  size="sm"
+                  variant={isAtiva ? 'default' : 'outline'}
+                  className={`h-7 text-[10px] font-bold gap-1 cursor-pointer flex-1 ${
+                    isAtiva
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      : 'text-indigo-600 border-indigo-500/30 hover:bg-indigo-500/10'
+                  }`}
+                  onClick={() => {
+                    if (onEditarDadosGleba) {
+                      onEditarDadosGleba(g.id);
+                    } else if (!isAtiva) {
+                      onTrocarGleba(g.id);
+                    }
+                  }}
+                  title="Editar os vértices, memorial e confrontantes desta gleba"
+                >
+                  <Pencil className="size-3" /> Editar Dados &amp; Confrontantes
+                </Button>
 
                 {glebas.length > 1 && (
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-500/10 gap-1 cursor-pointer"
+                    className="h-7 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-500/10 gap-1 cursor-pointer shrink-0"
                     onClick={() => onRemoverGleba(g.id)}
                     title="Excluir esta gleba"
                   >

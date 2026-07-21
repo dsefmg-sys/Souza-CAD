@@ -1045,7 +1045,7 @@ export default function Planta({
       const dyFinal = pend ? pend.dy : (d.dy ?? 0);
       let finalX = (d.baseX ?? 0) + dxFinal;
       let finalY = (d.baseY ?? 0) + dyFinal;
-      if (d.kind === 'ted' || d.kind === 'rotVert') {
+      if (d.kind === 'ted' || d.kind === 'rotVert' || d.kind === 'textoPlanta') {
         const idSalvar = d.kind === 'rotVert' ? `vert.${d.id}` : d.id;
         // Item de DESENHO (texto/cota/linha que o usuário adicionou) solto com o cursor FORA da
         // folha A3 é EXCLUÍDO. Textos do carimbo e rótulos de vértice/confrontante não são objetos,
@@ -2023,6 +2023,16 @@ export default function Planta({
       {rotulosConf.map((r, i) => {
         if (!r.c || !r.c.nome) return null;
         const c = r.c;
+
+        // Ocultar caixas de assinatura para confrontantes que sejam glebas internas vizinhas da mesma propriedade
+        const ehConfrontanteInternoGlebas = outrasGlebas.some((og) =>
+          og.nome && c.nome && (
+            og.nome.trim().toLowerCase() === c.nome.trim().toLowerCase() ||
+            c.nome.toLowerCase().includes(og.nome.toLowerCase())
+          )
+        ) || /^gleba\s*\d+/i.test(c.nome);
+
+        if (ehConfrontanteInternoGlebas) return null;
         const fz = c.tamRotulo && c.tamRotulo > 0 ? +(c.tamRotulo * escTxt).toFixed(2) : fonteRot;
         const todas = rotuloConfrontanteLinhas(c);
         // cônjuge só conta se a função realmente anexou as 2 linhas dele (não acontece em espólio)
