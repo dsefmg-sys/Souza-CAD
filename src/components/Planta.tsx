@@ -1495,6 +1495,11 @@ export default function Planta({
                 }
               }}
             />
+            {/* Linha pontilhada de indicação (chamada) se o texto for arrastado para fora da gleba */}
+            {(!pontoNoPoligono({ x: ccx, y: ccy }, g.pts.map((p) => ({ x: sx(p.leste), y: sy(p.norte) })))) && (
+              <line x1={ccx} y1={ccy} x2={baseCcx} y2={baseCcy} stroke={ogCor} strokeWidth={0.8} strokeDasharray="3 3" pointerEvents="none" />
+            )}
+
             {/* Texto central da gleba: MÓVEL e com DUPLO CLIQUE para Personalizar */}
             <g
               style={{ cursor: editavel ? 'move' : 'default' }}

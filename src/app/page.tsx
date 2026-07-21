@@ -2443,17 +2443,19 @@ export default function EditorPage() {
     setGlebas(sincronizarGlebas().map((g) => (g.id === glebaAtivaId ? { ...g, denominacao } : g)));
   }
   function alternarTipoGleba(id: string) {
-    setGlebas((gs) => gs.map((g) => {
+    const gsSync = sincronizarGlebas();
+    setGlebas(gsSync.map((g) => {
       if (g.id === id) {
         const novoTipo = g.tipoGleba === 'auxiliar' ? 'principal' : 'auxiliar';
-        aviso(`Gleba "${g.denominacao}" marcada como ${novoTipo === 'principal' ? 'Principal/Ativa' : 'Auxiliar/Complementar'}.`);
+        aviso(`Gleba "${g.denominacao}" marcada como ${novoTipo === 'principal' ? 'ATIVA' : 'Auxiliar'}.`);
         return { ...g, tipoGleba: novoTipo };
       }
       return g;
     }));
   }
   function alternarVisibilidadeGleba(id: string) {
-    setGlebas((gs) => gs.map((g) => {
+    const gsSync = sincronizarGlebas();
+    setGlebas(gsSync.map((g) => {
       if (g.id === id) {
         const novaVis = g.visivel === false ? true : false;
         aviso(`Gleba "${g.denominacao}" ${novaVis ? 'exibida' : 'ocultada'} na planta/mapa.`);
