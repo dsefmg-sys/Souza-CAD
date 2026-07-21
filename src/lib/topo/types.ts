@@ -430,6 +430,7 @@ export interface PlantaConfig {
   situacaoEscala?: number;
   print3dDataUrl?: string;
   mostrarPrint3D?: boolean;
+  mostrarAssinaturaConfrontantes?: boolean; // exibe ou oculta as linhas de assinatura dos confrontantes na prancha
   /** Volume de corte (m³) calculado na terraplanagem ao capturar o MDR. */
   print3dVolumeCorte?: number;
   /** Volume de aterro (m³) calculado na terraplanagem ao capturar o MDR. */

@@ -50,6 +50,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [modo3d, setModo3d] = useState(false);
   const [landingTexts, setLandingTexts] = useState<LandingPageTexts>(LANDING_PADRAO);
   const [salvandoLanding, setSalvandoLanding] = useState(false);
+  const [landingAberta, setLandingAberta] = useState(false);
   const [smtp, setSmtp] = useState<ConfigSmtp>({});
   const [salvandoSmtp, setSalvandoSmtp] = useState(false);
   const [carregando, setCarregando] = useState(false);
@@ -667,34 +668,89 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                 </div>
 
                 {/* Personalização da Landing Page */}
-                <div className="space-y-2 col-span-1 md:col-span-2 border-t border-zinc-800/80 pt-4 mt-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Textos Personalizados da Landing Page</Label>
-                      <p className="text-[10px] text-zinc-500">Altere a headline, história e diferenciais exibidos na apresentação inicial.</p>
+                {/* Seção Sanfona (Accordion) - Editor de Textos da Landing Page */}
+                <div className="space-y-2 col-span-1 md:col-span-2 lg:col-span-4 border border-emerald-500/30 rounded-xl bg-zinc-950/70 overflow-hidden transition-all mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setLandingAberta(!landingAberta)}
+                    className="w-full px-4 py-3 flex items-center justify-between bg-zinc-900/80 hover:bg-zinc-900 transition-colors cursor-pointer select-none"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Sparkles className="size-4 text-emerald-400" />
+                      <div className="text-left">
+                        <span className="text-xs font-black uppercase tracking-wider text-emerald-400 block">
+                          Editor Completo de Textos da Landing Page (Sanfona)
+                        </span>
+                        <span className="text-[10px] text-zinc-400">
+                          Clique para {landingAberta ? 'recolher' : 'expandir'} e editar a headline, subtítulo, história e os 4 pontos de diferenciais.
+                        </span>
+                      </div>
                     </div>
-                    <Button size="sm" onClick={salvarLandingTextsConfig} disabled={salvandoLanding} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-8 text-xs">
-                      {salvandoLanding ? 'Salvando...' : 'Salvar Textos da Landing'}
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">Headline / Título Principal</Label>
-                      <Input value={landingTexts.titulo || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, titulo: e.target.value }))} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white" />
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                        {landingAberta ? 'Recolher' : 'Editar Textos'}
+                      </span>
+                      {landingAberta ? <ChevronUp className="size-4 text-emerald-400" /> : <ChevronDown className="size-4 text-emerald-400" />}
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">Autor / Assinatura da História</Label>
-                      <Input value={landingTexts.autorHistoria || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, autorHistoria: e.target.value }))} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white" />
+                  </button>
+
+                  {landingAberta && (
+                    <div className="p-4 space-y-4 border-t border-zinc-800/80">
+                      <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                        <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">
+                          Conteúdo Oficial Exibido na Apresentação Inicial
+                        </span>
+                        <Button size="sm" onClick={salvarLandingTextsConfig} disabled={salvandoLanding} className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold h-8 text-xs">
+                          {salvandoLanding ? 'Salvando...' : 'Salvar Todos os Textos'}
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] font-bold text-zinc-400 uppercase">Headline / Título Principal</Label>
+                          <Input value={landingTexts.titulo || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, titulo: e.target.value }))} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] font-bold text-zinc-400 uppercase">Autor / Assinatura da História</Label>
+                          <Input value={landingTexts.autorHistoria || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, autorHistoria: e.target.value }))} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white" />
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-[10px] font-bold text-zinc-400 uppercase">Subtítulo / Descrição</Label>
+                          <Input value={landingTexts.subtitulo || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, subtitulo: e.target.value }))} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white" />
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-[10px] font-bold text-zinc-400 uppercase">História do Agrimensor Programador</Label>
+                          <textarea value={landingTexts.historia || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, historia: e.target.value }))} className="w-full h-24 p-2 text-xs rounded border border-zinc-800 bg-zinc-900 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                        </div>
+
+                        {/* 4 Pontos de Diferenciais / Checklist */}
+                        <div className="space-y-2 sm:col-span-2 border-t border-zinc-800/60 pt-3">
+                          <Label className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider block">
+                            Diferenciais Principais (4 Itens de Checklist)
+                          </Label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {[0, 1, 2, 3].map((idx) => {
+                              const itens = landingTexts.itensCheck && landingTexts.itensCheck.length === 4 ? [...landingTexts.itensCheck] : [...LANDING_PADRAO.itensCheck!];
+                              return (
+                                <div key={idx} className="space-y-1 bg-zinc-900/60 p-2 rounded-lg border border-zinc-800">
+                                  <Label className="text-[9px] font-bold text-zinc-400 uppercase">Item {idx + 1}</Label>
+                                  <Input
+                                    value={itens[idx] || ''}
+                                    onChange={(e) => {
+                                      const novosItens = [...itens];
+                                      novosItens[idx] = e.target.value;
+                                      setLandingTexts(prev => ({ ...prev, itensCheck: novosItens }));
+                                    }}
+                                    className="h-7 text-xs bg-zinc-900 border-zinc-800 text-white"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1 sm:col-span-2">
-                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">Subtítulo / Descrição</Label>
-                      <Input value={landingTexts.subtitulo || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, subtitulo: e.target.value }))} className="h-8 text-xs bg-zinc-900 border-zinc-800 text-white" />
-                    </div>
-                    <div className="space-y-1 sm:col-span-2">
-                      <Label className="text-[10px] font-bold text-zinc-400 uppercase">História do Agrimensor Programador</Label>
-                      <textarea value={landingTexts.historia || ''} onChange={(e) => setLandingTexts(prev => ({ ...prev, historia: e.target.value }))} className="w-full h-20 p-2 text-xs rounded border border-zinc-800 bg-zinc-900 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Cupons de Desconto do SaaS */}

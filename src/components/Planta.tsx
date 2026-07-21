@@ -1277,7 +1277,7 @@ export default function Planta({
     const matLine = principalAll.find((l) => /^Matr[íi]cula/i.test(l)) ?? null;
     const principalSemMat = principalAll.filter((l) => l !== matLine);
 
-    const semAssinatura = c.condicao === 'publico' || (prefs !== null && !prefs.mostrarAssinaturaConfrontantes);
+    const semAssinatura = c.condicao === 'publico' || (prefs !== null && !prefs.mostrarAssinaturaConfrontantes) || config.mostrarAssinaturaConfrontantes === false;
     const isHorizontal = c.layoutAssinatura === 'horizontal' && temConjLinhas;
 
     const gap = 52;
@@ -1935,7 +1935,7 @@ export default function Planta({
 
         // Bem público (estrada, rio...) não assina — sem titular pra colher assinatura, então a
         // caixa vira só o nome, sem linha de firma nenhuma.
-        const semAssinatura = c.condicao === 'publico' || (prefs !== null && !prefs.mostrarAssinaturaConfrontantes);
+        const semAssinatura = c.condicao === 'publico' || (prefs !== null && !prefs.mostrarAssinaturaConfrontantes) || config.mostrarAssinaturaConfrontantes === false;
         const isHorizontal = c.layoutAssinatura === 'horizontal' && temConjLinhas;
 
         const gap = 52;

@@ -7587,7 +7587,12 @@ export default function EditorPage() {
                             <Atalho k={obterAtalhoLateral('arco', 'ac')} />
                           </Button>
                           <Button size="sm" variant={modo === 'multi' ? 'default' : 'secondary'} className={`relative ${modo === 'multi' ? COR_ATIVO : ''}`} onClick={() => { alternarModo('multi'); }} title={`Seleção Múltipla (${obterAtalhoLateral('selecao_varios', 'sl')}): clique em elementos ou abra uma caixa de seleção para selecionar vários vértices/objetos de uma vez.`}>
-                            <span className="truncate text-[9px] font-bold text-fuchsia-400">Sel. Vários</span>
+                            <svg viewBox="0 0 24 24" className={`size-4 shrink-0 ${modo === 'multi' ? 'text-white' : 'text-fuchsia-400'}`} aria-hidden>
+                              <circle cx="12" cy="5" r="2.4" fill="currentColor" />
+                              <circle cx="5" cy="18" r="2.4" fill="currentColor" />
+                              <circle cx="19" cy="18" r="2.4" fill="currentColor" />
+                            </svg>
+                            <span className="truncate">Sel. Vários</span>
                             <Atalho k={obterAtalhoLateral('selecao_varios', 'sl')} />
                           </Button>
                           <Button size="sm" variant={modo === 'medir' ? 'default' : 'secondary'} className={`relative ${modo === 'medir' ? COR_ATIVO : ''}`} onClick={() => alternarModo('medir', true)} title={`Régua de Medição (${obterAtalhoLateral('medir', 'md')}): meça distâncias e azimutes entre pontos no mapa com alta precisão.`}>
@@ -11715,7 +11720,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
   useEffect(() => { setTitulos(carregarTitulos()); }, []);
   const tituloAtual = (config.titulo ?? '').trim();
   const podeSalvarTitulo = tituloAtual.length > 0 && !titulos.includes(tituloAtual);
-  type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao' | 'mostrarDivisaConf' | 'mostrarVerticesVizinho' | 'mostrarPrint3D';
+  type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao' | 'mostrarDivisaConf' | 'mostrarVerticesVizinho' | 'mostrarPrint3D' | 'mostrarAssinaturaConfrontantes';
   const chk = (label: string, key: BoolKey) => (
     <label className="flex items-center gap-2 text-xs">
       <input type="checkbox" checked={config[key] !== false} onChange={(e) => set({ [key]: e.target.checked } as Partial<PlantaConfig>)} />
@@ -11793,6 +11798,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
         {chk('Print do Modelo 3D', 'mostrarPrint3D')}
         {chk('Tiques de troca de confrontante (marcos M)', 'mostrarDivisaConf')}
         {chk('Vértices de vizinhos certificados', 'mostrarVerticesVizinho')}
+        {chk('Caixa de assinatura dos confrontantes no carimbo', 'mostrarAssinaturaConfrontantes')}
         {/* quadro de áreas e roteiro: padrão DESLIGADO (por isso não usam o chk, que assume ligado) */}
         <label className="flex items-center gap-2 text-xs">
           <input type="checkbox" checked={config.mostrarQuadroAreas === true} onChange={(e) => set({ mostrarQuadroAreas: e.target.checked })} />
