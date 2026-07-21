@@ -63,6 +63,7 @@ interface Props {
   onMoverPontoObjeto?: (id: string, idx: number, lat: number, lon: number) => void;
   onMoverObjeto?: (id: string, dlat: number, dlon: number) => void; // move o objeto inteiro (arrastar o corpo)
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
+  onAbrirGestaoGleba?: (id?: string) => void;
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
   onRemoverSituacao?: () => void;      // clicar na imagem da situação mostra um X; o X chama isto
   situacaoStale?: boolean;             // desenho mudou desde a última captura do satélite
@@ -346,7 +347,7 @@ export default function Planta({
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
-  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao,
+  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao, onAbrirGestaoGleba,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onConfrontanteMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onDblClickObjeto, onContextMenuVazio, onDblClickMalha, onCentralizarPlanta,
@@ -531,6 +532,7 @@ export default function Planta({
   const verEscalaG = config.mostrarEscalaGrafica !== false;
   const verDivisaConf = config.mostrarDivisaConf !== false;
   const verVizinhoVtx = config.mostrarVerticesVizinho !== false;
+  const isPrinting = modo === 'imprimir';
   const verSituacao = config.mostrarSituacao !== false && !config.situacaoEscondida;
   const escTxt = config.escalaTextos && config.escalaTextos > 0 ? config.escalaTextos : 1.5;
   const fs = (n: number) => +(n * escTxt).toFixed(2); // escala global de todos os textos
@@ -1446,19 +1448,38 @@ export default function Planta({
       {/* demais glebas do imóvel (contorno + nome) */}
       {outrasGlebas.map((g, i) => {
         if (g.pts.length < 3) return null;
-        if (g.visivel === false) return null;
+        const isOculta = g.visivel === false;
+        if (isOculta && isPrinting) return null;
+
         const pp = g.pts.map((p) => `${sx(p.leste).toFixed(1)},${sy(p.norte).toFixed(1)}`).join(' ');
         const ccx = g.pts.reduce((s, p) => s + sx(p.leste), 0) / g.pts.length;
         const ccy = g.pts.reduce((s, p) => s + sy(p.norte), 0) / g.pts.length;
         const isAuxiliar = g.tipoGleba === 'auxiliar';
-        const ogCor = isAuxiliar ? '#d97706' : (config.corOutrasGlebas || '#c2410c');
-        const ogFill = isAuxiliar ? '#f59e0b' : (config.corOutrasGlebas || '#f97316');
-        const dashArray = isAuxiliar ? '4 3' : '6 4';
+        const ogCor = isOculta ? '#64748b' : (isAuxiliar ? '#d97706' : (config.corOutrasGlebas || '#c2410c'));
+        const ogFill = isOculta ? '#64748b' : (isAuxiliar ? '#f59e0b' : (config.corOutrasGlebas || '#f97316'));
+        const dashArray = isOculta ? '3 3' : (isAuxiliar ? '4 3' : '6 4');
+        const fillOp = isOculta ? 0.03 : 0.06;
+
         return (
-          <g key={`og${i}`}>
-            <polygon points={pp} fill={ogFill} fillOpacity={0.06} stroke={ogCor} strokeWidth={config.larguraOutrasGlebas ?? 1.2} strokeDasharray={dashArray} />
-            <text x={ccx} y={ccy} fontSize={fs(10)} fontWeight="bold" textAnchor="middle" fill={ogCor}>
-              {g.nome} {isAuxiliar ? '(Auxiliar)' : ''}
+          <g
+            key={`og${g.id || i}`}
+            className={isOculta ? 'animate-pulse opacity-75 cursor-pointer' : 'cursor-pointer'}
+            onClick={(e) => {
+              if (editavel && g.id && onAbrirGestaoGleba) {
+                e.stopPropagation();
+                onAbrirGestaoGleba(g.id);
+              }
+            }}
+            onDoubleClick={(e) => {
+              if (editavel && g.id && onAbrirGestaoGleba) {
+                e.stopPropagation();
+                onAbrirGestaoGleba(g.id);
+              }
+            }}
+          >
+            <polygon points={pp} fill={ogFill} fillOpacity={fillOp} stroke={ogCor} strokeWidth={config.larguraOutrasGlebas ?? 1.2} strokeDasharray={dashArray} />
+            <text x={ccx} y={ccy} fontSize={fs(9.5)} fontWeight="bold" textAnchor="middle" fill={ogCor}>
+              {g.nome} {isOculta ? ' (OCULTA - NÃO IMPRESSA)' : isAuxiliar ? ' (Auxiliar)' : ''}
             </text>
           </g>
         );

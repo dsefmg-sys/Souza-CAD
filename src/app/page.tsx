@@ -4066,6 +4066,55 @@ export default function EditorPage() {
     setVertices((vs) => vs.map((v) => idsToPaint.includes(v.id) ? { ...v, representacao: tipoDivisaPincel } : v));
     setPincelInicioId(null);
     aviso(`Divisa "${tipoDivisaPincel.toUpperCase()}" pintada em ${indices.length} segmento(s).`);
+
+    // Verifica se algum trecho pintado toca outra gleba do projeto para sincronizar divisa compartilhada
+    const outras = glebas.filter((g) => g.id !== glebaAtivaId);
+    if (outras.length > 0) {
+      const tol = 1.0;
+      for (const gViz of outras) {
+        if (!gViz.vertices || gViz.vertices.length < 2) continue;
+        const vertsPintados = indices.map((i) => vertices[i]);
+        let temSegmentoCompartilhado = false;
+        const vtsVizinhosParaAtualizar = new Set<string>();
+
+        for (const vPint of vertsPintados) {
+          const vIdx = vertices.findIndex((v) => v.id === vPint.id);
+          const vSeguintePint = vertices[(vIdx + 1) % vertices.length];
+          for (let i = 0; i < gViz.vertices.length; i++) {
+            const p1 = gViz.vertices[i];
+            const p2 = gViz.vertices[(i + 1) % gViz.vertices.length];
+            const dDirect = Math.hypot(vPint.leste - p1.leste, vPint.norte - p1.norte) < tol && Math.hypot(vSeguintePint.leste - p2.leste, vSeguintePint.norte - p2.norte) < tol;
+            const dReverse = Math.hypot(vPint.leste - p2.leste, vPint.norte - p2.norte) < tol && Math.hypot(vSeguintePint.leste - p1.leste, vSeguintePint.norte - p1.norte) < tol;
+            if (dDirect || dReverse) {
+              temSegmentoCompartilhado = true;
+              vtsVizinhosParaAtualizar.add(p1.id);
+            }
+          }
+        }
+
+        if (temSegmentoCompartilhado && vtsVizinhosParaAtualizar.size > 0) {
+          void (async () => {
+            if (await confirmar({
+              titulo: 'Divisa Compartilhada entre Glebas',
+              mensagem: `O trecho pintado como "${rotuloDivisaTipo(tipoDivisaPincel)}" faz divisa com a gleba "${gViz.denominacao}". Deseja aplicar o mesmo tipo de divisa aos segmentos da gleba vizinha?`,
+              okLabel: 'Sim, Aplicar à Gleba Vizinha',
+              cancelLabel: 'Apenas nesta Gleba'
+            })) {
+              setGlebas((gs) => gs.map((g) => {
+                if (g.id === gViz.id) {
+                  return {
+                    ...g,
+                    vertices: g.vertices.map((v) => vtsVizinhosParaAtualizar.has(v.id) ? { ...v, representacao: tipoDivisaPincel } : v)
+                  };
+                }
+                return g;
+              }));
+              aviso(`Tipo de divisa "${tipoDivisaPincel.toUpperCase()}" aplicado à gleba vizinha "${gViz.denominacao}".`);
+            }
+          })();
+        }
+      }
+    }
   }
 
   // Pintar confrontante: aplica o confrontante selecionado aos segmentos do perímetro.
@@ -8662,7 +8711,12 @@ export default function EditorPage() {
                       confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
                       glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
                       requerente={requerente} transmitente={transmitente}
-                      outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })) }))}
+                      outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ id: g.id, nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })), tipoGleba: g.tipoGleba, visivel: g.visivel }))}
+                      onAbrirGestaoGleba={(id) => {
+                        if (id) trocarGleba(id);
+                        setAba('glebas');
+                        setPainelAberto(true);
+                      }}
                       resumoGlebas={resumoGlebas} verticesVizinho={verticesVizinho} parcelasCert={parcelasCert}
                       editavel={editarPlanta && !telaEstreita} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       mostrarRotulos={mostrarRotulos}
@@ -10398,6 +10452,11 @@ export default function EditorPage() {
         setCopiaBuffer={setCopiaBuffer}
         imovel={imovel}
         setImovel={setImovel}
+        onAbrirDadosGleba={(id) => {
+          if (id) trocarGleba(id);
+          setAba('glebas');
+          setPainelAberto(true);
+        }}
         onRemoverPrint3D={() => { setPrint3dUrl(undefined); setPlantaConfig((c) => ({ ...c, print3dDataUrl: undefined, print3dVolumeCorte: undefined, print3dVolumeAterro: undefined, print3dZRef: undefined, print3dMostrarTerraplanagem: undefined })); }}
       />
 
@@ -12164,32 +12223,33 @@ function PainelGlebas({
                   {areaHa > 0 && <span className="ml-2 font-mono font-bold text-foreground">({numBR(areaHa, 4)} ha)</span>}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {/* Toggle Tipo: Principal vs Auxiliar */}
+                  {/* Toggle Tipo: ATIVA vs Auxiliar */}
                   <button
                     type="button"
                     onClick={() => onAlternarTipoGleba(g.id)}
-                    className={`px-2 py-0.5 text-[9px] font-bold rounded-full border transition-colors cursor-pointer ${
+                    className={`px-2 py-0.5 text-[9px] font-extrabold uppercase rounded-full border transition-colors cursor-pointer ${
                       isAuxiliar
                         ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20'
-                        : 'border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20'
+                        : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20'
                     }`}
-                    title="Clique para alternar entre Gleba Principal/Ativa e Auxiliar/Complementar"
+                    title="Clique para alternar entre Gleba ATIVA e Auxiliar/Complementar"
                   >
-                    {isAuxiliar ? 'Auxiliar' : 'Principal'}
+                    {isAuxiliar ? 'Auxiliar' : 'ATIVA'}
                   </button>
 
-                  {/* Toggle Visibilidade: Ocultar / Exibir */}
+                  {/* Toggle Visibilidade: Visível / Oculta */}
                   <button
                     type="button"
                     onClick={() => onAlternarVisibilidadeGleba(g.id)}
-                    className={`p-1 rounded-md border transition-colors cursor-pointer ${
+                    className={`px-2 py-0.5 rounded-md border flex items-center gap-1 transition-colors cursor-pointer ${
                       isVisivel
                         ? 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-muted'
                         : 'border-red-500/40 bg-red-500/10 text-red-600 hover:bg-red-500/20'
                     }`}
                     title={isVisivel ? 'Gleba Visível na Planta/Mapa (clique para Ocultar)' : 'Gleba Ocultada na Planta/Mapa (clique para Exibir)'}
                   >
-                    {isVisivel ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5 text-red-500" />}
+                    {isVisivel ? <Eye className="size-3.5 text-emerald-500" /> : <EyeOff className="size-3.5 text-red-500" />}
+                    <span className="text-[10px] font-bold">{isVisivel ? 'Visível' : 'Oculta'}</span>
                   </button>
                 </div>
               </div>

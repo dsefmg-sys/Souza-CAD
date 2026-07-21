@@ -446,6 +446,8 @@ export interface PlantaConfig {
   sigefOpacidade?: number;
   /** Ocultar polígonos SIGEF importados na planta (checkbox no modal de personalização). */
   sigefOcultar?: boolean;
+  /** Escala do texto central de todas as glebas na planta. */
+  escalaTextoCentroGlebas?: number;
 }
 
 /** Como os dados ausentes/não preenchidos no cadastro devem ser tratados na geração de documentos. */

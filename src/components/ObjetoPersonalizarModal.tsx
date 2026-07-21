@@ -1,7 +1,5 @@
-'use client';
-
-import React from 'react';
-import { Palette, X, RefreshCw, Copy, Plus, Minus, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Palette, X, RefreshCw, Copy, Plus, Minus, Trash2, BookUser } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Z_CLASSES } from '@/lib/ui/zlayers';
@@ -29,6 +27,7 @@ interface ObjetoPersonalizarModalProps {
   onRemoverPrint3D?: () => void;
   imovel?: ImovelData;
   setImovel?: React.Dispatch<React.SetStateAction<ImovelData>>;
+  onAbrirDadosGleba?: (id?: string) => void;
 }
 
 export function ObjetoPersonalizarModal({
@@ -51,7 +50,10 @@ export function ObjetoPersonalizarModal({
   onRemoverPrint3D,
   imovel,
   setImovel,
+  onAbrirDadosGleba,
 }: ObjetoPersonalizarModalProps) {
+  const [ajustarTodasGlebas, setAjustarTodasGlebas] = useState(true);
+
   if (!objPersonalizarId) return null;
 
   return (
@@ -73,17 +75,24 @@ export function ObjetoPersonalizarModal({
       </div>
 
       {(() => {
-        if (objPersonalizarId === 'planta.centroInfo' || objPersonalizarId === 'planta:titulo_imovel') {
+        if (objPersonalizarId === 'planta.centroInfo' || objPersonalizarId === 'planta:titulo_imovel' || objPersonalizarId.startsWith('gleba:')) {
           const idCentro = 'planta.centroInfo';
           const ovCentro = plantaConfig.textos?.[idCentro] || {};
-          const escCentro = ovCentro.escala ?? 1.0;
+          const escCentro = ovCentro.escala ?? plantaConfig.escalaTextoCentroGlebas ?? 1.0;
           const negCentro = ovCentro.negrito ?? false;
           const fundoBranco = ovCentro.fundoBranco ?? false;
           const largCentro = ovCentro.larguraChars ?? 0;
 
+          const atualizarEscalaCentro = (novaEsc: number) => {
+            patchTextoPlanta(idCentro, { escala: novaEsc });
+            if (ajustarTodasGlebas) {
+              setPlantaConfig((p) => ({ ...p, escalaTextoCentroGlebas: novaEsc }));
+            }
+          };
+
           return (
             <div className="space-y-4">
-              <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Texto Central do Imóvel</div>
+              <div className="font-bold text-foreground mb-1 text-sm border-b pb-1">Texto Central da Gleba</div>
 
               {/* Fundo Sólido Branco */}
               <label className="flex items-center gap-2 cursor-pointer py-1">
@@ -108,16 +117,27 @@ export function ObjetoPersonalizarModal({
               </label>
 
               {/* Tamanho do Texto */}
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <div className="flex justify-between font-semibold text-muted-foreground text-[10px] uppercase">
                   <span>Tamanho do Texto</span>
                   <span>{escCentro.toFixed(2)}x</span>
                 </div>
                 <div className="flex gap-1">
-                  <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idCentro, { escala: Math.max(0.4, +(escCentro - 0.05).toFixed(2)) })}>A−</button>
-                  <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idCentro, { escala: Math.min(3.0, +(escCentro + 0.05).toFixed(2)) })}>A+</button>
-                  <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80" onClick={() => patchTextoPlanta(idCentro, { escala: 1.0 })}>Reset</button>
+                  <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer" onClick={() => atualizarEscalaCentro(Math.max(0.4, +(escCentro - 0.05).toFixed(2)))}>A−</button>
+                  <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer" onClick={() => atualizarEscalaCentro(Math.min(3.0, +(escCentro + 0.05).toFixed(2)))}>A+</button>
+                  <button type="button" className="h-6 px-2 text-[10px] font-bold rounded bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer" onClick={() => atualizarEscalaCentro(1.0)}>Reset</button>
                 </div>
+
+                {/* Checkbox marcada por padrao: Ajustar de todas as glebas */}
+                <label className="flex items-center gap-2 cursor-pointer pt-2 border-t mt-2">
+                  <input
+                    type="checkbox"
+                    checked={ajustarTodasGlebas}
+                    onChange={(e) => setAjustarTodasGlebas(e.target.checked)}
+                    className="rounded border-zinc-300 text-primary focus:ring-primary size-4 cursor-pointer"
+                  />
+                  <span className="font-semibold text-xs text-foreground">Ajustar tamanho em todas as glebas</span>
+                </label>
               </div>
 
               {/* Quebra de Linha (Largura em Chars) */}
@@ -136,6 +156,23 @@ export function ObjetoPersonalizarModal({
                   className="w-full h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-primary"
                 />
               </div>
+
+              {/* Botao DADOS DA GLEBA */}
+              {onAbrirDadosGleba && (
+                <div className="pt-2 border-t">
+                  <Button
+                    type="button"
+                    className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5 text-xs cursor-pointer shadow-sm"
+                    onClick={() => {
+                      setObjPersonalizarId(null);
+                      setObjetoSelId(null);
+                      onAbrirDadosGleba();
+                    }}
+                  >
+                    <BookUser className="size-4" /> DADOS DA GLEBA (Configurações)
+                  </Button>
+                </div>
+              )}
             </div>
           );
         }
