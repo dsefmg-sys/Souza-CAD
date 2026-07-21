@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music, Shield, Crown, Phone, Building2, Users, User, Sliders, Binary, Settings, Coins, Keyboard } from 'lucide-react';
+import { FileCog, FileSpreadsheet, RotateCcw, Check, UploadCloud, UserCheck, Trash2, FileText, Download, Upload, Plus, DollarSign, PlayCircle, Database, Music, Shield, Crown, Phone, Building2, Users, User, Sliders, Binary, Settings, Coins, Keyboard, Grid, Leaf, Scale, LayoutGrid, Lock, Sprout } from 'lucide-react';
 import ModelosDocsModal from './ModelosDocsModal';
 import PontosBancoModal from './PontosBancoModal';
 import { zerarBancoPontos } from '@/lib/store/registro';
@@ -108,7 +108,8 @@ type AbaConfig =
   | 'numeracao'
   | 'modelos'
   | 'padroes'
-  | 'colegas';
+  | 'colegas'
+  | 'modulos';
 
 interface Props {
   open: boolean;
@@ -137,6 +138,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
   const [zapSuporte, setZapSuporte] = useState('');
   const [zapSuporteNome, setZapSuporteNome] = useState('');
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO);
+  const [perfil, setPerfil] = useState<PerfilUso | null>(null);
   const [modelosAberto, setModelosAberto] = useState(false);
   const [bancoAberto, setBancoAberto] = useState(false);
   const [padroes, setPadroes] = useState<PadroesProjeto>(PADROES_PADRAO);
@@ -295,6 +297,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
       obterPerfilUsuario().then((p) => {
         if (p) {
           setWorkspaceUid(p.workspaceUid || p.uid);
+          setPerfil(p);
         }
       }).catch((e) => console.warn('[ConfigModal] obterPerfilUsuario:', e));
       listarConvitesEnviados().then(setConvitesEnviados).catch((e) => console.warn('[ConfigModal] listarConvites (init):', e));
@@ -379,6 +382,49 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
     salvarPreferencias(np);
     onConfigChange?.();
     flash('Salvo automaticamente');
+  };
+
+  const toggleModuloSeguro = async (chave: keyof PreferenciasApp, campoLicenca: keyof PerfilUso, nomeModulo: string) => {
+    const licencaAtiva = !perfil || perfil.statusPagamento === 'isento' || !!(perfil as any)[campoLicenca];
+    if (licencaAtiva) {
+      mudarPref(chave, !prefs[chave]);
+    } else {
+      await avisar({
+        titulo: 'Módulo de Assinatura Exclusiva',
+        mensagem: `O ${nomeModulo} não está ativo no seu plano. Para contratá-lo e liberar o acesso, por favor fale com o nosso suporte comercial pelo WhatsApp ou ative-o em seu painel de faturamento.`
+      });
+    }
+  };
+
+  const renderBotaoModulo = (chave: keyof PreferenciasApp, campoLicenca: keyof PerfilUso, nomeModulo: string, classeAtiva: string) => {
+    const ativo = prefs[chave];
+    const licenciado = !perfil || perfil.statusPagamento === 'isento' || !!(perfil as any)[campoLicenca];
+
+    if (!licenciado) {
+      return (
+        <button
+          type="button"
+          onClick={() => toggleModuloSeguro(chave, campoLicenca, nomeModulo)}
+          className="text-xs font-extrabold uppercase px-4 py-1.5 rounded-full border border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+        >
+          <Lock className="size-3" /> Assinar
+        </button>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => mudarPref(chave, !prefs[chave])}
+        className={`text-xs font-black uppercase px-4 py-1.5 rounded-full border transition-all cursor-pointer ${
+          ativo
+            ? `${classeAtiva} text-white`
+            : 'bg-background hover:bg-accent border-border text-muted-foreground'
+        }`}
+      >
+        {ativo ? 'Ativo' : 'Ativar'}
+      </button>
+    );
   };
 
   // Obter lista de aliases para uma ação
@@ -550,6 +596,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
       case 'modelos': return <FileCog className="size-4" />;
       case 'padroes': return <Settings className="size-4" />;
       case 'colegas': return <UserCheck className="size-4" />;
+      case 'modulos': return <Grid className="size-4" />;
       default: return <Settings className="size-4" />;
     }
   };
@@ -656,6 +703,7 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 <Tb a="modelos" rotulo="Importação e Modelos" />
                 <Tb a="padroes" rotulo="Padrões & Backup" />
                 <Tb a="colegas" rotulo="Colegas" />
+                <Tb a="modulos" rotulo="Módulos &amp; Planos" />
               </div>
             </div>
           </div>
@@ -672,19 +720,27 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                 {/* conselho: define as siglas das peças — técnico (CFT/TRT) x engenheiro (CREA/ART) x técnico agrícola (CFTA/TRT) */}
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Conselho / categoria</Label>
-                  <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={t.conselho ?? 'CFT'} onChange={(e) => changeT('conselho', e.target.value as 'CFT' | 'CREA' | 'CFTA' | 'CFT+CREA' | 'CFTA+CREA')}>
+                  <select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={t.conselho ?? 'CFT'} onChange={(e) => changeT('conselho', e.target.value as any)}>
                     <option value="CFT">Técnico Agrimensura — CFT (emite TRT)</option>
                     <option value="CFTA">Técnico Agrícola — CFTA (emite TRT)</option>
                     <option value="CREA">Engenheiro — CREA (emite ART)</option>
+                    <option value="CAU">Arquiteto — CAU (emite RRT)</option>
                     <option value="CFT+CREA">CFT e CREA (Técnico e Engenheiro)</option>
                     <option value="CFTA+CREA">CFTA e CREA (Téc. Agrícola e Engenheiro)</option>
+                    <option value="CAU+CREA">CAU e CREA (Arquiteto e Engenheiro)</option>
                   </select>
                 </div>
                 {prefs.modo === 'simples' ? (
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">Registro {t.conselho ?? 'CFT'}</Label>
-                    <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
-                  </div>
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Registro {t.conselho ?? 'CFT'}</Label>
+                      <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Número da OAB (Opcional - Advogados)</Label>
+                      <Input value={t.oab || ''} onChange={(e) => changeT('oab', e.target.value)} placeholder="Ex: 123.456/MG" />
+                    </div>
+                  </>
                 ) : (
                   <>
                     <div className="space-y-1">
@@ -694,6 +750,10 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold">Registro {t.conselho ?? 'CFT'}</Label>
                       <Input value={t.cft} onChange={(e) => changeT('cft', e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Número da OAB (Opcional - Advogados)</Label>
+                      <Input value={t.oab || ''} onChange={(e) => changeT('oab', e.target.value)} placeholder="Ex: 123.456/MG" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold">Cidade da Assinatura (peças técnicas)</Label>
@@ -776,6 +836,47 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   onToggle={(v) => mudarPref('mostrarAssinaturaConfrontantes', v)}
                   titulo="Assinatura dos confrontantes na planta"
                   descricao="Ligado (padrão): exibe os campos/linhas para assinatura dos confrontantes na planta final impressa. Desligado: oculta esses campos para um desenho mais limpo." />
+
+                <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground pt-1.5">Memorial Descritivo</div>
+                
+                <div className="space-y-1.5 rounded-lg border bg-card p-3">
+                  <Label className="text-xs font-bold text-foreground">Coordenadas na Narrativa</Label>
+                  <p className="text-[11px] leading-tight text-muted-foreground">
+                    Escolha quais coordenadas exibir na descrição de cada vértice do Memorial Descritivo.
+                  </p>
+                  <select 
+                    className="w-full rounded-md border bg-background px-3 py-1.5 text-xs font-medium" 
+                    value={prefs.memorialTipoCoordenada ?? 'geodesica'} 
+                    onChange={(e) => mudarPref('memorialTipoCoordenada', e.target.value as any)}
+                  >
+                    <option value="geodesica">Apenas Geodésicas (Latitude/Longitude)</option>
+                    <option value="utm">Apenas Planas (UTM E/N)</option>
+                    <option value="ambas">UTM Planas + Geodésicas (Lat/Lon)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5 rounded-lg border bg-card p-3">
+                  <Label className="text-xs font-bold text-foreground">Formato de Latitude/Longitude</Label>
+                  <p className="text-[11px] leading-tight text-muted-foreground">
+                    Selecione o formato de exibição da Latitude/Longitude (se incluídas).
+                  </p>
+                  <div className="flex w-fit items-center gap-1 rounded-full border bg-muted/40 p-0.5 text-xs">
+                    {(['gms', 'decimal'] as const).map((fmt) => (
+                      <button 
+                        key={fmt} 
+                        type="button" 
+                        onClick={() => mudarPref('memorialLatLonFormat', fmt)}
+                        className={`rounded-full px-3 py-1 font-semibold transition-colors ${
+                          (prefs.memorialLatLonFormat ?? 'gms') === fmt 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {fmt === 'gms' ? 'GMS (°\'\")' : 'Decimal (Graus)'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
               </div>
 
@@ -1659,6 +1760,175 @@ export default function ConfiguracoesModal({ open, onOpenChange, onConfigChange,
                   <Button size="sm" variant="outline" disabled={apagandoConta} onClick={apagarMinhaConta} className="text-destructive border-destructive/40 hover:bg-destructive/10">
                     {apagandoConta ? 'Apagando…' : 'Apagar minha conta'}
                   </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {aba === 'modulos' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-extrabold uppercase tracking-wide text-foreground flex items-center gap-2">
+                  <Grid className="size-4 text-emerald-500" /> Módulos Opcionais e Recursos Adicionais
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Ative ou desative módulos de especialização técnica para personalizar sua barra de ferramentas e evitar poluição visual.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3.5 max-w-2xl">
+                <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-muted/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 bg-lime-500/10 text-lime-600 dark:text-lime-400 rounded-lg shrink-0">
+                        <Leaf className="size-5 shrink-0" />
+                      </span>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                          MÓDULO AMBIENTAL
+                          <span className="text-[8px] font-black tracking-widest uppercase bg-lime-500/10 text-lime-600 dark:text-lime-400 px-1.5 py-0.5 rounded">Ativável</span>
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          Geração de LTCAs (Laudo de Caracterização Ambiental), PRADAs (Recuperação de Áreas Degradadas), Projetos para Financiamentos e Licenciamento.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end shrink-0">
+                    {renderBotaoModulo('moduloAmbiental', 'licencaAmbiental', 'Módulo Ambiental', 'bg-lime-600 border-lime-600 hover:bg-lime-700')}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-muted/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0">
+                        <Scale className="size-5 shrink-0" />
+                      </span>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                          MÓDULO DE USUCAPIÃO
+                          <span className="text-[8px] font-black tracking-widest uppercase bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded">Ativável</span>
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          Elaboração de laudos de usucapião extrajudicial, ata de posse mansa e pacífica, planta de situação de posse e termos de anuência específicos.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end shrink-0">
+                    {renderBotaoModulo('moduloUsucapiao', 'licencaUsucapiao', 'Módulo de Usucapião', 'bg-indigo-600 border-indigo-600 hover:bg-indigo-700')}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-muted/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg shrink-0">
+                        <Coins className="size-5 shrink-0" />
+                      </span>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                          MÓDULO DE AVALIAÇÃO DE IMÓVEIS
+                          <span className="text-[8px] font-black tracking-widest uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded">Ativável</span>
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          Avaliação de propriedades urbanas e rurais, inventário de benfeitorias, cálculo de aptidão do solo e laudo técnico para garantias reais/bancárias.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end shrink-0">
+                    {renderBotaoModulo('moduloAvaliacao', 'licencaAvaliacao', 'Módulo de Avaliação de Imóveis', 'bg-rose-600 border-rose-600 hover:bg-rose-700')}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-muted/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0">
+                        <Scale className="size-5 shrink-0" />
+                      </span>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                          MÓDULO JURÍDICO &amp; REGULARIZAÇÃO
+                          <span className="text-[8px] font-black tracking-widest uppercase bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded">Ativável</span>
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          Ponte colaborativa entre advogados e agrimensores. Geração de petições iniciais de usucapião, contratos de cessão de posse e notificações extrajudiciais.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end shrink-0">
+                    {renderBotaoModulo('moduloJuridico', 'licencaJuridico', 'Módulo Jurídico', 'bg-indigo-600 border-indigo-600 hover:bg-indigo-700')}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-muted/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg shrink-0">
+                        <Building2 className="size-5 shrink-0" />
+                      </span>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                          MÓDULO DE REURB (REGULARIZAÇÃO FUNDIÁRIA)
+                          <span className="text-[8px] font-black tracking-widest uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">Ativável</span>
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          Instrução para Regularização Fundiária Urbana/Rural. Geração de projetos de regularização (PRF), CRF (Certidão de REURB) e relatórios de infraestrutura.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end shrink-0">
+                    {renderBotaoModulo('moduloReurb', 'licencaReurb', 'Módulo de REURB', 'bg-amber-600 border-amber-600 hover:bg-amber-700')}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-muted/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-lg shrink-0">
+                        <LayoutGrid className="size-5 shrink-0" />
+                      </span>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                          MÓDULO DE LOTEAMENTOS &amp; INFRAESTRUTURA
+                          <span className="text-[8px] font-black tracking-widest uppercase bg-teal-500/10 text-teal-600 dark:text-teal-400 px-1.5 py-0.5 rounded">Ativável</span>
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          Ferramenta para Engenharia de Infraestrutura e Loteadoras. Memorial de loteamento, projetos de arruamento/quadras, e laudo técnico de movimentação de terra (corte/aterro).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end shrink-0">
+                    {renderBotaoModulo('moduloLoteamento', 'licencaLoteamento', 'Módulo de Loteamentos & Infraestrutura', 'bg-teal-600 border-teal-600 hover:bg-teal-700')}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border/80 bg-card hover:bg-muted/10 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg shrink-0">
+                        <Sprout className="size-5 shrink-0" />
+                      </span>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                          MÓDULO DE CRÉDITO RURAL &amp; AGROPECUÁRIO
+                          <span className="text-[8px] font-black tracking-widest uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded">Ativável</span>
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          Elaboração de projetos e laudos para liberação de crédito agrícola (Pronaf, custeio e investimentos). Emissão de Laudos de Aptidão de Solo, Aptidão Agrícola e Cronogramas Físico-Financeiros.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end shrink-0">
+                    {renderBotaoModulo('moduloCredito', 'licencaCredito', 'Módulo de Crédito Rural & Agropecuário', 'bg-emerald-600 border-emerald-600 hover:bg-emerald-700')}
+                  </div>
                 </div>
               </div>
             </div>

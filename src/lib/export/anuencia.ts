@@ -48,8 +48,15 @@ function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
   addP('(CARTA DE ANUÊNCIA)', true, AlignmentType.CENTER, 240, 24);
 
   // Qualificação do Confrontante
+  const isCnpj = confrontante.cpf && confrontante.cpf.replace(/\D/g, '').length > 11;
+  const docLabel = isCnpj ? 'CNPJ' : 'CPF';
+  
+  const estadoCivilTxt = confrontante.estadoCivil
+    ? `, estado civil ${confrontante.estadoCivil}`
+    : '';
+
   const conjugeTxt = confrontante.conjugeNome
-    ? `, casado(a) sob o regime de bens com ${confrontante.conjugeNome}, inscrito(a) no CPF sob o nº ${confrontante.conjugeCpf || 'DADO AUSENTE'}`
+    ? `, casado(a) com ${confrontante.conjugeNome}, inscrito(a) no CPF sob o nº ${confrontante.conjugeCpf || 'DADO AUSENTE'}`
     : '';
 
   const inventarianteTxt = confrontante.inventarianteNome
@@ -67,7 +74,9 @@ function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
           : 'proprietário(a)';
 
   let qualConfrontante = `Eu, ${confrontante.nome}, `;
-  if (confrontante.cpf) qualConfrontante += `inscrito(a) no CPF sob o nº ${confrontante.cpf}, `;
+  if (confrontante.cpf) qualConfrontante += `inscrito(a) no ${docLabel} sob o nº ${confrontante.cpf}${estadoCivilTxt}, `;
+  else if (estadoCivilTxt && confrontante.estadoCivil) qualConfrontante += `de estado civil ${confrontante.estadoCivil.toLowerCase()}, `;
+  
   qualConfrontante += `na qualidade de ${condicaoTxt} do imóvel confrontante `;
   if (confrontante.matricula) qualConfrontante += `registrado sob a Matrícula nº ${confrontante.matricula} (CNS: ${confrontante.cns || 'DADO AUSENTE'}) `;
   qualConfrontante += `${conjugeTxt}${inventarianteTxt}, `;
@@ -280,16 +289,21 @@ function montarParagrafosAnuencia(input: AnuenciaInput): (Paragraph | Table)[] {
   };
 
   // Assinatura do Confrontante
-  addAssinatura(confrontante.nome, `Confrontante (${condicaoTxt})`);
+  const docConfrontante = confrontante.cpf
+    ? ` - ${docLabel}: ${confrontante.cpf}`
+    : '';
+  addAssinatura(confrontante.nome, `Confrontante (${condicaoTxt})${docConfrontante}`);
 
   // Cônjuge se houver
   if (confrontante.conjugeNome) {
-    addAssinatura(confrontante.conjugeNome, 'Cônjuge do Confrontante');
+    const docConj = confrontante.conjugeCpf ? ` - CPF: ${confrontante.conjugeCpf}` : '';
+    addAssinatura(confrontante.conjugeNome, `Cônjuge do Confrontante${docConj}`);
   }
 
   // Usufruto: o nu-proprietário assina junto (se informado).
   if (confrontante.condicao === 'usufrutuario' && confrontante.nuProprietarioNome?.trim()) {
-    addAssinatura(confrontante.nuProprietarioNome, 'Nu-proprietário(a) do imóvel confrontante');
+    const docNu = confrontante.nuProprietarioCpf ? ` - CPF: ${confrontante.nuProprietarioCpf}` : '';
+    addAssinatura(confrontante.nuProprietarioNome, `Nu-proprietário(a) do imóvel confrontante${docNu}`);
   }
 
   // Proprietário do Imóvel (requerente) + demais titulares, se houver.

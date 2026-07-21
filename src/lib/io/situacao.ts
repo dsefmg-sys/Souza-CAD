@@ -103,24 +103,44 @@ export async function gerarSituacao(aneis: AnelSituacao[], opts: { alvoPx?: numb
 
     // contorno de cada gleba em BRANCO com linha forte (halo escuro + leve preenchimento) e os
     // vértices marcados — mostra ao cartório, com nitidez, onde o imóvel está.
-    // Glebas auxiliares são desenhadas com linha mais fina que as ativas.
+    // Glebas auxiliares são desenhadas com linha tracejada mais fina que as ativas.
     const esc = w / 1000;
     normRings.forEach((ring) => {
       const isAuxiliar = ring.tipoGleba === 'auxiliar';
-      const lineW = isAuxiliar ? 2.6 * esc : 5.2 * esc;
-      const haloW = isAuxiliar ? 6 * esc : 11 * esc;
-      const dotR = isAuxiliar ? 3.2 * esc : 5.2 * esc;
+      const isOculta = ring.tipoGleba === 'oculta';
+      if (isOculta) return; // glebas ocultas nunca aparecem na situação
+      const lineW = isAuxiliar ? 2.4 * esc : 5.2 * esc;
+      const haloW = isAuxiliar ? 5 * esc : 11 * esc;
+      const dotR = isAuxiliar ? 2.8 * esc : 5.2 * esc;
+      const tracoLen = isAuxiliar ? 8 * esc : 0;   // comprimento do tracejo (0 = sólido)
+      const tracoGap = isAuxiliar ? 5 * esc : 0;   // espaço do tracejo
 
       const xy = ring.pts.map((p) => [lonToGlobalPx(p.lon, z) - pxMin, latToGlobalPx(p.lat, z) - pyMin] as const);
       const traco = () => { ctx.beginPath(); xy.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y))); ctx.closePath(); };
       ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-      traco(); ctx.fillStyle = isAuxiliar ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.14)'; ctx.fill();
-      traco(); ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = haloW; ctx.stroke();   // halo
-      traco(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = lineW; ctx.stroke();          // branco forte
-      // vértices
+      traco(); ctx.fillStyle = isAuxiliar ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.14)'; ctx.fill();
+
+      // Halo escuro de legibilidade
+      if (isAuxiliar) {
+        ctx.setLineDash([tracoLen + haloW * 0.4, tracoGap + haloW * 0.4]);
+      } else {
+        ctx.setLineDash([]);
+      }
+      traco(); ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = haloW; ctx.stroke();
+
+      // Linha branca principal
+      if (isAuxiliar) {
+        ctx.setLineDash([tracoLen, tracoGap]);
+      } else {
+        ctx.setLineDash([]);
+      }
+      traco(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = lineW; ctx.stroke();
+      ctx.setLineDash([]); // reset
+
+      // vértices (apenas para principais; auxiliares têm dots menores e semitransparentes)
       xy.forEach(([x, y]) => {
         ctx.beginPath(); ctx.arc(x, y, dotR, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff'; ctx.fill();
+        ctx.fillStyle = isAuxiliar ? 'rgba(255,255,255,0.75)' : '#ffffff'; ctx.fill();
         ctx.lineWidth = 1.2 * esc; ctx.strokeStyle = 'rgba(0,0,0,0.75)'; ctx.stroke();
       });
     });

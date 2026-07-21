@@ -61,6 +61,24 @@ export interface PreferenciasApp {
   confirmarAntesApagar: boolean;
   /** Mostra campos para assinatura dos confrontantes na planta. Padrão: true. */
   mostrarAssinaturaConfrontantes: boolean;
+  /** Ativa o módulo ambiental (laudos técnicos, projetos para financiamento, etc.). Padrão: false. */
+  moduloAmbiental: boolean;
+  /** Ativa o módulo de usucapião (laudo técnico de usucapião, ata de posse). Padrão: false. */
+  moduloUsucapiao: boolean;
+  /** Ativa o módulo de avaliação de imóveis (laudo de avaliação, estimativa de valor). Padrão: false. */
+  moduloAvaliacao: boolean;
+  /** Ativa o módulo jurídico e regularização (petição de usucapião, notificações). Padrão: false. */
+  moduloJuridico: boolean;
+  /** Ativa o módulo de REURB (Regularização Fundiária Urbana/Rural). Padrão: false. */
+  moduloReurb: boolean;
+  /** Ativa o módulo de Loteamento & Infraestrutura. Padrão: false. */
+  moduloLoteamento: boolean;
+  /** Ativa o módulo de Crédito Rural & Agropecuário. Padrão: false. */
+  moduloCredito: boolean;
+  /** Tipo de coordenadas no texto do Memorial Descritivo. */
+  memorialTipoCoordenada?: 'geodesica' | 'utm' | 'ambas';
+  /** Formato de Lat/Lon no Memorial: 'gms' (Graus-Minutos-Segundos) ou 'decimal' */
+  memorialLatLonFormat?: 'gms' | 'decimal';
   /** Atalhos do teclado (F1 a F12) customizáveis. */
   atalhosF?: Record<string, string>;
   /** Atalhos de comando na barra de status. */
@@ -132,6 +150,15 @@ export const PREFERENCIAS_PADRAO: PreferenciasApp = {
   casasDecimais: 3,
   confirmarAntesApagar: true,
   mostrarAssinaturaConfrontantes: true,
+  moduloAmbiental: false,
+  moduloUsucapiao: false,
+  moduloAvaliacao: false,
+  moduloJuridico: false,
+  moduloReurb: false,
+  moduloLoteamento: false,
+  moduloCredito: false,
+  memorialTipoCoordenada: 'geodesica',
+  memorialLatLonFormat: 'gms',
   atalhosF: ATALHOS_F_PADRAO,
   atalhosComando: ATALHOS_COMANDO_PADRAO,
 };

@@ -80,12 +80,14 @@ const TEC_DEMO = { credenciamentoIncra: 'COIN', contadorMarco: 10, contadorPonto
 export interface ProjetoFicticio {
   nome: string;
   imovel: ImovelData;
+  imoveis?: ImovelData[];
   vertices: Vertex[];
   confrontantes: Confrontante[];
   confrontantePorLado: Record<number, string>;
   glebas?: Gleba[];
   zona: number;
   hemisferio: 'N' | 'S';
+  tipoProjeto?: 'rural' | 'loteamento';
 }
 
 export function gerarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: number }): ProjetoFicticio {
@@ -322,5 +324,151 @@ export function gerarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: 
     glebas: [gleba1, gleba2, gleba3, gleba4, gleba5],
     zona: ZONA,
     hemisferio: HEMISFERIO
+  };
+}
+
+export interface OpcoesDemo {
+  numImoveis: number;
+  numGlebas: number;
+  tipoGleba: 'rural' | 'loteamento';
+}
+
+export function gerarProjetoDemoConfiguravel(opts: OpcoesDemo): ProjetoFicticio {
+  const { numImoveis, numGlebas, tipoGleba } = opts;
+  const imoveisList: ImovelData[] = [];
+  const glebasList: Gleba[] = [];
+  
+  const nomesRestantes = [...CONFRONTANTES_NOMES];
+  
+  for (let imIdx = 0; imIdx < numImoveis; imIdx++) {
+    const selectedImovelName = IMOVEIS[(Math.floor(Math.random() * IMOVEIS.length) + imIdx) % IMOVEIS.length];
+    const prop = PROPRIETARIOS[(Math.floor(Math.random() * PROPRIETARIOS.length) + imIdx) % PROPRIETARIOS.length];
+    const mun = MUNICIPIOS[(Math.floor(Math.random() * MUNICIPIOS.length) + imIdx) % MUNICIPIOS.length];
+    const imovelId = `imovel_${imIdx + 1}`;
+    
+    const im: ImovelData = {
+      id: imovelId,
+      denominacao: numImoveis > 1 ? `${selectedImovelName} - Imóvel ${imIdx + 1}` : selectedImovelName,
+      matricula: String(Math.floor(1000 + Math.random() * 9000)),
+      cns: '01.234-5',
+      codigoImovelIncra: '9012' + Math.floor(100000000 + Math.random() * 900000000),
+      proprietario: prop.nome,
+      cpfProprietario: gerarCpfValido(),
+      conjugeProprietario: prop.conjuge,
+      cpfConjugeProprietario: gerarCpfValido(),
+      tipoPessoa: 'Física',
+      municipio: mun,
+      local: `Córrego Principal, Zona Rural, ${mun}`,
+      naturezaServico: tipoGleba === 'loteamento' ? 'Desmembramento/Loteamento' : 'Georreferenciamento',
+      situacao: 'Imóvel Registrado',
+      naturezaArea: 'Particular',
+      numeroTrt: 'MG-' + (2025 + Math.floor(Math.random() * 3)) + '-' + String(Math.floor(1000000 + Math.random() * 9000000)),
+      ficticio: true,
+    };
+    
+    imoveisList.push(im);
+    
+    // Gera as glebas/lotes para este imóvel
+    for (let glIdx = 0; glIdx < numGlebas; glIdx++) {
+      const glebaId = `gleba_demo_im_${imIdx + 1}_gl_${glIdx + 1}`;
+      const nomeUnidade = tipoGleba === 'loteamento' ? `Lote ${glIdx + 1}` : `Gleba ${glIdx + 1}`;
+      
+      let rawPoints: RawPoint[] = [];
+      if (tipoGleba === 'loteamento') {
+        // Lote de 10m x 20m
+        const row = Math.floor(glIdx / 10);
+        const col = glIdx % 10;
+        const x0 = 650000 + imIdx * 150 + col * 12; // 12 metros de passo (lote + recuo de 2m)
+        const y0 = 7680000 + row * 28; // 28 metros de passo (lote + 8m de rua)
+        
+        rawPoints = [
+          { nome: `L${glIdx + 1}_V1`, codigo: 'LOTEAMENTO-MURO', norte: y0, leste: x0, elevacao: 800 + row * 0.4 + col * 0.1, status: 'FIXED', isBase: false, isSingle: false },
+          { nome: `L${glIdx + 1}_V2`, codigo: 'LOTEAMENTO-MURO', norte: y0, leste: x0 + 10, elevacao: 800 + row * 0.4 + (col + 1) * 0.1, status: 'FIXED', isBase: false, isSingle: false },
+          { nome: `L${glIdx + 1}_V3`, codigo: 'LOTEAMENTO-MURO', norte: y0 + 20, leste: x0 + 10, elevacao: 800.5 + row * 0.4 + (col + 1) * 0.1, status: 'FIXED', isBase: false, isSingle: false },
+          { nome: `L${glIdx + 1}_V4`, codigo: 'LOTEAMENTO-MURO', norte: y0 + 20, leste: x0, elevacao: 800.5 + row * 0.4 + col * 0.1, status: 'FIXED', isBase: false, isSingle: false },
+        ];
+      } else {
+        // Gleba rural de 1 a 100 ha
+        // ex: 350m x 350m (~12.2 ha)
+        const row = Math.floor(glIdx / 3);
+        const col = glIdx % 3;
+        const x0 = 650000 + imIdx * 1500 + col * 450;
+        const y0 = 7680000 + row * 450;
+        
+        // Adiciona um ruído para não ser um quadrado perfeito
+        const dx1 = Math.round((Math.random() - 0.5) * 40);
+        const dy1 = Math.round((Math.random() - 0.5) * 40);
+        const dx2 = Math.round((Math.random() - 0.5) * 40);
+        const dy2 = Math.round((Math.random() - 0.5) * 40);
+        const dx3 = Math.round((Math.random() - 0.5) * 40);
+        const dy3 = Math.round((Math.random() - 0.5) * 40);
+        const dx4 = Math.round((Math.random() - 0.5) * 40);
+        const dy4 = Math.round((Math.random() - 0.5) * 40);
+        
+        rawPoints = [
+          { nome: `G${glIdx + 1}_V1`, codigo: 'CERCA', norte: y0 + dy1, leste: x0 + dx1, elevacao: 820 + row * 2 + col, status: 'FIXED', isBase: false, isSingle: false },
+          { nome: `G${glIdx + 1}_V2`, codigo: 'MATA', norte: y0 + dy2, leste: x0 + 400 + dx2, elevacao: 822 + row * 2 + col, status: 'FIXED', isBase: false, isSingle: false },
+          { nome: `G${glIdx + 1}_V3`, codigo: 'CERCA', norte: y0 + 400 + dy3, leste: x0 + 400 + dx3, elevacao: 825 + row * 2 + col, status: 'FIXED', isBase: false, isSingle: false },
+          { nome: `G${glIdx + 1}_V4`, codigo: 'CORREGO', norte: y0 + 400 + dy4, leste: x0 + dx4, elevacao: 818 + row * 2 + col, status: 'FIXED', isBase: false, isSingle: false },
+        ];
+      }
+      
+      const v = montarVertices(rawPoints, ZONA, HEMISFERIO, TEC_DEMO);
+      
+      // Define algumas representações
+      const reps = ['cerca', 'mata', 'estrada', 'corrego'];
+      v.forEach((vt, vi) => {
+        vt.representacao = reps[vi % reps.length];
+      });
+      
+      const { confrontantes: confs, confrontantePorLado: cpl } = montarConfrontantes(v);
+      
+      // Preenche os nomes e CPFs aleatórios dos confrontantes
+      for (const c of confs) {
+        if (/corrego/i.test(c.nome)) {
+          c.nome = 'Córrego Santa Rita';
+          c.condicao = 'posseiro';
+        } else {
+          if (nomesRestantes.length === 0) {
+            nomesRestantes.push(...CONFRONTANTES_NOMES);
+          }
+          const idx = Math.floor(Math.random() * nomesRestantes.length);
+          const nomeEscolhido = nomesRestantes.splice(idx, 1)[0] || 'Confrontante Temporário';
+          c.nome = nomeEscolhido;
+          c.cpf = gerarCpfValido();
+          c.matricula = String(Math.floor(1000 + Math.random() * 9000));
+          c.cns = '01.234-5';
+        }
+      }
+      
+      const gleba: Gleba = {
+        id: glebaId,
+        denominacao: `${im.denominacao} - ${nomeUnidade}`,
+        parcela: String(glIdx + 1).padStart(3, '0'),
+        vertices: v,
+        confrontantes: confs,
+        confrontantePorLado: cpl,
+        tipoGleba: 'principal',
+        visivel: true,
+        imovelId: imovelId,
+      };
+      
+      glebasList.push(gleba);
+    }
+  }
+  
+  const primeiraGleba = glebasList[0];
+  
+  return {
+    nome: `Projeto Demonstração - ${numImoveis} imóvel(is) (${tipoGleba === 'loteamento' ? 'Loteamento' : 'Rural'})`,
+    imovel: imoveisList[0],
+    imoveis: imoveisList,
+    vertices: primeiraGleba.vertices,
+    confrontantes: primeiraGleba.confrontantes,
+    confrontantePorLado: primeiraGleba.confrontantePorLado,
+    glebas: glebasList,
+    zona: ZONA,
+    hemisferio: HEMISFERIO,
+    tipoProjeto: tipoGleba,
   };
 }

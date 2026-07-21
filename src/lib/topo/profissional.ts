@@ -5,14 +5,14 @@ import type { TecnicoData } from './types';
 // Engenheiro (agrimensor/civil/agrônomo): registra no CREA e emite ART (Anotação de Responsabilidade
 // Técnica). Um app só serve os dois se trocar essas siglas nas peças em vez de fixar "técnico/TRT".
 
-export type Conselho = 'CFT' | 'CREA' | 'CFTA' | 'CFT+CREA' | 'CFTA+CREA';
+export type Conselho = 'CFT' | 'CREA' | 'CFTA' | 'CAU' | 'CFT+CREA' | 'CFTA+CREA' | 'CAU+CREA';
 
 export interface RotulosProfissional {
-  /** Conselho (CFT do técnico, CFTA do técnico agrícola ou CREA do engenheiro). */
+  /** Conselho (CFT do técnico, CFTA do técnico agrícola, CREA do engenheiro ou CAU do arquiteto). */
   conselho: Conselho;
   /** Rótulo do nº de registro no conselho — sempre igual ao próprio conselho ou combinado. */
   registro: string;
-  /** Sigla do termo de responsabilidade: TRT (técnico), ART (engenheiro) ou combinados. */
+  /** Sigla do termo de responsabilidade: TRT (técnico), ART (engenheiro), RRT (arquiteto) ou combinados. */
   termo: string;
   /** Nome por extenso do termo, pra textos de ajuda/onboarding. */
   termoExtenso: string;
@@ -26,11 +26,17 @@ export function rotulosProfissional(tec: Pick<TecnicoData, 'conselho'> | undefin
   if (tec?.conselho === 'CFTA') {
     return { conselho: 'CFTA', registro: 'CFTA', termo: 'TRT', termoExtenso: 'Termo de Responsabilidade Técnica' };
   }
+  if (tec?.conselho === 'CAU') {
+    return { conselho: 'CAU', registro: 'CAU', termo: 'RRT', termoExtenso: 'Registro de Responsabilidade Técnica' };
+  }
   if (tec?.conselho === 'CFT+CREA') {
     return { conselho: 'CFT+CREA', registro: 'CFT/CREA', termo: 'TRT/ART', termoExtenso: 'Termo ou Anotação de Responsabilidade Técnica' };
   }
   if (tec?.conselho === 'CFTA+CREA') {
     return { conselho: 'CFTA+CREA', registro: 'CFTA/CREA', termo: 'TRT/ART', termoExtenso: 'Termo ou Anotação de Responsabilidade Técnica' };
+  }
+  if (tec?.conselho === 'CAU+CREA') {
+    return { conselho: 'CAU+CREA', registro: 'CAU/CREA', termo: 'RRT/ART', termoExtenso: 'Registro ou Anotação de Responsabilidade Técnica' };
   }
   return { conselho: 'CFT', registro: 'CFT', termo: 'TRT', termoExtenso: 'Termo de Responsabilidade Técnica' };
 }

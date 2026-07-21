@@ -81,8 +81,13 @@ export default function ConfrontanteEditModal({ open, confrontante, onSalvar, on
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <Campo label="CPF / CNPJ" value={c.cpf} onChange={(v) => set({ cpf: v })} aviso={avisoDoc(c.cpf)} />
-                  {cond !== 'posseiro' && <Campo label="Matrícula de Origem" value={c.matricula} onChange={(v) => set({ matricula: v })} />}
+                  <Campo label="Estado Civil" value={c.estadoCivil ?? ''} onChange={(v) => set({ estadoCivil: v })} ph="Ex: Casado(a)" />
                 </div>
+                {cond !== 'posseiro' && (
+                  <div className="grid grid-cols-1 gap-3">
+                    <Campo label="Matrícula de Origem" value={c.matricula} onChange={(v) => set({ matricula: v })} />
+                  </div>
+                )}
                 {cond === 'usufrutuario' && (
                   <div className="grid grid-cols-2 gap-3">
                     <Campo label="Nu-proprietário" value={c.nuProprietarioNome ?? ''} onChange={(v) => set({ nuProprietarioNome: v })} />

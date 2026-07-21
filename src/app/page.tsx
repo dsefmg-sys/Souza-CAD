@@ -7,10 +7,11 @@ import { saveAs } from 'file-saver';
 import {
   Upload, FileText, Map as MapIcon, Plus, Trash2,
   RotateCcw, Flag, Save, FolderOpen,
-  CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Search,
+  CheckCircle2, AlertTriangle, XCircle, Database, BookUser, Eye, EyeOff, Search, ListOrdered,
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Printer, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
-  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain, LayoutGrid, Building2,
+  Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain, LayoutGrid, Building2, Coins,
+  User, MapPin, Calendar, Sprout, Share2, Play,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -114,15 +115,15 @@ import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
 import { aplicarOrto, parseAzimute, type ModoOrto } from '@/lib/topo/orto';
 import { dividirSegmentoUtm } from '@/lib/topo/editing';
 import { porAfastamento } from '@/lib/topo/verticeVirtual';
-import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef, carregarImportVerticesVizinho, tutorialJaVisto, marcarTutorialVisto, carregarPlantaTemplates, salvarPlantaTemplate } from '@/lib/store/settings';
+import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlantaPadrao, salvarTemaUsuario, carregarTemaUsuario, carregarImportTxt, carregarModeloSigef, carregarImportVerticesVizinho, tutorialJaVisto, marcarTutorialVisto, carregarPlantaTemplates, salvarPlantaTemplate, TECNICO_PADRAO } from '@/lib/store/settings';
 import { useAuth, sair } from '@/lib/firebase/auth';
 import { definirModoEntrada, useModoEntrada } from '@/lib/store/loginSkip';
 import { puxarConfigDaNuvem, empurrarConfigParaNuvem, limparConfigLocalNaSaida } from '@/lib/store/configNuvem';
-import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem } from '@/lib/store/projects';
+import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem, inscreverConflitoEdicao } from '@/lib/store/projects';
 import { exportarProjetoZip } from '@/lib/store/backup';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
-import { gerarProjetoFicticio } from '@/lib/demo/projetoFicticio';
+import { gerarProjetoFicticio, gerarProjetoDemoConfiguravel } from '@/lib/demo/projetoFicticio';
 import { iniciarCoresDivisa, salvarCorDivisa, coresEfetivas } from '@/lib/store/coresDivisa';
 import { carregarTiposDivisaCustom, salvarTipoDivisaCustom, type TipoDivisaCustom } from '@/lib/store/tiposDivisaCustom';
 import { sincronizarPerfil, registrarProjetoSalvo, obterPerfilUsuario, aceitarConviteSePendente, obterContagemUsuarios, type PerfilUso } from '@/lib/store/perfilUso';
@@ -133,7 +134,17 @@ import { souMaster, carregarModo3dAtivado, carregarYoutubePlaylist, carregarVide
 import { carregarConfigAssinatura, verificarBloqueioFaturamento, type ConfigAssinatura } from '@/lib/store/assinatura';
 
 import PrimeiroAcessoModal from '@/components/PrimeiroAcessoModal';
+import MeioAmbienteModal from '@/components/MeioAmbienteModal';
+import UsucapiaoModal from '@/components/UsucapiaoModal';
+import AvaliacaoModal from '@/components/AvaliacaoModal';
+import JuridicoModal from '@/components/JuridicoModal';
+import ReurbModal from '@/components/ReurbModal';
+import LoteamentoModal from '@/components/LoteamentoModal';
+import CreditoRuralModal from '@/components/CreditoRuralModal';
+import CompartilharModal from '@/components/CompartilharModal';
+import DemoConfigModal from '@/components/DemoConfigModal';
 import PlanilhaConferenciaModal from '@/components/PlanilhaConferenciaModal';
+import RenomearLoteModal from '@/components/RenomearLoteModal';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, colegasCad, imoveisCad, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
 import { exportarKML } from '@/lib/export/kml';
 import RelatorioSobreposicaoModal from '@/components/RelatorioSobreposicaoModal';
@@ -830,6 +841,7 @@ export default function EditorPage() {
   const [porcentagemAberta, setPorcentagemAberta] = useState(false);
   const [estudioAberto, setEstudioAberto] = useState(false);
   const [confEditId, setConfEditId] = useState<string | null>(null);
+  const [conflitoEdicao, setConflitoEdicao] = useState<{ usuario: string; dadosNovos: string } | null>(null);
 
   const [posBarra, setPosBarra] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -1495,6 +1507,8 @@ export default function EditorPage() {
     window.addEventListener('online', aoVoltarOnline);
     return () => window.removeEventListener('online', aoVoltarOnline);
   }, [user]);
+
+
 
   // 2. Aplica localmente e salva na nuvem apenas após carregar para evitar sobrescrever dados do Firestore
   useEffect(() => {
@@ -2468,12 +2482,32 @@ export default function EditorPage() {
     const g = gs.find((x) => x.id === id);
     if (g) carregarGleba(g);
   }
-  function novaGleba() {
+  function novaGleba(quadraPadrao?: string) {
     const gs = sincronizarGlebas();
+    const isLote = tipoProjeto === 'loteamento';
+    const label = isLote ? 'Lote' : 'Gleba';
+    
+    // Contar quantos lotes/glebas já existem nessa quadra
+    const totalNaQuadra = quadraPadrao 
+      ? gs.filter(g => (g.quadra || '').trim().toUpperCase() === quadraPadrao.trim().toUpperCase()).length 
+      : gs.filter(g => !g.quadra).length;
+      
     const nova = novaGlebaVazia(gs.length + 1);
+    
+    if (isLote) {
+      const letraQuadra = quadraPadrao ? quadraPadrao.toUpperCase() : 'A';
+      nova.denominacao = quadraPadrao 
+        ? `Lote ${totalNaQuadra + 1} - Q.${letraQuadra}`
+        : `Lote ${gs.length + 1}`;
+    }
+    
+    if (quadraPadrao) {
+      nova.quadra = quadraPadrao;
+    }
+    
     setGlebas([...gs, nova]);
     carregarGleba(nova);
-    aviso(`Gleba "${nova.denominacao}" criada.`);
+    aviso(`${label} "${nova.denominacao}" criado.`);
   }
   async function removerGleba(id: string) {
     if (sincronizarGlebas().length > 1 && !(await confirmarApagar('Deseja realmente apagar esta gleba?'))) return;
@@ -2905,6 +2939,7 @@ export default function EditorPage() {
     if (destino === 'novo') {
       // Limpa os estados do projeto anterior para evitar vazamento de dados
       setProjetoId(null);
+      setAbertoEm(0);
       setNomeProjeto('');
       setNomeProjetoManual(false);
       setRequerente(undefined);
@@ -4339,7 +4374,11 @@ export default function EditorPage() {
           body: JSON.stringify({
             res: r, imovel, tecnico, confrontantes, confrontantePorLado,
             dataExtenso: dataPorExtenso(), requerente, transmitente,
-            partesAdicionais, zonaUtm: zona, modo
+            partesAdicionais, zonaUtm: zona, modo,
+            preferencias: {
+              memorialTipoCoordenada: prefs.memorialTipoCoordenada,
+              memorialLatLonFormat: prefs.memorialLatLonFormat,
+            }
           })
         });
         if (response.ok) blobBruto = await response.blob();
@@ -4349,7 +4388,11 @@ export default function EditorPage() {
         blobBruto = await gerarMemorialDocx({
           res: r, imovel, tecnico, confrontantes, confrontantePorLado,
           dataExtenso: dataPorExtenso(), requerente, transmitente,
-          partesAdicionais, zonaUtm: zona, modo
+          partesAdicionais, zonaUtm: zona, modo,
+          preferencias: {
+            memorialTipoCoordenada: prefs.memorialTipoCoordenada,
+            memorialLatLonFormat: prefs.memorialLatLonFormat,
+          }
         });
       }
 
@@ -5176,9 +5219,48 @@ export default function EditorPage() {
   const [incluirDivisaNasCurvas, setIncluirDivisaNasCurvas] = useState(true);
   const [gradeDensidadeMetros, setGradeDensidadeMetros] = useState(30); // 30m = Nativo Satélite (Copernicus DEM 30m)
   const [altitudeModalAberta, setAltitudeModalAberta] = useState(false);
+  const [batchRenomearAberto, setBatchRenomearAberto] = useState(false);
   const [modeloElevacao, setModeloElevacao] = useState<'copernicus_dem_30' | 'alos_dem_30' | 'srtm_gld3'>('copernicus_dem_30');
   const [glebaCurvaAlvo, setGlebaCurvaAlvo] = useState<string>('todas');
   const [curvaUsarTriangulacao, setCurvaUsarTriangulacao] = useState<boolean>(false); // padrão: dados online (não triangulação local)
+  const [tipoProjeto, setTipoProjeto] = useState<'rural' | 'loteamento'>('rural');
+  const [exibirDivisasMunicipais, setExibirDivisasMunicipais] = useState<boolean>(false);
+  const [divisasMunicipaisGeoJson, setDivisasMunicipaisGeoJson] = useState<any | null>(null);
+  const [cidadeGeocodificada, setCidadeGeocodificada] = useState<string | null>(null);
+  
+  // Estados para cruzamento de divisas e fusos
+  const [cruzamentoFuso, setCruzamentoFuso] = useState<number[]>([]);
+  const [cruzamentoMunicipios, setCruzamentoMunicipios] = useState<string[]>([]);
+  const [cruzamentoEstados, setCruzamentoEstados] = useState<string[]>([]);
+
+  // Modais de Módulos Adicionais
+  const [meioAmbienteAberto, setMeioAmbienteAberto] = useState(false);
+  const [usucapiaoAberto, setUsucapiaoAberto] = useState(false);
+  const [avaliacaoAberto, setAvaliacaoAberto] = useState(false);
+  const [juridicoAberto, setJuridicoAberto] = useState(false);
+  const [reurbAberto, setReurbAberto] = useState(false);
+  const [loteamentoAberto, setLoteamentoAberto] = useState(false);
+  const [creditoAberto, setCreditoAberto] = useState(false);
+  const [compartilharAberto, setCompartilharAberto] = useState(false);
+  const [abertoEm, setAbertoEm] = useState<number>(0);
+  const [ufGeocodificada, setUfGeocodificada] = useState<string | null>(null);
+  const [demoConfigOpen, setDemoConfigOpen] = useState<boolean>(false);
+
+  // Real-time listener for concurrency / team work (Firestore onSnapshot)
+  useEffect(() => {
+    if (!projetoId || !(imovel as any)?.dadosCompartilhamento?.permEquipe) {
+      setConflitoEdicao(null);
+      return;
+    }
+
+    const unsub = inscreverConflitoEdicao(projetoId, abertoEm, (editorNome, dadosNovos) => {
+      setConflitoEdicao({ usuario: editorNome, dadosNovos });
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [projetoId, abertoEm, (imovel as any)?.dadosCompartilhamento?.permEquipe]);
 
   useEffect(() => {
     if (curvaConfigAberta && vertices.length > 0) {
@@ -5186,6 +5268,256 @@ export default function EditorPage() {
       obterAltitudesLote(latsLons).catch(() => {});
     }
   }, [curvaConfigAberta, vertices]);
+
+  // Monitora travessia de divisas e fusos UTM
+  useEffect(() => {
+    if (!vertices || vertices.length === 0) {
+      setCruzamentoFuso([]);
+      setCruzamentoMunicipios([]);
+      setCruzamentoEstados([]);
+      return;
+    }
+
+    // 1. Cruzamento de fusos UTM
+    const zones = new Set<number>();
+    vertices.forEach((v) => {
+      const zone = Math.floor((v.lon + 180) / 6) + 1;
+      zones.add(zone);
+    });
+    if (zones.size > 1) {
+      setCruzamentoFuso(Array.from(zones).sort((a, b) => a - b));
+    } else {
+      setCruzamentoFuso([]);
+    }
+
+    // Mapeamento de código IBGE para sigla de Estado
+    const UF_MAP: Record<string, string> = {
+      '11': 'RO', '12': 'AC', '13': 'AM', '14': 'RR', '15': 'PA', '16': 'AP', '17': 'TO',
+      '21': 'MA', '22': 'PI', '23': 'CE', '24': 'RN', '25': 'PB', '26': 'PE', '27': 'AL',
+      '28': 'SE', '29': 'BA', '31': 'MG', '32': 'ES', '33': 'RJ', '35': 'SP', '41': 'PR',
+      '42': 'SC', '43': 'RS', '50': 'MS', '51': 'MT', '52': 'GO', '53': 'DF'
+    };
+
+    function pointInPolygon(lat: number, lon: number, polygon: any): boolean {
+      const ring = polygon[0];
+      if (!ring || ring.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], yi = ring[i][1];
+        const xj = ring[j][0], yj = ring[j][1];
+        
+        const intersect = ((yi > lat) !== (yj > lat))
+            && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function pointInGeoJSONGeometry(lat: number, lon: number, geom: any): boolean {
+      if (geom.type === 'Polygon') {
+        return pointInPolygon(lat, lon, geom.coordinates);
+      }
+      if (geom.type === 'MultiPolygon') {
+        return geom.coordinates.some((coords: any) => pointInPolygon(lat, lon, coords));
+      }
+      return false;
+    }
+
+    // 2. Cruzamento de municípios e estados via divisas IBGE
+    if (divisasMunicipaisGeoJson && divisasMunicipaisGeoJson.features) {
+      const munisEncontrados = new Set<string>();
+      const estadosEncontrados = new Set<string>();
+
+      vertices.forEach((v) => {
+        for (const f of divisasMunicipaisGeoJson.features) {
+          const geom = f.geometry;
+          if (geom && pointInGeoJSONGeometry(v.lat, v.lon, geom)) {
+            const nomeMuni = f.properties.nome || '';
+            const codArea = String(f.properties.codarea || f.id || '');
+            const prefix = codArea.slice(0, 2);
+            const uf = UF_MAP[prefix] || '';
+            
+            if (nomeMuni) {
+              munisEncontrados.add(uf ? `${nomeMuni}-${uf}` : nomeMuni);
+            }
+            if (uf) {
+              estadosEncontrados.add(uf);
+            }
+            break;
+          }
+        }
+      });
+
+      if (munisEncontrados.size > 1) {
+        setCruzamentoMunicipios(Array.from(munisEncontrados));
+      } else {
+        setCruzamentoMunicipios([]);
+      }
+
+      if (estadosEncontrados.size > 1) {
+        setCruzamentoEstados(Array.from(estadosEncontrados));
+      } else {
+        setCruzamentoEstados([]);
+      }
+    } else {
+      setCruzamentoMunicipios([]);
+      setCruzamentoEstados([]);
+    }
+  }, [vertices, divisasMunicipaisGeoJson]);
+
+  // Hook de identificação de município por centroide (OSM reverse geocoding + local fallback)
+  useEffect(() => {
+    if (vertices.length < 3) {
+      setCidadeGeocodificada(null);
+      setUfGeocodificada(null);
+      return;
+    }
+
+    // Calcula centroide
+    let sumLat = 0, sumLon = 0;
+    vertices.forEach((v) => {
+      sumLat += v.lat;
+      sumLon += v.lon;
+    });
+    const cLat = sumLat / vertices.length;
+    const cLon = sumLon / vertices.length;
+
+    let cancelado = false;
+
+    // Mapeamento de código IBGE para sigla de Estado
+    const UF_MAP: Record<string, string> = {
+      '11': 'RO', '12': 'AC', '13': 'AM', '14': 'RR', '15': 'PA', '16': 'AP', '17': 'TO',
+      '21': 'MA', '22': 'PI', '23': 'CE', '24': 'RN', '25': 'PB', '26': 'PE', '27': 'AL',
+      '28': 'SE', '29': 'BA', '31': 'MG', '32': 'ES', '33': 'RJ', '35': 'SP', '41': 'PR',
+      '42': 'SC', '43': 'RS', '50': 'MS', '51': 'MT', '52': 'GO', '53': 'DF'
+    };
+
+    function pointInPolygon(lat: number, lon: number, polygon: any): boolean {
+      const ring = polygon[0];
+      if (!ring || ring.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], yi = ring[i][1];
+        const xj = ring[j][0], yj = ring[j][1];
+        
+        const intersect = ((yi > lat) !== (yj > lat))
+            && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function pointInGeoJSONGeometry(lat: number, lon: number, geom: any): boolean {
+      if (geom.type === 'Polygon') {
+        return pointInPolygon(lat, lon, geom.coordinates);
+      }
+      if (geom.type === 'MultiPolygon') {
+        return geom.coordinates.some((coords: any) => pointInPolygon(lat, lon, coords));
+      }
+      return false;
+    }
+
+    async function processarLocalizacao() {
+      // 1. Tentar reverse geocoding via Nominatim
+      let cidade = '';
+      let uf = '';
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${cLat}&lon=${cLon}&zoom=10`, {
+          headers: { 'User-Agent': 'SouzaCAD-App' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const addr = data.address;
+          cidade = addr.city || addr.town || addr.village || addr.municipality || '';
+          const estado = addr.state || '';
+          
+          // Mapeamento de estado por extenso para sigla UF
+          const mapping: Record<string, string> = {
+            'acre': 'AC', 'alagoas': 'AL', 'amapá': 'AP', 'amazonas': 'AM', 'bahia': 'BA',
+            'ceará': 'CE', 'distrito federal': 'DF', 'espírito santo': 'ES', 'goiás': 'GO',
+            'maranhão': 'MA', 'mato grosso': 'MT', 'mato grosso do sul': 'MS', 'minas gerais': 'MG',
+            'pará': 'PA', 'paraíba': 'PB', 'paraná': 'PR', 'pernambuco': 'PE', 'piauí': 'PI',
+            'rio de janeiro': 'RJ', 'rio grande do norte': 'RN', 'rio grande do sul': 'RS',
+            'rondônia': 'RO', 'roraima': 'RR', 'santa catarina': 'SC', 'são paulo': 'SP',
+            'sergipe': 'SE', 'tocantins': 'TO'
+          };
+          uf = mapping[estado.toLowerCase()] || addr.state_code || '';
+        }
+      } catch (e) {
+        console.error('Erro na geocodificação reversa OSM:', e);
+      }
+
+      // Fallback local se falhar ou estiver offline
+      if (!cidade || !uf) {
+        let menorDist = Infinity;
+        let muniAlvo = '';
+        for (const [key, value] of Object.entries(MUNICIPIOS)) {
+          const dy = value.lat - cLat;
+          const dx = value.lon - cLon;
+          const dist = dy * dy + dx * dx;
+          if (dist < menorDist) {
+            menorDist = dist;
+            muniAlvo = key;
+          }
+        }
+        if (muniAlvo) {
+          const partes = muniAlvo.split('-');
+          cidade = partes[0].split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          uf = partes[1].toUpperCase();
+        }
+      }
+
+      if (cancelado) return;
+
+      if (cidade && uf) {
+        // Mantenha partículas de ligação em minúsculo
+        const formatarParticulas = (str: string) => {
+          const particulas = ['de', 'da', 'do', 'dos', 'das', 'e'];
+          return str.split(' ').map((w: string, idx: number) => {
+            if (idx > 0 && particulas.includes(w.toLowerCase())) {
+              return w.toLowerCase();
+            }
+            return w.charAt(0).toUpperCase() + w.slice(1);
+          }).join(' ');
+        };
+        const cidadeFormatada = formatarParticulas(cidade);
+        setCidadeGeocodificada(cidadeFormatada);
+        setUfGeocodificada(uf.toUpperCase());
+        
+        // Se a visualização de divisas estiver ativa, buscar os polígonos no IBGE
+        if (exibirDivisasMunicipais) {
+          try {
+            const resMuni = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios?nome=${encodeURIComponent(cidadeFormatada.toLowerCase())}`);
+            if (resMuni.ok) {
+              const list = await resMuni.json();
+              const match = list.find((m: any) => 
+                m.nome.toLowerCase() === cidadeFormatada.toLowerCase() && 
+                m.microrregiao.mesorregiao.UF.sigla.toUpperCase() === uf.toUpperCase()
+              );
+              if (match && match.microrregiao?.id) {
+                const idMicro = match.microrregiao.id;
+                const resMalha = await fetch(`https://servicodados.ibge.gov.br/api/v3/malhas/microrregioes/${idMicro}?formato=application/vnd.geo+json&intrinseco=true`);
+                if (resMalha.ok) {
+                  const geoJson = await resMalha.json();
+                  if (!cancelado) {
+                    setDivisasMunicipaisGeoJson(geoJson);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Erro ao buscar divisas no IBGE:', e);
+          }
+        }
+      }
+    }
+
+    processarLocalizacao();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [vertices, exibirDivisasMunicipais]);
 
   function ajustarAltitudesGlobais(cm: number) {
     if (!cm || isNaN(cm)) return;
@@ -6166,6 +6498,70 @@ export default function EditorPage() {
     } finally { setProcessando(false); }
   }
 
+  async function recarregarDoServidor() {
+    if (!projetoId) return;
+    setProcessando(true);
+    try {
+      await abrir(projetoId);
+      setConflitoEdicao(null);
+      aviso('Projeto recarregado da nuvem com sucesso!');
+    } catch (e) {
+      aviso('Erro ao recarregar da nuvem: ' + ((e as Error).message || 'erro'));
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function salvarComoCopia() {
+    if (processando) return;
+    setProcessando(true);
+    try {
+      const novoIdProjeto = novoId();
+      const novoNome = `${nomeProjeto} (Cópia)`;
+      setNomeProjeto(novoNome);
+      
+      const tec = tecnico ?? carregarTecnico();
+      let gs = sincronizarGlebas();
+      
+      const p: Projeto = {
+        id: novoIdProjeto,
+        nome: novoNome,
+        criadoEm: Date.now(),
+        atualizadoEm: Date.now(),
+        imovel,
+        glebas: gs,
+        zonaUtm: zona,
+        hemisferio,
+        requerente,
+        transmitente,
+        tipoAto,
+        partesAdicionais,
+        correcoes,
+        plantaConfig,
+        parcelasCert,
+        verticesVizinho,
+        verticesIgnorados,
+        gradeAltimetrica,
+        verticesOnlineElev,
+      };
+
+      const destino = await salvarProjeto(p);
+      setProjetoId(novoIdProjeto);
+      setAbertoEm(p.atualizadoEm);
+      setConflitoEdicao(null);
+      setSalvoOk(true);
+      setSalvoNuvem(destino === 'nuvem');
+      setSalvarLaranja(false);
+      
+      aviso(`Salvo como cópia separada: "${novoNome}"`);
+      await atualizarLista();
+    } catch (e) {
+      aviso('Erro ao salvar cópia: ' + ((e as Error).message || 'erro'));
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   // ---------- projetos ----------
   async function salvar() {
     if (readonlyPorFaturamento) {
@@ -6178,7 +6574,38 @@ export default function EditorPage() {
     if (processando) return;
     setProcessando(true);
     try {
-      const id = projetoId ?? novoId();
+      let id = projetoId ?? novoId();
+
+      // Controle de Concorrência e Conflitos (SaaS / Trabalho em Equipe)
+      if (projetoId) {
+        try {
+          const cloudProj = await carregarProjeto(projetoId);
+          if (cloudProj && cloudProj.atualizadoEm && abertoEm && cloudProj.atualizadoEm > abertoEm) {
+            const resp = await escolher({
+              titulo: 'Conflito de Edição (Equipe)',
+              mensagem: `Este projeto foi modificado na nuvem por outro colaborador às ${new Date(cloudProj.atualizadoEm).toLocaleString('pt-BR')} (depois que você o abriu). O que deseja fazer?`,
+              opcoes: [
+                { chave: 'sobrescrever', label: 'Sobrescrever Versão da Nuvem', variant: 'destructive' },
+                { chave: 'duplicar', label: 'Salvar como Cópia Separada', variant: 'default' },
+              ],
+              cancelLabel: 'Descartar e recarregar nuvem'
+            });
+
+            if (resp === 'duplicar') {
+              id = novoId();
+              setNomeProjeto((n) => `${n} (Cópia)`);
+            } else if (resp === 'sobrescrever') {
+              // segue e sobrescreve
+            } else {
+              setProcessando(false);
+              await abrir(projetoId);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('[Concorrência] Falha ao verificar conflitos:', err);
+        }
+      }
       const tec = tecnico ?? carregarTecnico();
       // Registra os pontos de TODAS as glebas no banco (consome a numeração; nunca repete).
       // registrarPontos é ATÔMICO: se falhar, nada é consumido e os vértices ficam sem
@@ -6210,10 +6637,12 @@ export default function EditorPage() {
       const p: Projeto = {
         id, nome: nomeProjeto || imovel.denominacao || 'Sem nome', criadoEm: Date.now(), atualizadoEm: Date.now(),
         imovel, glebas: gs, zonaUtm: zona, hemisferio, requerente, transmitente, tipoAto, partesAdicionais, correcoes, plantaConfig, parcelasCert, verticesVizinho, verticesIgnorados, gradeAltimetrica, verticesOnlineElev,
+        tipoProjeto,
       };
       try {
         const destino = await salvarProjeto(p);
         setProjetoId(id);
+        setAbertoEm(p.atualizadoEm);
         setSalvoOk(true); setSalvoNuvem(destino === 'nuvem'); // verde só se foi pro banco na nuvem
         autoSave.marcarComoSalvo();
         setSalvarLaranja(false);
@@ -6392,9 +6821,16 @@ export default function EditorPage() {
   }
 
   // Carrega um projeto completo FICTÍCIO (demonstração). As peças saem marcadas como dados fictícios.
-  async function carregarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: number; semAvisoConfirmacao?: boolean }) {
+  async function carregarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: number; semAvisoConfirmacao?: boolean; configuravel?: boolean; opcoes?: { numImoveis: number; numGlebas: number; tipoGleba: 'rural' | 'loteamento' } }) {
     if (!opts?.semAvisoConfirmacao && temConteudoTrabalho() && !(await confirmar({ titulo: 'Projeto de demonstração', mensagem: 'Carregar o projeto fictício de demonstração? O trabalho atual não salvo será descartado.', okLabel: 'Carregar demonstração' }))) return;
-    const f = gerarProjetoFicticio(opts);
+    
+    let f;
+    if (opts?.configuravel && opts.opcoes) {
+      f = gerarProjetoDemoConfiguravel(opts.opcoes);
+    } else {
+      f = gerarProjetoFicticio(opts);
+    }
+
     const listaGlebas: Gleba[] = f.glebas && f.glebas.length > 0 ? f.glebas : [
       { ...novaGlebaVazia(1), denominacao: f.imovel.denominacao, vertices: f.vertices, confrontantes: f.confrontantes, confrontantePorLado: f.confrontantePorLado }
     ];
@@ -6411,7 +6847,14 @@ export default function EditorPage() {
     setGlebas(listaGlebas);
     setGlebaAtivaId(listaGlebas[0].id);
     carregarGleba(listaGlebas[0]);
-    aviso(`Projeto fictício de demonstração com ${listaGlebas.length} glebas confrontantes carregado com sucesso.`);
+    
+    if (f.tipoProjeto) {
+      setTipoProjeto(f.tipoProjeto);
+    } else {
+      setTipoProjeto('rural');
+    }
+    
+    aviso(`Projeto fictício de demonstração com ${listaGlebas.length} parcelas/lotes carregado com sucesso.`);
   }
 
   async function converterPolilinhaEmPerimetro() {
@@ -6510,6 +6953,7 @@ export default function EditorPage() {
     if (!p0) return;
     const p = migrarProjeto(p0); // projetos antigos (sem glebas) viram glebas[0]
     setProjetoId(p.id); setNomeProjeto(p.nome); setImovel(p.imovel);
+    setAbertoEm(p.atualizadoEm || p.criadoEm || Date.now());
     setNomeProjetoManual(true);
     setZona(p.zonaUtm); setHemisferio(p.hemisferio);
     setRequerente(p.requerente); setTransmitente(p.transmitente);
@@ -6518,6 +6962,11 @@ export default function EditorPage() {
     setPlantaConfig(p.plantaConfig ?? {});
     setGlebas(p.glebas);
     carregarGleba(p.glebas[0]);
+    if (p.tipoProjeto) {
+      setTipoProjeto(p.tipoProjeto);
+    } else {
+      setTipoProjeto('rural');
+    }
     // restaura a planta de situação salva (não precisa recapturar o satélite)
     setSituacaoUrl(p.plantaConfig?.situacaoDataUrl);
     if (p.plantaConfig?.situacaoDataUrl) setSituacaoVersSnapshot(montarSnapshotDesenho(p.glebas));
@@ -6722,8 +7171,8 @@ export default function EditorPage() {
     if (!dadosFeitos) {
       return {
         passo: 3,
-        resumo: "Próximo passo: Preencher os dados do projeto (Imóvel, Proprietário, RT)",
-        detalhe: "Insira as informações básicas do imóvel (Denominação, Matrícula), Proprietário e Responsável Técnico. Clique no botão \"DADOS\" no cabeçalho ou pressione F4. Estes dados preencherão o carimbo e os documentos."
+        resumo: "Próximo passo: Preencher os dados do projeto",
+        detalhe: "Insira as informações básicas do imóvel, proprietários, glebas e dados do responsável técnico. Clique no botão \"DADOS\" no cabeçalho ou pressione F4. Estes dados preencherão o carimbo e os documentos."
       };
     }
     
@@ -7120,6 +7569,27 @@ export default function EditorPage() {
           <button onClick={iniciarPagamentoMercadoPago} className="underline font-bold text-amber-300 hover:text-amber-100 ml-2">Pagar Agora</button>
         </div>
       )}
+      {conflitoEdicao && (
+        <div className="bg-amber-500 text-white px-4 py-2.5 text-xs flex items-center justify-between gap-4 font-semibold shadow-lg no-print z-50">
+          <div className="flex items-center gap-2">
+            <Users className="size-4 shrink-0" />
+            <span>
+              Atenção: Este projeto foi editado por <strong>{conflitoEdicao.usuario}</strong> em outra sessão. Recarregue para atualizar ou salve uma cópia para não perder suas alterações.
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="bg-white/15 text-white border-white/20 hover:bg-white/25 text-[11px] h-7 font-bold px-3" onClick={recarregarDoServidor}>
+              Recarregar da Nuvem
+            </Button>
+            <Button size="sm" variant="outline" className="bg-white/15 text-white border-white/20 hover:bg-white/25 text-[11px] h-7 font-bold px-3" onClick={salvarComoCopia}>
+              Salvar como Cópia
+            </Button>
+            <button className="text-white hover:text-white/80 text-sm ml-2 font-bold px-1.5" onClick={() => setConflitoEdicao(null)}>
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       {/* Inputs de arquivo ocultos: SEMPRE montados (fora do cabeçalho), senão sumiriam junto com o
           header no celular e quebrariam "Novo projeto"/importação, que disparam fileRef.click(). */}
       <div className="hidden">
@@ -7188,12 +7658,12 @@ export default function EditorPage() {
         {/* 2) Dados do projeto atual */}
         {!telaEstreita && (
           <>
-            <Etapa st={etapas.dados} tituloEtapa="3. Cadastro do Imóvel & RT" explicacao="Preencha as informações do imóvel, proprietário, número da matrícula, serventia registral e os dados do Responsável Técnico habilitado.">
+            <Etapa st={etapas.dados} tituloEtapa="3. Dados do Projeto" explicacao="Preencha as informações do imóvel, proprietários, glebas e os dados do Responsável Técnico habilitado.">
               <div ref={dadosBtnRef} className="relative shrink-0">
                 <Button
                   size="sm"
                   className={`relative shrink-0 ${PREM_BTN} ${COR_DADOS} ${painelAberto && aba === 'imovel' ? 'ring-2 ring-foreground/50' : ''} gap-0.5`}
-                  title="Dados do imóvel, proprietário e responsável técnico (F4)"
+                  title="Dados do projeto (F4)"
                   onClick={() => { setPainelAberto(true); setAba('imovel'); }}
                 >
                   <Database /> DADOS
@@ -7721,6 +8191,34 @@ export default function EditorPage() {
                       <span className="text-[9px] font-extrabold uppercase tracking-wider pb-0.5 border-b text-muted-foreground select-none flex items-center">
                         <span>Gestão do Projeto</span>
                       </span>
+
+                      {/* Seletor de Modo Retangular (Fácil/Médio/Completo) */}
+                      <button
+                        type="button"
+                        onClick={() => trocarModoApp(proximoModo(modoApp))}
+                        title={
+                          completo
+                            ? 'Modo Completo. Clique para alternar para o Fácil.'
+                            : medio
+                              ? 'Modo Médio. Clique para alternar para o Completo.'
+                              : 'Modo Fácil. Clique para alternar para o Médio.'
+                        }
+                        className="w-full flex items-center justify-between gap-1.5 rounded-lg border border-border/80 bg-background hover:bg-accent p-1.5 transition-all text-[10px] font-black uppercase text-foreground shadow-xs cursor-pointer"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {completo ? (
+                            <Briefcase className="size-3.5 text-sky-500 shrink-0" />
+                          ) : medio ? (
+                            <PencilRuler className="size-3.5 text-emerald-500 shrink-0" />
+                          ) : (
+                            <GraduationCap className="size-3.5 text-amber-500 shrink-0" />
+                          )}
+                          <span>
+                            {completo ? 'Modo Completo' : medio ? 'Modo Médio' : 'Modo Fácil'}
+                          </span>
+                        </div>
+                        <RefreshCw className="size-3 text-muted-foreground shrink-0" />
+                      </button>
                       
 
 
@@ -7786,6 +8284,48 @@ export default function EditorPage() {
                           <Leaf className="size-3.5 text-lime-500 shrink-0" /> <span className="truncate">CAR</span>
                           <Atalho k="CR" />
                         </Button>
+                        {prefs.moduloAmbiental && (
+                          <Button size="sm" variant="secondary" className="relative text-lime-600 dark:text-lime-400 hover:bg-lime-500/20" title="Meio Ambiente e Laudos Técnicos" onClick={() => setMeioAmbienteAberto(true)}>
+                            <Leaf className="size-3.5 text-lime-500 shrink-0 animate-pulse" /> <span className="truncate">Ambiente</span>
+                            <Atalho k="MA" />
+                          </Button>
+                        )}
+                        {prefs.moduloUsucapiao && (
+                          <Button size="sm" variant="secondary" className="relative text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20" title="Usucapião e Posse" onClick={() => setUsucapiaoAberto(true)}>
+                            <Scale className="size-3.5 text-indigo-500 shrink-0" /> <span className="truncate">Usucapião</span>
+                            <Atalho k="US" />
+                          </Button>
+                        )}
+                        {prefs.moduloAvaliacao && (
+                          <Button size="sm" variant="secondary" className="relative text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" title="Avaliação de Imóveis" onClick={() => setAvaliacaoAberto(true)}>
+                            <Coins className="size-3.5 text-emerald-500 shrink-0" /> <span className="truncate">Avaliação</span>
+                            <Atalho k="AV" />
+                          </Button>
+                        )}
+                        {prefs.moduloJuridico && (
+                          <Button size="sm" variant="secondary" className="relative text-blue-600 dark:text-blue-400 hover:bg-blue-500/20" title="Módulo Jurídico e Regularização" onClick={() => setJuridicoAberto(true)}>
+                            <Scale className="size-3.5 text-blue-500 shrink-0" /> <span className="truncate">Jurídico</span>
+                            <Atalho k="JD" />
+                          </Button>
+                        )}
+                        {prefs.moduloReurb && (
+                          <Button size="sm" variant="secondary" className="relative text-amber-600 dark:text-amber-400 hover:bg-amber-500/20" title="Módulo de REURB" onClick={() => setReurbAberto(true)}>
+                            <Building2 className="size-3.5 text-amber-500 shrink-0" /> <span className="truncate">REURB</span>
+                            <Atalho k="RB" />
+                          </Button>
+                        )}
+                        {prefs.moduloLoteamento && (
+                          <Button size="sm" variant="secondary" className="relative text-teal-600 dark:text-teal-400 hover:bg-teal-500/20" title="Módulo de Loteamento" onClick={() => setLoteamentoAberto(true)}>
+                            <LayoutGrid className="size-3.5 text-teal-500 shrink-0" /> <span className="truncate">Loteamento</span>
+                            <Atalho k="LT" />
+                          </Button>
+                        )}
+                        {prefs.moduloCredito && (
+                          <Button size="sm" variant="secondary" className="relative text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20" title="Crédito Rural & Agropecuário" onClick={() => setCreditoAberto(true)}>
+                            <Sprout className="size-3.5 text-emerald-500 shrink-0" /> <span className="truncate">Crédito</span>
+                            <Atalho k="CD" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="secondary"
@@ -8359,7 +8899,7 @@ export default function EditorPage() {
                           return;
                         }
                         el.dataset.longPress = '';
-                        carregarProjetoFicticio();
+                        setDemoConfigOpen(true);
                       }}
                       onPointerLeave={(e) => {
                         const el = e.target as HTMLElement;
@@ -8453,71 +8993,158 @@ export default function EditorPage() {
               />
             </ErrorBoundary>
           ) : vista === 'mapa' ? (
-            <ErrorBoundary onReset={() => setVista('planta')}>
-              <MapEditor vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
-                 gradeAltimetrica={gradeAltimetrica}
-                 onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
-                 centroPadrao={entradaMapa.centro} zoomPadrao={entradaMapa.zoom}
-                 onAtivar3D={modo3dAtivado ? () => setVista('3d') : undefined}
-                confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
-                zona={zona} hemisferio={hemisferio} orto={orto} snapAtivo={snapAtivo} segmentoSelecionado={segmentoSelecionado} onSegmentoSelecionado={setSegmentoSelecionado} offsetDistancia={offsetDistancia} onConfirmarParalela={confirmarParalela} copiarPontoBase={copiarPontoBase} onConfirmarCopiaBase={confirmarCopiaBase} onConfirmarCopiaDestino={confirmarCopiaDestino} onDividirSegmento={dividirSegmento} linhaLimite={linhaLimite} onLinhaLimite={setLinhaLimite} onConfirmarTrim={confirmarTrim} onConfirmarExtend={confirmarExtend} camadasVisiveis={camadasVisiveis} camadasBloqueadas={camadasBloqueadas} estilosCamadas={estilosCamadas}
-                referencias={referencias}
-                parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho} verticesVizinho={verticesVizinho}
-                mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
-                corCert={corCert} corBordaCert={corBordaCert} espessuraCert={espessuraCert}
-                onContextMenuCert={(idx, x, y) => setMenuContexto({ tipo: 'parcelaCert', verticeIdx: idx, x, y })}
-                selMulti={selMulti} objSelMulti={objSelMulti} onToggleMulti={alternarMulti} onToggleMultiObj={alternarMultiObj} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj}
-                onDblClick={async (lat, lon) => {
-                  if (modo === 'polilinha' || modo === 'tracejado') {
-                    if (desenhoBuffer.length >= 2) {
-                      snap();
-                      const buf = desenhoBuffer;
-                      setDesenhoBuffer([]);
-                      setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
-                      aviso(modo === 'tracejado' ? 'Tracejado adicionado.' : 'Polilinha adicionada.');
+            <div className="relative flex-grow flex flex-col min-h-0 h-full w-full">
+              {cidadeGeocodificada && (
+                (() => {
+                  const obterCidadeUfCadastrada = () => {
+                    if (!imovel.municipio) return { cidade: '', uf: '' };
+                    const idx = imovel.municipio.lastIndexOf('-');
+                    if (idx >= 0) {
+                      return {
+                        cidade: imovel.municipio.substring(0, idx).trim(),
+                        uf: imovel.municipio.substring(idx + 1).trim().toUpperCase()
+                      };
                     }
+                    return { cidade: imovel.municipio.trim(), uf: '' };
+                  };
+                  const cad = obterCidadeUfCadastrada();
+                  const divergente = 
+                    cad.cidade.toLowerCase() !== cidadeGeocodificada.toLowerCase() || 
+                    (ufGeocodificada && cad.uf.toLowerCase() !== ufGeocodificada.toLowerCase());
+                  if (divergente) {
+                    return (
+                      <div className="z-[1900] bg-orange-500/10 border-b border-orange-500/30 px-4 py-2 flex items-center justify-between text-xs text-orange-600 dark:text-orange-400 backdrop-blur-md">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="size-4 animate-bounce shrink-0 text-orange-500" />
+                          <span>
+                            <strong>Divergência de Município:</strong> A localização geográfica indica que o imóvel fica em <strong>{cidadeGeocodificada}-{ufGeocodificada}</strong>, mas está cadastrado como <strong>{imovel.municipio || 'Nenhum'}</strong>.
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            aoMudarMunicipio(`${cidadeGeocodificada}-${ufGeocodificada}`);
+                            aviso(`Município atualizado para ${cidadeGeocodificada}-${ufGeocodificada}.`);
+                          }}
+                          className="h-6 text-[10px] font-bold border-orange-500/30 text-orange-600 hover:bg-orange-500/20 hover:text-orange-700 bg-white dark:bg-zinc-900 cursor-pointer"
+                        >
+                          Corrigir Cadastro
+                        </Button>
+                      </div>
+                    );
                   }
-                }}
-                outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({
-                  id: g.id,
-                  nome: g.denominacao,
-                  pts: g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]),
-                  tipoGleba: g.tipoGleba,
-                  visivel: g.visivel,
-                }))}
-                onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
-                glebaAtivaId={glebaAtivaId}
-                onAbrirGestaoGleba={(id) => {
-                  if (id) trocarGleba(id);
-                  setAba('glebas');
-                  setPainelAberto(true);
-                }}
-                objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
-        onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
-                onCliqueDesenho={onCliqueDesenho} onSelecObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }} onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
-                conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={telaEstreita ? Math.min(tamNomes, 8) : tamNomes} tamCentro={telaEstreita ? Math.min(tamCentro, 9) : tamCentro}
-                verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
-                onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
-                onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })}
-                onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
-                onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
-                onContextMenuMapa={(lat, lon, x, y) => {
-                  if (modo !== 'navegar') {
-                    if (desenhoBuffer.length >= 2) {
-                      snap();
-                      const buf = desenhoBuffer;
-                      setDesenhoBuffer([]);
-                      setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
-                      aviso(modo === 'tracejado' ? 'Tracejado concluído.' : 'Polilinha concluída.');
-                    } else {
-                      setDesenhoBuffer([]);
-                    }
-                    setModo('navegar');
-                    return;
-                  }
-                  setVista('planta');
-                }} />
-            </ErrorBoundary>
+                  return null;
+                })()
+              )}
+
+              {/* Alerta de transposição de divisa municipal */}
+              {cruzamentoMunicipios.length > 1 && (
+                <div className="z-[1900] bg-orange-500/10 border-b border-orange-500/30 px-4 py-2 flex items-center justify-between text-xs text-orange-600 dark:text-orange-400 backdrop-blur-md">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="size-4 animate-bounce shrink-0 text-orange-500" />
+                    <span>
+                      <strong>Transposição de Divisa Municipal:</strong> O imóvel transpõe ou encosta nos limites municipais de <strong>{cruzamentoMunicipios.join(' e ')}</strong>. Verifique a necessidade de registro em ambos os cartórios.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Alerta de transposição de divisa estadual */}
+              {cruzamentoEstados.length > 1 && (
+                <div className="z-[1900] bg-red-500/10 border-b border-red-500/30 px-4 py-2 flex items-center justify-between text-xs text-red-600 dark:text-red-400 backdrop-blur-md">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="size-4 animate-bounce shrink-0 text-red-500" />
+                    <span>
+                      <strong>Transposição de Divisa Estadual:</strong> O imóvel transpõe a divisa interestadual entre <strong>{cruzamentoEstados.join(' e ')}</strong>. Regularização deve ser feita nos dois estados.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Alerta de transposição de fuso UTM */}
+              {cruzamentoFuso.length > 1 && (
+                <div className="z-[1900] bg-indigo-500/10 border-b border-indigo-500/30 px-4 py-2 flex items-center justify-between text-xs text-indigo-600 dark:text-indigo-400 backdrop-blur-md">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="size-4 animate-bounce shrink-0 text-indigo-500" />
+                    <span>
+                      <strong>Transposição de Fuso UTM:</strong> O imóvel perpassa os fusos UTM <strong>{cruzamentoFuso.map(f => `${f}S`).join(' e ')}</strong>. Recomendável utilizar o Sistema Geodésico Local (SGL) para cálculo perimétrico.
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="flex-grow min-h-0 h-full w-full relative">
+                <ErrorBoundary onReset={() => setVista('planta')}>
+                  <MapEditor 
+                    exibirDivisasMunicipais={exibirDivisasMunicipais}
+                    divisasMunicipaisGeoJson={divisasMunicipaisGeoJson}
+                    onToggleDivisasMunicipais={() => setExibirDivisasMunicipais(!exibirDivisasMunicipais)}
+                    vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
+                    gradeAltimetrica={gradeAltimetrica}
+                    onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
+                    centroPadrao={entradaMapa.centro} zoomPadrao={entradaMapa.zoom}
+                    onAtivar3D={modo3dAtivado ? () => setVista('3d') : undefined}
+                    confrontantes={confrontantes} confrontantePorLado={confrontantePorLado}
+                    zona={zona} hemisferio={hemisferio} orto={orto} snapAtivo={snapAtivo} segmentoSelecionado={segmentoSelecionado} onSegmentoSelecionado={setSegmentoSelecionado} offsetDistancia={offsetDistancia} onConfirmarParalela={confirmarParalela} copiarPontoBase={copiarPontoBase} onConfirmarCopiaBase={confirmarCopiaBase} onConfirmarCopiaDestino={confirmarCopiaDestino} onDividirSegmento={dividirSegmento} linhaLimite={linhaLimite} onLinhaLimite={setLinhaLimite} onConfirmarTrim={confirmarTrim} onConfirmarExtend={confirmarExtend} camadasVisiveis={camadasVisiveis} camadasBloqueadas={camadasBloqueadas} estilosCamadas={estilosCamadas}
+                    referencias={referencias}
+                    parcelasCert={parcelasCert} onAdotarVertice={adotarVerticeVizinho} verticesVizinho={verticesVizinho}
+                    mostrarCert={mostrarCert} opacidadeCert={opacidadeCert} parcelaCertSel={parcelaSel} onSelParcelaCert={setParcelaSel}
+                    corCert={corCert} corBordaCert={corBordaCert} espessuraCert={espessuraCert}
+                    onContextMenuCert={(idx, x, y) => setMenuContexto({ tipo: 'parcelaCert', verticeIdx: idx, x, y })}
+                    selMulti={selMulti} objSelMulti={objSelMulti} onToggleMulti={alternarMulti} onToggleMultiObj={alternarMultiObj} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj}
+                    onDblClick={async (lat, lon) => {
+                      if (modo === 'polilinha' || modo === 'tracejado') {
+                        if (desenhoBuffer.length >= 2) {
+                          snap();
+                          const buf = desenhoBuffer;
+                          setDesenhoBuffer([]);
+                          setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
+                          aviso(modo === 'tracejado' ? 'Tracejado adicionado.' : 'Polilinha adicionada.');
+                        }
+                      }
+                    }}
+                    outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({
+                      id: g.id,
+                      nome: g.denominacao,
+                      pts: g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]),
+                      tipoGleba: g.tipoGleba,
+                      visivel: g.visivel,
+                    }))}
+                    onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
+                    glebaAtivaId={glebaAtivaId}
+                    onAbrirGestaoGleba={(id) => {
+                      if (id) trocarGleba(id);
+                      setAba('glebas');
+                      setPainelAberto(true);
+                    }}
+                    objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
+                    onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
+                    onCliqueDesenho={onCliqueDesenho} onSelecObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }} onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
+                    conflitos={conflitos} focoLatLng={focoLatLng} onCancelDesenho={() => setDesenhoBuffer([])} tamNomes={telaEstreita ? Math.min(tamNomes, 8) : tamNomes} tamCentro={telaEstreita ? Math.min(tamCentro, 9) : tamCentro}
+                    verticesIgnorados={verticesIgnorados} onIgnorarVertice={ignorarVertice} onConsiderarVertice={considerarVertice} realceId={realceId || pincelInicioId}
+                    onContextMenuVertice={(v, x, y) => setMenuContexto({ tipo: 'vertice', vertice: v, x, y })}
+                    onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })}
+                    onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
+                    onContextMenuDivisa={(v, idx, x, y) => setMenuContexto({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })}
+                    onContextMenuMapa={(lat, lon, x, y) => {
+                      if (modo !== 'navegar') {
+                        if (desenhoBuffer.length >= 2) {
+                          snap();
+                          const buf = desenhoBuffer;
+                          setDesenhoBuffer([]);
+                          setObjetos((os) => [...os, novaPolilinha(buf, modo === 'tracejado' ? { tracejado: true } : {})]);
+                          aviso(modo === 'tracejado' ? 'Tracejado concluído.' : 'Polilinha concluída.');
+                        } else {
+                          setDesenhoBuffer([]);
+                        }
+                        setModo('navegar');
+                        return;
+                      }
+                      setVista('planta');
+                    }} />
+                </ErrorBoundary>
+              </div>
+            </div>
           ) : null}
 
           {/* MULTI-SELEÇÃO: ação flutuante para apagar os vértices marcados */}
@@ -8999,6 +9626,14 @@ export default function EditorPage() {
                 <Printer className="size-3.5" />
               </button>
 
+              {/* Botão Compartilhar Projeto */}
+              <button type="button"
+                onClick={() => setCompartilharAberto(true)}
+                title="Compartilhar Projeto &amp; Equipe"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 shadow-xs transition-all shrink-0">
+                <Share2 className="size-3.5" />
+              </button>
+
               {/* Pintar Divisas/Confrontantes */}
               {vista === 'mapa' && (modo === 'divisa' || modo === 'confrontante') && (
                 <>
@@ -9162,21 +9797,13 @@ export default function EditorPage() {
                     </button>
                   )}
 
-                  {/* Escala da Planta na Barra Flutuante */}
-                  <div className="flex items-center gap-1 rounded-full border border-border bg-background/95 h-7 px-1 text-[10px] font-extrabold shrink-0 shadow-2xs">
-                    <button type="button" className="size-5 rounded-full hover:bg-muted font-bold flex items-center justify-center text-xs text-foreground transition-colors" title="Reduzir escala" onClick={() => alterarEscala(250)}>-</button>
-                    <button type="button" className="px-1 text-[9.5px] uppercase font-bold text-sky-600 dark:text-sky-400 hover:underline" title="Escala da Planta (clique para Automática)" onClick={() => setPlantaConfig((c) => ({ ...c, escalaManual: undefined }))}>
-                      ESCALA{!plantaConfig.escalaManual ? ' (AUTO)' : ` 1:${obterEscalaEfetiva()}`}
-                    </button>
-                    <button type="button" className="size-5 rounded-full hover:bg-muted font-bold flex items-center justify-center text-xs text-foreground transition-colors" title="Aumentar escala" onClick={() => alterarEscala(-250)}>+</button>
-                  </div>
+
 
                   {/* Tema da prancha */}
                   <button type="button" onClick={() => setPlantaDark((v) => !v)}
                     title={plantaDark ? 'Prancha escura — clique para a clara' : 'Prancha clara — clique para a escura (noturna)'}
-                    className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-2 text-[10px] font-bold text-foreground hover:bg-muted transition-colors shrink-0">
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background/95 text-foreground hover:bg-muted transition-colors shrink-0">
                     {plantaDark ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
-                    <span>{plantaDark ? 'ESCURA' : 'CLARA'}</span>
                   </button>
                 </>
               )}
@@ -9186,34 +9813,24 @@ export default function EditorPage() {
                 <>
                   <div className="h-4 w-px bg-border shrink-0" />
                   <div className="flex items-center gap-1 shrink-0">
-                    <TutorialAudioPill modo={modoApp} />
-                    {(videosUrl || videosTutorial.length > 0) && (
-                      <button type="button" onClick={() => setVideosListaAberta(true)}
-                        className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
-                        title="Vídeos tutoriais por tema">
-                        <Youtube className="size-3 shrink-0" /> Vídeos
+                    <button type="button" onClick={() => setTutorialAberto(true)}
+                      className="flex size-7 items-center justify-center rounded-full border bg-background/95 text-amber-600 dark:text-amber-400 hover:bg-muted transition-colors shrink-0"
+                      title="Iniciar Tutorial Interativo (Play)">
+                      <Play className="size-3.5 fill-amber-500/20 shrink-0" />
+                    </button>
+                    {vista === 'mapa' && (
+                      <button type="button" onClick={() => setMostrarRotulos((m) => !m)}
+                        title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (RO)`}
+                        className={`flex h-7 items-center gap-1 rounded-full border px-2 text-[10px] font-bold uppercase tracking-wide transition-colors ${
+                          mostrarRotulos 
+                            ? 'bg-primary text-primary-foreground border-primary/50' 
+                            : 'bg-background text-muted-foreground hover:bg-muted'
+                        }`}>
+                        {mostrarRotulos ? <Eye className="size-3.5 shrink-0" /> : <EyeOff className="size-3.5 shrink-0" />}
+                        <span>Rótulos</span>
                       </button>
                     )}
-                    <button type="button" onClick={() => setMostrarRotulos((m) => !m)}
-                      title={`${mostrarRotulos ? 'Esconder' : 'Mostrar'} nomes dos vértices (RO)`}
-                      className={`flex h-6 items-center gap-1 rounded-full border px-2 text-[10px] font-bold uppercase tracking-wide transition-colors ${
-                        mostrarRotulos 
-                          ? 'bg-primary text-primary-foreground border-primary/50' 
-                          : 'bg-background text-muted-foreground hover:bg-muted'
-                      }`}>
-                      {mostrarRotulos ? <Eye className="size-3 shrink-0" /> : <EyeOff className="size-3 shrink-0" />}
-                      <span>Rótulos</span>
-                    </button>
-                    <button type="button" onClick={() => trocarModoApp(proximoModo(modoApp))}
-                      title={completo
-                        ? 'Modo Completo. Clique para o Fácil.'
-                        : medio
-                          ? 'Modo Médio. Clique para o Completo.'
-                          : 'Modo Fácil. Clique para o Médio.'}
-                      className="flex h-6 items-center gap-1 rounded-full border bg-background/95 px-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                      {completo ? <Briefcase className="size-3 text-sky-500 shrink-0" /> : medio ? <PencilRuler className="size-3 text-emerald-500 shrink-0" /> : <GraduationCap className="size-3 text-amber-500 shrink-0" />}
-                      <span>Modo {completo ? 'Completo' : medio ? 'Médio' : 'Fácil'}</span>
-                    </button>
+
                   </div>
                 </>
               )}
@@ -9252,11 +9869,133 @@ export default function EditorPage() {
         onOpenChange={setSeletorGlebasPecasAberto}
         glebas={sincronizarGlebas()}
         glebaAtivaId={glebaAtivaId}
+        tipoProjeto={tipoProjeto}
         onConfirmar={(glebasSel) => {
           if (seletorGlebasPecasAction) {
             seletorGlebasPecasAction(glebasSel);
           }
         }}
+      />
+      <DemoConfigModal
+        open={demoConfigOpen}
+        onOpenChange={setDemoConfigOpen}
+        onConfirmar={(opts) => {
+          carregarProjetoFicticio({
+            configuravel: true,
+            opcoes: opts
+          });
+        }}
+      />
+      <MeioAmbienteModal
+        open={meioAmbienteAberto}
+        onOpenChange={setMeioAmbienteAberto}
+        imovel={{
+          ...imovel,
+          areaHa: res ? valoresEfetivos(res, imovel).areaHa : 0,
+          areaM2: res ? (valoresEfetivos(res, imovel).areaHa * 10000) : 0,
+          uf: imovel.municipio ? imovel.municipio.split('-').pop() : ''
+        }}
+        onChangeImovel={setImovel}
+        tecnico={tecnico || TECNICO_PADRAO}
+        esc={escritorio}
+        onSalvarProjeto={salvar}
+      />
+      <UsucapiaoModal
+        open={usucapiaoAberto}
+        onOpenChange={setUsucapiaoAberto}
+        imovel={{
+          ...imovel,
+          areaHa: res ? valoresEfetivos(res, imovel).areaHa : 0,
+          areaM2: res ? (valoresEfetivos(res, imovel).areaHa * 10000) : 0,
+          uf: imovel.municipio ? imovel.municipio.split('-').pop() : ''
+        }}
+        onChangeImovel={setImovel}
+        tecnico={tecnico || TECNICO_PADRAO}
+        esc={escritorio}
+        onSalvarProjeto={salvar}
+      />
+      <AvaliacaoModal
+        open={avaliacaoAberto}
+        onOpenChange={setAvaliacaoAberto}
+        imovel={{
+          ...imovel,
+          areaHa: res ? valoresEfetivos(res, imovel).areaHa : 0,
+          areaM2: res ? (valoresEfetivos(res, imovel).areaHa * 10000) : 0,
+          uf: imovel.municipio ? imovel.municipio.split('-').pop() : ''
+        }}
+        onChangeImovel={setImovel}
+        tecnico={tecnico || TECNICO_PADRAO}
+        esc={escritorio}
+        onSalvarProjeto={salvar}
+      />
+      <JuridicoModal
+        open={juridicoAberto}
+        onOpenChange={setJuridicoAberto}
+        imovel={{
+          ...imovel,
+          areaHa: res ? valoresEfetivos(res, imovel).areaHa : 0,
+          areaM2: res ? (valoresEfetivos(res, imovel).areaHa * 10000) : 0,
+          uf: imovel.municipio ? imovel.municipio.split('-').pop() : ''
+        }}
+        onChangeImovel={setImovel}
+        tecnico={tecnico || TECNICO_PADRAO}
+        esc={escritorio}
+        onSalvarProjeto={salvar}
+        confrontantesList={confrontantes.map(c => c.nome)}
+      />
+      <ReurbModal
+        open={reurbAberto}
+        onOpenChange={setReurbAberto}
+        imovel={{
+          ...imovel,
+          areaHa: res ? valoresEfetivos(res, imovel).areaHa : 0,
+          areaM2: res ? (valoresEfetivos(res, imovel).areaHa * 10000) : 0,
+          uf: imovel.municipio ? imovel.municipio.split('-').pop() : ''
+        }}
+        onChangeImovel={setImovel}
+        tecnico={tecnico || TECNICO_PADRAO}
+        esc={escritorio}
+        onSalvarProjeto={salvar}
+      />
+      <LoteamentoModal
+        open={loteamentoAberto}
+        onOpenChange={setLoteamentoAberto}
+        imovel={{
+          ...imovel,
+          areaHa: res ? valoresEfetivos(res, imovel).areaHa : 0,
+          areaM2: res ? (valoresEfetivos(res, imovel).areaHa * 10000) : 0,
+          uf: imovel.municipio ? imovel.municipio.split('-').pop() : ''
+        }}
+        onChangeImovel={setImovel}
+        tecnico={tecnico || TECNICO_PADRAO}
+        esc={escritorio}
+        onSalvarProjeto={salvar}
+        glebas={glebas}
+        onChangeGlebas={setGlebas}
+        defaultVolCorte={plantaConfig?.print3dVolumeCorte}
+        defaultVolAterro={plantaConfig?.print3dVolumeAterro}
+      />
+      <CreditoRuralModal
+        open={creditoAberto}
+        onOpenChange={setCreditoAberto}
+        imovel={{
+          ...imovel,
+          areaHa: res ? valoresEfetivos(res, imovel).areaHa : 0,
+          areaM2: res ? (valoresEfetivos(res, imovel).areaHa * 10000) : 0,
+          uf: imovel.municipio ? imovel.municipio.split('-').pop() : ''
+        }}
+        onChangeImovel={setImovel}
+        tecnico={tecnico || TECNICO_PADRAO}
+        esc={escritorio}
+        onSalvarProjeto={salvar}
+      />
+      <CompartilharModal
+        open={compartilharAberto}
+        onOpenChange={setCompartilharAberto}
+        imovel={imovel}
+        onChangeImovel={setImovel}
+        projetoId={projetoId}
+        onSalvarProjeto={salvar}
       />
       <ErrorBoundary onReset={() => setCalcAberta(false)}>
         <CalculadoraModal open={calcAberta} onOpenChange={setCalcAberta} zona={zona} hemisferio={hemisferio} />
@@ -9369,13 +10108,13 @@ export default function EditorPage() {
       <AnuenciaModal open={anuenciaAberta} onOpenChange={setAnuenciaAberta} confrontantes={confrontantes} lados={lados} mapa={confrontantePorLado} imovel={imovel} tecnico={tecnico} />
       <HistoriaModal open={historiaAberta} onOpenChange={setHistoriaAberta} />
 
-      {/* JANELA MODAL CENTRALIZADA DADOS DO IMÓVEL */}
+      {/* JANELA MODAL CENTRALIZADA DADOS DO PROJETO */}
       <Dialog open={painelAberto} onOpenChange={setPainelAberto}>
-        <DialogContent className="max-w-4xl h-[84vh] max-h-[780px] min-h-[580px] flex flex-col bg-card p-4 rounded-xl border shadow-2xl overflow-hidden">
+        <DialogContent className="w-[92vw] max-w-6xl h-[84vh] max-h-[780px] min-h-[580px] flex flex-col bg-card p-4 rounded-xl border shadow-2xl overflow-hidden">
           <DialogHeader className="pb-2 border-b flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
               <Upload className="size-4 text-indigo-500" />
-              Dados do Imóvel &amp; Responsável Técnico
+              Dados do Projeto
             </DialogTitle>
           </DialogHeader>
 
@@ -9449,6 +10188,9 @@ export default function EditorPage() {
                   setAba('imovel');
                   setPainelAberto(true);
                 }}
+                tipoProjeto={tipoProjeto}
+                onTipoProjeto={setTipoProjeto}
+                onAtualizarGleba={(id, campos) => setGlebas((gs) => gs.map((g) => (g.id === id ? { ...g, ...campos } : g)))}
               />
             )}
 
@@ -9472,10 +10214,23 @@ export default function EditorPage() {
 
             {aba === 'vertices' && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <SecaoTitulo>Lista de Vértices ({vertices.length})</SecaoTitulo>
-                  <div className="text-xs text-muted-foreground font-mono">
-                    Perímetro: {res ? res.perimetro.toFixed(2) : '0.00'} m | Área: {res ? res.areaHa.toFixed(4) : '0.0000'} ha
+                  <div className="flex items-center gap-3">
+                    {vertices.length > 0 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setBatchRenomearAberto(true)}
+                        className="h-7 text-xs font-bold border-indigo-500/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 flex items-center gap-1.5"
+                      >
+                        <ListOrdered className="size-3.5" /> Renomear em Lote (SIGEF)
+                      </Button>
+                    )}
+                    <div className="text-xs text-muted-foreground font-mono">
+                      Perímetro: {res ? res.perimetro.toFixed(2) : '0.00'} m | Área: {res ? res.areaHa.toFixed(4) : '0.0000'} ha
+                    </div>
                   </div>
                 </div>
                 {vertices.length === 0 ? (
@@ -9546,8 +10301,8 @@ export default function EditorPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="w-full truncate text-xs font-black uppercase text-foreground">{p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}</div>
-                          <div className="text-[10px] font-semibold text-primary/90 mt-0.5 truncate">
-                            👤 {p.imovel?.proprietario ? `Proprietário: ${p.imovel.proprietario}` : 'Proprietário não informado'}
+                          <div className="text-[10px] font-semibold text-primary/90 mt-0.5 truncate flex items-center gap-1">
+                            <User className="size-3.5 text-indigo-500 shrink-0" /> {p.imovel?.proprietario ? `Proprietário: ${p.imovel.proprietario}` : 'Proprietário não informado'}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -9561,11 +10316,11 @@ export default function EditorPage() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] text-muted-foreground font-mono bg-background/60 p-2 rounded-lg border border-border/40">
-                        <div>📍 <strong className="text-foreground">{p.imovel?.municipio || 'Sem Município'}</strong></div>
-                        <div>📐 <strong className="text-foreground">{contarVertices(p)} vértices</strong></div>
-                        {areaHa > 0 && <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">🌾 Área: {areaHa.toFixed(4)} ha ({Math.round(areaHa * 10000).toLocaleString('pt-BR')} m²)</div>}
-                        <div>📅 Criado: <span className="font-sans font-medium">{p.criadoEm ? new Date(p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
-                        <div>💾 Salvo: <span className="font-sans font-medium">{p.atualizadoEm || p.criadoEm ? new Date(p.atualizadoEm || p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
+                        <div className="flex items-center gap-1"><MapPin className="size-3 text-indigo-500/80 shrink-0" /> <strong className="text-foreground truncate">{p.imovel?.municipio || 'Sem Município'}</strong></div>
+                        <div className="flex items-center gap-1"><Ruler className="size-3 text-amber-500/80 shrink-0" /> <strong className="text-foreground truncate">{contarVertices(p)} vértices</strong></div>
+                        {areaHa > 0 && <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1"><Sprout className="size-3.5 text-emerald-500 shrink-0" /> Área: {areaHa.toFixed(4)} ha ({Math.round(areaHa * 10000).toLocaleString('pt-BR')} m²)</div>}
+                        <div className="flex items-center gap-1"><Calendar className="size-3 text-slate-400 shrink-0" /> Criado: <span className="font-sans font-medium">{p.criadoEm ? new Date(p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
+                        <div className="flex items-center gap-1"><Save className="size-3 text-slate-400 shrink-0" /> Salvo: <span className="font-sans font-medium">{p.atualizadoEm || p.criadoEm ? new Date(p.atualizadoEm || p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
                       </div>
 
                       <div className="space-y-1 pt-0.5">
@@ -9625,8 +10380,8 @@ export default function EditorPage() {
                           <div className="text-xs font-black text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors uppercase truncate">
                             {p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}
                           </div>
-                          <div className="text-[10.5px] font-semibold text-indigo-600 dark:text-indigo-300 mt-0.5 truncate">
-                            👤 {p.imovel?.proprietario ? `Proprietário: ${p.imovel.proprietario}` : 'Proprietário não informado'}
+                          <div className="text-[10.5px] font-semibold text-indigo-600 dark:text-indigo-300 mt-0.5 truncate flex items-center gap-1">
+                            <User className="size-3.5 text-indigo-500 shrink-0" /> {p.imovel?.proprietario ? `Proprietário: ${p.imovel.proprietario}` : 'Proprietário não informado'}
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -9651,11 +10406,11 @@ export default function EditorPage() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-muted-foreground font-mono bg-background/60 p-2 rounded-lg border border-border/40">
-                        <div>📍 <strong className="text-foreground">{p.imovel?.municipio || 'Sem Município'}</strong></div>
-                        <div>📐 <strong className="text-foreground">{contarVertices(p)} vértices</strong></div>
-                        {areaHa > 0 && <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold">🌾 Área: {areaHa.toFixed(4)} ha ({Math.round(areaHa * 10000).toLocaleString('pt-BR')} m²)</div>}
-                        <div>📅 Criado: <span className="font-sans font-medium">{p.criadoEm ? new Date(p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
-                        <div>💾 Salvo: <span className="font-sans font-medium">{p.atualizadoEm || p.criadoEm ? new Date(p.atualizadoEm || p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
+                        <div className="flex items-center gap-1"><MapPin className="size-3 text-indigo-500/80 shrink-0" /> <strong className="text-foreground truncate">{p.imovel?.municipio || 'Sem Município'}</strong></div>
+                        <div className="flex items-center gap-1"><Ruler className="size-3 text-amber-500/80 shrink-0" /> <strong className="text-foreground truncate">{contarVertices(p)} vértices</strong></div>
+                        {areaHa > 0 && <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1"><Sprout className="size-3.5 text-emerald-500 shrink-0" /> Área: {areaHa.toFixed(4)} ha ({Math.round(areaHa * 10000).toLocaleString('pt-BR')} m²)</div>}
+                        <div className="flex items-center gap-1"><Calendar className="size-3 text-slate-400 shrink-0" /> Criado: <span className="font-sans font-medium">{p.criadoEm ? new Date(p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
+                        <div className="flex items-center gap-1"><Save className="size-3 text-slate-400 shrink-0" /> Salvo: <span className="font-sans font-medium">{p.atualizadoEm || p.criadoEm ? new Date(p.atualizadoEm || p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
                       </div>
 
                       <div className="space-y-1 pt-0.5">
@@ -9684,7 +10439,7 @@ export default function EditorPage() {
       {/* Modal de Configuração e Geração de Curvas de Nível */}
       {/* Modal de Configuração e Geração de Curvas de Nível */}
       <Dialog open={curvaConfigAberta} onOpenChange={setCurvaConfigAberta}>
-        <DialogContent className="sm:max-w-md bg-card p-4 rounded-xl border shadow-2xl fixed top-4 right-4 translate-x-0 translate-y-0 left-auto bottom-auto max-h-[90vh] overflow-y-auto z-[1300]">
+        <DialogContent className="sm:max-w-md bg-card p-4 rounded-xl border shadow-2xl fixed top-4 right-4 translate-x-0 translate-y-0 left-auto bottom-auto max-h-[90vh] overflow-y-auto z-[6000]">
           <DialogHeader className="pb-2 border-b">
             <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
               <IconeCurvasNivel className="size-4 text-indigo-500" />
@@ -9972,6 +10727,17 @@ export default function EditorPage() {
         onAplicarAjusteGlobal={ajustarAltitudesGlobais}
         onBuscarAltitudesOnline={gerarCurvasNivel}
         processando={processando}
+      />
+      <RenomearLoteModal
+        open={batchRenomearAberto}
+        onOpenChange={setBatchRenomearAberto}
+        vertices={vertices}
+        onSalvarVertices={(novosVs) => {
+          snap();
+          setVertices(novosVs);
+          aviso('Vértices renomeados com sucesso.');
+        }}
+        tecnico={tecnico}
       />
       <Dialog open={conferirAberto} onOpenChange={setConferirAberto}>
         <DialogContent className="max-w-6xl max-h-[88vh] flex flex-col p-4 sm:p-5 rounded-xl bg-background shadow-2xl overflow-hidden">
@@ -12085,6 +12851,36 @@ function PainelConferencia({
             <Info className="size-3.5 text-muted-foreground shrink-0" />
             <span>Matrículas e anexos dos confrontantes podem ser gerenciados na aba <strong>AJUSTES / DADOS</strong>.</span>
           </div>
+
+          {/* Card de Confiabilidade Geodésica e Projetos */}
+          <Card className="border-indigo-500/20 bg-indigo-500/5 shadow-xs">
+            <CardHeader className="py-2 px-3 border-b border-indigo-500/10">
+              <CardTitle className="text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-300 tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="size-3.5 text-indigo-500 shrink-0" />
+                Guia de Confiabilidade &amp; Cálculos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-2.5 space-y-2 text-[10px] leading-relaxed text-muted-foreground">
+              <div>
+                <strong className="text-foreground">⛰️ Altitude Elipsoidal ($h$) vs. Ortométrica ($H$):</strong>
+                <p className="mt-0.5">
+                  O SIGEF exige altitudes elipsoidais ($h$) obtidas no receptor GNSS. A altitude ortométrica ($H$, em relação ao nível do mar) <strong>não deve ser usada</strong> para planilhas ODS de certificação.
+                </p>
+              </div>
+              <div className="border-t border-indigo-500/10 pt-1.5">
+                <strong className="text-foreground">📐 Área Real Geodésica (SGL) vs. Plana (UTM):</strong>
+                <p className="mt-0.5">
+                  O Souza-CAD calcula áreas no elipsoide (SGL local) assim como o SIGEF, eliminando a distorção do fator de escala ($K$) e convergência da projeção UTM. A área plana comum do CAD tradicional diferirá em milímetros ou metros dependendo do fuso.
+                </p>
+              </div>
+              <div className="border-t border-indigo-500/10 pt-1.5">
+                <strong className="text-foreground">🛰️ Relevo Online vs. Levantamento RTK:</strong>
+                <p className="mt-0.5">
+                  Os dados de satélite (Copernicus DEM) têm precisão métrica (30m) e são indicados apenas para desenhar curvas de nível ambientais/CAR. <strong>Nunca use altitudes online ou de satélite para demarcação física ou retificação de divisas.</strong>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Coluna Direita: Análise de Limites, Conflitos e Pendências (7 cols) */}
@@ -12597,162 +13393,479 @@ function PainelGlebas({
   onAlternarTipoGleba,
   onAlternarVisibilidadeGleba,
   onEditarDadosGleba,
+  tipoProjeto = 'rural',
+  onTipoProjeto,
+  onAtualizarGleba,
 }: {
   glebas: Gleba[];
   glebaAtivaId: string;
   onTrocarGleba: (id: string) => void;
-  onNovaGleba: () => void;
+  onNovaGleba: (quadra?: string) => void;
   onRemoverGleba: (id: string) => void;
   onRenomearGleba: (id: string, nome: string) => void;
   onAlternarTipoGleba: (id: string) => void;
   onAlternarVisibilidadeGleba: (id: string) => void;
   onEditarDadosGleba?: (id: string) => void;
+  tipoProjeto?: 'rural' | 'loteamento';
+  onTipoProjeto?: (tipo: 'rural' | 'loteamento') => void;
+  onAtualizarGleba?: (id: string, campos: Partial<Gleba>) => void;
 }) {
+  const [busca, setBusca] = useState('');
+  const [accordionAbertos, setAccordionAbertos] = useState<Record<string, boolean>>({});
+
+  const isLote = tipoProjeto === 'loteamento';
+  const labelUnidade = isLote ? 'Lote' : 'Gleba';
+  const labelUnidadePlural = isLote ? 'Lotes' : 'Glebas';
+
+  // Filtrar as glebas com base na busca por nome
+  const glebasFiltradas = useMemo(() => {
+    if (!busca.trim()) return glebas;
+    const t = busca.toLowerCase().trim();
+    return glebas.filter(
+      (g) =>
+        (g.denominacao || '').toLowerCase().includes(t) ||
+        (g.quadra || '').toLowerCase().includes(t)
+    );
+  }, [glebas, busca]);
+
+  // Função auxiliar para obter o nome formatado da quadra
+  const obterQuadraGleba = (g: Gleba): string => {
+    if (g.quadra && g.quadra.trim()) {
+      const q = g.quadra.trim().toUpperCase();
+      return q.startsWith('QUADRA') ? q : `QUADRA ${q}`;
+    }
+    // Heurística de extração a partir do nome
+    const match = (g.denominacao || '').match(/\b(?:quadra|quad|qd|q)\b[-.\s_]*([a-zA-Z0-9]+)\b/i);
+    if (match && match[1]) {
+      return `QUADRA ${match[1].toUpperCase()}`;
+    }
+    return '';
+  };
+
+  // Identificar qual quadra contém o lote ativo
+  const quadraAtiva = useMemo(() => {
+    const loteAtivo = glebas.find((g) => g.id === glebaAtivaId);
+    return loteAtivo ? obterQuadraGleba(loteAtivo) : '';
+  }, [glebas, glebaAtivaId]);
+
+  // Agrupar as glebas por quadra
+  const gruposDeQuadras = useMemo(() => {
+    const grupos: Record<string, { itens: { originalIdx: number; gleba: Gleba }[]; areaTotal: number }> = {};
+    
+    glebasFiltradas.forEach((g) => {
+      // Achar o índice original da gleba no array total
+      const originalIdx = glebas.findIndex((x) => x.id === g.id);
+      const quadraNome = isLote ? obterQuadraGleba(g) : '';
+      const chave = quadraNome || 'SEM QUADRA';
+
+      if (!grupos[chave]) {
+        grupos[chave] = { itens: [], areaTotal: 0 };
+      }
+
+      const areaHa = g.vertices && g.vertices.length >= 3 ? calcular(g.vertices, {}).areaHa : 0;
+      grupos[chave].itens.push({ originalIdx, gleba: g });
+      grupos[chave].areaTotal += areaHa;
+    });
+
+    return grupos;
+  }, [glebasFiltradas, glebas, isLote]);
+
+  // Ordenar chaves das quadras (Sem Quadra fica por último ou primeiro)
+  const quadrasOrdenadas = useMemo(() => {
+    const chaves = Object.keys(gruposDeQuadras);
+    return chaves.sort((a, b) => {
+      if (a === 'SEM QUADRA') return 1;
+      if (b === 'SEM QUADRA') return -1;
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [gruposDeQuadras]);
+
+  // Controlar abertura automática da quadra ativa
+  useEffect(() => {
+    if (quadraAtiva) {
+      setAccordionAbertos((prev) => ({ ...prev, [quadraAtiva]: true }));
+    } else if (isLote) {
+      setAccordionAbertos((prev) => ({ ...prev, 'SEM QUADRA': true }));
+    }
+  }, [quadraAtiva, isLote]);
+
+  const alternarAccordion = (qd: string) => {
+    setAccordionAbertos((prev) => ({ ...prev, [qd]: !prev[qd] }));
+  };
+
+  const expandirTodas = () => {
+    const novas: Record<string, boolean> = {};
+    quadrasOrdenadas.forEach((q) => { novas[q] = true; });
+    setAccordionAbertos(novas);
+  };
+
+  const colapsarTodas = () => {
+    setAccordionAbertos({});
+  };
+
   return (
     <div className="space-y-4 text-xs">
-      <div className="flex items-center justify-between border-b pb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
         <div>
           <h3 className="font-extrabold text-sm uppercase tracking-wide text-foreground flex items-center gap-2">
-            <Waypoints className="size-4 text-indigo-500" /> Gestão de Glebas &amp; Desmembramento
+            <Waypoints className="size-4 text-indigo-500" /> Gestão de {labelUnidadePlural}
           </h3>
-          <p className="text-[11px] text-muted-foreground">
-            Gerencie as parcelas do projeto. Glebas <b>ATIVAS</b> mostram vértices e divisas na planta. Glebas <b>AUXILIARES</b> aparecem na planta e situação com traço fino de apoio. Glebas <b>OCULTAS</b> não saem no PDF oficial.
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Organize os lotes/glebas e defina se são Principais (geram memoriais), Auxiliares ou Ocultos.
           </p>
         </div>
-        <Button size="sm" onClick={onNovaGleba} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1 text-xs shrink-0 cursor-pointer">
-          <Plus className="size-3.5" /> + Nova Gleba
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {glebas.map((g, idx) => {
-          const isAtiva = g.id === glebaAtivaId;
-          const isAuxiliar = g.tipoGleba === 'auxiliar';
-          const isVisivel = g.visivel !== false;
-          const numVerts = g.vertices?.length ?? 0;
-          const areaHa = g.vertices?.length >= 3 ? calcular(g.vertices, {}).areaHa : 0;
-
-          return (
-            <div
-              key={g.id}
-              className={`p-3 rounded-xl border transition-all space-y-2.5 ${
-                isAtiva
-                  ? 'border-indigo-500/60 bg-indigo-500/5 ring-1 ring-indigo-500/20'
-                  : 'border-border bg-card hover:bg-muted/30'
+        
+        {/* Toggle para alternar tipo de projeto */}
+        {onTipoProjeto && (
+          <div className="flex rounded-lg bg-slate-100 dark:bg-zinc-800 p-0.5 border border-slate-200 dark:border-zinc-700 shrink-0 text-[10px] font-bold">
+            <button
+              type="button"
+              onClick={() => onTipoProjeto('rural')}
+              className={`px-3 py-1 rounded transition-all cursor-pointer ${
+                tipoProjeto === 'rural'
+                  ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-zinc-800 font-extrabold'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
-                    #{idx + 1}
-                  </span>
-                  <input
-                    type="text"
-                    value={g.denominacao || ''}
-                    onChange={(e) => onRenomearGleba(g.id, e.target.value)}
-                    className="font-bold text-xs bg-transparent border-b border-transparent hover:border-border focus:border-indigo-500 outline-none w-full truncate"
-                    placeholder="Nome da Gleba / Parcela"
-                  />
-                </div>
-                {isAtiva && (
-                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-600 text-white shrink-0">
-                    Ativa
-                  </span>
-                )}
-              </div>
+              Rural
+            </button>
+            <button
+              type="button"
+              onClick={() => onTipoProjeto('loteamento')}
+              className={`px-3 py-1 rounded transition-all cursor-pointer ${
+                tipoProjeto === 'loteamento'
+                  ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-zinc-800 font-extrabold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Loteamento
+            </button>
+          </div>
+        )}
+      </div>
 
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground border-y py-2 border-slate-200 dark:border-zinc-800 gap-2">
-                <div>
-                  <span className="font-bold text-foreground">{numVerts}</span> vértices
-                  {areaHa > 0 && <span className="ml-1.5 font-mono font-extrabold text-foreground">({numBR(areaHa, 4)} ha)</span>}
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-muted/20 p-2 rounded-xl border">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder={`Buscar ${labelUnidade.toLowerCase()} pelo nome ou quadra...`}
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
+        
+        <div className="flex items-center gap-1.5">
+          {isLote && (
+            <>
+              <Button size="sm" variant="ghost" className="h-7 text-[10px] font-bold" onClick={expandirTodas}>
+                Expandir Todas
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-[10px] font-bold" onClick={colapsarTodas}>
+                Colapsar Todas
+              </Button>
+            </>
+          )}
+          <Button size="sm" onClick={() => onNovaGleba()} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1 text-xs shrink-0 cursor-pointer h-8">
+            <Plus className="size-3.5" /> + Novo {labelUnidade}
+          </Button>
+        </div>
+      </div>
+
+      {!isLote ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {glebasFiltradas.map((g) => {
+            const originalIdx = glebas.findIndex((x) => x.id === g.id);
+            const isAtiva = g.id === glebaAtivaId;
+            const isAuxiliar = g.tipoGleba === 'auxiliar';
+            const isVisivel = g.visivel !== false;
+            const numVerts = g.vertices?.length ?? 0;
+            const areaHa = g.vertices?.length >= 3 ? calcular(g.vertices, {}).areaHa : 0;
+
+            return (
+              <div
+                key={g.id}
+                className={`p-3 rounded-xl border transition-all space-y-2.5 ${
+                  isAtiva
+                    ? 'border-indigo-500/60 bg-indigo-500/5 ring-1 ring-indigo-500/20'
+                    : 'border-border bg-card hover:bg-muted/30'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                      #{originalIdx + 1}
+                    </span>
+                    <input
+                      type="text"
+                      value={g.denominacao || ''}
+                      onChange={(e) => onRenomearGleba(g.id, e.target.value)}
+                      className="font-bold text-xs bg-transparent border-b border-transparent hover:border-border focus:border-indigo-500 outline-none w-full truncate"
+                      placeholder={`Nome da ${labelUnidade}`}
+                    />
+                  </div>
+                  {isAtiva && (
+                    <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-600 text-white shrink-0">
+                      Ativa
+                    </span>
+                  )}
                 </div>
-                {/* Botão de 3 Estados (Principal | Auxiliar | Oculta) */}
-                <div className="flex rounded-lg bg-slate-100 dark:bg-zinc-800 p-0.5 border border-slate-200 dark:border-zinc-700 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isAuxiliar || !isVisivel) {
-                        onAlternarVisibilidadeGleba(g.id);
+
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground border-y py-2 border-slate-200 dark:border-zinc-800 gap-2">
+                  <div>
+                    <span className="font-bold text-foreground">{numVerts}</span> vértices
+                    {areaHa > 0 && <span className="ml-1.5 font-mono font-extrabold text-foreground">({numBR(areaHa, 4)} ha)</span>}
+                  </div>
+                  
+                  {/* Select de estado */}
+                  <select
+                    value={isAuxiliar ? 'auxiliar' : !isVisivel ? 'oculta' : 'principal'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === 'principal') {
+                        if (!isVisivel) onAlternarVisibilidadeGleba(g.id);
                         if (isAuxiliar) onAlternarTipoGleba(g.id);
-                      }
-                    }}
-                    className={`px-2 py-0.5 text-[9.5px] font-black uppercase rounded transition-all cursor-pointer ${
-                      !isAuxiliar && isVisivel
-                        ? 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-300 shadow-xs border border-emerald-500/40'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    Principal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!isAuxiliar || !isVisivel) {
+                      } else if (val === 'auxiliar') {
                         if (!isVisivel) onAlternarVisibilidadeGleba(g.id);
                         if (!isAuxiliar) onAlternarTipoGleba(g.id);
+                      } else {
+                        if (isVisivel) onAlternarVisibilidadeGleba(g.id);
                       }
                     }}
-                    className={`px-2 py-0.5 text-[9.5px] font-black uppercase rounded transition-all cursor-pointer ${
-                      isAuxiliar && isVisivel
-                        ? 'bg-white dark:bg-zinc-900 text-amber-700 dark:text-amber-300 shadow-xs border border-amber-500/40'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
+                    className="h-6 text-[10px] font-bold rounded border border-slate-300 dark:border-zinc-700 bg-background px-1 focus:outline-none"
                   >
-                    Auxiliar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isVisivel) onAlternarVisibilidadeGleba(g.id);
-                    }}
-                    className={`px-2 py-0.5 text-[9.5px] font-black uppercase rounded transition-all cursor-pointer ${
-                      !isVisivel
-                        ? 'bg-white dark:bg-zinc-900 text-red-700 dark:text-red-300 shadow-xs border border-red-500/40'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    Oculta
-                  </button>
+                    <option value="principal">Principal</option>
+                    <option value="auxiliar">Auxiliar</option>
+                    <option value="oculta">Oculta</option>
+                  </select>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between pt-1 gap-2">
-                <Button
-                  size="sm"
-                  variant={isAtiva ? 'default' : 'outline'}
-                  className={`h-7 text-[10px] font-bold gap-1 cursor-pointer flex-1 ${
-                    isAtiva
-                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                      : 'text-indigo-600 border-indigo-500/30 hover:bg-indigo-500/10'
-                  }`}
-                  onClick={() => {
-                    if (onEditarDadosGleba) {
-                      onEditarDadosGleba(g.id);
-                    } else if (!isAtiva) {
-                      onTrocarGleba(g.id);
-                    }
-                  }}
-                  title="Abrir os dados cadastrais, matrícula e confrontantes desta gleba na aba Dados"
-                >
-                  <Palette className="size-3" /> DADOS DA GLEBA
-                </Button>
-
-                {glebas.length > 1 && (
+                <div className="flex items-center justify-between pt-1 gap-2">
                   <Button
                     size="sm"
-                    variant="ghost"
-                    className="h-7 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-500/10 gap-1 cursor-pointer shrink-0"
-                    onClick={() => onRemoverGleba(g.id)}
-                    title="Excluir esta gleba"
+                    variant={isAtiva ? 'default' : 'outline'}
+                    className={`h-7 text-[10px] font-bold gap-1 cursor-pointer flex-1 ${
+                      isAtiva
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        : 'text-indigo-600 border-indigo-500/30 hover:bg-indigo-500/10'
+                    }`}
+                    onClick={() => {
+                      if (onEditarDadosGleba) {
+                        onEditarDadosGleba(g.id);
+                      } else if (!isAtiva) {
+                        onTrocarGleba(g.id);
+                      }
+                    }}
+                    title="Abrir os dados cadastrais desta gleba"
                   >
-                    <Trash2 className="size-3" /> Excluir
+                    <Palette className="size-3" /> DADOS DA GLEBA
                   </Button>
+
+                  {glebas.length > 1 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-500/10 gap-1 cursor-pointer shrink-0"
+                      onClick={() => onRemoverGleba(g.id)}
+                      title="Excluir esta gleba"
+                    >
+                      <Trash2 className="size-3" /> Excluir
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {quadrasOrdenadas.map((qd) => {
+            const grupo = gruposDeQuadras[qd];
+            const estaAberto = !!accordionAbertos[qd];
+            const numLotes = grupo.itens.length;
+            const areaTotalQd = grupo.areaTotal;
+            const labelQuadra = qd === 'SEM QUADRA' ? 'Lotes sem Quadra' : qd;
+
+            return (
+              <div key={qd} className="border rounded-xl bg-card overflow-hidden shadow-xs">
+                {/* Cabeçalho do Accordion */}
+                <div
+                  onClick={() => alternarAccordion(qd)}
+                  className={`flex flex-wrap items-center justify-between px-3 py-2 cursor-pointer select-none transition-colors border-b ${
+                    estaAberto ? 'bg-muted/30' : 'bg-muted/10 hover:bg-muted/20'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`transition-transform duration-200 ${estaAberto ? 'rotate-90' : ''}`}>
+                      <ChevronRight className="size-4 text-muted-foreground" />
+                    </span>
+                    <strong className="text-xs uppercase font-extrabold tracking-wider text-indigo-700 dark:text-indigo-400 truncate">
+                      {labelQuadra}
+                    </strong>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 font-bold shrink-0">
+                      {numLotes} {numLotes === 1 ? 'lote' : 'lotes'}
+                    </span>
+                    {areaTotalQd > 0 && (
+                      <span className="text-[10px] text-muted-foreground font-mono truncate hidden sm:inline">
+                        | Área Total: {numBR(areaTotalQd, 4)} ha ({Math.round(areaTotalQd * 10000).toLocaleString('pt-BR')} m²)
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Ações rápidas no cabeçalho da quadra */}
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    {qd !== 'SEM QUADRA' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onNovaGleba(qd.replace(/^QUADRA\s+/i, ''))}
+                        className="h-6 text-[10px] px-2 font-bold gap-1 border-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-zinc-800 bg-background"
+                      >
+                        <Plus className="size-3" /> + Lote na {qd.replace(/^QUADRA\s+/i, 'Q.')}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Conteúdo do Accordion */}
+                {estaAberto && (
+                  <div className="p-3 bg-background/50">
+                    {numLotes === 0 ? (
+                      <div className="text-center py-4 text-muted-foreground text-[10px]">
+                        Nenhum lote correspondente a esta quadra.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                        {grupo.itens.map(({ originalIdx, gleba: g }) => {
+                          const isAtiva = g.id === glebaAtivaId;
+                          const isAuxiliar = g.tipoGleba === 'auxiliar';
+                          const isVisivel = g.visivel !== false;
+                          const numVerts = g.vertices?.length ?? 0;
+                          const areaHa = g.vertices?.length >= 3 ? calcular(g.vertices, {}).areaHa : 0;
+
+                          return (
+                            <div
+                              key={g.id}
+                              className={`p-2.5 rounded-lg border transition-all flex flex-col justify-between space-y-2 ${
+                                isAtiva
+                                  ? 'border-indigo-600 bg-indigo-500/5 ring-1 ring-indigo-500/30'
+                                  : 'border-border bg-card hover:bg-muted/30'
+                              }`}
+                            >
+                              <div className="space-y-1.5">
+                                {/* Linha 1: Número e Nome do lote */}
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-mono text-[9px] font-bold text-muted-foreground shrink-0">
+                                    #{originalIdx + 1}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={g.denominacao || ''}
+                                    onChange={(e) => onRenomearGleba(g.id, e.target.value)}
+                                    className="font-bold text-[11px] bg-transparent border-b border-transparent hover:border-border focus:border-indigo-500 outline-none w-full truncate"
+                                    placeholder="Nome do lote"
+                                    title={g.denominacao}
+                                  />
+                                </div>
+
+                                {/* Linha 2: Edição da Quadra e Estado do Lote */}
+                                <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-dashed">
+                                  {/* Input da Quadra */}
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[9px] text-muted-foreground font-semibold">Q:</span>
+                                    <input
+                                      type="text"
+                                      value={g.quadra || ''}
+                                      onChange={(e) => onAtualizarGleba?.(g.id, { quadra: e.target.value })}
+                                      className="w-8 h-5 text-[10px] font-extrabold text-center border rounded bg-background uppercase focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                      placeholder="Q."
+                                      title="Definir Quadra (ex: A, B, C...)"
+                                    />
+                                  </div>
+                                  
+                                  {/* Select de estado */}
+                                  <select
+                                    value={isAuxiliar ? 'auxiliar' : !isVisivel ? 'oculta' : 'principal'}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (val === 'principal') {
+                                        if (!isVisivel) onAlternarVisibilidadeGleba(g.id);
+                                        if (isAuxiliar) onAlternarTipoGleba(g.id);
+                                      } else if (val === 'auxiliar') {
+                                        if (!isVisivel) onAlternarVisibilidadeGleba(g.id);
+                                        if (!isAuxiliar) onAlternarTipoGleba(g.id);
+                                      } else {
+                                        if (isVisivel) onAlternarVisibilidadeGleba(g.id);
+                                      }
+                                    }}
+                                    className="h-5 text-[9.5px] font-bold rounded border border-slate-300 dark:border-zinc-700 bg-background px-1 focus:outline-none shrink-0"
+                                  >
+                                    <option value="principal">Principal</option>
+                                    <option value="auxiliar">Auxiliar</option>
+                                    <option value="oculta">Oculta</option>
+                                  </select>
+                                </div>
+
+                                {/* Linha 3: Vértices e Área */}
+                                <div className="text-[10px] text-muted-foreground font-mono leading-tight">
+                                  <div>
+                                    <span className="font-bold text-foreground">{numVerts}</span> vts
+                                  </div>
+                                  {areaHa > 0 && (
+                                    <div className="font-bold text-slate-700 dark:text-slate-300 truncate" title={`${numBR(areaHa, 4)} ha`}>
+                                      {numBR(areaHa, 4)} ha
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Ações do lote */}
+                              <div className="flex items-center justify-between pt-1.5 border-t gap-1">
+                                <Button
+                                  size="sm"
+                                  variant={isAtiva ? 'default' : 'outline'}
+                                  className={`h-6 text-[9.5px] font-bold gap-1 cursor-pointer flex-1 ${
+                                    isAtiva
+                                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                      : 'text-indigo-600 border-indigo-500/20 hover:bg-indigo-500/10'
+                                  }`}
+                                  onClick={() => {
+                                    if (onEditarDadosGleba) {
+                                      onEditarDadosGleba(g.id);
+                                    } else if (!isAtiva) {
+                                      onTrocarGleba(g.id);
+                                    }
+                                  }}
+                                  title="Editar dados deste lote"
+                                >
+                                  <Palette className="size-2.5" /> DADOS
+                                </Button>
+
+                                {glebas.length > 1 && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-500/10 cursor-pointer shrink-0"
+                                    onClick={() => onRemoverGleba(g.id)}
+                                    title="Excluir este lote"
+                                  >
+                                    <Trash2 className="size-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

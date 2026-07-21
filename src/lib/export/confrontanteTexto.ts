@@ -28,7 +28,10 @@ export function descreverConfrontante(c: Confrontante | undefined): string {
   if (c.descricaoExtra && c.descricaoExtra.trim()) return c.descricaoExtra.trim();
   const cond = c.condicao ?? 'proprietario';
   const partes: string[] = [];
-  if (c.cpf) partes.push(`CPF nº ${c.cpf}`);
+  const isCnpj = c.cpf && c.cpf.replace(/\D/g, '').length > 11;
+  const labelDoc = isCnpj ? 'CNPJ' : 'CPF';
+  if (c.cpf) partes.push(`${labelDoc} nº ${c.cpf}`);
+  if (c.estadoCivil) partes.push(`estado civil ${c.estadoCivil}`);
   // posseiro não tem matrícula; espólio e proprietário têm
   if (cond !== 'posseiro' && c.matricula) partes.push(`Matrícula nº ${formatMatricula(c.matricula)}`);
   const sufixo = partes.length ? ` (${partes.join(', ')})` : '';

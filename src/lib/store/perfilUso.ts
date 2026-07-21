@@ -32,6 +32,15 @@ export interface PerfilUso {
   lon?: number;
   municipio?: string;
   uf?: string;
+  excluidoEm?: number | null;
+  // Licenças de Módulos (SaaS)
+  licencaAmbiental?: boolean;
+  licencaUsucapiao?: boolean;
+  licencaAvaliacao?: boolean;
+  licencaJuridico?: boolean;
+  licencaReurb?: boolean;
+  licencaLoteamento?: boolean;
+  licencaCredito?: boolean;
 }
 
 const CACHE = 'metrica.perfilUso';
@@ -103,7 +112,10 @@ export async function listarPerfisUso(): Promise<PerfilUso[]> {
   if (!firebaseConfigurado) return [];
   try {
     const snap = await getDocs(collection(fdb()!, 'perfisUso'));
-    return snap.docs.map((d) => d.data() as PerfilUso).sort((a, b) => (b.ultimoAcessoEm ?? 0) - (a.ultimoAcessoEm ?? 0));
+    return snap.docs
+      .map((d) => d.data() as PerfilUso)
+      .filter((p) => !p.excluidoEm)
+      .sort((a, b) => (b.ultimoAcessoEm ?? 0) - (a.ultimoAcessoEm ?? 0));
   } catch (e) {
     console.warn('Falha ao listar perfis de uso (só o master tem acesso):', e);
     return [];
@@ -209,13 +221,51 @@ async function apagarDadosDoUsuario(uid: string): Promise<void> {
   await deleteDoc(doc(fdb()!, 'perfisUso', uid));
 }
 
-/** Exclui completamente o perfil de uso e dados do usuário pelo proprietário (master). */
+/** Envia o perfil de uso de um cliente para a lixeira (suave), permitindo restauração rápida. */
 export async function excluirPerfilUsoPorAdmin(clientUid: string): Promise<void> {
+  if (!firebaseConfigurado) return;
+  try {
+    await setDoc(doc(fdb()!, 'perfisUso', clientUid), { excluidoEm: Date.now() }, { merge: true });
+  } catch (e: unknown) {
+    console.error('Falha ao mover perfil de uso para lixeira:', e);
+    throw new Error(`Erro ao mover cliente para a lixeira: ${(e as Error)?.message || e}`);
+  }
+}
+
+/** Lista os últimos 30 clientes da lixeira do SaaS. */
+export async function listarLixeiraClientesSaaS(): Promise<PerfilUso[]> {
+  if (!firebaseConfigurado) return [];
+  try {
+    const snap = await getDocs(collection(fdb()!, 'perfisUso'));
+    return snap.docs
+      .map((d) => d.data() as PerfilUso)
+      .filter((p) => !!p.excluidoEm)
+      .sort((a, b) => (b.excluidoEm ?? 0) - (a.excluidoEm ?? 0))
+      .slice(0, 30);
+  } catch (e) {
+    console.warn('Falha ao listar lixeira de clientes SaaS:', e);
+    return [];
+  }
+}
+
+/** Restaura um cliente da lixeira do SaaS. */
+export async function restaurarClienteSaaS(clientUid: string): Promise<void> {
+  if (!firebaseConfigurado) return;
+  try {
+    await setDoc(doc(fdb()!, 'perfisUso', clientUid), { excluidoEm: null }, { merge: true });
+  } catch (e) {
+    console.error('Falha ao restaurar cliente da lixeira:', e);
+    throw new Error('Erro ao restaurar cliente.');
+  }
+}
+
+/** Exclui completamente e em definitivo o cliente e seus dados do banco. */
+export async function excluirClienteDefinitivoPorAdmin(clientUid: string): Promise<void> {
   if (!firebaseConfigurado) return;
   try {
     await apagarDadosDoUsuario(clientUid);
   } catch (e: unknown) {
-    console.error('Falha ao excluir perfil de uso pelo admin:', e);
+    console.error('Falha ao excluir perfil de uso em definitivo pelo admin:', e);
     throw new Error(`Erro ao excluir dados administrativos no banco: ${(e as Error)?.message || e}`);
   }
 }

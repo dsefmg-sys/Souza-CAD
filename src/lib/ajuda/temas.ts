@@ -151,4 +151,12 @@ export const TEMAS_AJUDA: TemaAjuda[] = [
     audioUrlIniciante: '/audio/tutorial/tema-financeiro-iniciante.mp3',
     audioUrlExperiente: '/audio/tutorial/tema-financeiro-experiente.mp3',
   },
+  {
+    id: 'confiabilidade-geodesica',
+    titulo: 'Confiabilidade Geodésica, h vs H e SGL',
+    iniciante:
+      'Para evitar erros no cartório e no SIGEF, atente para três coisas: 1. O SIGEF exige Altitudes Elipsoidais (h) obtidas do GNSS; a conversão para Altitude Ortométrica (H, do mar) mudará as cotas oficiais e gerará rejeição. 2. A Área do SIGEF é calculada no Sistema Geodésico Local (SGL) que considera a curvatura da Terra e a altitude média do imóvel. A área UTM plana do CAD comum costuma ser diferente (fator de escala K). 3. As coordenadas de divisa devem ser obtidas com equipamento homologado, não com aproximações de mapa satélite (que servem apenas para curvas de nível).',
+    experiente:
+      'Garantia de conformidade geodésica: 1) Mantenha altitudes em formato Elipsoidal (h) para o SIGEF/INCRA (desencorajamos h→H para certificação). 2) O SOUZA CAD calcula a área projetando os pontos no elipsoide (SGL local) igual ao SIGEF, diferente da área UTM cartesiana 2D que deforma pelo fator K e convergência meridiana. 3) Dados de mapas/satélites online têm precisão métrica de relevo de ~30m, servindo apenas para curvas de nível ambientais e representações, nunca para demarcação de confrontações.'
+  }
 ];

@@ -608,7 +608,7 @@ export default function Planta({
   const raioMedio = ptsScr.length > 0
     ? ptsScr.reduce((s, p) => s + Math.hypot(p.x - cx, p.y - cy), 0) / ptsScr.length
     : 150;
-  const rotulosConf = confrontantes.map((c, i) => {
+  const rotulosConf = confrontantes.filter((c) => !c.oculto).map((c, i) => {
     const idxs = trechos.get(c.id);
     const temSegmento = !!idxs && idxs.length > 0;
     if (c.posRotulo) {
@@ -1449,7 +1449,7 @@ export default function Planta({
       {outrasGlebas.map((g, i) => {
         if (g.pts.length < 3) return null;
         const isOculta = g.visivel === false;
-        if (isOculta && isPrinting) return null;
+        if (isOculta) return null;
 
         const pp = g.pts.map((p) => `${sx(p.leste).toFixed(1)},${sy(p.norte).toFixed(1)}`).join(' ');
         const baseCcx = g.pts.reduce((s, p) => s + sx(p.leste), 0) / g.pts.length;
@@ -1465,7 +1465,8 @@ export default function Planta({
         const isAtivaOuPrincipal = g.tipoGleba === 'principal' || g.tipoGleba === undefined;
         const ogCor = isOculta ? '#64748b' : (isAtivaOuPrincipal ? (config.corGlebasAtivas || '#1e3a8a') : (isAuxiliar ? '#d97706' : (config.corOutrasGlebas || '#c2410c')));
         const ogFill = isOculta ? '#64748b' : (isAtivaOuPrincipal ? (config.corGlebasAtivas || '#3b82f6') : (isAuxiliar ? '#f59e0b' : (config.corOutrasGlebas || '#f97316')));
-        const dashArray = isOculta ? '3 3' : (isAuxiliar ? '4 3' : '6 4');
+        const dashArray = isOculta ? '3 3' : (isAuxiliar ? '4 3' : undefined);
+        const strokeW = isOculta ? 0.9 : (isAtivaOuPrincipal ? 1.8 : 1.0);
         const fillOp = isOculta ? 0.03 : 0.06;
 
         return (
@@ -1475,7 +1476,7 @@ export default function Planta({
               fill={ogFill}
               fillOpacity={fillOp}
               stroke={ogCor}
-              strokeWidth={config.larguraOutrasGlebas ?? 1.2}
+              strokeWidth={strokeW}
               strokeDasharray={dashArray}
               className={isOculta ? 'animate-pulse opacity-75 cursor-pointer' : 'cursor-pointer'}
               onClick={(e) => {
@@ -2228,7 +2229,7 @@ export default function Planta({
           const ey = cl(arrastando ? (dragTemp.baseY ?? 0) + dragTemp.dy : vy - Math.cos(a) * len, DRAW.y0, DRAW.y1);
           return (
             <g key={`dc${v.id}`}>
-              <line x1={vx} y1={vy} x2={ex} y2={ey} stroke="#475569" strokeWidth={1.5} strokeDasharray="6 4" />
+              <line x1={vx} y1={vy} x2={ex} y2={ey} stroke="#475569" strokeWidth={1.5} strokeDasharray="6 4" pointerEvents="none" />
               {editavel && (
                 <circle cx={ex} cy={ey} r={7} fill="transparent" style={{ cursor: 'move' }}
                   onPointerDown={(e) => {
@@ -2357,7 +2358,7 @@ export default function Planta({
               x={cx}
               y={cy}
               base={linhasBase.join('\n')}
-              size={fs(11 * (ov.escala ?? config.escalaTextoCentroGlebas ?? 1.0))}
+              size={fs(11 * (config.escalaTextoCentroGlebas ?? 1.0))}
               bold={neg}
               anchor="middle"
               fill="#000000"

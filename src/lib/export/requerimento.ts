@@ -145,7 +145,10 @@ function blocoPessoa(p: PessoaQualificada, modo: ModoTratamentoAusente = 'dado_a
     const invNac = imovel.inventarianteNacionalidade || 'Brasileira';
     const invEst = imovel.inventarianteEstadoCivil || 'DADO AUSENTE';
     out.push(campo('Nome:', `Espólio de ${imovel.proprietario}, representado por seu inventariante ${invNome}`));
-    out.push(campo('Qualificação do Representante:', `Portador do RG nº ${invRg} e inscrito no CPF nº ${invCpf}, de nacionalidade ${invNac.toLowerCase()}, estado civil ${invEst.toLowerCase()}`));
+    out.push(campo('RG do Inventariante:', invRg));
+    out.push(campo('CPF do Inventariante:', invCpf));
+    out.push(campo('Nacionalidade do Inventariante:', invNac));
+    out.push(campo('Estado Civil do Inventariante:', invEst));
     if (p.cpf) {
       out.push(campo('CPF do De Cujus:', p.cpf));
     }
@@ -157,25 +160,39 @@ function blocoPessoa(p: PessoaQualificada, modo: ModoTratamentoAusente = 'dado_a
 
   if (tem(p.nome) || modo === 'dado_ausente') out.push(campo('Nome:', p.nome || 'DADO AUSENTE'));
 
-  if (modo === 'dado_ausente') {
-    out.push(campo('RG:', `${p.rg || '—'}   CPF: ${p.cpf || '—'}`));
-  } else {
-    if (tem(p.rg) && tem(p.cpf)) out.push(campo('RG:', `${p.rg}   CPF: ${p.cpf}`));
-    else if (tem(p.cpf)) out.push(campo('CPF:', p.cpf!));
-    else if (tem(p.rg)) out.push(campo('RG:', p.rg!));
+  const rgVal = p.rg || (modo === 'dado_ausente' ? 'DADO AUSENTE' : '—');
+  out.push(campo('RG:', rgVal));
+
+  const cpfVal = p.cpf || (modo === 'dado_ausente' ? 'DADO AUSENTE' : '—');
+  out.push(campo('CPF:', cpfVal));
+
+  const nacVal = p.nacionalidade || 'Brasileira';
+  out.push(campo('Nacionalidade:', nacVal));
+
+  if (tem(p.naturalidade) || modo === 'dado_ausente') {
+    out.push(campo('Naturalidade:', p.naturalidade));
+  }
+  if (tem(p.dataNascimento) || modo === 'dado_ausente') {
+    out.push(campo('Data de Nascimento:', p.dataNascimento));
+  }
+  if (tem(p.filiacao) || modo === 'dado_ausente') {
+    out.push(campo('Filiação:', p.filiacao));
   }
 
-  if (tem(p.nacionalidade) || modo === 'dado_ausente') out.push(campo('Nacionalidade:', p.nacionalidade || 'Brasileira'));
-  if (tem(p.naturalidade) || modo === 'dado_ausente') out.push(campo('Naturalidade:', p.naturalidade));
-  if (tem(p.dataNascimento) || modo === 'dado_ausente') out.push(campo('Data de Nascimento:', p.dataNascimento));
-  if (tem(p.filiacao) || modo === 'dado_ausente') out.push(campo('Filiação:', p.filiacao));
-  if (tem(p.profissao) || modo === 'dado_ausente') out.push(campo('Profissão:', p.profissao));
-  if (tem(p.estadoCivil) || modo === 'dado_ausente') out.push(campo('Estado Civil:', p.estadoCivil));
+  const profVal = p.profissao || (modo === 'dado_ausente' ? 'DADO AUSENTE' : '—');
+  out.push(campo('Profissão:', profVal));
+
+  if (tem(p.estadoCivil) || modo === 'dado_ausente') {
+    out.push(campo('Estado Civil:', p.estadoCivil || 'DADO AUSENTE'));
+  }
 
   if (tem(p.conjugeNome) || tem(p.conjugeCpf) || (modo === 'dado_ausente' && (p.conjugeNome || p.conjugeCpf))) {
-    out.push(campo('Cônjuge:', p.conjugeNome || 'DADO AUSENTE'));
-    if (modo === 'dado_ausente') out.push(campo('RG:', `${p.conjugeRg || '—'}   CPF: ${p.conjugeCpf || '—'}`));
-    else if (tem(p.conjugeCpf)) out.push(campo('CPF Cônjuge:', p.conjugeCpf!));
+    const cNome = p.conjugeNome || 'DADO AUSENTE';
+    const cCpf = p.conjugeCpf || 'DADO AUSENTE';
+    const cRg = p.conjugeRg || 'DADO AUSENTE';
+    out.push(campo('Cônjuge:', cNome));
+    out.push(campo('RG Cônjuge:', cRg));
+    out.push(campo('CPF Cônjuge:', cCpf));
   }
 
   if (tem(p.endereco) || modo === 'dado_ausente') out.push(campo('Residente e domiciliado em:', p.endereco));
@@ -281,24 +298,30 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
 
   const mostrarTransmitente = tipoPrioritario !== 'retificacao' || !!transmitente.nome?.trim() || permitirIncompleto;
 
-  c.push(titulo(rot.requerente));
-  blocoPessoa(reqClonado, modo, imovel).forEach((x) => c.push(x));
+  const requerentes = [reqClonado, ...partesAdicionais.filter((p) => p.papel === 'requerente' || (!p.papel && tipoPrioritario === 'venda'))];
+  const transmitentes = [transClonado, ...partesAdicionais.filter((p) => p.papel === 'transmitente')];
 
-  if (mostrarTransmitente) {
-    c.push(titulo(rot.transmitente));
-    blocoPessoa(transClonado, modo, imovel).forEach((x) => c.push(x));
-  }
+  const rotRequerente = requerentes.length > 1
+    ? (tipoPrioritario === 'venda' ? 'REQUERENTES (ADQUIRENTES / COMPRADORES)' : tipoPrioritario === 'doacao' ? 'REQUERENTES (DONATÁRIOS)' : 'REQUERENTES (PROPRIETÁRIOS / POSSUIDORES)')
+    : rot.requerente;
 
-  partesAdicionais.forEach((p, i) => {
-    let papelRotulo = `PARTE ADICIONAL ${i + 1}`;
-    if (p.papel === 'requerente') {
-      papelRotulo = tipoPrioritario === 'venda' ? 'COMPRADOR / ADQUIRENTE ADICIONAL' : tipoPrioritario === 'doacao' ? 'DONATÁRIO ADICIONAL' : 'REQUERENTE / COPROPRIETÁRIO ADICIONAL';
-    } else if (p.papel === 'transmitente') {
-      papelRotulo = tipoPrioritario === 'venda' ? 'VENDEDOR / TRANSMITENTE ADICIONAL' : tipoPrioritario === 'doacao' ? 'DOADOR ADICIONAL' : 'COPROPRIETÁRIO / TRANSMITENTE ADICIONAL';
-    }
-    c.push(titulo(papelRotulo));
+  c.push(titulo(rotRequerente));
+  requerentes.forEach((p, idx) => {
+    if (idx > 0) c.push(new Paragraph({ spacing: { before: 140 } }));
     blocoPessoa(p, modo, imovel).forEach((x) => c.push(x));
   });
+
+  if (mostrarTransmitente && transmitentes.length > 0) {
+    const rotTransmitente = transmitentes.length > 1
+      ? (tipoPrioritario === 'venda' ? 'PROPRIETÁRIOS REGISTRAIS (TRANSMITENTES / VENDEDORES)' : tipoPrioritario === 'doacao' ? 'DOADORES (PROPRIETÁRIOS REGISTRAIS)' : 'PROPRIETÁRIOS REGISTRAIS')
+      : rot.transmitente;
+
+    c.push(titulo(rotTransmitente));
+    transmitentes.forEach((p, idx) => {
+      if (idx > 0) c.push(new Paragraph({ spacing: { before: 140 } }));
+      blocoPessoa(p, modo, imovel).forEach((x) => c.push(x));
+    });
+  }
 
   c.push(titulo('DO REQUERIMENTO'));
   for (const ato of atos) {
@@ -434,6 +457,16 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
   }
   itensPedidos.push('a consequente regularização da base tabular do imóvel perante este Cartório de Registro de Imóveis');
 
+  if (requerentes.length > 1) {
+    const detalhesFracoes = requerentes.map((r) => {
+      const fVal = r.fracaoIdeal !== undefined && r.fracaoIdeal !== ''
+        ? r.fracaoIdeal
+        : String(Math.round((100 / requerentes.length) * 100) / 100);
+      return `${r.nome || 'DADO AUSENTE'} (${fVal}%)`;
+    }).join(', ');
+    itensPedidos.push(`Os adquirentes adquirem o imóvel em Condomínio Pro Indiviso cabendo a cada um a respectiva fração ideal, conforme segue: ${detalhesFracoes}`);
+  }
+
   const textoPedidosFormatted = itensPedidos.map((p, idx) => ` (${idx + 1}) ${p};`).join('');
   c.push(par(`Diante do exposto, requerem a Vossa Senhoria:${textoPedidosFormatted}`));
   c.push(par('Nestes termos, pede deferimento.'));
@@ -471,19 +504,14 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     }
   };
 
-  assinaPessoa(reqClonado, rot.assinaReq);
-  if (mostrarTransmitente) {
-    assinaPessoa(transClonado, rot.assinaTrans);
-  }
-  partesAdicionais.forEach((p) => {
-    let papelAssinatura = '(Parte adicional)';
-    if (p.papel === 'requerente') {
-      papelAssinatura = tipoPrioritario === 'venda' ? '(Adquirente / Comprador Adicional)' : tipoPrioritario === 'doacao' ? '(Donatário Adicional)' : '(Requerente Adicional)';
-    } else if (p.papel === 'transmitente') {
-      papelAssinatura = tipoPrioritario === 'venda' ? '(Transmitente / Vendedor Adicional)' : tipoPrioritario === 'doacao' ? '(Doador Adicional)' : '(Transmitente Adicional)';
-    }
-    assina([p.nome, papelAssinatura]);
+  requerentes.forEach((p) => {
+    assinaPessoa(p, rot.assinaReq);
   });
+  if (mostrarTransmitente) {
+    transmitentes.forEach((p) => {
+      assinaPessoa(p, rot.assinaTrans);
+    });
+  }
   assina([f(tecnico.nome), `${rotProf.registro} ${f(tecnico.cft)} - INCRA: ${f(tecnico.credenciamentoIncra)}`]);
 
   const doc = new Document({

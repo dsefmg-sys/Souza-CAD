@@ -1,7 +1,7 @@
 import type { Projeto } from '../topo/types';
 import { migrarProjeto } from '../topo/glebas';
 import { db, novoId } from './db';
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, type CollectionReference } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, type CollectionReference } from 'firebase/firestore';
 import { db as fdb, auth, firebaseConfigurado } from '../firebase/client';
 import { workspaceUidAtual } from './perfilUso';
 import { sanitizarProfundo } from '../export/sanitizar';
@@ -47,7 +47,16 @@ export class NuvemSemPermissao {
 interface EnvelopeNuvem { id: string; nome: string; criadoEm: number; atualizadoEm: number; dados: string }
 
 function paraNuvem(p: Projeto): EnvelopeNuvem {
-  return { id: p.id, nome: p.nome, criadoEm: p.criadoEm, atualizadoEm: p.atualizadoEm, dados: JSON.stringify(p) };
+  const currentUser = firebaseConfigurado ? auth()?.currentUser : null;
+  return {
+    id: p.id,
+    nome: p.nome,
+    criadoEm: p.criadoEm,
+    atualizadoEm: p.atualizadoEm,
+    dados: JSON.stringify(p),
+    editadoPor: currentUser?.uid || undefined,
+    editorNome: currentUser?.displayName || currentUser?.email || 'Outro usuário'
+  } as any;
 }
 // Devolve o Projeto já MIGRADO (projetos antigos sem glebas ganham a gleba 1). Retorna null quando o
 // documento está corrompido (não dá pra desserializar) — o chamador pula em vez de exibir lixo.
@@ -221,6 +230,38 @@ export async function sincronizarProjetosLocalParaNuvem(): Promise<void> {
     }
   } catch (e) {
     console.error('Falha ao sincronizar projetos local para nuvem:', e);
+  }
+}
+
+export function inscreverConflitoEdicao(
+  projetoId: string,
+  localAtualizadoEm: number,
+  onConflito: (editorNome: string, dadosNovos: string) => void
+): (() => void) | null {
+  const uid = uidNuvem();
+  if (!uid || !firebaseConfigurado) return null;
+  
+  try {
+    const docRef = doc(colProjetos(uid), projetoId);
+    const unsub = onSnapshot(docRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data() as Record<string, any>;
+      const currentUser = auth()?.currentUser;
+      
+      // se foi atualizado por outro usuário AND o time de atualização é mais recente que o nosso local
+      if (
+        data.editadoPor && 
+        currentUser && 
+        data.editadoPor !== currentUser.uid && 
+        data.atualizadoEm > localAtualizadoEm
+      ) {
+        onConflito(data.editorNome || 'Outro usuário', data.dados || '');
+      }
+    });
+    return unsub;
+  } catch (e) {
+    console.error('Falha ao inscrever no onSnapshot do projeto:', e);
+    return null;
   }
 }
 

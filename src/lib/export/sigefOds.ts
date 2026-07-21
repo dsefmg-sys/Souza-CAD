@@ -72,7 +72,7 @@ function linhaVertice(
   // altitude pode vir vazia/NaN de importação só-geográfica — sem isso o .toFixed derrubaria o ODS inteiro
   const elev = Number.isFinite(v.elevacao) ? v.elevacao : 0;
   const cels =
-    celStr('ce40', v.codigoSigef) +
+    celStr('ce40', v.codigoSigef || v.nome) +
     celStr('ce40', eLong) +
     celStr('ce40', sigmaBR(v.sigmaX, '0,00')) +
     celStr('ce40', nLat) +

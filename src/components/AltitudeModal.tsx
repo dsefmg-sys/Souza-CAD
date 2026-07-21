@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mountain, ArrowUp, ArrowDown, Check, X, RefreshCw, Layers, Compass, Sparkles } from 'lucide-react';
+import { Mountain, ArrowUp, ArrowDown, Check, X, RefreshCw, Layers, Compass, Sparkles, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,21 @@ export default function AltitudeModal({
 }: AltitudeModalProps) {
   const [ajusteCm, setAjusteCm] = useState<string>('');
 
+  const algumDivergente = vertices.some(v => {
+    const alt = v.altitude ?? v.elevacao;
+    const originalAlt = (v as any).elevacaoOriginal;
+    return originalAlt !== undefined && Math.abs((alt ?? 0) - originalAlt) >= 0.001;
+  });
+
+  const handleRestaurarTodas = () => {
+    vertices.forEach((v) => {
+      const originalAlt = (v as any).elevacaoOriginal;
+      if (originalAlt !== undefined) {
+        onAtualizarVertice(v.id, originalAlt);
+      }
+    });
+  };
+
   // Calcula centroides em lat/lon ou aproximação para obter a Ondulação Geoidal MAPGEO da área
   const lats = vertices.map((v) => v.lat).filter((l): l is number => Number.isFinite(l));
   const lons = vertices.map((v) => v.lon).filter((l): l is number => Number.isFinite(l));
@@ -57,8 +72,10 @@ export default function AltitudeModal({
   };
 
   const handleAplicarMapgeoSubtrair = () => {
-    // h -> H (Subtrai N)
-    onAplicarAjusteGlobal(Math.round(-ondulacaoN * 100));
+    if (confirm('Atenção: A Altitude Elipsoidal (h) é o padrão exigido pelo SIGEF/INCRA. A conversão para Altitude Ortométrica (H) mudará a referência das cotas para o mar e NÃO é aceita no SIGEF. Tem certeza que deseja prosseguir?')) {
+      // h -> H (Subtrai N)
+      onAplicarAjusteGlobal(Math.round(-ondulacaoN * 100));
+    }
   };
 
   const handleAplicarMapgeoSomar = () => {
@@ -79,6 +96,17 @@ export default function AltitudeModal({
             <Mountain className="size-5 text-indigo-500" />
             Gestão de Altitudes dos Vértices
           </DialogTitle>
+          {algumDivergente && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleRestaurarTodas}
+              className="h-7 text-[10px] font-bold border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 mr-4 flex items-center gap-1.5"
+            >
+              <RefreshCw className="size-3" /> Restaurar Todas para o GNSS (h)
+            </Button>
+          )}
         </DialogHeader>
 
         {/* Resumo & estatísticas */}
@@ -100,6 +128,14 @@ export default function AltitudeModal({
             <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400 text-xs">
               {amplitude > 0 ? `${amplitude.toFixed(2)} m` : 'Plano (0m)'}
             </span>
+          </div>
+        </div>
+
+        {/* Alerta Padrão SIGEF */}
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 font-medium leading-relaxed flex items-start gap-2.5 my-1">
+          <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400 animate-pulse" />
+          <div>
+            <strong>Padrão SIGEF (Altitude Elipsoidal - h):</strong> O INCRA exige que todas as coordenadas enviadas ao SIGEF utilizem a <strong>Altitude Elipsoidal (h)</strong>, que é a medida direta do receptor GNSS. A conversão para Altitude Ortométrica (H - referente ao nível médio do mar) mudará as cotas oficiais e <strong>não é aceita</strong> para certificação.
           </div>
         </div>
 
@@ -195,6 +231,9 @@ export default function AltitudeModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {vertices.map((v) => {
               const alt = v.altitude ?? v.elevacao;
+              const originalAlt = (v as any).elevacaoOriginal;
+              const isOriginalGNSS = originalAlt !== undefined && Math.abs((alt ?? 0) - originalAlt) < 0.001;
+              const isModificada = originalAlt !== undefined && Math.abs((alt ?? 0) - originalAlt) >= 0.001;
               return (
                 <div key={v.id} className="flex items-center justify-between gap-2 p-2 rounded-lg border bg-card hover:bg-accent/40 transition-colors">
                   <div className="flex items-center gap-2 min-w-0">
@@ -204,6 +243,11 @@ export default function AltitudeModal({
                     <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono font-bold text-muted-foreground shrink-0">
                       {v.tipo || 'V'}
                     </span>
+                    {isOriginalGNSS && (
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold shrink-0" title="Altitude original importada do GNSS (h)">
+                        GNSS h
+                      </span>
+                    )}
                     <div className="flex flex-col text-[10px] font-mono text-muted-foreground truncate">
                       <span>E: {v.leste.toFixed(2)}</span>
                       <span>N: {v.norte.toFixed(2)}</span>
@@ -212,6 +256,7 @@ export default function AltitudeModal({
                   <div className="flex items-center gap-1 shrink-0">
                     <span className="text-[10px] font-bold text-muted-foreground">Alt:</span>
                     <Input
+                      key={`${v.id}_${alt}`}
                       type="number"
                       step="0.01"
                       defaultValue={alt !== undefined ? alt.toFixed(2) : ''}
@@ -222,7 +267,19 @@ export default function AltitudeModal({
                       className="w-24 h-7 text-right px-1.5 font-bold font-mono text-xs focus:ring-1 focus:ring-primary focus:outline-none"
                       placeholder="Sem cota"
                     />
-                    <span className="text-xs font-mono text-muted-foreground">m</span>
+                    <span className="text-xs font-mono text-muted-foreground mr-1">m</span>
+                    {isModificada && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onAtualizarVertice(v.id, originalAlt)}
+                        className="h-7 w-7 p-0 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 rounded-md shrink-0"
+                        title={`Restaurar para a altitude original do GNSS (${originalAlt.toFixed(2)}m)`}
+                      >
+                        <RefreshCw className="size-3" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               );

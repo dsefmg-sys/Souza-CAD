@@ -16,6 +16,7 @@ interface Props {
   titulo?: string;
   descricao?: string;
   onConfirmar: (glebasSelecionadas: Gleba[]) => void;
+  tipoProjeto?: 'rural' | 'loteamento';
 }
 
 export default function ModalSeletorGlebasPecas({
@@ -23,10 +24,18 @@ export default function ModalSeletorGlebasPecas({
   onOpenChange,
   glebas,
   glebaAtivaId,
-  titulo = 'Selecione as Glebas para a Peça Técnica',
-  descricao = 'Escolha para quais parcelas/glebas deseja gerar os documentos e relatórios técnicos:',
+  titulo,
+  descricao,
   onConfirmar,
+  tipoProjeto = 'rural',
 }: Props) {
+  const isLote = tipoProjeto === 'loteamento';
+  const labelUnidade = isLote ? 'Lote' : 'Gleba';
+  const labelUnidadePlural = isLote ? 'Lotes' : 'Glebas';
+
+  const defaultTitulo = titulo || `Selecione os ${labelUnidadePlural} para a Peça Técnica`;
+  const defaultDescricao = descricao || `Escolha para quais ${isLote ? 'lotes' : 'parcelas/glebas'} deseja gerar os documentos e relatórios técnicos:`;
+
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -71,9 +80,9 @@ export default function ModalSeletorGlebasPecas({
         <DialogHeader className="border-b pb-3 space-y-1 text-left">
           <DialogTitle className="text-base font-extrabold text-foreground flex items-center gap-2">
             <Waypoints className="size-5 text-indigo-600 dark:text-indigo-400" />
-            {titulo}
+            {defaultTitulo}
           </DialogTitle>
-          <p className="text-xs text-muted-foreground">{descricao}</p>
+          <p className="text-xs text-muted-foreground">{defaultDescricao}</p>
         </DialogHeader>
 
         {/* Botão Selecionar Todas */}
@@ -84,10 +93,10 @@ export default function ModalSeletorGlebasPecas({
             className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer select-none"
           >
             {todasSelecionadas ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
-            {todasSelecionadas ? 'Desmarcar Todas (Manter Ativa)' : 'Selecionar TODAS as Glebas'}
+            {todasSelecionadas ? 'Desmarcar Todas (Manter Ativa)' : `Selecionar TODOS os ${labelUnidadePlural}`}
           </button>
           <span className="text-[11px] font-medium text-muted-foreground">
-            {selecionadas.size} de {glebas.length} selecionada(s)
+            {selecionadas.size} de {glebas.length} selecionado(s)
           </span>
         </div>
 
@@ -119,7 +128,7 @@ export default function ModalSeletorGlebasPecas({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-xs text-foreground truncate">{g.denominacao || `Parcela ${idx + 1}`}</span>
+                      <span className="font-bold text-xs text-foreground truncate">{g.denominacao || `${labelUnidade} ${idx + 1}`}</span>
                       <span className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full border ${
                         isAtiva
                           ? 'bg-indigo-600 text-white border-indigo-600'
@@ -151,7 +160,7 @@ export default function ModalSeletorGlebasPecas({
             onClick={handleConfirmar}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1.5 cursor-pointer"
           >
-            <Download className="size-3.5" /> Gerar para {selecionadas.size} Gleba(s)
+            <Download className="size-3.5" /> Gerar para {selecionadas.size} {selecionadas.size === 1 ? labelUnidade : labelUnidadePlural}
           </Button>
         </div>
       </DialogContent>

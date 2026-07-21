@@ -108,4 +108,9 @@ export const PASSOS_AVANCADOS: Passo[] = [
     texto: 'Sem sair do projeto: registre valor, despesas e parcelas. O SOUZA CAD gera contrato de prestação de serviço e recibo com valor por extenso, prontos pra imprimir ou assinar.',
     audioUrl: '/audio/tutorial/passo-avancado-6.mp3',
   },
+  {
+    icone: ToggleRight,
+    titulo: 'Módulos Especializados (Opcionais)',
+    texto: 'O SOUZA CAD cresceu e conta com módulos ativáveis em Configurações > Módulos & Planos: \n- Meio Ambiente: Laudos LTCAs, Crédito Verde e PRADAs.\n- Usucapião: Ata de declaração de posse e laudo técnico de posse.\n- Avaliação: Avaliação rural/urbana, benfeitorias e valor estimado.\n- Jurídico: Petições de usucapião e notificações extrajudiciais.\n- REURB: Projetos de Regularização Fundiária (PRF) e Certidão CRF.\n\nAtive-os sob demanda para expandir a barra lateral.',
+  }
 ];

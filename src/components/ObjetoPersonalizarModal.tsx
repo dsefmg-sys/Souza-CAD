@@ -76,15 +76,16 @@ export function ObjetoPersonalizarModal({
 
       {(() => {
         if (objPersonalizarId === 'planta.centroInfo' || objPersonalizarId === 'planta:titulo_imovel' || objPersonalizarId.startsWith('gleba:')) {
-          const idCentro = 'planta.centroInfo';
-          const ovCentro = plantaConfig.textos?.[idCentro] || {};
+          const idTarget = objPersonalizarId || 'planta.centroInfo';
+          const ovCentro = plantaConfig.textos?.[idTarget] || plantaConfig.textos?.['planta.centroInfo'] || {};
           const escCentro = ovCentro.escala ?? plantaConfig.escalaTextoCentroGlebas ?? 1.0;
           const negCentro = ovCentro.negrito ?? false;
           const fundoBranco = ovCentro.fundoBranco ?? false;
           const largCentro = ovCentro.larguraChars ?? 0;
 
           const atualizarEscalaCentro = (novaEsc: number) => {
-            patchTextoPlanta(idCentro, { escala: novaEsc });
+            patchTextoPlanta(idTarget, { escala: novaEsc });
+            if (idTarget !== 'planta.centroInfo') patchTextoPlanta('planta.centroInfo', { escala: novaEsc });
             if (ajustarTodasGlebas) {
               setPlantaConfig((p) => ({ ...p, escalaTextoCentroGlebas: novaEsc }));
             }
@@ -99,7 +100,10 @@ export function ObjetoPersonalizarModal({
                 <input
                   type="checkbox"
                   checked={fundoBranco}
-                  onChange={(e) => patchTextoPlanta(idCentro, { fundoBranco: e.target.checked })}
+                  onChange={(e) => {
+                    patchTextoPlanta(idTarget, { fundoBranco: e.target.checked });
+                    if (ajustarTodasGlebas && idTarget !== 'planta.centroInfo') patchTextoPlanta('planta.centroInfo', { fundoBranco: e.target.checked });
+                  }}
                   className="rounded border-zinc-300 text-primary focus:ring-primary size-4"
                 />
                 <span className="font-semibold text-foreground">Fundo sólido branco (sobrepõe curvas)</span>
@@ -110,7 +114,10 @@ export function ObjetoPersonalizarModal({
                 <input
                   type="checkbox"
                   checked={negCentro}
-                  onChange={(e) => patchTextoPlanta(idCentro, { negrito: e.target.checked })}
+                  onChange={(e) => {
+                    patchTextoPlanta(idTarget, { negrito: e.target.checked });
+                    if (ajustarTodasGlebas && idTarget !== 'planta.centroInfo') patchTextoPlanta('planta.centroInfo', { negrito: e.target.checked });
+                  }}
                   className="rounded border-zinc-300 text-primary focus:ring-primary size-4"
                 />
                 <span className="font-semibold text-foreground">Texto em Negrito</span>
@@ -152,7 +159,11 @@ export function ObjetoPersonalizarModal({
                   max="120"
                   step="5"
                   value={largCentro}
-                  onChange={(e) => patchTextoPlanta(idCentro, { larguraChars: Number(e.target.value) })}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    patchTextoPlanta(idTarget, { larguraChars: val });
+                    if (ajustarTodasGlebas && idTarget !== 'planta.centroInfo') patchTextoPlanta('planta.centroInfo', { larguraChars: val });
+                  }}
                   className="w-full h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer accent-primary"
                 />
               </div>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { FileText, RotateCcw, Download, Upload } from 'lucide-react';
+import { FileText, RotateCcw, Download, Upload, Maximize2 } from 'lucide-react';
 import { carregarModelos, salvarModelos, MODELOS_PADRAO, VARIAVEIS_MODELO, type ModelosDocs } from '@/lib/store/modelos';
 
 interface Props {
@@ -53,6 +53,7 @@ const CAMPOS: { chave: keyof ModelosDocs; titulo: string; grupo: string; tipo: '
 export default function ModelosDocsModal({ open, onOpenChange }: Props) {
   const [m, setM] = useState<ModelosDocs>(MODELOS_PADRAO);
   const [guiaModelos, setGuiaModelos] = useState<'principais' | 'adicionais'>('principais');
+  const [editorTelaCheia, setEditorTelaCheia] = useState<{ chave: keyof ModelosDocs; titulo: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (open) setM(carregarModelos()); }, [open]);
 
@@ -137,7 +138,10 @@ export default function ModelosDocsModal({ open, onOpenChange }: Props) {
               )}
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold">{titulo}</span>
-                <button type="button" className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground" onClick={() => set(chave, MODELOS_PADRAO[chave])}><RotateCcw className="size-3" /> restaurar padrão</button>
+                <div className="flex items-center gap-2">
+                  <button type="button" className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground" onClick={() => set(chave, MODELOS_PADRAO[chave])}><RotateCcw className="size-3" /> restaurar padrão</button>
+                  <button type="button" className="flex items-center gap-1 text-[10px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 font-semibold" onClick={() => setEditorTelaCheia({ chave, titulo })}><Maximize2 className="size-3" /> tela cheia</button>
+                </div>
               </div>
               <textarea
                 className="min-h-[70px] w-full rounded-sm border bg-background p-2 text-xs leading-relaxed"
@@ -159,6 +163,57 @@ export default function ModelosDocsModal({ open, onOpenChange }: Props) {
           </div>
         </div>
       </DialogContent>
+
+      {/* Editor em Tela Cheia */}
+      <Dialog open={!!editorTelaCheia} onOpenChange={(aberto) => { if (!aberto) setEditorTelaCheia(null); }}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] flex flex-col p-5 rounded-xl bg-card border shadow-2xl z-[7000]">
+          <DialogHeader className="flex flex-row items-center justify-between pb-3 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="size-5 text-indigo-500" />
+              <span>Editando Modelo: <strong>{editorTelaCheia?.titulo}</strong></span>
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Dicas das variáveis */}
+          <div className="rounded-lg border bg-muted/40 p-3 text-[11px] text-left">
+            <div className="mb-1 font-extrabold text-indigo-700 dark:text-indigo-400 uppercase tracking-wide">Variáveis Disponíveis (copie e cole no texto):</div>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 max-h-20 overflow-y-auto font-medium">
+              {VARIAVEIS_MODELO.map((v) => (
+                <span key={v.chave}><code className="rounded bg-background px-1 font-mono text-primary font-bold">{v.chave}</code> <span className="text-muted-foreground">{v.descricao}</span></span>
+              ))}
+            </div>
+          </div>
+
+          {/* Campo de Texto Expandido */}
+          <div className="flex-1 min-h-0 py-3">
+            {editorTelaCheia && (
+              <textarea
+                className="w-full h-full rounded-xl border bg-background p-4 text-sm leading-relaxed font-mono focus:ring-1 focus:ring-primary focus:outline-none scroll-fino resize-none"
+                value={m[editorTelaCheia.chave]}
+                onChange={(e) => set(editorTelaCheia.chave, e.target.value)}
+                placeholder="Escreva seu modelo de texto aqui..."
+              />
+            )}
+          </div>
+
+          <div className="flex items-center justify-between pt-3 border-t">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-semibold"
+              onClick={() => {
+                if (editorTelaCheia) {
+                  set(editorTelaCheia.chave, MODELOS_PADRAO[editorTelaCheia.chave]);
+                }
+              }}
+            >
+              <RotateCcw className="size-4 text-amber-500" /> Restaurar para o Padrão do Sistema
+            </button>
+            <Button type="button" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold" onClick={() => setEditorTelaCheia(null)}>
+              Concluir Edição
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

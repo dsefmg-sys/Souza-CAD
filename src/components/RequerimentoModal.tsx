@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { saveAs } from 'file-saver';
-import { FileSignature, UserPlus, Trash2, Scale, Check, Download } from 'lucide-react';
+import { FileSignature, UserPlus, Trash2, Scale, Check, Download, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { confirmar, escolher, avisar } from '@/lib/ui/dialogos';
 import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
@@ -81,7 +81,7 @@ const CONFIG_BOTOES_ATO: Record<
 export const PESSOA_VAZIA: PessoaQualificada = {
   nome: '', rg: '', cpf: '', nacionalidade: 'Brasileira', naturalidade: '', dataNascimento: '',
   filiacao: '', profissao: '', estadoCivil: '', conjugeNome: '', conjugeRg: '', conjugeCpf: '',
-  endereco: '', cidadeUf: '', cep: '',
+  endereco: '', cidadeUf: '', cep: '', fracaoIdeal: '',
 };
 
 interface Props {
@@ -106,14 +106,21 @@ interface Props {
   sugProp: ProprietarioCad[];
   correcoes: CorrecaoErrata[];
   onBaixar?: () => void;
+  onBaixarPacoteZip?: (req: PessoaQualificada, trans: PessoaQualificada, tipoAto: TipoAtoRequerimento, partesAdicionais: PessoaQualificada[], tiposAtos?: TipoAtoRequerimento[]) => void;
   glebas?: Gleba[];
   glebaAtivaId?: string;
+  onSalvarProjeto?: (overrides?: {
+    requerente?: PessoaQualificada;
+    transmitente?: PessoaQualificada;
+    tipoAto?: TipoAtoRequerimento;
+    partesAdicionais?: PessoaQualificada[];
+  }) => Promise<void>;
 }
 
 const CAMPOS: { k: keyof PessoaQualificada; label: string; span: string; importante?: boolean }[] = [
   { k: 'nome', label: 'Nome', span: 'col-span-6 sm:col-span-4', importante: true },
-  { k: 'rg', label: 'RG', span: 'col-span-6 sm:col-span-2 md:col-span-1' },
-  { k: 'cpf', label: 'CPF/CNPJ', span: 'col-span-6 sm:col-span-2 md:col-span-1', importante: true },
+  { k: 'rg', label: 'RG', span: 'col-span-6 sm:col-span-3 md:col-span-2' },
+  { k: 'cpf', label: 'CPF/CNPJ', span: 'col-span-6 sm:col-span-3 md:col-span-2', importante: true },
   { k: 'nacionalidade', label: 'Nacionalidade', span: 'col-span-6 sm:col-span-2' },
   { k: 'naturalidade', label: 'Naturalidade', span: 'col-span-6 sm:col-span-2' },
   { k: 'dataNascimento', label: 'Data Nasc.', span: 'col-span-6 sm:col-span-2' },
@@ -144,6 +151,7 @@ const PLACEHOLDERS_QUALIFICACAO: Record<keyof PessoaQualificada, string> = {
   cidadeUf: 'ex.: Manhuaçu - MG',
   cep: '36900-000',
   papel: '',
+  fracaoIdeal: 'ex.: 50',
 };
 
 function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: PessoaQualificada; onChange: (p: PessoaQualificada) => void; sugProp: ProprietarioCad[] }) {
@@ -191,6 +199,7 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
                 >
                   <option value="">Selecione o Estado Civil...</option>
                   <option value="Solteiro(a)">Solteiro(a)</option>
+                  <option value="Casado(a)">Casado(a)</option>
                   <option value="Casado(a) - Comunhão Parcial de Bens">Casado(a) - Comunhão Parcial</option>
                   <option value="Casado(a) - Comunhão Universal de Bens">Casado(a) - Comunhão Universal</option>
                   <option value="Casado(a) - Separação Total de Bens">Casado(a) - Separação Total</option>
@@ -213,7 +222,7 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
                   placeholder={PLACEHOLDERS_QUALIFICACAO[c.k] || ''}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  className="h-7 text-[11px]"
+                  className={`h-7 text-[11px] ${isDoc ? 'min-w-[140px] font-mono' : ''}`}
                 />
               )}
             </div>
@@ -228,7 +237,7 @@ function transVazio(imovel: ImovelData): PessoaQualificada {
   return { ...PESSOA_VAZIA, nome: imovel.proprietario, cpf: imovel.cpfProprietario, cidadeUf: imovel.municipio || '' };
 }
 
-export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, tipoAto, tiposAtos, partesAdicionais, onChangePessoas, sugProp, correcoes, onBaixar, glebas, glebaAtivaId }: Props) {
+export default function RequerimentoModal({ open, onOpenChange, imovel, onChangeImovel, tecnico, areaRealHa, requerente, transmitente, tipoAto, tiposAtos, partesAdicionais, onChangePessoas, sugProp, correcoes, onBaixar, onBaixarPacoteZip, glebas, glebaAtivaId, onSalvarProjeto }: Props) {
   const [req, setReq] = useState<PessoaQualificada>(requerente ?? PESSOA_VAZIA);
   const [trans, setTrans] = useState<PessoaQualificada>(transmitente ?? transVazio(imovel));
   const [glebasSelecionadas, setGlebasSelecionadas] = useState<Set<string>>(() => {
@@ -246,6 +255,17 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
   const localTipoAto = localTiposAtos.find((a) => a === 'venda' || a === 'doacao' || a === 'usucapiao') || localTiposAtos[0];
   // Permite partes adicionais em todos os tipos de ato (venda, doação, unificação, retificação, desmembramento, usucapião).
   const permiteVariasPartes = true;
+
+  const requerentesLista = [req, ...localPartesAdicionais.filter((p) => p.papel === 'requerente')];
+  const totalRequerentes = requerentesLista.length;
+
+  const obterFracaoEfetiva = (p: PessoaQualificada, total: number) => {
+    if (p.fracaoIdeal !== undefined && p.fracaoIdeal !== '') return p.fracaoIdeal;
+    return total > 1 ? String(Math.round((100 / total) * 100) / 100) : '100';
+  };
+
+  const somaFracoes = requerentesLista.reduce((acc, r) => acc + (parseFloat(obterFracaoEfetiva(r, totalRequerentes)) || 0), 0);
+  const somaIncorreta = totalRequerentes > 1 && Math.abs(somaFracoes - 100) > 0.01;
 
   useEffect(() => { setMostrarDicas(carregarPreferencias().mostrarDicasEducativas); }, []);
 
@@ -298,6 +318,31 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  async function salvarDadosLocalEServer(fechar = true) {
+    setMsg('Salvando dados no projeto...');
+    try {
+      onChangePessoas(req, trans, localTipoAto, localPartesAdicionais, localTiposAtos);
+      if (onSalvarProjeto) {
+        await onSalvarProjeto({
+          requerente: req,
+          transmitente: trans,
+          tipoAto: localTipoAto,
+          partesAdicionais: localPartesAdicionais
+        });
+      }
+      setMsg('Dados salvos com sucesso!');
+      if (fechar) {
+        onOpenChange(false);
+      }
+    } catch (e) {
+      setMsg('Erro ao salvar.');
+      await avisar({
+        titulo: 'Erro ao Salvar',
+        mensagem: 'Não foi possível salvar os dados no banco de dados do projeto: ' + ((e as Error).message || 'erro')
+      });
+    }
+  }
+
   async function handleCloseRequest() {
     const mudouReq = JSON.stringify(req) !== JSON.stringify(requerente ?? PESSOA_VAZIA);
     const mudouTrans = JSON.stringify(trans) !== JSON.stringify(transmitente ?? transVazio(imovel));
@@ -306,13 +351,20 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
     const mudouTipo = JSON.stringify(localTiposAtos) !== JSON.stringify(atosRef);
 
     if (mudouReq || mudouTrans || mudouPartes || mudouTipo) {
-      const ok = await confirmar({
-        titulo: 'Fechar formulário',
-        mensagem: 'Você preencheu dados no requerimento. Deseja realmente fechar e perder as informações digitadas?',
-        okLabel: 'Descartar e fechar',
-        perigo: true,
+      const resp = await escolher({
+        titulo: 'Salvar alterações?',
+        mensagem: 'Você fez alterações no requerimento. Deseja salvá-las no projeto antes de fechar?',
+        opcoes: [
+          { chave: 'salvar', label: 'Salvar e Fechar', variant: 'default' },
+          { chave: 'descartar', label: 'Descartar e Fechar', variant: 'destructive' },
+        ],
+        cancelLabel: 'Cancelar',
       });
-      if (!ok) return;
+      if (!resp) return;
+      if (resp === 'salvar') {
+        await salvarDadosLocalEServer(true);
+        return;
+      }
     }
     onOpenChange(false);
   }
@@ -623,29 +675,84 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
             </div>
 
             {/* Coluna 2: Requerente */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 space-y-3">
               <Bloco titulo={rotulos.req} pessoa={req} onChange={setReq} sugProp={sugProp} />
-            </div>
+              {totalRequerentes > 1 && (
+                <div className="flex items-center justify-between gap-2 bg-muted/20 border border-border/60 p-2 rounded-lg text-xs">
+                  <span className="font-semibold text-muted-foreground text-[10px] uppercase">Fração Ideal no Condomínio (%):</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={req.fracaoIdeal !== undefined ? req.fracaoIdeal : obterFracaoEfetiva(req, totalRequerentes)}
+                    onChange={(e) => setReq({ ...req, fracaoIdeal: e.target.value })}
+                    className="h-7 w-20 text-[11px] font-bold text-center"
+                  />
+                </div>
+              )}
 
-            {/* Coluna 3: Transmitente */}
-            <div className="lg:col-span-1">
-              <Bloco titulo={rotulos.trans} pessoa={trans} onChange={setTrans} sugProp={sugProp} />
-            </div>
-          </div>
-
-          {/* Partes Adicionais */}
-          {permiteVariasPartes && (
-            <div className="space-y-3 rounded-lg border border-dashed p-3 bg-muted/5">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block leading-none">
-                    Partes adicionais (Co-compradores / Donatários / Coproprietários)
+              {/* Requerentes / Compradores Adicionais agrupados nesta coluna */}
+              <div className="space-y-3 mt-3 border-t pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    {localTipoAto === 'venda' ? 'Compradores Adicionais' : 'Requerentes Adicionais'}
                   </span>
-                  <span className="text-[9px] text-muted-foreground block leading-tight mt-1">
-                    Adicione quantos compradores, vendedores ou coproprietários desejar no requerimento.
+                  <span className="text-[9px] font-bold text-emerald-600">
+                    {localPartesAdicionais.filter((p) => p.papel === 'requerente').length} adicionado(s)
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5">
+                
+                {localPartesAdicionais.map((p, i) => {
+                  if (p.papel !== 'requerente') return null;
+                  return (
+                    <div key={i} className="space-y-1.5 rounded-lg border border-emerald-500/20 p-2.5 bg-emerald-500/5 relative">
+                      <div className="flex items-center justify-between border-b pb-1 mb-1.5">
+                        <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase">
+                          {localTipoAto === 'venda' ? 'Comprador Adicional' : 'Requerente Adicional'}
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          title="Remover esta parte"
+                          className="h-5 px-1 hover:bg-destructive/10"
+                          onClick={() => rmParte(i)}
+                        >
+                          <Trash2 className="size-3 text-destructive" />
+                        </Button>
+                      </div>
+                      <Bloco titulo="" pessoa={p} onChange={(np) => setParte(i, np)} sugProp={sugProp} />
+                      {totalRequerentes > 1 && (
+                        <div className="flex items-center justify-between gap-2 bg-muted/20 border border-border/60 p-2 rounded-lg text-xs mt-1.5">
+                          <span className="font-semibold text-muted-foreground text-[10px] uppercase">Fração (%):</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={p.fracaoIdeal !== undefined ? p.fracaoIdeal : obterFracaoEfetiva(p, totalRequerentes)}
+                            onChange={(e) => setParte(i, { ...p, fracaoIdeal: e.target.value })}
+                            className="h-7 w-20 text-[11px] font-bold text-center"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Botões de Ação na Coluna 2 */}
+                <div className="flex items-center gap-1.5 mt-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => addParte('requerente')}
+                    className="flex-1 h-7 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 gap-1 cursor-pointer"
+                  >
+                    <UserPlus className="size-3" />
+                    + Adicionar
+                  </Button>
                   {sugProp.length > 0 && (
                     <select
                       onChange={(e) => {
@@ -653,88 +760,141 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                         if (!id) return;
                         const p = sugProp.find((s) => s.id === id);
                         if (p) {
-                          addParte(localTipoAto === 'venda' || localTipoAto === 'doacao' ? 'requerente' : 'transmitente', {
-                            nome: p.nome,
-                            cpf: p.cpf,
-                            rg: p.rg || '',
-                            nacionalidade: p.nacionalidade || 'Brasileira',
-                            naturalidade: p.naturalidade || '',
-                            dataNascimento: p.dataNascimento || '',
-                            profissao: p.profissao || '',
-                            estadoCivil: p.estadoCivil || '',
-                            conjugeNome: p.conjugeNome || '',
-                            conjugeCpf: p.conjugeCpf || '',
-                            filiacao: p.filiacao || '',
-                            endereco: p.endereco || '',
-                            cidadeUf: p.cidadeUf || '',
-                            cep: p.cep || '',
+                          addParte('requerente', {
+                            nome: p.nome, cpf: p.cpf, rg: p.rg || '', nacionalidade: p.nacionalidade || 'Brasileira',
+                            naturalidade: p.naturalidade || '', dataNascimento: p.dataNascimento || '', profissao: p.profissao || '',
+                            estadoCivil: p.estadoCivil || '', conjugeNome: p.conjugeNome || '', conjugeCpf: p.conjugeCpf || '',
+                            filiacao: p.filiacao || '', endereco: p.endereco || '', cidadeUf: p.cidadeUf || '', cep: p.cep || '',
                           });
                         }
                         e.target.value = '';
                       }}
-                      className="h-7 rounded border bg-background px-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/40 focus:ring-1 focus:ring-primary cursor-pointer"
+                      className="h-7 rounded border bg-background px-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/40 focus:ring-1 focus:ring-primary cursor-pointer w-[120px] max-w-[140px]"
                     >
-                      <option value="">+ Puxar do Banco de Cadastros ({sugProp.length})...</option>
+                      <option value="">Puxar Cadastro...</option>
                       {sugProp.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.nome} ({s.cpf || 'Sem CPF'})
-                        </option>
+                        <option key={s.id} value={s.id}>{s.nome}</option>
                       ))}
                     </select>
                   )}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => addParte('requerente')}
-                    className="h-7 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                  >
-                    <UserPlus className="size-3 mr-1" />
-                    + {localTipoAto === 'venda' ? 'Comprador Adicional' : localTipoAto === 'doacao' ? 'Donatário Adicional' : 'Requerente Adicional'}
-                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Coluna 3: Transmitente */}
+            <div className="lg:col-span-1 space-y-3">
+              <Bloco titulo={rotulos.trans} pessoa={trans} onChange={setTrans} sugProp={sugProp} />
+
+              {/* Transmitentes / Vendedores Adicionais agrupados nesta coluna */}
+              <div className="space-y-3 mt-3 border-t pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    {localTipoAto === 'venda' ? 'Vendedores Adicionais' : 'Transmitentes Adicionais'}
+                  </span>
+                  <span className="text-[9px] font-bold text-indigo-600">
+                    {localPartesAdicionais.filter((p) => p.papel === 'transmitente').length} adicionado(s)
+                  </span>
+                </div>
+                
+                {localPartesAdicionais.map((p, i) => {
+                  if (p.papel !== 'transmitente') return null;
+                  return (
+                    <div key={i} className="space-y-1.5 rounded-lg border border-indigo-500/20 p-2.5 bg-indigo-500/5 relative">
+                      <div className="flex items-center justify-between border-b pb-1 mb-1.5">
+                        <span className="text-[9px] font-black text-indigo-700 dark:text-indigo-400 uppercase">
+                          {localTipoAto === 'venda' ? 'Vendedor Adicional' : 'Transmitente Adicional'}
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          title="Remover esta parte"
+                          className="h-5 px-1 hover:bg-destructive/10"
+                          onClick={() => rmParte(i)}
+                        >
+                          <Trash2 className="size-3 text-destructive" />
+                        </Button>
+                      </div>
+                      <Bloco titulo="" pessoa={p} onChange={(np) => setParte(i, np)} sugProp={sugProp} />
+                    </div>
+                  );
+                })}
+
+                {/* Botões de Ação na Coluna 3 */}
+                <div className="flex items-center gap-1.5 mt-2">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     onClick={() => addParte('transmitente')}
-                    className="h-7 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                    className="flex-1 h-7 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 gap-1 cursor-pointer"
                   >
-                    <UserPlus className="size-3 mr-1" />
-                    + {localTipoAto === 'venda' ? 'Vendedor Adicional' : localTipoAto === 'doacao' ? 'Doador Adicional' : 'Transmitente Adicional'}
+                    <UserPlus className="size-3" />
+                    + Adicionar
                   </Button>
+                  {sugProp.length > 0 && (
+                    <select
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        if (!id) return;
+                        const p = sugProp.find((s) => s.id === id);
+                        if (p) {
+                          addParte('transmitente', {
+                            nome: p.nome, cpf: p.cpf, rg: p.rg || '', nacionalidade: p.nacionalidade || 'Brasileira',
+                            naturalidade: p.naturalidade || '', dataNascimento: p.dataNascimento || '', profissao: p.profissao || '',
+                            estadoCivil: p.estadoCivil || '', conjugeNome: p.conjugeNome || '', conjugeCpf: p.conjugeCpf || '',
+                            filiacao: p.filiacao || '', endereco: p.endereco || '', cidadeUf: p.cidadeUf || '', cep: p.cep || '',
+                          });
+                        }
+                        e.target.value = '';
+                      }}
+                      className="h-7 rounded border bg-background px-1.5 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 border-indigo-500/40 focus:ring-1 focus:ring-primary cursor-pointer w-[120px] max-w-[140px]"
+                    >
+                      <option value="">Puxar Cadastro...</option>
+                      {sugProp.map((s) => (
+                        <option key={s.id} value={s.id}>{s.nome}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
-              {localPartesAdicionais.map((p, i) => (
-                <div key={i} className="space-y-1 rounded-lg border p-3 bg-background/50">
-                  <div className="flex items-center justify-between border-b pb-1 mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-extrabold text-foreground uppercase">Pessoa {i + 1} - papel:</span>
-                      <select
-                        value={p.papel || 'requerente'}
-                        onChange={(e) => setParte(i, { ...p, papel: e.target.value as 'requerente' | 'transmitente' })}
-                        className="h-6 rounded border bg-background px-1.5 text-[10px] font-semibold text-foreground focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="requerente">
-                          {localTipoAto === 'venda' ? 'Comprador / Requerente' : localTipoAto === 'doacao' ? 'Donatário' : 'Requerente / Proprietário'}
-                        </option>
-                        <option value="transmitente">
-                          {localTipoAto === 'venda' ? 'Vendedor / Proprietário Registral' : localTipoAto === 'doacao' ? 'Doador' : 'Coproprietário / Cônjuge'}
-                        </option>
-                      </select>
-                    </div>
-                    <Button type="button" size="sm" variant="ghost" title="Remover esta parte" className="h-6 px-1 hover:bg-destructive/10" onClick={() => rmParte(i)}><Trash2 className="size-3.5 text-destructive" /></Button>
-                  </div>
-                  <Bloco titulo="" pessoa={p} onChange={(np) => setParte(i, np)} sugProp={sugProp} />
-                </div>
-              ))}
+            </div>
+          </div>
+
+          {somaIncorreta && (
+            <div className="flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 p-3 rounded-lg text-xs font-bold shadow-2xs">
+              <AlertTriangle className="size-4 shrink-0" />
+              <span>Atenção: A soma das frações ideais dos adquirentes é de {somaFracoes}%. O total deve somar exatamente 100%! Verifique os valores informados.</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-border/60 pt-3 mt-auto shrink-0">
-          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-xs tracking-wider gap-1.5 shadow-md active:scale-98" onClick={gerar}>
-            <Download className="size-4" /> Baixar Requerimento (.docx)
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3 mt-auto shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase text-xs tracking-wider gap-1.5 shadow-md active:scale-98 cursor-pointer"
+              onClick={() => salvarDadosLocalEServer(true)}
+            >
+              <Check className="size-4" /> Confirmar e Salvar no Projeto
+            </Button>
+            <Button size="sm" variant="outline" className="bg-emerald-600/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-600/20 font-black uppercase text-xs tracking-wider gap-1.5 shadow-sm cursor-pointer" onClick={gerar}>
+              <Download className="size-4" /> Baixar Requerimento (.docx)
+            </Button>
+            {onBaixarPacoteZip && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 font-black uppercase text-xs tracking-wider gap-1.5 shadow-sm cursor-pointer"
+                onClick={() => {
+                  onChangePessoas(req, trans, localTipoAto, localPartesAdicionais, localTiposAtos);
+                  onBaixarPacoteZip(req, trans, localTipoAto, localPartesAdicionais, localTiposAtos);
+                }}
+              >
+                <Download className="size-4" /> Baixar Todas as Peças (.zip)
+              </Button>
+            )}
+          </div>
           {msg && <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{msg}</span>}
         </div>
       </DialogContent>

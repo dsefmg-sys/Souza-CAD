@@ -22,7 +22,8 @@ export async function POST(req: Request) {
       transmitente,
       partesAdicionais,
       zonaUtm,
-      modo
+      modo,
+      preferencias
     } = body;
 
     const blob = await gerarMemorialDocx({
@@ -36,7 +37,8 @@ export async function POST(req: Request) {
       transmitente,
       partesAdicionais,
       zonaUtm,
-      modo
+      modo,
+      preferencias
     });
 
     const buffer = Buffer.from(await blob.arrayBuffer());

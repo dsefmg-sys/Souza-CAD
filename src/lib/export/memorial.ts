@@ -31,11 +31,31 @@ export function orientarResultadoParaNorte(
   return { res: resCalculado, cpl: cplReindexado };
 }
 
-function coordTexto(v: Vertex): string {
-  const lon = grausParaDMS(v.lon, { estilo: 'memorial', casas: 3 });
-  const lat = grausParaDMS(v.lat, { estilo: 'memorial', casas: 3 });
+function coordTexto(v: Vertex, prefs?: { memorialTipoCoordenada?: 'geodesica' | 'utm' | 'ambas'; memorialLatLonFormat?: 'gms' | 'decimal' }): string {
   const elev = Number.isFinite(v.elevacao) ? v.elevacao : 0;
-  return `Longitude: ${lon}, Latitude: ${lat} e Altitude: ${numBRmilhar(elev)} m`;
+  const tipo = prefs?.memorialTipoCoordenada ?? 'geodesica';
+  const format = prefs?.memorialLatLonFormat ?? 'gms';
+
+  let latStr = '';
+  let lonStr = '';
+  if (format === 'decimal') {
+    latStr = numBR(v.lat, 7) + '°';
+    lonStr = numBR(v.lon, 7) + '°';
+  } else {
+    latStr = grausParaDMS(v.lat, { estilo: 'memorial', casas: 3 });
+    lonStr = grausParaDMS(v.lon, { estilo: 'memorial', casas: 3 });
+  }
+
+  const utmPart = `Este (E): ${numBR(v.leste, 3)} m, Norte (N): ${numBR(v.norte, 3)} m`;
+  const geoPart = `Longitude: ${lonStr}, Latitude: ${latStr}`;
+
+  if (tipo === 'utm') {
+    return `${utmPart} e Altitude: ${numBRmilhar(elev)} m`;
+  }
+  if (tipo === 'ambas') {
+    return `${utmPart}, ${geoPart} e Altitude: ${numBRmilhar(elev)} m`;
+  }
+  return `${geoPart} e Altitude: ${numBRmilhar(elev)} m`;
 }
 
 // Descrição do confrontante: vive em confrontanteTexto.ts, compartilhada com a planilha SIGEF
@@ -77,7 +97,11 @@ export function construirNarrativaSegmentos(
   confrontantes: Confrontante[],
   confrontantePorLado: Record<number, string>,
   imovel?: ImovelData,
-  zonaUtm?: number
+  zonaUtm?: number,
+  preferencias?: {
+    memorialTipoCoordenada?: 'geodesica' | 'utm' | 'ambas';
+    memorialLatLonFormat?: 'gms' | 'decimal';
+  }
 ): SegmentoTexto[] {
   const { vertices, lados } = res;
   if (vertices.length < 3) return [];
@@ -116,11 +140,11 @@ export function construirNarrativaSegmentos(
     push(v0.codigoSigef, true);
     push(`, situado a ${numBR(imovel.distanciaEsquinaM)} m da esquina formada com a `);
     push(imovel.esquinaRua, true);
-    push(`, de coordenadas (${coordTexto(v0)}); `);
+    push(`, de coordenadas (${coordTexto(v0, preferencias)}); `);
   } else {
     push('Inicia-se a descrição deste perímetro no vértice ');
     push(v0.codigoSigef, true);
-    push(`, de coordenadas (${coordTexto(v0)}); `);
+    push(`, de coordenadas (${coordTexto(v0, preferencias)}); `);
   }
 
   // agrupa lados consecutivos por (confrontante + tipo de divisa). Uma nova "passada" começa
@@ -141,7 +165,7 @@ export function construirNarrativaSegmentos(
     push(' até o vértice ');
     push(l.para.codigoSigef, true);
     if (i === totalLados - 1) push(', ponto inicial da descrição deste perímetro');
-    else push(` (${coordTexto(l.para)})`);
+    else push(` (${coordTexto(l.para, preferencias)})`);
   };
 
   let confAnterior: string | null = null;
@@ -338,16 +362,20 @@ export interface MemorialInput {
   zonaUtm?: number;
   /** 'servidao' gera o memorial descritivo de área de servidão/faixa de domínio (título e abertura próprios). */
   modo?: 'normal' | 'servidao';
+  preferencias?: {
+    memorialTipoCoordenada?: 'geodesica' | 'utm' | 'ambas';
+    memorialLatLonFormat?: 'gms' | 'decimal';
+  };
 }
 
 export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob> {
   const input = sanitizarProfundo(inputBruto);
-  const { res: resBruto, imovel, tecnico, confrontantes, confrontantePorLado: cplBruto, requerente, transmitente, partesAdicionais, zonaUtm } = input;
+  const { res: resBruto, imovel, tecnico, confrontantes, confrontantePorLado: cplBruto, requerente, transmitente, partesAdicionais, zonaUtm, preferencias } = input;
   const { res, cpl: confrontantePorLado } = orientarResultadoParaNorte(resBruto, cplBruto);
   // Defesa final: nunca gerar memorial com lacuna de código de vértice.
   const semCodigo = res.vertices.filter((v) => !v.codigoSigef).length;
   if (semCodigo > 0) throw new Error(`${semCodigo} vértice(s) sem código. Renumere os vértices antes de gerar o memorial.`);
-  const narrativaSegs = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado, imovel, zonaUtm);
+  const narrativaSegs = construirNarrativaSegmentos(res, confrontantes, confrontantePorLado, imovel, zonaUtm, preferencias);
 
   const children: (Paragraph | Table)[] = [];
 
@@ -537,21 +565,28 @@ function blocoAssinaturaConfrontante(c: Confrontante): Paragraph[] {
     return assinatura(linhas);
   }
   if (cond === 'posseiro') {
-    return assinaturaComConjuge([
+    const isCnpj = c.cpf && c.cpf.replace(/\D/g, '').length > 11;
+    const labelDoc = isCnpj ? 'CNPJ' : 'CPF';
+    const linhas = [
       `Nome: ${c.nome}`,
-      `CPF: ${c.cpf}`,
-      'Na condição de possuidor(a)',
-    ], c.conjugeNome, c.conjugeCpf);
+      `${labelDoc}: ${c.cpf}`,
+    ];
+    if (c.estadoCivil) linhas.push(`Estado Civil: ${c.estadoCivil}`);
+    linhas.push('Na condição de possuidor(a)');
+    return assinaturaComConjuge(linhas, c.conjugeNome, c.conjugeCpf);
   }
   // Linha de qualificação extra por condição (condômino / usufrutuário).
   const linhaCondicao = cond === 'condomino' ? 'Na condição de condômino(a)'
     : cond === 'usufrutuario' ? 'Na condição de usufrutuário(a)'
     : null;
+  const isCnpj = c.cpf && c.cpf.replace(/\D/g, '').length > 11;
+  const labelDoc = isCnpj ? 'CNPJ' : 'CPF';
   const linhas = [
     `Nome: ${c.nome}`,
-    `CPF: ${c.cpf}`,
+    `${labelDoc}: ${c.cpf}`,
     `Imóvel de Matrícula: ${formatMatricula(c.matricula)}`,
   ];
+  if (c.estadoCivil) linhas.push(`Estado Civil: ${c.estadoCivil}`);
   if (linhaCondicao) linhas.push(linhaCondicao);
   const out = assinaturaComConjuge(linhas, c.conjugeNome, c.conjugeCpf);
   // Usufruto: o nu-proprietário assina JUNTO (assinatura própria), se informado.

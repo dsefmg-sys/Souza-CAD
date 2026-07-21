@@ -257,8 +257,8 @@ describe('requerimento', () => {
     expect(texto).toContain('222.222.222-22');
     expect(texto).toContain('Terceiro Comprador');
     expect(texto).toContain('333.333.333-33');
-    expect(texto).toContain('PARTE ADICIONAL 1');
-    expect(texto).toContain('PARTE ADICIONAL 2');
+    // as assinaturas adicionais aparecem
+    expect(texto).toContain('Requerente / Adquirente');
   });
 
   it('geração de requerimento cumulativo com múltiplos atos (retificação + desmembramento)', async () => {

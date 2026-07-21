@@ -1111,14 +1111,9 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                         className="rounded text-zinc-950 focus:ring-emerald-500 size-4 mt-0.5 border-zinc-750 accent-emerald-500 cursor-pointer"
                       />
                     </th>
-                    <th className="px-4 py-3 min-w-[140px]">Cliente / RT</th>
-                    <th className="px-4 py-3">E-mail</th>
-                    <th className="px-2 py-3 text-center w-24" title="Quantidade de projetos salvos na nuvem pelo usuário">Projetos (Nuvem)</th>
-                    <th className="px-2 py-3 text-center w-28">Mensalidade (R$)</th>
-                    <th className="px-2 py-3 text-center w-20">Venc. Dia</th>
-                    <th className="px-2 py-3 text-center w-28">Faturamento</th>
-                    <th className="px-4 py-3 min-w-[170px]">Anotações / Obs. Contrato</th>
-                    <th className="px-4 py-3 text-center w-20">Uso</th>
+<th className="px-3 py-2 text-left min-w-[200px]">Cliente / RT / Métricas</th>
+                    <th className="px-2 py-2 text-center w-44">Financeiro &amp; Cobrança</th>
+                    <th className="px-3 py-2 text-left min-w-[150px]">Anotações / Obs. Contrato</th>
                     <th className="px-4 py-3 text-center w-16">Ações</th>
                   </tr>
                 </thead>
@@ -1152,30 +1147,38 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                               className="rounded text-zinc-950 focus:ring-emerald-500 size-4 mt-0.5 border-zinc-750 accent-emerald-500 cursor-pointer"
                             />
                           </td>
-                          <td className="px-4 py-2.5">
-                            <div className="font-bold text-white leading-tight text-sm flex items-center gap-1.5 flex-wrap">
+                          <td className="px-3 py-2">
+                            <div className="font-bold text-white text-xs flex items-center gap-1.5 flex-wrap">
                               <span>{p.empresaNome || 'Sem Empresa'}</span>
                               {isMinhaEmpresa && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-400">
-                                  <Shield className="size-3" /> Sua Empresa (Membro)
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-1.5 py-0.2 text-[8px] font-black uppercase text-emerald-400">
+                                  <Shield className="size-2.5" /> Membro
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
+                            <div className="text-[11px] text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
+                            <div className="text-[11px] text-zinc-450 mt-0.5 select-all">{p.email || '—'}</div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className={`inline-flex items-center rounded-full px-1.5 py-0.2 text-[9px] font-extrabold uppercase ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/30' : 'bg-zinc-950/60 text-zinc-450 border border-zinc-800'}`}>
+                                {ativo ? 'ativo' : 'inativo'}
+                              </span>
+                              <span className="text-[10px] text-zinc-500 flex items-center gap-0.5">
+                                <Cloud className="size-3 text-zinc-500 shrink-0" /> {p.totalProjetos ?? 0} projs.
+                              </span>
+                              {p.ultimoAcessoEm && (
+                                <span className="text-[9.5px] text-amber-500 font-medium">
+                                  login: {dataBR(p.ultimoAcessoEm)}
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">
-                            <div>{p.email || '—'}</div>
-                            {p.ultimoAcessoEm ? (
-                              <div className="text-amber-400 font-semibold mt-0.5">login {dataBR(p.ultimoAcessoEm)}</div>
-                            ) : null}
+                          <td className="px-3 py-2 text-center text-xs text-zinc-550 italic">
+                            Membro — cobrança vinculada:
+                            <div className="text-[10.5px] font-bold text-zinc-400 truncate max-w-[150px] mx-auto mt-0.5" title={dono?.empresaNome || dono?.email || ''}>
+                              {dono?.empresaNome || dono?.email || 'Matriz'}
+                            </div>
                           </td>
-                          <td className="px-2 py-2.5 text-center">
-                            <button type="button" title="Ver projetos salvos na nuvem deste cliente" onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)} className="inline-flex items-center justify-center gap-1 font-extrabold text-emerald-400 hover:text-emerald-300 hover:underline text-xs bg-emerald-950/40 border border-emerald-800/40 px-2 py-1 rounded-md transition-colors"><Cloud className="size-3.5 text-emerald-400 shrink-0" /> <span>{p.totalProjetos ?? 0}</span></button>
-                          </td>
-                          <td colSpan={3} className="px-4 py-2.5 text-center text-xs text-zinc-500 italic">
-                            Membro — cobrança segue a empresa de {dono?.empresaNome || dono?.email || 'outra conta'}
-                          </td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-3 py-2">
                             <input
                               type="text"
                               placeholder="Anotações internas..."
@@ -1186,11 +1189,8 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                                   atualizarClienteCRM(p.uid, { observacoesAdmin: val });
                                 }
                               }}
-                              className="w-full h-9 bg-zinc-950 border border-zinc-800 rounded-lg text-white px-3 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 placeholder-zinc-700 transition-colors"
+                              className="w-full h-8 bg-zinc-950 border border-zinc-800 rounded text-white px-2 text-xs focus:border-amber-500 focus:outline-none focus:ring-0 placeholder-zinc-700 transition-colors"
                             />
-                          </td>
-                          <td className="px-4 py-2.5 text-center">
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-zinc-450 border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
                           </td>
                           <td className="px-4 py-2.5 text-center flex justify-center gap-1">
                             <Button
@@ -1236,69 +1236,78 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                               className="rounded text-zinc-950 focus:ring-emerald-500 size-4 mt-0.5 border-zinc-750 accent-emerald-500 cursor-pointer"
                             />
                           </td>
-                          <td className="px-4 py-2.5">
-                            <div className="font-bold text-white leading-tight text-sm flex items-center gap-1.5 flex-wrap">
+                          <td className="px-3 py-2">
+                            <div className="font-bold text-white text-xs flex items-center gap-1.5 flex-wrap">
                               <span>{p.empresaNome || 'Sem Empresa'}</span>
                               {isMinhaEmpresa && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-400">
-                                  <Shield className="size-3" /> Sua Empresa (Matriz SaaS)
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-1.5 py-0.2 text-[8px] font-black uppercase text-emerald-400">
+                                  <Shield className="size-2.5" /> Matriz
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
+                            <div className="text-[11px] text-zinc-400 mt-0.5">{p.rtNome || 'RT não cadastrado'}{p.rtCft ? ` (CFT: ${p.rtCft})` : ''}</div>
+                            <div className="text-[11px] text-zinc-450 mt-0.5 select-all">{p.email || '—'}</div>
                             <button
                               type="button"
                               onClick={() => setEmpresaMembrosAberta((prev) => ({ ...prev, [p.uid]: !prev[p.uid] }))}
-                              className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-extrabold text-emerald-400 hover:text-emerald-300 hover:underline transition-colors"
+                              className="mt-1 inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-400 hover:text-emerald-300 hover:underline transition-colors"
                             >
-                              <Users className="size-3" /> {totalUsuariosEmpresa} usuário{totalUsuariosEmpresa > 1 ? 's' : ''} cadastrado{totalUsuariosEmpresa > 1 ? 's' : ''}
+                              <Users className="size-3 shrink-0" /> {totalUsuariosEmpresa} user${totalUsuariosEmpresa > 1 ? 's' : ''}
                               {subRowAberta ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
                             </button>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className={`inline-flex items-center rounded-full px-1.5 py-0.2 text-[9px] font-extrabold uppercase ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/30' : 'bg-zinc-950/60 text-zinc-450 border border-zinc-800'}`}>
+                                {ativo ? 'ativo' : 'inativo'}
+                              </span>
+                              <button 
+                                type="button" 
+                                onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)}
+                                className="text-[10px] text-emerald-400 hover:underline hover:text-emerald-300 flex items-center gap-0.5"
+                              >
+                                <Cloud className="size-3 shrink-0" /> {p.totalProjetos ?? 0} projs.
+                              </button>
+                              {p.ultimoAcessoEm && (
+                                <span className="text-[9.5px] text-amber-500 font-medium">
+                                  login: {dataBR(p.ultimoAcessoEm)}
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-4 py-2.5 text-zinc-400 select-all text-xs">
-                            <div>{p.email || '—'}</div>
-                            {p.ultimoAcessoEm ? (
-                              <div className="text-amber-400 font-semibold mt-0.5">login {dataBR(p.ultimoAcessoEm)}</div>
-                            ) : null}
-                          </td>
-                          <td className="px-2 py-2.5 text-center">
-                            <button type="button" title="Ver projetos salvos na nuvem deste cliente" onClick={() => verProjetos(p.uid, p.empresaNome || p.email || p.uid)} className="inline-flex items-center justify-center gap-1 font-extrabold text-emerald-400 hover:text-emerald-300 hover:underline text-xs bg-emerald-950/40 border border-emerald-800/40 px-2 py-1 rounded-md transition-colors"><Cloud className="size-3.5 text-emerald-400 shrink-0" /> <span>{p.totalProjetos ?? 0}</span></button>
-                          </td>
-                          
-                          {/* CRM: Mensalidade */}
-                          <td className="px-2 py-2.5 text-center">
-                            <input
-                              type="number"
-                              defaultValue={p.mensalidade !== undefined ? p.mensalidade : 150}
-                              onBlur={(e) => {
-                                const val = e.target.value !== '' ? Number(e.target.value) : 150;
-                                if (val !== p.mensalidade) {
-                                  atualizarClienteCRM(p.uid, { mensalidade: val });
-                                }
-                              }}
-                              className="w-20 h-9 text-center bg-zinc-950 border border-zinc-800 rounded-lg text-white px-1.5 text-xs font-bold focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
-                            />
-                          </td>
-
-                          {/* CRM: Dia Vencimento */}
-                          <td className="px-2 py-2.5 text-center">
-                            <input
-                              type="number"
-                              min="1"
-                              max="31"
-                              defaultValue={p.vencimentoDia || 10}
-                              onBlur={(e) => {
-                                const val = e.target.value !== '' ? Number(e.target.value) : 10;
-                                if (val !== p.vencimentoDia) {
-                                  atualizarClienteCRM(p.uid, { vencimentoDia: val });
-                                }
-                              }}
-                              className="w-16 h-9 text-center bg-zinc-950 border border-zinc-800 rounded-lg text-white px-1 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
-                            />
-                          </td>
-
-                          {/* CRM: Status Faturamento Select */}
-                          <td className="px-2 py-2.5 text-center">
+                          <td className="px-3 py-2 text-center space-y-1.5">
+                            <div className="flex items-center gap-1.5 justify-center">
+                              <div className="relative flex items-center">
+                                <span className="absolute left-1.5 text-[9px] font-bold text-zinc-500">R$</span>
+                                <input
+                                  type="number"
+                                  defaultValue={p.mensalidade !== undefined ? p.mensalidade : 150}
+                                  onBlur={(e) => {
+                                    const val = e.target.value !== '' ? Number(e.target.value) : 150;
+                                    if (val !== p.mensalidade) {
+                                      atualizarClienteCRM(p.uid, { mensalidade: val });
+                                    }
+                                  }}
+                                  className="w-16 h-7 text-center bg-zinc-950 border border-zinc-850 rounded text-white pl-4 pr-1 text-[11px] font-extrabold focus:border-amber-500 focus:outline-none focus:ring-0 transition-colors"
+                                  title="Valor da Mensalidade"
+                                />
+                              </div>
+                              <div className="relative flex items-center">
+                                <span className="absolute left-1.5 text-[9px] font-bold text-zinc-500">Dia</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="31"
+                                  defaultValue={p.vencimentoDia || 10}
+                                  onBlur={(e) => {
+                                    const val = e.target.value !== '' ? Number(e.target.value) : 10;
+                                    if (val !== p.vencimentoDia) {
+                                      atualizarClienteCRM(p.uid, { vencimentoDia: val });
+                                    }
+                                  }}
+                                  className="w-12 h-7 text-center bg-zinc-950 border border-zinc-850 rounded text-white pl-4 pr-1 text-[11px] font-bold focus:border-amber-500 focus:outline-none focus:ring-0 transition-colors"
+                                  title="Dia do Vencimento"
+                                />
+                              </div>
+                            </div>
                             <select
                               value={status}
                               onChange={(e) => {
@@ -1311,20 +1320,18 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                                 }
                                 atualizarClienteCRM(p.uid, patch);
                               }}
-                              className={`w-28 h-9 rounded-lg px-2 text-xs font-bold bg-zinc-950 border focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 cursor-pointer transition-colors ${
+                              className={`w-[134px] h-7 rounded px-1.5 text-[10.5px] font-black bg-zinc-950 border focus:outline-none focus:border-amber-500 focus:ring-0 cursor-pointer transition-colors text-center ${
                                 status === 'pago' ? 'text-emerald-400 border-emerald-500/40' :
-                                status === 'isento' ? 'text-zinc-400 border-zinc-500/40' :
+                                status === 'isento' ? 'text-zinc-400 border-zinc-550' :
                                 'text-red-400 border-red-500/40'
                               }`}
                             >
                               <option value="pago" className="text-emerald-400 font-bold bg-zinc-900">Pago (Ok)</option>
                               <option value="atrasado" className="text-red-400 font-bold bg-zinc-900">Atrasado</option>
-                              <option value="isento" className="text-zinc-400 font-bold bg-zinc-900">Isento (Free)</option>
+                              <option value="isento" className="text-zinc-450 font-bold bg-zinc-900">Isento (Free)</option>
                             </select>
                           </td>
-
-                          {/* CRM: Observações */}
-                          <td className="px-4 py-2.5">
+                          <td className="px-3 py-2">
                             <input
                               type="text"
                               placeholder="Anotações internas..."
@@ -1335,12 +1342,8 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                                   atualizarClienteCRM(p.uid, { observacoesAdmin: val });
                                 }
                               }}
-                              className="w-full h-9 bg-zinc-950 border border-zinc-800 rounded-lg text-white px-3 text-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500/30 placeholder-zinc-700 transition-colors"
+                              className="w-full h-8 bg-zinc-950 border border-zinc-800 rounded text-white px-2 text-xs focus:border-amber-500 focus:outline-none focus:ring-0 placeholder-zinc-700 transition-colors"
                             />
-                          </td>
-
-                          <td className="px-4 py-2.5 text-center">
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-extrabold uppercase tracking-wider ${ativo ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40 shadow-sm shadow-emerald-500/10' : 'bg-zinc-950/60 text-zinc-450 border border-zinc-700/40'}`}>{ativo ? 'ativo' : 'inativo'}</span>
                           </td>
                           <td className="px-4 py-2.5 text-center flex justify-center gap-1">
                             <Button
@@ -1366,7 +1369,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
 
                         {subRowAberta && (
                           <tr className="bg-zinc-950/90 border-t border-emerald-500/30">
-                            <td colSpan={10} className="p-3 pl-8">
+                            <td colSpan={5} className="p-3 pl-8">
                               <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-2.5 shadow-md">
                                 <div className="flex items-center justify-between text-xs font-black uppercase text-emerald-400 tracking-wider">
                                   <span className="flex items-center gap-1.5"><Users className="size-4 text-emerald-400" /> Lista Enxuta de Usuários — {p.empresaNome || 'Empresa'} ({totalUsuariosEmpresa})</span>
@@ -1404,6 +1407,36 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                                       </div>
                                     </div>
                                   ))}
+                                </div>
+
+                                {/* Módulos Adicionais Contratados */}
+                                <div className="border-t border-emerald-500/20 pt-3 mt-3">
+                                  <div className="flex items-center gap-1.5 text-xs font-black uppercase text-amber-500 tracking-wider mb-2">
+                                    <Shield className="size-4 text-amber-500" /> Licenciamento de Módulos (SaaS)
+                                  </div>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2.5">
+                                    {[
+                                      { label: 'Ambiental', field: 'licencaAmbiental', color: 'text-emerald-400' },
+                                      { label: 'Usucapião', field: 'licencaUsucapiao', color: 'text-amber-400' },
+                                      { label: 'Avaliação', field: 'licencaAvaliacao', color: 'text-rose-400' },
+                                      { label: 'Jurídico', field: 'licencaJuridico', color: 'text-indigo-400' },
+                                      { label: 'REURB', field: 'licencaReurb', color: 'text-orange-400' },
+                                      { label: 'Loteamento', field: 'licencaLoteamento', color: 'text-teal-400' },
+                                      { label: 'Crédito', field: 'licencaCredito', color: 'text-emerald-500' }
+                                    ].map((mod) => (
+                                      <label key={mod.field} className="flex items-center gap-2 p-2 rounded-lg border border-zinc-800 bg-zinc-900 cursor-pointer hover:bg-zinc-850 transition-colors">
+                                        <input
+                                          type="checkbox"
+                                          checked={!!(p as any)[mod.field]}
+                                          onChange={(e) => {
+                                            atualizarClienteCRM(p.uid, { [mod.field]: e.target.checked });
+                                          }}
+                                          className="rounded text-amber-500 focus:ring-amber-500 size-4 mt-0.5 border-zinc-700"
+                                        />
+                                        <span className={`text-[10px] font-extrabold uppercase ${mod.color}`}>{mod.label}</span>
+                                      </label>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
                             </td>

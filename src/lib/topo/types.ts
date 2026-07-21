@@ -71,6 +71,7 @@ export interface Vertex {
   norte: number;
   leste: number;
   elevacao: number;
+  elevacaoOriginal?: number; // cota original vinda do GNSS (h) antes de qualquer ajuste local
   elevacaoInterpolada?: boolean; // cota CALCULADA (não medida) pela ferramenta de completar altitudes
   lat: number;         // graus decimais
   lon: number;         // graus decimais
@@ -138,6 +139,7 @@ export interface PessoaQualificada {
   cidadeUf: string;
   cep: string;
   papel?: 'requerente' | 'transmitente';
+  fracaoIdeal?: string;
 }
 
 export interface ProprietarioCad extends Partial<PessoaQualificada> {
@@ -178,6 +180,9 @@ export interface ConfrontanteCad {
   nuProprietarioNome?: string;
   nuProprietarioCpf?: string;
   projetoId?: string;
+  oculto?: boolean;
+  estadoCivil?: string;
+  cnpj?: string;
 }
 
 export interface ImovelCad {
@@ -220,11 +225,14 @@ export interface Confrontante {
   nuProprietarioCpf?: string;
   // posição manual do rótulo na planta (se o usuário arrastou); senão é automática
   posRotulo?: { lat: number; lon: number };
+  estadoCivil?: string;
+  cnpj?: string;
   // tamanho da fonte do rótulo/assinatura (mapa e planta); vazio = padrão
   tamRotulo?: number;
   // cor personalizada para o confrontante; se vazia, usa a cor da paleta hash
   cor?: string;
   layoutAssinatura?: 'vertical' | 'horizontal';
+  oculto?: boolean;            // se true, oculta a caixa de assinatura no mapa e na planta
 }
 
 /** Objeto de desenho livre (georreferenciado) sobreposto ao mapa/planta. */
@@ -292,12 +300,19 @@ export interface ProprietarioParte {
 export interface ImovelData {
   id?: string;
   denominacao: string;        // "Fazenda Ventania"
+  areaHa?: number;
+  areaM2?: number;
+  uf?: string;
   matricula: string;          // "3470"
   cns: string;                // "03.886-9"
   codigoImovelIncra: string;  // SNCR/INCRA "9501143617043"
   proprietario: string;       // "Juraci Francisco de Sales"
   posseiro?: string;          // nome do posseiro/possuidor quando em regime de posse
   cpfProprietario: string;
+  proprietarioEstadoCivil?: string;
+  proprietarioNacionalidade?: string;
+  proprietarioProfissao?: string;
+  proprietarioEndereco?: string;
   tipoPessoa: 'Física' | 'Jurídica' | 'Espólio';
   inventarianteNome?: string;
   inventarianteCpf?: string;
@@ -341,6 +356,76 @@ export interface ImovelData {
   variacaoAnual?: number;       // minutos/ano
   tipoImovel?: 'rural' | 'urbano';
   regimeTerra?: 'propriedade' | 'posse';
+  // Dados dos módulos opcionais
+  dadosAmbientais?: {
+    vegetacao?: string;
+    conservacao?: string;
+    corposAgua?: string;
+    appEstimada?: string;
+    fauna?: string;
+    diagnostico?: string;
+    instituicao?: string;
+    linhaCredito?: string;
+    atividade?: string;
+    valorFinanc?: string;
+    cronograma?: string;
+    declividade?: string;
+    recomposicao?: boolean;
+    acoesPRADA?: string;
+  };
+  dadosUsucapiao?: {
+    tempoPosse?: string;
+    origemPosse?: string;
+    tipoUsucapiao?: string;
+    detalhesPosse?: string;
+    anuenteVizinhos?: boolean;
+  };
+  dadosAvaliacao?: {
+    tipoImovel?: 'rural' | 'urbano';
+    aptidaoSolo?: string;
+    conservacaoEdif?: string;
+    valorUnitario?: string;
+    benfeitorias?: string;
+    metodologia?: string;
+  };
+  dadosJuridico?: {
+    foroComarca?: string;
+    advogadoNome?: string;
+    advogadoOab?: string;
+    qualificacaoFatos?: string;
+    direitoFundamento?: string;
+    notificacaoConfrontanteId?: string;
+  };
+  dadosReurb?: {
+    modalidadeReurb?: 'REURB-S' | 'REURB-E';
+    decretoMunicipal?: string;
+    classificacaoSocial?: string;
+    infraBasica?: string;
+    fundamentoReurb?: string;
+  };
+  dadosLoteamento?: {
+    numeroLotes?: string;
+    areaVerde?: string;
+    areaRuas?: string;
+    volCorte?: string;
+    volAterro?: string;
+    infraAgua?: boolean;
+    infraEsgoto?: boolean;
+    infraLuz?: boolean;
+    infraDrenagem?: boolean;
+  };
+  dadosCredito?: {
+    aptidaoSolo?: string;
+    culturaPrincipal?: string;
+    capacidadePastagem?: string;
+    finalidadeCredito?: string;
+    cronogramaEtapas?: Array<{
+      id: string;
+      etapa: string;
+      mes: number;
+      valor: number;
+    }>;
+  };
   // Padrão do memorial descritivo. 'incra' (padrão nacional SIGEF) ou 'intermat' (variante do
   // Instituto de Terras de Mato Grosso, para regularização de terras públicas estaduais). O padrão
   // INTERMAT só é oferecido quando o imóvel é de Mato Grosso. Ausente = 'incra'.
@@ -495,8 +580,9 @@ export interface TecnicoData {
   formacao: string;           // "TÉCNICO EM AGRIMENSURA" (técnico) ou "ENGENHEIRO AGRIMENSOR" (engenheiro)
   // Conselho do responsável: técnico registra no CFT e emite TRT; engenheiro registra no CREA e
   // emite ART. Ausente = CFT (compatibilidade com projetos antigos). Define as siglas nas peças.
-  conselho?: 'CFT' | 'CREA' | 'CFTA' | 'CFT+CREA' | 'CFTA+CREA';
+  conselho?: 'CFT' | 'CREA' | 'CFTA' | 'CAU' | 'CFT+CREA' | 'CFTA+CREA' | 'CAU+CREA';
   cft: string;                // "12287132600-MG" — nº de registro no conselho (CFT ou CREA)
+  oab?: string;               // número da OAB se advogado/patrono
   art: string;                // "CFT2505318024" — nº do termo de responsabilidade (TRT ou ART)
   credenciamentoIncra: string;// "COIN" — também é o prefixo dos vértices
   cidadeAssinatura: string;   // "Espera Feliz-MG"
@@ -541,6 +627,7 @@ export interface Gleba {
   tipoGleba?: 'principal' | 'auxiliar'; // Principal (ativa) ou Auxiliar (complementar)
   visivel?: boolean;            // true (default): exibida na planta/mapa, false: ocultada
   imovelId?: string;           // ID do imóvel ao qual esta gleba está vinculada
+  quadra?: string;             // Quadra à qual pertence, ex: "A"
   // Dados imobiliários/cartorários específicos da gleba (se vazios, herda os do imóvel do projeto)
   matricula?: string;
   cns?: string;
@@ -551,6 +638,18 @@ export interface Gleba {
   cpfConjugeProprietario?: string;
   municipio?: string;
   cartorio?: string;
+  // Dados comerciais da gleba/lote (vendas)
+  precoVenda?: number;
+  compradorNome?: string;
+  compradorCpf?: string;
+  compradorRg?: string;
+  compradorEstadoCivil?: string;
+  compradorProfissao?: string;
+  compradorEndereco?: string;
+  sinalEntrada?: number;
+  parcelasQtd?: number;
+  jurosMensais?: number;
+  sistemaAmortizacao?: 'price' | 'sac';
 }
 
 /**
@@ -585,6 +684,7 @@ export interface Projeto {
   glebas: Gleba[];
   zonaUtm: number;
   hemisferio: 'N' | 'S';
+  tipoProjeto?: 'rural' | 'loteamento';
   // Requerimento cartorial (opcional)
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;

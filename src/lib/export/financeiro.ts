@@ -136,7 +136,7 @@ function obterDimensoesBase64(dataUrl: string): { w: number; h: number } | null 
 }
 
 /** Aplica o papel timbrado executivo com as cores personalizadas do escritório/logo. */
-function aplicarPapelTimbrado(doc: jsPDF, esc?: EscritorioData) {
+export function aplicarPapelTimbrado(doc: jsPDF, esc?: EscritorioData) {
   const larg = doc.internal.pageSize.getWidth();
   const alt = doc.internal.pageSize.getHeight();
 
@@ -170,9 +170,10 @@ function aplicarPapelTimbrado(doc: jsPDF, esc?: EscritorioData) {
   doc.setTextColor(0, 0, 0);
 }
 
-function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, larg: number): number {
-  aplicarPapelTimbrado(doc, esc);
+export function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData | null, margem: number, larg: number): number {
+  aplicarPapelTimbrado(doc, esc || undefined);
   let y = margem + 3;
+  if (!esc) return y;
   if (esc.logoDataUrl) {
     try {
       const logoOtimizada = otimizarImagemBase64(esc.logoDataUrl) || esc.logoDataUrl;
@@ -229,7 +230,7 @@ function cabecalhoEscritorio(doc: jsPDF, esc: EscritorioData, margem: number, la
 }
 
 /** Faixa de aviso quando o projeto é fictício (demonstração). Devolve o novo y. */
-function statusFicticio(doc: jsPDF, imovel: ImovelData, larg: number, y: number): number {
+export function statusFicticio(doc: jsPDF, imovel: ImovelData, larg: number, y: number): number {
   if (!imovel.ficticio) return y;
   doc.setTextColor(185, 28, 28);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(10);

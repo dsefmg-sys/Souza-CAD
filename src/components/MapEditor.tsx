@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
-import { Ruler, Box } from 'lucide-react';
+import { Ruler, Box, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho, Confrontante, VerticeVizinho, PontoLL } from '@/lib/topo/types';
 import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
@@ -91,6 +91,7 @@ interface Props {
   confrontantes?: Confrontante[];
   confrontantePorLado?: Record<number, string>;
   onEditarConfrontante?: (id: string) => void;
+  onAjustarPosRotuloConfrontante?: (cId: string, lat: number, lon: number) => void;
   zona?: number;
   hemisferio?: 'N' | 'S';
   /** Trava de ângulo do desenho (CAD): a prévia dinâmica acompanha a mesma trava do clique. */
@@ -122,6 +123,9 @@ interface Props {
   parcelaCertSel?: number | null;
   onSelParcelaCert?: (idx: number | null) => void;
   verticesVizinho?: VerticeVizinho[];
+  exibirDivisasMunicipais?: boolean;
+  divisasMunicipaisGeoJson?: any;
+  onToggleDivisasMunicipais?: () => void;
   gradeAltimetrica?: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[];
 }
 
@@ -1326,6 +1330,7 @@ function TrimExtendController({
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [], onAbrirGestaoGleba, onCliqueUnicoGleba, glebaAtivaId,
+    exibirDivisasMunicipais = false, divisasMunicipaisGeoJson = null, onToggleDivisasMunicipais,
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, centroPadrao = null, zoomPadrao = 13, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
@@ -1340,6 +1345,7 @@ export default function MapEditor(props: Props) {
     realceId = null,
     confrontantes = [],
     confrontantePorLado = {},
+    onAjustarPosRotuloConfrontante,
     zona = 23,
     hemisferio = 'S',
     orto = 'off',
@@ -1579,6 +1585,30 @@ export default function MapEditor(props: Props) {
       <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} hoverSnap={hoverSnap} zona={zona} hemisferio={hemisferio} onConfirmarCopiaBase={onConfirmarCopiaBase} onConfirmarCopiaDestino={onConfirmarCopiaDestino} onContextMenuMapa={onContextMenuMapa} />
       <FocoMap latLng={focoLatLng} />
 
+      {/* Divisas Municipais da Região / IBGE */}
+      {exibirDivisasMunicipais && divisasMunicipaisGeoJson && (
+        <GeoJSON
+          key={JSON.stringify(divisasMunicipaisGeoJson)}
+          data={divisasMunicipaisGeoJson}
+          style={{
+            color: '#ea580c',
+            weight: 1.5,
+            dashArray: '3 6',
+            fillColor: '#ea580c',
+            fillOpacity: 0.03
+          }}
+          onEachFeature={(feature: any, layer: L.Layer) => {
+            if (feature.properties && feature.properties.nome) {
+              layer.bindTooltip(feature.properties.nome, {
+                permanent: false,
+                direction: 'center',
+                className: 'bg-background/90 text-foreground text-[10px] font-bold border border-border px-1.5 py-0.5 rounded shadow-xs'
+              });
+            }
+          }}
+        />
+      )}
+
       {/* referências certificadas (snap) */}
       {referencias.filter((r) => r.length >= 2).map((r, i) => {
         const pts = r.map((pt) => [pt.lat, pt.lon] as [number, number]);
@@ -1663,6 +1693,7 @@ export default function MapEditor(props: Props) {
 
         const gId = isStructured ? (g as { id?: string }).id : undefined;
         const isOculta = isStructured && (g as { visivel?: boolean }).visivel === false;
+        if (isOculta) return null;
         const isAuxiliar = isStructured && (g as { tipoGleba?: string }).tipoGleba === 'auxiliar';
         const cor = isOculta ? '#ffffff' : (isAuxiliar ? '#d97706' : '#f97316');
         const dash = isOculta ? '4 4' : (isAuxiliar ? '4 3' : '6 4');
@@ -1855,6 +1886,80 @@ export default function MapEditor(props: Props) {
           );
         });
       })()}
+
+      {/* Caixas de assinatura dos confrontantes arrastáveis no modo mapa */}
+      {camadasVisiveis.divisas !== false && confrontantes && confrontantes.map((c) => {
+        if (c.oculto) return null;
+        const idxs = Object.entries(confrontantePorLado || {}).filter(([, cid]) => cid === c.id).map(([i]) => Number(i));
+        if (!c.posRotulo && (!idxs.length || !validos.length)) return null;
+
+        let posLat = c.posRotulo?.lat;
+        let posLon = c.posRotulo?.lon;
+
+        if (!posLat || !posLon) {
+          const meioIdx = idxs[Math.floor(idxs.length / 2)] ?? 0;
+          const vA = validos[meioIdx];
+          const vB = validos[(meioIdx + 1) % validos.length];
+          if (vA && vB) {
+            posLat = (vA.lat + vB.lat) / 2;
+            posLon = (vA.lon + vB.lon) / 2;
+          }
+        }
+
+        if (!posLat || !posLon) return null;
+        const corConf = corPorConfrontante(c.id, c);
+
+        const signatureHtml = `
+          <div style="
+            display: inline-block;
+            width: max-content;
+            max-width: 320px;
+            background: rgba(255, 255, 255, 0.98);
+            border: 2px solid ${corConf};
+            border-radius: 10px;
+            padding: 5px 10px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.28);
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 10px;
+            font-weight: bold;
+            color: #0f172a;
+            white-space: nowrap;
+            pointer-events: auto;
+            cursor: move;
+            transform: translate(-50%, -50%);
+          ">
+            <div style="color: ${corConf}; font-weight: 900; text-transform: uppercase; font-size: 10px; margin-bottom: 2px; tracking: 0.02em;">
+              ${htmlEscape(c.nome || 'Confrontante')}
+            </div>
+            <div style="border-top: 1px dashed ${corConf}; margin-top: 3px; padding-top: 2px; font-size: 8.5px; color: #475569;">
+              ${c.matricula ? `Matrícula nº ${htmlEscape(c.matricula)}` : c.condicao === 'publico' ? 'Sem Assinatura' : 'Caixa de Assinatura'}
+            </div>
+          </div>
+        `;
+
+        const customIcon = L.divIcon({
+          className: 'custom-conf-signature-wrapper',
+          html: signatureHtml,
+          iconSize: undefined,
+          iconAnchor: [0, 0],
+        });
+
+        return (
+          <Marker
+            key={`conf-box-${c.id}`}
+            position={[posLat, posLon]}
+            icon={customIcon}
+            draggable={modo === 'navegar'}
+            eventHandlers={{
+              dragend: (e) => {
+                const marker = e.target;
+                const newPos = marker.getLatLng();
+                onAjustarPosRotuloConfrontante?.(c.id, newPos.lat, newPos.lng);
+              },
+            }}
+          />
+        );
+      })}
 
       {/* Realce de conflitos (sobreposição/vãos) */}
       {conflitos.map((conf) => {
@@ -2137,8 +2242,8 @@ export default function MapEditor(props: Props) {
           return (
             <Fragment key={`dc${v.id}`}>
               {/* halo escuro + linha branca grossa: bem visível sobre satélite ou mapa claro */}
-              <Polyline positions={[[v.lat, v.lon], [eLat, eLon]]} pathOptions={{ color: '#0f172a', weight: 6, opacity: 0.65 }} />
-              <Polyline positions={[[v.lat, v.lon], [eLat, eLon]]} pathOptions={{ color: '#ffffff', weight: 3 }} />
+              <Polyline positions={[[v.lat, v.lon], [eLat, eLon]]} pathOptions={{ color: '#0f172a', weight: 6, opacity: 0.65 }} interactive={false} />
+              <Polyline positions={[[v.lat, v.lon], [eLat, eLon]]} pathOptions={{ color: '#ffffff', weight: 3 }} interactive={false} />
               {arrastavel && (
                 <Marker position={[eLat, eLon]} draggable
                   icon={L_DIVISA_ICON}
@@ -2429,15 +2534,31 @@ export default function MapEditor(props: Props) {
       )}
 
       {onAtivar3D && (
-        <div className={`absolute left-2.5 z-[1800] transition-all duration-200 ${modo === 'medir' ? 'bottom-44' : 'bottom-14'}`}>
+        <div className={`absolute left-2.5 z-[1800] transition-all duration-200 ${modo === 'medir' ? 'bottom-[220px]' : 'bottom-14'} flex flex-col gap-2`}>
           <button
             type="button"
             onClick={onAtivar3D}
-            className="h-9 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wider flex items-center justify-center bg-slate-900/80 hover:bg-slate-900/90 text-amber-400 border border-white/10 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 select-none"
+            className="h-9 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wider flex items-center justify-center bg-slate-900/80 hover:bg-slate-900/90 text-amber-400 border border-white/10 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 select-none cursor-pointer"
             title="Alternar para visualização 3D do terreno e polígono (Botão Central do Mouse)"
           >
             <Box className="size-4 text-amber-500 animate-pulse" /> <span>Visualizar 3D</span>
           </button>
+
+          {onToggleDivisasMunicipais && (
+            <button
+              type="button"
+              onClick={onToggleDivisasMunicipais}
+              className={`h-9 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wider flex items-center justify-center border rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 select-none cursor-pointer ${
+                exibirDivisasMunicipais
+                  ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-500'
+                  : 'bg-slate-900/80 hover:bg-slate-900/90 text-slate-300 border-white/10'
+              }`}
+              title="Exibir divisas e limites dos municípios vizinhos (dados oficiais do IBGE)"
+            >
+              <MapPin className="size-4 text-orange-400" />
+              <span>Divisas Municipais</span>
+            </button>
+          )}
         </div>
       )}
     </MapContainer>

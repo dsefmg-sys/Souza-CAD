@@ -328,59 +328,7 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
     </div>
   );
 
-  const audioControls = (texto: string, audioUrl?: string) => (
-    <div className="flex items-center justify-between mb-1.5 bg-muted/40 p-1.5 rounded-lg border border-border/50 animate-in fade-in duration-200">
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            if (ouvirTudo) {
-              pararAudio();
-            } else {
-              alternarAudio(texto, audioUrl);
-            }
-          }}
-          className="h-8 gap-1.5 px-3 font-semibold text-xs transition-colors hover:bg-muted"
-        >
-          {falando && !pausado ? (
-            <>
-              <Pause className="size-3.5 text-amber-500 fill-amber-500" /> {ouvirTudo ? 'Parar tudo' : 'Pausar áudio'}
-            </>
-          ) : (
-            <>
-              <Play className="size-3.5 text-emerald-500 fill-emerald-500" /> {pausado ? 'Retomar áudio' : 'Ouvir instruções'}
-            </>
-          )}
-        </Button>
-        {(falando || pausado) && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={pararAudio}
-            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-            title="Parar áudio"
-          >
-            <Square className="size-3.5 fill-destructive" />
-          </Button>
-        )}
-      </div>
-      <div className="flex items-center gap-1.5">
-        {ouvirTudo && (
-          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full animate-pulse">
-            Ouvindo Tudo
-          </span>
-        )}
-        {falando && (
-          <span className="text-[10px] font-semibold text-muted-foreground px-2 py-0.5 rounded-full bg-background border border-border/60">
-            {tipoAudio === 'gravado' ? 'Narração Gravada' : 'Síntese de Voz'}
-          </span>
-        )}
-      </div>
-    </div>
-  );
+  const audioControls = (texto: string, audioUrl?: string) => null;
 
   const botaoSuporte = linkSuporte && (
     <div className="flex flex-col items-center gap-1.5 w-full">
@@ -415,54 +363,56 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
               </div>
             </div>
 
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-850 p-4 bg-zinc-50/50 dark:bg-zinc-900/30 flex flex-col gap-3">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="min-w-0 flex-1 text-left">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-primary">
-                    <Play className="size-4 text-emerald-500 fill-emerald-500" />
-                    <span>Audioguia e Autoplay</span>
+            {false && (
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-850 p-4 bg-zinc-50/50 dark:bg-zinc-900/30 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1 text-left">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-primary">
+                      <Play className="size-4 text-emerald-500 fill-emerald-500" />
+                      <span>Audioguia e Autoplay</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted-foreground leading-normal font-semibold">
+                      Cada seção do tutorial tem narração própria. Use <b>Tutorial Completo</b> para ouvir todos os passos em sequência automática.
+                    </p>
                   </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground leading-normal font-semibold">
-                    Cada seção do tutorial tem narração própria. Use <b>Tutorial Completo</b> para ouvir todos os passos em sequência automática.
-                  </p>
+                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        if (ouvirTudo) {
+                          pararAudio();
+                        } else {
+                          // Marca autoplay ANTES de trocar tela/passo — senão o effect de
+                          // "parar ao navegar" cancela o áudio no mesmo ciclo.
+                          const pFirst = passos[0];
+                          ouvirTudoRef.current = true;
+                          setOuvirTudo(true);
+                          setPasso(0);
+                          setTela('passos');
+                          // play no próximo tick, depois do effect de navegação
+                          setTimeout(() => {
+                            if (!ouvirTudoRef.current) return;
+                            alternarAudio(pFirst.texto, pFirst.audioUrl);
+                          }, 50);
+                        }
+                      }}
+                      title="Ouvir todos os áudios do tutorial em sequência automática (recomendado)"
+                      className="gap-1.5 h-8 font-bold text-xs px-3 transition-colors bg-amber-500 hover:bg-amber-600 text-white border-none shadow-sm shrink-0"
+                    >
+                      {ouvirTudo ? (
+                        <><Pause className="size-3 text-white fill-white animate-pulse" /> Parar</>
+                      ) : (
+                        <><Play className="size-3 text-white fill-white" /> Tutorial Completo</>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      if (ouvirTudo) {
-                        pararAudio();
-                      } else {
-                        // Marca autoplay ANTES de trocar tela/passo — senão o effect de
-                        // "parar ao navegar" cancela o áudio no mesmo ciclo.
-                        const pFirst = passos[0];
-                        ouvirTudoRef.current = true;
-                        setOuvirTudo(true);
-                        setPasso(0);
-                        setTela('passos');
-                        // play no próximo tick, depois do effect de navegação
-                        setTimeout(() => {
-                          if (!ouvirTudoRef.current) return;
-                          alternarAudio(pFirst.texto, pFirst.audioUrl);
-                        }, 50);
-                      }
-                    }}
-                    title="Ouvir todos os áudios do tutorial em sequência automática (recomendado)"
-                    className="gap-1.5 h-8 font-bold text-xs px-3 transition-colors bg-amber-500 hover:bg-amber-600 text-white border-none shadow-sm shrink-0"
-                  >
-                    {ouvirTudo ? (
-                      <><Pause className="size-3 text-white fill-white animate-pulse" /> Parar</>
-                    ) : (
-                      <><Play className="size-3 text-white fill-white" /> Tutorial Completo</>
-                    )}
-                  </Button>
-                </div>
+                {erroAudio && (
+                  <p className="text-xs font-semibold text-red-500 text-left">{erroAudio}</p>
+                )}
               </div>
-              {erroAudio && (
-                <p className="text-xs font-semibold text-red-500 text-left">{erroAudio}</p>
-              )}
-            </div>
+            )}
 
             <button type="button" onClick={() => { setPasso(0); setTela('passos'); }}
               className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 text-left bg-zinc-50/50 dark:bg-zinc-900/40 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all flex items-start gap-3">
@@ -573,43 +523,45 @@ export default function TutorialModal({ open, onOpenChange }: Props) {
               <BookUser className="size-5 text-primary" /> Aprender por tema
             </div>
 
-            {/* Bloco Ouvir Todos os Temas */}
-            <div className="rounded-xl border p-3 bg-amber-500/10 border-amber-500/30 my-1 shrink-0 text-left">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide"><Volume2 className="size-4 shrink-0" /> Ouvir Temas (Autoplay)</div>
-                  <p className="mt-0.5 text-[11px] font-semibold text-muted-foreground leading-normal">Reproduz a explicação em áudio de todos os temas na sequência.</p>
+            {/* Bloco Ouvir Todos os Temas suspenso */}
+            {false && (
+              <div className="rounded-xl border p-3 bg-amber-500/10 border-amber-500/30 my-1 shrink-0 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide"><Volume2 className="size-4 shrink-0" /> Ouvir Temas (Autoplay)</div>
+                    <p className="mt-0.5 text-[11px] font-semibold text-muted-foreground leading-normal">Reproduz a explicação em áudio de todos os temas na sequência.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (ouvirTudoTemas) {
+                        pararAudio();
+                      } else {
+                        ouvirTudoTemasRef.current = true;
+                        setOuvirTudoTemas(true);
+                        const firstT = TEMAS_AJUDA[0];
+                        setTemaId(firstT.id);
+                        setTela('tema');
+                        const audioUrl = firstT.audioUrlExperiente;
+                        const texto = firstT.experiente;
+                        setTimeout(() => {
+                          alternarAudio(texto, audioUrl);
+                        }, 100);
+                      }
+                    }}
+                    className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors border-amber-500/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 shrink-0"
+                  >
+                    {ouvirTudoTemas ? (
+                      <><Pause className="size-3 text-amber-500 fill-amber-500" /> Parar</>
+                    ) : (
+                      <><Play className="size-3 text-amber-500 fill-amber-500" /> Iniciar</>
+                    )}
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    if (ouvirTudoTemas) {
-                      pararAudio();
-                    } else {
-                      ouvirTudoTemasRef.current = true;
-                      setOuvirTudoTemas(true);
-                      const firstT = TEMAS_AJUDA[0];
-                      setTemaId(firstT.id);
-                      setTela('tema');
-                      const audioUrl = firstT.audioUrlExperiente;
-                      const texto = firstT.experiente;
-                      setTimeout(() => {
-                        alternarAudio(texto, audioUrl);
-                      }, 100);
-                    }
-                  }}
-                  className="gap-1.5 h-8 font-semibold text-xs px-2.5 transition-colors border-amber-500/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 shrink-0"
-                >
-                  {ouvirTudoTemas ? (
-                    <><Pause className="size-3 text-amber-500 fill-amber-500" /> Parar</>
-                  ) : (
-                    <><Play className="size-3 text-amber-500 fill-amber-500" /> Iniciar</>
-                  )}
-                </Button>
               </div>
-            </div>
+            )}
 
             <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
               {TEMAS_AJUDA.map((t) => (
