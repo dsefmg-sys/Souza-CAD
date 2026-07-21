@@ -1,4 +1,4 @@
-import type { Vertex, Confrontante, ImovelData, RawPoint } from '../topo/types';
+import type { Vertex, Confrontante, ImovelData, RawPoint, Gleba } from '../topo/types';
 import { montarVertices } from '../topo/vertices';
 import { montarConfrontantes } from '../topo/confrontantes';
 
@@ -83,6 +83,7 @@ export interface ProjetoFicticio {
   vertices: Vertex[];
   confrontantes: Confrontante[];
   confrontantePorLado: Record<number, string>;
+  glebas?: Gleba[];
   zona: number;
   hemisferio: 'N' | 'S';
 }
@@ -161,6 +162,59 @@ export function gerarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: 
   const prop = PROPRIETARIOS[Math.floor(Math.random() * PROPRIETARIOS.length)];
   const mun = MUNICIPIOS[Math.floor(Math.random() * MUNICIPIOS.length)];
 
+  // Gera 3 Glebas Confrontantes para permitir treinamento de multi-gleba
+  const rawGleba1: RawPoint[] = [
+    { nome: '1', codigo: 'DIVISA NORTE X CARLOS DRUMMOND', norte: Math.round(cyOrig + 200 * escala + offsetNorte), leste: Math.round(cxOrig - 100 * escala + offsetLeste), elevacao: 820, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '2', codigo: 'DIVISA GLEBA 1 X GLEBA 2 (PASTAGEM)', norte: Math.round(cyOrig + 200 * escala + offsetNorte), leste: Math.round(cxOrig + 100 * escala + offsetLeste), elevacao: 825, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '3', codigo: 'DIVISA TRÍPLICE GLEBA 1 X GLEBA 2 X GLEBA 3', norte: Math.round(cyOrig + 0 * escala + offsetNorte), leste: Math.round(cxOrig + 100 * escala + offsetLeste), elevacao: 832, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '4', codigo: 'DIVISA GLEBA 1 X GLEBA 3 (RESERVA)', norte: Math.round(cyOrig + 0 * escala + offsetNorte), leste: Math.round(cxOrig - 100 * escala + offsetLeste), elevacao: 818, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '5', codigo: 'CORREGO SANTA RITA', norte: Math.round(cyOrig + 100 * escala + offsetNorte), leste: Math.round(cxOrig - 180 * escala + offsetLeste), elevacao: 814, status: 'FIXED', isBase: false, isSingle: false },
+  ];
+
+  const rawGleba2: RawPoint[] = [
+    { nome: '2', codigo: 'DIVISA GLEBA 2 X GLEBA 1 (SEDE)', norte: Math.round(cyOrig + 200 * escala + offsetNorte), leste: Math.round(cxOrig + 100 * escala + offsetLeste), elevacao: 825, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '6', codigo: 'ESTRADA MUNICIPAL', norte: Math.round(cyOrig + 220 * escala + offsetNorte), leste: Math.round(cxOrig + 320 * escala + offsetLeste), elevacao: 840, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '7', codigo: 'DIVISA GLEBA 2 X GLEBA 3 (RESERVA)', norte: Math.round(cyOrig - 20 * escala + offsetNorte), leste: Math.round(cxOrig + 350 * escala + offsetLeste), elevacao: 845, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '3', codigo: 'DIVISA TRÍPLICE GLEBA 1 X GLEBA 2 X GLEBA 3', norte: Math.round(cyOrig + 0 * escala + offsetNorte), leste: Math.round(cxOrig + 100 * escala + offsetLeste), elevacao: 832, status: 'FIXED', isBase: false, isSingle: false },
+  ];
+
+  const rawGleba3: RawPoint[] = [
+    { nome: '4', codigo: 'DIVISA GLEBA 3 X GLEBA 1 (SEDE)', norte: Math.round(cyOrig + 0 * escala + offsetNorte), leste: Math.round(cxOrig - 100 * escala + offsetLeste), elevacao: 818, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '3', codigo: 'DIVISA TRÍPLICE GLEBA 1 X GLEBA 2 X GLEBA 3', norte: Math.round(cyOrig + 0 * escala + offsetNorte), leste: Math.round(cxOrig + 100 * escala + offsetLeste), elevacao: 832, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '7', codigo: 'DIVISA GLEBA 3 X GLEBA 2 (PASTAGEM)', norte: Math.round(cyOrig - 20 * escala + offsetNorte), leste: Math.round(cxOrig + 350 * escala + offsetLeste), elevacao: 845, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '8', codigo: 'CERCA DE ARAME FARPADO', norte: Math.round(cyOrig - 200 * escala + offsetNorte), leste: Math.round(cxOrig + 200 * escala + offsetLeste), elevacao: 838, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '9', codigo: 'VALE DO SANTA RITA', norte: Math.round(cyOrig - 180 * escala + offsetNorte), leste: Math.round(cxOrig - 120 * escala + offsetLeste), elevacao: 810, status: 'FIXED', isBase: false, isSingle: false },
+  ];
+
+  const v1 = montarVertices(rawGleba1, ZONA, HEMISFERIO, TEC_DEMO);
+  v1.forEach((v, i) => { v.representacao = reps[i % reps.length] === 'mata' ? 'linha-ideal' : reps[i % reps.length]; });
+  const conf1 = montarConfrontantes(v1);
+
+  const v2 = montarVertices(rawGleba2, ZONA, HEMISFERIO, TEC_DEMO);
+  v2.forEach((v, i) => { v.representacao = reps[(i + 1) % reps.length] === 'mata' ? 'linha-ideal' : reps[(i + 1) % reps.length]; });
+  const conf2 = montarConfrontantes(v2);
+
+  const v3 = montarVertices(rawGleba3, ZONA, HEMISFERIO, TEC_DEMO);
+  v3.forEach((v, i) => { v.representacao = reps[(i + 2) % reps.length] === 'mata' ? 'linha-ideal' : reps[(i + 2) % reps.length]; });
+  const conf3 = montarConfrontantes(v3);
+
+  // Preenche dados dos confrontantes com nomes e CPFs aleatórios
+  [conf1, conf2, conf3].forEach((confObj) => {
+    for (const c of confObj.confrontantes) {
+      if (/corrego/i.test(c.nome)) {
+        c.nome = 'Córrego Santa Rita';
+        c.condicao = 'posseiro';
+      } else {
+        const idx = Math.floor(Math.random() * nomesRestantes.length);
+        const nomeEscolhido = nomesRestantes.splice(idx, 1)[0] || (nomesRestantes.length > 0 ? nomesRestantes[0] : 'Confrontante Temporário');
+        c.nome = nomeEscolhido;
+        c.cpf = gerarCpfValido();
+        c.matricula = String(Math.floor(1000 + Math.random() * 9000));
+        c.cns = '01.234-5';
+      }
+    }
+  });
+
   const imovel: ImovelData = {
     denominacao: selectedImovel,
     matricula: String(Math.floor(1000 + Math.random() * 9000)),
@@ -180,5 +234,41 @@ export function gerarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: 
     ficticio: true,
   };
 
-  return { nome: `${selectedImovel} (demonstração${grande ? ' GRANDE' : ''})`, imovel, vertices, confrontantes, confrontantePorLado, zona: ZONA, hemisferio: HEMISFERIO };
+  const gleba1: Gleba = {
+    id: 'gleba_demo_1',
+    denominacao: `${selectedImovel} - Gleba 1 (Sede)`,
+    parcela: '001',
+    vertices: v1,
+    confrontantes: conf1.confrontantes,
+    confrontantePorLado: conf1.confrontantePorLado,
+  };
+
+  const gleba2: Gleba = {
+    id: 'gleba_demo_2',
+    denominacao: `${selectedImovel} - Gleba 2 (Pastagem)`,
+    parcela: '002',
+    vertices: v2,
+    confrontantes: conf2.confrontantes,
+    confrontantePorLado: conf2.confrontantePorLado,
+  };
+
+  const gleba3: Gleba = {
+    id: 'gleba_demo_3',
+    denominacao: `${selectedImovel} - Gleba 3 (Reserva Legal)`,
+    parcela: '003',
+    vertices: v3,
+    confrontantes: conf3.confrontantes,
+    confrontantePorLado: conf3.confrontantePorLado,
+  };
+
+  return {
+    nome: `${selectedImovel} (demonstração 3 glebas${grande ? ' GRANDE' : ''})`,
+    imovel,
+    vertices: v1,
+    confrontantes: conf1.confrontantes,
+    confrontantePorLado: conf1.confrontantePorLado,
+    glebas: [gleba1, gleba2, gleba3],
+    zona: ZONA,
+    hemisferio: HEMISFERIO
+  };
 }

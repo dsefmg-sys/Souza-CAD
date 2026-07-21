@@ -5166,7 +5166,7 @@ export default function EditorPage() {
             }
             return { x: v.leste, y: v.norte, z };
           })
-          .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && p.z !== 0);
+          .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
     const total = [...pts, ...ptsGrade];
     const vistos = new Set<string>();
     return total.filter((p) => {
@@ -5225,7 +5225,7 @@ export default function EditorPage() {
       const ptsGrade = pontosSuavizados.map((g) => ({ x: g.leste, y: g.norte, z: g.elevacao + getOffsetEspacialAuto(g.leste, g.norte) }));
       const ptsVertices = [...vertices, ...verticesIgnorados]
         .map((v) => ({ x: v.leste, y: v.norte, z: v.elevacao }))
-        .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) && p.z !== 0);
+        .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
       const pts3d = [...ptsVertices, ...ptsGrade];
       if (pts3d.length < 4) {
         aviso('Pontos insuficientes com altitude para gerar curvas. Tente um espaçamento menor.');
@@ -5552,7 +5552,25 @@ export default function EditorPage() {
       }
     }
 
-    const pts3d = pontos3dCurvas(activeGrade, activeVertices, activeIgnorados);
+    // Pergunta de qual gleba deseja gerar curvas caso haja mais de uma gleba cadastrada
+    let alvoGleba = glebaCurvaAlvo;
+    if (glebas.length > 1) {
+      const gAtiva = glebas.find((g) => g.id === glebaAtivaId);
+      const querTodas = await confirmar({
+        titulo: 'Curvas de Nível - Seleção de Gleba',
+        mensagem: `Seu projeto possui ${glebas.length} glebas. Deseja gerar as curvas de nível para TODAS as ${glebas.length} glebas simultaneamente ou apenas para a Gleba Ativa (${gAtiva?.denominacao ?? 'Gleba Ativa'})?`,
+        okLabel: 'Todas as Glebas',
+        cancelLabel: 'Apenas Gleba Ativa'
+      });
+      alvoGleba = querTodas ? 'todas' : 'ativa';
+      setGlebaCurvaAlvo(alvoGleba);
+    }
+
+    const todosVerts = alvoGleba === 'todas' && glebas.length > 0
+      ? glebas.flatMap((g) => (g.id === glebaAtivaId ? activeVertices : (g.vertices || [])))
+      : activeVertices;
+
+    const pts3d = pontos3dCurvas(activeGrade, todosVerts, activeIgnorados);
     if (pts3d.length < 4) {
       await avisar({
         titulo: 'Curvas de nível',
@@ -6219,7 +6237,9 @@ export default function EditorPage() {
   async function carregarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: number; semAvisoConfirmacao?: boolean }) {
     if (!opts?.semAvisoConfirmacao && temConteudoTrabalho() && !(await confirmar({ titulo: 'Projeto de demonstração', mensagem: 'Carregar o projeto fictício de demonstração? O trabalho atual não salvo será descartado.', okLabel: 'Carregar demonstração' }))) return;
     const f = gerarProjetoFicticio(opts);
-    const gleba: Gleba = { ...novaGlebaVazia(1), denominacao: f.imovel.denominacao, vertices: f.vertices, confrontantes: f.confrontantes, confrontantePorLado: f.confrontantePorLado };
+    const listaGlebas: Gleba[] = f.glebas && f.glebas.length > 0 ? f.glebas : [
+      { ...novaGlebaVazia(1), denominacao: f.imovel.denominacao, vertices: f.vertices, confrontantes: f.confrontantes, confrontantePorLado: f.confrontantePorLado }
+    ];
     setProjetoId(null);
     setNomeProjeto(f.nome); setNomeProjetoManual(true);
     setImovel(f.imovel);
@@ -6230,9 +6250,10 @@ export default function EditorPage() {
     setPlantaConfig({});
     setVerticesIgnorados([]);
     setSigefStatus('idle'); setBaixou({}); setSalvoOk(false);
-    setGlebas([gleba]);
-    carregarGleba(gleba);
-    aviso(`Projeto fictício${opts?.grande ? ' GRANDE (' + f.vertices.length + ' vértices)' : ''} carregado. Use para demonstração — todas as peças saem marcadas como DADOS FICTÍCIOS.`);
+    setGlebas(listaGlebas);
+    setGlebaAtivaId(listaGlebas[0].id);
+    carregarGleba(listaGlebas[0]);
+    aviso(`Projeto fictício de demonstração com ${listaGlebas.length} glebas confrontantes carregado com sucesso.`);
   }
 
   async function converterPolilinhaEmPerimetro() {
