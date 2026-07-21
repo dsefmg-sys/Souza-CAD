@@ -380,13 +380,13 @@ https://souzacad--souza-cad.us-east4.hosted.app/`;
               onExpand={setLightboxImg}
             />
 
-            {/* SEGUNDA IMAGEM (FLUTUANTE SOBREPOSTA NO CANTO INFERIOR DIREITO - DENTRO DO PAINEL SEM EXCEDER PARA CIMA) */}
-            <div className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 z-20 w-36 sm:w-64 md:w-72 rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group">
+            {/* SEGUNDA IMAGEM (FLUTUANTE ALINHADA NA BASE COM CORTES SUPERIOR/INFERIOR CONTROLADOS PARA NÃO SOBREPOR O TEXTO) */}
+            <div className="absolute bottom-2 right-2 sm:bottom-3 sm:right-4 z-20 w-36 sm:w-60 md:w-68 max-h-[82%] rounded-2xl overflow-hidden shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-2 border-emerald-500/50 bg-slate-950/95 backdrop-blur-md transition-all duration-300 hover:scale-105 group flex flex-col">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`${bp}/marca/preview_requerimento_modal.png`}
                 alt="Requerimento ao Cartório e Atos Cumulativos"
-                className="w-full h-auto object-contain block"
+                className="w-full h-full object-cover object-top block"
               />
             </div>
           </div>
