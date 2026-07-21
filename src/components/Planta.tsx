@@ -603,47 +603,55 @@ export default function Planta({
   const raioMedio = ptsScr.length > 0
     ? ptsScr.reduce((s, p) => s + Math.hypot(p.x - cx, p.y - cy), 0) / ptsScr.length
     : 150;
-  const rotulosConf = [...trechos.entries()].map(([cid, idxs]) => {
-    const c = mapaC.get(cid);
-    if (c?.posRotulo) {
+  const rotulosConf = confrontantes.map((c, i) => {
+    const idxs = trechos.get(c.id);
+    const temSegmento = !!idxs && idxs.length > 0;
+    if (c.posRotulo) {
       const u = geoParaUtm(c.posRotulo.lat, c.posRotulo.lon, zona, hemisferio);
-      return { c, x: clampX(sx(u.leste)), y: clampY(sy(u.norte)) };
+      return { c, x: clampX(sx(u.leste)), y: clampY(sy(u.norte)), temSegmento };
     }
-    const meio = idxs[Math.floor(idxs.length / 2)];
-    const a = anel[meio], b = anel[(meio + 1) % anel.length];
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    let dx = mx - cx, dy = my - cy;
-    const len = Math.hypot(dx, dy) || 1;
-    dx /= len; dy /= len;
-    
-    // Tenta encontrar uma posição inicial livre de colisão com os vértices do polígono,
-    // empurrando para as áreas vazias nas margens externas do desenho.
-    let dist = Math.max(55, Math.min(100, raioMedio * 0.4));
-    if (dy > 0.1) dist += 30 * dy;
-    if (Math.abs(dx) > 0.4) dist += 25 * Math.abs(dx);
-    
-    let px = mx + dx * dist;
-    let py = my + dy * dist;
-    
-    // Se colidir com algum vértice do desenho a menos de 95px de distância, afasta mais
-    for (let step = 0; step < 5; step++) {
-      let colidiu = false;
-      for (const pt of ptsScr) {
-        if (Math.hypot(px - pt.x, py - pt.y) < 95) {
-          colidiu = true;
+    if (temSegmento && idxs) {
+      const meio = idxs[Math.floor(idxs.length / 2)];
+      const a = anel[meio], b = anel[(meio + 1) % anel.length];
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      let dx = mx - cx, dy = my - cy;
+      const len = Math.hypot(dx, dy) || 1;
+      dx /= len; dy /= len;
+      
+      // Tenta encontrar uma posição inicial livre de colisão com os vértices do polígono,
+      // empurrando para as áreas vazias nas margens externas do desenho.
+      let dist = Math.max(55, Math.min(100, raioMedio * 0.4));
+      if (dy > 0.1) dist += 30 * dy;
+      if (Math.abs(dx) > 0.4) dist += 25 * Math.abs(dx);
+      
+      let px = mx + dx * dist;
+      let py = my + dy * dist;
+      
+      // Se colidir com algum vértice do desenho a menos de 95px de distância, afasta mais
+      for (let step = 0; step < 5; step++) {
+        let colidiu = false;
+        for (const pt of ptsScr) {
+          if (Math.hypot(px - pt.x, py - pt.y) < 95) {
+            colidiu = true;
+            break;
+          }
+        }
+        if (colidiu) {
+          dist += 40;
+          px = mx + dx * dist;
+          py = my + dy * dist;
+        } else {
           break;
         }
       }
-      if (colidiu) {
-        dist += 40;
-        px = mx + dx * dist;
-        py = my + dy * dist;
-      } else {
-        break;
-      }
+      
+      return { c, x: clampX(px), y: clampY(py), temSegmento: true };
     }
-    
-    return { c, x: clampX(px), y: clampY(py) };
+
+    // Confrontante cadastrado mas sem segmento atribuído ainda:
+    const px = DRAW.x1 - 180;
+    const py = DRAW.y1 - 120 - i * 60;
+    return { c, x: clampX(px), y: clampY(py), temSegmento: false };
   });
 
   // posição do rótulo de cada vértice: FORA do polígono (não cobre a linha), a uma folga do

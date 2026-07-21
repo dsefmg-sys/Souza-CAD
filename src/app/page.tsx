@@ -8262,7 +8262,18 @@ export default function EditorPage() {
                     }
                   }
                 }}
-                outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]))}
+                outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({
+                  id: g.id,
+                  nome: g.denominacao,
+                  pts: g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]),
+                  tipoGleba: g.tipoGleba,
+                  visivel: g.visivel,
+                }))}
+                onAbrirGestaoGleba={(id) => {
+                  if (id) trocarGleba(id);
+                  setAba('glebas');
+                  setPainelAberto(true);
+                }}
                 objetos={objetos} desenhoAtual={desenhoBuffer.map((p) => [p.lat, p.lon] as [number, number])} rotulos={[]} centroGleba={centroGlebaInfo} onMoverCentro={(lat, lon) => setPlantaConfig((c) => ({ ...c, centroInfoPos: { lat, lon } }))} onAjustarDivisaConf={ajustarDivisaConf} estiloVertice={plantaConfig.estiloVertice} objetoSelId={objetoSelId}
         onMover={moverVertice} onSelecionar={setSelecionadoId} onApagar={apagarVertice} onInserir={inserirVertice}
                 onCliqueDesenho={onCliqueDesenho} onSelecObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }} onContextMenuObjeto={(id, tipo, x, y) => { setObjetoSelId(id); setMenuContexto({ tipo: 'objeto', id, objetoTipo: tipo, x, y }); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverRotulo={onMoverRotulo} onPintarDivisa={pintarDivisa} onPintarConfrontante={pintarConfrontante} onMoverRotuloVertice={onMoverRotuloVertice} onEditarConfrontante={editarConfrontantePlanta}
@@ -8788,30 +8799,50 @@ export default function EditorPage() {
                           <Palette className="size-3 text-muted-foreground" />
                         </button>
                         {corPickerAberto && (
-                          <div className={`absolute left-0 top-9 ${Z_CLASSES.DROPDOWN_MENU} w-56 rounded-xl border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-left`} data-cor-bump={corBump}>
-                            <div className="mb-2 text-[9px] font-black uppercase text-muted-foreground tracking-wider">Cores das Divisas</div>
-                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scroll-fino">
+                          <div className={`absolute left-0 top-9 ${Z_CLASSES.DROPDOWN_MENU} w-60 rounded-xl border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-left border-border z-50`} data-cor-bump={corBump}>
+                            <div className="mb-2 text-xs font-extrabold uppercase text-foreground tracking-wide flex items-center gap-1.5 pb-1 border-b border-border/60">
+                              <Palette className="size-3.5 text-amber-500" /> Cores das Divisas
+                            </div>
+                            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                               {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
-                                <label key={tipo} className="flex items-center gap-2 text-[11px] text-foreground">
-                                  <input type="color" value={cor || '#9ca3af'}
-                                    className="h-6 w-8 shrink-0 cursor-pointer rounded border bg-transparent p-0"
-                                    onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }} />
-                                  <span className="truncate">{rotuloDivisaTipo(tipo)}</span>
+                                <label key={tipo} className="flex items-center justify-between gap-2 p-1.5 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors text-xs text-foreground cursor-pointer">
+                                  <span className="font-semibold truncate">{rotuloDivisaTipo(tipo)}</span>
+                                  <span className="relative h-6 w-9 shrink-0 rounded-md border border-border/80 shadow-2xs overflow-hidden cursor-pointer" style={{ backgroundColor: cor || '#9ca3af' }}>
+                                    <input
+                                      type="color"
+                                      value={cor || '#9ca3af'}
+                                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                      onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }}
+                                    />
+                                  </span>
                                 </label>
                               ))}
                             </div>
-                            <Button type="button" size="sm" variant="outline" className="mt-3 w-full h-8 text-[10px]" onClick={() => setCorPickerAberto(false)}>
+                            <Button type="button" size="sm" variant="outline" className="mt-3 w-full h-8 text-[11px] font-bold cursor-pointer" onClick={() => setCorPickerAberto(false)}>
                               Fechar
                             </Button>
                           </div>
                         )}
                       </span>
-                      <select className="h-7 max-w-[140px] rounded-full border border-amber-500/40 bg-background/95 px-1.5 text-[10px] font-bold outline-none ring-1 ring-amber-400/30 shrink-0"
-                        value={tipoDivisaPincel} onChange={(e) => setTipoDivisaPincel(e.target.value)} title="Tipo de divisa a pintar">
-                        {opcoesDivisaTipo.map((r) => (
-                          <option key={r} value={r} className="bg-background text-foreground text-[10px]">{rotuloDivisaTipo(r)}</option>
-                        ))}
-                      </select>
+                      <div className="flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-background/95 px-2 h-7 ring-1 ring-amber-400/30 shrink-0">
+                        <span
+                          className="h-3 w-3 rounded-full border border-black/20 shrink-0 shadow-2xs transition-all"
+                          style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }}
+                          title={`Cor da divisa: ${rotuloDivisaTipo(tipoDivisaPincel)}`}
+                        />
+                        <select
+                          className="bg-transparent text-[10px] font-bold outline-none cursor-pointer max-w-[120px] text-foreground pr-1"
+                          value={tipoDivisaPincel}
+                          onChange={(e) => setTipoDivisaPincel(e.target.value)}
+                          title="Tipo de divisa a pintar"
+                        >
+                          {opcoesDivisaTipo.map((r) => (
+                            <option key={r} value={r} className="bg-background text-foreground text-[10px]">
+                              {rotuloDivisaTipo(r)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       <button type="button" className="shrink-0 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         onClick={novoTipoDivisaPincel} title="Cadastrar novo tipo de divisa">
                         <Plus className="size-3" />

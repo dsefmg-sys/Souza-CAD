@@ -42,7 +42,8 @@ interface Props {
   onBoxSelectObj?: (ids: string[]) => void;
   onAdotarVertice?: (lat: number, lon: number) => void;
   onDblClick?: (lat: number, lon: number) => void;
-  outrasGlebas?: [number, number][][];
+  outrasGlebas?: ([number, number][] | { id?: string; nome?: string; pts: [number, number][]; tipoGleba?: 'principal' | 'auxiliar'; visivel?: boolean })[];
+  onAbrirGestaoGleba?: (id?: string) => void;
   objetos?: ObjetoDesenho[];
   desenhoAtual?: [number, number][];
   rotulos?: RotuloMapa[];
@@ -1322,7 +1323,7 @@ function TrimExtendController({
 
 export default function MapEditor(props: Props) {
   const {
-    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [],
+    vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [], onAbrirGestaoGleba,
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, centroPadrao = null, zoomPadrao = 13, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
@@ -1389,10 +1390,13 @@ export default function MapEditor(props: Props) {
     }
     // 2) Vertices de outras glebas
     if (outrasGlebas) {
-      for (const ring of outrasGlebas) {
-        for (const pt of ring) {
-          const u = geoParaUtm(pt[0], pt[1], zona, hemisferio);
-          alvos.push({ leste: u.leste, norte: u.norte });
+      for (const g of outrasGlebas) {
+        const ring = Array.isArray(g) ? g : g.pts;
+        if (ring) {
+          for (const pt of ring) {
+            const u = geoParaUtm(pt[0], pt[1], zona, hemisferio);
+            alvos.push({ leste: u.leste, norte: u.norte });
+          }
         }
       }
     }
@@ -1449,8 +1453,9 @@ export default function MapEditor(props: Props) {
 
     // 2) Outras glebas (outrasGlebas) - cada uma é um array de [lat, lon]
     if (outrasGlebas) {
-      for (const ring of outrasGlebas) {
-        if (ring.length >= 2) {
+      for (const g of outrasGlebas) {
+        const ring = Array.isArray(g) ? g : g.pts;
+        if (ring && ring.length >= 2) {
           for (let i = 0; i < ring.length; i++) {
             const a = paraUtm(ring[i][0], ring[i][1]);
             const b = paraUtm(ring[(i + 1) % ring.length][0], ring[(i + 1) % ring.length][1]);
@@ -1648,10 +1653,35 @@ export default function MapEditor(props: Props) {
         );
       })}
 
-      {/* demais glebas */}
-      {outrasGlebas.filter((g) => g.length >= 3).map((g, i) => (
-        <Polygon key={`gleba${i}`} positions={g} pathOptions={{ color: '#f97316', weight: 1.5, fillColor: '#f97316', fillOpacity: 0.06, dashArray: '6 4' }} />
-      ))}
+      {/* demais glebas (ativas, auxiliares e ocultas em cinza médio) */}
+      {outrasGlebas.map((g, i) => {
+        const isStructured = !Array.isArray(g) && 'pts' in g;
+        const pts = isStructured ? (g as { pts: [number, number][] }).pts : (g as [number, number][]);
+        if (!pts || pts.length < 3) return null;
+
+        const gId = isStructured ? (g as { id?: string }).id : undefined;
+        const isOculta = isStructured && (g as { visivel?: boolean }).visivel === false;
+        const isAuxiliar = isStructured && (g as { tipoGleba?: string }).tipoGleba === 'auxiliar';
+        const cor = isOculta ? '#64748b' : (isAuxiliar ? '#d97706' : '#f97316');
+        const dash = isOculta ? '4 4' : (isAuxiliar ? '4 3' : '6 4');
+        const opacidade = isOculta ? 0.04 : 0.08;
+
+        return (
+          <Polygon
+            key={`gleba-${gId || i}`}
+            positions={pts}
+            eventHandlers={{
+              click: (e) => {
+                if (onAbrirGestaoGleba) {
+                  e.originalEvent.stopPropagation();
+                  onAbrirGestaoGleba(gId);
+                }
+              }
+            }}
+            pathOptions={{ color: cor, weight: isOculta ? 1.4 : 1.8, fillColor: cor, fillOpacity: opacidade, dashArray: dash }}
+          />
+        );
+      })}
 
       {/* polígono ativo */}
       {camadasVisiveis.divisas !== false && (

@@ -186,6 +186,22 @@ export function gerarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: 
     { nome: '9', codigo: 'VALE DO SANTA RITA', norte: Math.round(cyOrig - 180 * escala + offsetNorte), leste: Math.round(cxOrig - 120 * escala + offsetLeste), elevacao: 810, status: 'FIXED', isBase: false, isSingle: false },
   ];
 
+  const rawGleba4: RawPoint[] = [
+    { nome: '5', codigo: 'DIVISA CORREGO SANTA RITA', norte: Math.round(cyOrig + 100 * escala + offsetNorte), leste: Math.round(cxOrig - 180 * escala + offsetLeste), elevacao: 814, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '4', codigo: 'DIVISA TRÍPLICE GLEBA 1 X 3 X 4', norte: Math.round(cyOrig + 0 * escala + offsetNorte), leste: Math.round(cxOrig - 100 * escala + offsetLeste), elevacao: 818, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '9', codigo: 'VALE DO SANTA RITA', norte: Math.round(cyOrig - 180 * escala + offsetNorte), leste: Math.round(cxOrig - 120 * escala + offsetLeste), elevacao: 810, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '10', codigo: 'DIVISA GLEBA 4 X GLEBA 5 (REMANESCENTE)', norte: Math.round(cyOrig - 50 * escala + offsetNorte), leste: Math.round(cxOrig - 300 * escala + offsetLeste), elevacao: 805, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '11', codigo: 'CERCA DE ARAME FARPADO', norte: Math.round(cyOrig + 120 * escala + offsetNorte), leste: Math.round(cxOrig - 280 * escala + offsetLeste), elevacao: 812, status: 'FIXED', isBase: false, isSingle: false },
+  ];
+
+  const rawGleba5: RawPoint[] = [
+    { nome: '1', codigo: 'DIVISA NORTE X CARLOS DRUMMOND', norte: Math.round(cyOrig + 200 * escala + offsetNorte), leste: Math.round(cxOrig - 100 * escala + offsetLeste), elevacao: 820, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '5', codigo: 'CORREGO SANTA RITA', norte: Math.round(cyOrig + 100 * escala + offsetNorte), leste: Math.round(cxOrig - 180 * escala + offsetLeste), elevacao: 814, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '11', codigo: 'CERCA DE ARAME FARPADO', norte: Math.round(cyOrig + 120 * escala + offsetNorte), leste: Math.round(cxOrig - 280 * escala + offsetLeste), elevacao: 812, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '12', codigo: 'MATA FECHADA', norte: Math.round(cyOrig + 300 * escala + offsetNorte), leste: Math.round(cxOrig - 250 * escala + offsetLeste), elevacao: 828, status: 'FIXED', isBase: false, isSingle: false },
+    { nome: '13', codigo: 'DIVISA NORTE REMANESCENTE', norte: Math.round(cyOrig + 320 * escala + offsetNorte), leste: Math.round(cxOrig - 120 * escala + offsetLeste), elevacao: 830, status: 'FIXED', isBase: false, isSingle: false },
+  ];
+
   const v1 = montarVertices(rawGleba1, ZONA, HEMISFERIO, TEC_DEMO);
   v1.forEach((v, i) => { v.representacao = reps[i % reps.length] === 'mata' ? 'linha-ideal' : reps[i % reps.length]; });
   const conf1 = montarConfrontantes(v1);
@@ -198,8 +214,16 @@ export function gerarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: 
   v3.forEach((v, i) => { v.representacao = reps[(i + 2) % reps.length] === 'mata' ? 'linha-ideal' : reps[(i + 2) % reps.length]; });
   const conf3 = montarConfrontantes(v3);
 
+  const v4 = montarVertices(rawGleba4, ZONA, HEMISFERIO, TEC_DEMO);
+  v4.forEach((v, i) => { v.representacao = reps[(i + 3) % reps.length] === 'mata' ? 'linha-ideal' : reps[(i + 3) % reps.length]; });
+  const conf4 = montarConfrontantes(v4);
+
+  const v5 = montarVertices(rawGleba5, ZONA, HEMISFERIO, TEC_DEMO);
+  v5.forEach((v, i) => { v.representacao = reps[(i + 4) % reps.length] === 'mata' ? 'linha-ideal' : reps[(i + 4) % reps.length]; });
+  const conf5 = montarConfrontantes(v5);
+
   // Preenche dados dos confrontantes com nomes e CPFs aleatórios
-  [conf1, conf2, conf3].forEach((confObj) => {
+  [conf1, conf2, conf3, conf4, conf5].forEach((confObj) => {
     for (const c of confObj.confrontantes) {
       if (/corrego/i.test(c.nome)) {
         c.nome = 'Córrego Santa Rita';
@@ -241,6 +265,8 @@ export function gerarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: 
     vertices: v1,
     confrontantes: conf1.confrontantes,
     confrontantePorLado: conf1.confrontantePorLado,
+    tipoGleba: 'principal',
+    visivel: true,
   };
 
   const gleba2: Gleba = {
@@ -250,6 +276,8 @@ export function gerarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: 
     vertices: v2,
     confrontantes: conf2.confrontantes,
     confrontantePorLado: conf2.confrontantePorLado,
+    tipoGleba: 'principal',
+    visivel: true,
   };
 
   const gleba3: Gleba = {
@@ -259,15 +287,39 @@ export function gerarProjetoFicticio(opts?: { grande?: boolean; multiplicador?: 
     vertices: v3,
     confrontantes: conf3.confrontantes,
     confrontantePorLado: conf3.confrontantePorLado,
+    tipoGleba: 'auxiliar',
+    visivel: true,
+  };
+
+  const gleba4: Gleba = {
+    id: 'gleba_demo_4',
+    denominacao: `${selectedImovel} - Gleba 4 (Preservação APP)`,
+    parcela: '004',
+    vertices: v4,
+    confrontantes: conf4.confrontantes,
+    confrontantePorLado: conf4.confrontantePorLado,
+    tipoGleba: 'auxiliar',
+    visivel: true,
+  };
+
+  const gleba5: Gleba = {
+    id: 'gleba_demo_5',
+    denominacao: `${selectedImovel} - Gleba 5 (Área Remanescente)`,
+    parcela: '005',
+    vertices: v5,
+    confrontantes: conf5.confrontantes,
+    confrontantePorLado: conf5.confrontantePorLado,
+    tipoGleba: 'auxiliar',
+    visivel: false, // Oculta por padrão para testes de visibilidade
   };
 
   return {
-    nome: `${selectedImovel} (demonstração 3 glebas${grande ? ' GRANDE' : ''})`,
+    nome: `${selectedImovel} (demonstração 5 glebas${grande ? ' GRANDE' : ''})`,
     imovel,
     vertices: v1,
     confrontantes: conf1.confrontantes,
     confrontantePorLado: conf1.confrontantePorLado,
-    glebas: [gleba1, gleba2, gleba3],
+    glebas: [gleba1, gleba2, gleba3, gleba4, gleba5],
     zona: ZONA,
     hemisferio: HEMISFERIO
   };
