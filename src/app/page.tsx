@@ -10564,68 +10564,121 @@ export default function EditorPage() {
           <>
             <div className="fixed inset-0 z-[9998]" onClick={() => setMenuRapidoGleba(null)} />
             <div
-              className="fixed z-[9999] w-64 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-background/98 backdrop-blur-xl p-3.5 shadow-2xl text-xs space-y-2.5 animate-in fade-in zoom-in-95 duration-150 select-none text-foreground"
-              style={{ left: Math.min(window.innerWidth - 270, Math.max(10, menuRapidoGleba.x)), top: Math.min(window.innerHeight - 240, Math.max(10, menuRapidoGleba.y)) }}
+              className="fixed z-[9999] w-72 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-background/98 backdrop-blur-xl p-3.5 shadow-2xl text-xs space-y-3 animate-in fade-in zoom-in-95 duration-150 select-none text-foreground"
+              style={{ left: Math.min(window.innerWidth - 300, Math.max(10, menuRapidoGleba.x)), top: Math.min(window.innerHeight - 320, Math.max(10, menuRapidoGleba.y)) }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b pb-2 gap-2">
+              <div className="flex items-center justify-between border-b pb-1.5 gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="font-extrabold text-foreground truncate text-xs">{g.denominacao}</span>
+                  <Pencil className="size-3.5 text-indigo-500 shrink-0" />
+                  <span className="font-extrabold text-foreground truncate text-xs">Editar Gleba</span>
+                  {isAtiva && (
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                      EDITANDO AGORA
+                    </span>
+                  )}
                 </div>
                 <button type="button" className="text-muted-foreground hover:bg-muted p-1 rounded-full shrink-0 transition-colors cursor-pointer" onClick={() => setMenuRapidoGleba(null)}>
                   <X className="size-3.5" />
                 </button>
               </div>
 
-              <div className="space-y-1.5 pt-0.5">
+              {/* Título / Denominação Editável com suporte a Enter (\n) */}
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-black tracking-wider text-muted-foreground block">
+                  Título / Denominação da Gleba
+                </label>
+                <textarea
+                  value={g.denominacao}
+                  rows={2}
+                  onChange={(e) => {
+                    const nv = e.target.value;
+                    setGlebas((lista) => lista.map((item) => item.id === g.id ? { ...item, denominacao: nv } : item));
+                    if (isAtiva) {
+                      setImovel((prev) => ({ ...prev, denominacao: nv }));
+                    }
+                  }}
+                  placeholder="Título da Gleba (Enter quebra linha)..."
+                  className="w-full text-xs font-bold rounded-lg border border-slate-300 dark:border-zinc-700 bg-slate-500/5 p-2 outline-none focus:ring-1 focus:ring-indigo-500 resize-y"
+                />
+              </div>
+
+              {/* Botões de Alternância de Estado (Principal x Auxiliar) */}
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-black tracking-wider text-muted-foreground block">Estado da Gleba</span>
+                <div className="flex rounded-lg bg-slate-100 dark:bg-zinc-800 p-0.5 border border-slate-200 dark:border-zinc-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isAuxiliar) alternarTipoGleba(g.id);
+                    }}
+                    className={`flex-1 py-1.5 px-2 rounded-md text-[11px] font-extrabold transition-all cursor-pointer ${
+                      !isAuxiliar ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs border border-emerald-500/30' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Principal ({isAtiva ? 'Ativa' : 'Pronta'})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isAuxiliar) alternarTipoGleba(g.id);
+                    }}
+                    className={`flex-1 py-1.5 px-2 rounded-md text-[11px] font-extrabold transition-all cursor-pointer ${
+                      isAuxiliar ? 'bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 shadow-xs border border-amber-500/30' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Auxiliar
+                  </button>
+                </div>
+              </div>
+
+              {/* Botões de Alternância de Visibilidade (Visível x Oculta) */}
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-black tracking-wider text-muted-foreground block">Exibição na Planta & Impressão</span>
+                <div className="flex rounded-lg bg-slate-100 dark:bg-zinc-800 p-0.5 border border-slate-200 dark:border-zinc-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isVisivel) alternarVisibilidadeGleba(g.id);
+                    }}
+                    className={`flex-1 py-1.5 px-2 rounded-md text-[11px] font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      isVisivel ? 'bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 shadow-xs border border-emerald-500/30' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Eye className="size-3.5" /> Visível
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isVisivel) alternarVisibilidadeGleba(g.id);
+                    }}
+                    className={`flex-1 py-1.5 px-2 rounded-md text-[11px] font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      !isVisivel ? 'bg-white dark:bg-zinc-900 text-red-600 dark:text-red-400 shadow-xs border border-red-500/30' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <EyeOff className="size-3.5" /> Oculta
+                  </button>
+                </div>
+              </div>
+
+              {/* Botões de ação */}
+              <div className="space-y-1.5 pt-1 border-t">
                 {!isAtiva && (
                   <button
                     type="button"
-                    className="w-full text-left px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
                     onClick={() => {
                       trocarGleba(g.id);
-                      setMenuRapidoGleba(null);
-                      aviso(`Gleba "${g.denominacao}" definida como Ativa.`);
+                      aviso(`Gleba "${g.denominacao}" agora é a gleba ativa para edição de vértices.`);
                     }}
                   >
-                    <Waypoints className="size-3.5" /> Ativar Gleba (Edição)
+                    <Waypoints className="size-3.5" /> Ativar para Edição de Vértices
                   </button>
                 )}
 
                 <button
                   type="button"
-                  className="w-full text-left px-2.5 py-1.5 rounded-lg border border-border/60 hover:bg-muted/70 font-semibold flex items-center justify-between transition-colors cursor-pointer"
-                  onClick={() => {
-                    alternarTipoGleba(g.id);
-                    setMenuRapidoGleba(null);
-                  }}
-                >
-                  <span className="text-foreground">Tipo de Gleba</span>
-                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
-                    isAuxiliar ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
-                  }`}>
-                    {isAuxiliar ? 'Auxiliar' : 'ATIVA'}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  className="w-full text-left px-2.5 py-1.5 rounded-lg border border-border/60 hover:bg-muted/70 font-semibold flex items-center justify-between transition-colors cursor-pointer"
-                  onClick={() => {
-                    alternarVisibilidadeGleba(g.id);
-                    setMenuRapidoGleba(null);
-                  }}
-                >
-                  <span className="text-foreground">Visibilidade</span>
-                  <span className={`flex items-center gap-1 text-[10px] font-bold ${isVisivel ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {isVisivel ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-                    {isVisivel ? 'Visível' : 'Oculta'}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  className="w-full text-left px-2.5 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold flex items-center gap-2 border border-border/40 transition-colors cursor-pointer mt-2"
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground font-bold flex items-center justify-center gap-2 border border-border/40 transition-colors cursor-pointer"
                   onClick={() => {
                     if (g.id !== glebaAtivaId) trocarGleba(g.id);
                     setAba('glebas');
@@ -10633,7 +10686,7 @@ export default function EditorPage() {
                     setMenuRapidoGleba(null);
                   }}
                 >
-                  <Palette className="size-3.5 text-indigo-500" /> Propriedades / Configurações
+                  <Palette className="size-3.5 text-indigo-500" /> Abrir Gestão Completa de Glebas
                 </button>
               </div>
             </div>

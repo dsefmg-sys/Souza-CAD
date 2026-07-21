@@ -30,6 +30,10 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
   const isCrea = rot.termo === 'ART';
   const linkEmitir = isCrea ? 'https://servicos-crea-mg.sitac.com.br/index.php' : 'https://servicos.sinceti.net.br/';
 
+  const isSigefConciliado = !!(imovel.usarValoresSigef && imovel.areaSigefHa);
+  const areaUsada = isSigefConciliado ? imovel.areaSigefHa! : areaHa;
+  const perimetroUsado = (isSigefConciliado && imovel.perimetroSigef) ? imovel.perimetroSigef : perimetro;
+
   const linhas: { label: string; valor: string; cor: string; copiavel: boolean }[] = [
     { label: 'Atividade técnica', valor: 'Georreferenciamento de imóvel rural — levantamento topográfico georreferenciado (SIGEF/INCRA)', cor: 'border-l-emerald-500', copiavel: true },
     { label: 'Proprietário / contratante', valor: imovel.proprietario, cor: 'border-l-blue-500', copiavel: true },
@@ -39,8 +43,8 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
     { label: 'Código do Imóvel (SNCR/INCRA)', valor: imovel.codigoImovelIncra, cor: 'border-l-amber-500', copiavel: true },
     { label: 'Cartório (CNS)', valor: imovel.cns, cor: 'border-l-teal-500', copiavel: true },
     { label: 'Município/UF', valor: imovel.municipio, cor: 'border-l-teal-500', copiavel: true },
-    { label: 'Área (ha)', valor: `${numBR(areaHa, 4)} ha`, cor: 'border-l-emerald-500', copiavel: true },
-    { label: 'Perímetro (m)', valor: `${numBR(perimetro)} m`, cor: 'border-l-emerald-500', copiavel: true },
+    { label: 'Área (ha)', valor: `${numBR(areaUsada, 4)} ha`, cor: 'border-l-emerald-500', copiavel: true },
+    { label: 'Perímetro (m)', valor: `${numBR(perimetroUsado)} m`, cor: 'border-l-emerald-500', copiavel: true },
   ];
 
   function copiar(texto: string, chave: string) {
@@ -87,6 +91,23 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
             </div>
           </DialogTitle>
         </DialogHeader>
+
+        {/* Banner de Conciliação SIGEF */}
+        {isSigefConciliado ? (
+          <div className="flex items-center gap-2.5 p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-xs font-semibold shrink-0">
+            <CheckCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <span className="font-bold">Valores Oficiais Conciliados com o SIGEF:</span> Área de <strong>{numBR(imovel.areaSigefHa, 4)} ha</strong> e Perímetro de <strong>{numBR(imovel.perimetroSigef ?? perimetro)} m</strong> serão copiados para a {rot.termo}.
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-300 text-xs font-medium shrink-0">
+            <ShieldCheck className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <span><strong>Aviso de Conciliação:</strong> A área atual (<strong>{numBR(areaHa, 4)} ha</strong>) é o cálculo plano bruto. Se você já gerou o rascunho no SIGEF, recomendamos <strong>conciliar com o SIGEF</strong> na aba Reconciliação antes de emitir a {rot.termo}.</span>
+            </div>
+          </div>
+        )}
 
         {/* Escolha de credencial (se tiver extras) */}
         {extras.length > 0 && (

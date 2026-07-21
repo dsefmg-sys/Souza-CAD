@@ -1525,7 +1525,11 @@ export default function Planta({
                 } : undefined}
               >
                 <text x={ccx} y={ccy} fontSize={fs(9.5 * (ovGleba.escala ?? config.escalaTextoCentroGlebas ?? 1.0))} fontWeight="bold" textAnchor="middle" fill={ogCor}>
-                  {g.nome} {isOculta ? ' (OCULTA - NÃO IMPRESSA)' : isAuxiliar ? ' (Auxiliar)' : ''}
+                  {(g.nome || '').split('\n').map((linhaTxt, idxLinha) => (
+                    <tspan key={idxLinha} x={ccx} dy={idxLinha === 0 ? 0 : fs(9.5 * (ovGleba.escala ?? config.escalaTextoCentroGlebas ?? 1.0)) * 1.15}>
+                      {linhaTxt}{idxLinha === 0 && (isOculta ? ' (OCULTA - NÃO IMPRESSA)' : isAuxiliar ? ' (Auxiliar)' : '')}
+                    </tspan>
+                  ))}
                 </text>
               </g>
             )}
