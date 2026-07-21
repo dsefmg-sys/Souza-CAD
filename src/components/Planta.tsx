@@ -2314,7 +2314,7 @@ export default function Planta({
       )}
 
       {/* texto central com dados da gleba (como bloco único arrastável) */}
-      {(() => {
+      {config.mostrarTextosGlebas !== false && (() => {
         const idCentro = 'planta.centroInfo';
         const ov = getOverride(idCentro);
         const px = cx + (ov.dx ?? 0);
@@ -2340,7 +2340,7 @@ export default function Planta({
               x={cx}
               y={cy}
               base={linhasBase.join('\n')}
-              size={fs(11)}
+              size={fs(11 * (ov.escala ?? config.escalaTextoCentroGlebas ?? 1.0))}
               bold={neg}
               anchor="middle"
               fill="#000000"
