@@ -9382,6 +9382,9 @@ export default function EditorPage() {
                 onIa={() => { setIaArquivoInicial(null); setIaAberta(true); }}
                 projetoId={projetoId}
                 extrairDocumento={extrairDocumento}
+                glebas={sincronizarGlebas()}
+                glebaAtivaId={glebaAtivaId}
+                onTrocarGleba={trocarGleba}
               />
             )}
 
@@ -10565,7 +10568,7 @@ export default function EditorPage() {
             <div className="fixed inset-0 z-[9998]" onClick={() => setMenuRapidoGleba(null)} />
             <div
               className="fixed z-[9999] w-80 max-w-[95vw] rounded-2xl border border-slate-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-2xl p-4 shadow-2xl text-xs space-y-3.5 animate-in fade-in zoom-in-95 duration-150 select-none text-slate-900 dark:text-slate-100"
-              style={{ left: Math.min(window.innerWidth - 340, Math.max(10, menuRapidoGleba.x)), top: Math.min(window.innerHeight - 490, Math.max(10, menuRapidoGleba.y)) }}
+              style={{ left: Math.min(window.innerWidth - 340, Math.max(10, menuRapidoGleba.x)), top: Math.min(window.innerHeight - 450, Math.max(10, menuRapidoGleba.y)) }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Cabeçalho do Card */}
@@ -10584,7 +10587,7 @@ export default function EditorPage() {
                 </button>
               </div>
 
-              {/* Título / Denominação Editável (5 linhas por padrão, expansível) */}
+              {/* Título / Denominação Editável (5 linhas por padrão) */}
               <div className="space-y-1.5">
                 <label className="text-[10.5px] uppercase font-black tracking-wider text-slate-700 dark:text-slate-300 flex items-center justify-between">
                   <span>Título / Denominação da Gleba</span>
@@ -10605,90 +10608,65 @@ export default function EditorPage() {
                 />
               </div>
 
-              {/* Botões de Alternância de Estado (Principal x Auxiliar) */}
+              {/* Botão Único de 3 Estados (PRINCIPAL | AUXILIAR | OCULTA) */}
               <div className="space-y-1.5">
-                <span className="text-[10.5px] uppercase font-black tracking-wider text-slate-700 dark:text-slate-300 block">Papel da Gleba (Planta / Impressão)</span>
+                <span className="text-[10.5px] uppercase font-black tracking-wider text-slate-700 dark:text-slate-300 block">Exibição & Papel da Gleba</span>
                 <div className="flex rounded-xl bg-slate-100 dark:bg-zinc-800/80 p-1 border border-slate-200 dark:border-zinc-700">
                   <button
                     type="button"
                     onClick={() => {
-                      if (isAuxiliar) alternarTipoGleba(g.id);
+                      setGlebas((gs) => gs.map((item) => item.id === g.id ? { ...item, tipoGleba: 'principal', visivel: true } : item));
                     }}
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                      !isAuxiliar ? 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-500/40' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    className={`flex-1 py-1.5 px-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                      !isAuxiliar && isVisivel
+                        ? 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-500/40'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    Principal (Ativa)
+                    Principal
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      if (!isAuxiliar) alternarTipoGleba(g.id);
+                      setGlebas((gs) => gs.map((item) => item.id === g.id ? { ...item, tipoGleba: 'auxiliar', visivel: true } : item));
                     }}
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                      isAuxiliar ? 'bg-white dark:bg-zinc-900 text-amber-700 dark:text-amber-300 shadow-sm border border-amber-500/40' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    className={`flex-1 py-1.5 px-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                      isAuxiliar && isVisivel
+                        ? 'bg-white dark:bg-zinc-900 text-amber-700 dark:text-amber-300 shadow-sm border border-amber-500/40'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
                     Auxiliar
                   </button>
-                </div>
-              </div>
-
-              {/* Botões de Alternância de Visibilidade (Visível x Oculta) */}
-              <div className="space-y-1.5">
-                <span className="text-[10.5px] uppercase font-black tracking-wider text-slate-700 dark:text-slate-300 block">Exibição na Planta & Impressão</span>
-                <div className="flex rounded-xl bg-slate-100 dark:bg-zinc-800/80 p-1 border border-slate-200 dark:border-zinc-700">
                   <button
                     type="button"
                     onClick={() => {
-                      if (!isVisivel) alternarVisibilidadeGleba(g.id);
+                      setGlebas((gs) => gs.map((item) => item.id === g.id ? { ...item, visivel: false } : item));
                     }}
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      isVisivel ? 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-500/40' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    className={`flex-1 py-1.5 px-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                      !isVisivel
+                        ? 'bg-white dark:bg-zinc-900 text-red-700 dark:text-red-300 shadow-sm border border-red-500/40'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    <Eye className="size-3.5 text-emerald-500" /> Visível
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isVisivel) alternarVisibilidadeGleba(g.id);
-                    }}
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-[11px] font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      !isVisivel ? 'bg-white dark:bg-zinc-900 text-red-700 dark:text-red-300 shadow-sm border border-red-500/40' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    <EyeOff className="size-3.5 text-red-500" /> Oculta
+                    Oculta
                   </button>
                 </div>
               </div>
 
-              {/* Botões de ação */}
-              <div className="space-y-2 pt-1.5 border-t border-slate-200 dark:border-zinc-800">
-                {!isAtiva && (
-                  <button
-                    type="button"
-                    className="w-full text-center px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-98"
-                    onClick={() => {
-                      trocarGleba(g.id);
-                      aviso(`Gleba "${g.denominacao}" selecionada para edição de vértices.`);
-                    }}
-                  >
-                    <Waypoints className="size-4" /> Selecionar para Edição de Vértices
-                  </button>
-                )}
-
+              {/* Botão Único de Ir para Dados da Gleba */}
+              <div className="pt-1 border-t border-slate-200 dark:border-zinc-800">
                 <button
                   type="button"
-                  className="w-full text-center px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center gap-2 border border-slate-300 dark:border-zinc-700 transition-all cursor-pointer active:scale-98"
+                  className="w-full text-center px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm active:scale-98"
                   onClick={() => {
                     if (g.id !== glebaAtivaId) trocarGleba(g.id);
-                    setAba('glebas');
+                    setAba('imovel');
                     setPainelAberto(true);
                     setMenuRapidoGleba(null);
                   }}
                 >
-                  <Palette className="size-4 text-indigo-500" /> Gestão Completa de Glebas
+                  <Palette className="size-4" /> DADOS DA GLEBA
                 </button>
               </div>
             </div>
@@ -11428,7 +11406,7 @@ function Campo({ label, value, onChange, placeholder, list, aviso, importante }:
     </div>
   );
 }
-function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios, onIa, projetoId, extrairDocumento }: {
+function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios, onIa, projetoId, extrairDocumento, glebas, glebaAtivaId, onTrocarGleba }: {
   aba?: Aba;
   imovel: ImovelData; onChange: (i: ImovelData) => void; onMunicipio: (s: string) => void; onLocal: (s: string) => void;
   nome: string; onNome: (v: string) => void;
@@ -11437,6 +11415,9 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
   onIa?: () => void;
   projetoId?: string | null;
   extrairDocumento?: (arquivo: ArquivoProjeto) => void;
+  glebas?: Gleba[];
+  glebaAtivaId?: string;
+  onTrocarGleba?: (id: string) => void;
 }) {
   const set = (k: keyof ImovelData, v: string) => onChange({ ...imovel, [k]: v });
   function setProprietario(v: string) {
@@ -11625,6 +11606,52 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
   // Padrão: aba === 'imovel' (Imóvel & Registro)
   return (
     <div className="space-y-3">
+      {/* Seletor de Glebas & Imóveis do Projeto */}
+      {glebas && glebas.length > 1 && (
+        <div className="border border-indigo-500/30 rounded-xl p-3 bg-indigo-500/5 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-extrabold text-xs uppercase tracking-wider text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+              <Waypoints className="size-4" /> Glebas &amp; Imóveis do Projeto ({glebas.length}) — Selecione para Editar Dados &amp; Matrícula
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {glebas.map((g, idx) => {
+              const isEditando = g.id === glebaAtivaId;
+              const isAuxiliar = g.tipoGleba === 'auxiliar';
+              const isVisivel = g.visivel !== false;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => onTrocarGleba?.(g.id)}
+                  className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                    isEditando
+                      ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm font-bold ring-2 ring-indigo-500/30'
+                      : 'border-slate-200 dark:border-zinc-700 bg-background hover:border-indigo-500/40 text-foreground'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-mono font-bold opacity-80">#{idx + 1}</span>
+                    <span className={`text-[8.5px] font-black uppercase px-1.5 py-0.2 rounded ${
+                      !isVisivel
+                        ? 'bg-red-500/20 text-red-700 dark:text-red-300'
+                        : isAuxiliar
+                        ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
+                        : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                    }`}>
+                      {!isVisivel ? 'Oculta' : isAuxiliar ? 'Auxiliar' : 'Principal'}
+                    </span>
+                  </div>
+                  <div className="truncate text-xs font-bold mt-1" title={g.denominacao}>
+                    {g.denominacao || `Gleba ${idx + 1}`}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Seletor Deslizante Rural / Urbano & Leitura com IA */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div className="flex rounded-md bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-semibold border border-zinc-200 dark:border-zinc-700 h-10 items-center">
@@ -12511,39 +12538,57 @@ function PainelGlebas({
                 )}
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground border-y py-1.5 border-dashed">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground border-y py-2 border-slate-200 dark:border-zinc-800 gap-2">
                 <div>
-                  <span className="font-semibold text-foreground">{numVerts}</span> vértices
-                  {areaHa > 0 && <span className="ml-2 font-mono font-bold text-foreground">({numBR(areaHa, 4)} ha)</span>}
+                  <span className="font-bold text-foreground">{numVerts}</span> vértices
+                  {areaHa > 0 && <span className="ml-1.5 font-mono font-extrabold text-foreground">({numBR(areaHa, 4)} ha)</span>}
                 </div>
-                <div className="flex items-center gap-1.5">
-                  {/* Toggle Tipo: ATIVA vs Auxiliar */}
+                {/* Botão de 3 Estados (Principal | Auxiliar | Oculta) */}
+                <div className="flex rounded-lg bg-slate-100 dark:bg-zinc-800 p-0.5 border border-slate-200 dark:border-zinc-700 shrink-0">
                   <button
                     type="button"
-                    onClick={() => onAlternarTipoGleba(g.id)}
-                    className={`px-2 py-0.5 text-[9px] font-extrabold uppercase rounded-full border transition-colors cursor-pointer ${
-                      isAuxiliar
-                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20'
-                        : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20'
+                    onClick={() => {
+                      if (isAuxiliar || !isVisivel) {
+                        onAlternarVisibilidadeGleba(g.id);
+                        if (isAuxiliar) onAlternarTipoGleba(g.id);
+                      }
+                    }}
+                    className={`px-2 py-0.5 text-[9.5px] font-black uppercase rounded transition-all cursor-pointer ${
+                      !isAuxiliar && isVisivel
+                        ? 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-300 shadow-xs border border-emerald-500/40'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
-                    title="Clique para alternar entre Gleba ATIVA e Auxiliar/Complementar"
                   >
-                    {isAuxiliar ? 'Auxiliar' : 'ATIVA'}
+                    Principal
                   </button>
-
-                  {/* Toggle Visibilidade: Visível / Oculta */}
                   <button
                     type="button"
-                    onClick={() => onAlternarVisibilidadeGleba(g.id)}
-                    className={`px-2 py-0.5 rounded-md border flex items-center gap-1 transition-colors cursor-pointer ${
-                      isVisivel
-                        ? 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-muted'
-                        : 'border-red-500/40 bg-red-500/10 text-red-600 hover:bg-red-500/20'
+                    onClick={() => {
+                      if (!isAuxiliar || !isVisivel) {
+                        if (!isVisivel) onAlternarVisibilidadeGleba(g.id);
+                        if (!isAuxiliar) onAlternarTipoGleba(g.id);
+                      }
+                    }}
+                    className={`px-2 py-0.5 text-[9.5px] font-black uppercase rounded transition-all cursor-pointer ${
+                      isAuxiliar && isVisivel
+                        ? 'bg-white dark:bg-zinc-900 text-amber-700 dark:text-amber-300 shadow-xs border border-amber-500/40'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
-                    title={isVisivel ? 'Gleba Visível na Planta/Mapa (clique para Ocultar)' : 'Gleba Ocultada na Planta/Mapa (clique para Exibir)'}
                   >
-                    {isVisivel ? <Eye className="size-3.5 text-emerald-500" /> : <EyeOff className="size-3.5 text-red-500" />}
-                    <span className="text-[10px] font-bold">{isVisivel ? 'Visível' : 'Oculta'}</span>
+                    Auxiliar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isVisivel) onAlternarVisibilidadeGleba(g.id);
+                    }}
+                    className={`px-2 py-0.5 text-[9.5px] font-black uppercase rounded transition-all cursor-pointer ${
+                      !isVisivel
+                        ? 'bg-white dark:bg-zinc-900 text-red-700 dark:text-red-300 shadow-xs border border-red-500/40'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Oculta
                   </button>
                 </div>
               </div>
@@ -12564,9 +12609,9 @@ function PainelGlebas({
                       onTrocarGleba(g.id);
                     }
                   }}
-                  title="Editar os vértices, memorial e confrontantes desta gleba"
+                  title="Abrir os dados cadastrais, matrícula e confrontantes desta gleba na aba Dados"
                 >
-                  <Pencil className="size-3" /> Editar Dados &amp; Confrontantes
+                  <Palette className="size-3" /> DADOS DA GLEBA
                 </Button>
 
                 {glebas.length > 1 && (
