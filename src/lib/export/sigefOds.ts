@@ -326,6 +326,7 @@ export interface SigefInput {
   confrontantePorLado?: Record<number, string>;
   imoveisCadastrados?: ImovelCad[];
   glebas?: GlebaSigef[]; // se presente, gera multi-gleba (uma aba perimetro_N por gleba)
+  linhasEditadas?: LinhaConferencia[];
 }
 
 /** Preenche o template (identificação + perímetros) e devolve os bytes do .ods. */
@@ -356,6 +357,36 @@ export async function gerarSigefOdsSeparadas(templateBytes: ArrayBuffer | Uint8A
   return zipOut.generateAsync({ type: 'blob' });
 }
 
+export function gerarXmlLinhaConferencia(l: LinhaConferencia): string {
+  const elevValStr = l.altitude.replace(/\./g, '').replace(',', '.');
+  const elev = Number(elevValStr) || 0;
+
+  const cels =
+    celStr('ce40', l.codigo) +
+    celStr('ce40', l.longitude) +
+    celStr('ce40', l.sigmaX) +
+    celStr('ce40', l.latitude) +
+    celStr('ce40', l.sigmaY) +
+    celFloat('ce40', Number(elev.toFixed(2)), l.altitude) +
+    celStr('ce40', l.sigmaZ) +
+    celStr('ce40', l.metodo) +
+    celStr('ce40', l.tipoLimite) +
+    celStr('ce40', l.cns) +
+    celStr('ce40', l.matricula) +
+    celStr('ce40', l.confrontante);
+
+  return `<table:table-row table:style-name="ro2">${cels}${TRAILING_FILLER}</table:table-row>`;
+}
+
+export function montarContentXmlComLinhas(xml: string, imovel: ImovelData, linhasEditadas: LinhaConferencia[]): string {
+  let out = injetarIdentificacao(xml, imovel);
+  const { antes, tabela: template, depois } = fatiarTabela(out, 'perimetro_1');
+  const stringsXml = linhasEditadas.map(gerarXmlLinhaConferencia);
+  let t = preencherPerimetroEm(template, stringsXml);
+  t = setDenominacaoParcela(t, 'Parcela 1', '001');
+  return antes + t + depois;
+}
+
 export async function gerarSigefOds(input: SigefInput): Promise<Blob> {
   const { templateBytes, glebas, ...dados } = input;
   const zip = await JSZip.loadAsync(templateBytes);
@@ -363,16 +394,18 @@ export async function gerarSigefOds(input: SigefInput): Promise<Blob> {
   if (!contentFile) throw new Error('content.xml ausente no template ODS');
   const xml = await contentFile.async('string');
 
-  const novoXml = glebas && glebas.length
-    ? montarContentXmlGlebas(xml, dados.imovel, dados.tecnico, glebas)
-    : montarContentXml(xml, {
-        imovel: dados.imovel,
-        tecnico: dados.tecnico,
-        res: dados.res!,
-        confrontantes: dados.confrontantes || [],
-        confrontantePorLado: dados.confrontantePorLado || {},
-        imoveisCadastrados: dados.imoveisCadastrados,
-      });
+  const novoXml = input.linhasEditadas && input.linhasEditadas.length
+    ? montarContentXmlComLinhas(xml, dados.imovel, input.linhasEditadas)
+    : (glebas && glebas.length
+      ? montarContentXmlGlebas(xml, dados.imovel, dados.tecnico, glebas)
+      : montarContentXml(xml, {
+          imovel: dados.imovel,
+          tecnico: dados.tecnico,
+          res: dados.res!,
+          confrontantes: dados.confrontantes || [],
+          confrontantePorLado: dados.confrontantePorLado || {},
+          imoveisCadastrados: dados.imoveisCadastrados,
+        }));
   zip.file('content.xml', novoXml);
   // mimetype deve permanecer STORED (sem compressão) — preserva validade do ODF
   const mime = zip.file('mimetype');

@@ -21,7 +21,8 @@ export async function POST(req: Request) {
       confrontantes,
       confrontantePorLado,
       glebas,
-      modeloProprioBase64 // Optional custom template in Base64
+      modeloProprioBase64, // Optional custom template in Base64
+      linhasEditadas
     } = body;
 
     // Load template
@@ -57,7 +58,8 @@ export async function POST(req: Request) {
         confrontantes,
         confrontantePorLado,
         glebas: enrichedGlebas,
-        imoveisCadastrados: body.imoveisCadastrados
+        imoveisCadastrados: body.imoveisCadastrados,
+        linhasEditadas
       });
     }
 

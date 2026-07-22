@@ -48,7 +48,7 @@ import {
   gerarDeclaracaoRespeitoLimitesDocx
 } from '@/lib/export/declaracoes';
 import { confrontanteAssina } from '@/lib/export/confrontanteTexto';
-import { gerarSigefOds, gerarSigefOdsSeparadas } from '@/lib/export/sigefOds';
+import { gerarSigefOds, gerarSigefOdsSeparadas, type LinhaConferencia } from '@/lib/export/sigefOds';
 import ConfiguracoesModal from '@/components/ConfiguracoesModal';
 import ImportTxtConfigModal from '@/components/ImportTxtConfigModal';
 import AnuenciaModal from '@/components/AnuenciaModal';
@@ -4407,7 +4407,7 @@ export default function EditorPage() {
     } catch (e: unknown) { aviso((e as Error).message || 'Erro ao gerar o memorial.'); }
   }
 
-  async function exportarOds() {
+  async function exportarOds(linhasEditadas?: LinhaConferencia[]) {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     if (!(await verificarProntoParaExportar())) return;
     const tec = tecnico;
@@ -4466,7 +4466,8 @@ export default function EditorPage() {
               imovel,
               tecnico: tec,
               glebas: glebasSigef,
-              imoveisCadastrados
+              imoveisCadastrados,
+              linhasEditadas
             })
           });
           if (response.ok) {
@@ -4478,7 +4479,7 @@ export default function EditorPage() {
           // Fallback cliente 100% offline/local sem 401/403
           const templateBytes = await obterTemplateBytes();
           if (unica) {
-            blob = await gerarSigefOds({ templateBytes, imovel, tecnico: tec, glebas: glebasSigef, imoveisCadastrados });
+            blob = await gerarSigefOds({ templateBytes, imovel, tecnico: tec, glebas: glebasSigef, imoveisCadastrados, linhasEditadas });
           } else {
             blob = await gerarSigefOdsSeparadas(templateBytes, imovel, tec, glebasSigef);
           }
@@ -4515,7 +4516,8 @@ export default function EditorPage() {
               confrontantes,
               confrontantePorLado,
               glebas: glebasList,
-              imoveisCadastrados
+              imoveisCadastrados,
+              linhasEditadas
             })
           });
           if (response.ok) {
@@ -4534,7 +4536,8 @@ export default function EditorPage() {
             confrontantes,
             confrontantePorLado,
             glebas: glebasList,
-            imoveisCadastrados
+            imoveisCadastrados,
+            linhasEditadas
           });
         }
 
@@ -10305,6 +10308,8 @@ export default function EditorPage() {
                 {projetos.map((p) => {
                   const pct = calcularProgressoProjeto(p);
                   const areaHa = calcularAreaHaProjeto(p);
+                  const sigefConciliado = p.imovel?.areaSigefHa != null && p.imovel?.areaSigefHa > 0 && p.imovel?.usarValoresSigef !== false;
+                  const areaExibidaHa = (sigefConciliado ? p.imovel?.areaSigefHa : areaHa) ?? areaHa ?? 0;
                   return (
                     <div key={p.id} className="p-3 rounded-xl border border-border/80 bg-muted/15 space-y-2">
                       <div className="flex items-start justify-between gap-2">
@@ -10327,7 +10332,24 @@ export default function EditorPage() {
                       <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px] text-muted-foreground font-mono bg-background/60 p-2 rounded-lg border border-border/40">
                         <div className="flex items-center gap-1"><MapPin className="size-3 text-indigo-500/80 shrink-0" /> <strong className="text-foreground truncate">{p.imovel?.municipio || 'Sem Município'}</strong></div>
                         <div className="flex items-center gap-1"><Ruler className="size-3 text-amber-500/80 shrink-0" /> <strong className="text-foreground truncate">{contarVertices(p)} vértices</strong></div>
-                        {areaHa > 0 && <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1"><Sprout className="size-3.5 text-emerald-500 shrink-0" /> Área: {areaHa.toFixed(4)} ha ({Math.round(areaHa * 10000).toLocaleString('pt-BR')} m²)</div>}
+                        {areaExibidaHa > 0 && (
+                          <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold flex flex-col gap-0.5 justify-center">
+                            <div className="flex items-center gap-1">
+                              <Sprout className="size-3.5 text-emerald-500 shrink-0" />
+                              <span>Área: {areaExibidaHa.toFixed(4)} hectares</span>
+                              {sigefConciliado && (
+                                <span className="text-[8px] bg-emerald-500/10 text-emerald-500 px-1 py-0.2 rounded border border-emerald-500/20 font-sans ml-1 font-semibold uppercase tracking-wider">
+                                  SIGEF Conciliada
+                                </span>
+                              )}
+                            </div>
+                            {!sigefConciliado && (
+                              <div className="text-[9px] font-sans font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
+                                ⚠️ Área ainda não conciliada
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div className="flex items-center gap-1"><Calendar className="size-3 text-slate-400 shrink-0" /> Criado: <span className="font-sans font-medium">{p.criadoEm ? new Date(p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
                         <div className="flex items-center gap-1"><Save className="size-3 text-slate-400 shrink-0" /> Salvo: <span className="font-sans font-medium">{p.atualizadoEm || p.criadoEm ? new Date(p.atualizadoEm || p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
                       </div>
@@ -10378,6 +10400,8 @@ export default function EditorPage() {
                 {projetos.map((p) => {
                   const pct = calcularProgressoProjeto(p);
                   const areaHa = calcularAreaHaProjeto(p);
+                  const sigefConciliado = p.imovel?.areaSigefHa != null && p.imovel?.areaSigefHa > 0 && p.imovel?.usarValoresSigef !== false;
+                  const areaExibidaHa = (sigefConciliado ? p.imovel?.areaSigefHa : areaHa) ?? areaHa ?? 0;
                   return (
                     <div
                       key={p.id}
@@ -10407,7 +10431,7 @@ export default function EditorPage() {
                             variant="ghost"
                             className="size-8 p-0 text-destructive hover:bg-destructive/10"
                             onClick={(e) => { e.stopPropagation(); remover(p.id); }}
-                            title="Excluir projeto"
+                            title="Excluir project"
                           >
                             <Trash2 className="size-3.5" />
                           </Button>
@@ -10417,7 +10441,24 @@ export default function EditorPage() {
                       <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-muted-foreground font-mono bg-background/60 p-2 rounded-lg border border-border/40">
                         <div className="flex items-center gap-1"><MapPin className="size-3 text-indigo-500/80 shrink-0" /> <strong className="text-foreground truncate">{p.imovel?.municipio || 'Sem Município'}</strong></div>
                         <div className="flex items-center gap-1"><Ruler className="size-3 text-amber-500/80 shrink-0" /> <strong className="text-foreground truncate">{contarVertices(p)} vértices</strong></div>
-                        {areaHa > 0 && <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1"><Sprout className="size-3.5 text-emerald-500 shrink-0" /> Área: {areaHa.toFixed(4)} ha ({Math.round(areaHa * 10000).toLocaleString('pt-BR')} m²)</div>}
+                        {areaExibidaHa > 0 && (
+                          <div className="col-span-2 text-emerald-600 dark:text-emerald-400 font-bold flex flex-col gap-0.5 justify-center">
+                            <div className="flex items-center gap-1">
+                              <Sprout className="size-3.5 text-emerald-500 shrink-0" />
+                              <span>Área: {areaExibidaHa.toFixed(4)} hectares</span>
+                              {sigefConciliado && (
+                                <span className="text-[8px] bg-emerald-500/10 text-emerald-500 px-1 py-0.2 rounded border border-emerald-500/20 font-sans ml-1 font-semibold uppercase tracking-wider">
+                                  SIGEF Conciliada
+                                </span>
+                              )}
+                            </div>
+                            {!sigefConciliado && (
+                              <div className="text-[9px] font-sans font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5 mt-0.5">
+                                ⚠️ Área ainda não conciliada
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div className="flex items-center gap-1"><Calendar className="size-3 text-slate-400 shrink-0" /> Criado: <span className="font-sans font-medium">{p.criadoEm ? new Date(p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
                         <div className="flex items-center gap-1"><Save className="size-3 text-slate-400 shrink-0" /> Salvo: <span className="font-sans font-medium">{p.atualizadoEm || p.criadoEm ? new Date(p.atualizadoEm || p.criadoEm).toLocaleDateString('pt-BR') : '—'}</span></div>
                       </div>
@@ -11932,7 +11973,7 @@ export default function EditorPage() {
         <PlanilhaConferenciaModal
           open={planilhaConfAberta} onOpenChange={setPlanilhaConfAberta}
           imovel={imovel} res={res} confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} tecnico={tecnico}
-          onBaixar={() => { setPlanilhaConfAberta(false); exportarOds(); }}
+          onBaixar={(linhasEditadas) => { setPlanilhaConfAberta(false); exportarOds(linhasEditadas); }}
           imoveisCadastrados={imoveisCadastrados}
           onAplicarCorrecoes={aplicarCorrecoesPrecisaoLocal}
         />
