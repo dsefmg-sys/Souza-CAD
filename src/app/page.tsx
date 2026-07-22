@@ -10801,6 +10801,9 @@ export default function EditorPage() {
                           <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold" onClick={() => { carregarProjetoComConfirmacao(p.id); setPainelAberto(false); }}>
                             <FolderOpen className="size-3" /> Abrir
                           </Button>
+                          <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold" onClick={() => renomear(p)} title="Renomear projeto">
+                            <Pencil className="size-3" /> Renomear
+                          </Button>
                           <Button size="sm" variant="ghost" className="size-7 p-0 text-destructive" onClick={() => remover(p.id)} title="Excluir">
                             <Trash2 className="size-3" />
                           </Button>
@@ -10962,13 +10965,23 @@ export default function EditorPage() {
                         return (
                           <tr key={p.id} className="hover:bg-muted/30 transition-colors font-medium">
                             <td className="p-3 font-bold uppercase text-foreground min-w-[200px]">
-                              <button
-                                type="button"
-                                onClick={() => { carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
-                                className="hover:underline text-left text-indigo-600 dark:text-indigo-400"
-                              >
-                                {p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => { carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
+                                  className="hover:underline text-left text-indigo-600 dark:text-indigo-400 font-bold"
+                                >
+                                  {p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => renomear(p)}
+                                  className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-0.5"
+                                  title="Renomear projeto"
+                                >
+                                  <Pencil className="size-3" />
+                                </button>
+                              </div>
                               <div className="text-[9px] text-muted-foreground font-mono mt-0.5">{p.glebas?.length || 1} gleba(s) • {contarVertices(p)} vértices</div>
                             </td>
                             <td className="p-3 truncate max-w-[180px]" title={p.imovel?.proprietario}>
@@ -11020,7 +11033,7 @@ export default function EditorPage() {
                               </div>
                             </td>
                             <td className="p-3 text-center">
-                              <div className="flex items-center justify-center gap-1">
+                              <div className="flex items-center justify-center gap-1.5">
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -11031,12 +11044,12 @@ export default function EditorPage() {
                                 </Button>
                                 <Button
                                   size="sm"
-                                  variant="ghost"
-                                  className="size-7 p-0 text-slate-500 hover:bg-muted"
+                                  variant="outline"
+                                  className="h-7 text-[10px] font-bold gap-1 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                                   onClick={() => renomear(p)}
                                   title="Renomear projeto"
                                 >
-                                  <Pencil className="size-3.5" />
+                                  <Pencil className="size-3" /> Renomear
                                 </Button>
                                 <Button
                                   size="sm"
