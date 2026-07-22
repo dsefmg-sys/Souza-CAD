@@ -41,7 +41,7 @@ export default function DialogosHost() {
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) cancelarPorFora(); }}>
-      <DialogContent className={estado.modo === 'prompt' && estado.multiline ? 'max-w-2xl w-full' : 'max-w-md'} onEscapeKeyDown={cancelarPorFora}>
+      <DialogContent className={`!z-[10000] ${estado.modo === 'prompt' && estado.multiline ? 'max-w-2xl w-full' : 'max-w-md'}`} onEscapeKeyDown={cancelarPorFora}>
         <DialogHeader>
           <DialogTitle className={estado.modo === 'confirm' && estado.perigo ? 'text-destructive' : undefined}>{estado.titulo}</DialogTitle>
         </DialogHeader>
