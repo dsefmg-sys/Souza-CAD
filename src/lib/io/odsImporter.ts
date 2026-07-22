@@ -5,31 +5,49 @@ import { geoParaUtm, utmParaGeo } from '../topo/coords';
 
 function parseCoordenada(val: string): number | null {
   if (!val) return null;
+  
+  // Substitui vírgulas por pontos decimais
   const str = val.trim().replace(',', '.');
   
-  // Se for float decimal simples (-41.8546123 ou 810452.12)
-  const num = parseFloat(str);
-  if (Number.isFinite(num) && !/[°'"]/.test(str)) {
-    return num;
+  // Se contiver múltiplos blocos de números separados por espaços, é DMS!
+  const partesEspaco = str.split(/\s+/).filter(Boolean);
+  const temEspacoMultiplo = partesEspaco.length >= 3 && partesEspaco.slice(0, 3).every(p => /^-?\d+(\.\d+)?$/.test(p.replace(/[^0-9.-]/g, '')));
+  
+  if (temEspacoMultiplo) {
+    const isSouthOrWest = /[SW]/i.test(str) || str.startsWith('-');
+    const clean = str.replace(/[^0-9.\s-]/g, ' ').trim().split(/\s+/).filter(Boolean);
+    if (clean.length >= 3) {
+      const d = Math.abs(parseFloat(clean[0]));
+      const m = Math.abs(parseFloat(clean[1]));
+      const s = Math.abs(parseFloat(clean[2]));
+      if (Number.isFinite(d) && Number.isFinite(m) && Number.isFinite(s)) {
+        let dec = d + m / 60 + s / 3600;
+        if (isSouthOrWest) dec = -dec;
+        return dec;
+      }
+    }
   }
   
-  // Se for DMS (graus, minutos, segundos)
-  const isSouthOrWest = /[SWW]/i.test(str) || str.startsWith('-');
-  const clean = str.replace(/[^0-9.\s]/g, ' ').trim().split(/\s+/).filter(Boolean);
-  
-  if (clean.length >= 3) {
-    const d = Math.abs(parseFloat(clean[0]));
-    const m = Math.abs(parseFloat(clean[1]));
-    const s = Math.abs(parseFloat(clean[2]));
-    if (Number.isFinite(d) && Number.isFinite(m) && Number.isFinite(s)) {
-      let dec = d + m / 60 + s / 3600;
-      if (isSouthOrWest) dec = -dec;
-      return dec;
+  // Se for DMS tradicional com os símbolos de graus/minutos/segundos
+  if (/[°'"]/.test(str)) {
+    const isSouthOrWest = /[SW]/i.test(str) || str.startsWith('-');
+    const clean = str.replace(/[^0-9.\s-]/g, ' ').trim().split(/\s+/).filter(Boolean);
+    if (clean.length >= 3) {
+      const d = Math.abs(parseFloat(clean[0]));
+      const m = Math.abs(parseFloat(clean[1]));
+      const s = Math.abs(parseFloat(clean[2]));
+      if (Number.isFinite(d) && Number.isFinite(m) && Number.isFinite(s)) {
+        let dec = d + m / 60 + s / 3600;
+        if (isSouthOrWest) dec = -dec;
+        return dec;
+      }
     }
-  } else if (clean.length === 1 && Number.isFinite(parseFloat(clean[0]))) {
-    let dec = Math.abs(parseFloat(clean[0]));
-    if (isSouthOrWest) dec = -dec;
-    return dec;
+  }
+  
+  // Se for float decimal simples
+  const num = parseFloat(str);
+  if (Number.isFinite(num)) {
+    return num;
   }
   
   return null;
@@ -58,8 +76,9 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
   let proprietarioNome = '';
   let proprietarioCpf = '';
   let matriculaImovel = '';
-  const fusoInformado = 23;
-  const hemisferioInformado: 'N' | 'S' = 'S';
+  
+  let fusoInformado = 23;
+  let hemisferioInformado: 'N' | 'S' = 'S';
 
   const rawVertices: {
     codigo: string;
@@ -71,7 +90,7 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
     confrontante: string;
   }[] = [];
 
-  // Varrer todas as tabelas procurando dados cadastrais e a lista de vértices
+  // Varrer todas as tabelas procurando dados cadastrais, metadados de projeção e a lista de vértices
   for (const table of tables) {
     const rows = Array.from(table.getElementsByTagName('table:table-row'));
     
@@ -101,33 +120,78 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
         const idx = rowTexts.findIndex((t) => /DENOMINAÇ|NOME DO IM|IMOVEL/i.test(t));
         if (idx >= 0 && rowTexts[idx + 1]) denominacaoImovel = rowTexts[idx + 1];
       }
-      if (rowStr.includes('MUNICÍPIO') || rowStr.includes('MUNICIPIO')) {
+      
+      // Busca pelo município real lidando com a estrutura "Adicionar Municipio"
+      if (rowStr.includes('MUNICÍPIO') || rowStr.includes('MUNICIPIO') || rowStr.includes('MUNICÍPIO(S)')) {
         const idx = rowTexts.findIndex((t) => /MUNIC/i.test(t));
-        if (idx >= 0 && rowTexts[idx + 1]) municipioImovel = rowTexts[idx + 1];
+        if (idx >= 0) {
+          const valNext = rowTexts[idx + 1];
+          if (valNext && valNext.trim() && !/adicionar/i.test(valNext)) {
+            municipioImovel = valNext;
+          } else {
+            // Se ao lado for instrução do SIGEF ("Adicionar Municipio"), lemos a linha de baixo
+            const nextRow = rows[rIdx + 1];
+            if (nextRow) {
+              const nextCells = Array.from(nextRow.children);
+              const nextTexts = nextCells.map(c => c.textContent?.trim() || '').filter(Boolean);
+              const munCand = nextTexts.find(t => t.includes('-') && t.trim().length > 3 && !/munic/i.test(t));
+              if (munCand) {
+                municipioImovel = munCand;
+              } else if (nextTexts[0]) {
+                municipioImovel = nextTexts[0];
+              }
+            }
+          }
+        }
       }
+      
       if (rowStr.includes('UF') && !ufImovel) {
         const idx = rowTexts.findIndex((t) => /^UF$/i.test(t.trim()));
         if (idx >= 0 && rowTexts[idx + 1]) ufImovel = rowTexts[idx + 1];
       }
+      
       if (rowStr.includes('PROPRIETÁRIO') || rowStr.includes('PROPRIETARIO') || rowStr.includes('REQUERENTE')) {
         const idx = rowTexts.findIndex((t) => /PROPRIET|REQUER/i.test(t));
         if (idx >= 0 && rowTexts[idx + 1]) proprietarioNome = rowTexts[idx + 1];
       }
+      
       if (rowStr.includes('CPF') || rowStr.includes('CNPJ')) {
         const idx = rowTexts.findIndex((t) => /CPF|CNPJ/i.test(t));
         if (idx >= 0 && rowTexts[idx + 1]) proprietarioCpf = rowTexts[idx + 1];
       }
+      
       if (rowStr.includes('MATRÍCULA') || rowStr.includes('MATRICULA')) {
         const idx = rowTexts.findIndex((t) => /MATRIC/i.test(t));
         if (idx >= 0 && rowTexts[idx + 1]) matriculaImovel = rowTexts[idx + 1];
       }
 
-      // Detectar linhas de vértices (código do vértice tipicamente no início ou colunas primárias)
+      // Busca por Meridiano Central nos metadados
+      if (rowStr.includes('MERIDIANO CENTRAL') || rowStr.includes('MERIDIANO CENTRAL (°)')) {
+        const idx = rowTexts.findIndex((t) => /MERIDIANO CENTRAL/i.test(t));
+        if (idx >= 0 && rowTexts[idx + 1]) {
+          const mc = parseInt(rowTexts[idx + 1].replace(/[^0-9.-]/g, ''), 10);
+          if (Number.isFinite(mc) && mc !== 0) {
+            fusoInformado = Math.floor((mc + 183) / 6);
+          }
+        }
+      }
+      
+      // Busca por Hemisfério nos metadados
+      if (rowStr.includes('HEMISFÉRIO') || rowStr.includes('HEMISFERIO')) {
+        const idx = rowTexts.findIndex((t) => /HEMISF/i.test(t));
+        if (idx >= 0 && rowTexts[idx + 1]) {
+          const hStr = rowTexts[idx + 1].trim().toUpperCase();
+          if (hStr.startsWith('S') || hStr.includes('SUL')) hemisferioInformado = 'S';
+          else if (hStr.startsWith('N') || hStr.includes('NORTE')) hemisferioInformado = 'N';
+        }
+      }
+
+      // Detectar linhas de vértices (código do vértice: M-0001, P-0001 ou com prefixo)
       const vertCodeIdx = rowTexts.findIndex((t) => /^[A-Z0-9]{3,6}-[MPV]-0*\d+/i.test(t) || /^[MPV]-0*\d+/i.test(t));
       if (vertCodeIdx >= 0) {
         const codigo = rowTexts[vertCodeIdx];
         
-        // Tentar ler os números nas colunas subsequentes
+        // Ler coordenadas e altitude
         const nums: { val: number; raw: string }[] = [];
         for (let i = vertCodeIdx + 1; i < rowTexts.length; i++) {
           const parsed = parseCoordenada(rowTexts[i]);
@@ -141,8 +205,8 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
           const val2 = nums[1].val; // Latitude ou Norte
           const val3 = nums[2] ? nums[2].val : 0; // Altitude h
 
-          // Procura Método e Tipo de Limite
-          let metodo = 'PG6';
+          // Procura Método, Tipo de Limite e Confrontante
+          let metodo = 'PG7';
           let tipoLimite = 'LA6';
           let confrontante = '';
 
@@ -173,10 +237,21 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
     throw new Error('Nenhum vértice com código no padrão do SIGEF (ex: M-0001, P-0001) localizado na planilha ODS.');
   }
 
-  const municipioUf = municipioImovel ? (ufImovel ? `${municipioImovel} - ${ufImovel}` : municipioImovel) : '';
+  // Se as coordenadas forem geográficas (lat e lon), recalcula o fuso UTM e hemisfério dinamicamente a partir do primeiro vértice
+  const primeiroVert = rawVertices[0];
+  if (primeiroVert) {
+    const val1 = primeiroVert.latOrEste;
+    const val2 = primeiroVert.lonOrNorte;
+    if (Math.abs(val1) <= 180 && Math.abs(val2) <= 90) {
+      fusoInformado = Math.floor((val1 + 180) / 6) + 1;
+      hemisferioInformado = val2 < 0 ? 'S' : 'N';
+    }
+  }
+
+  const municipioUf = municipioImovel ? (ufImovel && !municipioImovel.includes(ufImovel) ? `${municipioImovel} - ${ufImovel}` : municipioImovel) : '';
   const nomeProjeto = (denominacaoImovel || file.name.replace(/\.ods$/i, '')).toUpperCase();
 
-  // Processar os vértices para Lat/Lon e UTM Este/Norte
+  // Processar os vértices para Lat/Lon e UTM Este/Norte correspondentes
   const verticesProcessados: Vertex[] = rawVertices.map((v, i) => {
     let lat: number;
     let lon: number;
