@@ -67,7 +67,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
     setLocalVertices((curr) =>
       curr.map((v) => {
         if (v.id === id) {
-          const updated = { ...v, [field]: value };
+          const updated = { ...v, [field]: field === 'codigoSigef' ? String(value).toUpperCase() : value };
           // Se alterar leste/norte, recalcularíamos lat/lon se tivéssemos a função de conversão,
           // porém no spreadsheet geralmente mantemos coordenadas consistentes ou o usuário sabe o que faz.
           // Para ser útil e seguro, permitimos a edição dos valores numéricos.
@@ -86,7 +86,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
     setLocalVertices((curr) =>
       curr.map((v) => {
         const numStr = String(num).padStart(4, '0');
-        const codigoSigef = `${prefix}${numStr}`;
+        const codigoSigef = `${prefix}${numStr}`.toUpperCase();
         num++;
         return { ...v, codigoSigef };
       })
@@ -159,7 +159,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
               <Input
                 id="batch-prefix"
                 value={prefix}
-                onChange={(e) => setPrefix(e.target.value)}
+                onChange={(e) => setPrefix(e.target.value.toUpperCase())}
                 placeholder="Ex: M-"
                 className="h-8 w-20 text-xs"
               />

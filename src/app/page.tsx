@@ -523,8 +523,34 @@ export default function EditorPage() {
   const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
   // A aplicação das cores da marca fica MAIS ABAIXO (junto do efeito de tema), porque precisa saber
   // se o tema é claro ou escuro pra ajustar o brilho da cor e não sumir. Ver corMarcaLegivel.
-  const [vertices, setVertices] = useState<Vertex[]>([]);
-  const [verticesIgnorados, setVerticesIgnorados] = useState<Vertex[]>([]); // fora do anel (ferramenta ignorar/considerar)
+  const [verticesRaw, setVerticesRaw] = useState<Vertex[]>([]);
+  const [verticesIgnoradosRaw, setVerticesIgnoradosRaw] = useState<Vertex[]>([]); // fora do anel (ferramenta ignorar/considerar)
+
+  const normalizarVerticesMaiusculas = (vs: Vertex[]): Vertex[] => {
+    return vs.map((v) => ({
+      ...v,
+      codigoSigef: v.codigoSigef ? v.codigoSigef.toUpperCase() : '',
+      nome: v.nome ? v.nome.toUpperCase() : '',
+      codigoCampo: v.codigoCampo ? v.codigoCampo.toUpperCase() : '',
+    }));
+  };
+
+  const setVertices = (val: Vertex[] | ((curr: Vertex[]) => Vertex[])) => {
+    setVerticesRaw((curr) => {
+      const proximo = typeof val === 'function' ? val(curr) : val;
+      return normalizarVerticesMaiusculas(proximo);
+    });
+  };
+
+  const setVerticesIgnorados = (val: Vertex[] | ((curr: Vertex[]) => Vertex[])) => {
+    setVerticesIgnoradosRaw((curr) => {
+      const proximo = typeof val === 'function' ? val(curr) : val;
+      return normalizarVerticesMaiusculas(proximo);
+    });
+  };
+
+  const vertices = verticesRaw;
+  const verticesIgnorados = verticesIgnoradosRaw;
   const [gradeAltimetrica, setGradeAltimetrica] = useState<{ lat: number; lon: number; leste: number; norte: number; elevacao: number }[]>([]);
   const [verticesOnlineElev, setVerticesOnlineElev] = useState<Record<string, number>>({});
   const [historiaAberta, setHistoriaAberta] = useState(false);
@@ -781,6 +807,27 @@ export default function EditorPage() {
   const [objetoSelId, setObjetoSelId] = useState<string | null>(null);
   const [objPersonalizarId, setObjPersonalizarId] = useState<string | null>(null);
   const [copiaBuffer, setCopiaBuffer] = useState<ObjetoDesenho | null>(null);
+
+  // Sincronização reativa e bidirecional do estado de trabalho ativo para as glebas do projeto
+  useEffect(() => {
+    if (!glebaAtivaId) return;
+    setGlebas((prevGlebas) => {
+      if (!prevGlebas.length) return prevGlebas;
+      return prevGlebas.map((g) => {
+        if (g.id === glebaAtivaId) {
+          const mudou =
+            g.vertices !== vertices ||
+            g.confrontantes !== confrontantes ||
+            g.confrontantePorLado !== confrontantePorLado ||
+            g.objetos !== objetos;
+          if (mudou) {
+            return { ...g, vertices, confrontantes, confrontantePorLado, objetos };
+          }
+        }
+        return g;
+      });
+    });
+  }, [vertices, confrontantes, confrontantePorLado, objetos, glebaAtivaId]);
   const [tutorialSimplificadoAberto, setTutorialSimplificadoAberto] = useState(false);
   const [vSplitInicioId, setVSplitInicioId] = useState<string | null>(null);
   const [vSplitFimId, setVSplitFimId] = useState<string | null>(null);
@@ -2404,7 +2451,7 @@ export default function EditorPage() {
     if (id.startsWith('vert.')) {
       const vId = id.slice(5);
       snap();
-      setVertices((vs) => vs.map((v) => (v.id === vId ? { ...v, codigoSigef: novoTexto } : v)));
+      setVertices((vs) => vs.map((v) => (v.id === vId ? { ...v, codigoSigef: novoTexto.toUpperCase() } : v)));
     } else {
       patchTextoPlanta(id, { texto: novoTexto, larguraChars });
     }

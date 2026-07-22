@@ -75,13 +75,13 @@ export default function RenomearLoteModal({
   // Inicializa a lista e o prefixo
   useEffect(() => {
     if (open) {
-      const pref = tecnico?.credenciamentoIncra || '';
+      const pref = (tecnico?.credenciamentoIncra || '').toUpperCase();
       setPrefixo(pref);
       setLista(vertices.map(v => ({
         id: v.id,
         nome: v.nome,
         tipo: (v.tipo as 'M' | 'P' | 'V') || 'P',
-        codigoSigef: v.codigoSigef || ''
+        codigoSigef: (v.codigoSigef || '').toUpperCase()
       })));
     }
   }, [open, vertices, tecnico]);
@@ -89,7 +89,7 @@ export default function RenomearLoteModal({
   // Carrega os contadores com base no prefixo INCRA do banco de pontos
   useEffect(() => {
     if (open && prefixo.trim() && tecnico) {
-      const pref = prefixo.trim();
+      const pref = prefixo.trim().toUpperCase();
       lerContadores(pref, tecnico)
         .then(c => {
           if (c) {
@@ -133,7 +133,7 @@ export default function RenomearLoteModal({
   };
 
   const handleMudarCodigo = (id: string, novoCodigo: string) => {
-    setLista(prev => prev.map(item => item.id === id ? { ...item, codigoSigef: novoCodigo } : item));
+    setLista(prev => prev.map(item => item.id === id ? { ...item, codigoSigef: novoCodigo.toUpperCase() } : item));
   };
 
   const handleSalvar = () => {
@@ -183,7 +183,7 @@ export default function RenomearLoteModal({
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground">Credenciamento INCRA</Label>
                 <Input
                   value={prefixo}
-                  onChange={(e) => setPrefixo(e.target.value)}
+                  onChange={(e) => setPrefixo(e.target.value.toUpperCase())}
                   placeholder="Ex: COIN"
                   className="h-8 text-xs font-mono font-bold uppercase"
                 />

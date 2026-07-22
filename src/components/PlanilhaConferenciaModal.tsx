@@ -59,7 +59,8 @@ export default function PlanilhaConferenciaModal({
 
   const updateLinha = (idx: number, campo: keyof LinhaConferencia, valor: string) => {
     setIsManualEdit(true);
-    setLinhasLocal(prev => prev.map((l, i) => (i === idx ? { ...l, [campo]: valor } : l)));
+    const valorTratado = campo === 'codigo' ? valor.toUpperCase() : valor;
+    setLinhasLocal(prev => prev.map((l, i) => (i === idx ? { ...l, [campo]: valorTratado } : l)));
   };
 
   const ef = res ? valoresEfetivos(res, imovel) : null;
