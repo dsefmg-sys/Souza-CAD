@@ -46,10 +46,14 @@ interface Props {
     visivel?: boolean;
     corContorno?: string;
     corPreenchimento?: string;
+    proprietario?: string;
+    matricula?: string;
   }[];
   glebaCorContorno?: string;
   glebaCorPreenchimento?: string;
   glebaVisivel?: boolean;
+  glebaProprietario?: string;
+  glebaMatricula?: string;
   verticesVizinho?: VerticeVizinho[]; // vértices de imóveis vizinhos certificados (desenho de apoio)
   parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
   resumoGlebas?: { nome: string; areaHa: number; perimetro: number }[]; // quadro de áreas
@@ -79,6 +83,7 @@ interface Props {
   onExcluirObjeto?: (id: string) => void;                          // soltar item de desenho FORA da folha: exclui
   onAbrirGestaoGleba?: (id?: string) => void;
   onCliqueUnicoGleba?: (id: string, x: number, y: number) => void;
+  onCliqueSeçaoCoordenadas?: (id: string) => void;
   glebaAtivaId?: string;
   onMoverRotuloConf?: (id: string, lat: number, lon: number) => void;
   onRemoverSituacao?: () => void;      // clicar na imagem da situação mostra um X; o X chama isto
@@ -169,8 +174,9 @@ function Ted(props: {
   selecionadoId?: string | null;
   onSelect?: (id: string | null) => void;
   onTextoPatch?: (id: string, patch: { escala?: number; texto?: string; negrito?: boolean; dx?: number; dy?: number; larguraChars?: number }) => void;
+  estatico?: boolean;
 }) {
-  const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onMenu, onDragStart, halo = false, editando = false, onTerminarEditar, onStartEdit, selecionadoId, onSelect, onTextoPatch } = props;
+  const { id, x, y, base, size, bold, anchor = 'start', fill = '#000', slice, ov, ed, onMenu, onDragStart, halo = false, editando = false, onTerminarEditar, onStartEdit, selecionadoId, onSelect, onTextoPatch, estatico = false } = props;
   const conteudo = (ov?.texto !== undefined && ov?.texto !== null && ov.texto.trim() !== '') ? ov.texto : base;
   const texto = slice ? conteudo.slice(0, slice) : conteudo;
   const fz = +(size * (ov?.escala ?? 1)).toFixed(2);
@@ -254,12 +260,21 @@ function Ted(props: {
   const textH = fz * lines.length * 1.25;
   const endX = anchor === 'middle' ? posX + textW / 2 : anchor === 'end' ? posX : posX + textW;
 
+  const cursorStyle = ed ? (estatico ? 'pointer' : 'move') : undefined;
+
   return (
-    <g id={id} style={ed ? { cursor: 'move' } : undefined}
-       onClick={ed ? (e) => { e.stopPropagation(); onSelect?.(id); } : undefined}
-       onDoubleClick={ed ? (e) => { e.stopPropagation(); onStartEdit?.(id, conteudo); } : undefined}
+    <g id={id} style={cursorStyle ? { cursor: cursorStyle } : undefined}
+       onClick={ed ? (e) => {
+         e.stopPropagation();
+         if (estatico) {
+           onStartEdit?.(id, conteudo);
+         } else {
+           onSelect?.(id);
+         }
+       } : undefined}
+       onDoubleClick={ed && !estatico ? (e) => { e.stopPropagation(); onStartEdit?.(id, conteudo); } : undefined}
        onContextMenu={undefined}
-       onPointerDown={ed ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}>
+       onPointerDown={ed && !estatico ? (e) => { e.stopPropagation(); onDragStart?.(id, e); } : undefined}>
       {/* Hit box invisível para garantir captura de cliques e arraste em todo o rótulo */}
       <rect
         x={anchor === 'middle' ? posX - textW / 2 - 6 : anchor === 'end' ? posX - textW - 6 : posX - 6}
@@ -360,11 +375,11 @@ function deParaNiceInterval(alvo: number): number {
 export default function Planta({
   vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado,
   zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], parcelasCert = [], resumoGlebas = [], objetos = [], config = {}, verticesVizinho = [],
-  glebaCorContorno, glebaCorPreenchimento, glebaVisivel = true,
+  glebaCorContorno, glebaCorPreenchimento, glebaVisivel = true, glebaProprietario, glebaMatricula,
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
-  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao, onAbrirGestaoGleba, onCliqueUnicoGleba, glebaAtivaId,
+  onCliquePlanta, onSelecObjeto, onContextMenuObjeto, onDblClickVertice, onDblClickDivisa, onAntesEditar, onMoverPontoObjeto, onMoverObjeto, onExcluirObjeto, onMoverRotuloConf, onMoverRotuloVertice, onRemoverSituacao, situacaoStale, onAtualizarSituacao, onAbrirGestaoGleba, onCliqueUnicoGleba, onCliqueSeçaoCoordenadas, glebaAtivaId,
   onEditarConfrontante, onTamRotuloConf, onAjustarDivisaConf,
   onTextoEditar, onTextoMenu, onConfrontanteMenu, onMoverFolha, onToggleTravaFolha, onTextoMover, onConfigPatch, onAlternarTipoVertice, onRenomearVertice, onIgnorarVertice, onCiclarEstilo, folhaTravada = true,
   editandoTextoId, onSetEditandoTextoId, onTextoStartEdit, onTextoPatch, mostrarRotulos = true, onDblClick, onDblClickObjeto, onContextMenuVazio, onDblClickMalha, onCentralizarPlanta,
@@ -1525,10 +1540,17 @@ export default function Planta({
             {/* Texto central da gleba: MÓVEL e com DUPLO CLIQUE para Personalizar */}
             {config.mostrarTextosGlebas !== false && (() => {
               const fsVal = fs(9.5 * (ovGleba.escala ?? config.escalaTextoCentroGlebas ?? 1.0));
+              const gProprietario = g.proprietario || imovel.proprietario;
+              const gMatricula = g.matricula || imovel.matricula;
+              const gAreaHa = g.vertices && g.vertices.length >= 3 ? calcularAreaSgl(g.vertices.map((v) => ({ lat: v.lat, lon: v.lon, h: (v as any).altitude ?? (v as any).h ?? 0 }))).areaHa : 0;
+
               const linhasGleba = [
                 ...(isOculta ? ['(OCULTA)'] : []),
-                ...(g.nome || '').split('\n').map((l, idx) => (idx === 0 && isAuxiliar ? `${l} (Auxiliar)` : l)),
-              ];
+                g.nome || imovel.denominacao || 'Imóvel',
+                gMatricula ? `Matrícula nº ${formatMatricula(gMatricula)}` : (imovel.regimeTerra === 'posse' ? 'Imóvel sob Posse' : ''),
+                gProprietario ? `${imovel.regimeTerra === 'posse' ? 'Poss.' : 'Prop.'}: ${gProprietario}` : '',
+                gAreaHa > 0 ? `Área: ${numBR(gAreaHa, 4)} ha` : '',
+              ].filter(Boolean);
 
               return (
                 <g
@@ -2405,17 +2427,21 @@ export default function Planta({
       )}
 
       {/* texto central com dados da gleba (como bloco único arrastável) */}
-      {config.mostrarTextosGlebas !== false && (() => {
+      {config.mostrarTextosGlebas !== false && (!(glebaVisivel === false) || editavel) && (() => {
         const idCentro = 'planta.centroInfo';
         const ov = getOverride(idCentro);
         const px = cx + (ov.dx ?? 0);
         const py = cy + (ov.dy ?? 0);
         const neg = ov.negrito ?? false;
 
+        const gProp = glebaProprietario || imovel.proprietario;
+        const gMatr = glebaMatricula || imovel.matricula;
+
         const linhasBase = [
+          ...(glebaVisivel === false ? ['(OCULTA)'] : []),
           glebaNome || imovel.denominacao || 'Imóvel',
-          imovel.matricula ? `Matrícula nº ${formatMatricula(imovel.matricula)}` : imovel.regimeTerra === 'posse' ? 'Imóvel sob Posse' : '',
-          imovel.proprietario ? `${imovel.regimeTerra === 'posse' ? 'Poss.' : 'Prop.'}: ${imovel.proprietario}` : '',
+          gMatr ? `Matrícula nº ${formatMatricula(gMatr)}` : (imovel.regimeTerra === 'posse' ? 'Imóvel sob Posse' : ''),
+          gProp ? `${imovel.regimeTerra === 'posse' ? 'Poss.' : 'Prop.'}: ${gProp}` : '',
           `Área: ${numBR(ef.areaHa, 4)} ha`,
         ].filter(Boolean);
 
@@ -2795,6 +2821,7 @@ export default function Planta({
         estiloDiagrama={config.estiloDiagrama ?? 0} onCiclarEstilo={onCiclarEstilo}
         coordEditavel={editavel} coordGetOv={getOverride}
         onCoordItemDown={(id, e) => { e.stopPropagation(); tedComum.onDragStart(id, e); }}
+        onCliqueSeçaoCoordenadas={onCliqueSeçaoCoordenadas}
         situacaoSel={situacaoSel} onSituacaoClick={() => setSituacaoSel((s) => !s)}
         onRemoverSituacao={() => { setSituacaoSel(false); onRemoverSituacao?.(); }}
         situacaoStale={situacaoStale} onAtualizarSituacao={onAtualizarSituacao}
@@ -3227,6 +3254,7 @@ function FaixaInferior(props: {
   situacaoEscala?: number;
   estiloDiagrama?: number; onCiclarEstilo?: (campo: 'estiloRosa' | 'estiloEscala' | 'estiloDiagrama', total: number) => void;
   coordEditavel?: boolean; coordGetOv?: (id: string) => TextoOverride; onCoordItemDown?: (id: string, e: ReactPointerEvent) => void;
+  onCliqueSeçaoCoordenadas?: (id: string) => void;
   situacaoSel?: boolean; onSituacaoClick?: () => void; onRemoverSituacao?: () => void;
   situacaoStale?: boolean; onAtualizarSituacao?: () => void;
   corCabecalho?: string;
@@ -3236,7 +3264,7 @@ function FaixaInferior(props: {
   onSelecObjeto?: (id: string | null) => void;
   onDblClickObjeto?: (id: string) => void;
 }) {
-  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, situacaoEscala = 1.0, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu, corVerticeP, corVerticeM, onSelecObjeto, onDblClickObjeto } = props;
+  const { zona, hemisferio, vref, conv, decl, represUsadas, fatorK, verConv, verNortes, escala, situacaoUrl, verSituacao, situacaoEscala = 1.0, estiloDiagrama = 0, onCiclarEstilo, coordEditavel, coordGetOv, onCoordItemDown, onCliqueSeçaoCoordenadas, situacaoSel, onSituacaoClick, onRemoverSituacao, situacaoStale, onAtualizarSituacao, corCabecalho = '#475569', onHeaderContextMenu, corVerticeP, corVerticeM, onSelecObjeto, onDblClickObjeto } = props;
   const fs = (n: number) => +(n * escala).toFixed(2);
   const y0 = 897;           // Alinhado dentro da faixa inferior com margem de 10px em relação a DRAW.y1 (887)
   const hBox = 190;         // Altura de 190px garante que termina exatamente em 1087 (10px antes da margem inferior 1097)
@@ -3391,13 +3419,11 @@ function FaixaInferior(props: {
       </g>
 
         {(() => {
-          // cada bloco interno vira um grupo arrastável com seu próprio deslocamento salvo
+          // Os blocos de coordenadas não são mais arrastáveis, apenas clicáveis para direcionar à aba correspondente.
           const bloco = (id: string, children: React.ReactNode) => {
-            const ov = coordGetOv?.(id) || {};
             return (
-              <g transform={`translate(${ov.dx ?? 0}, ${ov.dy ?? 0})`}
-                 style={coordEditavel ? { cursor: 'move' } : undefined}
-                 onPointerDown={coordEditavel && onCoordItemDown ? (e) => onCoordItemDown(id, e) : undefined}>
+              <g style={coordEditavel ? { cursor: 'pointer' } : undefined}
+                 onClick={coordEditavel ? (e) => { e.stopPropagation(); onCliqueSeçaoCoordenadas?.(id); } : undefined}>
                 {children}
               </g>
             );
@@ -3690,11 +3716,12 @@ function CarimboA3(props: {
   const fsConf = (n: number) => +(n * escala * escalaConf).toFixed(2); // texto/assinatura dos confrontantes
   
   // texto editável do carimbo (atalho para o helper Ted, já ligado ao modo edição)
-  const T = (id: string, base: string, o: { x: number; y: number; size: number; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; fill?: string; slice?: number }) => (
+  const T = (id: string, base: string, o: { x: number; y: number; size: number; bold?: boolean; anchor?: 'start' | 'middle' | 'end'; fill?: string; slice?: number }, estatico?: boolean) => (
     <Ted id={id} base={base} x={o.x} y={o.y} size={o.size} bold={o.bold} anchor={o.anchor} fill={o.fill} slice={o.slice}
       ov={ed?.textos[id]} ed={ed?.ativo} onEditar={ed?.onEditar} onMenu={ed?.onMenu}
       editando={ed?.editandoId === id} onStartEdit={ed?.onStartEdit} onTerminarEditar={ed?.onTerminarEditar}
-      onDragStart={ed?.onDragStart} selecionadoId={ed?.selecionadoId} onSelect={(selId) => { ed?.onSelect?.(selId); onSelecObjeto?.(selId); }} onTextoPatch={ed?.onTextoPatch} />
+      onDragStart={ed?.onDragStart} selecionadoId={ed?.selecionadoId} onSelect={(selId) => { ed?.onSelect?.(selId); onSelecObjeto?.(selId); }} onTextoPatch={ed?.onTextoPatch}
+      estatico={estatico} />
   );
   const x0 = W - CARW; // 1117
   const padX = 10;
@@ -3884,10 +3911,10 @@ function CarimboA3(props: {
           const y = Y_DADOS + campoStart + i * gap;
           return (
             <g key={k}>
-              {/* rótulo E valor editáveis por duplo clique (o valor reflete os dados; editar aqui é
-                  um ajuste manual do texto da planta, guardado como override) */}
-              {T(`rotulo.${i}`, k, { x: lx + 12, y, size: fs(9), bold: true, fill: '#1f2937' })}
-              {T(`dado.${i}`, v, { x: lx + 148, y, size: fs(10), bold: true, fill: '#000', slice: 40 })}
+              {/* rótulo E valor editáveis por clique único (o valor reflete os dados; editar aqui é
+                  um ajuste manual do texto da planta, guardado como override) e não arrastáveis */}
+              {T(`rotulo.${i}`, k, { x: lx + 12, y, size: fs(9), bold: true, fill: '#1f2937' }, true)}
+              {T(`dado.${i}`, v, { x: lx + 148, y, size: fs(10), bold: true, fill: '#000', slice: 40 }, true)}
             </g>
           );
         })}

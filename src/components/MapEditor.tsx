@@ -42,10 +42,14 @@ interface Props {
   onBoxSelectObj?: (ids: string[]) => void;
   onAdotarVertice?: (lat: number, lon: number) => void;
   onDblClick?: (lat: number, lon: number) => void;
-  outrasGlebas?: ([number, number][] | { id?: string; nome?: string; pts: [number, number][]; tipoGleba?: 'principal' | 'auxiliar'; visivel?: boolean })[];
+  outrasGlebas?: ([number, number][] | { id?: string; nome?: string; pts: [number, number][]; tipoGleba?: 'principal' | 'auxiliar'; visivel?: boolean; corContorno?: string; corPreenchimento?: string })[];
   onAbrirGestaoGleba?: (id?: string) => void;
   onCliqueUnicoGleba?: (id: string, x: number, y: number) => void;
   glebaAtivaId?: string;
+  glebaCorContorno?: string;
+  glebaCorPreenchimento?: string;
+  glebaVisivel?: boolean;
+  glebaTipoGleba?: 'principal' | 'auxiliar';
   objetos?: ObjetoDesenho[];
   desenhoAtual?: [number, number][];
   rotulos?: RotuloMapa[];
@@ -1329,6 +1333,7 @@ function TrimExtendController({
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [], onAbrirGestaoGleba, onCliqueUnicoGleba, glebaAtivaId,
+    glebaCorContorno, glebaCorPreenchimento, glebaVisivel = true, glebaTipoGleba,
     exibirLimitesFusoUTM = false, onToggleLimitesFusoUTM,
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, centroPadrao = null, zoomPadrao = 13, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
@@ -1788,7 +1793,21 @@ export default function MapEditor(props: Props) {
         anel.length >= 3 ? (
           <Polygon
             positions={anel}
-            pathOptions={{ color: estilosCamadas.divisas?.cor ?? '#facc15', weight: estilosCamadas.divisas?.espessura ?? 2, fillColor: estilosCamadas.divisas?.cor ?? '#facc15', fillOpacity: 0.12 }}
+            pathOptions={{
+              color: glebaVisivel === false
+                ? '#94a3b8'
+                : glebaCorContorno
+                  ? glebaCorContorno
+                  : (glebaTipoGleba === 'auxiliar' ? '#d97706' : (estilosCamadas.divisas?.cor ?? '#facc15')),
+              weight: glebaVisivel === false ? 1.5 : (estilosCamadas.divisas?.espessura ?? 2),
+              fillColor: glebaVisivel === false
+                ? '#cbd5e1'
+                : glebaCorPreenchimento
+                  ? glebaCorPreenchimento
+                  : (glebaTipoGleba === 'auxiliar' ? '#f59e0b' : (estilosCamadas.divisas?.cor ?? '#facc15')),
+              fillOpacity: glebaVisivel === false ? 0.05 : 0.12,
+              dashArray: glebaVisivel === false ? '4 4' : (glebaTipoGleba === 'auxiliar' ? '4 3' : undefined)
+            }}
             eventHandlers={{
               click: (e) => {
                 if (modo !== 'navegar') return;

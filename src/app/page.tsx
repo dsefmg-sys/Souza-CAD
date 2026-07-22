@@ -2897,7 +2897,7 @@ export default function EditorPage() {
     return null;
   }
 
-  async function concluirImportacao(gerarPoligono: boolean, zonaEscolhida: number | undefined, selecao?: ImportSelecao) {
+  async function concluirImportacao(gerarPoligono: boolean, zonaEscolhida: number | undefined, selecao?: ImportSelecao, tituloServico?: string) {
     if (!previewData) return;
     const { vs: vs0, numGlebas, municipio, z: z0, novoImovel, contM, contP, prefixo } = previewData;
 
@@ -3036,7 +3036,7 @@ export default function EditorPage() {
         matricula: novoImovel.matricula || '',
         cns: '',
         codigoImovelIncra: novoImovel.codigoImovelIncra || '',
-        naturezaServico: pad.naturezaServico || 'Georreferenciamento',
+        naturezaServico: tituloServico || pad.naturezaServico || 'GEORREFERENCIAMENTO DE IMÓVEIS RURAIS',
         situacao: 'Imóvel Registrado',
         naturezaArea: 'Particular',
         tipoImovel: pad.tipoImovel,
@@ -3045,6 +3045,7 @@ export default function EditorPage() {
         perimetroSigef: undefined,
       };
       setImovel(imovelLimpo);
+      setPlantaConfig((c) => ({ ...c, titulo: tituloServico || 'GEORREFERENCIAMENTO DE IMÓVEIS RURAIS' }));
       
       const auto = gerarTituloAutomatico(imovelLimpo);
       setNomeProjeto(auto || importPendingFile?.name.replace(/\.[^.]+$/, '') || '');
@@ -3058,7 +3059,11 @@ export default function EditorPage() {
         proprietario: novoImovel.proprietario || imovel.proprietario,
         codigoImovelIncra: novoImovel.codigoImovelIncra || imovel.codigoImovelIncra,
         matricula: novoImovel.matricula || imovel.matricula,
+        naturezaServico: tituloServico || imovel.naturezaServico,
       });
+      if (tituloServico) {
+        setPlantaConfig((c) => ({ ...c, titulo: tituloServico }));
+      }
     }
 
     setZona(z);
@@ -9123,6 +9128,10 @@ export default function EditorPage() {
                     }))}
                     onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
                     glebaAtivaId={glebaAtivaId}
+                    glebaCorContorno={glebaAtivaObj?.corContorno}
+                    glebaCorPreenchimento={glebaAtivaObj?.corPreenchimento}
+                    glebaVisivel={glebaAtivaObj?.visivel}
+                    glebaTipoGleba={glebaAtivaObj?.tipoGleba}
                     onAbrirGestaoGleba={(id) => {
                       if (id) trocarGleba(id);
                       setAba('glebas');
@@ -9521,6 +9530,8 @@ export default function EditorPage() {
                       glebaCorContorno={glebaAtivaObj?.corContorno}
                       glebaCorPreenchimento={glebaAtivaObj?.corPreenchimento}
                       glebaVisivel={glebaAtivaObj?.visivel}
+                      glebaProprietario={glebaAtivaObj?.proprietario}
+                      glebaMatricula={glebaAtivaObj?.matricula}
                       outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({
                         id: g.id,
                         nome: g.denominacao,
@@ -9531,9 +9542,20 @@ export default function EditorPage() {
                         tipoGleba: g.tipoGleba,
                         visivel: g.visivel,
                         corContorno: g.corContorno,
-                        corPreenchimento: g.corPreenchimento
+                        corPreenchimento: g.corPreenchimento,
+                        proprietario: g.proprietario,
+                        matricula: g.matricula
                       }))}
                       onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
+                      onCliqueSeçaoCoordenadas={(id) => {
+                        if (id === 'coord.projecao' || id === 'coord.diagrama' || id === 'coord.diagramaTitulo') {
+                          setAba('localizacao');
+                          setPainelAberto(true);
+                        } else if (id === 'coord.valores') {
+                          setAba('vertices');
+                          setPainelAberto(true);
+                        }
+                      }}
                       glebaAtivaId={glebaAtivaId}
                       onAbrirGestaoGleba={(id) => {
                         if (id) trocarGleba(id);
@@ -9544,8 +9566,36 @@ export default function EditorPage() {
                       editavel={editarPlanta && !telaEstreita} modo={modo} objetoSelId={objetoSelId} desenhoAtual={desenhoBuffer}
                       mostrarRotulos={mostrarRotulos}
                       selMulti={selMulti} objSelMulti={objSelMulti} onBoxSelect={adicionarMulti} onBoxSelectObj={adicionarMultiObj} onToggleMulti={alternarMulti}
-                      onCliquePlanta={onCliqueDesenho} onSelecObjeto={(id) => { setObjetoSelId(id); if (!id?.startsWith('planta:poligono_sigef')) setObjPersonalizarId(id); }} onMoverPontoObjeto={onMoverPontoObjeto} onMoverObjeto={onMoverObjeto} onDblClickVertice={(v, x, y) => setPainelElem({ tipo: 'vertice', vertice: v, x, y })} onDblClickDivisa={(v, idx, x, y) => setPainelElem({ tipo: 'divisa', vertice: v, verticeIdx: idx, x, y })} onAntesEditar={snap}
-                      onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
+                      onCliquePlanta={onCliqueDesenho}
+                      onSelecObjeto={(id) => {
+                        if (id === null || objetoSelId === id) {
+                          setObjetoSelId(null);
+                          setObjPersonalizarId(null);
+                        } else {
+                          setObjetoSelId(id);
+                          if (!id?.startsWith('planta:poligono_sigef')) {
+                            setObjPersonalizarId(id);
+                          }
+                        }
+                      }}
+                      onMoverPontoObjeto={onMoverPontoObjeto}
+                      onMoverObjeto={onMoverObjeto}
+                      onDblClickVertice={(v, x, y) => {
+                        setPainelElem((prev) => (prev && prev.tipo === 'vertice' && prev.vertice?.id === v.id ? null : { tipo: 'vertice', vertice: v, x, y }));
+                      }}
+                      onDblClickDivisa={(v, idx, x, y) => {
+                        setPainelElem((prev) => (prev && prev.tipo === 'divisa' && prev.vertice?.id === v.id && prev.verticeIdx === idx ? null : { tipo: 'divisa', vertice: v, verticeIdx: idx, x, y }));
+                      }}
+                      onAntesEditar={snap}
+                      onDblClickObjeto={(id) => {
+                        if (objetoSelId === id) {
+                          setObjetoSelId(null);
+                          setObjPersonalizarId(null);
+                        } else {
+                          setObjetoSelId(id);
+                          setObjPersonalizarId(id);
+                        }
+                      }}
                       onMoverFolha={moverFolhaPlanta} onTextoMover={moverTextoPlanta} folhaTravada={folhaTravada} onToggleTravaFolha={() => { const nova = !folhaTravada; setFolhaTravada(nova); if (!nova) setModo('navegar'); }} onTextoStartEdit={() => setModo('texto')} onTextoPatch={patchTextoPlanta}
                       onContextMenuVazio={() => {
                         if (modo !== 'navegar') {
@@ -10210,6 +10260,9 @@ export default function EditorPage() {
                 onNovoImovel={novoImovel}
                 onTrocarImovelAtivo={trocarImovelAtivo}
                 onVincularGlebaImovel={vincularGlebaImovel}
+                onAtualizarGleba={(id, campos) => {
+                  setGlebas((gs) => gs.map((g) => (g.id === id ? { ...g, ...campos } : g)));
+                }}
               />
             )}
 
@@ -12402,7 +12455,7 @@ function Campo({ label, value, onChange, placeholder, list, aviso, importante }:
     </div>
   );
 }
-function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios, onIa, projetoId, extrairDocumento, glebas, glebaAtivaId, onTrocarGleba, imoveis, imovelAtivoId, onNovoImovel, onTrocarImovelAtivo, onVincularGlebaImovel }: {
+function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNome, zona, hemisferio, onZona, onHemisferio, sugProp, onSalvarProp, sugCartorios, onIa, projetoId, extrairDocumento, glebas, glebaAtivaId, onTrocarGleba, imoveis, imovelAtivoId, onNovoImovel, onTrocarImovelAtivo, onVincularGlebaImovel, onAtualizarGleba }: {
   aba?: Aba;
   imovel: ImovelData; onChange: (i: ImovelData) => void; onMunicipio: (s: string) => void; onLocal: (s: string) => void;
   nome: string; onNome: (v: string) => void;
@@ -12419,8 +12472,10 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
   onNovoImovel?: () => void;
   onTrocarImovelAtivo?: (id: string) => void;
   onVincularGlebaImovel?: (glebaId: string, imovelId: string) => void;
+  onAtualizarGleba?: (id: string, campos: Partial<Gleba>) => void;
 }) {
   const set = (k: keyof ImovelData, v: string) => onChange({ ...imovel, [k]: v });
+  const glebaAtiva = (glebas || []).find((g) => g.id === glebaAtivaId);
   function setProprietario(v: string) {
     const m = sugProp.find((p) => p.nome === v);
     onChange(m ? { ...imovel, proprietario: v, cpfProprietario: m.cpf, tipoPessoa: m.tipoPessoa } : { ...imovel, proprietario: v });
@@ -12724,6 +12779,123 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
           </div>
         )}
       </div>
+
+      {/* Seção de Dados Cadastrais da Gleba Selecionada */}
+      {glebaAtiva && (
+        <div className="border border-emerald-500/30 rounded-xl p-3 bg-emerald-500/5 space-y-3 mt-2">
+          <div className="flex items-center justify-between">
+            <span className="font-black text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+              <Waypoints className="size-4 text-emerald-600 dark:text-emerald-400" /> Dados Específicos da Gleba/Lote ({glebaAtiva.denominacao || 'Sem nome'})
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              type="button"
+              onClick={() => {
+                onAtualizarGleba?.(glebaAtiva.id, {
+                  proprietario: imovel.proprietario,
+                  cpfProprietario: imovel.cpfProprietario,
+                  conjugeProprietario: imovel.conjugeProprietario,
+                  cpfConjugeProprietario: imovel.cpfConjugeProprietario,
+                  matricula: imovel.matricula,
+                  cns: imovel.cns,
+                  codigoImovelIncra: imovel.codigoImovelIncra,
+                  municipio: imovel.municipio
+                });
+              }}
+              className="h-7 text-[10px] font-bold gap-1 cursor-pointer bg-white dark:bg-zinc-900 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-zinc-800"
+            >
+              Herdar Dados do Imóvel
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Se preenchidos, estes campos substituem os dados gerais do imóvel para esta gleba/lote na geração de memoriais, tabelas e planilhas.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">PROPRIETÁRIO DA GLEBA</label>
+              <input
+                type="text"
+                value={glebaAtiva.proprietario || ''}
+                onChange={(e) => onAtualizarGleba?.(glebaAtiva.id, { proprietario: e.target.value })}
+                placeholder={imovel.proprietario ? `Herdado: ${imovel.proprietario}` : 'Sem proprietário geral'}
+                className="flex h-8 w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-background px-3 py-1 text-xs shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:border-indigo-500 font-bold"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">CPF/CNPJ DO PROPRIETÁRIO</label>
+              <input
+                type="text"
+                value={glebaAtiva.cpfProprietario || ''}
+                onChange={(e) => onAtualizarGleba?.(glebaAtiva.id, { cpfProprietario: e.target.value })}
+                placeholder={imovel.cpfProprietario ? `Herdado: ${imovel.cpfProprietario}` : 'Sem CPF/CNPJ geral'}
+                className="flex h-8 w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-background px-3 py-1 text-xs shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:border-indigo-500 font-bold"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">CÔNJUGE DO PROPRIETÁRIO</label>
+              <input
+                type="text"
+                value={glebaAtiva.conjugeProprietario || ''}
+                onChange={(e) => onAtualizarGleba?.(glebaAtiva.id, { conjugeProprietario: e.target.value })}
+                placeholder={imovel.conjugeProprietario ? `Herdado: ${imovel.conjugeProprietario}` : 'Sem cônjuge geral'}
+                className="flex h-8 w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-background px-3 py-1 text-xs shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:border-indigo-500 font-bold"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">CPF DO CÔNJUGE</label>
+              <input
+                type="text"
+                value={glebaAtiva.cpfConjugeProprietario || ''}
+                onChange={(e) => onAtualizarGleba?.(glebaAtiva.id, { cpfConjugeProprietario: e.target.value })}
+                placeholder={imovel.cpfConjugeProprietario ? `Herdado: ${imovel.cpfConjugeProprietario}` : 'Sem CPF geral'}
+                className="flex h-8 w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-background px-3 py-1 text-xs shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:border-indigo-500 font-bold"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">MATRÍCULA DA GLEBA</label>
+              <input
+                type="text"
+                value={glebaAtiva.matricula || ''}
+                onChange={(e) => onAtualizarGleba?.(glebaAtiva.id, { matricula: e.target.value })}
+                placeholder={imovel.matricula ? `Herdado: ${imovel.matricula}` : 'Sem matrícula geral'}
+                className="flex h-8 w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-background px-3 py-1 text-xs shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:border-indigo-500 font-bold"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">CÓDIGO CNS / CARTÓRIO</label>
+              <input
+                type="text"
+                value={glebaAtiva.cns || ''}
+                onChange={(e) => onAtualizarGleba?.(glebaAtiva.id, { cns: e.target.value })}
+                placeholder={imovel.cns ? `Herdado: ${imovel.cns}` : 'Sem CNS geral'}
+                className="flex h-8 w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-background px-3 py-1 text-xs shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:border-indigo-500 font-bold"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">CÓDIGO INCRA (SNCR)</label>
+              <input
+                type="text"
+                value={glebaAtiva.codigoImovelIncra || ''}
+                onChange={(e) => onAtualizarGleba?.(glebaAtiva.id, { codigoImovelIncra: e.target.value })}
+                placeholder={imovel.codigoImovelIncra ? `Herdado: ${imovel.codigoImovelIncra}` : 'Sem INCRA geral'}
+                className="flex h-8 w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-background px-3 py-1 text-xs shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:border-indigo-500 font-bold"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground block mb-0.5">MUNICÍPIO DA GLEBA</label>
+              <input
+                type="text"
+                value={glebaAtiva.municipio || ''}
+                onChange={(e) => onAtualizarGleba?.(glebaAtiva.id, { municipio: e.target.value })}
+                placeholder={imovel.municipio ? `Herdado: ${imovel.municipio}` : 'Sem município geral'}
+                className="flex h-8 w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-background px-3 py-1 text-xs shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus:border-indigo-500 font-bold"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Seletor Deslizante Rural / Urbano & Leitura com IA */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

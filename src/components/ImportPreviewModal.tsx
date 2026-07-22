@@ -55,12 +55,13 @@ interface Props {
   zona: number;
   hemisferio: 'N' | 'S';
   fusosPermitidos?: number[];
-  onConfirm: (gerarPoligono: boolean, zona: number, selecao: SelecaoImport) => void;
+  onConfirm: (gerarPoligono: boolean, zona: number, selecao: SelecaoImport, tituloServico: string) => void;
 }
 
 export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, hemisferio, fusosPermitidos, onConfirm }: Props) {
   const n = pontos.length;
   const [zonaSel, setZonaSel] = useState(zona);
+  const [tituloServico, setTituloServico] = useState('GEORREFERENCIAMENTO DE IMÓVEIS RURAIS');
   const [ordem, setOrdem] = useState<number[]>([]);
   const [importar, setImportar] = useState<boolean[]>([]);
   const [noPoligono, setNoPoligono] = useState<boolean[]>([]);
@@ -83,6 +84,7 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
     setDestaque(null);
     setSatRetryKey(0);
     satAutoRetryFeito.current = false;
+    setTituloServico('GEORREFERENCIAMENTO DE IMÓVEIS RURAIS');
   }, [open, zona, n]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // converte UTM -> lat/lon com o fuso ESCOLHIDO (recalcula ao trocar o fuso)
@@ -135,8 +137,8 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
           </p>
         </DialogHeader>
 
-        {/* controle de fuso */}
-        <div className="flex flex-wrap items-center gap-3 py-2 text-sm">
+        {/* controle de fuso e serviço */}
+        <div className="flex flex-wrap items-center gap-3 py-2 text-sm border-b pb-3">
           <span className="font-semibold">Fuso UTM:</span>
           <div className="flex gap-1">
             {fusos.map((f) => (
@@ -144,8 +146,31 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
             ))}
           </div>
           {foraDaFaixa
-            ? <span className="flex items-center gap-1 text-xs font-semibold text-amber-500"><AlertTriangle className="size-4" /> O imóvel caiu fora da região — provavelmente o fuso está errado.</span>
+            ? <span className="flex items-center gap-1 text-xs font-semibold text-amber-500"><AlertTriangle className="size-4" /> O imóvel caiu fora da região — fuso possivelmente errado.</span>
             : <span className="text-xs text-muted-foreground">Confira no satélite se bate com o local real.</span>}
+
+          <div className="h-4 w-px bg-border mx-1" />
+
+          <div className="flex items-center gap-2 flex-1 min-w-[280px]">
+            <span className="font-semibold shrink-0">Serviço/Título:</span>
+            <input
+              type="text"
+              list="sugestoes-servico"
+              value={tituloServico}
+              onChange={(e) => setTituloServico(e.target.value.toUpperCase())}
+              placeholder="Digite ou selecione o serviço..."
+              className="flex-1 rounded-md border border-slate-200 dark:border-zinc-800 bg-background px-3 py-1.5 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-bold uppercase"
+            />
+            <datalist id="sugestoes-servico">
+              <option value="GEORREFERENCIAMENTO DE IMÓVEIS RURAIS" />
+              <option value="LEVANTAMENTO PLANIMÉTRICO GEORREFERENCIADO" />
+              <option value="LEVANTAMENTO PLANIALTIMÉTRICO CADASTRAL" />
+              <option value="CERTIFICAÇÃO DE IMÓVEL RURAL (SIGEF)" />
+              <option value="DESMEMBRAMENTO DE IMÓVEL RURAL" />
+              <option value="REMEMBRAMENTO DE IMÓVEL RURAL" />
+              <option value="RETIFICAÇÃO DE ÁREA E PERÍMETRO" />
+            </datalist>
+          </div>
           <span className="ml-auto text-xs text-muted-foreground">{qtdImportar}/{n} a importar · {qtdPoligono} no polígono</span>
         </div>
 
@@ -379,10 +404,10 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
         <footer className="flex flex-col items-center justify-between gap-3 border-t pt-3 sm:flex-row">
           <span className="text-[10px] text-muted-foreground">ESC para cancelar</span>
           <div className="flex w-full items-stretch gap-2 sm:w-auto sm:items-center">
-            <Button type="button" variant="outline" className="font-semibold" onClick={() => { onConfirm(false, zonaSel, { ordem, importar, noPoligono, nomes }); onOpenChange(false); }}>
+            <Button type="button" variant="outline" className="font-semibold" onClick={() => { onConfirm(false, zonaSel, { ordem, importar, noPoligono, nomes }, tituloServico); onOpenChange(false); }}>
               Importar só vértices (sem perímetro)
             </Button>
-            <Button type="button" className="gap-1.5 bg-emerald-600 font-bold text-white hover:bg-emerald-700" onClick={() => { onConfirm(true, zonaSel, { ordem, importar, noPoligono, nomes }); onOpenChange(false); }}>
+            <Button type="button" className="gap-1.5 bg-emerald-600 font-bold text-white hover:bg-emerald-700" onClick={() => { onConfirm(true, zonaSel, { ordem, importar, noPoligono, nomes }, tituloServico); onOpenChange(false); }}>
               <Check className="size-4" /> Gerar perímetro automático
             </Button>
           </div>
