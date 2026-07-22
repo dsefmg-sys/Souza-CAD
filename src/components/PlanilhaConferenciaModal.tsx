@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { FileSpreadsheet, Download, Pencil, AlertTriangle } from 'lucide-react';
+import { confirmar } from '@/lib/ui/dialogos';
 import type { ImovelData, TecnicoData, Confrontante, ResultadoCalculo, ImovelCad } from '@/lib/topo/types';
 import { linhasConferencia, type LinhaConferencia } from '@/lib/export/sigefOds';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
@@ -35,6 +36,22 @@ export default function PlanilhaConferenciaModal({
   onBaixar,
   imoveisCadastrados
 }: Props) {
+  const handleOpenChange = async (val: boolean) => {
+    if (!val) {
+      if (isManualEdit) {
+        const ok = await confirmar({
+          titulo: 'Descartar Alterações',
+          mensagem: 'Você realizou edições manuais na planilha. Deseja realmente fechar e perder essas alterações?',
+          okLabel: 'Descartar e fechar',
+          perigo: true,
+        });
+        if (!ok) return;
+      }
+      onOpenChange(false);
+    } else {
+      onOpenChange(true);
+    }
+  };
   const [linhasLocal, setLinhasLocal] = useState<LinhaConferencia[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isManualEdit, setIsManualEdit] = useState(false);

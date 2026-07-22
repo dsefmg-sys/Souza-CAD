@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ListOrdered, Check, Sparkles } from 'lucide-react';
+import { confirmar } from '@/lib/ui/dialogos';
 import type { Vertex, TecnicoData, Confrontante } from '@/lib/topo/types';
 import { MapContainer, TileLayer, Polyline, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -65,6 +66,30 @@ export default function RenomearLoteModal({
   confrontantes = [],
   confrontantePorLado = {}
 }: Props) {
+  const handleOpenChange = async (val: boolean) => {
+    if (!val) {
+      const alterado = lista.some(item => {
+        const original = vertices.find(v => v.id === item.id);
+        if (!original) return true;
+        if (item.tipo !== original.tipo) return true;
+        if (item.codigoSigef !== (original.codigoSigef || '')) return true;
+        return false;
+      });
+
+      if (alterado) {
+        const ok = await confirmar({
+          titulo: 'Descartar Alterações',
+          mensagem: 'Você realizou edições ou preenchimentos nesta lista. Deseja realmente fechar e perder essas alterações?',
+          okLabel: 'Descartar e fechar',
+          perigo: true,
+        });
+        if (!ok) return;
+      }
+      onOpenChange(false);
+    } else {
+      onOpenChange(true);
+    }
+  };
   const [prefixo, setPrefixo] = useState('');
   const [startM, setStartM] = useState(1);
   const [startP, setStartP] = useState(1);
@@ -166,8 +191,8 @@ export default function RenomearLoteModal({
     : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl lg:max-w-6xl w-[94vw] max-h-[92vh] flex flex-col p-5 rounded-2xl bg-background border border-border shadow-2xl overflow-hidden">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-5xl lg:max-w-6xl w-[94vw] max-h-[92vh] flex flex-col p-5 rounded-2xl bg-background border border-border shadow-2xl overflow-hidden" onEscapeKeyDown={(e) => e.preventDefault()} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/60">
           <DialogTitle className="text-base font-extrabold uppercase tracking-wide flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
             <ListOrdered className="size-5 text-indigo-500" />
@@ -405,7 +430,7 @@ export default function RenomearLoteModal({
         <div className="flex justify-between items-center pt-3 border-t border-border/60 bg-background mt-1">
           <span className="text-[10px] text-muted-foreground font-semibold">Preencha e salve para atualizar as peças técnicas.</span>
           <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} className="h-8 px-4 text-xs font-bold">
+            <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)} className="h-8 px-4 text-xs font-bold">
               Cancelar
             </Button>
             <Button type="button" onClick={handleSalvar} className="h-8 px-4 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1">
