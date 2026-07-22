@@ -117,24 +117,9 @@ interface Props {
   }) => Promise<void>;
 }
 
-const CAMPOS: { k: keyof PessoaQualificada; label: string; span: string; importante?: boolean }[] = [
-  { k: 'nome', label: 'Nome', span: 'col-span-6 sm:col-span-4', importante: true },
-  { k: 'rg', label: 'RG', span: 'col-span-6 sm:col-span-3 md:col-span-2' },
-  { k: 'cpf', label: 'CPF/CNPJ', span: 'col-span-6 sm:col-span-3 md:col-span-2', importante: true },
-  { k: 'nacionalidade', label: 'Nacionalidade', span: 'col-span-6 sm:col-span-2' },
-  { k: 'naturalidade', label: 'Naturalidade', span: 'col-span-6 sm:col-span-2' },
-  { k: 'dataNascimento', label: 'Data Nasc.', span: 'col-span-6 sm:col-span-2' },
-  { k: 'profissao', label: 'Profissão', span: 'col-span-6 sm:col-span-3' },
-  { k: 'estadoCivil', label: 'Estado Civil', span: 'col-span-6 sm:col-span-3', importante: true },
-  { k: 'conjugeNome', label: 'Cônjuge (se houver)', span: 'col-span-6 sm:col-span-4' },
-  { k: 'conjugeCpf', label: 'CPF Cônjuge', span: 'col-span-6 sm:col-span-2' },
-  { k: 'filiacao', label: 'Filiação (mãe / pai)', span: 'col-span-6' },
-  { k: 'endereco', label: 'Residente e domiciliado(a) em (Endereço)', span: 'col-span-6', importante: true },
-  { k: 'cidadeUf', label: 'Cidade/UF', span: 'col-span-6 sm:col-span-4', importante: true },
-  { k: 'cep', label: 'CEP', span: 'col-span-6 sm:col-span-2' },
-];
 
-const PLACEHOLDERS_QUALIFICACAO: Record<keyof PessoaQualificada, string> = {
+
+const PLACEHOLDERS_QUALIFICACAO = {
   nome: 'ex.: João da Silva',
   rg: 'ex.: MG-12.345.678',
   cpf: '000.000.000-00',
@@ -160,79 +145,332 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
     const m = sugProp.find((s) => s.nome.toUpperCase() === vUpper);
     onChange(m ? { ...pessoa, ...m, nome: vUpper } as PessoaQualificada : { ...pessoa, nome: vUpper });
   }
+
+  const update = (key: keyof PessoaQualificada, val: string) => {
+    const vUpper = (key !== 'dataNascimento' && key !== 'estadoCivil') ? val.toUpperCase() : val;
+    const next = { ...pessoa, [key]: vUpper };
+    
+    if (key === 'rgNumero' || key === 'rgOrgao' || key === 'rgUf') {
+      const num = key === 'rgNumero' ? vUpper : (pessoa.rgNumero ?? '');
+      const org = key === 'rgOrgao' ? vUpper : (pessoa.rgOrgao ?? '');
+      const uf = key === 'rgUf' ? vUpper : (pessoa.rgUf ?? '');
+      next.rg = num ? `${num} ${org}/${uf}`.trim().replace(/\/$/, '') : '';
+    }
+    
+    if (key === 'conjugeRgNumero' || key === 'conjugeRgOrgao' || key === 'conjugeRgUf') {
+      const num = key === 'conjugeRgNumero' ? vUpper : (pessoa.conjugeRgNumero ?? '');
+      const org = key === 'conjugeRgOrgao' ? vUpper : (pessoa.conjugeRgOrgao ?? '');
+      const uf = key === 'conjugeRgUf' ? vUpper : (pessoa.conjugeRgUf ?? '');
+      next.conjugeRg = num ? `${num} ${org}/${uf}`.trim().replace(/\/$/, '') : '';
+    }
+    
+    if (key === 'logradouro' || key === 'bairro') {
+      const log = key === 'logradouro' ? vUpper : (pessoa.logradouro ?? '');
+      const bai = key === 'bairro' ? vUpper : (pessoa.bairro ?? '');
+      next.endereco = log ? `${log}, BAIRRO ${bai}`.trim().replace(/, BAIRRO $/, '') : '';
+    }
+    
+    if (key === 'cidade' || key === 'uf') {
+      const cid = key === 'cidade' ? vUpper : (pessoa.cidade ?? '');
+      const uf = key === 'uf' ? vUpper : (pessoa.uf ?? '');
+      next.cidadeUf = cid ? `${cid} - ${uf}`.trim().replace(/ - $/, '') : '';
+    }
+
+    onChange(next);
+  };
+
+  const handleBlurDoc = async (key: 'cpf' | 'conjugeCpf', val: string) => {
+    if (val) {
+      const clean = val.replace(/\D/g, '');
+      if (clean.length > 0 && !cpfOuCnpjValido(clean)) {
+        await avisar({
+          titulo: 'Documento Inválido',
+          mensagem: `O CPF/CNPJ informado ("${val}") é inválido. Por favor, digite um CPF ou CNPJ correto.`
+        });
+        update(key, '');
+      }
+    }
+  };
+
   return (
     <div className="space-y-1.5 border rounded-lg bg-muted/10 p-2.5">
       {titulo && <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b pb-0.5 mb-1.5">{titulo}</h3>}
       <div className="grid grid-cols-6 gap-x-2 gap-y-1.5">
-        {CAMPOS.map((c) => {
-          const isDoc = /cpf/i.test(c.k);
-          const val = pessoa[c.k] || '';
-          const formatado = isDoc ? formatarCpfCnpj(val) : val;
+        
+        {/* Nome */}
+        <div className="col-span-6 sm:col-span-4 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 leading-none">
+            Nome <span className="text-red-500 font-bold">*</span>
+          </Label>
+          <Input 
+            value={pessoa.nome || ''} 
+            onChange={(e) => setNome(e.target.value)} 
+            placeholder="ex.: JOÃO DA SILVA" 
+            className="h-7 text-[11px]" 
+          />
+        </div>
 
-          const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-            const raw = e.target.value;
-            let val = isDoc ? formatarCpfCnpj(raw) : raw;
-            if (c.k !== 'dataNascimento' && c.k !== 'estadoCivil') {
-              val = val.toUpperCase();
-            }
-            onChange({ ...pessoa, [c.k]: val });
-          };
+        {/* CPF/CNPJ */}
+        <div className="col-span-6 sm:col-span-2 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 leading-none">
+            CPF/CNPJ <span className="text-red-500 font-bold">*</span>
+          </Label>
+          <Input 
+            value={formatarCpfCnpj(pessoa.cpf || '')} 
+            onChange={(e) => update('cpf', formatarCpfCnpj(e.target.value))} 
+            onBlur={() => handleBlurDoc('cpf', pessoa.cpf || '')}
+            placeholder="000.000.000-00" 
+            className="h-7 text-[11px] font-mono w-full" 
+          />
+        </div>
 
-          const handleBlur = async () => {
-            if (isDoc && val) {
-              const clean = val.replace(/\D/g, '');
-              if (clean.length > 0 && !cpfOuCnpjValido(clean)) {
-                await avisar({
-                  titulo: 'Documento Inválido',
-                  mensagem: `O ${c.label} informado ("${val}") é inválido. Por favor, digite um CPF ou CNPJ correto.`
-                });
-                onChange({ ...pessoa, [c.k]: '' });
-              }
-            }
-          };
+        {/* Bloco de RG Detalhado (RG Número, Órgão, UF) */}
+        <div className="col-span-3 sm:col-span-2 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold leading-none">RG Número</Label>
+          <Input 
+            value={pessoa.rgNumero ?? (pessoa.rg?.split(' ')[0] || '')} 
+            onChange={(e) => update('rgNumero', e.target.value)} 
+            placeholder="ex.: 12.345.678" 
+            className="h-7 text-[11px]" 
+          />
+        </div>
+        <div className="col-span-1.5 sm:col-span-2 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Órgão Emissor</Label>
+          <Input 
+            value={pessoa.rgOrgao ?? (pessoa.rg?.split(' ')[1]?.split('/')[0] || '')} 
+            onChange={(e) => update('rgOrgao', e.target.value)} 
+            placeholder="SSP" 
+            className="h-7 text-[11px]" 
+          />
+        </div>
+        <div className="col-span-1.5 sm:col-span-2 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold leading-none">UF RG</Label>
+          <Input 
+            value={pessoa.rgUf ?? (pessoa.rg?.split(' ')[1]?.split('/')[1] || '')} 
+            onChange={(e) => update('rgUf', e.target.value)} 
+            placeholder="MG" 
+            maxLength={2}
+            className="h-7 text-[11px]" 
+          />
+        </div>
 
-          return (
-            <div key={c.k} className={`space-y-0.5 ${c.span}`}>
-              <Label className={`text-[10px] font-semibold leading-none ${c.importante ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-muted-foreground'}`}>
-                {c.label}{c.importante && ' *'}
-              </Label>
-              {c.k === 'estadoCivil' ? (
-                <select
-                  value={pessoa.estadoCivil || ''}
-                  onChange={handleChange}
-                  className="h-7 w-full rounded border bg-background px-1.5 text-[11px] font-medium text-foreground focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">Selecione o Estado Civil...</option>
-                  <option value="Solteiro(a)">Solteiro(a)</option>
-                  <option value="Casado(a)">Casado(a)</option>
-                  <option value="Casado(a) - Comunhão Parcial de Bens">Casado(a) - Comunhão Parcial</option>
-                  <option value="Casado(a) - Comunhão Universal de Bens">Casado(a) - Comunhão Universal</option>
-                  <option value="Casado(a) - Separação Total de Bens">Casado(a) - Separação Total</option>
-                  <option value="Casado(a) - Participação Final nos Aquestos">Casado(a) - Participação nos Aquestos</option>
-                  <option value="Divorciado(a)">Divorciado(a)</option>
-                  <option value="Viúvo(a)">Viúvo(a)</option>
-                  <option value="União Estável">União Estável</option>
-                </select>
-              ) : c.k === 'nome' ? (
-                <Input
-                  list="lista-pessoas"
-                  value={pessoa.nome}
-                  placeholder={PLACEHOLDERS_QUALIFICACAO.nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  className="h-7 text-[11px]"
-                />
-              ) : (
-                <Input
-                  value={formatado}
-                  placeholder={PLACEHOLDERS_QUALIFICACAO[c.k] || ''}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  className={`h-7 text-[11px] ${isDoc ? 'w-full font-mono' : ''}`}
-                />
-              )}
+        {/* Nacionalidade e Naturalidade */}
+        <div className="col-span-6 sm:col-span-3 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Nacionalidade</Label>
+          <Input 
+            value={pessoa.nacionalidade || 'Brasileira'} 
+            onChange={(e) => update('nacionalidade', e.target.value)} 
+            placeholder="ex.: BRASILEIRA" 
+            className="h-7 text-[11px]" 
+          />
+        </div>
+        <div className="col-span-6 sm:col-span-3 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Naturalidade</Label>
+          <Input 
+            value={pessoa.naturalidade || ''} 
+            onChange={(e) => update('naturalidade', e.target.value)} 
+            placeholder="ex.: MANHUAÇU - MG" 
+            className="h-7 text-[11px]" 
+          />
+        </div>
+
+        {/* Data Nasc. e Filiação */}
+        <div className="col-span-6 sm:col-span-2 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Data Nasc.</Label>
+          <Input 
+            value={pessoa.dataNascimento || ''} 
+            onChange={(e) => update('dataNascimento', e.target.value)} 
+            placeholder="DD/MM/AAAA" 
+            className="h-7 text-[11px]" 
+          />
+        </div>
+        <div className="col-span-6 sm:col-span-4 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Filiação (mãe / pai)</Label>
+          <Input 
+            value={pessoa.filiacao || ''} 
+            onChange={(e) => update('filiacao', e.target.value)} 
+            placeholder="ex.: MÃE: ANA SILVA / PAI: JOSÉ SILVA" 
+            className="h-7 text-[11px]" 
+          />
+        </div>
+
+        {/* Profissão Destacada em Dourado */}
+        <div className="col-span-6 sm:col-span-3 space-y-0.5">
+          <Label className="text-[10px] text-amber-700 dark:text-amber-400 font-extrabold flex items-center gap-1 leading-none uppercase tracking-wider">
+            ★ Profissão
+          </Label>
+          <Input 
+            value={pessoa.profissao || ''} 
+            onChange={(e) => update('profissao', e.target.value)} 
+            placeholder="ex.: PRODUTOR RURAL (vazio p/ omitir)" 
+            className="h-7 text-[11px] border-amber-500 bg-amber-500/5 focus-visible:ring-amber-500 text-amber-900 dark:text-amber-300 font-bold" 
+          />
+        </div>
+
+        {/* Estado Civil */}
+        <div className="col-span-6 sm:col-span-3 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 leading-none">
+            Estado Civil <span className="text-red-500 font-bold">*</span>
+          </Label>
+          <select 
+            value={pessoa.estadoCivil || ''} 
+            onChange={(e) => update('estadoCivil', e.target.value)} 
+            className="flex w-full rounded-md border border-input bg-background h-7 px-2 py-1 text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="">Selecione...</option>
+            <option value="SOLTEIRO(A)">Solteiro(a)</option>
+            <option value="CASADO(A) - COMUNHÃO PARCIAL DE BENS">Casado(a) - Comunhão Parcial</option>
+            <option value="CASADO(A) - COMUNHÃO UNIVERSAL DE BENS">Casado(a) - Comunhão Universal</option>
+            <option value="CASADO(A) - SEPARAÇÃO TOTAL DE BENS">Casado(a) - Separação Total</option>
+            <option value="DIVORCIADO(A)">Divorciado(a)</option>
+            <option value="VIÚVO(A)">Viúvo(a)</option>
+            <option value="UNIÃO ESTÁVEL">União Estável</option>
+          </select>
+        </div>
+
+        {/* Cônjuge */}
+        {(pessoa.estadoCivil?.startsWith('CASADO') || pessoa.estadoCivil === 'UNIÃO ESTÁVEL') && (
+          <>
+            <div className="col-span-6 sm:col-span-4 space-y-0.5">
+              <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Cônjuge (Nome)</Label>
+              <Input 
+                value={pessoa.conjugeNome || ''} 
+                onChange={(e) => update('conjugeNome', e.target.value)} 
+                placeholder="ex.: MARIA DA SILVA" 
+                className="h-7 text-[11px]" 
+              />
             </div>
-          );
-        })}
+            <div className="col-span-6 sm:col-span-2 space-y-0.5">
+              <Label className="text-[10px] text-muted-foreground font-semibold leading-none">CPF Cônjuge</Label>
+              <Input 
+                value={formatarCpfCnpj(pessoa.conjugeCpf || '')} 
+                onChange={(e) => update('conjugeCpf', formatarCpfCnpj(e.target.value))} 
+                onBlur={() => handleBlurDoc('conjugeCpf', pessoa.conjugeCpf || '')}
+                placeholder="000.000.000-00" 
+                className="h-7 text-[11px] font-mono w-full" 
+              />
+            </div>
+            
+            {/* RG Cônjuge Detalhado */}
+            <div className="col-span-3 sm:col-span-2 space-y-0.5">
+              <Label className="text-[10px] text-muted-foreground font-semibold leading-none">RG Cônjuge Número</Label>
+              <Input 
+                value={pessoa.conjugeRgNumero ?? (pessoa.conjugeRg?.split(' ')[0] || '')} 
+                onChange={(e) => update('conjugeRgNumero', e.target.value)} 
+                placeholder="ex.: 98.765.432" 
+                className="h-7 text-[11px]" 
+              />
+            </div>
+            <div className="col-span-1.5 sm:col-span-2 space-y-0.5">
+              <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Órgão Emissor</Label>
+              <Input 
+                value={pessoa.conjugeRgOrgao ?? (pessoa.conjugeRg?.split(' ')[1]?.split('/')[0] || '')} 
+                onChange={(e) => update('conjugeRgOrgao', e.target.value)} 
+                placeholder="SSP" 
+                className="h-7 text-[11px]" 
+              />
+            </div>
+            <div className="col-span-1.5 sm:col-span-2 space-y-0.5">
+              <Label className="text-[10px] text-muted-foreground font-semibold leading-none">UF RG</Label>
+              <Input 
+                value={pessoa.conjugeRgUf ?? (pessoa.conjugeRg?.split(' ')[1]?.split('/')[1] || '')} 
+                onChange={(e) => update('conjugeRgUf', e.target.value)} 
+                placeholder="MG" 
+                maxLength={2}
+                className="h-7 text-[11px]" 
+              />
+            </div>
+          </>
+        )}
+
+        {/* Endereço Detalhado: Logradouro e Bairro com botões rápidos */}
+        <div className="col-span-6 space-y-1">
+          <Label className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 leading-none">
+            Logradouro <span className="text-red-500 font-bold">*</span>
+          </Label>
+          <Input 
+            value={pessoa.logradouro ?? (pessoa.endereco?.split(', BAIRRO')[0] || '')} 
+            onChange={(e) => update('logradouro', e.target.value)} 
+            placeholder="ex.: RUA DEODATO SOUZA, 120" 
+            className="h-7 text-[11px]" 
+          />
+          <div className="flex gap-1">
+            <button 
+              type="button" 
+              onClick={() => {
+                const current = pessoa.logradouro ?? (pessoa.endereco?.split(', BAIRRO')[0] || '');
+                if (!current.startsWith('RUA ')) update('logradouro', 'RUA ' + current);
+              }}
+              className="px-2 py-0.5 text-[8.5px] font-semibold bg-muted hover:bg-muted/80 text-muted-foreground rounded border"
+            >
+              + RUA
+            </button>
+            <button 
+              type="button" 
+              onClick={() => {
+                const current = pessoa.logradouro ?? (pessoa.endereco?.split(', BAIRRO')[0] || '');
+                if (!current.startsWith('AVENIDA ')) update('logradouro', 'AVENIDA ' + current);
+              }}
+              className="px-2 py-0.5 text-[8.5px] font-semibold bg-muted hover:bg-muted/80 text-muted-foreground rounded border"
+            >
+              + AV.
+            </button>
+          </div>
+        </div>
+
+        <div className="col-span-6 sm:col-span-3 space-y-1">
+          <Label className="text-[10px] text-muted-foreground font-semibold leading-none">Bairro</Label>
+          <Input 
+            value={pessoa.bairro ?? (pessoa.endereco?.split(', BAIRRO ')[1] || '')} 
+            onChange={(e) => update('bairro', e.target.value)} 
+            placeholder="ex.: CENTRO" 
+            className="h-7 text-[11px]" 
+          />
+          <button 
+            type="button" 
+            onClick={() => update('bairro', 'ÁREA RURAL')}
+            className="w-full text-center py-0.5 text-[8.5px] font-semibold bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 rounded border border-sky-500/20"
+          >
+            Fixar "ÁREA RURAL"
+          </button>
+        </div>
+
+        {/* CEP */}
+        <div className="col-span-6 sm:col-span-3 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold leading-none">CEP</Label>
+          <Input 
+            value={pessoa.cep || ''} 
+            onChange={(e) => update('cep', e.target.value)} 
+            placeholder="36900-000" 
+            className="h-7 text-[11px]" 
+          />
+        </div>
+
+        {/* Cidade e UF Separados */}
+        <div className="col-span-6 sm:col-span-4 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 leading-none">
+            Cidade <span className="text-red-500 font-bold">*</span>
+          </Label>
+          <Input 
+            value={pessoa.cidade ?? (pessoa.cidadeUf?.split(' - ')[0] || '')} 
+            onChange={(e) => update('cidade', e.target.value)} 
+            placeholder="ex.: MANHUAÇU" 
+            className="h-7 text-[11px]" 
+          />
+        </div>
+        <div className="col-span-6 sm:col-span-2 space-y-0.5">
+          <Label className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 leading-none">
+            UF <span className="text-red-500 font-bold">*</span>
+          </Label>
+          <Input 
+            value={pessoa.uf ?? (pessoa.cidadeUf?.split(' - ')[1] || '')} 
+            onChange={(e) => update('uf', e.target.value)} 
+            placeholder="ex.: MG" 
+            maxLength={2}
+            className="h-7 text-[11px]" 
+          />
+        </div>
+
       </div>
     </div>
   );

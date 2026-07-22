@@ -21,6 +21,10 @@ export function gerarContratoLoteDocx(
   const vendedorProfissao = imovel.proprietarioProfissao || '___';
   const vendedorEndereco = imovel.proprietarioEndereco || '___';
 
+  const temProf = (p?: string) => !!(p && p.trim() && p !== '___' && p !== '—' && p !== 'DADO AUSENTE');
+  const profVendedorText = temProf(vendedorProfissao) ? `, profissão ${vendedorProfissao}` : '';
+  const profCompradorText = temProf(compradorProfissao) ? `, profissão ${compradorProfissao}` : '';
+
   // Dados Lote
   const loteDenom = lote.denominacao || '___';
   
@@ -88,14 +92,14 @@ export function gerarContratoLoteDocx(
           new Paragraph({
             children: [
               new TextRun({ text: 'VENDEDOR(A): ', bold: true }),
-              new TextRun({ text: `${vendedorNome}, inscrito sob o CPF nº ${vendedorCpf}, estado civil ${vendedorEstadoCivil}, profissão ${vendedorProfissao}, residente e domiciliado em ${vendedorEndereco}.` })
+              new TextRun({ text: `${vendedorNome}, inscrito sob o CPF nº ${vendedorCpf}, estado civil ${vendedorEstadoCivil}${profVendedorText}, residente e domiciliado em ${vendedorEndereco}.` })
             ]
           }),
           new Paragraph({ text: '' }),
           new Paragraph({
             children: [
               new TextRun({ text: 'COMPRADOR(A): ', bold: true }),
-              new TextRun({ text: `${compradorNome}, inscrito sob o CPF nº ${compradorCpf}, RG nº ${compradorRg}, estado civil ${compradorEstadoCivil}, profissão ${compradorProfissao}, residente e domiciliado em ${compradorEndereco}.` })
+              new TextRun({ text: `${compradorNome}, inscrito sob o CPF nº ${compradorCpf}, RG nº ${compradorRg}, estado civil ${compradorEstadoCivil}${profCompradorText}, residente e domiciliado em ${compradorEndereco}.` })
             ]
           }),
           new Paragraph({ text: '' }),

@@ -4793,11 +4793,37 @@ export default function EditorPage() {
     }, 150);
   }
 
+  function validarDadosAusentesPessoa(p: PessoaQualificada, papelLabel: string): string[] {
+    const faltantes: string[] = [];
+    const tem = (v?: string) => !!(v && v.trim() && v !== '—' && v !== 'DADO AUSENTE');
+    
+    if (!p) {
+      faltantes.push(`${papelLabel}: Dados não preenchidos`);
+      return faltantes;
+    }
+    if (!tem(p.nome)) faltantes.push(`${papelLabel}: NOME`);
+    if (!tem(p.cpf)) faltantes.push(`${papelLabel}: CPF/CNPJ`);
+    if (!tem(p.estadoCivil)) faltantes.push(`${papelLabel}: ESTADO CIVIL`);
+    if (!tem(p.logradouro) && !tem(p.endereco)) faltantes.push(`${papelLabel}: ENDEREÇO/LOGRADOURO`);
+    if (!tem(p.cidade) && !tem(p.cidadeUf)) faltantes.push(`${papelLabel}: CIDADE`);
+    if (!tem(p.uf) && !tem(p.cidadeUf)) faltantes.push(`${papelLabel}: UF`);
+    
+    return faltantes;
+  }
+
   async function baixarRequerimentoDireto() {
-    if (!requerente || !requerente.nome) {
+    const ausentesReq = requerente ? validarDadosAusentesPessoa(requerente, 'Requerente') : ['Dados do Requerente ausentes'];
+    const ausentesTrans = (tipoAto === 'venda' || tipoAto === 'doacao') && transmitente
+      ? validarDadosAusentesPessoa(transmitente, 'Transmitente')
+      : [];
+    const todosAusentes = [...ausentesReq, ...ausentesTrans];
+
+    if (todosAusentes.length > 0) {
       const resp = await confirmar({
-        titulo: 'Requerimento com dados incompletos',
-        mensagem: 'Os dados do requerente ainda não foram preenchidos. Deseja abrir o formulário para completá-los agora antes de baixar o documento?',
+        titulo: 'Atenção: Peça com Dados Importantes Faltantes',
+        mensagem: `A peça técnica possui dados cadastrais importantes em branco que podem gerar exigências no cartório:\n\n` +
+                  todosAusentes.map(item => `• ${item}`).join('\n') +
+                  `\n\nDeseja abrir o formulário para completá-los agora ou baixar mesmo assim?`,
         okLabel: 'Abrir Formulário',
         cancelLabel: 'Baixar assim mesmo'
       });
@@ -4964,10 +4990,18 @@ export default function EditorPage() {
     if (!escolheuFormato) return;
     const formatoFolha = escolheuFormato as 'a3' | 'a4';
 
-    if (!requerente || !requerente.nome) {
+    const ausentesReq = requerente ? validarDadosAusentesPessoa(requerente, 'Requerente') : ['Dados do Requerente ausentes'];
+    const ausentesTrans = (tipoAto === 'venda' || tipoAto === 'doacao') && transmitente
+      ? validarDadosAusentesPessoa(transmitente, 'Transmitente')
+      : [];
+    const todosAusentes = [...ausentesReq, ...ausentesTrans];
+
+    if (todosAusentes.length > 0) {
       const resp = await confirmar({
-        titulo: 'Requerimento com dados incompletos',
-        mensagem: 'Os dados do requerente no Requerimento ainda não foram preenchidos. Deseja abrir o formulário para completá-los antes de baixar o pacote de entrega?',
+        titulo: 'Atenção: Peça com Dados Importantes Faltantes',
+        mensagem: `O pacote de entrega possui requerimentos com dados cadastrais importantes em branco que podem gerar exigências no cartório:\n\n` +
+                  todosAusentes.map(item => `• ${item}`).join('\n') +
+                  `\n\nDeseja abrir o formulário para completá-los agora ou baixar mesmo assim?`,
         okLabel: 'Abrir Formulário',
         cancelLabel: 'Baixar assim mesmo'
       });

@@ -140,6 +140,16 @@ export interface PessoaQualificada {
   cep: string;
   papel?: 'requerente' | 'transmitente';
   fracaoIdeal?: string;
+  rgNumero?: string;
+  rgOrgao?: string;
+  rgUf?: string;
+  conjugeRgNumero?: string;
+  conjugeRgOrgao?: string;
+  conjugeRgUf?: string;
+  logradouro?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
 }
 
 export interface ProprietarioCad extends Partial<PessoaQualificada> {

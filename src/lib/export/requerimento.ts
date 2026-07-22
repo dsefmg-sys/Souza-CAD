@@ -138,6 +138,34 @@ function blocoPessoa(p: PessoaQualificada, modo: ModoTratamentoAusente = 'dado_a
   const tem = (v?: string) => !!(v && v.trim() && v !== '—' && v !== 'DADO AUSENTE');
   const out: Paragraph[] = [];
 
+  const formatarRg = (num?: string, org?: string, uf?: string, fallback?: string): string => {
+    if (num && num.trim() && num !== '—' && num !== 'DADO AUSENTE') {
+      let r = num;
+      if (org && org.trim() && org !== '—' && org !== 'DADO AUSENTE') r += ` ${org}`;
+      if (uf && uf.trim() && uf !== '—' && uf !== 'DADO AUSENTE') r += `/${uf}`;
+      return r;
+    }
+    return fallback || (modo === 'dado_ausente' ? 'DADO AUSENTE' : '—');
+  };
+
+  const formatarEndereco = (log?: string, bai?: string, fallback?: string): string => {
+    if (log && log.trim() && log !== '—' && log !== 'DADO AUSENTE') {
+      let r = log;
+      if (bai && bai.trim() && bai !== '—' && bai !== 'DADO AUSENTE') r += `, BAIRRO ${bai}`;
+      return r;
+    }
+    return fallback || (modo === 'dado_ausente' ? 'DADO AUSENTE' : '—');
+  };
+
+  const formatarCidadeUf = (cid?: string, uf?: string, fallback?: string): string => {
+    if (cid && cid.trim() && cid !== '—' && cid !== 'DADO AUSENTE') {
+      let r = cid;
+      if (uf && uf.trim() && uf !== '—' && uf !== 'DADO AUSENTE') r += ` - ${uf}`;
+      return r;
+    }
+    return fallback || (modo === 'dado_ausente' ? 'DADO AUSENTE' : '—');
+  };
+
   if (imovel && imovel.tipoPessoa === 'Espólio' && imovel.proprietario && p.nome === imovel.proprietario) {
     const invNome = imovel.inventarianteNome || 'DADO AUSENTE';
     const invCpf = imovel.inventarianteCpf || 'DADO AUSENTE';
@@ -152,15 +180,17 @@ function blocoPessoa(p: PessoaQualificada, modo: ModoTratamentoAusente = 'dado_a
     if (p.cpf) {
       out.push(campo('CPF do De Cujus:', p.cpf));
     }
-    if (tem(p.endereco) || modo === 'dado_ausente') out.push(campo('Residente e domiciliado em:', p.endereco));
-    if (tem(p.cidadeUf) || modo === 'dado_ausente') out.push(campo('Cidade/UF:', p.cidadeUf));
+    const endVal = formatarEndereco(p.logradouro, p.bairro, p.endereco);
+    if (tem(endVal) || modo === 'dado_ausente') out.push(campo('Residente e domiciliado em:', endVal));
+    const cidVal = formatarCidadeUf(p.cidade, p.uf, p.cidadeUf);
+    if (tem(cidVal) || modo === 'dado_ausente') out.push(campo('Cidade/UF:', cidVal));
     if (tem(p.cep) || modo === 'dado_ausente') out.push(campo('CEP:', p.cep));
     return out;
   }
 
   if (tem(p.nome) || modo === 'dado_ausente') out.push(campo('Nome:', p.nome || 'DADO AUSENTE'));
 
-  const rgVal = p.rg || (modo === 'dado_ausente' ? 'DADO AUSENTE' : '—');
+  const rgVal = formatarRg(p.rgNumero, p.rgOrgao, p.rgUf, p.rg);
   out.push(campo('RG:', rgVal));
 
   const cpfVal = p.cpf || (modo === 'dado_ausente' ? 'DADO AUSENTE' : '—');
@@ -179,8 +209,10 @@ function blocoPessoa(p: PessoaQualificada, modo: ModoTratamentoAusente = 'dado_a
     out.push(campo('Filiação:', p.filiacao));
   }
 
-  const profVal = p.profissao || (modo === 'dado_ausente' ? 'DADO AUSENTE' : '—');
-  out.push(campo('Profissão:', profVal));
+  // OMITIR PROFISSÃO SE NÃO INFORMADA
+  if (tem(p.profissao)) {
+    out.push(campo('Profissão:', p.profissao));
+  }
 
   if (tem(p.estadoCivil) || modo === 'dado_ausente') {
     out.push(campo('Estado Civil:', p.estadoCivil || 'DADO AUSENTE'));
@@ -189,14 +221,16 @@ function blocoPessoa(p: PessoaQualificada, modo: ModoTratamentoAusente = 'dado_a
   if (tem(p.conjugeNome) || tem(p.conjugeCpf) || (modo === 'dado_ausente' && (p.conjugeNome || p.conjugeCpf))) {
     const cNome = p.conjugeNome || 'DADO AUSENTE';
     const cCpf = p.conjugeCpf || 'DADO AUSENTE';
-    const cRg = p.conjugeRg || 'DADO AUSENTE';
+    const cRg = formatarRg(p.conjugeRgNumero, p.conjugeRgOrgao, p.conjugeRgUf, p.conjugeRg);
     out.push(campo('Cônjuge:', cNome));
     out.push(campo('RG Cônjuge:', cRg));
     out.push(campo('CPF Cônjuge:', cCpf));
   }
 
-  if (tem(p.endereco) || modo === 'dado_ausente') out.push(campo('Residente e domiciliado em:', p.endereco));
-  if (tem(p.cidadeUf) || modo === 'dado_ausente') out.push(campo('Cidade/UF:', p.cidadeUf));
+  const endVal = formatarEndereco(p.logradouro, p.bairro, p.endereco);
+  if (tem(endVal) || modo === 'dado_ausente') out.push(campo('Residente e domiciliado em:', endVal));
+  const cidVal = formatarCidadeUf(p.cidade, p.uf, p.cidadeUf);
+  if (tem(cidVal) || modo === 'dado_ausente') out.push(campo('Cidade/UF:', cidVal));
   if (tem(p.cep) || modo === 'dado_ausente') out.push(campo('CEP:', p.cep));
 
   return out;
