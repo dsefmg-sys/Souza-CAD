@@ -8652,10 +8652,6 @@ export default function EditorPage() {
                           <Sparkles className="text-violet-500 shrink-0 size-3.5" /> <span>USAR IA</span>
                           <Atalho k="IA" />
                         </Button>
-                        <label className="relative flex h-8 w-full items-center justify-center gap-1 rounded-md bg-secondary hover:bg-secondary/80 text-foreground cursor-pointer px-1 py-0 text-[9px] font-bold uppercase transition-colors" title="Importar planilha oficial ODS do SIGEF/INCRA criando um novo projeto">
-                          <FileSpreadsheet className="size-3.5 text-emerald-500 shrink-0" /> <span>NOVO PROJETO ODS</span>
-                          <input type="file" accept=".ods" onChange={handleImportarOdsSidebar} className="hidden" />
-                        </label>
                         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="w-full">
                           <Button size="sm" variant="secondary" className="relative w-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 gap-1" title="Acessar o SIGEF (INCRA) para certificação eletrônica do imóvel">
                             <ExternalLink className="size-3.5 text-emerald-500" /> <span>SIGEF</span>
@@ -10861,7 +10857,11 @@ export default function EditorPage() {
 
       {/* Modal de Abertura de Projetos (Tabela Fullscreen com Importar ODS, Certificação SIGEF e Lixeira) */}
       <Dialog open={projetosModalAberto} onOpenChange={(open) => { setProjetosModalAberto(open); if (open) atualizarLista(); }}>
-        <DialogContent className="fixed !left-0 !top-0 !w-screen !h-screen !max-w-none !max-h-none !translate-x-0 !translate-y-0 !border-none !rounded-none flex flex-col bg-card p-4 sm:p-6 shadow-2xl overflow-hidden !z-[6000]">
+        <DialogContent
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+          className="fixed !left-0 !top-0 !w-screen !h-screen !max-w-none !max-h-none !translate-x-0 !translate-y-0 !border-none !rounded-none flex flex-col bg-card p-4 sm:p-6 shadow-2xl overflow-hidden !z-[6000]"
+        >
           <DialogHeader className="pb-3 border-b flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
