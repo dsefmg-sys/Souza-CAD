@@ -117,13 +117,16 @@ export function useAutoSave(deps: DepsAutoSave): EstadoAutoSave {
     salvoOk, setSalvoOk,
     salvoNuvem, setSalvoNuvem,
     marcarComoSalvo: () => {
-      // A próxima mudança será tratada como "a versão salva" sem acender o disquete.
-      // O useEffect abaixo atualiza a baseline quando projSig recalcular.
       acabouDeSalvar.current = true;
+      ultimoSalvoSig.current = projSig;
+      setSalvarLaranja(false);
+      setSalvoOk(true);
     },
     resetBaseline: () => {
       justReseted.current = true;
+      ultimoSalvoSig.current = projSig;
       setSalvarLaranja(false);
+      setSalvoOk(true);
     },
   };
 }
