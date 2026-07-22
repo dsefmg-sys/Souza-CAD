@@ -94,10 +94,20 @@ export default function PontosBancoModal({ open, onOpenChange, tecnico }: Props)
 
         const processarVertice = (codigo: string) => {
           if (!codigo) return;
-          const match = codigo.match(/(?:([A-Z]{4})-)?([MPV])-0*([1-9][0-9]*)/i);
+          const clean = codigo.trim().toUpperCase();
+          const prefAtual = (prefixoCredenciado || 'COIN').trim().toUpperCase();
+          
+          // Captura prefixos de credenciado (3 a 6 caracteres alfaméricos) ou sem prefixo
+          const match = clean.match(/^(?:([A-Z0-9]{3,6})-)?([MPV])-0*([1-9][0-9]*)$/i);
           if (match) {
+            const prefEncontrado = match[1] ? match[1].toUpperCase() : null;
             const tipo = match[2].toUpperCase() as 'M' | 'P' | 'V';
             const num = parseInt(match[3], 10);
+            
+            // SE tiver um prefixo e ele for diferente do prefixo do credenciado atual, IGNORAR (é de outro agrimensor/SIGEF terceiro)
+            if (prefEncontrado && prefEncontrado !== prefAtual) {
+              return;
+            }
             
             if (tipo === 'M') {
               if (maxM === null || num > maxM) maxM = num;
