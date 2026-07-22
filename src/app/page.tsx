@@ -6917,7 +6917,7 @@ export default function EditorPage() {
       : '✓ Projeto armazenado e sincronizado';
 
     const tituloCabecalho = salvarLaranja
-      ? 'ALTERAÇÕES PENDENTES A SEREM SALVAS:'
+      ? 'RESUMO DO PROJETO (ALTERAÇÕES PENDENTES):'
       : 'DADOS DO PROJETO ARMAZENADO:';
     
     return [
@@ -11028,6 +11028,15 @@ export default function EditorPage() {
                                   onClick={() => { carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
                                 >
                                   <FolderOpen className="size-3" /> Abrir
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="size-7 p-0 text-slate-500 hover:bg-muted"
+                                  onClick={() => renomear(p)}
+                                  title="Renomear projeto"
+                                >
+                                  <Pencil className="size-3.5" />
                                 </Button>
                                 <Button
                                   size="sm"

@@ -2064,25 +2064,28 @@ export default function MapEditor(props: Props) {
           <div style="
             display: inline-block;
             width: max-content;
-            max-width: 320px;
+            max-width: 360px;
             background: rgba(255, 255, 255, 0.98);
             border: 2px solid ${corConf};
             border-radius: 10px;
-            padding: 5px 10px;
+            padding: 6px 12px;
             box-shadow: 0 4px 14px rgba(0,0,0,0.28);
             font-family: system-ui, -apple-system, sans-serif;
             font-size: 10px;
             font-weight: bold;
             color: #0f172a;
-            white-space: nowrap;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: break-word;
             pointer-events: auto;
             cursor: move;
             transform: translate(-50%, -50%);
+            box-sizing: border-box;
           ">
-            <div style="color: ${corConf}; font-weight: 900; text-transform: uppercase; font-size: 10px; margin-bottom: 2px; tracking: 0.02em;">
+            <div style="color: ${corConf}; font-weight: 900; text-transform: uppercase; font-size: 9.5px; margin-bottom: 2px; letter-spacing: 0.01em; line-height: 1.25; word-break: break-word;">
               ${htmlEscape(c.nome || 'Confrontante')}
             </div>
-            <div style="border-top: 1px dashed ${corConf}; margin-top: 3px; padding-top: 2px; font-size: 8.5px; color: #475569;">
+            <div style="border-top: 1px dashed ${corConf}; margin-top: 3px; padding-top: 2px; font-size: 8.5px; color: #475569; word-break: break-word;">
               ${c.matricula ? `Matrícula nº ${htmlEscape(c.matricula)}` : c.condicao === 'publico' ? 'Sem Assinatura' : 'Caixa de Assinatura'}
             </div>
           </div>

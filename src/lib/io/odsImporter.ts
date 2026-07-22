@@ -61,6 +61,8 @@ interface RawVertice {
   metodo: string;
   tipoLimite: string;
   confrontante: string;
+  matricula?: string;
+  cns?: string;
 }
 
 interface SheetData {
@@ -169,7 +171,10 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
       
       if ((rowStr.includes('MATRÍCULA') || rowStr.includes('MATRICULA')) && !matriculaImovel) {
         const idx = rowTexts.findIndex((t) => /MATRIC/i.test(t));
-        if (idx >= 0 && rowTexts[idx + 1]) matriculaImovel = rowTexts[idx + 1];
+        if (idx >= 0) {
+          const matCand = rowTexts.slice(idx + 1).find(t => t.trim().length > 0 && !/matric/i.test(t));
+          if (matCand) matriculaImovel = matCand;
+        }
       }
 
       if (rowStr.includes('MERIDIANO CENTRAL')) {
@@ -202,6 +207,8 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
     let colElev = -1;
     let colMetodo = -1;
     let colTipoLimite = -1;
+    let colCns = -1;
+    let colMatricula = -1;
     let colConfrontante = -1;
 
     for (let rIdx = 0; rIdx < tableMatrix.length; rIdx++) {
@@ -217,6 +224,8 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
         if (colElev >= 0 && rowUpper[colElev].includes('SIGMA H') && colElev > 0) colElev = colElev - 1; // pega o h real antes do sigma h
         colMetodo = rowUpper.findIndex((t) => t.includes('MÉTODO') || t.includes('METODO'));
         colTipoLimite = rowUpper.findIndex((t) => t.includes('LIMITE') || t.includes('POSICIONAMENTO'));
+        colCns = rowUpper.findIndex((t) => t.includes('CNS'));
+        colMatricula = rowUpper.findIndex((t) => t.includes('MATRÍCULA') || t.includes('MATRICULA'));
         colConfrontante = rowUpper.findIndex((t) => t.includes('DESCRITIVO') || t.includes('CONFRONTANTE'));
       }
 
@@ -231,6 +240,8 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
         let metodo = 'PG7';
         let tipoLimite = 'LA6';
         let confrontante = '';
+        let matStr = '';
+        let cnsStr = '';
 
         // Se mapeamos pelo cabeçalho do SIGEF:
         if (colLongOrEste >= 0 && colLatOrNorte >= 0 && rowTexts[colLongOrEste] && rowTexts[colLatOrNorte]) {
@@ -239,6 +250,8 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
           if (colElev >= 0 && rowTexts[colElev]) val3 = parseCoordenada(rowTexts[colElev]) ?? 0;
           if (colMetodo >= 0 && rowTexts[colMetodo]) metodo = rowTexts[colMetodo];
           if (colTipoLimite >= 0 && rowTexts[colTipoLimite]) tipoLimite = rowTexts[colTipoLimite];
+          if (colCns >= 0 && rowTexts[colCns]) cnsStr = rowTexts[colCns];
+          if (colMatricula >= 0 && rowTexts[colMatricula]) matStr = rowTexts[colMatricula];
           if (colConfrontante >= 0 && rowTexts[colConfrontante]) confrontante = rowTexts[colConfrontante];
         }
 
@@ -269,7 +282,15 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
             const cElev = rowTexts[vertCodeIdx + 5] || rowTexts[vertCodeIdx + 4];
             if (cElev) val3 = parseCoordenada(cElev) ?? 0;
 
-            // Busca por método, tipo de limite e confrontante nas colunas restantes
+            // Busca por método, tipo de limite, CNS, matrícula e confrontante nas colunas restantes
+            // Col J (vIdx + 9): Tipo Limite, Col K (vIdx + 10): CNS, Col L (vIdx + 11): Matrícula, Col M (vIdx + 12): Descritivo
+            if (rowTexts[vertCodeIdx + 10] && /^\d{2}\.\d{3}/.test(rowTexts[vertCodeIdx + 10])) {
+              cnsStr = rowTexts[vertCodeIdx + 10];
+            }
+            if (rowTexts[vertCodeIdx + 11] && /^\d+$/.test(rowTexts[vertCodeIdx + 11])) {
+              matStr = rowTexts[vertCodeIdx + 11];
+            }
+
             for (let i = vertCodeIdx + 6; i < rowTexts.length; i++) {
               const txt = rowTexts[i];
               if (/^(P[GA]\d|PT\d|RTK|GNSS)/i.test(txt)) metodo = txt;
@@ -281,6 +302,10 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
           }
         }
 
+        if (matStr && !matriculaImovel) {
+          matriculaImovel = matStr;
+        }
+
         if (val1 !== null && val2 !== null) {
           sheetVertices.push({
             codigo,
@@ -289,7 +314,9 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
             elev: val3,
             metodo,
             tipoLimite,
-            confrontante
+            confrontante,
+            matricula: matStr,
+            cns: cnsStr
           });
         }
       }
@@ -369,15 +396,18 @@ export async function importarOdsParaProjeto(file: File): Promise<Projeto> {
     });
 
     const nomesConfrontantes = Array.from(new Set(sData.vertices.map((v) => v.confrontante).filter(Boolean)));
-    const confrontantesProcessados: Confrontante[] = nomesConfrontantes.map((nome, idx) => ({
-      id: `conf-ods-${gIdx}-${idx}`,
-      nome,
-      cpf: '',
-      matricula: '',
-      cns: '',
-      tipo: 'particular',
-      condicao: 'proprietario'
-    }));
+    const confrontantesProcessados: Confrontante[] = nomesConfrontantes.map((nome, idx) => {
+      const sampleVert = sData.vertices.find((v) => v.confrontante === nome);
+      return {
+        id: `conf-ods-${gIdx}-${idx}`,
+        nome,
+        cpf: '',
+        matricula: sampleVert?.matricula || '',
+        cns: sampleVert?.cns || '',
+        tipo: 'particular',
+        condicao: 'proprietario'
+      };
+    });
 
     const confrontantePorLado: Record<number, string> = {};
     sData.vertices.forEach((v, idx) => {

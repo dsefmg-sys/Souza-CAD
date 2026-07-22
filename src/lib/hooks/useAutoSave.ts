@@ -77,6 +77,7 @@ export function useAutoSave(deps: DepsAutoSave): EstadoAutoSave {
   // Flag consumida quando o usuário acabou de salvar: a próxima mudança é considerada a
   // "versão salva" sem acender o disquete (porque o salvar mudou os vértices/códigos).
   const acabouDeSalvar = useRef<boolean>(false);
+  const ultimoSaveTime = useRef<number>(0);
 
   const justReseted = useRef<boolean>(false);
 
@@ -94,11 +95,14 @@ export function useAutoSave(deps: DepsAutoSave): EstadoAutoSave {
       setSalvarLaranja(false);
       return;
     }
-    // o salvar mudou vértices/códigos: a mudança é IMEDIATA e considerada a versão salva
-    if (acabouDeSalvar.current) {
+    const agora = Date.now();
+    // o salvar mudou vértices/códigos ou propagou estado pós-save (setGlebas, setVertices, setPlantaConfig):
+    // durante 2.5s após o salvar, qualquer sincronização de estado é assimilada como a nova baseline!
+    if (acabouDeSalvar.current || (agora - ultimoSaveTime.current < 2500)) {
       acabouDeSalvar.current = false;
       ultimoSalvoSig.current = projSig;
       setSalvarLaranja(false);
+      setSalvoOk(true);
       return;
     }
     // estado atual == baseline: nada mudou
@@ -118,6 +122,7 @@ export function useAutoSave(deps: DepsAutoSave): EstadoAutoSave {
     salvoNuvem, setSalvoNuvem,
     marcarComoSalvo: () => {
       acabouDeSalvar.current = true;
+      ultimoSaveTime.current = Date.now();
       ultimoSalvoSig.current = projSig;
       setSalvarLaranja(false);
       setSalvoOk(true);
