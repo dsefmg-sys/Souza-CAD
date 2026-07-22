@@ -10535,7 +10535,7 @@ export default function EditorPage() {
 
       {/* JANELA MODAL CENTRALIZADA DADOS DO PROJETO */}
       <Dialog open={painelAberto} onOpenChange={setPainelAberto}>
-        <DialogContent className="fixed inset-0 w-screen max-w-none h-screen max-h-none rounded-none border-none flex flex-col bg-card p-4 sm:p-6 shadow-2xl overflow-hidden z-50">
+                <DialogContent className="fixed !left-0 !top-0 !w-screen !h-screen !max-w-none !max-h-none !translate-x-0 !translate-y-0 !border-none !rounded-none flex flex-col bg-card p-4 sm:p-6 shadow-2xl overflow-hidden z-50">
           <DialogHeader className="pb-2 border-b flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
               <Upload className="size-4 text-indigo-500" />
@@ -10725,7 +10725,14 @@ export default function EditorPage() {
 
             {aba === 'projetos' && (
               <div className="space-y-3">
-                <SecaoTitulo>Projetos salvos</SecaoTitulo>
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b">
+                  <SecaoTitulo>Projetos salvos</SecaoTitulo>
+                  <label className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer shadow-sm transition-all select-none" title="Criar um novo projeto importando uma planilha oficial ODS do SIGEF/INCRA">
+                    <FileSpreadsheet className="size-4 shrink-0" />
+                    <span>Importar ODS como Novo Projeto</span>
+                    <input type="file" accept=".ods" onChange={handleImportarOdsSidebar} className="hidden" />
+                  </label>
+                </div>
                 {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
                 {projetos.map((p) => {
                   const pct = calcularProgressoProjeto(p);
