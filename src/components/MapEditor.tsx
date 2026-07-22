@@ -129,6 +129,7 @@ interface Props {
   verticesVizinho?: VerticeVizinho[];
   exibirLimitesFusoUTM?: boolean;
   onToggleLimitesFusoUTM?: () => void;
+  geojsonMunicipio?: any;
   gradeAltimetrica?: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[];
 }
 
@@ -1330,11 +1331,29 @@ function TrimExtendController({
   );
 }
 
+function MonitorCentroMapa({ onChangeCentro }: { onChangeCentro: (lat: number, zoom: number) => void }) {
+  const map = useMapEvents({
+    move() {
+      onChangeCentro(map.getCenter().lat, map.getZoom());
+    },
+    zoomend() {
+      onChangeCentro(map.getCenter().lat, map.getZoom());
+    }
+  });
+
+  useEffect(() => {
+    onChangeCentro(map.getCenter().lat, map.getZoom());
+  }, [map]);
+
+  return null;
+}
+
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [], onAbrirGestaoGleba, onCliqueUnicoGleba, glebaAtivaId,
     glebaCorContorno, glebaCorPreenchimento, glebaVisivel = true, glebaTipoGleba,
     exibirLimitesFusoUTM = false, onToggleLimitesFusoUTM,
+    geojsonMunicipio = null,
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, centroPadrao = null, zoomPadrao = 13, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
@@ -1379,6 +1398,8 @@ export default function MapEditor(props: Props) {
   } = props;
 
   const [zoom, setZoom] = useState(16);
+  const [latCentro, setLatCentro] = useState(-20.0);
+  const [zoomCorrente, setZoomCorrente] = useState(13);
   const [cursorLatLng, setCursorLatLng] = useState<L.LatLng | null>(null);
   const [hoverSnap, setHoverSnap] = useState<SnapResult | null>(null);
   const isDesenho = ['linha', 'polilinha', 'tracejado', 'cota', 'texto', 'simbolo', 'medir', 'retangulo', 'arco'].includes(modo);
@@ -1548,9 +1569,9 @@ export default function MapEditor(props: Props) {
     });
   }, [validos]);
 
-  // Limites de Fuso UTM próximos ao imóvel
+  // Limites de Fuso UTM próximos ao imóvel (sempre calculados)
   const meridianosFuso = useMemo(() => {
-    if (!exibirLimitesFusoUTM || !vertices || vertices.length === 0) return [];
+    if (!vertices || vertices.length === 0) return [];
     
     // Calcula a faixa de longitude dos vértices
     const lons = vertices.map(v => v.lon).filter(Number.isFinite);
@@ -1578,7 +1599,7 @@ export default function MapEditor(props: Props) {
       }
     }
     return result;
-  }, [exibirLimitesFusoUTM, vertices]);
+  }, [vertices]);
 
   return (
     <div
@@ -1714,28 +1735,58 @@ export default function MapEditor(props: Props) {
       <VerZoom onZoom={setZoom} />
       <CaixaSelecao ativo={modo === 'multi'} vertices={[...validos, ...verticesIgnorados]} objetos={objetos} onBoxSelect={onBoxSelect} onBoxSelectObj={onBoxSelectObj} />
       <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} hoverSnap={hoverSnap} zona={zona} hemisferio={hemisferio} onConfirmarCopiaBase={onConfirmarCopiaBase} onConfirmarCopiaDestino={onConfirmarCopiaDestino} onContextMenuMapa={onContextMenuMapa} />
+      
+      {/* Monitorador de centralização do mapa */}
+      <MonitorCentroMapa onChangeCentro={(lat, z) => { setLatCentro(lat); setZoomCorrente(z); }} />
       <FocoMap latLng={focoLatLng} />
 
-      {/* Linhas limites de Fuso UTM */}
-      {exibirLimitesFusoUTM && meridianosFuso.map((m) => (
-        <Polyline
-          key={`fuso-${m.lon}`}
-          positions={[
-            [-85, m.lon],
-            [85, m.lon]
-          ]}
-          pathOptions={{
-            color: '#f97316',
+      {/* Linhas limites de Fuso UTM (Sempre visíveis por padrão, com rótulos dinâmicos que seguem o centro da tela) */}
+      {meridianosFuso.map((m) => {
+        const letraHemisferio = latCentro < 0 ? 'S' : 'N';
+        const rotuloEsquerdo = `${m.fusoOeste}${letraHemisferio}`;
+        const rotuloDireito = `${m.fusoLeste}${letraHemisferio}`;
+        return (
+          <LayerGroup key={`fuso-${m.lon}`}>
+            <Polyline
+              positions={[
+                [-85, m.lon],
+                [85, m.lon]
+              ]}
+              pathOptions={{
+                color: '#f97316',
+                weight: 1.5,
+                dashArray: '8 6',
+                opacity: 0.8
+              }}
+            />
+            <CircleMarker
+              center={[latCentro, m.lon]}
+              radius={0.1}
+              pathOptions={{ opacity: 0, fillOpacity: 0 }}
+            >
+              <Tooltip permanent direction="center" className="bg-zinc-950/95 text-orange-400 text-[10px] font-black border border-zinc-800 px-2 py-0.5 rounded shadow-lg uppercase select-none pointer-events-none">
+                {`${rotuloEsquerdo} ◀ | ▶ ${rotuloDireito}`}
+              </Tooltip>
+            </CircleMarker>
+          </LayerGroup>
+        );
+      })}
+
+      {/* Limites municipais automáticos (apenas se zoom >= 11) */}
+      {geojsonMunicipio && zoomCorrente >= 11 && (
+        <GeoJSON
+          key={`mun-limite-${JSON.stringify(geojsonMunicipio.coordinates?.[0]?.[0] || '')}`}
+          data={geojsonMunicipio}
+          style={{
+            color: '#a855f7',
             weight: 2,
-            dashArray: '8 6',
-            opacity: 0.95
+            dashArray: '5 6',
+            fillColor: '#a855f7',
+            fillOpacity: 0.01,
+            interactive: false
           }}
-        >
-          <Tooltip permanent direction="right" className="bg-zinc-950 text-orange-400 text-[10px] font-black border border-zinc-800 px-2 py-1 rounded shadow-lg uppercase select-none">
-            {`Fronteira UTM: Fuso ${m.fusoOeste} ◀ | ▶ Fuso ${m.fusoLeste}`}
-          </Tooltip>
-        </Polyline>
-      ))}
+        />
+      )}
 
       {/* referências certificadas (snap) */}
       {referencias.filter((r) => r.length >= 2).map((r, i) => {
@@ -2630,21 +2681,7 @@ export default function MapEditor(props: Props) {
             <Box className="size-4 text-amber-500 animate-pulse" /> <span>Visualizar 3D</span>
           </button>
 
-          {onToggleLimitesFusoUTM && (
-            <button
-              type="button"
-              onClick={onToggleLimitesFusoUTM}
-              className={`h-9 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wider flex items-center justify-center border rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 select-none cursor-pointer ${
-                exibirLimitesFusoUTM
-                  ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-500'
-                  : 'bg-slate-900/80 hover:bg-slate-900/90 text-slate-300 border-white/10'
-              }`}
-              title="Exibir linhas limites de fuso UTM próximas ao imóvel (meridianos de fuso)"
-            >
-              <Globe className="size-4 text-orange-400" />
-              <span>Limites de Fuso UTM</span>
-            </button>
-          )}
+
         </div>
       )}
     </MapContainer>

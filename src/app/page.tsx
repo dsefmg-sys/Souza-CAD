@@ -889,6 +889,75 @@ export default function EditorPage() {
   const [objPersonalizarId, setObjPersonalizarId] = useState<string | null>(null);
   const [copiaBuffer, setCopiaBuffer] = useState<ObjetoDesenho | null>(null);
 
+  // Carrega limite municipal automático via API OSM Nominatim com cache
+  useEffect(() => {
+    const mun = imovel.municipio;
+    if (!mun || mun.trim() === '' || mun.trim() === '—' || mun.trim() === 'DADO AUSENTE') {
+      setGeojsonMunicipio(null);
+      return;
+    }
+    
+    // Heurística de UF baseada em lastIndexOf('-')
+    const idxHifen = mun.lastIndexOf('-');
+    let cidade = mun;
+    let uf = '';
+    if (idxHifen >= 0) {
+      cidade = mun.substring(0, idxHifen).trim();
+      uf = mun.substring(idxHifen + 1).trim();
+    }
+    
+    if (!cidade || !uf) {
+      setGeojsonMunicipio(null);
+      return;
+    }
+
+    const cacheKey = `mun_limite_${cidade.toLowerCase().replace(/\s+/g, '_')}_${uf.toLowerCase()}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 30 * 24 * 60 * 60 * 1000) {
+          setGeojsonMunicipio(parsed.geojson);
+          return;
+        }
+      } catch {
+        localStorage.removeItem(cacheKey);
+      }
+    }
+
+    const query = `${cidade} ${uf} Brazil`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&polygon_geojson=1&format=json&limit=1`;
+    
+    fetch(url, { headers: { 'User-Agent': 'SouzaCAD-Agrimensura-App/1.0' } })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(data => {
+        if (data && data[0] && data[0].geojson) {
+          const geojson = data[0].geojson;
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({ geojson, timestamp: Date.now() }));
+          } catch (e) {
+            if ((e as Error).name === 'QuotaExceededError') {
+              for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith('mun_limite_')) {
+                  localStorage.removeItem(k);
+                }
+              }
+            }
+          }
+          setGeojsonMunicipio(geojson);
+        } else {
+          setGeojsonMunicipio(null);
+        }
+      })
+      .catch(() => {
+        setGeojsonMunicipio(null);
+      });
+  }, [imovel.municipio]);
+
   // Sincronização reativa e bidirecional do estado de trabalho ativo para as glebas do projeto
   useEffect(() => {
     if (!glebaAtivaId) return;
@@ -5470,6 +5539,7 @@ export default function EditorPage() {
   const [curvaUsarTriangulacao, setCurvaUsarTriangulacao] = useState<boolean>(false); // padrão: dados online (não triangulação local)
   const [tipoProjeto, setTipoProjeto] = useState<'rural' | 'loteamento'>('rural');
   const [exibirLimitesFusoUTM, setExibirLimitesFusoUTM] = useState<boolean>(false);
+  const [geojsonMunicipio, setGeojsonMunicipio] = useState<any>(null);
   const [cidadeGeocodificada, setCidadeGeocodificada] = useState<string | null>(null);
   
   // Estados para cruzamento de divisas e fusos
@@ -9258,6 +9328,7 @@ export default function EditorPage() {
                   <MapEditor 
                     exibirLimitesFusoUTM={exibirLimitesFusoUTM}
                     onToggleLimitesFusoUTM={() => setExibirLimitesFusoUTM(!exibirLimitesFusoUTM)}
+                    geojsonMunicipio={geojsonMunicipio}
                     vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                     gradeAltimetrica={gradeAltimetrica}
                     onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
