@@ -120,7 +120,7 @@ import { carregarTecnico, carregarEscritorio, carregarPlantaPadrao, salvarPlanta
 import { useAuth, sair } from '@/lib/firebase/auth';
 import { definirModoEntrada, useModoEntrada } from '@/lib/store/loginSkip';
 import { puxarConfigDaNuvem, empurrarConfigParaNuvem, limparConfigLocalNaSaida } from '@/lib/store/configNuvem';
-import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem, inscreverConflitoEdicao } from '@/lib/store/projects';
+import { salvarProjeto, listarProjetos, carregarProjeto, excluirProjeto, novoId, NuvemSemPermissao, sincronizarProjetosLocalParaNuvem, inscreverConflitoEdicao, listarLixeira, restaurarProjeto, excluirDefinitivo } from '@/lib/store/projects';
 import { exportarProjetoZip } from '@/lib/store/backup';
 import { lerContadores, registrarPontos, totalPontosRegistrados } from '@/lib/store/registro';
 import { carregarTitulos, adicionarTitulo } from '@/lib/store/titulos';
@@ -1505,6 +1505,8 @@ export default function EditorPage() {
   const acabouDeSalvar = { current: false };
 
   const [projetos, setProjetos] = useState<Projeto[]>([]);
+  const [lixeira, setLixeira] = useState<Projeto[]>([]);
+  const [visaoProjetos, setVisaoProjetos] = useState<'ativos' | 'lixeira'>('ativos');
   const [exportandoProjetoId, setExportandoProjetoId] = useState<string | null>(null);
   const [sugProp, setSugProp] = useState<ProprietarioCad[]>([]);
   const [sugConf, setSugConf] = useState<ConfrontanteCad[]>([]);
@@ -6856,8 +6858,9 @@ export default function EditorPage() {
       const proj = await importarOdsParaProjeto(file);
       await avisar({
         titulo: 'Planilha ODS Importada!',
-        mensagem: `O projeto "${proj.nome}" foi criado com sucesso a partir da planilha ODS, contendo ${proj.glebas[0]?.vertices?.length || 0} vértices.`
+        mensagem: `O projeto "${proj.nome}" foi criado com sucesso a partir da planilha ODS, contendo ${proj.glebas.length} gleba(s) e total de ${proj.glebas.reduce((acc, g) => acc + (g.vertices?.length || 0), 0)} vértices.`
       });
+      atualizarLista();
       // Carregar e abrir o novo projeto importado
       await carregarProjetoComConfirmacao(proj.id);
     } catch (err: any) {
@@ -7312,7 +7315,24 @@ export default function EditorPage() {
     await abrir(id);
   }
 
-  async function atualizarLista() { setProjetos(await listarProjetos()); totalPontosRegistrados().then(setTotalPontos).catch(() => {}); }
+  async function atualizarLista() { 
+    setProjetos(await listarProjetos()); 
+    listarLixeira().then(setLixeira).catch(() => {});
+    totalPontosRegistrados().then(setTotalPontos).catch(() => {}); 
+  }
+
+  async function handleRestaurarProjeto(id: string) {
+    await restaurarProjeto(id);
+    aviso('Projeto restaurado com sucesso.');
+    atualizarLista();
+  }
+
+  async function handleExcluirProjetoDefinitivo(id: string) {
+    if (!(await confirmarApagar('Deseja realmente apagar este imóvel DEFINITIVAMENTE? Esta ação não poderá ser desfeita.'))) return;
+    await excluirDefinitivo(id);
+    aviso('Projeto apagado definitivamente.');
+    atualizarLista();
+  }
   async function abrir(id: string) {
     const p0 = await carregarProjeto(id);
     if (!p0) return;
@@ -10839,15 +10859,35 @@ export default function EditorPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Abertura de Projetos (Tabela Fullscreen com Importar ODS e Certificação SIGEF) */}
-      <Dialog open={projetosModalAberto} onOpenChange={setProjetosModalAberto}>
+      {/* Modal de Abertura de Projetos (Tabela Fullscreen com Importar ODS, Certificação SIGEF e Lixeira) */}
+      <Dialog open={projetosModalAberto} onOpenChange={(open) => { setProjetosModalAberto(open); if (open) atualizarLista(); }}>
         <DialogContent className="fixed !left-0 !top-0 !w-screen !h-screen !max-w-none !max-h-none !translate-x-0 !translate-y-0 !border-none !rounded-none flex flex-col bg-card p-4 sm:p-6 shadow-2xl overflow-hidden !z-[6000]">
           <DialogHeader className="pb-3 border-b flex flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <FolderOpen className="size-5 text-indigo-500 shrink-0" />
-              <DialogTitle className="text-base font-extrabold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
-                Selecione um Projeto para Abrir
-              </DialogTitle>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="size-5 text-indigo-500 shrink-0" />
+                <DialogTitle className="text-base font-extrabold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+                  Selecione um Projeto para Abrir
+                </DialogTitle>
+              </div>
+              
+              {/* Seletor Visual Ativos / Lixeira */}
+              <div className="flex items-center bg-secondary/80 p-0.5 rounded-lg border text-xs">
+                <button
+                  type="button"
+                  onClick={() => setVisaoProjetos('ativos')}
+                  className={`px-3 py-1 rounded-md font-bold uppercase transition-all ${visaoProjetos === 'ativos' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Ativos ({projetos.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisaoProjetos('lixeira')}
+                  className={`px-3 py-1 rounded-md font-bold uppercase transition-all ${visaoProjetos === 'lixeira' ? 'bg-destructive text-destructive-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Lixeira ({lixeira.length})
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -10863,7 +10903,7 @@ export default function EditorPage() {
                     const proj = await importarOdsParaProjeto(file);
                     await avisar({
                       titulo: 'Planilha ODS Importada!',
-                      mensagem: `O projeto "${proj.nome}" foi criado com sucesso a partir da planilha ODS, contendo ${proj.glebas[0]?.vertices?.length || 0} vértices.`
+                      mensagem: `O projeto "${proj.nome}" foi criado com sucesso a partir da planilha ODS, contendo ${proj.glebas.length} gleba(s) e total de ${proj.glebas.reduce((acc, g) => acc + (g.vertices?.length || 0), 0)} vértices.`
                     });
                     atualizarLista();
                     await carregarProjetoComConfirmacao(proj.id);
@@ -10888,122 +10928,195 @@ export default function EditorPage() {
           </DialogHeader>
 
           <div className="flex-1 overflow-auto mt-4">
-            {projetos.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-sm font-semibold text-muted-foreground">Nenhum projeto salvo no Souza-CAD.</p>
-              </div>
-            ) : (
-              <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs bg-background">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-muted/50 border-b border-border/80 font-bold text-muted-foreground uppercase tracking-wider text-[10px]">
-                      <th className="p-3">Projeto / Imóvel</th>
-                      <th className="p-3">Proprietário</th>
-                      <th className="p-3">Município</th>
-                      <th className="p-3 text-right">Área Calc.</th>
-                      <th className="p-3 text-center">Conciliado?</th>
-                      <th className="p-3">Criação</th>
-                      <th className="p-3">Último Salve</th>
-                      <th className="p-3">Certificação SIGEF</th>
-                      <th className="p-3 text-center">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/60">
-                    {projetos.map((p) => {
-                      const areaHa = calcularAreaHaProjeto(p);
-                      const sigefConciliado = p.imovel?.areaSigefHa != null && p.imovel?.areaSigefHa > 0 && p.imovel?.usarValoresSigef !== false;
-                      const areaExibidaHa = (sigefConciliado ? p.imovel?.areaSigefHa : areaHa) ?? areaHa ?? 0;
-                      
-                      const certificado = !!p.imovel?.certificadoSigef;
-                      const numCert = p.imovel?.numeroCertificacaoSigef || '';
+            {visaoProjetos === 'ativos' ? (
+              // VISÃO ATIVOS
+              projetos.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-sm font-semibold text-muted-foreground">Nenhum projeto ativo no Souza-CAD.</p>
+                </div>
+              ) : (
+                <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs bg-background">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-muted/50 border-b border-border/80 font-bold text-muted-foreground uppercase tracking-wider text-[10px]">
+                        <th className="p-3">Projeto / Imóvel</th>
+                        <th className="p-3">Proprietário</th>
+                        <th className="p-3">Município</th>
+                        <th className="p-3 text-right">Área Calc.</th>
+                        <th className="p-3 text-center">Conciliado?</th>
+                        <th className="p-3">Criação</th>
+                        <th className="p-3">Último Salve</th>
+                        <th className="p-3">Certificação SIGEF</th>
+                        <th className="p-3 text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {projetos.map((p) => {
+                        const areaHa = calcularAreaHaProjeto(p);
+                        const sigefConciliado = p.imovel?.areaSigefHa != null && p.imovel?.areaSigefHa > 0 && p.imovel?.usarValoresSigef !== false;
+                        const areaExibidaHa = (sigefConciliado ? p.imovel?.areaSigefHa : areaHa) ?? areaHa ?? 0;
+                        
+                        const certificado = !!p.imovel?.certificadoSigef;
+                        const numCert = p.imovel?.numeroCertificacaoSigef || '';
 
-                      return (
-                        <tr key={p.id} className="hover:bg-muted/30 transition-colors font-medium">
-                          <td className="p-3 font-bold uppercase text-foreground min-w-[200px]">
-                            <button
-                              type="button"
-                              onClick={() => { carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
-                              className="hover:underline text-left text-indigo-600 dark:text-indigo-400"
-                            >
-                              {p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}
-                            </button>
-                            <div className="text-[9px] text-muted-foreground font-mono mt-0.5">{contarVertices(p)} vértices</div>
-                          </td>
-                          <td className="p-3 truncate max-w-[180px]" title={p.imovel?.proprietario}>
-                            {p.imovel?.proprietario || '—'}
-                          </td>
-                          <td className="p-3 truncate max-w-[150px]" title={p.imovel?.municipio}>
-                            {p.imovel?.municipio || '—'}
-                          </td>
-                          <td className="p-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                            {areaExibidaHa > 0 ? `${areaExibidaHa.toFixed(4).replace('.', ',')} ha` : '0 ha'}
-                          </td>
-                          <td className="p-3 text-center">
-                            {sigefConciliado ? (
-                              <span className="inline-block text-[8px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider">
-                                SIM
-                              </span>
-                            ) : (
-                              <span className="inline-block text-[8px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/20 font-bold uppercase tracking-wider">
-                                NÃO
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-muted-foreground font-mono">
-                            {p.criadoEm ? new Date(p.criadoEm).toLocaleDateString('pt-BR') : '—'}
-                          </td>
-                          <td className="p-3 text-muted-foreground font-mono">
-                            {p.atualizadoEm || p.criadoEm ? new Date(p.atualizadoEm || p.criadoEm).toLocaleDateString('pt-BR') : '—'}
-                          </td>
-                          <td className="p-3 min-w-[240px]">
-                            <div className="flex items-center gap-2">
-                              <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                                <input
-                                  type="checkbox"
-                                  checked={certificado}
-                                  onChange={(e) => toggleCertificacaoSigef(p, e.target.checked)}
-                                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 size-3.5"
-                                />
-                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">Certificado</span>
-                              </label>
-                              {certificado && (
-                                <input
-                                  type="text"
-                                  value={numCert}
-                                  placeholder="Código/Recibo SIGEF"
-                                  onChange={(e) => alterarNumeroCertificacaoSigef(p, e.target.value)}
-                                  className="h-6 w-36 px-2 py-0.5 text-[10px] rounded border bg-background border-border text-foreground"
-                                />
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[10px] font-bold gap-1 bg-background hover:bg-indigo-600 hover:text-white"
+                        return (
+                          <tr key={p.id} className="hover:bg-muted/30 transition-colors font-medium">
+                            <td className="p-3 font-bold uppercase text-foreground min-w-[200px]">
+                              <button
+                                type="button"
                                 onClick={() => { carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
+                                className="hover:underline text-left text-indigo-600 dark:text-indigo-400"
                               >
-                                <FolderOpen className="size-3" /> Abrir
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="size-7 p-0 text-destructive hover:bg-destructive/10"
-                                onClick={() => remover(p.id)}
-                                title="Excluir projeto"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                                {p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}
+                              </button>
+                              <div className="text-[9px] text-muted-foreground font-mono mt-0.5">{p.glebas?.length || 1} gleba(s) • {contarVertices(p)} vértices</div>
+                            </td>
+                            <td className="p-3 truncate max-w-[180px]" title={p.imovel?.proprietario}>
+                              {p.imovel?.proprietario || '—'}
+                            </td>
+                            <td className="p-3 truncate max-w-[150px]" title={p.imovel?.municipio}>
+                              {p.imovel?.municipio || '—'}
+                            </td>
+                            <td className="p-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                              {areaExibidaHa > 0 ? `${areaExibidaHa.toFixed(4).replace('.', ',')} ha` : '0 ha'}
+                            </td>
+                            <td className="p-3 text-center">
+                              {sigefConciliado ? (
+                                <span className="inline-block text-[8px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider">
+                                  SIM
+                                </span>
+                              ) : (
+                                <span className="inline-block text-[8px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded border border-amber-500/20 font-bold uppercase tracking-wider">
+                                  NÃO
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-muted-foreground font-mono">
+                              {p.criadoEm ? new Date(p.criadoEm).toLocaleDateString('pt-BR') : '—'}
+                            </td>
+                            <td className="p-3 text-muted-foreground font-mono">
+                              {p.atualizadoEm || p.criadoEm ? new Date(p.atualizadoEm || p.criadoEm).toLocaleDateString('pt-BR') : '—'}
+                            </td>
+                            <td className="p-3 min-w-[240px]">
+                              <div className="flex items-center gap-2">
+                                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={certificado}
+                                    onChange={(e) => toggleCertificacaoSigef(p, e.target.checked)}
+                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 size-3.5"
+                                  />
+                                  <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">Certificado</span>
+                                </label>
+                                {certificado && (
+                                  <input
+                                    type="text"
+                                    value={numCert}
+                                    placeholder="Código/Recibo SIGEF"
+                                    onChange={(e) => alterarNumeroCertificacaoSigef(p, e.target.value)}
+                                    className="h-6 w-36 px-2 py-0.5 text-[10px] rounded border bg-background border-border text-foreground"
+                                  />
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-[10px] font-bold gap-1 bg-background hover:bg-indigo-600 hover:text-white"
+                                  onClick={() => { carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
+                                >
+                                  <FolderOpen className="size-3" /> Abrir
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="size-7 p-0 text-destructive hover:bg-destructive/10"
+                                  onClick={() => remover(p.id)}
+                                  title="Excluir projeto"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            ) : (
+              // VISÃO LIXEIRA (ÚLTMA EXCLUSÃO)
+              lixeira.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-sm font-semibold text-muted-foreground">A lixeira está vazia.</p>
+                </div>
+              ) : (
+                <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs bg-background">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-red-500/5 border-b border-border/80 font-bold text-muted-foreground uppercase tracking-wider text-[10px]">
+                        <th className="p-3">Projeto / Imóvel Apagado</th>
+                        <th className="p-3">Proprietário</th>
+                        <th className="p-3">Município</th>
+                        <th className="p-3">Área</th>
+                        <th className="p-3">Data de Exclusão</th>
+                        <th className="p-3 text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {lixeira.slice(0, 30).map((p) => {
+                        const areaHa = calcularAreaHaProjeto(p);
+                        const areaExibidaHa = p.imovel?.areaSigefHa || areaHa || 0;
+
+                        return (
+                          <tr key={p.id} className="hover:bg-destructive/5 transition-colors font-medium">
+                            <td className="p-3 font-bold uppercase text-foreground min-w-[200px]">
+                              <span>{p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}</span>
+                              <div className="text-[9px] text-muted-foreground font-mono mt-0.5">{p.glebas?.length || 1} gleba(s) • {contarVertices(p)} vértices</div>
+                            </td>
+                            <td className="p-3 truncate max-w-[180px]">
+                              {p.imovel?.proprietario || '—'}
+                            </td>
+                            <td className="p-3 truncate max-w-[150px]">
+                              {p.imovel?.municipio || '—'}
+                            </td>
+                            <td className="p-3 font-mono text-slate-600 dark:text-slate-400">
+                              {areaExibidaHa > 0 ? `${areaExibidaHa.toFixed(4).replace('.', ',')} ha` : '0 ha'}
+                            </td>
+                            <td className="p-3 text-muted-foreground font-mono">
+                              {p.excluidoEm ? new Date(p.excluidoEm).toLocaleString('pt-BR') : '—'}
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-[10px] font-bold gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-600 hover:text-white"
+                                  onClick={() => handleRestaurarProjeto(p.id)}
+                                >
+                                  <Undo2 className="size-3" /> Restaurar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-[10px] font-bold gap-1 text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleExcluirProjetoDefinitivo(p.id)}
+                                  title="Apagar permanentemente"
+                                >
+                                  <Trash2 className="size-3.5" /> Apagar Definitivo
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
             )}
           </div>
         </DialogContent>
