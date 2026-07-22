@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Eye, Download } from 'lucide-react';
 import type { ImovelData, TecnicoData, Confrontante, Vertex, PessoaQualificada } from '@/lib/topo/types';
+import { Document, Packer, Paragraph, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } from 'docx';
 import { calcular } from '@/lib/topo/calcular';
 import { valoresEfetivos } from '@/lib/topo/conferencia';
 import { rotulosProfissional } from '@/lib/topo/profissional';
@@ -27,7 +28,7 @@ interface Props {
   dataExtenso: string;
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
-  onBaixar?: () => void;
+  onBaixar?: (blobEditado?: Blob) => void;
 }
 
 export default function MemorialPreviewModal({
@@ -46,6 +47,118 @@ export default function MemorialPreviewModal({
   onBaixar,
 }: Props) {
   const papelRef = useRef<HTMLDivElement>(null);
+
+  async function gerarDocxDoHtmlEditable(container: HTMLElement): Promise<Blob> {
+    const children: (Paragraph | Table)[] = [];
+    const CORPO = 22; // 11pt
+
+    const parseNodesToRuns = (parent: HTMLElement): TextRun[] => {
+      const runs: TextRun[] = [];
+      parent.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const txt = child.textContent || '';
+          if (txt) runs.push(new TextRun({ text: txt, size: CORPO }));
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          const el = child as HTMLElement;
+          const tag = el.tagName.toLowerCase();
+          if (tag === 'br') {
+            runs.push(new TextRun({ text: '\n', size: CORPO }));
+          } else if (tag === 'strong' || tag === 'b') {
+            runs.push(new TextRun({ text: el.innerText || el.textContent || '', bold: true, size: CORPO }));
+          } else {
+            runs.push(...parseNodesToRuns(el));
+          }
+        }
+      });
+      return runs;
+    };
+
+    container.childNodes.forEach((node) => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        const tag = el.tagName.toLowerCase();
+
+        if (tag === 'table') {
+          const rows: TableRow[] = [];
+          const trs = el.querySelectorAll('tr');
+          trs.forEach((tr) => {
+            const cells: TableCell[] = [];
+            const tds = tr.querySelectorAll('td');
+            tds.forEach((td) => {
+              const widthStr = td.getAttribute('style') || '';
+              const wMatch = widthStr.match(/width:\s*(\d+)%/i);
+              const wPct = wMatch ? parseFloat(wMatch[1]) : (100 / tds.length);
+              
+              const cellRuns = parseNodesToRuns(td);
+              cells.push(new TableCell({
+                width: { size: wPct, type: WidthType.PERCENTAGE },
+                borders: {
+                  top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+                  bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+                  left: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+                  right: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+                },
+                children: [new Paragraph({ children: cellRuns, spacing: { after: 120 } })],
+              }));
+            });
+            rows.push(new TableRow({ children: cells }));
+          });
+          children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }));
+        } else if (tag === 'h2' || tag === 'h3' || tag === 'h4') {
+          const text = el.innerText || el.textContent || '';
+          children.push(new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 360, after: 160 },
+            children: [new TextRun({ text, bold: true, size: tag === 'h2' ? 28 : 24 })],
+          }));
+        } else if (tag === 'div' || tag === 'p') {
+          const text = el.innerText || el.textContent || '';
+          if (text.includes('*** DADOS FICTÍCIOS')) return;
+
+          let alignment: any = AlignmentType.JUSTIFIED;
+          if (el.classList.contains('text-center')) alignment = AlignmentType.CENTER;
+          else if (el.classList.contains('text-right')) alignment = AlignmentType.RIGHT;
+
+          const isAssinatura = el.classList.contains('text-center') && (el.classList.contains('pt-12') || el.classList.contains('pt-10'));
+          const isNarrativa = el.classList.contains('indent-8');
+
+          const paragraphRuns = parseNodesToRuns(el);
+          children.push(new Paragraph({
+            alignment,
+            indent: isNarrativa ? { firstLine: 450 } : undefined,
+            spacing: { before: isAssinatura ? 360 : 120, after: 120 },
+            children: paragraphRuns,
+          }));
+        }
+      }
+    });
+
+    const doc = new Document({
+      styles: { default: { document: { run: { font: 'Arial', size: CORPO } } } },
+      sections: [{
+        properties: { page: { margin: { top: 1417, bottom: 1417, left: 1417, right: 1417 } } },
+        children,
+      }],
+    });
+    return await Packer.toBlob(doc);
+  }
+
+  const handleBaixar = async () => {
+    if (onBaixar) {
+      if (papelRef.current) {
+        try {
+          const blob = await gerarDocxDoHtmlEditable(papelRef.current);
+          onBaixar(blob);
+        } catch (e) {
+          console.error('[MEMORIAL] Falha ao compilar HTML editado:', e);
+          onBaixar();
+        }
+      } else {
+        onBaixar();
+      }
+      onOpenChange(false);
+    }
+  };
 
   // Computa os dados geométricos do polígono
   const res = vertices.length >= 3 ? calcular(vertices, confrontantePorLado) : null;
@@ -99,7 +212,7 @@ export default function MemorialPreviewModal({
           </div>
           <div className="flex items-center gap-2 pr-6">
             {onBaixar && (
-              <Button size="sm" className="text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white" onClick={() => { onBaixar(); onOpenChange(false); }}>
+              <Button size="sm" className="text-xs gap-1.5 bg-green-600 hover:bg-green-700 text-white" onClick={handleBaixar}>
                 <Download className="size-3" />
                 Baixar DOCX
               </Button>

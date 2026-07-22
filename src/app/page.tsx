@@ -4428,20 +4428,38 @@ export default function EditorPage() {
     };
   }
 
-  async function exportarMemorial(modo: 'normal' | 'servidao' = 'normal') {
+  async function exportarMemorial(modo: 'normal' | 'servidao' = 'normal', blobEditado?: Blob) {
     if (!tecnico || vertices.length < 3) { aviso('Importe pontos primeiro.'); return; }
     if (!(await verificarConciliacaoSigef())) return;
     if (!(await verificarProntoParaExportar())) return;
     try {
-      const vs = await comCodigos();
-      const r = calcular(vs, confrontantePorLado);
-      let blobBruto: Blob | null = null;
-      try {
-        const headers = await getAuthHeaders();
-        const response = await fetch('/api/export/memorial', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
+      let blob: Blob;
+      if (blobEditado) {
+        blob = await compatibilizarWord2007(blobEditado);
+      } else {
+        const vs = await comCodigos();
+        const r = calcular(vs, confrontantePorLado);
+        let blobBruto: Blob | null = null;
+        try {
+          const headers = await getAuthHeaders();
+          const response = await fetch('/api/export/memorial', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              res: r, imovel, tecnico, confrontantes, confrontantePorLado,
+              dataExtenso: dataPorExtenso(), requerente, transmitente,
+              partesAdicionais, zonaUtm: zona, modo,
+              preferencias: {
+                memorialTipoCoordenada: prefs.memorialTipoCoordenada,
+                memorialLatLonFormat: prefs.memorialLatLonFormat,
+              }
+            })
+          });
+          if (response.ok) blobBruto = await response.blob();
+        } catch { /* fallback local */ }
+
+        if (!blobBruto) {
+          blobBruto = await gerarMemorialDocx({
             res: r, imovel, tecnico, confrontantes, confrontantePorLado,
             dataExtenso: dataPorExtenso(), requerente, transmitente,
             partesAdicionais, zonaUtm: zona, modo,
@@ -4449,24 +4467,10 @@ export default function EditorPage() {
               memorialTipoCoordenada: prefs.memorialTipoCoordenada,
               memorialLatLonFormat: prefs.memorialLatLonFormat,
             }
-          })
-        });
-        if (response.ok) blobBruto = await response.blob();
-      } catch { /* fallback local */ }
-
-      if (!blobBruto) {
-        blobBruto = await gerarMemorialDocx({
-          res: r, imovel, tecnico, confrontantes, confrontantePorLado,
-          dataExtenso: dataPorExtenso(), requerente, transmitente,
-          partesAdicionais, zonaUtm: zona, modo,
-          preferencias: {
-            memorialTipoCoordenada: prefs.memorialTipoCoordenada,
-            memorialLatLonFormat: prefs.memorialLatLonFormat,
-          }
-        });
+          });
+        }
+        blob = await compatibilizarWord2007(blobBruto);
       }
-
-      const blob = await compatibilizarWord2007(blobBruto);
       const sufixo = glebas.length > 1 ? ` - ${glebaAtivaNome}` : '';
       const prefixo = modo === 'servidao' ? 'Memorial de servidao' : 'Memorial';
       saveAs(blob, limparNomeArquivo(`${prefixo} - ${imovel.denominacao || nomeProjeto || 'imovel'}${sufixo}.docx`));
@@ -5238,11 +5242,69 @@ export default function EditorPage() {
         for (const base of TEMAS_CONFRONTANTE) {
           const t = temaIncra(base, uf);
           try {
-            const r = await fetch(`/api/vizinhos-sigef?tema=${t}&bbox=${encodeURIComponent(bbox)}`);
-            const j = await r.json();
-            if (Array.isArray(j.parcelas)) todas.push(...j.parcelas);
-            else { falhas++; console.error(`[SIGEF] resposta sem parcelas para tema=${t}:`, j); }
-          } catch (e) { falhas++; console.error(`[SIGEF] falha ao consultar tema=${t}:`, e); }
+            // Normaliza o bbox para 4 casas decimais para termos uma chave de cache estável
+            const normBbox = bbox.split(',').map(n => Number(n).toFixed(4)).join(',');
+            const cacheKey = `sigef_cache_v1_${t}_${normBbox}`;
+            let parcelasTema: any[] = [];
+            
+            let cachedDataStr: string | null = null;
+            try {
+              cachedDataStr = localStorage.getItem(cacheKey);
+            } catch (e) {
+              console.warn('Erro ao ler localStorage para cache do SIGEF:', e);
+            }
+
+            if (cachedDataStr) {
+              try {
+                const cachedObj = JSON.parse(cachedDataStr);
+                // Valida expiração de 7 dias (7 * 24 * 60 * 60 * 1000 = 604800000ms)
+                if (cachedObj && cachedObj.timestamp && (Date.now() - cachedObj.timestamp < 604800000)) {
+                  parcelasTema = cachedObj.data;
+                }
+              } catch (e) {
+                console.warn('Erro ao parsear cache do SIGEF:', e);
+              }
+            }
+
+            if (parcelasTema.length === 0) {
+              const r = await fetch(`/api/vizinhos-sigef?tema=${t}&bbox=${encodeURIComponent(bbox)}`);
+              const j = await r.json();
+              if (Array.isArray(j.parcelas)) {
+                parcelasTema = j.parcelas;
+                try {
+                  localStorage.setItem(cacheKey, JSON.stringify({
+                    timestamp: Date.now(),
+                    data: j.parcelas
+                  }));
+                } catch (e) {
+                  // Se exceder a quota do localStorage, limpa os caches do SIGEF para liberar espaço
+                  console.warn('Quota do localStorage excedida. Limpando cache do SIGEF...');
+                  try {
+                    for (let k = 0; k < localStorage.length; k++) {
+                      const key = localStorage.key(k);
+                      if (key && key.startsWith('sigef_cache_')) {
+                        localStorage.removeItem(key);
+                      }
+                    }
+                    localStorage.setItem(cacheKey, JSON.stringify({
+                      timestamp: Date.now(),
+                      data: j.parcelas
+                    }));
+                  } catch (e2) {
+                    console.error('Falha persistente ao salvar no localStorage:', e2);
+                  }
+                }
+              } else {
+                falhas++;
+                console.error(`[SIGEF] resposta sem parcelas para tema=${t}:`, j);
+              }
+            }
+
+            todas.push(...parcelasTema);
+          } catch (e) {
+            falhas++;
+            console.error(`[SIGEF] falha ao consultar tema=${t}:`, e);
+          }
         }
       }
       if (!todas.length) {
@@ -10933,7 +10995,7 @@ export default function EditorPage() {
           dataExtenso={dataPorExtenso()}
           requerente={requerente}
           transmitente={transmitente}
-          onBaixar={() => exportarMemorial(prevMemorialModo)}
+          onBaixar={(blobEditado) => exportarMemorial(prevMemorialModo, blobEditado)}
         />
       </ErrorBoundary>
       <ConsultarModal open={consultarAberto} onOpenChange={setConsultarAberto}
