@@ -355,6 +355,8 @@ export interface ImovelData {
   areaSigefHa?: number;
   perimetroSigef?: number;
   usarValoresSigef?: boolean;
+  certificadoSigef?: boolean;
+  numeroCertificacaoSigef?: string;
   tipoAzimute?: 'plano' | 'geodesico';
   // Para o requerimento de retificação:
   areaAnterior?: number;  // área que consta na matrícula (ha)
