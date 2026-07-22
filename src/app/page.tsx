@@ -527,12 +527,17 @@ export default function EditorPage() {
   const [verticesIgnoradosRaw, setVerticesIgnoradosRaw] = useState<Vertex[]>([]); // fora do anel (ferramenta ignorar/considerar)
 
   const normalizarVerticesMaiusculas = (vs: Vertex[]): Vertex[] => {
-    return vs.map((v) => ({
-      ...v,
-      codigoSigef: v.codigoSigef ? v.codigoSigef.toUpperCase() : '',
-      nome: v.nome ? v.nome.toUpperCase() : '',
-      codigoCampo: v.codigoCampo ? v.codigoCampo.toUpperCase() : '',
-    }));
+    return vs.map((v) => {
+      const cod = v.codigoSigef ? v.codigoSigef.trim().toUpperCase() : '';
+      const nomeFinal = cod || (v.nome ? v.nome.trim().toUpperCase() : '');
+      const campoFinal = cod || (v.codigoCampo ? v.codigoCampo.trim().toUpperCase() : '');
+      return {
+        ...v,
+        codigoSigef: cod,
+        nome: nomeFinal,
+        codigoCampo: campoFinal,
+      };
+    });
   };
 
   const setVertices = (val: Vertex[] | ((curr: Vertex[]) => Vertex[])) => {

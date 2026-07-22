@@ -79,7 +79,7 @@ export default function RenomearLoteModal({
       setPrefixo(pref);
       setLista(vertices.map(v => ({
         id: v.id,
-        nome: v.nome,
+        nome: v.codigoSigef || v.nome,
         tipo: (v.tipo as 'M' | 'P' | 'V') || 'P',
         codigoSigef: (v.codigoSigef || '').toUpperCase()
       })));
@@ -140,10 +140,13 @@ export default function RenomearLoteModal({
     const novosVertices = vertices.map(v => {
       const correspondente = lista.find(item => item.id === v.id);
       if (correspondente) {
+        const cod = correspondente.codigoSigef.trim().toUpperCase();
         return {
           ...v,
           tipo: correspondente.tipo,
-          codigoSigef: correspondente.codigoSigef.trim().toUpperCase(),
+          codigoSigef: cod,
+          nome: cod,
+          codigoCampo: cod,
           isDivisa: correspondente.tipo === 'M' || v.isDivisa
         };
       }

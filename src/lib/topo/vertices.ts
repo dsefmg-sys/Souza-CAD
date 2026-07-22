@@ -229,7 +229,8 @@ export function recodificar(
   const pref = prefixo || 'VER';
   return vertices.map((v, i) => {
     const numero = v.tipo === 'M' ? nM++ : nP++;
-    return { ...v, ordem: i, codigoSigef: `${pref}-${v.tipo}-${String(numero).padStart(4, '0')}` };
+    const cod = `${pref}-${v.tipo}-${String(numero).padStart(4, '0')}`.toUpperCase();
+    return { ...v, ordem: i, codigoSigef: cod, nome: cod, codigoCampo: cod };
   });
 }
 

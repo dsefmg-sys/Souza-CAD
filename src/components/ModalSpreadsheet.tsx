@@ -88,7 +88,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
         const numStr = String(num).padStart(4, '0');
         const codigoSigef = `${prefix}${numStr}`.toUpperCase();
         num++;
-        return { ...v, codigoSigef };
+        return { ...v, codigoSigef, nome: codigoSigef, codigoCampo: codigoSigef };
       })
     );
   };
