@@ -7452,46 +7452,49 @@ export default function EditorPage() {
     tipo: 'principais' | 'adicionais';
   }
 
+  const sufixoGleba = glebas.length > 1 ? ` - Gleba Ativa: ${glebaAtivaNome}` : '';
+  const sufixoReq = glebas.length > 1 ? ` (Cumulativo - ${glebas.length} glebas)` : '';
+
   const itensPecas: PecasItem[] = [
     {
       id: 'memorial_normal',
       tipo: 'principais',
-      rotulo: 'Memorial descritivo (.docx)',
+      rotulo: `Memorial descritivo${sufixoGleba} (.docx)`,
       onVisualizar: () => { setPrevMemorialModo('normal'); setPrevMemorialAberto(true); },
       onBaixar: () => exportarMemorial('normal')
     },
     ...(projetoTemServidao ? [{
       id: 'memorial_servidao',
       tipo: 'principais',
-      rotulo: 'Memorial de servidão (.docx)',
+      rotulo: `Memorial de servidão${sufixoGleba} (.docx)`,
       onVisualizar: () => { setPrevMemorialModo('servidao'); setPrevMemorialAberto(true); },
       onBaixar: () => exportarMemorial('servidao')
     } as PecasItem] : []),
     {
       id: 'planta',
       tipo: 'principais',
-      rotulo: 'Planta (PDF)',
+      rotulo: `Planta${sufixoGleba} (PDF)`,
       onVisualizar: () => setVista('planta'),
       onBaixar: () => exportarPlanta()
     },
     {
       id: 'requerimento',
       tipo: 'principais',
-      rotulo: 'Requerimento ao cartório (.docx)',
+      rotulo: `Requerimento ao cartório${sufixoReq} (.docx)`,
       onVisualizar: () => setReqAberto(true),
       onBaixar: () => baixarRequerimentoDireto()
     },
     {
       id: 'anuencia',
       tipo: 'principais',
-      rotulo: 'Cartas de anuência (.docx)',
+      rotulo: `Cartas de anuência${sufixoGleba} (.docx)`,
       onVisualizar: () => setAnuenciaAberta(true),
       onBaixar: () => baixarTodasAnuenciasDireto()
     },
     ...(medioOuMais ? [{
       id: 'errata',
       tipo: 'principais',
-      rotulo: 'Errata perimetral (.docx)',
+      rotulo: `Errata perimetral${sufixoGleba} (.docx)`,
       onVisualizar: () => setErrataAberto(true),
       onBaixar: () => baixarErrataDireta()
     } as PecasItem] : []),
