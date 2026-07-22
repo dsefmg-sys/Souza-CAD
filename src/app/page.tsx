@@ -1508,6 +1508,7 @@ export default function EditorPage() {
   const [lixeira, setLixeira] = useState<Projeto[]>([]);
   const [visaoProjetos, setVisaoProjetos] = useState<'ativos' | 'lixeira'>('ativos');
   const [filtroGeodesico, setFiltroGeodesico] = useState<'todos' | 'sigef' | 'convencional'>('todos');
+  const [buscaAbrir, setBuscaAbrir] = useState('');
   const [exportandoProjetoId, setExportandoProjetoId] = useState<string | null>(null);
   const [sugProp, setSugProp] = useState<ProprietarioCad[]>([]);
   const [sugConf, setSugConf] = useState<ConfrontanteCad[]>([]);
@@ -11019,36 +11020,81 @@ export default function EditorPage() {
             </div>
           </DialogHeader>
 
+          {/* Barra de Pesquisa de Projetos no Modal de Abertura */}
+          <div className="pt-3 pb-1 border-b flex items-center gap-2">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Pesquisar por nome, proprietário, município, matrícula..."
+                className="pl-9 h-9 text-xs"
+                value={buscaAbrir}
+                onChange={(e) => setBuscaAbrir(e.target.value)}
+              />
+            </div>
+            {buscaAbrir && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 px-3 text-xs"
+                onClick={() => setBuscaAbrir('')}
+              >
+                Limpar Busca
+              </Button>
+            )}
+          </div>
+
           <div className="flex-1 overflow-auto mt-4">
-            {visaoProjetos === 'ativos' ? (
-              // VISÃO ATIVOS
-              projetos.filter(p => filtroGeodesico === 'todos' || identificarNaturezaGeodesica(p) === filtroGeodesico).length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-sm font-semibold text-muted-foreground">Nenhum projeto ativo para o filtro selecionado.</p>
-                </div>
-              ) : (
-                <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs bg-background">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-muted/50 border-b border-border/80 font-bold text-muted-foreground uppercase tracking-wider text-[10px]">
-                        <th className="p-3">Projeto / Imóvel</th>
-                        <th className="p-3">Proprietário</th>
-                        <th className="p-3">Município</th>
-                        <th className="p-3 text-right">Área Calc.</th>
-                        <th className="p-3 text-center">Conciliado?</th>
-                        <th className="p-3">Criação</th>
-                        <th className="p-3">Último Salve</th>
-                        <th className="p-3">Certificação SIGEF</th>
-                        <th className="p-3 text-center">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {projetos
-                        .filter(p => filtroGeodesico === 'todos' || identificarNaturezaGeodesica(p) === filtroGeodesico)
-                        .map((p) => {
-                        const areaHa = calcularAreaHaProjeto(p);
-                        const sigefConciliado = p.imovel?.areaSigefHa != null && p.imovel?.areaSigefHa > 0 && p.imovel?.usarValoresSigef !== false;
-                        const areaExibidaHa = (sigefConciliado ? p.imovel?.areaSigefHa : areaHa) ?? areaHa ?? 0;
+            {(() => {
+              const normalizarBusca = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+              const b = normalizarBusca(buscaAbrir.trim());
+              
+              const filtrar = (lista: Projeto[]) => {
+                return lista.filter(p => {
+                  if (filtroGeodesico !== 'todos' && identificarNaturezaGeodesica(p) !== filtroGeodesico) {
+                    return false;
+                  }
+                  if (!b) return true;
+                  return (
+                    normalizarBusca(p.nome).includes(b) ||
+                    normalizarBusca(p.imovel?.denominacao).includes(b) ||
+                    normalizarBusca(p.imovel?.proprietario).includes(b) ||
+                    normalizarBusca(p.imovel?.municipio).includes(b) ||
+                    normalizarBusca(p.imovel?.matricula).includes(b)
+                  );
+                });
+              };
+
+              const ativosFiltrados = filtrar(projetos);
+              const lixeiraFiltrada = filtrar(lixeira);
+
+              return visaoProjetos === 'ativos' ? (
+                // VISÃO ATIVOS
+                ativosFiltrados.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-sm font-semibold text-muted-foreground">Nenhum projeto ativo para os filtros ou busca selecionada.</p>
+                  </div>
+                ) : (
+                  <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs bg-background">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-muted/50 border-b border-border/80 font-bold text-muted-foreground uppercase tracking-wider text-[10px]">
+                          <th className="p-3">Projeto / Imóvel</th>
+                          <th className="p-3">Proprietário</th>
+                          <th className="p-3">Município</th>
+                          <th className="p-3 text-right">Área Calc.</th>
+                          <th className="p-3 text-center">Conciliado?</th>
+                          <th className="p-3">Criação</th>
+                          <th className="p-3">Último Salve</th>
+                          <th className="p-3">Certificação SIGEF</th>
+                          <th className="p-3 text-center">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {ativosFiltrados.map((p) => {
+                          const areaHa = calcularAreaHaProjeto(p);
+                          const sigefConciliado = p.imovel?.areaSigefHa != null && p.imovel?.areaSigefHa > 0 && p.imovel?.usarValoresSigef !== false;
+                          const areaExibidaHa = (sigefConciliado ? p.imovel?.areaSigefHa : areaHa) ?? areaHa ?? 0;
                         
                         const certificado = !!p.imovel?.certificadoSigef;
                         const numCert = p.imovel?.numeroCertificacaoSigef || '';
@@ -11171,78 +11217,78 @@ export default function EditorPage() {
                     </tbody>
                   </table>
                 </div>
-              )
-            ) : (
-              // VISÃO LIXEIRA (ÚLTMA EXCLUSÃO)
-              lixeira.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-sm font-semibold text-muted-foreground">A lixeira está vazia.</p>
-                </div>
-              ) : (
-                <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs bg-background">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-red-500/5 border-b border-border/80 font-bold text-muted-foreground uppercase tracking-wider text-[10px]">
-                        <th className="p-3">Projeto / Imóvel Apagado</th>
-                        <th className="p-3">Proprietário</th>
-                        <th className="p-3">Município</th>
-                        <th className="p-3">Área</th>
-                        <th className="p-3">Data de Exclusão</th>
-                        <th className="p-3 text-center">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/60">
-                      {lixeira.slice(0, 30).map((p) => {
-                        const areaHa = calcularAreaHaProjeto(p);
-                        const areaExibidaHa = p.imovel?.areaSigefHa || areaHa || 0;
+              )) : (
+                // VISÃO LIXEIRA (ÚLTMA EXCLUSÃO)
+                lixeiraFiltrada.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-sm font-semibold text-muted-foreground">A lixeira está vazia para a busca ou filtro selecionado.</p>
+                  </div>
+                ) : (
+                  <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs bg-background">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-red-500/5 border-b border-border/80 font-bold text-muted-foreground uppercase tracking-wider text-[10px]">
+                          <th className="p-3">Projeto / Imóvel Apagado</th>
+                          <th className="p-3">Proprietário</th>
+                          <th className="p-3">Município</th>
+                          <th className="p-3">Área</th>
+                          <th className="p-3">Data de Exclusão</th>
+                          <th className="p-3 text-center">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {lixeiraFiltrada.slice(0, 30).map((p) => {
+                          const areaHa = calcularAreaHaProjeto(p);
+                          const areaExibidaHa = p.imovel?.areaSigefHa || areaHa || 0;
 
-                        return (
-                          <tr key={p.id} className="hover:bg-destructive/5 transition-colors font-medium">
-                            <td className="p-3 font-bold uppercase text-foreground min-w-[200px]">
-                              <span>{p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}</span>
-                              <div className="text-[9px] text-muted-foreground font-mono mt-0.5">{p.glebas?.length || 1} gleba(s) • {contarVertices(p)} vértices</div>
-                            </td>
-                            <td className="p-3 truncate max-w-[180px]">
-                              {p.imovel?.proprietario || '—'}
-                            </td>
-                            <td className="p-3 truncate max-w-[150px]">
-                              {p.imovel?.municipio || '—'}
-                            </td>
-                            <td className="p-3 font-mono text-slate-600 dark:text-slate-400">
-                              {areaExibidaHa > 0 ? `${areaExibidaHa.toFixed(4).replace('.', ',')} ha` : '0 ha'}
-                            </td>
-                            <td className="p-3 text-muted-foreground font-mono">
-                              {p.excluidoEm ? new Date(p.excluidoEm).toLocaleString('pt-BR') : '—'}
-                            </td>
-                            <td className="p-3 text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-[10px] font-bold gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-600 hover:text-white"
-                                  onClick={() => handleRestaurarProjeto(p.id)}
-                                >
-                                  <Undo2 className="size-3" /> Restaurar
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 text-[10px] font-bold gap-1 text-destructive hover:bg-destructive/10"
-                                  onClick={() => handleExcluirProjetoDefinitivo(p.id)}
-                                  title="Apagar permanentemente"
-                                >
-                                  <Trash2 className="size-3.5" /> Apagar Definitivo
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            )}
+                          return (
+                            <tr key={p.id} className="hover:bg-destructive/5 transition-colors font-medium">
+                              <td className="p-3 font-bold uppercase text-foreground min-w-[200px]">
+                                <span>{p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}</span>
+                                <div className="text-[9px] text-muted-foreground font-mono mt-0.5">{p.glebas?.length || 1} gleba(s) • {contarVertices(p)} vértices</div>
+                              </td>
+                              <td className="p-3 truncate max-w-[180px]">
+                                {p.imovel?.proprietario || '—'}
+                              </td>
+                              <td className="p-3 truncate max-w-[150px]">
+                                {p.imovel?.municipio || '—'}
+                              </td>
+                              <td className="p-3 font-mono text-slate-600 dark:text-slate-400">
+                                {areaExibidaHa > 0 ? `${areaExibidaHa.toFixed(4).replace('.', ',')} ha` : '0 ha'}
+                              </td>
+                              <td className="p-3 text-muted-foreground font-mono">
+                                {p.excluidoEm ? new Date(p.excluidoEm).toLocaleString('pt-BR') : '—'}
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-[10px] font-bold gap-1 text-emerald-600 border-emerald-500/30 hover:bg-emerald-600 hover:text-white"
+                                    onClick={() => handleRestaurarProjeto(p.id)}
+                                  >
+                                    <Undo2 className="size-3" /> Restaurar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 text-[10px] font-bold gap-1 text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleExcluirProjetoDefinitivo(p.id)}
+                                    title="Apagar permanentemente"
+                                  >
+                                    <Trash2 className="size-3.5" /> Apagar Definitivo
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
