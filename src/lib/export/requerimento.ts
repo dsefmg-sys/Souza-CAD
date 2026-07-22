@@ -441,10 +441,10 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
 
   c.push(titulo('DO VALOR DO IMÓVEL'));
   if (imovel.valorImovel != null && imovel.valorImovel > 0) {
-    c.push(par(`Declaram, para fins fiscais e de cálculo dos emolumentos, que o valor do imóvel é de: R$ ${numBRmilhar(imovel.valorImovel)} (${valorPorExtenso(imovel.valorImovel)}).`));
+    c.push(par(`Declaram os requerentes, sob sua exclusiva responsabilidade e tão somente para fins fiscais e de cálculo dos emolumentos cartorários, que o valor do imóvel é de: R$ ${numBRmilhar(imovel.valorImovel)} (${valorPorExtenso(imovel.valorImovel)}).`));
   } else {
     const valImovelStr = permitirIncompleto ? 'DADO AUSENTE' : '_______';
-    c.push(par(`Declaram, para fins fiscais e de cálculo dos emolumentos, que o valor do imóvel é de: R$ ${valImovelStr} (${valImovelStr === 'DADO AUSENTE' ? 'DADO AUSENTE' : '____________'}).`));
+    c.push(par(`Declaram os requerentes, sob sua exclusiva responsabilidade e tão somente para fins fiscais e de cálculo dos emolumentos cartorários, que o valor do imóvel é de: R$ ${valImovelStr} (${valImovelStr === 'DADO AUSENTE' ? 'DADO AUSENTE' : '____________'}).`));
   }
 
   c.push(titulo('DO PEDIDO'));
@@ -479,9 +479,19 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     itensPedidos.push(`Os adquirentes adquirem o imóvel em Condomínio Pro Indiviso cabendo a cada um a respectiva fração ideal, conforme segue: ${detalhesFracoes}`);
   }
 
-  const textoPedidosFormatted = itensPedidos.map((p, idx) => ` (${idx + 1}) ${p};`).join('');
-  c.push(par(`Diante do exposto, requerem a Vossa Senhoria:${textoPedidosFormatted}`));
-  c.push(par('Nestes termos, pede deferimento.'));
+  c.push(par('Diante do exposto, requerem a Vossa Senhoria:'));
+  itensPedidos.forEach((p, idx) => {
+    c.push(new Paragraph({
+      alignment: AlignmentType.JUSTIFIED,
+      indent: { left: 720, firstLine: -360 }, // Recuo de lista
+      spacing: { after: 60 },
+      children: [
+        new TextRun({ text: `${idx + 1}. `, bold: true, size: 22 }),
+        new TextRun({ text: p + (idx === itensPedidos.length - 1 ? '.' : ';'), size: 22 })
+      ]
+    }));
+  });
+  c.push(new Paragraph({ spacing: { before: 120, after: 120 }, children: [new TextRun({ text: 'Nestes termos, pede deferimento.', size: 22 })] }));
 
   const data = input.dataExtenso ? `${comarca}, ${input.dataExtenso}.` : `${comarca}, ____ de __________ de ______.`;
   c.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 240, after: 200 }, children: [new TextRun({ text: data, size: 22 })] }));
