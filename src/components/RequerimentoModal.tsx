@@ -156,8 +156,9 @@ const PLACEHOLDERS_QUALIFICACAO: Record<keyof PessoaQualificada, string> = {
 
 function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: PessoaQualificada; onChange: (p: PessoaQualificada) => void; sugProp: ProprietarioCad[] }) {
   function setNome(v: string) {
-    const m = sugProp.find((s) => s.nome === v);
-    onChange(m ? { ...pessoa, ...m, nome: v } as PessoaQualificada : { ...pessoa, nome: v });
+    const vUpper = v.toUpperCase();
+    const m = sugProp.find((s) => s.nome.toUpperCase() === vUpper);
+    onChange(m ? { ...pessoa, ...m, nome: vUpper } as PessoaQualificada : { ...pessoa, nome: vUpper });
   }
   return (
     <div className="space-y-1.5 border rounded-lg bg-muted/10 p-2.5">
@@ -170,7 +171,11 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
 
           const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
             const raw = e.target.value;
-            onChange({ ...pessoa, [c.k]: isDoc ? formatarCpfCnpj(raw) : raw });
+            let val = isDoc ? formatarCpfCnpj(raw) : raw;
+            if (c.k !== 'dataNascimento' && c.k !== 'estadoCivil') {
+              val = val.toUpperCase();
+            }
+            onChange({ ...pessoa, [c.k]: val });
           };
 
           const handleBlur = async () => {

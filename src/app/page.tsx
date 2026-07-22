@@ -519,8 +519,41 @@ export default function EditorPage() {
   } | null>(null);
   const aviseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const plantaPanRef = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null);
-  const [tecnico, setTecnico] = useState<TecnicoData | null>(null);
-  const [escritorio, setEscritorio] = useState<EscritorioData | null>(null);
+  const [tecnico, setTecnicoState] = useState<TecnicoData | null>(null);
+  const setTecnico = (d: TecnicoData | null | ((prev: TecnicoData | null) => TecnicoData | null)) => {
+    setTecnicoState(prev => {
+      const val = typeof d === 'function' ? d(prev) : d;
+      if (!val) return null;
+      const res = { ...val };
+      const strKeys: (keyof TecnicoData)[] = [
+        'nome', 'formacao', 'cft', 'art', 'cidadeAssinatura', 'credenciamentoIncra'
+      ];
+      strKeys.forEach(k => {
+        if (typeof res[k] === 'string') {
+          (res as any)[k] = (res[k] as string).toUpperCase();
+        }
+      });
+      return res;
+    });
+  };
+
+  const [escritorio, setEscritorioState] = useState<EscritorioData | null>(null);
+  const setEscritorio = (d: EscritorioData | null | ((prev: EscritorioData | null) => EscritorioData | null)) => {
+    setEscritorioState(prev => {
+      const val = typeof d === 'function' ? d(prev) : d;
+      if (!val) return null;
+      const res = { ...val };
+      const strKeys: (keyof EscritorioData)[] = [
+        'nome', 'cidade', 'uf', 'cnpj', 'telefone', 'endereco', 'nomeFantasia', 'email', 'site'
+      ];
+      strKeys.forEach(k => {
+        if (typeof res[k] === 'string') {
+          (res as any)[k] = (res[k] as string).toUpperCase();
+        }
+      });
+      return res;
+    });
+  };
   // A aplicação das cores da marca fica MAIS ABAIXO (junto do efeito de tema), porque precisa saber
   // se o tema é claro ou escuro pra ajustar o brilho da cor e não sumir. Ver corMarcaLegivel.
   const [verticesRaw, setVerticesRaw] = useState<Vertex[]>([]);
@@ -559,8 +592,51 @@ export default function EditorPage() {
   const [gradeAltimetrica, setGradeAltimetrica] = useState<{ lat: number; lon: number; leste: number; norte: number; elevacao: number }[]>([]);
   const [verticesOnlineElev, setVerticesOnlineElev] = useState<Record<string, number>>({});
   const [historiaAberta, setHistoriaAberta] = useState(false);
-  const [imovel, setImovel] = useState<ImovelData>(IMOVEL_VAZIO);
-  const [confrontantes, setConfrontantes] = useState<Confrontante[]>([]);
+  const [imovel, setImovelState] = useState<ImovelData>(IMOVEL_VAZIO);
+  const setImovel = (d: ImovelData | ((prev: ImovelData) => ImovelData)) => {
+    setImovelState(prev => {
+      const val = typeof d === 'function' ? d(prev) : d;
+      if (!val) return val;
+      const res = { ...val };
+      const strKeys: (keyof ImovelData)[] = [
+        'denominacao', 'uf', 'matricula', 'cns', 'codigoImovelIncra',
+        'proprietario', 'posseiro', 'cpfProprietario', 'proprietarioEstadoCivil',
+        'proprietarioNacionalidade', 'proprietarioProfissao', 'proprietarioEndereco',
+        'inventarianteNome', 'inventarianteCpf', 'inventarianteRg', 'inventarianteEstadoCivil',
+        'inventarianteNacionalidade', 'comprador', 'cpfComprador', 'contratante',
+        'cpfContratante', 'conjugeProprietario', 'cpfConjugeProprietario', 'municipio',
+        'comarca', 'local', 'naturezaServico', 'situacao', 'naturezaArea',
+        'inscricaoMunicipal', 'esquinaRua', 'numeroTrt'
+      ];
+      strKeys.forEach(k => {
+        if (typeof res[k] === 'string') {
+          (res as any)[k] = (res[k] as string).toUpperCase();
+        }
+      });
+      return res;
+    });
+  };
+
+  const [confrontantes, setConfrontantesState] = useState<Confrontante[]>([]);
+  const setConfrontantes = (val: Confrontante[] | ((curr: Confrontante[]) => Confrontante[])) => {
+    setConfrontantesState(curr => {
+      const proximo = typeof val === 'function' ? val(curr) : val;
+      if (!proximo) return [];
+      return proximo.map(c => {
+        const res = { ...c };
+        const strKeys: (keyof Confrontante)[] = [
+          'nome', 'cpf', 'estadoCivil', 'matricula', 'conjugeNome', 'conjugeCpf',
+          'inventarianteNome', 'inventarianteCpf', 'nuProprietarioNome', 'nuProprietarioCpf'
+        ];
+        strKeys.forEach(k => {
+          if (typeof res[k] === 'string') {
+            (res as any)[k] = (res[k] as string).toUpperCase();
+          }
+        });
+        return res;
+      });
+    });
+  };
   const [confrontantePorLado, setConfrontantePorLado] = useState<Record<number, string>>({});
 
   // Auxiliar para manter a correspondência dos confrontantes ao reordenar, apagar ou rotacionar vértices

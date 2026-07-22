@@ -24,7 +24,7 @@ function Campo({ label, value, onChange, ph, aviso, list }: { label: string; val
     if (/cpf|cnpj/i.test(label)) {
       onChange(formatarCpfCnpj(rawVal));
     } else {
-      onChange(rawVal);
+      onChange(rawVal.toUpperCase());
     }
   };
 
