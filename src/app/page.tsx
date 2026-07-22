@@ -1448,11 +1448,7 @@ export default function EditorPage() {
   const [pontosDecisaoAberto, setPontosDecisaoAberto] = useState(false);
 
   function abrirGestaoPontos() {
-    if (vertices.length > 0) {
-      setPontosDecisaoAberto(true);
-    } else {
-      setPontosAberto(true);
-    }
+    setPontosAberto(true);
   }
   const [previewData, setPreviewData] = useState<{
     perim: unknown; vs: Vertex[]; numGlebas: number; municipio: string; fuso: unknown; z: number;
@@ -6857,14 +6853,18 @@ export default function EditorPage() {
 
     // Status
     const statusSave = salvarLaranja 
-      ? '⚠️ Modificações pendentes de salvamento' 
+      ? '⚠️ Modificações pendentes de salvamento (Clique para salvar)' 
       : '✓ Projeto armazenado e sincronizado';
+
+    const tituloCabecalho = salvarLaranja
+      ? 'ALTERAÇÕES PENDENTES A SEREM SALVAS:'
+      : 'DADOS DO PROJETO ARMAZENADO:';
     
     return [
       `SALVAR PROJETO (${obterAtalhoLateral('salvar', 'sv')})`,
       statusSave,
       '──────────────────────────────',
-      'RESUMO DAS ALTERAÇÕES E CONTEÚDO DO PROJETO:',
+      tituloCabecalho,
       ...linhas
     ].join('\n');
   }
