@@ -225,6 +225,7 @@ export interface Confrontante {
   nuProprietarioCpf?: string;
   // posição manual do rótulo na planta (se o usuário arrastou); senão é automática
   posRotulo?: { lat: number; lon: number };
+  posRotuloRelativo?: { dLat: number; dLon: number };
   estadoCivil?: string;
   cnpj?: string;
   // tamanho da fonte do rótulo/assinatura (mapa e planta); vazio = padrão

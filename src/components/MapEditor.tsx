@@ -95,7 +95,7 @@ interface Props {
   confrontantes?: Confrontante[];
   confrontantePorLado?: Record<number, string>;
   onEditarConfrontante?: (id: string) => void;
-  onAjustarPosRotuloConfrontante?: (cId: string, lat: number, lon: number) => void;
+  onAjustarPosRotuloConfrontante?: (cId: string, lat: number, lon: number, dLat?: number, dLon?: number) => void;
   zona?: number;
   hemisferio?: 'N' | 'S';
   /** Trava de ângulo do desenho (CAD): a prévia dinâmica acompanha a mesma trava do clique. */
@@ -1901,7 +1901,7 @@ export default function MapEditor(props: Props) {
       })()}
 
       {/* Roteamento visual de confrontantes aplicados sobre os segmentos */}
-      {camadasVisiveis.divisas !== false && confrontantePorLado && confrontantes && validos.length >= 2 && (() => {
+      {camadasVisiveis.divisas !== false && glebaVisivel !== false && confrontantePorLado && confrontantes && validos.length >= 2 && (() => {
         const lats = validos.map((p) => p.lat), lons = validos.map((p) => p.lon);
         const maxDim = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lons) - Math.min(...lons)) || 0.0005;
         const off = maxDim * 0.012;
@@ -1964,25 +1964,33 @@ export default function MapEditor(props: Props) {
       })()}
 
       {/* Caixas de assinatura dos confrontantes arrastáveis no modo mapa */}
-      {camadasVisiveis.divisas !== false && confrontantes && confrontantes.map((c) => {
+      {camadasVisiveis.divisas !== false && glebaVisivel !== false && confrontantes && confrontantes.map((c) => {
         if (c.oculto) return null;
         const idxs = Object.entries(confrontantePorLado || {}).filter(([, cid]) => cid === c.id).map(([i]) => Number(i));
-        if (!c.posRotulo && (!idxs.length || !validos.length)) return null;
+        
+        // Calcula o centro geométrico do segmento
+        const meioIdx = idxs[Math.floor(idxs.length / 2)] ?? 0;
+        const vA = validos[meioIdx];
+        const vB = validos[(meioIdx + 1) % validos.length];
+        const centroLat = vA && vB ? (vA.lat + vB.lat) / 2 : undefined;
+        const centroLon = vA && vB ? (vA.lon + vB.lon) / 2 : undefined;
 
-        let posLat = c.posRotulo?.lat;
-        let posLon = c.posRotulo?.lon;
+        if (centroLat === undefined || centroLon === undefined) return null;
 
-        if (!posLat || !posLon) {
-          const meioIdx = idxs[Math.floor(idxs.length / 2)] ?? 0;
-          const vA = validos[meioIdx];
-          const vB = validos[(meioIdx + 1) % validos.length];
-          if (vA && vB) {
-            posLat = (vA.lat + vB.lat) / 2;
-            posLon = (vA.lon + vB.lon) / 2;
-          }
+        let posLat: number;
+        let posLon: number;
+
+        if (c.posRotuloRelativo) {
+          posLat = centroLat + c.posRotuloRelativo.dLat;
+          posLon = centroLon + c.posRotuloRelativo.dLon;
+        } else if (c.posRotulo) {
+          posLat = c.posRotulo.lat;
+          posLon = c.posRotulo.lon;
+        } else {
+          posLat = centroLat;
+          posLon = centroLon;
         }
 
-        if (!posLat || !posLon) return null;
         const corConf = corPorConfrontante(c.id, c);
 
         const signatureHtml = `
@@ -2030,7 +2038,9 @@ export default function MapEditor(props: Props) {
               dragend: (e) => {
                 const marker = e.target;
                 const newPos = marker.getLatLng();
-                onAjustarPosRotuloConfrontante?.(c.id, newPos.lat, newPos.lng);
+                const dLat = newPos.lat - centroLat;
+                const dLon = newPos.lng - centroLon;
+                onAjustarPosRotuloConfrontante?.(c.id, newPos.lat, newPos.lng, dLat, dLon);
               },
             }}
           />

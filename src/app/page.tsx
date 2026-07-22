@@ -11,7 +11,7 @@ import {
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Printer, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
   Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain, LayoutGrid, Building2, Coins,
-  User, MapPin, Calendar, Sprout, Share2, Play,
+  User, MapPin, Calendar, Sprout, Share2, Play, Home, Layers, Landmark, BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -13563,175 +13563,225 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
   useEffect(() => { setTitulos(carregarTitulos()); }, []);
   const tituloAtual = (config.titulo ?? '').trim();
   const podeSalvarTitulo = tituloAtual.length > 0 && !titulos.includes(tituloAtual);
+
+  const LAUDO_PADRAO = 'Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.';
+  const CONFRONT_PADRAO = 'Concordamos com as medidas apresentadas nesta planta e no memorial anexo nos trechos de confrontação com nosso imóvel (§10 do art. 213 da LRP).';
+
   type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao' | 'mostrarDivisaConf' | 'mostrarVerticesVizinho' | 'mostrarPrint3D' | 'mostrarAssinaturaConfrontantes';
   const chk = (label: string, key: BoolKey) => (
-    <label className="flex items-center gap-2 text-xs">
-      <input type="checkbox" checked={config[key] !== false} onChange={(e) => set({ [key]: e.target.checked } as Partial<PlantaConfig>)} />
+    <label className="flex items-center gap-2 text-xs cursor-pointer font-medium hover:text-indigo-600 dark:hover:text-indigo-400">
+      <input type="checkbox" className="rounded border-input text-indigo-600 focus:ring-indigo-500" checked={config[key] !== false} onChange={(e) => set({ [key]: e.target.checked } as Partial<PlantaConfig>)} />
       {label}
     </label>
   );
+
   return (
-    <div className="space-y-3">
-      <Button size="sm" variant="outline" className="w-full" onClick={onVerPlanta}><Eye /> Ver / atualizar planta</Button>
-      <p className="text-[10px] text-muted-foreground">Tudo aqui é opcional: em branco usa o padrão. O layout A3 e o carimbo continuam padronizados.</p>
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <Label>Título da planta</Label>
-          {podeSalvarTitulo && (
-            <button type="button" className="text-[10px] text-primary hover:underline" onClick={() => setTitulos(adicionarTitulo(tituloAtual))}>salvar na lista</button>
-          )}
+    <div className="space-y-4 text-xs">
+      {/* SEÇÃO 1: INFORMAÇÕES GERAIS E VISUALIZAÇÃO (Planta Atual) */}
+      <div className="border border-indigo-500/20 rounded-xl p-3 bg-indigo-500/5 space-y-3">
+        <h4 className="font-black text-xs text-indigo-700 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-indigo-500/10 pb-1.5 animate-pulse-subtle">
+          <Eye className="size-4 text-indigo-600" /> Configurar Planta Atual em Exibição
+        </h4>
+        <Button size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-1 text-xs shrink-0 cursor-pointer h-8.5" onClick={onVerPlanta}>
+          Visualizar Planta (Prancha SVG)
+        </Button>
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          As alterações abaixo se aplicam imediatamente ao desenho da sua planta atual em exibição.
+        </p>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="font-bold">Título da Planta (Natureza do Serviço)</Label>
+            {podeSalvarTitulo && (
+              <button type="button" className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-bold" onClick={() => setTitulos(adicionarTitulo(tituloAtual))}>+ Salvar na lista</button>
+            )}
+          </div>
+          <select className="h-8.5 w-full rounded-md border border-input bg-background px-2 text-xs font-semibold focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+            value={titulos.includes(tituloAtual) ? tituloAtual : ''}
+            onChange={(e) => { if (e.target.value) set({ titulo: e.target.value }); }}>
+            <option value="">— escolher um modelo de título —</option>
+            {titulos.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <Input className="h-8.5 text-xs font-bold" value={config.titulo ?? ''} onChange={(e) => set({ titulo: e.target.value })} placeholder="Levantamento Planimétrico Georreferenciado" />
+          <p className="text-[10px] text-muted-foreground leading-snug">
+            Escolha um modelo pronto ou digite. Você também pode dar duplo clique no título da planta para editar diretamente na tela.
+          </p>
         </div>
-        <select className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-          value={titulos.includes(tituloAtual) ? tituloAtual : ''}
-          onChange={(e) => { if (e.target.value) set({ titulo: e.target.value }); }}>
-          <option value="">— escolher um modelo de título —</option>
-          {titulos.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <Input value={config.titulo ?? ''} onChange={(e) => set({ titulo: e.target.value })} placeholder="Levantamento Planimétrico Georreferenciado (ou escolha acima)" />
-        <p className="text-[10px] text-muted-foreground">Escolha um modelo pronto ou digite o seu. Também dá pra editar direto na planta (dois cliques no título).</p>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Campo label="Folha" value={config.folha ?? ''} onChange={(v) => set({ folha: v })} placeholder="Única" />
-        <div className="space-y-1">
-          <Label>Escala (1 : …)</Label>
-          <Input type="number" placeholder="automática" value={config.escalaManual ? String(config.escalaManual) : ''}
-            onChange={(e) => set({ escalaManual: e.target.value ? Number(e.target.value) : undefined })} />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2 border rounded-sm p-2 bg-muted/5">
-        <div className="col-span-2 text-[10px] uppercase font-bold text-muted-foreground">Ajuste de Tamanhos e Escalas</div>
-        <div className="space-y-1">
-          <Label className="text-[11px]">Fonte dos rótulos</Label>
-          <Input type="number" step="0.5" placeholder="8.5" value={config.fonteRotulos ? String(config.fonteRotulos) : ''}
-            onChange={(e) => set({ fonteRotulos: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[11px]">Escala de todos os textos</Label>
-          <Input type="number" step="0.05" placeholder="1.0" value={config.escalaTextos ? String(config.escalaTextos) : ''}
-            onChange={(e) => set({ escalaTextos: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[11px]">Escala das tabelas</Label>
-          <Input type="number" step="0.05" placeholder="1.0" value={config.escalaTabelas ? String(config.escalaTabelas) : ''}
-            onChange={(e) => set({ escalaTabelas: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[11px]">Escala dos símbolos (M/P/V)</Label>
-          <Input type="number" step="0.05" placeholder="1.0" value={config.escalaVertices ? String(config.escalaVertices) : ''}
-            onChange={(e) => set({ escalaVertices: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[11px]">Escala das declarações</Label>
-          <Input type="number" step="0.05" placeholder="1.0" value={config.escalaDeclaracoes ? String(config.escalaDeclaracoes) : ''}
-            onChange={(e) => set({ escalaDeclaracoes: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[11px]">Escala dos confrontantes</Label>
-          <Input type="number" step="0.05" placeholder="1.0" value={config.escalaConfront ? String(config.escalaConfront) : ''}
-            onChange={(e) => set({ escalaConfront: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs" />
+
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          <Campo label="Folha da Prancha" value={config.folha ?? ''} onChange={(v) => set({ folha: v })} placeholder="Única" />
+          <div className="space-y-1">
+            <Label className="font-bold">Escala (1 : …)</Label>
+            <Input type="number" placeholder="automática" className="h-8 text-xs font-bold" value={config.escalaManual ? String(config.escalaManual) : ''}
+              onChange={(e) => set({ escalaManual: e.target.value ? Number(e.target.value) : undefined })} />
+          </div>
         </div>
       </div>
-      <div className="space-y-1 rounded-sm border p-2">
-        <div className="text-[10px] uppercase text-muted-foreground">Mostrar na planta</div>
-        {chk('Grade de coordenadas', 'mostrarGrade')}
-        {chk('Nortes (rosa dos ventos)', 'mostrarNortes')}
-        {chk('Convenções (legenda)', 'mostrarConvencoes')}
-        {chk('Escala gráfica', 'mostrarEscalaGrafica')}
-        {chk('Planta de situação', 'mostrarSituacao')}
-        {chk('Print do Modelo 3D', 'mostrarPrint3D')}
-        {chk('Tiques de troca de confrontante (marcos M)', 'mostrarDivisaConf')}
-        {chk('Vértices de vizinhos certificados', 'mostrarVerticesVizinho')}
-        {chk('Caixa de assinatura dos confrontantes no carimbo', 'mostrarAssinaturaConfrontantes')}
-        {/* quadro de áreas e roteiro: padrão DESLIGADO (por isso não usam o chk, que assume ligado) */}
-        <label className="flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={config.mostrarQuadroAreas === true} onChange={(e) => set({ mostrarQuadroAreas: e.target.checked })} />
-          Quadro de áreas (resumo de todos os polígonos)
-        </label>
-        <label className="flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={config.mostrarRoteiro === true} onChange={(e) => set({ mostrarRoteiro: e.target.checked })} />
-          Roteiro perimétrico (tabela vértice → azimute → distância)
-        </label>
-        {config.mostrarRoteiro && (
-          <label className="ml-5 flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={config.roteiroComConfrontante !== false} onChange={(e) => set({ roteiroComConfrontante: e.target.checked })} />
-            incluir coluna de confrontante
+
+      {/* SEÇÃO 2: ELEMENTOS DE ESTILO, CORES E EXIBIÇÃO */}
+      <div className="border border-slate-200 dark:border-zinc-800 rounded-xl p-3 bg-muted/5 space-y-3">
+        <h4 className="font-black text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5 border-b pb-1.5">
+          <Palette className="size-4 text-indigo-500" /> Estilos e Elementos Visíveis
+        </h4>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-[10.5px] font-bold">Fonte dos rótulos</Label>
+            <Input type="number" step="0.5" placeholder="8.5" value={config.fonteRotulos ? String(config.fonteRotulos) : ''}
+              onChange={(e) => set({ fonteRotulos: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-semibold" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10.5px] font-bold">Escala dos textos</Label>
+            <Input type="number" step="0.05" placeholder="1.0" value={config.escalaTextos ? String(config.escalaTextos) : ''}
+              onChange={(e) => set({ escalaTextos: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-semibold" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10.5px] font-bold">Escala das tabelas</Label>
+            <Input type="number" step="0.05" placeholder="1.0" value={config.escalaTabelas ? String(config.escalaTabelas) : ''}
+              onChange={(e) => set({ escalaTabelas: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-semibold" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10.5px] font-bold">Símbolos dos vértices</Label>
+            <Input type="number" step="0.05" placeholder="1.0" value={config.escalaVertices ? String(config.escalaVertices) : ''}
+              onChange={(e) => set({ escalaVertices: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-semibold" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10.5px] font-bold">Escala declarações</Label>
+            <Input type="number" step="0.05" placeholder="1.0" value={config.escalaDeclaracoes ? String(config.escalaDeclaracoes) : ''}
+              onChange={(e) => set({ escalaDeclaracoes: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-semibold" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10.5px] font-bold">Escala confrontantes</Label>
+            <Input type="number" step="0.05" placeholder="1.0" value={config.escalaConfront ? String(config.escalaConfront) : ''}
+              onChange={(e) => set({ escalaConfront: e.target.value ? Number(e.target.value) : undefined })} className="h-8 text-xs font-semibold" />
+          </div>
+        </div>
+
+        <div className="space-y-1.5 pt-2 border-t">
+          <Label className="text-[10.5px] font-bold text-muted-foreground block mb-1">VISIBILIDADE NA PLANTA:</Label>
+          {chk('Grade de coordenadas UTM', 'mostrarGrade')}
+          {chk('Rosa dos Ventos (Nortes)', 'mostrarNortes')}
+          {chk('Legenda de Convenções', 'mostrarConvencoes')}
+          {chk('Escala Gráfica', 'mostrarEscalaGrafica')}
+          {chk('Planta de Situação', 'mostrarSituacao')}
+          {chk('Prévia 3D do Terreno', 'mostrarPrint3D')}
+          {chk('Tiques e limites de confrontação', 'mostrarDivisaConf')}
+          {chk('Vértices certificados de confrontantes', 'mostrarVerticesVizinho')}
+          {chk('Caixa de assinatura no Carimbo', 'mostrarAssinaturaConfrontantes')}
+          
+          <label className="flex items-center gap-2 text-xs cursor-pointer font-medium hover:text-indigo-600 dark:hover:text-indigo-400">
+            <input type="checkbox" className="rounded border-input text-indigo-600 focus:ring-indigo-500" checked={config.mostrarQuadroAreas === true} onChange={(e) => set({ mostrarQuadroAreas: e.target.checked })} />
+            Quadro de Áreas (Tabela resumo de polígonos)
           </label>
-        )}
-        <label className="flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={config.mostrarCoordenadas === true} onChange={(e) => set({ mostrarCoordenadas: e.target.checked })} />
-          Quadro de coordenadas dos vértices (UTM E/N, Altitude, Limite/Método)
-        </label>
-      </div>
-      <div className="space-y-1 rounded-sm border p-2">
-        <div className="text-[10px] uppercase text-muted-foreground">Nome dos vértices</div>
-        <select className="h-8 w-full rounded-sm border bg-background px-2 text-sm" value={config.estiloVertice ?? 'sigef'} onChange={(e) => set({ estiloVertice: e.target.value as 'sigef' | 'convencional' | 'v' })}>
-          <option value="sigef">Código SIGEF (ex.: COIN-M-0017)</option>
-          <option value="convencional">Topografia convencional P (P1, P2, P3…)</option>
-          <option value="v">Topografia convencional V (V1, V2, V3…)</option>
-        </select>
-      </div>
-      <div className="space-y-1 rounded-sm border p-2">
-        <div className="text-[10px] uppercase text-muted-foreground">Estilização das Linhas (Planta)</div>
-        <div className="grid grid-cols-2 gap-2 mt-1">
-          {multiplasGlebas ? (
-            <div className="space-y-1">
-              <Label className="text-[10px]">Cor do perímetro (gleba ativa)</Label>
-              <Input type="text" placeholder="#7c2d12" value={config.corPoligono ?? ''} onChange={(e) => set({ corPoligono: e.target.value || undefined })} className="h-7 text-xs" />
-            </div>
-          ) : (
-            <p className="col-span-2 text-[10px] text-muted-foreground">A cor do perímetro só é personalizável quando o projeto tem mais de uma gleba (serve para diferenciar uma da outra na planta).</p>
+          <label className="flex items-center gap-2 text-xs cursor-pointer font-medium hover:text-indigo-600 dark:hover:text-indigo-400">
+            <input type="checkbox" className="rounded border-input text-indigo-600 focus:ring-indigo-500" checked={config.mostrarRoteiro === true} onChange={(e) => set({ mostrarRoteiro: e.target.checked })} />
+            Roteiro Perimétrico (Azimutes/Distâncias)
+          </label>
+          {config.mostrarRoteiro && (
+            <label className="ml-5 flex items-center gap-2 text-xs cursor-pointer font-medium hover:text-indigo-600 dark:hover:text-indigo-400">
+              <input type="checkbox" className="rounded border-input text-indigo-600 focus:ring-indigo-500" checked={config.roteiroComConfrontante !== false} onChange={(e) => set({ roteiroComConfrontante: e.target.checked })} />
+              Incluir coluna de confrontantes no Roteiro
+            </label>
           )}
-          <div className="space-y-1">
-            <Label className="text-[10px]">Espessura perímetro</Label>
-            <Input type="number" step="0.1" placeholder="1.8" value={config.larguraPoligono ? String(config.larguraPoligono) : ''} onChange={(e) => set({ larguraPoligono: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
-          </div>
+          <label className="flex items-center gap-2 text-xs cursor-pointer font-medium hover:text-indigo-600 dark:hover:text-indigo-400">
+            <input type="checkbox" className="rounded border-input text-indigo-600 focus:ring-indigo-500" checked={config.mostrarCoordenadas === true} onChange={(e) => set({ mostrarCoordenadas: e.target.checked })} />
+            Tabela Completa de Coordenadas dos Vértices
+          </label>
         </div>
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          <div className="space-y-1">
-            <Label className="text-[10px]">Cor de preenchimento</Label>
-            <Input type="text" placeholder="#fde68a" value={config.fillPoligono ?? ''} onChange={(e) => set({ fillPoligono: e.target.value || undefined })} className="h-7 text-xs" />
+
+        <div className="space-y-1.5 pt-2 border-t">
+          <Label className="text-[10.5px] font-bold">Estilização das Divisas / Linhas</Label>
+          <div className="grid grid-cols-2 gap-2 mt-1">
+            {multiplasGlebas ? (
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold">Cor do contorno (gleba ativa)</Label>
+                <Input type="text" placeholder="#7c2d12" value={config.corPoligono ?? ''} onChange={(e) => set({ corPoligono: e.target.value || undefined })} className="h-7 text-xs font-mono" />
+              </div>
+            ) : (
+              <p className="col-span-2 text-[10px] text-muted-foreground leading-snug">
+                A cor do perímetro e das outras parcelas é configurável quando o projeto possui múltiplos polígonos/glebas.
+              </p>
+            )}
+            <div className="space-y-1">
+              <Label className="text-[10px] font-semibold">Espessura contorno</Label>
+              <Input type="number" step="0.1" placeholder="1.8" value={config.larguraPoligono ? String(config.larguraPoligono) : ''} onChange={(e) => set({ larguraPoligono: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[10px]">Hachura (preenchimento)</Label>
-            <select className="h-7 w-full rounded-sm border bg-background px-1 text-xs" value={config.hachura ?? 'nenhuma'} onChange={(e) => set({ hachura: e.target.value as PlantaConfig['hachura'] })}>
-              <option value="nenhuma">Cor sólida (sem hachura)</option>
-              <option value="diagonal">Diagonal</option>
-              <option value="cruzada">Cruzada</option>
-              <option value="pontos">Pontos</option>
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[10px]">Espessura divisas apoio</Label>
-            <Input type="number" step="0.1" placeholder="3.2" value={config.larguraDivisasApoio ? String(config.larguraDivisasApoio) : ''} onChange={(e) => set({ larguraDivisasApoio: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
-          </div>
-        </div>
-        {multiplasGlebas && (
           <div className="grid grid-cols-2 gap-2 mt-2">
             <div className="space-y-1">
-              <Label className="text-[10px]">Cor outras glebas</Label>
-              <Input type="text" placeholder="#c2410c" value={config.corOutrasGlebas ?? ''} onChange={(e) => set({ corOutrasGlebas: e.target.value || undefined })} className="h-7 text-xs" />
+              <Label className="text-[10px] font-semibold">Cor de preenchimento</Label>
+              <Input type="text" placeholder="#fde68a" value={config.fillPoligono ?? ''} onChange={(e) => set({ fillPoligono: e.target.value || undefined })} className="h-7 text-xs font-mono" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px]">Espessura outras glebas</Label>
-              <Input type="number" step="0.1" placeholder="1.2" value={config.larguraOutrasGlebas ? String(config.larguraOutrasGlebas) : ''} onChange={(e) => set({ larguraOutrasGlebas: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
+              <Label className="text-[10px] font-semibold">Estilo de Hachura</Label>
+              <select className="h-7 w-full rounded-sm border bg-background px-1 text-xs font-semibold focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500" value={config.hachura ?? 'nenhuma'} onChange={(e) => set({ hachura: e.target.value as PlantaConfig['hachura'] })}>
+                <option value="nenhuma">Cor sólida (sem hachura)</option>
+                <option value="diagonal">Diagonal</option>
+                <option value="cruzada">Cruzada</option>
+                <option value="pontos">Points</option>
+              </select>
+            </div>
+            <div className="space-y-1 col-span-2">
+              <Label className="text-[10px] font-semibold">Espessura das divisas físicas</Label>
+              <Input type="number" step="0.1" placeholder="3.2" value={config.larguraDivisasApoio ? String(config.larguraDivisasApoio) : ''} onChange={(e) => set({ larguraDivisasApoio: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
             </div>
           </div>
-        )}
+          {multiplasGlebas && (
+            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold">Cor das outras glebas</Label>
+                <Input type="text" placeholder="#c2410c" value={config.corOutrasGlebas ?? ''} onChange={(e) => set({ corOutrasGlebas: e.target.value || undefined })} className="h-7 text-xs font-mono" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold">Espessura das outras glebas</Label>
+                <Input type="number" step="0.1" placeholder="1.2" value={config.larguraOutrasGlebas ? String(config.larguraOutrasGlebas) : ''} onChange={(e) => set({ larguraOutrasGlebas: e.target.value ? Number(e.target.value) : undefined })} className="h-7 text-xs" />
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="space-y-1 pt-2 border-t">
+          <Label className="text-[10.5px] font-bold">Estilo do Nome dos Vértices</Label>
+          <select className="h-8.5 w-full rounded-md border border-input bg-background px-2 text-xs font-semibold focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500" value={config.estiloVertice ?? 'sigef'} onChange={(e) => set({ estiloVertice: e.target.value as 'sigef' | 'convencional' | 'v' })}>
+            <option value="sigef">Código padrão SIGEF (ex.: COIN-M-0017)</option>
+            <option value="convencional">Topografia convencional com prefixo P (P1, P2...)</option>
+            <option value="v">Topografia convencional com prefixo V (V1, V2...)</option>
+          </select>
+        </div>
       </div>
-      <div className="space-y-1">
-        <Label>Laudo técnico (carimbo)</Label>
-        <textarea className="min-h-[84px] w-full rounded-sm border border-input bg-background p-2 text-xs" placeholder="(texto padrão)"
-          value={config.textoLaudo ?? ''} onChange={(e) => set({ textoLaudo: e.target.value })} />
+
+      {/* SEÇÃO 3: TEXTOS E DECLARAÇÕES DO CARIMBO */}
+      <div className="border border-slate-200 dark:border-zinc-800 rounded-xl p-3 bg-muted/5 space-y-3">
+        <h4 className="font-black text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5 border-b pb-1.5">
+          <BookOpen className="size-4 text-indigo-500" /> Cláusulas e Textos do Carimbo
+        </h4>
+        <div className="space-y-1.5">
+          <Label className="font-bold">Laudo Técnico de Responsabilidade (Carimbo)</Label>
+          <textarea className="min-h-[95px] w-full rounded-md border border-input bg-background p-2 text-xs font-semibold leading-relaxed focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+            value={config.textoLaudo ?? LAUDO_PADRAO} onChange={(e) => set({ textoLaudo: e.target.value })} />
+        </div>
+        <div className="space-y-1.5 pt-1">
+          <Label className="font-bold">Declaração de Respeito de Limites (Confrontantes)</Label>
+          <textarea className="min-h-[95px] w-full rounded-md border border-input bg-background p-2 text-xs font-semibold leading-relaxed focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+            value={config.textoConfrontantes ?? CONFRONT_PADRAO} onChange={(e) => set({ textoConfrontantes: e.target.value })} />
+        </div>
       </div>
-      <div className="space-y-1">
-        <Label>Declaração dos confrontantes (carimbo)</Label>
-        <textarea className="min-h-[84px] w-full rounded-sm border border-input bg-background p-2 text-xs" placeholder="(texto padrão)"
-          value={config.textoConfrontantes ?? ''} onChange={(e) => set({ textoConfrontantes: e.target.value })} />
+
+      {/* SEÇÃO 4: MODELO PADRÃO DO SISTEMA */}
+      <div className="border border-slate-200 dark:border-zinc-800 rounded-xl p-3 bg-slate-50 dark:bg-zinc-900/50 space-y-2.5">
+        <h4 className="font-black text-xs text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+          <Save className="size-4 text-slate-500" /> Gravar como Modelo Padrão
+        </h4>
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          Ao salvar como modelo padrão, todas as espessuras de linhas, escalas de fontes, elementos visíveis e textos configurados acima serão guardados no navegador para serem usados automaticamente nos seus próximos projetos.
+        </p>
+        <Button size="sm" variant="secondary" className="w-full font-bold h-8 cursor-pointer border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 hover:bg-slate-50 dark:hover:bg-zinc-900" onClick={onSalvarPadrao} title="Guarda estes ajustes como padrão para os próximos trabalhos">
+          Salvar Ajustes como Modelo Padrão
+        </Button>
       </div>
-      <Button size="sm" variant="secondary" className="w-full" onClick={onSalvarPadrao} title="Guarda estes ajustes como padrão para os próximos trabalhos"><Save /> Salvar ajustes como padrão</Button>
-      <div className="space-y-1 rounded-sm border bg-muted/40 p-2 text-[11px] text-muted-foreground">
-        <div>{temLogo ? 'Logotipo carregado (aparece no carimbo).' : 'Sem logotipo — suba a imagem em Config para preencher o carimbo.'}</div>
-        <div>{temSituacao ? 'Planta de situação pronta.' : 'Situação não gerada — use "Gerar situação" na visão da planta.'}</div>
+
+      <div className="space-y-1 rounded-xl border bg-muted/40 p-2.5 text-[10px] font-semibold text-muted-foreground">
+        <div className="flex items-center gap-1"><span>{temLogo ? '🟢' : '⚪'}</span> {temLogo ? 'Logotipo profissional carregado no carimbo.' : 'Sem logotipo — suba uma imagem na aba Configurações para preencher o carimbo.'}</div>
+        <div className="flex items-center gap-1 mt-1"><span>{temSituacao ? '🟢' : '⚪'}</span> {temSituacao ? 'Planta de situação georreferenciada pronta.' : 'Planta de situação não gerada — use o botão "Gerar Situação" na visão da prancha.'}</div>
       </div>
     </div>
   );

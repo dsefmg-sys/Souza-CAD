@@ -92,12 +92,10 @@ export const MODELOS_PADRAO: ModelosDocs = {
     'Declaram ainda que: não existem confrontantes incapazes; não há outros confrontantes além dos ' +
     'constantes nos documentos apresentados.',
   requerimentoResponsabilidade:
-    'O requerente e o profissional responsável pelo levantamento declaram, sob as penas da lei, que ' +
-    'todas as informações prestadas são verdadeiras e que foram respeitados os direitos dos ' +
-    'confrontantes, estando cientes de que respondem civil e criminalmente pela veracidade das ' +
-    'informações, nos termos do §14 do art. 213 da Lei nº 6.015/73. “Verificado, a qualquer tempo, ' +
-    'não serem verdadeiros os fatos constantes do memorial descritivo, responderão os requerentes e ' +
-    'o profissional que o elaborou pelos prejuízos causados.”',
+    'O profissional responsável técnico declara a exatidão e a veracidade técnica do levantamento geodésico realizado. ' +
+    'A indicação física dos limites e confrontações fáticas em campo é de exclusiva responsabilidade do proprietário requerente ' +
+    'que os indicou em campo, respondendo cada um na medida de suas respectivas responsabilidades civil, técnica e criminal, ' +
+    'nos termos do §14 do art. 213 da Lei nº 6.015/73.',
   requerimentoVenda:
     'O requerente, em conjunto com o proprietário registral acima qualificado, vem, ' +
     'respeitosamente, à presença de Vossa Senhoria, com fundamento no art. 176, §3º e §4º, e ' +
