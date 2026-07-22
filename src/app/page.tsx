@@ -8364,17 +8364,7 @@ export default function EditorPage() {
                           <Atalho k={obterAtalhoLateral('refazer', 'ry')} />
                         </Button>
                       </div>
-                      {glebas.length > 1 && (
-                        <div className="flex flex-wrap gap-1 items-center justify-between border-t pt-1.5 mt-0.5">
-                          <span className="text-[9px] font-bold text-muted-foreground uppercase">Gleba:</span>
-                          <div className="flex gap-1">
-                            {glebas.map((g, i) => (
-                              <button key={g.id} type="button" onClick={() => { trocarGleba(g.id); setPainelAberto(true); }} title={g.denominacao}
-                                className={`size-6 rounded-sm flex items-center justify-center text-xs font-bold ${g.id === glebaAtivaId ? 'bg-primary text-primary-foreground' : 'border bg-background hover:bg-muted'}`}>{i + 1}</button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+
                     </div>
 
                     {/* CARD 3: FERRAMENTAS DE DESENHO */}
@@ -9126,7 +9116,17 @@ export default function EditorPage() {
                       corContorno: g.corContorno,
                       corPreenchimento: g.corPreenchimento,
                     }))}
-                    onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
+                    onCliqueUnicoGleba={(id, x, y) => {
+                      const eGlebaAtiva = id === glebaAtivaId || id === 'ativa';
+                      if (modo === 'confrontante' || modo === 'divisa') {
+                        if (id && !eGlebaAtiva) {
+                          trocarGleba(id);
+                          aviso("Edição alternada para a gleba selecionada.");
+                        }
+                      } else {
+                        setMenuRapidoGleba({ id, x, y });
+                      }
+                    }}
                     glebaAtivaId={glebaAtivaId}
                     glebaCorContorno={glebaAtivaObj?.corContorno}
                     glebaCorPreenchimento={glebaAtivaObj?.corPreenchimento}
@@ -9546,7 +9546,17 @@ export default function EditorPage() {
                         proprietario: g.proprietario,
                         matricula: g.matricula
                       }))}
-                      onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
+                      onCliqueUnicoGleba={(id, x, y) => {
+                      const eGlebaAtiva = id === glebaAtivaId || id === 'ativa';
+                      if (modo === 'confrontante' || modo === 'divisa') {
+                        if (id && !eGlebaAtiva) {
+                          trocarGleba(id);
+                          aviso("Edição alternada para a gleba selecionada.");
+                        }
+                      } else {
+                        setMenuRapidoGleba({ id, x, y });
+                      }
+                    }}
                       onCliqueSeçaoCoordenadas={(id) => {
                         if (id === 'coord.projecao' || id === 'coord.diagrama' || id === 'coord.diagramaTitulo') {
                           setAba('localizacao');
@@ -13992,14 +14002,22 @@ function PainelGlebas({
             return (
               <div
                 key={g.id}
-                className={`p-3 rounded-xl border transition-all space-y-2.5 ${
+                onClick={() => {
+                  if (!isAtiva) onTrocarGleba(g.id);
+                  onEditarDadosGleba?.(g.id);
+                }}
+                className={`p-3 rounded-xl border transition-all space-y-2.5 cursor-pointer ${
                   isAtiva
-                    ? 'border-indigo-500/60 bg-indigo-500/5 ring-1 ring-indigo-500/20'
-                    : 'border-border bg-card hover:bg-muted/30'
+                    ? 'border-2 border-indigo-600 bg-indigo-500/5 ring-2 ring-indigo-500/20 shadow-md'
+                    : !isVisivel
+                    ? 'border-slate-300 dark:border-zinc-700 bg-slate-100/50 dark:bg-zinc-800/30 text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800/50'
+                    : isAuxiliar
+                    ? 'border-amber-300 dark:border-amber-800/50 bg-amber-500/5 dark:bg-amber-500/10 hover:bg-amber-500/10'
+                    : 'border-sky-300 dark:border-sky-800/50 bg-sky-500/5 dark:bg-sky-500/10 hover:bg-sky-500/10'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                     <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
                       #{originalIdx + 1}
                     </span>
@@ -14027,6 +14045,7 @@ function PainelGlebas({
                   {/* Select de estado */}
                   <select
                     value={isAuxiliar ? 'auxiliar' : !isVisivel ? 'oculta' : 'principal'}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       const val = e.target.value;
                       if (val === 'principal') {
@@ -14047,33 +14066,13 @@ function PainelGlebas({
                   </select>
                 </div>
 
-                <div className="flex items-center justify-between pt-1 gap-2">
-                  <Button
-                    size="sm"
-                    variant={isAtiva ? 'default' : 'outline'}
-                    className={`h-7 text-[10px] font-bold gap-1 cursor-pointer flex-1 ${
-                      isAtiva
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                        : 'text-indigo-600 border-indigo-500/30 hover:bg-indigo-500/10'
-                    }`}
-                    onClick={() => {
-                      if (onEditarDadosGleba) {
-                        onEditarDadosGleba(g.id);
-                      } else if (!isAtiva) {
-                        onTrocarGleba(g.id);
-                      }
-                    }}
-                    title="Abrir os dados cadastrais desta gleba"
-                  >
-                    <Palette className="size-3" /> DADOS DA GLEBA
-                  </Button>
-
+                <div className="flex items-center justify-end pt-1 gap-2">
                   {glebas.length > 1 && (
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-7 text-[10px] text-red-500 hover:text-red-700 hover:bg-red-500/10 gap-1 cursor-pointer shrink-0"
-                      onClick={() => onRemoverGleba(g.id)}
+                      onClick={(e) => { e.stopPropagation(); onRemoverGleba(g.id); }}
                       title="Excluir esta gleba"
                     >
                       <Trash2 className="size-3" /> Excluir
@@ -14153,10 +14152,18 @@ function PainelGlebas({
                           return (
                             <div
                               key={g.id}
-                              className={`p-2.5 rounded-lg border transition-all flex flex-col justify-between space-y-2 ${
+                              onClick={() => {
+                                if (!isAtiva) onTrocarGleba(g.id);
+                                onEditarDadosGleba?.(g.id);
+                              }}
+                              className={`p-2.5 rounded-lg border transition-all flex flex-col justify-between space-y-2 cursor-pointer ${
                                 isAtiva
-                                  ? 'border-indigo-600 bg-indigo-500/5 ring-1 ring-indigo-500/30'
-                                  : 'border-border bg-card hover:bg-muted/30'
+                                  ? 'border-2 border-indigo-600 bg-indigo-500/5 ring-2 ring-indigo-500/20 shadow-md'
+                                  : !isVisivel
+                                  ? 'border-slate-300 dark:border-zinc-700 bg-slate-100/50 dark:bg-zinc-800/30 text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800/50'
+                                  : isAuxiliar
+                                  ? 'border-amber-300 dark:border-amber-800/50 bg-amber-500/5 dark:bg-amber-500/10 hover:bg-amber-500/10'
+                                  : 'border-sky-300 dark:border-sky-800/50 bg-sky-500/5 dark:bg-sky-500/10 hover:bg-sky-500/10'
                               }`}
                             >
                               <div className="space-y-1.5">
@@ -14169,6 +14176,7 @@ function PainelGlebas({
                                     type="text"
                                     value={g.denominacao || ''}
                                     onChange={(e) => onRenomearGleba(g.id, e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
                                     className="font-bold text-[11px] bg-transparent border-b border-transparent hover:border-border focus:border-indigo-500 outline-none w-full truncate"
                                     placeholder="Nome do lote"
                                     title={g.denominacao}
@@ -14178,7 +14186,7 @@ function PainelGlebas({
                                 {/* Linha 2: Edição da Quadra e Estado do Lote */}
                                 <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-dashed">
                                   {/* Input da Quadra */}
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                     <span className="text-[9px] text-muted-foreground font-semibold">Q:</span>
                                     <input
                                       type="text"
@@ -14193,6 +14201,7 @@ function PainelGlebas({
                                   {/* Select de estado */}
                                   <select
                                     value={isAuxiliar ? 'auxiliar' : !isVisivel ? 'oculta' : 'principal'}
+                                    onClick={(e) => e.stopPropagation()}
                                     onChange={(e) => {
                                       const val = e.target.value;
                                       if (val === 'principal') {
@@ -14227,33 +14236,13 @@ function PainelGlebas({
                               </div>
 
                               {/* Ações do lote */}
-                              <div className="flex items-center justify-between pt-1.5 border-t gap-1">
-                                <Button
-                                  size="sm"
-                                  variant={isAtiva ? 'default' : 'outline'}
-                                  className={`h-6 text-[9.5px] font-bold gap-1 cursor-pointer flex-1 ${
-                                    isAtiva
-                                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                                      : 'text-indigo-600 border-indigo-500/20 hover:bg-indigo-500/10'
-                                  }`}
-                                  onClick={() => {
-                                    if (onEditarDadosGleba) {
-                                      onEditarDadosGleba(g.id);
-                                    } else if (!isAtiva) {
-                                      onTrocarGleba(g.id);
-                                    }
-                                  }}
-                                  title="Editar dados deste lote"
-                                >
-                                  <Palette className="size-2.5" /> DADOS
-                                </Button>
-
+                              <div className="flex items-center justify-end pt-1.5 border-t gap-1">
                                 {glebas.length > 1 && (
                                   <Button
                                     size="sm"
                                     variant="ghost"
                                     className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-500/10 cursor-pointer shrink-0"
-                                    onClick={() => onRemoverGleba(g.id)}
+                                    onClick={(e) => { e.stopPropagation(); onRemoverGleba(g.id); }}
                                     title="Excluir este lote"
                                   >
                                     <Trash2 className="size-3" />

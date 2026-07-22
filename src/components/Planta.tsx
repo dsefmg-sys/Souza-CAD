@@ -2418,6 +2418,124 @@ export default function Planta({
         );
       })}
 
+      {/* Vértices + rótulos de outras glebas ativas/principais */}
+      {outrasGlebas.map((g, oIdx) => {
+        if (g.visivel === false) return null;
+        if (g.tipoGleba !== 'principal' && g.tipoGleba !== undefined) return null;
+        const vtxs = g.vertices || [];
+        if (vtxs.length < 3) return null;
+
+        const vsv = vtxs.filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte));
+        if (vsv.length < 3) return null;
+        const gcx = vsv.reduce((s, v) => s + sx(v.leste), 0) / vsv.length;
+        const gcy = vsv.reduce((s, v) => s + sy(v.norte), 0) / vsv.length;
+
+        return vsv.map((v, i) => {
+          const vx = sx(v.leste), vy = sy(v.norte);
+          let rx = vx, ry = vy;
+          
+          if (v.posRotulo) {
+            const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio);
+            rx = sx(u.leste);
+            ry = sy(u.norte);
+          } else {
+            const cdx = vx - gcx, cdy = vy - gcy;
+            const len = Math.hypot(cdx, cdy) || 1;
+            const ox = cdx / len, oy = cdy / len;
+            const off = Math.max(24, Math.max(6, fonteRot - 0.5) * 2.5); // offBase
+            rx = vx + ox * off;
+            ry = vy + oy * off;
+          }
+
+          const rot = nomeVertice(v, i);
+
+          return (
+            <g key={`og_vtx_${oIdx}_${v.id || i}`}>
+              {/* Símbolo do vértice */}
+              {config.mostrarSimbolosVertices !== false && (
+                <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} corCustom={v.tipo === 'M' ? config.corVerticeM : v.tipo === 'P' ? config.corVerticeP : undefined} />
+              )}
+              {/* Linha guia e Ted se mostrarRotulosPlanta */}
+              {config.mostrarRotulosPlanta !== false && (() => {
+                const ovR = getOverride(`vert.${v.id}`);
+                const lxr = rx + (ovR.dx ?? 0), lyr = ry + (ovR.dy ?? 0);
+                const fzr = Math.max(6, fonteRot - 0.5) * (ovR.escala ?? 1);
+                const w = Math.max(fzr, rot.length * fzr * 0.6);
+                const leftX = lxr, rightX = lxr + w;
+                const midY = lyr - fzr * 0.35;
+                const alvoX = Math.abs(vx - leftX) <= Math.abs(vx - rightX) ? leftX : rightX;
+                const dGuia = Math.hypot(alvoX - vx, midY - vy);
+                if (dGuia < 12) return null;
+                const ux = (alvoX - vx) / dGuia, uy = (midY - vy) / dGuia;
+                return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={alvoX - ux * 3} y2={midY - uy * 3} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
+              })()}
+              {config.mostrarRotulosPlanta !== false && (
+                <Ted x={rx} y={ry} base={rot} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
+              )}
+            </g>
+          );
+        });
+      })}
+
+      {/* Vértices + rótulos de outras glebas ativas/principais */}
+      {outrasGlebas.map((g, oIdx) => {
+        if (g.visivel === false) return null;
+        if (g.tipoGleba !== 'principal' && g.tipoGleba !== undefined) return null;
+        const vtxs = g.vertices || [];
+        if (vtxs.length < 3) return null;
+
+        const vsv = vtxs.filter((v) => Number.isFinite(v.leste) && Number.isFinite(v.norte));
+        if (vsv.length < 3) return null;
+        const gcx = vsv.reduce((s, v) => s + sx(v.leste), 0) / vsv.length;
+        const gcy = vsv.reduce((s, v) => s + sy(v.norte), 0) / vsv.length;
+
+        return vsv.map((v, i) => {
+          const vx = sx(v.leste), vy = sy(v.norte);
+          let rx = vx, ry = vy;
+          
+          if (v.posRotulo) {
+            const u = geoParaUtm(v.posRotulo.lat, v.posRotulo.lon, zona, hemisferio);
+            rx = sx(u.leste);
+            ry = sy(u.norte);
+          } else {
+            const cdx = vx - gcx, cdy = vy - gcy;
+            const len = Math.hypot(cdx, cdy) || 1;
+            const ox = cdx / len, oy = cdy / len;
+            const off = Math.max(24, Math.max(6, fonteRot - 0.5) * 2.5); // offBase
+            rx = vx + ox * off;
+            ry = vy + oy * off;
+          }
+
+          const rot = nomeVertice(v, i);
+
+          return (
+            <g key={`og_vtx_${oIdx}_${v.id || i}`}>
+              {/* Símbolo do vértice */}
+              {config.mostrarSimbolosVertices !== false && (
+                <SimboloVertice tipo={v.tipo} cx={vx} cy={vy} r={(v.tipo === 'M' ? 3.6 : v.tipo === 'V' ? 3 : 2.6) * escVert} corCustom={v.tipo === 'M' ? config.corVerticeM : v.tipo === 'P' ? config.corVerticeP : undefined} />
+              )}
+              {/* Linha guia e Ted se mostrarRotulosPlanta */}
+              {config.mostrarRotulosPlanta !== false && (() => {
+                const ovR = getOverride(`vert.${v.id}`);
+                const lxr = rx + (ovR.dx ?? 0), lyr = ry + (ovR.dy ?? 0);
+                const fzr = Math.max(6, fonteRot - 0.5) * (ovR.escala ?? 1);
+                const w = Math.max(fzr, rot.length * fzr * 0.6);
+                const leftX = lxr, rightX = lxr + w;
+                const midY = lyr - fzr * 0.35;
+                const alvoX = Math.abs(vx - leftX) <= Math.abs(vx - rightX) ? leftX : rightX;
+                const dGuia = Math.hypot(alvoX - vx, midY - vy);
+                if (dGuia < 12) return null;
+                const ux = (alvoX - vx) / dGuia, uy = (midY - vy) / dGuia;
+                return <line x1={vx + ux * 5} y1={vy + uy * 5} x2={alvoX - ux * 3} y2={midY - uy * 3} stroke="#64748b" strokeWidth={0.55} strokeDasharray="2.5 2.5" />;
+              })()}
+              {config.mostrarRotulosPlanta !== false && (
+                <Ted x={rx} y={ry} base={rot} size={Math.max(6, fonteRot - 0.5)} fill="#000" {...tProps(`vert.${v.id}`)} halo />
+              )}
+            </g>
+          );
+        });
+      })}
+
       {/* edição: prévia do desenho em andamento + realce dos pontos do objeto selecionado */}
       {editavel && desenhoPts.length > 0 && (
         <polyline points={desenhoPts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} fill="none" stroke="#2563eb" strokeWidth={1.2} strokeDasharray="4 3" />
