@@ -3,6 +3,7 @@
 // poder avisar o usuário antes de entregar um documento incompleto.
 
 import type { Vertex, Confrontante, ImovelData, TecnicoData, Gleba } from './types';
+import { calcularDistanciaMetros } from './unicidadeVertices';
 import { cpfOuCnpjValido } from './validation';
 
 export interface ConferenciaExportacao {
@@ -93,15 +94,26 @@ function conferirGeometria(
   } else if (vertices.some((v) => !v.codigoSigef?.trim())) {
     trava('Existem vértices sem código definitivo — registre os pontos antes de exportar.');
   } else {
-    const vistos = new Set<string>();
-    const duplicados = new Set<string>();
+    const porCodigo = new Map<string, Vertex[]>();
     for (const v of vertices) {
-      const cod = v.codigoSigef.trim();
-      if (vistos.has(cod)) duplicados.add(cod); else vistos.add(cod);
+      const cod = (v.codigoSigef || v.nome || '').trim().toUpperCase();
+      if (!cod) continue;
+      if (!porCodigo.has(cod)) porCodigo.set(cod, []);
+      porCodigo.get(cod)!.push(v);
     }
-    if (duplicados.size > 0) {
-      trava(`Existem vértices com o código repetido (${[...duplicados].join(', ')}) — cada vértice precisa de um código único.`);
-    }
+
+    porCodigo.forEach((lista, cod) => {
+      if (lista.length > 1) {
+        for (let i = 0; i < lista.length; i++) {
+          for (let j = i + 1; j < lista.length; j++) {
+            const dist = calcularDistanciaMetros(lista[i], lista[j]);
+            if (dist > 0.10) {
+              trava(`Vértice "${cod}" utilizado com coordenadas DIFERENTES (distância de ${dist.toFixed(1).replace('.', ',')} m). No SIGEF, cada vértice é único.`);
+            }
+          }
+        }
+      }
+    });
   }
 
   for (const c of confrontantes) {

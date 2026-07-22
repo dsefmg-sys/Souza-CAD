@@ -143,6 +143,32 @@ export function conferir(
     }
   }
 
+  // Código de vértices repetidos com coordenadas divergentes (> 10 cm)
+  const porCodigo = new Map<string, Vertex[]>();
+  for (const v of vertices) {
+    const cod = (v.codigoSigef || v.nome || '').trim().toUpperCase();
+    if (!cod) continue;
+    if (!porCodigo.has(cod)) porCodigo.set(cod, []);
+    porCodigo.get(cod)!.push(v);
+  }
+
+  porCodigo.forEach((lista, cod) => {
+    if (lista.length > 1) {
+      for (let i = 0; i < lista.length; i++) {
+        for (let j = i + 1; j < lista.length; j++) {
+          const dist = Math.hypot(lista[i].leste - lista[j].leste, lista[i].norte - lista[j].norte);
+          if (dist > 0.10) {
+            out.push({
+              nivel: 'erro',
+              campo: 'código_vértice',
+              msg: `Vértice "${cod}" utilizado com coordenadas DIFERENTES no projeto (distância de ${dist.toFixed(1).replace('.', ',')} m). No SIGEF, cada vértice é único.`
+            });
+          }
+        }
+      }
+    }
+  });
+
   // vértices duplicados / muito próximos (< 5 cm)
   for (let i = 0; i < vertices.length; i++) {
     for (let j = i + 1; j < vertices.length; j++) {
