@@ -11,7 +11,7 @@ import {
   Moon, Sun, Pencil, PenTool, Lock, LockOpen, Printer, Brush, Paintbrush, Download, Undo2, Redo2, Users, ShieldCheck, Minus,
   Settings, LogOut, LogIn, Table, Target, Check, X, Ruler, ChevronRight, Camera, PencilRuler, Percent, Info, HelpCircle, GraduationCap, Palette, FlaskConical, Sparkles, Leaf, Waypoints, CreditCard, GripVertical, ChevronDown, Briefcase, PanelLeft, Phone,
   Scissors, Expand, GitCommit, Copy, Square, Circle, Spline, RefreshCw, ExternalLink, Youtube, Archive, BarChart3, ChevronUp, Scale, UserCheck, Monitor, Mountain, LayoutGrid, Building2, Coins,
-  User, MapPin, Calendar, Sprout, Share2, Play, Home, Layers, Landmark, BookOpen,
+  User, MapPin, Calendar, Sprout, Share2, Play, Home, Layers, Landmark, BookOpen, FileSpreadsheet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -107,6 +107,7 @@ import { ancoraMunicipio, MUNICIPIOS, detectarFusoPorRegiao, ufDoMunicipio } fro
 import { atribuirProvisorio, semente } from '@/lib/topo/registroCore';
 import { snapUtm, type SegmentoSnap } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
+import { importarOdsParaProjeto } from '@/lib/io/odsImporter';
 import { corPorConfrontante, gerarCorNovaConfrontante } from '@/lib/topo/coresConfrontante';
 import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
 import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL, corDivisa, obterTipoLimiteEfetivo } from '@/lib/topo/sigefVocab';
@@ -6814,6 +6815,29 @@ export default function EditorPage() {
   }
 
   // ---------- projetos ----------
+  async function handleImportarOdsSidebar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setProcessando(true);
+      const proj = await importarOdsParaProjeto(file);
+      await avisar({
+        titulo: 'Planilha ODS Importada!',
+        mensagem: `O projeto "${proj.nome}" foi criado com sucesso a partir da planilha ODS, contendo ${proj.glebas[0]?.vertices?.length || 0} vértices.`
+      });
+      // Carregar e abrir o novo projeto importado
+      await carregarProjetoComConfirmacao(proj.id);
+    } catch (err: any) {
+      await avisar({
+        titulo: 'Erro ao Importar ODS',
+        mensagem: err.message || 'Falha ao processar a planilha ODS.'
+      });
+    } finally {
+      setProcessando(false);
+      e.target.value = '';
+    }
+  }
+
   function gerarResumoSalvamento(): string {
     const linhas: string[] = [];
     
@@ -8575,6 +8599,10 @@ export default function EditorPage() {
                           <Sparkles className="text-violet-500 shrink-0 size-3.5" /> <span>USAR IA</span>
                           <Atalho k="IA" />
                         </Button>
+                        <label className="relative flex h-8 w-full items-center justify-center gap-1 rounded-md bg-secondary hover:bg-secondary/80 text-foreground cursor-pointer px-1 py-0 text-[9px] font-bold uppercase transition-colors" title="Importar planilha oficial ODS do SIGEF/INCRA criando um novo projeto">
+                          <FileSpreadsheet className="size-3.5 text-emerald-500 shrink-0" /> <span>IMP. ODS</span>
+                          <input type="file" accept=".ods" onChange={handleImportarOdsSidebar} className="hidden" />
+                        </label>
                         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="w-full">
                           <Button size="sm" variant="secondary" className="relative w-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 gap-1" title="Acessar o SIGEF (INCRA) para certificação eletrônica do imóvel">
                             <ExternalLink className="size-3.5 text-emerald-500" /> <span>SIGEF</span>

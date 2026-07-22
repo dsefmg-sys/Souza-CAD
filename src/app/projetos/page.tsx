@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Search, FolderOpen, Trash2, CheckCircle2, AlertTriangle, DownloadCloud, RotateCcw, XCircle, Download, Pencil } from 'lucide-react';
+import { ArrowLeft, Search, FolderOpen, Trash2, CheckCircle2, AlertTriangle, DownloadCloud, RotateCcw, XCircle, Download, Pencil, FileSpreadsheet } from 'lucide-react';
+import { importarOdsParaProjeto } from '@/lib/io/odsImporter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Projeto } from '@/lib/topo/types';
@@ -27,6 +28,26 @@ export default function ProjetosPage() {
   const [gerandoBackup, setGerandoBackup] = useState(false);
   const [exportandoId, setExportandoId] = useState<string | null>(null);
   const DIAS_LIXEIRA = 90;
+
+  async function handleImportarOds(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const proj = await importarOdsParaProjeto(file);
+      await avisar({
+        titulo: 'Planilha ODS Importada!',
+        mensagem: `O projeto "${proj.nome}" foi criado com sucesso a partir da planilha ODS, contendo ${proj.glebas[0]?.vertices?.length || 0} vértices.`
+      });
+      carregarTudo();
+    } catch (err: any) {
+      await avisar({
+        titulo: 'Erro ao Importar ODS',
+        mensagem: err.message || 'Falha ao processar a planilha ODS.'
+      });
+    } finally {
+      e.target.value = '';
+    }
+  }
 
   async function baixarBackup() {
     setGerandoBackup(true);
@@ -138,6 +159,11 @@ export default function ProjetosPage() {
           <Button size="sm" variant={verLixeira ? 'default' : 'outline'} className="h-9 gap-1.5 px-3 text-xs" onClick={() => setVerLixeira((v) => !v)} title="Projetos excluídos (restauráveis por um prazo)">
             <Trash2 className="size-4" /> Lixeira{lixeira.length ? ` (${lixeira.length})` : ''}
           </Button>
+          <label className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs cursor-pointer shadow-xs transition-all" title="Criar um novo projeto importando uma planilha oficial ODS do SIGEF/INCRA">
+            <FileSpreadsheet className="size-4" />
+            <span>Importar ODS</span>
+            <input type="file" accept=".ods" onChange={handleImportarOds} className="hidden" />
+          </label>
           <Button size="sm" variant="outline" className="h-9 gap-1.5 px-3 text-xs" disabled={gerandoBackup || linhas.length === 0} onClick={baixarBackup} title="Baixa um zip com todos os projetos e arquivos anexados">
             <DownloadCloud className="size-4" /> {gerandoBackup ? 'Gerando…' : 'Backup completo'}
           </Button>

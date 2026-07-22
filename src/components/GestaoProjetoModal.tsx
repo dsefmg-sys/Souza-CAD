@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Receipt, FileText, Plus, Trash2, Wallet, Building2, TrendingUp, TrendingDown, Clock, BarChart3, CheckCircle2, Zap, FolderOpen, Pencil } from 'lucide-react';
+import { Receipt, FileText, Plus, Trash2, Wallet, Building2, TrendingUp, TrendingDown, Clock, BarChart3, CheckCircle2, Zap, FolderOpen, Pencil, FileSpreadsheet } from 'lucide-react';
+import { importarOdsParaProjeto } from '@/lib/io/odsImporter';
+import { avisar } from '@/lib/ui/dialogos';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -523,8 +525,42 @@ function EmpresaResumo({
   onAbrirProjeto?: (id: string) => void;
   onOpenChange: (o: boolean) => void;
 }) {
+  const handleImportarOdsEmpresa = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const proj = await importarOdsParaProjeto(file);
+      await avisar({
+        titulo: 'Planilha ODS Importada!',
+        mensagem: `O projeto "${proj.nome}" foi criado com sucesso a partir da planilha ODS.`
+      });
+      const { listarProjetos } = await import('@/lib/store/projects');
+      setProjetos(await listarProjetos());
+    } catch (err: any) {
+      await avisar({
+        titulo: 'Erro ao Importar ODS',
+        mensagem: err.message || 'Falha ao processar a planilha ODS.'
+      });
+    } finally {
+      e.target.value = '';
+    }
+  };
+
   if (projetos === null) return <div className="p-6 text-center text-muted-foreground">Carregando projetos…</div>;
-  if (projetos.length === 0) return <div className="p-6 text-center text-muted-foreground font-semibold">Nenhum projeto salvo ainda.</div>;
+  if (projetos.length === 0) {
+    return (
+      <div className="p-6 text-center text-muted-foreground font-semibold space-y-3">
+        <div>Nenhum projeto salvo ainda.</div>
+        <div>
+          <label className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs cursor-pointer shadow-xs transition-all">
+            <FileSpreadsheet className="size-4" />
+            <span>Importar Planilha ODS (.ods)</span>
+            <input type="file" accept=".ods" onChange={handleImportarOdsEmpresa} className="hidden" />
+          </label>
+        </div>
+      </div>
+    );
+  }
 
   const handleExcluir = async (p: Projeto) => {
     if (await confirmar({
