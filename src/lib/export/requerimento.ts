@@ -424,8 +424,20 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
     }
   }
 
-  c.push(titulo('DA RESPONSABILIDADE TÉCNICA'));
-  c.push(par(preencherModelo(modelos.requerimentoResponsabilidade, varsModelo)));
+  const respTexto = preencherModelo(modelos.requerimentoResponsabilidade, varsModelo);
+  const temTituloProprio = respTexto.trim().startsWith('DA RESPONSABILIDADE');
+  if (!temTituloProprio) {
+    c.push(titulo('DA RESPONSABILIDADE TÉCNICA'));
+  }
+  preencherModeloParagrafos(modelos.requerimentoResponsabilidade, varsModelo).forEach((t) => {
+    const limpo = t.trim();
+    if (!limpo) return;
+    if (temTituloProprio && limpo.startsWith('DA RESPONSABILIDADE')) {
+      c.push(titulo(limpo));
+    } else {
+      c.push(par(limpo));
+    }
+  });
 
   c.push(titulo('DO VALOR DO IMÓVEL'));
   if (imovel.valorImovel != null && imovel.valorImovel > 0) {
