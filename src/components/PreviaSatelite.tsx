@@ -25,7 +25,7 @@ function Enquadrar({ pts, destaque }: { pts: [number, number][]; destaque: [numb
 }
 
 /** Mini-mapa de satélite com o perímetro/pontos importados por cima — confirma localização e fuso. */
-export default function PreviaSatelite({ poligono, marcadores, destaque }: { poligono: [number, number][]; marcadores: Marcador[]; destaque: [number, number] | null }) {
+export default function PreviaSatelite({ poligono, marcadores, destaque, onSelectMarcador }: { poligono: [number, number][]; marcadores: Marcador[]; destaque: [number, number] | null; onSelectMarcador?: (idx: number) => void }) {
   const validos = marcadores.filter((m) => Number.isFinite(m.lat) && Number.isFinite(m.lon) && Math.abs(m.lat) <= 90 && Math.abs(m.lon) <= 180);
   const centro: [number, number] = destaque ?? (validos.length ? [validos[0].lat, validos[0].lon] : [-20.6506, -41.9094]);
   const todos: [number, number][] = validos.map((m) => [m.lat, m.lon]);
@@ -54,8 +54,14 @@ export default function PreviaSatelite({ poligono, marcadores, destaque }: { pol
             center={[m.lat, m.lon]}
             radius={m.ativo ? 7 : 4}
             pathOptions={{ color: cor, fillColor: m.ativo ? '#fde047' : '#fff', fillOpacity: 1, weight: m.ativo ? 3 : 1.5 }}
+            eventHandlers={{
+              click(e) {
+                L.DomEvent.stopPropagation(e);
+                onSelectMarcador?.(m.idx);
+              }
+            }}
           >
-            {m.ativo && m.rotulo && <Tooltip permanent direction="top" offset={[0, -6]}>{m.rotulo}</Tooltip>}
+            {(m.ativo || !m.noPoligono) && m.rotulo && <Tooltip permanent={m.ativo} direction="top" offset={[0, -6]}>{m.rotulo}</Tooltip>}
           </CircleMarker>
         );
       })}
