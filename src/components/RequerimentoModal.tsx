@@ -18,7 +18,7 @@ import { carregarPreferencias } from '@/lib/store/preferencias';
 import { carregarPadroes } from '@/lib/store/padroes';
 import { perguntarTratamentoAusentes, type CampoFaltante } from '@/lib/export/confirmarAusentes';
 
-import NotaLegal from '@/components/NotaLegal';
+
 
 const OPCOES_ATO: { valor: TipoAtoRequerimento; rotulo: string; explicacao: string }[] = [
   {
@@ -222,7 +222,7 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
                   placeholder={PLACEHOLDERS_QUALIFICACAO[c.k] || ''}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  className={`h-7 text-[11px] ${isDoc ? 'min-w-[140px] font-mono' : ''}`}
+                  className={`h-7 text-[11px] ${isDoc ? 'w-full font-mono' : ''}`}
                 />
               )}
             </div>
@@ -541,25 +541,7 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                   </div>
                 )}
 
-                {mostrarDicas && (
-                  <div className="space-y-1 rounded-lg border border-dashed border-amber-500/20 bg-amber-500/5 p-2.5 text-[10px] text-muted-foreground leading-relaxed">
-                    <strong className="text-amber-700 dark:text-amber-400 font-bold block mb-0.5">O que implicam os atos selecionados:</strong>
-                    {localTiposAtos.map((ta) => {
-                      const item = OPCOES_ATO.find((o) => o.valor === ta);
-                      return (
-                        <p key={ta} className="text-[10px] leading-tight">
-                          • <strong>{item?.rotulo}:</strong> {item?.explicacao}
-                        </p>
-                      );
-                    })}
-                  </div>
-                )}
-                <NotaLegal chave={localTiposAtos.includes('usucapiao') ? 'usucapiao' : 'requerimento'} />
-                {localTipoAto !== 'venda' && localTipoAto !== 'retificacao' && (
-                  <p className="text-[10px] text-amber-500 font-semibold leading-snug">
-                    Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.
-                  </p>
-                )}
+
               </div>
 
               {/* Dados do Imóvel */}
@@ -672,6 +654,34 @@ export default function RequerimentoModal({ open, onOpenChange, imovel, onChange
                   </div>
                 )}
               </div>
+
+              {/* Dicas e Apoio Informativo abaixo de Dados do Imóvel */}
+              {mostrarDicas && (
+                <div className="space-y-2 rounded-lg border border-dashed border-amber-500/20 bg-amber-500/5 p-2.5 text-[10px] text-muted-foreground leading-relaxed">
+                  <strong className="text-amber-700 dark:text-amber-400 font-bold block mb-1">O que implicam os atos selecionados:</strong>
+                  <p className="text-[10px] leading-tight">
+                    • <strong>Retificação Simples:</strong> Requerimento padrão feito pelo proprietário/possuidor para georreferenciamento e retificação de área. O cônjuge ou coproprietário é opcional.
+                  </p>
+                  <p className="text-[10px] leading-tight mt-1">
+                    • <strong>Compra e venda:</strong> O imóvel está sendo vendido e o comprador (requerente) pede a retificação da área já em nome dele. Precisa do CPF/RG de quem vende e de quem compra.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1.5 rounded-lg border border-border bg-muted/10 p-2.5 text-[9px] text-muted-foreground leading-relaxed">
+                <p className="font-semibold text-foreground">
+                  A averbação do georreferenciamento com retificação de área apoia-se, em regra, nos arts. 176, §3º e §4º, e 213 da Lei 6.015/73 (Lei de Registros Públicos). O rito e as exigências (firmas reconhecidas, anuências) variam por cartório — confirme antes de protocolar.
+                </p>
+                <p className="mt-1 text-[8.5px] opacity-75">
+                  <strong>Apoio informativo, não parecer jurídico.</strong> A legislação muda e varia por estado e comarca — confira sempre as normas vigentes (e um profissional do Direito em caso de dúvida). A conformidade legal é responsabilidade do agrimensor.
+                </p>
+              </div>
+
+              {localTipoAto !== 'venda' && localTipoAto !== 'retificacao' && (
+                <p className="text-[10px] text-amber-500 font-semibold leading-snug">
+                  Texto ainda não conferido com um modelo real de cartório para este tipo de ato — revise a redação jurídica antes de protocolar.
+                </p>
+              )}
             </div>
 
             {/* Coluna 2: Requerente */}
