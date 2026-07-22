@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
-import { Ruler, Box, MapPin } from 'lucide-react';
+import { Ruler, Box, MapPin, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
@@ -123,9 +123,8 @@ interface Props {
   parcelaCertSel?: number | null;
   onSelParcelaCert?: (idx: number | null) => void;
   verticesVizinho?: VerticeVizinho[];
-  exibirDivisasMunicipais?: boolean;
-  divisasMunicipaisGeoJson?: any;
-  onToggleDivisasMunicipais?: () => void;
+  exibirLimitesFusoUTM?: boolean;
+  onToggleLimitesFusoUTM?: () => void;
   gradeAltimetrica?: { lat: number; lon: number; leste: number; norte: number; elevacao: number }[];
 }
 
@@ -1330,7 +1329,7 @@ function TrimExtendController({
 export default function MapEditor(props: Props) {
   const {
     vertices, selecionadoId, modo, mostrarRotulos, bloqueado, referencias = [], parcelasCert = [], mostrarCert = true, opacidadeCert = 0.06, parcelaCertSel = null, onSelParcelaCert, verticesVizinho = [], selMulti, objSelMulti, onToggleMulti, onToggleMultiObj, onBoxSelect, onBoxSelectObj, onAdotarVertice, onDblClick, outrasGlebas = [], onAbrirGestaoGleba, onCliqueUnicoGleba, glebaAtivaId,
-    exibirDivisasMunicipais = false, divisasMunicipaisGeoJson = null, onToggleDivisasMunicipais,
+    exibirLimitesFusoUTM = false, onToggleLimitesFusoUTM,
     objetos = [], desenhoAtual = [], rotulos = [], centroGleba = null, onMoverCentro, centroPadrao = null, zoomPadrao = 13, mostrarDivisaConf = true, onAjustarDivisaConf, estiloVertice = 'sigef', objetoSelId = null,
     onMover, onSelecionar, onApagar, onInserir, onCliqueDesenho, onSelecObjeto, onContextMenuObjeto, onMoverPontoObjeto, onMoverRotulo, onPintarDivisa, onPintarConfrontante, onMoverRotuloVertice, centralizarSig,
     onEditarConfrontante,
@@ -1544,6 +1543,38 @@ export default function MapEditor(props: Props) {
     });
   }, [validos]);
 
+  // Limites de Fuso UTM próximos ao imóvel
+  const meridianosFuso = useMemo(() => {
+    if (!exibirLimitesFusoUTM || !vertices || vertices.length === 0) return [];
+    
+    // Calcula a faixa de longitude dos vértices
+    const lons = vertices.map(v => v.lon).filter(Number.isFinite);
+    if (lons.length === 0) return [];
+    const minLon = Math.min(...lons);
+    const maxLon = Math.max(...lons);
+    
+    // Busca meridianos múltiplos de 6 na faixa [minLon - 4, maxLon + 4] (uma vizinhança de ~400km)
+    const result = [];
+    const startIdx = Math.floor((minLon - 4) / 6);
+    const endIdx = Math.ceil((maxLon + 4) / 6);
+    
+    for (let idx = startIdx; idx <= endIdx; idx++) {
+      const lonLinh = idx * 6;
+      const fusoOeste = 30 + idx;
+      const fusoLeste = 31 + idx;
+      
+      // Apenas desenha se o fuso estiver em coordenadas válidas do Brasil (longitudes de -78 a -30)
+      if (lonLinh >= -78 && lonLinh <= -30) {
+        result.push({
+          lon: lonLinh,
+          fusoOeste,
+          fusoLeste
+        });
+      }
+    }
+    return result;
+  }, [exibirLimitesFusoUTM, vertices]);
+
   return (
     <div
       style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: '#090d16' }}
@@ -1585,29 +1616,26 @@ export default function MapEditor(props: Props) {
       <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} hoverSnap={hoverSnap} zona={zona} hemisferio={hemisferio} onConfirmarCopiaBase={onConfirmarCopiaBase} onConfirmarCopiaDestino={onConfirmarCopiaDestino} onContextMenuMapa={onContextMenuMapa} />
       <FocoMap latLng={focoLatLng} />
 
-      {/* Divisas Municipais da Região / IBGE */}
-      {exibirDivisasMunicipais && divisasMunicipaisGeoJson && (
-        <GeoJSON
-          key={JSON.stringify(divisasMunicipaisGeoJson)}
-          data={divisasMunicipaisGeoJson}
-          style={{
-            color: '#ea580c',
-            weight: 1.5,
-            dashArray: '3 6',
-            fillColor: '#ea580c',
-            fillOpacity: 0.03
+      {/* Linhas limites de Fuso UTM */}
+      {exibirLimitesFusoUTM && meridianosFuso.map((m) => (
+        <Polyline
+          key={`fuso-${m.lon}`}
+          positions={[
+            [-85, m.lon],
+            [85, m.lon]
+          ]}
+          pathOptions={{
+            color: '#f97316',
+            weight: 2,
+            dashArray: '8 6',
+            opacity: 0.95
           }}
-          onEachFeature={(feature: any, layer: L.Layer) => {
-            if (feature.properties && feature.properties.nome) {
-              layer.bindTooltip(feature.properties.nome, {
-                permanent: false,
-                direction: 'center',
-                className: 'bg-background/90 text-foreground text-[10px] font-bold border border-border px-1.5 py-0.5 rounded shadow-xs'
-              });
-            }
-          }}
-        />
-      )}
+        >
+          <Tooltip permanent direction="right" className="bg-zinc-950 text-orange-400 text-[10px] font-black border border-zinc-800 px-2 py-1 rounded shadow-lg uppercase select-none">
+            {`Fronteira UTM: Fuso ${m.fusoOeste} ◀ | ▶ Fuso ${m.fusoLeste}`}
+          </Tooltip>
+        </Polyline>
+      ))}
 
       {/* referências certificadas (snap) */}
       {referencias.filter((r) => r.length >= 2).map((r, i) => {
@@ -2544,19 +2572,19 @@ export default function MapEditor(props: Props) {
             <Box className="size-4 text-amber-500 animate-pulse" /> <span>Visualizar 3D</span>
           </button>
 
-          {onToggleDivisasMunicipais && (
+          {onToggleLimitesFusoUTM && (
             <button
               type="button"
-              onClick={onToggleDivisasMunicipais}
+              onClick={onToggleLimitesFusoUTM}
               className={`h-9 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wider flex items-center justify-center border rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 select-none cursor-pointer ${
-                exibirDivisasMunicipais
+                exibirLimitesFusoUTM
                   ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-500'
                   : 'bg-slate-900/80 hover:bg-slate-900/90 text-slate-300 border-white/10'
               }`}
-              title="Exibir divisas e limites dos municípios vizinhos (dados oficiais do IBGE)"
+              title="Exibir linhas limites de fuso UTM próximas ao imóvel (meridianos de fuso)"
             >
-              <MapPin className="size-4 text-orange-400" />
-              <span>Divisas Municipais</span>
+              <Globe className="size-4 text-orange-400" />
+              <span>Limites de Fuso UTM</span>
             </button>
           )}
         </div>

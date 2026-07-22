@@ -5282,8 +5282,7 @@ export default function EditorPage() {
   const [glebaCurvaAlvo, setGlebaCurvaAlvo] = useState<string>('todas');
   const [curvaUsarTriangulacao, setCurvaUsarTriangulacao] = useState<boolean>(false); // padrão: dados online (não triangulação local)
   const [tipoProjeto, setTipoProjeto] = useState<'rural' | 'loteamento'>('rural');
-  const [exibirDivisasMunicipais, setExibirDivisasMunicipais] = useState<boolean>(false);
-  const [divisasMunicipaisGeoJson, setDivisasMunicipaisGeoJson] = useState<any | null>(null);
+  const [exibirLimitesFusoUTM, setExibirLimitesFusoUTM] = useState<boolean>(false);
   const [cidadeGeocodificada, setCidadeGeocodificada] = useState<string | null>(null);
   
   // Estados para cruzamento de divisas e fusos
@@ -5381,47 +5380,7 @@ export default function EditorPage() {
       return false;
     }
 
-    // 2. Cruzamento de municípios e estados via divisas IBGE
-    if (divisasMunicipaisGeoJson && divisasMunicipaisGeoJson.features) {
-      const munisEncontrados = new Set<string>();
-      const estadosEncontrados = new Set<string>();
-
-      vertices.forEach((v) => {
-        for (const f of divisasMunicipaisGeoJson.features) {
-          const geom = f.geometry;
-          if (geom && pointInGeoJSONGeometry(v.lat, v.lon, geom)) {
-            const nomeMuni = f.properties.nome || '';
-            const codArea = String(f.properties.codarea || f.id || '');
-            const prefix = codArea.slice(0, 2);
-            const uf = UF_MAP[prefix] || '';
-            
-            if (nomeMuni) {
-              munisEncontrados.add(uf ? `${nomeMuni}-${uf}` : nomeMuni);
-            }
-            if (uf) {
-              estadosEncontrados.add(uf);
-            }
-            break;
-          }
-        }
-      });
-
-      if (munisEncontrados.size > 1) {
-        setCruzamentoMunicipios(Array.from(munisEncontrados));
-      } else {
-        setCruzamentoMunicipios([]);
-      }
-
-      if (estadosEncontrados.size > 1) {
-        setCruzamentoEstados(Array.from(estadosEncontrados));
-      } else {
-        setCruzamentoEstados([]);
-      }
-    } else {
-      setCruzamentoMunicipios([]);
-      setCruzamentoEstados([]);
-    }
-  }, [vertices, divisasMunicipaisGeoJson]);
+  }, [vertices]);
 
   // Hook de identificação de município por centroide (OSM reverse geocoding + local fallback)
   useEffect(() => {
@@ -5541,32 +5500,6 @@ export default function EditorPage() {
         const cidadeFormatada = formatarParticulas(cidade);
         setCidadeGeocodificada(cidadeFormatada);
         setUfGeocodificada(uf.toUpperCase());
-        
-        // Se a visualização de divisas estiver ativa, buscar os polígonos no IBGE
-        if (exibirDivisasMunicipais) {
-          try {
-            const resMuni = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios?nome=${encodeURIComponent(cidadeFormatada.toLowerCase())}`);
-            if (resMuni.ok) {
-              const list = await resMuni.json();
-              const match = list.find((m: any) => 
-                m.nome.toLowerCase() === cidadeFormatada.toLowerCase() && 
-                m.microrregiao.mesorregiao.UF.sigla.toUpperCase() === uf.toUpperCase()
-              );
-              if (match && match.microrregiao?.id) {
-                const idMicro = match.microrregiao.id;
-                const resMalha = await fetch(`https://servicodados.ibge.gov.br/api/v3/malhas/microrregioes/${idMicro}?formato=application/vnd.geo+json&intrinseco=true`);
-                if (resMalha.ok) {
-                  const geoJson = await resMalha.json();
-                  if (!cancelado) {
-                    setDivisasMunicipaisGeoJson(geoJson);
-                  }
-                }
-              }
-            }
-          } catch (e) {
-            console.error('Erro ao buscar divisas no IBGE:', e);
-          }
-        }
       }
     }
 
@@ -5575,7 +5508,7 @@ export default function EditorPage() {
     return () => {
       cancelado = true;
     };
-  }, [vertices, exibirDivisasMunicipais]);
+  }, [vertices]);
 
   function ajustarAltitudesGlobais(cm: number) {
     if (!cm || isNaN(cm)) return;
@@ -6193,6 +6126,7 @@ export default function EditorPage() {
 
   function limparCurvasNivel() {
     setObjetos((os) => os.filter((o) => o.curvaNivel == null));
+    setGradeAltimetrica([]);
   }
 
   async function buscarGradeAltitudesOnline() {
@@ -9134,9 +9068,8 @@ export default function EditorPage() {
               <div className="flex-grow min-h-0 h-full w-full relative">
                 <ErrorBoundary onReset={() => setVista('planta')}>
                   <MapEditor 
-                    exibirDivisasMunicipais={exibirDivisasMunicipais}
-                    divisasMunicipaisGeoJson={divisasMunicipaisGeoJson}
-                    onToggleDivisasMunicipais={() => setExibirDivisasMunicipais(!exibirDivisasMunicipais)}
+                    exibirLimitesFusoUTM={exibirLimitesFusoUTM}
+                    onToggleLimitesFusoUTM={() => setExibirLimitesFusoUTM(!exibirLimitesFusoUTM)}
                     vertices={vertices} selecionadoId={selecionadoId} modo={modo} mostrarRotulos={mostrarRotulos} bloqueado={bloqueado} centralizarSig={centralizarSig}
                     gradeAltimetrica={gradeAltimetrica}
                     onDblClickObjeto={(id) => { setObjetoSelId(id); setObjPersonalizarId(id); }}
