@@ -32,6 +32,13 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
   const [credenciamento, setCredenciamento] = useState('');
   const [cidade, setCidade] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [licencaAmbiental, setLicencaAmbiental] = useState(false);
+  const [licencaJuridico, setLicencaJuridico] = useState(false);
+  const [licencaUsucapiao, setLicencaUsucapiao] = useState(false);
+  const [licencaAvaliacao, setLicencaAvaliacao] = useState(false);
+  const [licencaReurb, setLicencaReurb] = useState(false);
+  const [licencaLoteamento, setLicencaLoteamento] = useState(false);
+  const [licencaCredito, setLicencaCredito] = useState(false);
 
   const eng = categoria === 'engenheiro';
   const agricola = categoria === 'tecnico-agricola';
@@ -71,6 +78,13 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
       rtCft: cft.trim(),
       municipio: cidade.trim(),
       uf: ufDoMunicipio(cidade.trim()) || undefined,
+      licencaAmbiental,
+      licencaJuridico,
+      licencaUsucapiao,
+      licencaAvaliacao,
+      licencaReurb,
+      licencaLoteamento,
+      licencaCredito,
     }).catch(() => {});
 
     aceitarTermos().catch(() => {});
@@ -211,6 +225,75 @@ export default function PrimeiroAcessoModal({ open, onConcluir, onVoltarLogin }:
             <div className="space-y-1">
               <Label>Código de credenciado no INCRA (opcional)</Label>
               <Input value={credenciamento} onChange={(e) => setCredenciamento(e.target.value.toUpperCase())} placeholder="Ex.: SEU CÓDIGO — deixe em branco se ainda não tem" />
+            </div>
+            <div className="space-y-1 bg-muted/40 p-2.5 rounded-lg border border-border/50">
+              <Label className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Ativar Módulos Extras (Opcional)</Label>
+              <p className="text-[10px] text-muted-foreground mb-2">Marque os módulos que deseja iniciar ativos no seu ambiente:</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={licencaAmbiental}
+                    onChange={(e) => setLicencaAmbiental(e.target.checked)}
+                    className="rounded text-zinc-950 focus:ring-emerald-500 size-4 accent-emerald-500 cursor-pointer"
+                  />
+                  <span>Ambiental</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={licencaJuridico}
+                    onChange={(e) => setLicencaJuridico(e.target.checked)}
+                    className="rounded text-zinc-950 focus:ring-emerald-500 size-4 accent-emerald-500 cursor-pointer"
+                  />
+                  <span>Jurídico</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={licencaUsucapiao}
+                    onChange={(e) => setLicencaUsucapiao(e.target.checked)}
+                    className="rounded text-zinc-950 focus:ring-emerald-500 size-4 accent-emerald-500 cursor-pointer"
+                  />
+                  <span>Usucapião</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={licencaAvaliacao}
+                    onChange={(e) => setLicencaAvaliacao(e.target.checked)}
+                    className="rounded text-zinc-950 focus:ring-emerald-500 size-4 accent-emerald-500 cursor-pointer"
+                  />
+                  <span>Avaliação de Imóveis</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={licencaReurb}
+                    onChange={(e) => setLicencaReurb(e.target.checked)}
+                    className="rounded text-zinc-950 focus:ring-emerald-500 size-4 accent-emerald-500 cursor-pointer"
+                  />
+                  <span>REURB</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={licencaLoteamento}
+                    onChange={(e) => setLicencaLoteamento(e.target.checked)}
+                    className="rounded text-zinc-950 focus:ring-emerald-500 size-4 accent-emerald-500 cursor-pointer"
+                  />
+                  <span>Loteamentos</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={licencaCredito}
+                    onChange={(e) => setLicencaCredito(e.target.checked)}
+                    className="rounded text-zinc-950 focus:ring-emerald-500 size-4 accent-emerald-500 cursor-pointer"
+                  />
+                  <span>Crédito Rural & Agropecuário</span>
+                </label>
+              </div>
             </div>
             <div className="space-y-1"><Label>WhatsApp / telefone (opcional)</Label><Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(00) 90000-0000" /></div>
             <p className="text-[11px] text-muted-foreground">Você pode completar e ajustar tudo depois em Configurações.</p>

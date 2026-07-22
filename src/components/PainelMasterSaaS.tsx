@@ -51,6 +51,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
   const [landingTexts, setLandingTexts] = useState<LandingPageTexts>(LANDING_PADRAO);
   const [salvandoLanding, setSalvandoLanding] = useState(false);
   const [landingAberta, setLandingAberta] = useState(false);
+  const [mapaSaaSAberto, setMapaSaaSAberto] = useState(false);
   const [smtp, setSmtp] = useState<ConfigSmtp>({});
   const [salvandoSmtp, setSalvandoSmtp] = useState(false);
   const [carregando, setCarregando] = useState(false);
@@ -1031,7 +1032,37 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
         </div>
 
         {/* ─── Mapa de Clientes SaaS (Geolocalização) ─── */}
-        <MapaClientesSaaS perfis={perfis} />
+        <div className="border border-zinc-800 rounded-xl bg-zinc-950/70 overflow-hidden transition-all">
+          <button
+            type="button"
+            onClick={() => setMapaSaaSAberto(!mapaSaaSAberto)}
+            className="w-full px-4 py-3 flex items-center justify-between bg-zinc-900/40 hover:bg-zinc-900/60 transition-colors cursor-pointer select-none text-left"
+          >
+            <div className="flex items-center gap-2.5">
+              <MapPin className="size-4 text-emerald-400" />
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-amber-400 block">
+                  Mapa Geolocalizado de Clientes ({perfis.length})
+                </span>
+                <span className="text-[10px] text-zinc-400">
+                  Clique para {mapaSaaSAberto ? 'recolher' : 'expandir'} a visualização geográfica dos clientes cadastrados
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                {mapaSaaSAberto ? 'Recolher' : 'Expandir Mapa'}
+              </span>
+              {mapaSaaSAberto ? <ChevronUp className="size-4 text-amber-400" /> : <ChevronDown className="size-4 text-amber-400" />}
+            </div>
+          </button>
+          
+          {mapaSaaSAberto && (
+            <div className="p-4 border-t border-zinc-800 bg-zinc-950">
+              <MapaClientesSaaS perfis={perfis} />
+            </div>
+          )}
+        </div>
 
         {/* ─── Logs de Auditoria Administrativa (Action Logs) ─── */}
         {actionLogs.length > 0 && (
@@ -1114,6 +1145,7 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
 <th className="px-3 py-2 text-left min-w-[200px]">Cliente / RT / Métricas</th>
                     <th className="px-2 py-2 text-center w-44">Financeiro &amp; Cobrança</th>
                     <th className="px-3 py-2 text-left min-w-[150px]">Anotações / Obs. Contrato</th>
+                    <th className="px-3 py-2 text-center w-48">Módulos Ativos</th>
                     <th className="px-4 py-3 text-center w-16">Ações</th>
                   </tr>
                 </thead>
@@ -1191,6 +1223,9 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                               }}
                               className="w-full h-8 bg-zinc-950 border border-zinc-800 rounded text-white px-2 text-xs focus:border-amber-500 focus:outline-none focus:ring-0 placeholder-zinc-700 transition-colors"
                             />
+                          </td>
+                          <td className="px-3 py-2 text-center text-[10px] text-zinc-550 italic">
+                            Herdado da Matriz
                           </td>
                           <td className="px-4 py-2.5 text-center flex justify-center gap-1">
                             <Button
@@ -1344,6 +1379,73 @@ export default function PainelMasterSaaS({ onVoltarDesenhar }: Props) {
                               }}
                               className="w-full h-8 bg-zinc-950 border border-zinc-800 rounded text-white px-2 text-xs focus:border-amber-500 focus:outline-none focus:ring-0 placeholder-zinc-700 transition-colors"
                             />
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <div className="grid grid-cols-4 gap-1 w-[160px] mx-auto text-[9.5px] font-semibold">
+                              <label className="flex items-center gap-0.5 cursor-pointer text-zinc-400 hover:text-white" title="Módulo Ambiental">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.licencaAmbiental}
+                                  onChange={(e) => atualizarClienteCRM(p.uid, { licencaAmbiental: e.target.checked })}
+                                  className="rounded text-zinc-950 focus:ring-emerald-500 size-3 accent-emerald-500 cursor-pointer"
+                                />
+                                <span>Amb</span>
+                              </label>
+                              <label className="flex items-center gap-0.5 cursor-pointer text-zinc-400 hover:text-white" title="Módulo Jurídico">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.licencaJuridico}
+                                  onChange={(e) => atualizarClienteCRM(p.uid, { licencaJuridico: e.target.checked })}
+                                  className="rounded text-zinc-950 focus:ring-emerald-500 size-3 accent-emerald-500 cursor-pointer"
+                                />
+                                <span>Jur</span>
+                              </label>
+                              <label className="flex items-center gap-0.5 cursor-pointer text-zinc-400 hover:text-white" title="Módulo de Usucapião">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.licencaUsucapiao}
+                                  onChange={(e) => atualizarClienteCRM(p.uid, { licencaUsucapiao: e.target.checked })}
+                                  className="rounded text-zinc-950 focus:ring-emerald-500 size-3 accent-emerald-500 cursor-pointer"
+                                />
+                                <span>Usu</span>
+                              </label>
+                              <label className="flex items-center gap-0.5 cursor-pointer text-zinc-400 hover:text-white" title="Módulo de Avaliação">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.licencaAvaliacao}
+                                  onChange={(e) => atualizarClienteCRM(p.uid, { licencaAvaliacao: e.target.checked })}
+                                  className="rounded text-zinc-950 focus:ring-emerald-500 size-3 accent-emerald-500 cursor-pointer"
+                                />
+                                <span>Ava</span>
+                              </label>
+                              <label className="flex items-center gap-0.5 cursor-pointer text-zinc-400 hover:text-white" title="Módulo de REURB">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.licencaReurb}
+                                  onChange={(e) => atualizarClienteCRM(p.uid, { licencaReurb: e.target.checked })}
+                                  className="rounded text-zinc-950 focus:ring-emerald-500 size-3 accent-emerald-500 cursor-pointer"
+                                />
+                                <span>Reu</span>
+                              </label>
+                              <label className="flex items-center gap-0.5 cursor-pointer text-zinc-400 hover:text-white" title="Módulo de Loteamentos">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.licencaLoteamento}
+                                  onChange={(e) => atualizarClienteCRM(p.uid, { licencaLoteamento: e.target.checked })}
+                                  className="rounded text-zinc-950 focus:ring-emerald-500 size-3 accent-emerald-500 cursor-pointer"
+                                />
+                                <span>Lot</span>
+                              </label>
+                              <label className="flex items-center gap-0.5 cursor-pointer text-zinc-400 hover:text-white" title="Módulo de Crédito Rural">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.licencaCredito}
+                                  onChange={(e) => atualizarClienteCRM(p.uid, { licencaCredito: e.target.checked })}
+                                  className="rounded text-zinc-950 focus:ring-emerald-500 size-3 accent-emerald-500 cursor-pointer"
+                                />
+                                <span>Cre</span>
+                              </label>
+                            </div>
                           </td>
                           <td className="px-4 py-2.5 text-center flex justify-center gap-1">
                             <Button
