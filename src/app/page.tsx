@@ -6818,6 +6818,57 @@ export default function EditorPage() {
   }
 
   // ---------- projetos ----------
+  function gerarResumoSalvamento(): string {
+    const linhas: string[] = [];
+    
+    // Imóvel
+    const nomeImovel = imovel.denominacao || 'Sem denominação';
+    const matImovel = imovel.matricula ? ` (Matrícula: ${imovel.matricula})` : '';
+    const munImovel = imovel.municipio ? ` - ${imovel.municipio}` : '';
+    linhas.push(`• Imóvel: ${nomeImovel}${matImovel}${munImovel}`);
+    
+    // Proprietário
+    if (imovel.proprietario) {
+      const cpfProp = imovel.cpfProprietario ? ` (${imovel.cpfProprietario})` : '';
+      linhas.push(`• Proprietário: ${imovel.proprietario}${cpfProp}`);
+    } else {
+      linhas.push(`• Proprietário: Não informado`);
+    }
+
+    // Glebas e Vértices
+    const totalGlebas = glebas ? glebas.length : 1;
+    const verticesCont = vertices ? vertices.length : 0;
+    const areaCalcHa = res ? valoresEfetivos(res, imovel).areaHa : 0;
+    const areaTexto = areaCalcHa > 0 ? `${areaCalcHa.toFixed(4).replace('.', ',')} ha` : '0 ha';
+    linhas.push(`• Gleba Ativa: ${verticesCont} vértices (${areaTexto})`);
+    if (totalGlebas > 1) {
+      linhas.push(`• Total de Glebas no Projeto: ${totalGlebas} glebas`);
+    }
+
+    // Confrontantes
+    const totalConf = confrontantes ? confrontantes.length : 0;
+    const pintadosConf = confrontantePorLado ? Object.keys(confrontantePorLado).length : 0;
+    linhas.push(`• Confrontantes: ${totalConf} cadastrado(s) [${pintadosConf} divisa(s) demarcada(s)]`);
+
+    // Técnico
+    if (tecnico && tecnico.nome) {
+      linhas.push(`• Responsável Técnico: ${tecnico.nome} (${tecnico.conselho || 'CFT/CREA'})`);
+    }
+
+    // Status
+    const statusSave = salvarLaranja 
+      ? '⚠️ Modificações pendentes de salvamento' 
+      : '✓ Projeto armazenado e sincronizado';
+    
+    return [
+      `SALVAR PROJETO (${obterAtalhoLateral('salvar', 'sv')})`,
+      statusSave,
+      '──────────────────────────────',
+      'RESUMO DAS ALTERAÇÕES E CONTEÚDO DO PROJETO:',
+      ...linhas
+    ].join('\n');
+  }
+
   async function salvar() {
     if (readonlyPorFaturamento) {
       await avisar({
@@ -8510,7 +8561,7 @@ export default function EditorPage() {
                           variant="secondary"
                           onClick={salvar}
                           disabled={processando}
-                          title={salvarLaranja ? `Salvar projeto atual (${obterAtalhoLateral('salvar', 'sv')}) - Modificações pendentes de salvamento!` : `Projeto salvo e sincronizado (${obterAtalhoLateral('salvar', 'sv')})`}
+                          title={gerarResumoSalvamento()}
                           className={`relative transition-all duration-300 ${salvarLaranja ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold border-transparent shadow-md shadow-emerald-500/20' : ''}`}
                         >
                           <Save className={salvarLaranja ? 'text-white animate-pulse' : 'text-emerald-500'} /> <span>SALVAR</span>
@@ -12409,7 +12460,7 @@ export default function EditorPage() {
       />
 
 
-      <PontosBancoModal open={pontosAberto} onOpenChange={setPontosAberto} />
+      <PontosBancoModal open={pontosAberto} onOpenChange={setPontosAberto} tecnico={tecnico} />
       <ErrorBoundary onReset={() => setPlanilhaConfAberta(false)}>
         <PlanilhaConferenciaModal
           open={planilhaConfAberta} onOpenChange={setPlanilhaConfAberta}
