@@ -1651,9 +1651,24 @@ export default function MapEditor(props: Props) {
 
                 const gId = isStructured ? (g as { id?: string }).id : undefined;
                 const isOculta = isStructured && (g as { visivel?: boolean }).visivel === false;
-                if (isOculta) return null;
                 const isAuxiliar = isStructured && (g as { tipoGleba?: string }).tipoGleba === 'auxiliar';
-                const cor = isOculta ? '#ffffff' : (isAuxiliar ? '#d97706' : '#f97316');
+
+                // Cores personalizadas ou padrão
+                const customContorno = isStructured ? (g as any).corContorno : undefined;
+                const customPreenchimento = isStructured ? (g as any).corPreenchimento : undefined;
+
+                const cor = isOculta
+                  ? '#94a3b8' // cinza claro
+                  : customContorno
+                    ? customContorno
+                    : (isAuxiliar ? '#d97706' : '#1e3a8a');
+
+                const fillCor = isOculta
+                  ? '#cbd5e1'
+                  : customPreenchimento
+                    ? customPreenchimento
+                    : (isAuxiliar ? '#f59e0b' : '#3b82f6');
+
                 const dash = isOculta ? '4 4' : (isAuxiliar ? '4 3' : '6 4');
                 const opacidade = isOculta ? 0.05 : 0.08;
 
@@ -1679,7 +1694,7 @@ export default function MapEditor(props: Props) {
                         }
                       }
                     }}
-                    pathOptions={{ color: cor, weight: isOculta ? 2 : 1.8, fillColor: cor, fillOpacity: opacidade, dashArray: dash }}
+                    pathOptions={{ color: cor, weight: isOculta ? 1.5 : 1.8, fillColor: fillCor, fillOpacity: opacidade, dashArray: dash }}
                   />
                 );
               })}

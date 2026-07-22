@@ -2536,7 +2536,12 @@ export default function EditorPage() {
     const gs = sincronizarGlebas();
     setGlebas(gs);
     const g = gs.find((x) => x.id === id);
-    if (g) carregarGleba(g);
+    if (g) {
+      carregarGleba(g);
+      if (g.imovelId) {
+        trocarImovelAtivo(g.imovelId);
+      }
+    }
   }
   function novaGleba(quadraPadrao?: string) {
     const gs = sincronizarGlebas();
@@ -2549,6 +2554,7 @@ export default function EditorPage() {
       : gs.filter(g => !g.quadra).length;
       
     const nova = novaGlebaVazia(gs.length + 1);
+    nova.imovelId = imovelAtivoId;
     
     if (isLote) {
       const letraQuadra = quadraPadrao ? quadraPadrao.toUpperCase() : 'A';
@@ -2598,7 +2604,8 @@ export default function EditorPage() {
       return g;
     }));
   }
-  const glebaAtivaNome = glebas.find((g) => g.id === glebaAtivaId)?.denominacao ?? 'Parcela 1';
+  const glebaAtivaObj = glebas.find((g) => g.id === glebaAtivaId);
+  const glebaAtivaNome = glebaAtivaObj?.denominacao ?? 'Parcela 1';
 
   function parseKml(xmlText: string): { lat: number; lon: number; alt: number }[] {
     const points: { lat: number; lon: number; alt: number }[] = [];
@@ -6340,8 +6347,14 @@ export default function EditorPage() {
     // todas as glebas (com 3+ vertices), para a situação mostrar os polígonos; e também os
     // polígonos DESENHADOS (polilinha fechada/preenchida) — assim um polígono novo aparece na situação.
     const aneis = [
-      ...gs.filter((g) => g.vertices.length >= 3).map((g) => ({ pts: g.vertices.map((v) => ({ lat: v.lat, lon: v.lon })), tipoGleba: g.tipoGleba })),
-      ...objetos.filter((o) => o.tipo === 'polilinha' && o.preenchido && o.pontos.length >= 3).map((o) => ({ pts: o.pontos.map((p) => ({ lat: p.lat, lon: p.lon })), tipoGleba: 'principal' })),
+      ...gs.filter((g) => g.vertices.length >= 3).map((g) => ({
+        pts: g.vertices.map((v) => ({ lat: v.lat, lon: v.lon })),
+        tipoGleba: g.visivel === false ? 'oculta' : g.tipoGleba
+      })),
+      ...objetos.filter((o) => o.tipo === 'polilinha' && o.preenchido && o.pontos.length >= 3).map((o) => ({
+        pts: o.pontos.map((p) => ({ lat: p.lat, lon: p.lon })),
+        tipoGleba: 'principal'
+      })),
     ];
     // gerarSituacao já garante que a imagem cabe no documento da nuvem (reduz a qualidade sozinha
     // até caber, ou desiste) — antes essa checagem de tamanho era feita SÓ aqui, e uma imagem grande
@@ -9105,6 +9118,8 @@ export default function EditorPage() {
                       pts: g.vertices.filter((v) => Number.isFinite(v.lat)).map((v) => [v.lat, v.lon] as [number, number]),
                       tipoGleba: g.tipoGleba,
                       visivel: g.visivel,
+                      corContorno: g.corContorno,
+                      corPreenchimento: g.corPreenchimento,
                     }))}
                     onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
                     glebaAtivaId={glebaAtivaId}
@@ -9503,7 +9518,21 @@ export default function EditorPage() {
                       confrontantes={confrontantes} confrontantePorLado={confrontantePorLado} zona={zona} hemisferio={hemisferio}
                       glebaNome={glebas.length > 1 ? glebaAtivaNome : undefined} dataExtenso={dataPorExtenso()} situacaoUrl={situacaoUrl} objetos={objetos} config={plantaConfig}
                       requerente={requerente} transmitente={transmitente}
-                      outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({ id: g.id, nome: g.denominacao, pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })), tipoGleba: g.tipoGleba, visivel: g.visivel }))}
+                      glebaCorContorno={glebaAtivaObj?.corContorno}
+                      glebaCorPreenchimento={glebaAtivaObj?.corPreenchimento}
+                      glebaVisivel={glebaAtivaObj?.visivel}
+                      outrasGlebas={glebas.filter((g) => g.id !== glebaAtivaId).map((g) => ({
+                        id: g.id,
+                        nome: g.denominacao,
+                        pts: g.vertices.map((v) => ({ leste: v.leste, norte: v.norte })),
+                        vertices: g.vertices,
+                        confrontantes: g.confrontantes,
+                        confrontantePorLado: g.confrontantePorLado,
+                        tipoGleba: g.tipoGleba,
+                        visivel: g.visivel,
+                        corContorno: g.corContorno,
+                        corPreenchimento: g.corPreenchimento
+                      }))}
                       onCliqueUnicoGleba={(id, x, y) => setMenuRapidoGleba({ id, x, y })}
                       glebaAtivaId={glebaAtivaId}
                       onAbrirGestaoGleba={(id) => {
@@ -11520,6 +11549,41 @@ export default function EditorPage() {
                   >
                     Oculta
                   </button>
+                </div>
+              </div>
+
+              {/* Cores Customizadas da Gleba */}
+              <div className="space-y-1.5 pt-1.5 border-t border-slate-200 dark:border-zinc-800">
+                <span className="text-[10.5px] uppercase font-black tracking-wider text-slate-700 dark:text-slate-300 block">Cores Personalizadas</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 p-1.5">
+                    <span className="relative h-6 w-9 shrink-0 rounded-md border border-slate-300 dark:border-zinc-700 overflow-hidden cursor-pointer" style={{ backgroundColor: g.corContorno || (isAuxiliar ? '#d97706' : '#1e3a8a') }}>
+                      <input
+                        type="color"
+                        value={g.corContorno || (isAuxiliar ? '#d97706' : '#1e3a8a')}
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setGlebas((lista) => lista.map((item) => item.id === g.id ? { ...item, corContorno: val } : item));
+                        }}
+                      />
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Contorno</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900 p-1.5">
+                    <span className="relative h-6 w-9 shrink-0 rounded-md border border-slate-300 dark:border-zinc-700 overflow-hidden cursor-pointer" style={{ backgroundColor: g.corPreenchimento || (isAuxiliar ? '#f59e0b' : '#3b82f6') }}>
+                      <input
+                        type="color"
+                        value={g.corPreenchimento || (isAuxiliar ? '#f59e0b' : '#3b82f6')}
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setGlebas((lista) => lista.map((item) => item.id === g.id ? { ...item, corPreenchimento: val } : item));
+                        }}
+                      />
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Preenchimento</span>
+                  </div>
                 </div>
               </div>
 

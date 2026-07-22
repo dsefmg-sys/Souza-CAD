@@ -628,6 +628,8 @@ export interface Gleba {
   visivel?: boolean;            // true (default): exibida na planta/mapa, false: ocultada
   imovelId?: string;           // ID do imóvel ao qual esta gleba está vinculada
   quadra?: string;             // Quadra à qual pertence, ex: "A"
+  corContorno?: string;        // cor de contorno personalizada
+  corPreenchimento?: string;   // cor de preenchimento personalizada
   // Dados imobiliários/cartorários específicos da gleba (se vazios, herda os do imóvel do projeto)
   matricula?: string;
   cns?: string;

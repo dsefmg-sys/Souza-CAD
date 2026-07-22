@@ -35,7 +35,21 @@ interface Props {
   glebaNome?: string;
   dataExtenso?: string;
   situacaoUrl?: string;
-  outrasGlebas?: { id?: string; nome: string; pts: { leste: number; norte: number }[]; tipoGleba?: 'principal' | 'auxiliar'; visivel?: boolean }[];
+  outrasGlebas?: {
+    id?: string;
+    nome: string;
+    pts: { leste: number; norte: number }[];
+    vertices?: Vertex[];
+    confrontantes?: Confrontante[];
+    confrontantePorLado?: Record<number, string>;
+    tipoGleba?: 'principal' | 'auxiliar';
+    visivel?: boolean;
+    corContorno?: string;
+    corPreenchimento?: string;
+  }[];
+  glebaCorContorno?: string;
+  glebaCorPreenchimento?: string;
+  glebaVisivel?: boolean;
   verticesVizinho?: VerticeVizinho[]; // vértices de imóveis vizinhos certificados (desenho de apoio)
   parcelasCert?: { anel: [number, number][]; info: { titulo: string; linhas: string[] } }[];
   resumoGlebas?: { nome: string; areaHa: number; perimetro: number }[]; // quadro de áreas
@@ -346,6 +360,7 @@ function deParaNiceInterval(alvo: number): number {
 export default function Planta({
   vertices, res, imovel, tecnico, escritorio, confrontantes, confrontantePorLado,
   zona, hemisferio, glebaNome, dataExtenso, situacaoUrl, outrasGlebas = [], parcelasCert = [], resumoGlebas = [], objetos = [], config = {}, verticesVizinho = [],
+  glebaCorContorno, glebaCorPreenchimento, glebaVisivel = true,
   requerente, transmitente,
   editavel = false, modo = 'navegar', objetoSelId = null, desenhoAtual = [],
   selMulti, objSelMulti, onBoxSelect, onBoxSelectObj, onToggleMulti, onToggleMultiObj,
@@ -1449,7 +1464,7 @@ export default function Planta({
       {outrasGlebas.map((g, i) => {
         if (g.pts.length < 3) return null;
         const isOculta = g.visivel === false;
-        if (isOculta) return null;
+        if (isOculta && !editavel) return null;
 
         const pp = g.pts.map((p) => `${sx(p.leste).toFixed(1)},${sy(p.norte).toFixed(1)}`).join(' ');
         const baseCcx = g.pts.reduce((s, p) => s + sx(p.leste), 0) / g.pts.length;
@@ -1463,11 +1478,19 @@ export default function Planta({
 
         const isAuxiliar = g.tipoGleba === 'auxiliar';
         const isAtivaOuPrincipal = g.tipoGleba === 'principal' || g.tipoGleba === undefined;
-        const ogCor = isOculta ? '#64748b' : (isAtivaOuPrincipal ? (config.corGlebasAtivas || '#1e3a8a') : (isAuxiliar ? '#d97706' : (config.corOutrasGlebas || '#c2410c')));
-        const ogFill = isOculta ? '#64748b' : (isAtivaOuPrincipal ? (config.corGlebasAtivas || '#3b82f6') : (isAuxiliar ? '#f59e0b' : (config.corOutrasGlebas || '#f97316')));
-        const dashArray = isOculta ? '3 3' : (isAuxiliar ? '4 3' : undefined);
+        const ogCor = isOculta
+          ? '#94a3b8'
+          : g.corContorno
+            ? g.corContorno
+            : (isAtivaOuPrincipal ? (config.corGlebasAtivas || '#1e3a8a') : (isAuxiliar ? '#d97706' : (config.corOutrasGlebas || '#c2410c')));
+        const ogFill = isOculta
+          ? '#cbd5e1'
+          : g.corPreenchimento
+            ? g.corPreenchimento
+            : (isAtivaOuPrincipal ? (config.corGlebasAtivas || '#3b82f6') : (isAuxiliar ? '#f59e0b' : (config.corOutrasGlebas || '#f97316')));
+        const dashArray = isOculta ? '4 4' : (isAuxiliar ? '4 3' : undefined);
         const strokeW = isOculta ? 0.9 : (isAtivaOuPrincipal ? 1.8 : 1.0);
-        const fillOp = isOculta ? 0.03 : 0.06;
+        const fillOp = isOculta ? 0.04 : 0.06;
 
         return (
           <g key={`og${g.id || i}`}>
@@ -1589,30 +1612,37 @@ export default function Planta({
       {/* Vértices individuais dos imóveis vizinhos (CSV) são suprimidos no modo planta */}
 
       {/* ---------- POLÍGONO (gleba ativa) ---------- */}
-      {/* Polígono de fundo branco para mascarar a grade (só quando a grade estiver visível) */}
-      {verGrade && (
-        <polygon points={pts} fill="#ffffff" fillOpacity={1} stroke="none" />
+      {(!glebaVisivel || glebaVisivel === undefined || editavel) && (
+        <>
+          {verGrade && (!(glebaVisivel === false) || editavel) && (
+            <polygon points={pts} fill="#ffffff" fillOpacity={1} stroke="none" />
+          )}
+          {(!(glebaVisivel === false) || editavel) && (
+            <polygon points={pts}
+              fill={glebaCorPreenchimento ? glebaCorPreenchimento : (config.hachura && config.hachura !== 'nenhuma' ? `url(#hach-${config.hachura})` : (config.fillPoligono || '#15803d'))}
+              fillOpacity={glebaVisivel === false ? 0.04 : (config.hachura && config.hachura !== 'nenhuma' ? 1 : 0.08)}
+              stroke={glebaVisivel === false ? '#94a3b8' : (glebaCorContorno || config.corPoligono || '#334155')}
+              strokeWidth={glebaVisivel === false ? 0.9 : (config.larguraPoligono ?? 1.8)}
+              strokeDasharray={glebaVisivel === false ? '4 4' : undefined}
+              style={editavel ? { cursor: 'pointer' } : undefined}
+              onClick={(e) => {
+                if (modo !== 'navegar') return;
+                if (editavel && onCliqueUnicoGleba) {
+                  e.stopPropagation();
+                  onCliqueUnicoGleba(glebaAtivaId || 'ativa', e.clientX, e.clientY);
+                }
+              }}
+              onDoubleClick={(e) => {
+                if (modo !== 'navegar') return;
+                if (editavel && onAbrirGestaoGleba) {
+                  e.stopPropagation();
+                  onAbrirGestaoGleba(glebaAtivaId);
+                }
+              }}
+            />
+          )}
+        </>
       )}
-      <polygon points={pts}
-        fill={config.hachura && config.hachura !== 'nenhuma' ? `url(#hach-${config.hachura})` : (config.fillPoligono || '#15803d')}
-        fillOpacity={config.hachura && config.hachura !== 'nenhuma' ? 1 : 0.08}
-        stroke={config.corPoligono || '#334155'} strokeWidth={config.larguraPoligono ?? 1.8}
-        style={editavel ? { cursor: 'pointer' } : undefined}
-        onClick={(e) => {
-          if (modo !== 'navegar') return;
-          if (editavel && onCliqueUnicoGleba) {
-            e.stopPropagation();
-            onCliqueUnicoGleba(glebaAtivaId || 'ativa', e.clientX, e.clientY);
-          }
-        }}
-        onDoubleClick={(e) => {
-          if (modo !== 'navegar') return;
-          if (editavel && onAbrirGestaoGleba) {
-            e.stopPropagation();
-            onAbrirGestaoGleba(glebaAtivaId);
-          }
-        }}
-      />
       {selecionadoId === 'planta.poligono' && (
         <polygon points={pts} fill="none" stroke="#3b82f6" strokeWidth={1.2} strokeDasharray="5 3" pointerEvents="none" />
       )}
@@ -1630,8 +1660,50 @@ export default function Planta({
         );
       })}
 
-      {/* ---------- LINHAS DE APOIO DAS DIVISAS ---------- */}
-      {vertices.map((v, i) => {
+      {/* ---------- LINHAS DE APOIO DAS DIVISAS DAS OUTRAS GLEBAS ---------- */}
+      {outrasGlebas.map((g) => {
+        const isOculta = g.visivel === false;
+        if (isOculta && !editavel) return null;
+        const isAuxiliar = g.tipoGleba === 'auxiliar';
+        const isAtivaOuPrincipal = g.tipoGleba === 'principal' || g.tipoGleba === undefined;
+        if (!isAtivaOuPrincipal) return null; // só glebas principais/ativas mostram as divisas
+        if (!g.vertices || g.vertices.length < 3) return null;
+
+        // Calcula anel da outra gleba
+        const anelG = g.vertices.map((v) => ({ x: sx(v.leste), y: sy(v.norte) }));
+        const cgX = anelG.reduce((s, p) => s + p.x, 0) / anelG.length;
+        const cgY = anelG.reduce((s, p) => s + p.y, 0) / anelG.length;
+
+        return (
+          <g key={`divisas-outra-${g.id}`}>
+            {g.vertices.map((v, i) => {
+              const cor = corDivisa(v.representacao);
+              if (!cor) return null;
+              const a = anelG[i], b = anelG[(i + 1) % anelG.length];
+              if (!a || !b) return null;
+              let nx = -(b.y - a.y), ny = b.x - a.x;
+              const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
+              const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+              if ((mx - cgX) * nx + (my - cgY) * ny < 0) { nx = -nx; ny = -ny; }
+              const off = 3.2;
+              const ax = a.x + nx * off, ay = a.y + ny * off, bx = b.x + nx * off, by = b.y + ny * off;
+              return (
+                <line
+                  key={`div-og-${g.id}-${v.id}-${i}`}
+                  x1={ax} y1={ay} x2={bx} y2={by}
+                  stroke={isOculta ? '#cbd5e1' : cor}
+                  strokeWidth={config.larguraDivisasApoio ?? 3.2}
+                  strokeLinecap="round"
+                  opacity={isOculta ? 0.35 : 0.9}
+                />
+              );
+            })}
+          </g>
+        );
+      })}
+
+      {/* ---------- LINHAS DE APOIO DAS DIVISAS (gleba ativa) ---------- */}
+      {(!(glebaVisivel === false) || editavel) && vertices.map((v, i) => {
         const cor = corDivisa(v.representacao);
         if (!cor) return null;
         const a = anel[i], b = anel[(i + 1) % anel.length];
@@ -1645,7 +1717,7 @@ export default function Planta({
         // toda divisa (inclusive cerca) sai como uma BARRA colorida contínua, externa à linha
         return (
           <line key={`div${v.id}`} x1={ax} y1={ay} x2={bx} y2={by}
-            stroke={cor} strokeWidth={config.larguraDivisasApoio ?? 3.2} strokeLinecap="round" opacity={0.9} />
+            stroke={glebaVisivel === false ? '#cbd5e1' : cor} strokeWidth={config.larguraDivisasApoio ?? 3.2} strokeLinecap="round" opacity={glebaVisivel === false ? 0.35 : 0.9} />
         );
       })}
 
@@ -2040,6 +2112,7 @@ export default function Planta({
           sobre o nome do cônjuge (não mais as duas linhas juntas no topo). */}
       {rotulosConf.map((r, i) => {
         if (!r.c || !r.c.nome) return null;
+        if (glebaVisivel === false && !editavel) return null;
         const c = r.c;
 
         // Ocultar caixas de assinatura para confrontantes que sejam glebas internas vizinhas da mesma propriedade
