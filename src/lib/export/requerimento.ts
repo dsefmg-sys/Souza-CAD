@@ -6,7 +6,7 @@ import { rotulosProfissional } from '../topo/profissional';
 import { sanitizarProfundo } from './sanitizar';
 import { carregarModelos, preencherModelo, preencherModeloParagrafos } from '../store/modelos';
 import { compatibilizarWord2007 } from './compatWord2007';
-import { obterComarca } from '../topo/municipios';
+import { obterComarca, formatarTextoMultimunicipal } from '../topo/municipios';
 
 export type TipoAtoRequerimento = 'venda' | 'doacao' | 'unificacao' | 'desmembramento' | 'usucapiao' | 'retificacao';
 
@@ -308,7 +308,7 @@ export async function gerarRequerimentoDocx(inputBruto: RequerimentoInput): Prom
       ? `${f(imovel.cpfProprietario)} (De Cujus) e CPF do Inventariante: ${f(imovel.inventarianteCpf)}`
       : f(imovel.cpfProprietario),
     denominacao: f(imovel.denominacao),
-    matricula: f(imovel.matricula), cns: f(imovel.cns), municipio: f(imovel.municipio), comarca,
+    matricula: f(imovel.matricula), cns: f(imovel.cns), municipio: f(formatarTextoMultimunicipal(imovel.municipio || '').preambuloPeca || imovel.municipio), comarca,
     area: `${numBR(areaRealHa, 4)} ha`,
     areaAnterior: areaAntVal != null ? `${numBR(areaAntVal, 4)} ha` : (permitirIncompleto ? 'DADO AUSENTE' : ''),
     areaDiferenca: strDiffHa,

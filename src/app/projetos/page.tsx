@@ -159,9 +159,9 @@ export default function ProjetosPage() {
           <Button size="sm" variant={verLixeira ? 'default' : 'outline'} className="h-9 gap-1.5 px-3 text-xs" onClick={() => setVerLixeira((v) => !v)} title="Projetos excluídos (restauráveis por um prazo)">
             <Trash2 className="size-4" /> Lixeira{lixeira.length ? ` (${lixeira.length})` : ''}
           </Button>
-          <label className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs cursor-pointer shadow-xs transition-all" title="Criar um novo projeto importando uma planilha oficial ODS do SIGEF/INCRA">
+          <label className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer shadow-sm transition-all" title="Criar um novo projeto importando uma planilha oficial ODS do SIGEF/INCRA">
             <FileSpreadsheet className="size-4" />
-            <span>Importar ODS</span>
+            <span>Importar ODS como Novo Projeto</span>
             <input type="file" accept=".ods" onChange={handleImportarOds} className="hidden" />
           </label>
           <Button size="sm" variant="outline" className="h-9 gap-1.5 px-3 text-xs" disabled={gerandoBackup || linhas.length === 0} onClick={baixarBackup} title="Baixa um zip com todos os projetos e arquivos anexados">

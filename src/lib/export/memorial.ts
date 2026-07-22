@@ -8,7 +8,7 @@ import { sanitizarProfundo, sanitizarTexto } from './sanitizar';
 import { carregarModelos, preencherModelo } from '../store/modelos';
 import { qualificacaoPapelProprietario } from './papelProprietario';
 import { compatibilizarWord2007 } from './compatWord2007';
-import { obterComarca } from '../topo/municipios';
+import { obterComarca, formatarTextoMultimunicipal } from '../topo/municipios';
 import { iniciarDoNorteHorario } from '../topo/vertices';
 import { calcular } from '../topo/calcular';
 
@@ -406,7 +406,7 @@ export async function gerarMemorialDocx(inputBruto: MemorialInput): Promise<Blob
       ? `${imovel.cpfProprietario || '—'} (De Cujus) e CPF do Inventariante: ${imovel.inventarianteCpf}`
       : (imovel.cpfProprietario || ''),
     denominacao: imovel.denominacao || '',
-    matricula: imovel.regimeTerra === 'posse' || !imovel.matricula ? (imovel.matricula || 'Posse (Sem Matrícula)') : (imovel.matricula || ''), cns: imovel.cns || '', municipio: imovel.municipio || '', comarca: obterComarca(imovel),
+    matricula: imovel.regimeTerra === 'posse' || !imovel.matricula ? (imovel.matricula || 'Posse (Sem Matrícula)') : (imovel.matricula || ''), cns: imovel.cns || '', municipio: formatarTextoMultimunicipal(imovel.municipio || '').preambuloPeca || imovel.municipio || '', comarca: obterComarca(imovel),
     area: `${numBR(efMod.areaHa, 4)} ha`, areaAnterior: imovel.areaAnterior != null ? `${numBR(imovel.areaAnterior, 4)} ha` : '',
     perimetro: `${numBR(efMod.perimetro)} m`, codigoIncra: imovel.codigoImovelIncra || '',
     tecnico: tecnico.nome || '', cft: tecnico.cft || '', numeroTrt: imovel.numeroTrt || tecnico.art || '',

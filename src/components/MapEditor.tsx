@@ -20,6 +20,7 @@ import { intersecaoRetasUtm } from '@/lib/topo/editing';
 import { avisar } from '@/lib/ui/dialogos';
 import { Z_CLASSES } from '@/lib/ui/zlayers';
 import { sincronizarPerfil } from '@/lib/store/perfilUso';
+import { formatarTextoMultimunicipal } from '@/lib/topo/municipios';
 
 export type ModoEdicao = 'navegar' | 'inserir' | 'apagar' | 'linha' | 'polilinha' | 'tracejado' | 'cota' | 'texto' | 'simbolo' | 'divisa' | 'confrontante' | 'ignorar' | 'considerar' | 'multi' | 'medir' | 'paralela' | 'dividir' | 'trim' | 'extend' | 'retangulo' | 'circulo' | 'arco' | 'copiar_base' | 'copiar_destino';
 
@@ -1331,18 +1332,21 @@ function TrimExtendController({
   );
 }
 
-function MonitorCentroMapa({ onChangeCentro }: { onChangeCentro: (lat: number, zoom: number) => void }) {
+function MonitorCentroMapa({ onChangeCentro }: { onChangeCentro: (lat: number, lon: number, zoom: number) => void }) {
   const map = useMapEvents({
     move() {
-      onChangeCentro(map.getCenter().lat, map.getZoom());
+      const c = map.getCenter();
+      onChangeCentro(c.lat, c.lng, map.getZoom());
     },
     zoomend() {
-      onChangeCentro(map.getCenter().lat, map.getZoom());
+      const c = map.getCenter();
+      onChangeCentro(c.lat, c.lng, map.getZoom());
     }
   });
 
   useEffect(() => {
-    onChangeCentro(map.getCenter().lat, map.getZoom());
+    const c = map.getCenter();
+    onChangeCentro(c.lat, c.lng, map.getZoom());
   }, [map]);
 
   return null;
@@ -1399,6 +1403,7 @@ export default function MapEditor(props: Props) {
 
   const [zoom, setZoom] = useState(16);
   const [latCentro, setLatCentro] = useState(-20.0);
+  const [lonCentro, setLonCentro] = useState(-42.0);
   const [zoomCorrente, setZoomCorrente] = useState(13);
   const [cursorLatLng, setCursorLatLng] = useState<L.LatLng | null>(null);
   const [hoverSnap, setHoverSnap] = useState<SnapResult | null>(null);
@@ -1737,7 +1742,7 @@ export default function MapEditor(props: Props) {
       <CliqueMapa modo={modo} onInserir={onInserir} onCliqueDesenho={onCliqueDesenho} onCancelDesenho={onCancelDesenho} onDblClick={onDblClick} onMouseMove={setCursorLatLng} onMouseOut={() => setCursorLatLng(null)} hoverSnap={hoverSnap} zona={zona} hemisferio={hemisferio} onConfirmarCopiaBase={onConfirmarCopiaBase} onConfirmarCopiaDestino={onConfirmarCopiaDestino} onContextMenuMapa={onContextMenuMapa} />
       
       {/* Monitorador de centralização do mapa */}
-      <MonitorCentroMapa onChangeCentro={(lat, z) => { setLatCentro(lat); setZoomCorrente(z); }} />
+      <MonitorCentroMapa onChangeCentro={(lat, lon, z) => { setLatCentro(lat); setLonCentro(lon); setZoomCorrente(z); }} />
       <FocoMap latLng={focoLatLng} />
 
       {/* Linhas limites de Fuso UTM (Sempre visíveis por padrão, com rótulos dinâmicos que seguem o centro da tela) */}
@@ -1772,20 +1777,31 @@ export default function MapEditor(props: Props) {
         );
       })}
 
-      {/* Limites municipais automáticos (apenas se zoom >= 11) */}
-      {geojsonMunicipio && zoomCorrente >= 11 && (
-        <GeoJSON
-          key={`mun-limite-${JSON.stringify(geojsonMunicipio.coordinates?.[0]?.[0] || '')}`}
-          data={geojsonMunicipio}
-          style={{
-            color: '#a855f7',
-            weight: 2,
-            dashArray: '5 6',
-            fillColor: '#a855f7',
-            fillOpacity: 0.01,
-            interactive: false
-          }}
-        />
+      {/* Limites municipais automáticos e Rótulo do Nome do Município no Mapa */}
+      {geojsonMunicipio && zoomCorrente >= 10 && (
+        <LayerGroup>
+          <GeoJSON
+            key={`mun-limite-${JSON.stringify(geojsonMunicipio.coordinates?.[0]?.[0] || '')}`}
+            data={geojsonMunicipio}
+            style={{
+              color: '#a855f7',
+              weight: 2,
+              dashArray: '5 6',
+              fillColor: '#a855f7',
+              fillOpacity: 0.01,
+              interactive: false
+            }}
+          />
+          <CircleMarker
+            center={[latCentro, lonCentro]}
+            radius={0.1}
+            pathOptions={{ opacity: 0, fillOpacity: 0 }}
+          >
+            <Tooltip permanent direction="top" className="bg-purple-950/95 text-purple-300 text-[11px] font-black border border-purple-600/60 px-2.5 py-1 rounded-md shadow-xl uppercase select-none pointer-events-none tracking-wide">
+              {`MUNICÍPIO(S): ${formatarTextoMultimunicipal(geojsonMunicipio.properties?.display_name || geojsonMunicipio.properties?.name || '').textoCompleto || geojsonMunicipio.properties?.name || 'DIVISA MUNICIPAL'}`}
+            </Tooltip>
+          </CircleMarker>
+        </LayerGroup>
       )}
 
       {/* referências certificadas (snap) */}

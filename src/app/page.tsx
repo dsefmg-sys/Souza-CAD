@@ -8600,7 +8600,7 @@ export default function EditorPage() {
                           <Atalho k="IA" />
                         </Button>
                         <label className="relative flex h-8 w-full items-center justify-center gap-1 rounded-md bg-secondary hover:bg-secondary/80 text-foreground cursor-pointer px-1 py-0 text-[9px] font-bold uppercase transition-colors" title="Importar planilha oficial ODS do SIGEF/INCRA criando um novo projeto">
-                          <FileSpreadsheet className="size-3.5 text-emerald-500 shrink-0" /> <span>IMP. ODS</span>
+                          <FileSpreadsheet className="size-3.5 text-emerald-500 shrink-0" /> <span>NOVO PROJETO ODS</span>
                           <input type="file" accept=".ods" onChange={handleImportarOdsSidebar} className="hidden" />
                         </label>
                         <a href="https://sso.acesso.gov.br/login?client_id=sigef.incra.gov.br&authorization_id=19f151443c3" target="_blank" rel="noopener noreferrer" className="w-full">
@@ -10535,7 +10535,7 @@ export default function EditorPage() {
 
       {/* JANELA MODAL CENTRALIZADA DADOS DO PROJETO */}
       <Dialog open={painelAberto} onOpenChange={setPainelAberto}>
-        <DialogContent className="w-[92vw] max-w-6xl h-[84vh] max-h-[780px] min-h-[580px] flex flex-col bg-card p-4 rounded-xl border shadow-2xl overflow-hidden">
+        <DialogContent className="w-[98vw] max-w-[98vw] h-[94vh] max-h-[94vh] flex flex-col bg-card p-4 sm:p-6 rounded-xl border shadow-2xl overflow-hidden">
           <DialogHeader className="pb-2 border-b flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
               <Upload className="size-4 text-indigo-500" />

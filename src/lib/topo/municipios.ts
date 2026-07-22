@@ -339,3 +339,45 @@ export function obterComarca(
   }
   return '—';
 }
+
+/**
+ * Trata entrada de múltiplos municípios (ex: "Espera Feliz - MG / Caiana - MG" ou "Espera Feliz - MG e Caiana - MG")
+ * e gera o texto padronizado para certidões, memoriais, requerimentos cartoriais e SIGEF.
+ * 
+ * Exemplo de saída: "Municípios de Espera Feliz - MG e Caiana - MG"
+ */
+export function formatarTextoMultimunicipal(munStr: string): {
+  isMulti: boolean;
+  municipios: string[];
+  textoCompleto: string;
+  preambuloPeca: string;
+} {
+  if (!munStr || !munStr.trim()) {
+    return { isMulti: false, municipios: [], textoCompleto: '', preambuloPeca: '' };
+  }
+
+  const partes = munStr
+    .split(/[\/\n;]|(?:\s+e\s+)/i)
+    .map((p) => formatarNome(p.trim()))
+    .filter(Boolean);
+
+  if (partes.length <= 1) {
+    const m = partes[0] || formatarNome(munStr.trim());
+    return {
+      isMulti: false,
+      municipios: [m],
+      textoCompleto: m,
+      preambuloPeca: `Município de ${m}`
+    };
+  }
+
+  const ult = partes.pop();
+  const textoMult = `${partes.join(', ')} e ${ult}`;
+
+  return {
+    isMulti: true,
+    municipios: [...partes, ult!],
+    textoCompleto: textoMult,
+    preambuloPeca: `Municípios de ${textoMult}`
+  };
+}
