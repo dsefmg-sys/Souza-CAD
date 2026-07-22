@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { Vertex, Contadores } from '@/lib/topo/types';
-import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO } from '@/lib/topo/sigefVocab';
+import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, obterTipoLimiteEfetivo } from '@/lib/topo/sigefVocab';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -289,7 +289,7 @@ export default function ModalSpreadsheet({ isOpen, onClose, vertices, onSave, co
                     {/* Limite */}
                     <td className="p-1 border-r w-24">
                       <select
-                        value={v.tipoLimite || 'LA6'}
+                        value={v.tipoLimite || obterTipoLimiteEfetivo(v, 'LA6')}
                         onChange={(e) => handleChange(v.id, 'tipoLimite', e.target.value)}
                         className="w-full bg-transparent p-1 outline-none focus:bg-background border border-transparent focus:border-input rounded-sm"
                       >

@@ -109,7 +109,7 @@ import { snapUtm, type SegmentoSnap } from '@/lib/topo/snap';
 import { conferir, valoresEfetivos, type Problema, detectarConflitosDivisas, type ConflitoDivisa } from '@/lib/topo/conferencia';
 import { corPorConfrontante, gerarCorNovaConfrontante } from '@/lib/topo/coresConfrontante';
 import { conferirProntoParaExportar } from '@/lib/topo/conferenciaExportacao';
-import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
+import { TIPOS_VERTICE, TIPOS_LIMITE, METODOS_POSICIONAMENTO, REPRESENTACOES, REPRES_LABEL, corDivisa, obterTipoLimiteEfetivo } from '@/lib/topo/sigefVocab';
 import { numBR, azimuteDMS, azimute } from '@/lib/topo/geometry';
 import { cpfOuCnpjValido, formatarCpfCnpj } from '@/lib/topo/validation';
 import { aplicarOrto, parseAzimute, type ModoOrto } from '@/lib/topo/orto';
@@ -10262,7 +10262,13 @@ export default function EditorPage() {
                             <td className="p-2">{Number.isFinite(v.elevacao) ? v.elevacao.toFixed(2) : '0.00'}</td>
                             <td className="p-2"><span className="px-1.5 py-0.5 rounded bg-muted font-bold text-[9px]">{v.tipo || 'P'}</span></td>
                             <td className="p-2 text-muted-foreground text-[10px]">{v.metodo || '—'}</td>
-                            <td className="p-2 text-muted-foreground text-[10px]">{v.tipoLimite || '—'}</td>
+                            <td className="p-2 text-muted-foreground text-[10px]" title={obterTipoLimiteEfetivo(v, tecnico?.tipoLimite)}>
+                              {(() => {
+                                const lim = obterTipoLimiteEfetivo(v, tecnico?.tipoLimite);
+                                const repLabel = v.representacao && REPRES_LABEL[v.representacao] ? REPRES_LABEL[v.representacao] : null;
+                                return repLabel ? `${repLabel} (${lim})` : lim;
+                              })()}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

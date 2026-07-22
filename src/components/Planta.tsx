@@ -8,7 +8,7 @@ import { rotulosProfissional } from '@/lib/topo/profissional';
 import { simboloSvgInterno } from '@/lib/topo/simbolos';
 import { grausParaDMS, convergenciaMeridiana, meridianoCentral, geoParaUtm, utmParaGeo, aproximarDeclinacaoMagnetica } from '@/lib/topo/coords';
 import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
-import { REPRES_LABEL, corDivisa } from '@/lib/topo/sigefVocab';
+import { REPRES_LABEL, corDivisa, obterTipoLimiteEfetivo } from '@/lib/topo/sigefVocab';
 import { rotuloPapelProprietario } from '@/lib/export/papelProprietario';
 import type { ObjetoDesenho } from '@/lib/topo/types';
 import { calcularAreaSgl } from '@/lib/topo/sgl';
@@ -1878,7 +1878,7 @@ export default function Planta({
                       const eStr = numBR(v.leste, 3);
                       const nStr = numBR(v.norte, 3);
                       const hStr = v.elevacao != null ? numBR(v.elevacao, 2) : '—';
-                      const lmStr = `${v.tipoLimite || 'LA6'}/${v.metodo || 'PG6'}`;
+                      const lmStr = `${obterTipoLimiteEfetivo(v, tecnico.tipoLimite)}/${v.metodo || 'PG6'}`;
                       return (
                         <g key={v.id}>
                           <text x={xV}  y={rowY} fontSize={fz} fill="#0f172a">{vName}</text>
