@@ -144,7 +144,6 @@ import CreditoRuralModal from '@/components/CreditoRuralModal';
 import CompartilharModal from '@/components/CompartilharModal';
 import DemoConfigModal from '@/components/DemoConfigModal';
 import PlanilhaConferenciaModal from '@/components/PlanilhaConferenciaModal';
-import RenomearLoteModal from '@/components/RenomearLoteModal';
 import { proprietarios as cadProp, confrontantesCad as cadConf, cartoriosCad as cadCart, colegasCad, imoveisCad, sincronizarCadastrosLocalParaNuvem } from '@/lib/store/cadastros';
 import { exportarKML } from '@/lib/export/kml';
 import RelatorioSobreposicaoModal from '@/components/RelatorioSobreposicaoModal';
@@ -157,6 +156,10 @@ import { compatibilizarWord2007 } from '@/lib/export/compatWord2007';
 const MapEditor = dynamic(() => import('@/components/MapEditor'), {
   ssr: false,
   loading: () => <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Carregando mapa…</div>,
+});
+
+const RenomearLoteModal = dynamic(() => import('@/components/RenomearLoteModal'), {
+  ssr: false,
 });
 
 function IconeCurvasNivel({ className = "size-4 text-indigo-500" }: { className?: string }) {
@@ -10744,6 +10747,8 @@ export default function EditorPage() {
           aviso('Vértices renomeados com sucesso.');
         }}
         tecnico={tecnico}
+        confrontantes={confrontantes}
+        confrontantePorLado={confrontantePorLado}
       />
       <Dialog open={conferirAberto} onOpenChange={setConferirAberto}>
         <DialogContent className="max-w-6xl max-h-[88vh] flex flex-col p-4 sm:p-5 rounded-xl bg-background shadow-2xl overflow-hidden">
@@ -11701,7 +11706,7 @@ export default function EditorPage() {
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
 
       <Dialog open={tutorialF1Aberto} onOpenChange={setTutorialF1Aberto}>
-        <DialogContent className="max-w-5xl lg:max-w-6xl max-h-[88vh] flex flex-col p-5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-y-auto">
+        <DialogContent className="max-w-5xl lg:max-w-6xl max-h-[92vh] h-[90vh] flex flex-col p-5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-y-auto">
           <DialogHeader className="shrink-0 pb-3 border-b border-slate-800 flex items-center justify-between">
             <DialogTitle className="text-base font-black uppercase tracking-wider text-sky-400 flex items-center gap-2">
               <GraduationCap className="size-5" />
@@ -11714,20 +11719,20 @@ export default function EditorPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Banner principal: fluxo esquerda → direita */}
               <div className="bg-gradient-to-r from-sky-600/20 to-emerald-600/20 border border-sky-500/40 rounded-xl p-3.5 flex flex-col justify-center">
-                <h4 className="font-bold text-xs flex items-center gap-2 mb-1 text-sky-300">
+                <h4 className="font-extrabold text-sm flex items-center gap-2 mb-1 text-sky-300">
                   <Info className="size-3.5 shrink-0" />
                   Siga os botões da esquerda para a direita!
                 </h4>
-                <p className="text-[10.5px] leading-relaxed text-slate-200">
+                <p className="text-[12px] leading-relaxed text-slate-200">
                   O cabeçalho do aplicativo foi projetado como uma <strong className="text-sky-300">linha do tempo visual</strong>.
                   Cada botão representa uma etapa do georreferenciamento, ordenada
                   {' '}<strong className="text-amber-300">da esquerda para a direita</strong>{' '} na ordem exata.
                   Basta avançar botão a botão — o app valida e preenche as peças automaticamente.
                 </p>
-                <div className="mt-2 flex items-center gap-1 text-[9.5px] font-bold text-slate-400 flex-wrap">
+                <div className="mt-2 flex items-center gap-1 text-[10.5px] font-bold text-slate-400 flex-wrap">
                   {['INÍCIO','PONTOS','SIGEF','DADOS','CONFRO','DIVISAS','ART/TRT','ODS','CONFERIR','PEÇAS'].map((s, i, arr) => (
                     <span key={s} className="flex items-center gap-1">
-                      <span className="bg-slate-800 text-sky-300 px-1 py-0.5 rounded text-[8px] font-mono">{s}</span>
+                      <span className="bg-slate-800 text-sky-300 px-1 py-0.5 rounded text-[9px] font-mono">{s}</span>
                       {i < arr.length - 1 && <span className="text-amber-500">›</span>}
                     </span>
                   ))}
@@ -11741,10 +11746,10 @@ export default function EditorPage() {
                     <HelpCircle className="size-4.5 text-indigo-400" />
                   </div>
                   <div>
-                    <h4 className="font-extrabold text-xs text-indigo-200 uppercase tracking-wider">
+                    <h4 className="font-extrabold text-sm text-indigo-200 uppercase tracking-wider">
                       Manual de Habilitação & Guias do Usuário
                     </h4>
-                    <p className="text-[10.5px] text-slate-300 mt-0.5 leading-relaxed">
+                    <p className="text-[12px] text-slate-300 mt-0.5 leading-relaxed">
                       Consulte o manual interativo completo e os guias passo a passo para dominar o fluxo de certificação do SIGEF.
                     </p>
                   </div>
@@ -11752,7 +11757,7 @@ export default function EditorPage() {
                 <Button
                   type="button"
                   onClick={() => { setTutorialF1Aberto(false); setTutorialAberto(true); }}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2 rounded-lg border-0 shadow-lg shrink-0 uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all h-8"
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-lg border-0 shadow-lg shrink-0 uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all h-9"
                 >
                   <HelpCircle className="size-3.5" /> Abrir Guias e Manuais
                 </Button>
@@ -11763,10 +11768,10 @@ export default function EditorPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {/* Passo 1 */}
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">1</div>
+                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">1</div>
                 <div>
-                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">PONTOS (F2)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">PONTOS (F2)</h5>
+                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
                     Importe o arquivo TXT ou CSV gerado pelo receptor GNSS. É a base do desenho que carregará todas as coordenadas.
                   </p>
                 </div>
@@ -11774,10 +11779,10 @@ export default function EditorPage() {
 
               {/* Passo 2 */}
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">2</div>
+                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">2</div>
                 <div>
-                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">SIGEF (F3)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">SIGEF (F3)</h5>
+                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
                     Consulte confrontantes oficiais no SIGEF. Baixe limites certificados vizinhos para evitar sobreposições.
                   </p>
                 </div>
@@ -11785,21 +11790,21 @@ export default function EditorPage() {
 
               {/* Passo 3 */}
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">3</div>
+                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">3</div>
                 <div>
-                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">DADOS (F4)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
-                    Preencha as informações gerais do imóvel, proprietário e RT para preenchimento automático das peças e carimbo.
+                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">DADOS DO PROJETO (F4)</h5>
+                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
+                    Preencha os dados gerais do projeto (imóvel, proprietários, RT) para preenchimento automático das peças e carimbo.
                   </p>
                 </div>
               </div>
 
               {/* Passo 4 */}
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">4</div>
+                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">4</div>
                 <div>
-                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">CONFRO (F5)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">CONFRO (F5)</h5>
+                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
                     Associe os confrontantes proprietários a cada trecho da divisa. Pinte no mapa no sentido horário.
                   </p>
                 </div>
@@ -11807,10 +11812,10 @@ export default function EditorPage() {
 
               {/* Passo 5 */}
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">5</div>
+                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">5</div>
                 <div>
-                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">DIVISAS (F6)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">DIVISAS (F6)</h5>
+                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
                     Selecione a representação física de cada limite (muro, cerca, córrego, etc.) e pinte no mapa.
                   </p>
                 </div>
@@ -11818,10 +11823,10 @@ export default function EditorPage() {
 
               {/* Passo 6 */}
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">6</div>
+                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">6</div>
                 <div>
-                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">ART/TRT (F7)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">ART/TRT (F7)</h5>
+                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
                     Insira o número de registro da sua anotação ou termo de responsabilidade técnica para emissão dos documentos.
                   </p>
                 </div>
@@ -11829,10 +11834,10 @@ export default function EditorPage() {
 
               {/* Passo 7 */}
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">7</div>
+                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">7</div>
                 <div>
-                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">ODS (F8)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">ODS (F8)</h5>
+                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
                     Exporte a planilha ODS estruturada no padrão SIGEF/INCRA para iniciar o credenciamento nacional.
                   </p>
                 </div>
@@ -11840,10 +11845,10 @@ export default function EditorPage() {
 
               {/* Passo 8 */}
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-6.5 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">8</div>
+                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">8</div>
                 <div>
-                  <h5 className="font-bold text-[11px] text-slate-200 uppercase tracking-wide">CONFERIR (F9)</h5>
-                  <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">CONFERIR (F9)</h5>
+                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
                     Realize a checagem eletrônica das tolerâncias, precisões e discrepâncias geodésicas pré-exportação.
                   </p>
                 </div>
@@ -11851,11 +11856,11 @@ export default function EditorPage() {
 
               {/* Passo 9 */}
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-6.5 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">9</div>
+                <div className="size-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0">9</div>
                 <div>
-                  <h5 className="font-bold text-[11px] text-amber-400 uppercase tracking-wide">PEÇAS TÉCNICAS (F10)</h5>
-                  <p className="text-[10px] text-slate-300 mt-1 leading-normal">
-                    Baixe as peças em lote (Pacote ZIP) ou individualmente: Memorial, Planta SVG, Requerimento e Declarações.
+                  <h5 className="font-black text-[12.5px] text-amber-400 uppercase tracking-wide">PEÇAS TÉCNICAS (F10)</h5>
+                  <p className="text-[11.5px] text-slate-200 mt-1.5 leading-relaxed">
+                    Baixe o lote completo (ZIP) ou individualmente: Memorial Descritivo, Planta SVG, Requerimentos e Contratos (como Reurb, Usucapião, Crédito Rural, Laudo de Avaliação, etc.).
                   </p>
                 </div>
               </div>
