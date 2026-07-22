@@ -13564,7 +13564,7 @@ function PainelPlanta({ config, onChange, temSituacao, temLogo, numGlebas, onVer
   const tituloAtual = (config.titulo ?? '').trim();
   const podeSalvarTitulo = tituloAtual.length > 0 && !titulos.includes(tituloAtual);
 
-  const LAUDO_PADRAO = 'Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.';
+  const LAUDO_PADRAO = 'Atesto, sob as penas da lei, que o levantamento geodésico foi executado em estrita observância das normas técnicas vigentes e reflete os limites físicos indicados em campo pelo proprietário/requerente, que se responsabiliza pela indicação dos mesmos.';
   const CONFRONT_PADRAO = 'Concordamos com as medidas apresentadas nesta planta e no memorial anexo nos trechos de confrontação com nosso imóvel (§10 do art. 213 da LRP).';
 
   type BoolKey = 'mostrarGrade' | 'mostrarNortes' | 'mostrarConvencoes' | 'mostrarEscalaGrafica' | 'mostrarSituacao' | 'mostrarDivisaConf' | 'mostrarVerticesVizinho' | 'mostrarPrint3D' | 'mostrarAssinaturaConfrontantes';

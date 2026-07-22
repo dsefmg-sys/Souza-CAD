@@ -50,7 +50,7 @@ export const MODELOS_PADRAO: ModelosDocs = {
   declConfrontantes:
     'Concordamos com as medidas apresentadas neste memorial e na planta anexa no tocante aos espaços em que o referido imóvel faz confrontação com o imóvel de nossa propriedade. Estamos cientes de que, nos termos do §10 do artigo 213 da LRP, nossa anuência supre a participação do cônjuge e de eventuais outros condôminos titulares de nosso imóvel.',
   laudoTecnico:
-    'Atesto, sob as penas da lei, que efetuei pessoalmente o levantamento da área e que os valores dos azimutes, distâncias e dados de identificação dos confrontantes são os apresentados nesta planta e no memorial que a acompanha.',
+    'Atesto, sob as penas da lei, que o levantamento geodésico do imóvel acima descrito foi executado em estrita observância das normas técnicas vigentes e reflete os limites físicos indicados em campo pelo proprietário/requerente, que se responsabiliza pela indicação dos mesmos.',
   contratoContratante:
     '{proprietario}, inscrito(a) no CPF/CNPJ sob o nº {cpfProprietario}, residente e domiciliado(a) no município de {municipio}, doravante denominado(a) simplesmente CONTRATANTE.',
   contratoContratado:
@@ -83,7 +83,10 @@ export const MODELOS_PADRAO: ModelosDocs = {
     'geométrica do imóvel na data do levantamento, destinando-se à individualização de área ' +
     'para fins de regularização registral, sem prejuízo de eventual complementação ou ' +
     'adequação técnica caso venha a ser exigida certificação junto aos órgãos competentes. ' +
-    '2. A planta anexa é parte integrante deste memorial descritivo.',
+    '2. Os limites e divisas físicas descritos foram expressamente indicados em campo pelo ' +
+    'proprietário/possuidor requerente, sob sua inteira responsabilidade civil e criminal, ' +
+    'respondendo o profissional signatário tão somente pela exatidão geométrica e geodésica do ' +
+    'levantamento executado. 3. A planta anexa é parte integrante deste memorial descritivo.',
   requerimentoConfrontantes:
     'Declaram os requerentes que: não houve qualquer invasão ou sobreposição de áreas de imóveis ' +
     'confrontantes; os limites do imóvel foram devidamente respeitados; todos os confrontantes ' +
@@ -155,7 +158,10 @@ export const MODELOS_PADRAO: ModelosDocs = {
   memorialObservacoesUrbano:
     'OBSERVAÇÕES: 1. O presente memorial descritivo reflete fielmente a situação física e geométrica do ' +
     'lote urbano na data do levantamento, destinando-se à sua individualização para fins de regularização ' +
-    'registral e cadastral junto ao Município e ao Cartório de Registro de Imóveis. 2. A planta anexa é ' +
+    'registral e cadastral junto ao Município e ao Cartório de Registro de Imóveis. 2. Os limites e ' +
+    'divisas físicas descritos foram expressamente indicados em campo pelo proprietário/possuidor ' +
+    'requerente, sob sua inteira responsabilidade civil e criminal, respondendo o profissional signatário ' +
+    'tão somente pela exatidão geométrica e geodésica do levantamento executado. 3. A planta anexa é ' +
     'parte integrante deste memorial descritivo.',
   propostaTexto:
     'Apresentamos nossa proposta de prestação de serviços para o imóvel {denominacao}, matrícula {matricula}, ' +
@@ -168,9 +174,10 @@ export const MODELOS_PADRAO: ModelosDocs = {
     'sem oposição de terceiros, respondendo civil e criminalmente pela veracidade desta declaração.',
   declInexistenciaSobreposicao:
     'DECLARO, sob as penas da lei, na qualidade de responsável técnico pelo levantamento do imóvel {denominacao}, ' +
-    'situado em {municipio}, que os limites levantados e georreferenciados (SIRGAS2000) não incidem em sobreposição ' +
-    'ou invasão sobre imóveis confrontantes, tampouco sobre áreas públicas, respeitando-se integralmente as divisas ' +
-    'de terceiros, conforme apurado no levantamento de campo.',
+    'situado em {municipio}, que, com base nas confrontações indicadas em campo pelo proprietário e na análise de ' +
+    'cadastros públicos oficiais e das peças apresentadas pelas partes confrontantes, os limites medidos e georreferenciados ' +
+    '(SIRGAS2000) não apresentam sobreposição de áreas tabulares ou limites de domínio público registrados, cabendo a indicação ' +
+    'e o respeito aos limites fáticos de posse exclusivamente ao proprietário requerente.',
   declIncapaz:
     'DECLARO, sob as penas da lei, que sou o representante legal (tutor/curador/representante) de {representado}, ' +
     'menor/incapaz titular de direitos sobre o imóvel {denominacao}, comarca de {municipio}, e que o represento para ' +
