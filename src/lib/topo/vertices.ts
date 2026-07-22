@@ -182,7 +182,7 @@ export function montarVertices(
       tipo,
       metodo: p.metodo || metodo, // método informado em campo tem prioridade sobre o padrão
       tipoLimite,
-      representacao: 'linha-ideal',
+      representacao: undefined,
       codigoSigef,
       isDivisa,
       ...(Number.isFinite(p.sigmaX) ? { sigmaX: p.sigmaX } : {}),

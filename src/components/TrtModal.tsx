@@ -35,7 +35,6 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
   const perimetroUsado = (isSigefConciliado && imovel.perimetroSigef) ? imovel.perimetroSigef : perimetro;
 
   const linhas: { label: string; valor: string; cor: string; copiavel: boolean }[] = [
-    { label: 'Atividade técnica', valor: 'Georreferenciamento de imóvel rural — levantamento topográfico georreferenciado (SIGEF/INCRA)', cor: 'border-l-emerald-500', copiavel: true },
     { label: 'Proprietário / contratante', valor: imovel.proprietario, cor: 'border-l-blue-500', copiavel: true },
     { label: 'CPF/CNPJ do Titular', valor: imovel.cpfProprietario, cor: 'border-l-blue-500', copiavel: true },
     { label: 'Imóvel', valor: imovel.denominacao, cor: 'border-l-purple-500', copiavel: true },
@@ -44,7 +43,6 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
     { label: 'Cartório (CNS)', valor: imovel.cns, cor: 'border-l-teal-500', copiavel: true },
     { label: 'Município/UF', valor: imovel.municipio, cor: 'border-l-teal-500', copiavel: true },
     { label: 'Área (ha)', valor: `${numBR(areaUsada, 4)} ha`, cor: 'border-l-emerald-500', copiavel: true },
-    { label: 'Perímetro (m)', valor: `${numBR(perimetroUsado)} m`, cor: 'border-l-emerald-500', copiavel: true },
   ];
 
   function copiar(texto: string, chave: string) {
@@ -127,6 +125,38 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
           </div>
         )}
 
+        {/* Guia de Preenchimento das Atividades Técnicas (Alerta & Instruções) */}
+        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3.5 text-[11px] text-foreground shrink-0 leading-relaxed space-y-2">
+          <div className="flex items-center gap-1.5 font-extrabold uppercase text-amber-600 dark:text-amber-400 text-[10px] tracking-wide">
+            <ShieldCheck className="size-4 shrink-0" />
+            <span>Guia de Atividades Profissionais para a {rot.termo}</span>
+          </div>
+          <p className="text-muted-foreground">
+            A atividade técnica não é um dado copiável, pois deve ser selecionada de forma estruturada no portal do conselho profissional (<strong>{credencial.conselho}</strong>). Atente-se às opções adequadas com base no processo:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2">
+            <div>
+              <span className="font-extrabold text-[10.5px] text-foreground uppercase tracking-wider block">No CFT / CFTA ({rot.termo}):</span>
+              <ul className="list-disc pl-4 space-y-0.5 mt-0.5 text-muted-foreground text-[10.5px]">
+                <li><strong>Certificação de Imóveis Rurais</strong> (SIGEF/INCRA)</li>
+                <li><strong>Levantamento Topográfico Georreferenciado</strong></li>
+                <li>Desmembramento, Remembramento ou Retificação (se aplicável ao caso)</li>
+              </ul>
+            </div>
+            <div>
+              <span className="font-extrabold text-[10.5px] text-foreground uppercase tracking-wider block">No CREA ({rot.termo}):</span>
+              <ul className="list-disc pl-4 space-y-0.5 mt-0.5 text-muted-foreground text-[10.5px]">
+                <li><strong>Georreferenciamento de Imóveis Rurais</strong> (Atividade específica)</li>
+                <li><strong>Levantamento Topográfico / Medição de Limites</strong></li>
+                <li>Serviço de Agrimensura ou Retificação Perimétrica</li>
+              </ul>
+            </div>
+          </div>
+          <div className="bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 p-2 rounded-lg text-[10.5px] font-semibold mt-1">
+            ⚠️ <strong>ATENÇÃO:</strong> Faça a emissão com calma. Se o escopo da {rot.termo} não descrever fielmente o serviço ou omitir processos (como citar apenas Georreferenciamento e esquecer Desmembramento), o <strong>Oficial do Cartório de Registro de Imóveis irá rejeitar a documentação e exigir uma nova peça retificadora</strong>, acarretando custos extras de taxas e atrasos.
+          </div>
+        </div>
+
         {/* Grid colorido de campos */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-3 rounded-xl border border-border/80 bg-slate-500/5 overflow-y-auto min-h-0 flex-1">
           {linhas.map(({ label, valor, cor, copiavel }) => (
@@ -141,15 +171,23 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
                 </div>
               </div>
               {copiavel && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 p-0 shrink-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                  onClick={() => copiar(valor, label)}
-                  title={`Copiar ${label}`}
-                >
-                  {copiado === label ? <CheckCheck className="size-3.5 text-emerald-500 animate-in zoom-in-50" /> : <Copy className="size-3.5" />}
-                </Button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {copiado === label && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5 animate-in fade-in slide-in-from-right-1">
+                      <CheckCheck className="size-3.5 text-emerald-500" />
+                      <span>Copiado</span>
+                    </span>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                    onClick={() => copiar(valor, label)}
+                    title={`Copiar ${label}`}
+                  >
+                    <Copy className="size-3.5" />
+                  </Button>
+                </div>
               )}
             </div>
           ))}
@@ -168,8 +206,16 @@ export default function TrtModal({ open, onOpenChange, imovel, tecnico, areaHa, 
                 <ExternalLink className="size-4" /> Abrir Portal {isCrea ? 'CREA-MG' : 'SINCETI'}
               </Button>
             </a>
-            <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs font-bold" onClick={copiarTudo}>
-              {copiado === '__tudo__' ? <CheckCheck className="size-4 text-emerald-500" /> : <Copy className="size-4" />} Copiar Tudo
+            <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs font-bold cursor-pointer" onClick={copiarTudo}>
+              {copiado === '__tudo__' ? (
+                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  <CheckCheck className="size-4 text-emerald-500" /> Copiado!
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <Copy className="size-4" /> Copiar Tudo
+                </span>
+              )}
             </Button>
           </div>
 

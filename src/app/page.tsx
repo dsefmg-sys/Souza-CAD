@@ -731,7 +731,7 @@ export default function EditorPage() {
   const [bloqueado, setBloqueado] = useState(true); // vértices travados por padrão (protege o georref)
   const [tipoDivisaPincel, setTipoDivisaPincel] = useState<string>('estrada'); // pincel do modo "pintar divisa"
   const [tiposDivisaCustom, setTiposDivisaCustom] = useState<TipoDivisaCustom[]>([]); // tipos de divisa cadastrados pelo projetista
-  const [corPickerAberto, setCorPickerAberto] = useState(false); // painel de ajuste rápido das cores de divisa
+  const [dropdownDivisasAberto, setDropdownDivisasAberto] = useState(false); // painel de ajuste rápido das cores de divisa e seleção de pincel
   const [corBump, setCorBump] = useState(0); // força re-render após trocar uma cor (cores vivem em módulo)
   const [prefs, setPrefs] = useState<PreferenciasApp>(PREFERENCIAS_PADRAO); // preferências de interface
   const [avisoReconciliarAberto, setAvisoReconciliarAberto] = useState(false);
@@ -876,7 +876,7 @@ export default function EditorPage() {
   const [importPendingFile, setImportPendingFile] = useState<File | null>(null);
   const [vista, setVista] = useState<'mapa' | 'planta' | '3d'>('mapa');
   const { modo3dAtivado, videosUrl, videosTutorial } = useSuporteData();
-  const [videosListaAberta, setVideosListaAberta] = useState(false);
+
   const [aba, setAba] = useState<Aba>('imovel');
   const [projetoId, setProjetoId] = useState<string | null>(null);
   const [nomeProjeto, setNomeProjeto] = useState('');
@@ -1210,6 +1210,7 @@ export default function EditorPage() {
   const [precoSugAberto, setPrecoSugAberto] = useState(false);
   const [tutorialAberto, setTutorialAberto] = useState(false);
   const [tutorialF1Aberto, setTutorialF1Aberto] = useState(false);
+  const [tutorialF1Tab, setTutorialF1Tab] = useState<'fluxo' | 'videos'>('fluxo');
   const [corCert, setCorCert] = useState('#06b6d4');
   const [corBordaCert, setCorBordaCert] = useState('#0891b2');
   const [espessuraCert, setEspessuraCert] = useState(1.4);
@@ -2728,7 +2729,7 @@ export default function EditorPage() {
               tipo: p.tipo,
               metodo: p.metodo || tec.metodoPosicionamento || 'PG1',
               tipoLimite: p.limite || tec.tipoLimite || 'ideal',
-              representacao: 'linha-ideal',
+              representacao: undefined,
               codigoSigef: p.codigoSigef || p.nome,
               isDivisa: p.tipo === 'M',
               ...(p.sigmaH != null ? { sigmaX: p.sigmaH, sigmaY: p.sigmaH } : {}),
@@ -9645,58 +9646,73 @@ export default function EditorPage() {
                         ? 'ring-1 ring-amber-500/50 bg-amber-500/10'
                         : 'ring-1.5 ring-amber-500/70 shadow-[0_0_12px_rgba(245,158,11,0.35)] animate-pulse-lento bg-amber-500/10'
                     }`}>
-                      <span className="relative inline-flex shrink-0">
-                        <button type="button"
-                          className="flex h-7 items-center gap-1 rounded-full border border-border bg-background/95 px-1.5 hover:bg-muted transition-colors"
-                          title="Ajustar as cores das divisas"
-                          onClick={() => setCorPickerAberto((v) => !v)}>
-                          <span className="inline-block h-1 w-3 rounded-full" style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }} />
-                          <Palette className="size-3 text-muted-foreground" />
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          className="flex h-7 items-center gap-2 rounded-full border border-amber-500/40 bg-background/95 px-2.5 hover:bg-muted text-[10px] font-bold text-foreground transition-all ring-1 ring-amber-400/30 cursor-pointer"
+                          onClick={() => setDropdownDivisasAberto((v) => !v)}
+                          title="Clique para escolher e configurar os tipos de divisa"
+                        >
+                          <span
+                            className="h-3 w-3 rounded-full border border-black/20 shrink-0 shadow-2xs transition-all"
+                            style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }}
+                          />
+                          <span>{rotuloDivisaTipo(tipoDivisaPincel)}</span>
+                          <Palette className="size-3 text-muted-foreground ml-1" />
                         </button>
-                        {corPickerAberto && (
-                          <div className={`absolute left-0 top-9 ${Z_CLASSES.DROPDOWN_MENU} w-60 rounded-xl border bg-background/98 backdrop-blur-xl p-3 shadow-2xl text-left border-border z-50`} data-cor-bump={corBump}>
-                            <div className="mb-2 text-xs font-extrabold uppercase text-foreground tracking-wide flex items-center gap-1.5 pb-1 border-b border-border/60">
-                              <Palette className="size-3.5 text-amber-500" /> Cores das Divisas
+
+                        {dropdownDivisasAberto && (
+                          <div className={`absolute left-0 top-9 ${Z_CLASSES.DROPDOWN_MENU} w-64 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-3 shadow-2xl text-left z-50`} data-cor-bump={corBump}>
+                            <div className="mb-2 text-xs font-extrabold uppercase text-foreground tracking-wide flex items-center justify-between pb-1.5 border-b border-border/60">
+                              <span className="flex items-center gap-1.5"><Palette className="size-3.5 text-amber-500" /> Pincel de Divisas</span>
+                              <span className="text-[9px] font-normal text-muted-foreground lowercase">Cor no círculo · Nome p/ selecionar</span>
                             </div>
-                            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                              {coresEfetivas().filter(({ tipo }) => tipo !== 'linha-ideal').map(({ tipo, cor }) => (
-                                <label key={tipo} className="flex items-center justify-between gap-2 p-1.5 rounded-lg border border-border/50 hover:bg-muted/50 transition-colors text-xs text-foreground cursor-pointer">
-                                  <span className="font-semibold truncate">{rotuloDivisaTipo(tipo)}</span>
-                                  <span className="relative h-6 w-9 shrink-0 rounded-md border border-border/80 shadow-2xs overflow-hidden cursor-pointer" style={{ backgroundColor: cor || '#9ca3af' }}>
-                                    <input
-                                      type="color"
-                                      value={cor || '#9ca3af'}
-                                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                                      onChange={(e) => { salvarCorDivisa(tipo, e.target.value); setCorBump((n) => n + 1); }}
-                                    />
-                                  </span>
-                                </label>
-                              ))}
+                            <div className="space-y-1 max-h-60 overflow-y-auto pr-1">
+                              {opcoesDivisaTipo.map((tipo) => {
+                                const cor = corDivisa(tipo) || '#64748b';
+                                const ativo = tipoDivisaPincel === tipo;
+                                return (
+                                  <div
+                                    key={tipo}
+                                    className={`flex items-center justify-between gap-2 p-1.5 rounded-lg border transition-colors text-xs cursor-pointer ${
+                                      ativo
+                                        ? 'bg-amber-500/10 border-amber-500/30 font-bold text-amber-600 dark:text-amber-400'
+                                        : 'border-transparent hover:bg-muted/60 text-foreground'
+                                    }`}
+                                    onClick={() => {
+                                      setTipoDivisaPincel(tipo);
+                                      setDropdownDivisasAberto(false);
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span
+                                        className="relative h-5 w-5 shrink-0 rounded-full border border-black/20 shadow-2xs overflow-hidden cursor-pointer"
+                                        style={{ backgroundColor: cor }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        title={`Mudar a cor da divisa: ${rotuloDivisaTipo(tipo)}`}
+                                      >
+                                        <input
+                                          type="color"
+                                          value={cor}
+                                          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                          onChange={(e) => {
+                                            salvarCorDivisa(tipo, e.target.value);
+                                            setCorBump((n) => n + 1);
+                                          }}
+                                        />
+                                      </span>
+                                      <span className="truncate">{rotuloDivisaTipo(tipo)}</span>
+                                    </div>
+                                    {ativo && <span className="text-[10px] text-amber-500 font-black">★</span>}
+                                  </div>
+                                );
+                              })}
                             </div>
-                            <Button type="button" size="sm" variant="outline" className="mt-3 w-full h-8 text-[11px] font-bold cursor-pointer" onClick={() => setCorPickerAberto(false)}>
+                            <Button type="button" size="sm" variant="outline" className="mt-3 w-full h-8 text-[11px] font-bold cursor-pointer" onClick={() => setDropdownDivisasAberto(false)}>
                               Fechar
                             </Button>
                           </div>
                         )}
-                      </span>
-                      <div className="flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-background/95 px-2 h-7 ring-1 ring-amber-400/30 shrink-0">
-                        <span
-                          className="h-3 w-3 rounded-full border border-black/20 shrink-0 shadow-2xs transition-all"
-                          style={{ backgroundColor: corDivisa(tipoDivisaPincel) || '#64748b' }}
-                          title={`Cor da divisa: ${rotuloDivisaTipo(tipoDivisaPincel)}`}
-                        />
-                        <select
-                          className="bg-transparent text-[10px] font-bold outline-none cursor-pointer max-w-[120px] text-foreground pr-1"
-                          value={tipoDivisaPincel}
-                          onChange={(e) => setTipoDivisaPincel(e.target.value)}
-                          title="Tipo de divisa a pintar"
-                        >
-                          {opcoesDivisaTipo.map((r) => (
-                            <option key={r} value={r} className="bg-background text-foreground text-[10px]">
-                              {rotuloDivisaTipo(r)}
-                            </option>
-                          ))}
-                        </select>
                       </div>
                       <button type="button" className="shrink-0 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         onClick={novoTipoDivisaPincel} title="Cadastrar novo tipo de divisa">
@@ -11736,209 +11752,272 @@ export default function EditorPage() {
       <TutorialModal open={tutorialAberto} onOpenChange={fecharTutorial} />
 
       <Dialog open={tutorialF1Aberto} onOpenChange={setTutorialF1Aberto}>
-        <DialogContent className="max-w-5xl lg:max-w-6xl max-h-[92vh] h-[90vh] flex flex-col p-5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-y-auto">
-          <DialogHeader className="shrink-0 pb-3 border-b border-slate-800 flex items-center justify-between">
+        <DialogContent className="max-w-5xl lg:max-w-6xl max-h-[92vh] h-[85vh] flex flex-col p-5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 shadow-2xl overflow-hidden">
+          <DialogHeader className="shrink-0 pb-2 flex items-center justify-between">
             <DialogTitle className="text-base font-black uppercase tracking-wider text-sky-400 flex items-center gap-2">
               <GraduationCap className="size-5" />
-              Início — Fluxo de Trabalho do Georreferenciamento
+              Central de Ajuda — Souza CAD
             </DialogTitle>
           </DialogHeader>
-          
-          <div className="space-y-4 py-3">
-            {/* Banner principal + Banner destacado para o botão de Guias em grid de 2 colunas no desktop */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Banner principal: fluxo esquerda → direita */}
-              <div className="bg-gradient-to-r from-sky-600/20 to-emerald-600/20 border border-sky-500/40 rounded-xl p-3.5 flex flex-col justify-center">
-                <h4 className="font-extrabold text-sm flex items-center gap-2 mb-1 text-sky-300">
-                  <Info className="size-3.5 shrink-0" />
-                  Siga os botões da esquerda para a direita!
-                </h4>
-                <p className="text-[12px] leading-relaxed text-slate-200">
-                  O cabeçalho do aplicativo foi projetado como uma <strong className="text-sky-300">linha do tempo visual</strong>.
-                  Cada botão representa uma etapa do georreferenciamento, ordenada
-                  {' '}<strong className="text-amber-300">da esquerda para a direita</strong>{' '} na ordem exata.
-                  Basta avançar botão a botão — o app valida e preenche as peças automaticamente.
-                </p>
-                <div className="mt-2 flex items-center gap-1 text-[10.5px] font-bold text-slate-400 flex-wrap">
-                  {['INÍCIO','PONTOS','SIGEF','DADOS','CONFRO','DIVISAS','ART/TRT','ODS','CONFERIR','PEÇAS'].map((s, i, arr) => (
-                    <span key={s} className="flex items-center gap-1">
-                      <span className="bg-slate-800 text-sky-300 px-1 py-0.5 rounded text-[9px] font-mono">{s}</span>
-                      {i < arr.length - 1 && <span className="text-amber-500">›</span>}
-                    </span>
-                  ))}
-                </div>
-              </div>
 
-              {/* Banner destacado para o botão de Guias */}
-              <div className="bg-gradient-to-r from-indigo-950 to-indigo-900 border-2 border-indigo-500/80 rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-xl select-none">
-                <div className="flex items-start gap-2.5">
-                  <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-full shrink-0 border border-indigo-500/20">
-                    <HelpCircle className="size-4.5 text-indigo-400" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-indigo-200 uppercase tracking-wider">
-                      Manual de Habilitação & Guias do Usuário
-                    </h4>
-                    <p className="text-[12px] text-slate-300 mt-0.5 leading-relaxed">
-                      Consulte o manual interativo completo e os guias passo a passo para dominar o fluxo de certificação do SIGEF.
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => { setTutorialF1Aberto(false); setTutorialAberto(true); }}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-lg border-0 shadow-lg shrink-0 uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all h-9"
-                >
-                  <HelpCircle className="size-3.5" /> Abrir Guias e Manuais
-                </Button>
-              </div>
-            </div>
-
-            {/* Grid 3 colunas no desktop para os 9 passos */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Passo 1 */}
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">1</div>
-                <div>
-                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">PONTOS (F2)</h5>
-                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
-                    Importe o arquivo TXT ou CSV gerado pelo receptor GNSS. É a base do desenho que carregará todas as coordenadas.
-                  </p>
-                </div>
-              </div>
-
-              {/* Passo 2 */}
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">2</div>
-                <div>
-                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">SIGEF (F3)</h5>
-                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
-                    Consulte confrontantes oficiais no SIGEF. Baixe limites certificados vizinhos para evitar sobreposições.
-                  </p>
-                </div>
-              </div>
-
-              {/* Passo 3 */}
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">3</div>
-                <div>
-                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">DADOS DO PROJETO (F4)</h5>
-                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
-                    Preencha os dados gerais do projeto (imóvel, proprietários, RT) para preenchimento automático das peças e carimbo.
-                  </p>
-                </div>
-              </div>
-
-              {/* Passo 4 */}
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">4</div>
-                <div>
-                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">CONFRO (F5)</h5>
-                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
-                    Associe os confrontantes proprietários a cada trecho da divisa. Pinte no mapa no sentido horário.
-                  </p>
-                </div>
-              </div>
-
-              {/* Passo 5 */}
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">5</div>
-                <div>
-                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">DIVISAS (F6)</h5>
-                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
-                    Selecione a representação física de cada limite (muro, cerca, córrego, etc.) e pinte no mapa.
-                  </p>
-                </div>
-              </div>
-
-              {/* Passo 6 */}
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">6</div>
-                <div>
-                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">ART/TRT (F7)</h5>
-                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
-                    Insira o número de registro da sua anotação ou termo de responsabilidade técnica para emissão dos documentos.
-                  </p>
-                </div>
-              </div>
-
-              {/* Passo 7 */}
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">7</div>
-                <div>
-                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">ODS (F8)</h5>
-                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
-                    Exporte a planilha ODS estruturada no padrão SIGEF/INCRA para iniciar o credenciamento nacional.
-                  </p>
-                </div>
-              </div>
-
-              {/* Passo 8 */}
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">8</div>
-                <div>
-                  <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">CONFERIR (F9)</h5>
-                  <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
-                    Realize a checagem eletrônica das tolerâncias, precisões e discrepâncias geodésicas pré-exportação.
-                  </p>
-                </div>
-              </div>
-
-              {/* Passo 9 */}
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
-                <div className="size-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0">9</div>
-                <div>
-                  <h5 className="font-black text-[12.5px] text-amber-400 uppercase tracking-wide">PEÇAS TÉCNICAS (F10)</h5>
-                  <p className="text-[11.5px] text-slate-200 mt-1.5 leading-relaxed">
-                    Baixe o lote completo (ZIP) ou individualmente: Memorial Descritivo, Planta SVG, Requerimentos e Contratos (como Reurb, Usucapião, Crédito Rural, Laudo de Avaliação, etc.).
-                  </p>
-                </div>
-              </div>
-            </div>
+          {/* Barra de Abas Horizontal */}
+          <div className="flex border-b border-slate-800 mb-3.5 shrink-0 gap-4">
+            <button
+              type="button"
+              className={`pb-2 px-1 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                tutorialF1Tab === 'fluxo'
+                  ? 'border-b-2 border-sky-400 text-sky-400 font-extrabold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              onClick={() => setTutorialF1Tab('fluxo')}
+            >
+              1. Guia do Fluxo de Trabalho (F1)
+            </button>
+            <button
+              type="button"
+              className={`pb-2 px-1 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                tutorialF1Tab === 'videos'
+                  ? 'border-b-2 border-sky-400 text-sky-400 font-extrabold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              onClick={() => setTutorialF1Tab('videos')}
+            >
+              2. Vídeo-Aulas & Playlist
+            </button>
           </div>
-          
-          <div className="flex justify-end pt-3 border-t border-slate-800">
+
+          {/* Conteúdo das Abas com overflow controlado para evitar rolagens globais */}
+          <div className="flex-1 overflow-y-auto pr-1 min-h-0 scroll-fino">
+            {tutorialF1Tab === 'fluxo' && (
+              <div className="space-y-4">
+                {/* Banner principal + Banner destacado para o botão de Guias em grid de 2 colunas no desktop */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Banner principal: fluxo esquerda → direita */}
+                  <div className="bg-gradient-to-r from-sky-600/20 to-emerald-600/20 border border-sky-500/40 rounded-xl p-3.5 flex flex-col justify-center">
+                    <h4 className="font-extrabold text-sm flex items-center gap-2 mb-1 text-sky-300">
+                      <Info className="size-3.5 shrink-0" />
+                      Siga os botões da esquerda para a direita!
+                    </h4>
+                    <p className="text-[12px] leading-relaxed text-slate-200">
+                      O cabeçalho do aplicativo foi projetado como uma <strong className="text-sky-300">linha do tempo visual</strong>.
+                      Cada botão representa uma etapa do georreferenciamento, ordenada
+                      {' '}<strong className="text-amber-300">da esquerda para a direita</strong>{' '} na ordem exata de processamento.
+                      Basta avançar botão a botão — o app valida e preenche as peças automaticamente.
+                    </p>
+                    <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-slate-400 flex-wrap">
+                      {['INÍCIO','PONTOS','SIGEF','DADOS','CONFRO','DIVISAS','ART/TRT','ODS','CONFERIR','PEÇAS'].map((s, i, arr) => (
+                        <span key={s} className="flex items-center gap-1">
+                          <span className="bg-slate-800 text-sky-300 px-1 py-0.5 rounded text-[8.5px] font-mono">{s}</span>
+                          {i < arr.length - 1 && <span className="text-amber-500">›</span>}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Banner destacado para o botão de Guias */}
+                  <div className="bg-gradient-to-r from-indigo-950 to-indigo-900 border-2 border-indigo-500/80 rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-xl select-none">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-full shrink-0 border border-indigo-500/20">
+                        <HelpCircle className="size-4.5 text-indigo-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-sm text-indigo-200 uppercase tracking-wider">
+                          Manual de Habilitação & Guias do Usuário
+                        </h4>
+                        <p className="text-[12px] text-slate-300 mt-0.5 leading-relaxed">
+                          Consulte o manual interativo completo e os guias passo a passo para dominar o fluxo de certificação do SIGEF.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => { setTutorialF1Aberto(false); setTutorialAberto(true); }}
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-lg border-0 shadow-lg shrink-0 uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all h-9 cursor-pointer"
+                    >
+                      <HelpCircle className="size-3.5" /> Abrir Guias e Manuais
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Grid 3 colunas no desktop para os 9 passos ricos */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Passo 1 */}
+                  <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                    <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">1</div>
+                    <div>
+                      <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">PONTOS (F2)</h5>
+                      <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
+                        <strong>Importação Geodésica:</strong> Importe seus arquivos de campo (TXT/CSV). O sistema processa sigmas, analisa precisões geodésicas e <strong>normaliza todos os códigos de vértices automaticamente em letras maiúsculas</strong> (ex.: M-1025).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Passo 2 */}
+                  <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                    <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">2</div>
+                    <div>
+                      <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">SIGEF (F3)</h5>
+                      <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
+                        <strong>Sobreposições e Vizinhos:</strong> Consulte parcelas certificadas vizinhas diretamente na base do SIGEF. O sistema gera camadas <strong>overlays nativas no controle de camadas</strong> (canto superior direito do mapa) para controle visual limpo.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Passo 3 */}
+                  <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                    <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">3</div>
+                    <div>
+                      <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">DADOS DO PROJETO (F4)</h5>
+                      <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
+                        <strong>Metadados & Cartório:</strong> Preencha as informações do imóvel, proprietários, dados do cartório (CNS) e responsável técnico. Esses dados são replicados em tempo real na prancha de desenho, memorial e arquivos ODS.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Passo 4 */}
+                  <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                    <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">4</div>
+                    <div>
+                      <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">CONFRO (F5)</h5>
+                      <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
+                        <strong>Confrontações Horárias:</strong> Cadastre e associe cada confrontante ao respectivo trecho da divisa. Pinte no mapa <strong>sempre no sentido horário</strong> para sincronização automática com a narrativa do memorial.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Passo 5 */}
+                  <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                    <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">5</div>
+                    <div>
+                      <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">DIVISAS (F6)</h5>
+                      <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
+                        <strong>Caracterização Física:</strong> Defina o tipo físico (cerca, muro, córrego, etc.). O **novo dropdown unificado de divisas** permite escolher o tipo e **trocar as cores diretamente na frente de cada nome**, com fundo opaco e sem transparências.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Passo 6 */}
+                  <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                    <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">6</div>
+                    <div>
+                      <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">ART/TRT (F7)</h5>
+                      <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
+                        <strong>Dados da Emissão:</strong> Consulte as informações do projeto formatadas para a emissão da ART ou TRT. Use as orientações de **atividades do CFT e CREA** no modal para evitar rejeições e custos de retificação no cartório.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Passo 7 */}
+                  <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                    <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">7</div>
+                    <div>
+                      <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">ODS (F8)</h5>
+                      <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
+                        <strong>Planilha Credenciamento:</strong> Exporte a planilha ODS estruturada no padrão oficial do SIGEF/INCRA. O modal possui edição de células em grid interativo na tela de prévia da importação para ajustes de última hora.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Passo 8 */}
+                  <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                    <div className="size-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-sm shrink-0">8</div>
+                    <div>
+                      <h5 className="font-black text-[12.5px] text-slate-200 uppercase tracking-wide">CONFERIR (F9)</h5>
+                      <p className="text-[11.5px] text-slate-300 mt-1.5 leading-relaxed">
+                        <strong>Auditoria de Dados:</strong> Faça a validação geral antes da exportação. O sistema audita fechamento do polígono, discrepâncias de áreas, sigmas máximos e a proximidade de **meridianos de troca de fuso UTM**.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Passo 9 */}
+                  <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-3 flex gap-2.5">
+                    <div className="size-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-sm shrink-0">9</div>
+                    <div>
+                      <h5 className="font-black text-[12.5px] text-amber-400 uppercase tracking-wide">PEÇAS TÉCNICAS (F10)</h5>
+                      <p className="text-[11.5px] text-slate-200 mt-1.5 leading-relaxed">
+                        <strong>Lote Completo (ZIP):</strong> Baixe a planta SVG (escalada), memorial descritivo DOCX, requerimentos cartorários e contratos extras (REURB, CAR, Ambiental, Laudo de Avaliação e Crédito) em um clique.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tutorialF1Tab === 'videos' && (
+              <div className="space-y-4">
+                <div className="bg-gradient-to-r from-red-600/10 to-amber-600/10 border border-red-500/30 rounded-xl p-4 flex flex-col justify-center">
+                  <h4 className="font-extrabold text-sm flex items-center gap-2 mb-1 text-red-400">
+                    <Youtube className="size-5 shrink-0" />
+                    Central de Vídeo-Aulas & Capacitação
+                  </h4>
+                  <p className="text-[12px] leading-relaxed text-slate-200">
+                    Aprenda a operar todas as ferramentas do Souza CAD, desde a importação de pontos até o cálculo de movimentação de terra (TIN 3D) e geração de pranchas e peças para o SIGEF.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Playlist Principal */}
+                  {videosUrl && (
+                    <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-4 flex flex-col justify-between gap-4 h-full">
+                      <div>
+                        <span className="text-[9.5px] font-black text-red-500 uppercase tracking-widest block">Curso Completo</span>
+                        <h4 className="font-extrabold text-sm text-foreground uppercase tracking-wider mt-1">Playlist Souza CAD (YouTube)</h4>
+                        <p className="text-[11.5px] text-slate-400 mt-1.5 leading-relaxed">
+                          Acesse a playlist completa de treinamento com dezenas de vídeos práticos detalhando o uso cotidiano do aplicativo no georreferenciamento de imóveis rurais.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => window.open(videosUrl, '_blank', 'noopener,noreferrer')}
+                        className="w-full bg-red-600 hover:bg-red-500 text-white font-black text-xs px-4 py-2.5 rounded-lg border-0 shadow-md uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all h-9 cursor-pointer"
+                      >
+                        <Youtube className="size-4" /> Abrir Playlist Completa
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Vídeos individuais */}
+                  <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1 scroll-fino">
+                    <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-widest block mb-1 px-1">Aulas Individuais</span>
+                    {videosTutorial.map((v, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between gap-3 p-3 border border-slate-800/80 rounded-xl bg-slate-950/20 hover:bg-slate-950/50 transition-all"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <h5 className="font-bold text-xs text-slate-200 truncate">{v.titulo}</h5>
+                          <span className="text-[10px] text-slate-400">Assista no YouTube</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 gap-1.5 text-xs text-red-500 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                          onClick={() => window.open(v.url, '_blank', 'noopener,noreferrer')}
+                        >
+                          <Play className="size-3.5 fill-red-500" /> Assistir
+                        </Button>
+                      </div>
+                    ))}
+                    {!videosUrl && videosTutorial.length === 0 && (
+                      <p className="p-4 text-center text-xs text-muted-foreground bg-slate-950/30 rounded-xl">Nenhum vídeo cadastrado ainda.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-3 border-t border-slate-800 shrink-0">
             <Button
               type="button"
               onClick={() => setTutorialF1Aberto(false)}
-              className="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs px-4 py-1.5 rounded-lg border-0"
+              className="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs px-4 py-1.5 rounded-lg border-0 cursor-pointer"
             >
-              Entendido
+              Fechar Guia
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-
-      {videosListaAberta && (
-        <>
-          <div className="fixed inset-0 z-[1290] bg-black/40" onClick={() => setVideosListaAberta(false)} />
-          <div className="fixed inset-0 z-[1300] flex items-center justify-center p-4" onClick={() => setVideosListaAberta(false)}>
-            <div className="w-full max-w-sm rounded-lg border bg-background p-3 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="mb-2 flex items-center justify-between border-b pb-2">
-                <span className="flex items-center gap-1.5 text-sm font-bold"><Youtube className="size-4 text-red-500" /> Vídeos tutoriais</span>
-                <button className="flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" onClick={() => setVideosListaAberta(false)}><X className="size-4" /></button>
-              </div>
-              <div className="max-h-[60vh] space-y-1.5 overflow-y-auto">
-                {videosUrl && (
-                  <button type="button" onClick={() => window.open(videosUrl, '_blank', 'noopener,noreferrer')}
-                    className="flex w-full items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-left text-sm font-bold text-primary hover:bg-primary/10 transition-colors">
-                    <Youtube className="size-4 shrink-0" /> Curso completo (playlist)
-                  </button>
-                )}
-                {videosTutorial.map((v, i) => (
-                  <button key={i} type="button" onClick={() => window.open(v.url, '_blank', 'noopener,noreferrer')}
-                    className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm font-semibold hover:bg-muted transition-colors">
-                    <Youtube className="size-4 shrink-0 text-red-500" /> {v.titulo}
-                  </button>
-                ))}
-                {!videosUrl && videosTutorial.length === 0 && (
-                  <p className="p-2 text-center text-xs text-muted-foreground">Nenhum vídeo cadastrado ainda.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
       <PrimeiroAcessoModal
         open={!setupOk}
         onConcluir={() => {
