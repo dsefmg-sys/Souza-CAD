@@ -1507,6 +1507,7 @@ export default function EditorPage() {
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [lixeira, setLixeira] = useState<Projeto[]>([]);
   const [visaoProjetos, setVisaoProjetos] = useState<'ativos' | 'lixeira'>('ativos');
+  const [filtroGeodesico, setFiltroGeodesico] = useState<'todos' | 'sigef' | 'convencional'>('todos');
   const [exportandoProjetoId, setExportandoProjetoId] = useState<string | null>(null);
   const [sugProp, setSugProp] = useState<ProprietarioCad[]>([]);
   const [sugConf, setSugConf] = useState<ConfrontanteCad[]>([]);
@@ -7399,6 +7400,24 @@ export default function EditorPage() {
     if (p.id === projetoId) setNomeProjeto(novo);
     atualizarLista();
   }
+  async function alternarNaturezaGeodesica(p: Projeto) {
+    if (readonlyPorFaturamento) {
+      await avisar({
+        titulo: 'Acesso Restrito',
+        mensagem: 'O faturamento deste workspace está suspenso.'
+      });
+      return;
+    }
+    const atual = identificarNaturezaGeodesica(p);
+    const novo: 'sigef' | 'convencional' = atual === 'sigef' ? 'convencional' : 'sigef';
+    const projAtualizado: Projeto = { ...p, naturezaGeodesica: novo };
+    await salvarProjeto(projAtualizado);
+    if (p.id === projetoId) {
+      setGlebas((prevGlebas) => [...prevGlebas]);
+    }
+    atualizarLista();
+    aviso(`Projeto "${p.nome}" reclassificado como: ${novo.toUpperCase()}`);
+  }
   async function exportarProjetoDaLista(p: Projeto) {
     setExportandoProjetoId(p.id);
     try { await exportarProjetoZip(migrarProjeto(p)); }
@@ -10775,24 +10794,69 @@ export default function EditorPage() {
             {aba === 'projetos' && (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2 pb-1 border-b">
-                  <SecaoTitulo>Projetos salvos</SecaoTitulo>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <SecaoTitulo>Projetos salvos</SecaoTitulo>
+                    {/* Filtro por Natureza Geodésica */}
+                    <div className="flex items-center bg-secondary/80 p-0.5 rounded-lg border text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setFiltroGeodesico('todos')}
+                        className={`px-2 py-0.5 rounded-md font-bold uppercase transition-all ${filtroGeodesico === 'todos' ? 'bg-indigo-600 text-white shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                      >
+                        Todos ({projetos.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFiltroGeodesico('sigef')}
+                        className={`px-2 py-0.5 rounded-md font-bold uppercase transition-all ${filtroGeodesico === 'sigef' ? 'bg-emerald-600 text-white shadow-xs' : 'text-emerald-600 dark:text-emerald-400 hover:text-foreground'}`}
+                      >
+                        🛰️ SIGEF ({projetos.filter(p => identificarNaturezaGeodesica(p) === 'sigef').length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFiltroGeodesico('convencional')}
+                        className={`px-2 py-0.5 rounded-md font-bold uppercase transition-all ${filtroGeodesico === 'convencional' ? 'bg-blue-600 text-white shadow-xs' : 'text-blue-600 dark:text-blue-400 hover:text-foreground'}`}
+                      >
+                        📐 Convencional ({projetos.filter(p => identificarNaturezaGeodesica(p) === 'convencional').length})
+                      </button>
+                    </div>
+                  </div>
                   <label className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer shadow-sm transition-all select-none" title="Criar um novo projeto importando uma planilha oficial ODS do SIGEF/INCRA">
                     <FileSpreadsheet className="size-4 shrink-0" />
                     <span>Importar ODS como Novo Projeto</span>
                     <input type="file" accept=".ods" onChange={handleImportarOdsSidebar} className="hidden" />
                   </label>
                 </div>
-                {projetos.length === 0 && <p className="text-xs text-muted-foreground">Nenhum projeto salvo ainda.</p>}
-                {projetos.map((p) => {
-                  const pct = calcularProgressoProjeto(p);
-                  const areaHa = calcularAreaHaProjeto(p);
-                  const sigefConciliado = p.imovel?.areaSigefHa != null && p.imovel?.areaSigefHa > 0 && p.imovel?.usarValoresSigef !== false;
-                  const areaExibidaHa = (sigefConciliado ? p.imovel?.areaSigefHa : areaHa) ?? areaHa ?? 0;
-                  return (
-                    <div key={p.id} className="p-3 rounded-xl border border-border/80 bg-muted/15 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="w-full truncate text-xs font-black uppercase text-foreground">{p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}</div>
+                {projetos.filter(p => filtroGeodesico === 'todos' || identificarNaturezaGeodesica(p) === filtroGeodesico).length === 0 && (
+                  <p className="text-xs text-muted-foreground">Nenhum projeto encontrado para o filtro selecionado.</p>
+                )}
+                {projetos
+                  .filter(p => filtroGeodesico === 'todos' || identificarNaturezaGeodesica(p) === filtroGeodesico)
+                  .map((p) => {
+                    const nat = identificarNaturezaGeodesica(p);
+                    const pct = calcularProgressoProjeto(p);
+                    const areaHa = calcularAreaHaProjeto(p);
+                    const sigefConciliado = p.imovel?.areaSigefHa != null && p.imovel?.areaSigefHa > 0 && p.imovel?.usarValoresSigef !== false;
+                    const areaExibidaHa = (sigefConciliado ? p.imovel?.areaSigefHa : areaHa) ?? areaHa ?? 0;
+                    return (
+                      <div key={p.id} className="p-3 rounded-xl border border-border/80 bg-muted/15 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="truncate text-xs font-black uppercase text-foreground">{p.nome || p.imovel?.denominacao || 'Imóvel sem Nome'}</div>
+                              <button
+                                type="button"
+                                onClick={() => alternarNaturezaGeodesica(p)}
+                                className={`inline-flex items-center gap-1 text-[8.5px] font-black px-2 py-0.5 rounded-full border transition-all cursor-pointer select-none shrink-0 ${
+                                  nat === 'sigef'
+                                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20'
+                                    : 'bg-blue-500/10 text-blue-600 border-blue-500/30 hover:bg-blue-500/20'
+                                }`}
+                                title="Clique para alternar entre SIGEF e Convencional"
+                              >
+                                {nat === 'sigef' ? '🛰️ SIGEF' : '📐 CONVENCIONAL'}
+                              </button>
+                            </div>
                           <div className="text-[10px] font-semibold text-primary/90 mt-0.5 truncate flex items-center gap-1">
                             <User className="size-3.5 text-indigo-500 shrink-0" /> {p.imovel?.proprietario ? `Proprietário: ${p.imovel.proprietario}` : 'Proprietário não informado'}
                           </div>
@@ -10891,6 +10955,31 @@ export default function EditorPage() {
                   Lixeira ({lixeira.length})
                 </button>
               </div>
+
+              {/* Filtro por Natureza Geodésica */}
+              <div className="flex items-center bg-secondary/80 p-0.5 rounded-lg border text-xs">
+                <button
+                  type="button"
+                  onClick={() => setFiltroGeodesico('todos')}
+                  className={`px-2.5 py-1 rounded-md font-bold uppercase transition-all ${filtroGeodesico === 'todos' ? 'bg-indigo-600 text-white shadow-xs' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroGeodesico('sigef')}
+                  className={`px-2.5 py-1 rounded-md font-bold uppercase transition-all flex items-center gap-1 ${filtroGeodesico === 'sigef' ? 'bg-emerald-600 text-white shadow-xs' : 'text-emerald-600 dark:text-emerald-400 hover:text-foreground'}`}
+                >
+                  🛰️ SIGEF ({projetos.filter(p => identificarNaturezaGeodesica(p) === 'sigef').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroGeodesico('convencional')}
+                  className={`px-2.5 py-1 rounded-md font-bold uppercase transition-all flex items-center gap-1 ${filtroGeodesico === 'convencional' ? 'bg-blue-600 text-white shadow-xs' : 'text-blue-600 dark:text-blue-400 hover:text-foreground'}`}
+                >
+                  📐 Convencional ({projetos.filter(p => identificarNaturezaGeodesica(p) === 'convencional').length})
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -10933,9 +11022,9 @@ export default function EditorPage() {
           <div className="flex-1 overflow-auto mt-4">
             {visaoProjetos === 'ativos' ? (
               // VISÃO ATIVOS
-              projetos.length === 0 ? (
+              projetos.filter(p => filtroGeodesico === 'todos' || identificarNaturezaGeodesica(p) === filtroGeodesico).length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-sm font-semibold text-muted-foreground">Nenhum projeto ativo no Souza-CAD.</p>
+                  <p className="text-sm font-semibold text-muted-foreground">Nenhum projeto ativo para o filtro selecionado.</p>
                 </div>
               ) : (
                 <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs bg-background">
@@ -10954,7 +11043,9 @@ export default function EditorPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/60">
-                      {projetos.map((p) => {
+                      {projetos
+                        .filter(p => filtroGeodesico === 'todos' || identificarNaturezaGeodesica(p) === filtroGeodesico)
+                        .map((p) => {
                         const areaHa = calcularAreaHaProjeto(p);
                         const sigefConciliado = p.imovel?.areaSigefHa != null && p.imovel?.areaSigefHa > 0 && p.imovel?.usarValoresSigef !== false;
                         const areaExibidaHa = (sigefConciliado ? p.imovel?.areaSigefHa : areaHa) ?? areaHa ?? 0;
@@ -10965,7 +11056,7 @@ export default function EditorPage() {
                         return (
                           <tr key={p.id} className="hover:bg-muted/30 transition-colors font-medium">
                             <td className="p-3 font-bold uppercase text-foreground min-w-[200px]">
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <button
                                   type="button"
                                   onClick={() => { carregarProjetoComConfirmacao(p.id); setProjetosModalAberto(false); }}
@@ -10980,6 +11071,18 @@ export default function EditorPage() {
                                   title="Renomear projeto"
                                 >
                                   <Pencil className="size-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => alternarNaturezaGeodesica(p)}
+                                  className={`inline-flex items-center gap-1 text-[8.5px] font-black px-2 py-0.5 rounded-full border transition-all cursor-pointer select-none shrink-0 ${
+                                    identificarNaturezaGeodesica(p) === 'sigef'
+                                      ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20'
+                                      : 'bg-blue-500/10 text-blue-600 border-blue-500/30 hover:bg-blue-500/20'
+                                  }`}
+                                  title="Clique para alternar entre SIGEF e Convencional"
+                                >
+                                  {identificarNaturezaGeodesica(p) === 'sigef' ? '🛰️ SIGEF' : '📐 CONVENCIONAL'}
                                 </button>
                               </div>
                               <div className="text-[9px] text-muted-foreground font-mono mt-0.5">{p.glebas?.length || 1} gleba(s) • {contarVertices(p)} vértices</div>
@@ -14831,6 +14934,33 @@ function PainelGlebas({
 function contarVertices(p: Projeto): number {
   if (p.glebas?.length) return p.glebas.reduce((s, g) => s + g.vertices.length, 0);
   return p.vertices?.length ?? 0;
+}
+
+function identificarNaturezaGeodesica(p: Projeto): 'sigef' | 'convencional' {
+  if (p.naturezaGeodesica === 'sigef' || p.naturezaGeodesica === 'convencional') {
+    return p.naturezaGeodesica;
+  }
+  if (p.imovel?.certificadoSigef) {
+    return 'sigef';
+  }
+  const padraoSigef = /^[A-Z0-9]{3,6}-[MPV]-0*\d+/i;
+  const padraoSigefCurto = /^[MPV]-0*\d+/i;
+
+  const todosVertices: Vertex[] = [];
+  if (p.glebas && p.glebas.length > 0) {
+    p.glebas.forEach((g) => {
+      if (g.vertices) todosVertices.push(...g.vertices);
+    });
+  } else if (p.vertices) {
+    todosVertices.push(...p.vertices);
+  }
+
+  const temVerticeSigef = todosVertices.some(
+    (v) => (v.nome && (padraoSigef.test(v.nome.trim()) || padraoSigefCurto.test(v.nome.trim()))) ||
+           (v.codigoSigef && (padraoSigef.test(v.codigoSigef.trim()) || padraoSigefCurto.test(v.codigoSigef.trim())))
+  );
+
+  return temVerticeSigef ? 'sigef' : 'convencional';
 }
 
 function calcularAreaHaProjeto(p: Projeto): number {

@@ -15,6 +15,26 @@ import { exportarBackupZip, exportarProjetoZip } from '@/lib/store/backup';
 import { confirmar, avisar, perguntar } from '@/lib/ui/dialogos';
 
 type FiltroStatus = 'todos' | 'prontos' | 'incompletos';
+type FiltroGeodesico = 'todos' | 'sigef' | 'convencional';
+
+function identificarNaturezaGeodesica(p: Projeto): 'sigef' | 'convencional' {
+  if (p.naturezaGeodesica === 'sigef' || p.naturezaGeodesica === 'convencional') {
+    return p.naturezaGeodesica;
+  }
+  if (p.imovel?.certificadoSigef) {
+    return 'sigef';
+  }
+  const padraoSigef = /^[A-Z0-9]{3,6}-[MPV]-0*\d+/i;
+  const padraoSigefCurto = /^[MPV]-0*\d+/i;
+
+  const todosVertices = p.glebas?.flatMap(g => g.vertices || []) || p.vertices || [];
+  const temVerticeSigef = todosVertices.some(
+    (v) => (v.nome && (padraoSigef.test(v.nome.trim()) || padraoSigefCurto.test(v.nome.trim()))) ||
+           (v.codigoSigef && (padraoSigef.test(v.codigoSigef.trim()) || padraoSigefCurto.test(v.codigoSigef.trim())))
+  );
+
+  return temVerticeSigef ? 'sigef' : 'convencional';
+}
 
 const normalizar = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
 
@@ -25,6 +45,7 @@ export default function ProjetosPage() {
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroStatus>('todos');
+  const [filtroGeo, setFiltroGeo] = useState<FiltroGeodesico>('todos');
   const [gerandoBackup, setGerandoBackup] = useState(false);
   const [exportandoId, setExportandoId] = useState<string | null>(null);
   const DIAS_LIXEIRA = 90;
@@ -117,12 +138,20 @@ export default function ProjetosPage() {
     });
   }, [projetos, tecnico]);
 
+  async function alternarNaturezaGeodesica(p: Projeto) {
+    const atual = identificarNaturezaGeodesica(p);
+    const novo: 'sigef' | 'convencional' = atual === 'sigef' ? 'convencional' : 'sigef';
+    await salvarProjeto({ ...p, naturezaGeodesica: novo });
+    carregarTudo();
+  }
+
   const filtradas = useMemo(() => {
     const q = normalizar(busca);
     return linhas
       .filter(({ projeto, pronto }) => {
         if (filtro === 'prontos' && !pronto) return false;
         if (filtro === 'incompletos' && pronto) return false;
+        if (filtroGeo !== 'todos' && identificarNaturezaGeodesica(projeto) !== filtroGeo) return false;
         if (!q) return true;
         return (
           normalizar(projeto.nome).includes(q) ||
@@ -133,7 +162,7 @@ export default function ProjetosPage() {
         );
       })
       .sort((a, b) => (b.projeto.atualizadoEm ?? 0) - (a.projeto.atualizadoEm ?? 0));
-  }, [linhas, busca, filtro]);
+  }, [linhas, busca, filtro, filtroGeo]);
 
   async function remover(id: string, nome: string) {
     if (!(await confirmar({ titulo: 'Enviar para a lixeira', mensagem: `Enviar o projeto "${nome}" para a lixeira? Você pode restaurá-lo por ${DIAS_LIXEIRA} dias.`, okLabel: 'Enviar para a lixeira' }))) return;
@@ -177,10 +206,16 @@ export default function ProjetosPage() {
             <Input type="search" placeholder="Buscar por nome, proprietário, matrícula, município…"
               className="pl-9 h-10 text-sm" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
-          <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none flex-wrap">
             {(['todos', 'prontos', 'incompletos'] as FiltroStatus[]).map((f) => (
               <Button key={f} size="sm" variant={filtro === f ? 'default' : 'outline'} onClick={() => setFiltro(f)} className="capitalize h-10 px-4 sm:h-9 sm:px-3 text-xs">
                 {f}
+              </Button>
+            ))}
+            <div className="w-px h-6 bg-border mx-1 self-center hidden sm:block" />
+            {(['todos', 'sigef', 'convencional'] as FiltroGeodesico[]).map((fg) => (
+              <Button key={fg} size="sm" variant={filtroGeo === fg ? 'default' : 'outline'} onClick={() => setFiltroGeo(fg)} className="h-10 px-3 sm:h-9 text-xs font-bold uppercase">
+                {fg === 'sigef' ? '🛰️ SIGEF' : fg === 'convencional' ? '📐 Convencional' : 'Todos Tipos'}
               </Button>
             ))}
           </div>
@@ -220,21 +255,35 @@ export default function ProjetosPage() {
               {projetos.length === 0 ? 'Nenhum projeto salvo ainda.' : 'Nenhum projeto encontrado para essa busca/filtro.'}
             </div>
           ) : (
-            filtradas.map(({ projeto: p, vertices, pronto }) => (
-              <div key={p.id} className="flex flex-col gap-3 rounded-md border bg-card p-3.5 text-sm sm:flex-row sm:items-center sm:justify-between shadow-sm hover:shadow-md transition-shadow">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate font-semibold text-base sm:text-sm">{p.nome}</span>
-                    {pronto ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 className="size-3" /> Pronto
-                      </span>
-                    ) : (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                        <AlertTriangle className="size-3" /> Incompleto
-                      </span>
-                    )}
-                  </div>
+            filtradas.map(({ projeto: p, vertices, pronto }) => {
+              const nat = identificarNaturezaGeodesica(p);
+              return (
+                <div key={p.id} className="flex flex-col gap-3 rounded-md border bg-card p-3.5 text-sm sm:flex-row sm:items-center sm:justify-between shadow-sm hover:shadow-md transition-shadow">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate font-semibold text-base sm:text-sm">{p.nome}</span>
+                      <button
+                        type="button"
+                        onClick={() => alternarNaturezaGeodesica(p)}
+                        className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black border transition-all cursor-pointer select-none ${
+                          nat === 'sigef'
+                            ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20'
+                            : 'bg-blue-500/10 text-blue-600 border-blue-500/30 hover:bg-blue-500/20'
+                        }`}
+                        title="Clique para alternar entre SIGEF e Convencional"
+                      >
+                        {nat === 'sigef' ? '🛰️ SIGEF' : '📐 CONVENCIONAL'}
+                      </button>
+                      {pronto ? (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="size-3" /> Pronto
+                        </span>
+                      ) : (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                          <AlertTriangle className="size-3" /> Incompleto
+                        </span>
+                      )}
+                    </div>
                   <div className="truncate text-xs text-muted-foreground mt-0.5">
                     {p.imovel.proprietario || 'Sem proprietário'} · {p.imovel.municipio || 'Sem município'} · {vertices.length} vértice(s)
                     {p.glebas.length > 1 ? ` · ${p.glebas.length} glebas` : ''}
@@ -262,8 +311,8 @@ export default function ProjetosPage() {
                   </Button>
                 </div>
               </div>
-            ))
-          )}
+            );
+          }))}
         </div>
       )}
     </div>

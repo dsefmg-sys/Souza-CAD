@@ -700,6 +700,7 @@ export interface Projeto {
   zonaUtm: number;
   hemisferio: 'N' | 'S';
   tipoProjeto?: 'rural' | 'loteamento';
+  naturezaGeodesica?: 'sigef' | 'convencional';
   // Requerimento cartorial (opcional)
   requerente?: PessoaQualificada;
   transmitente?: PessoaQualificada;
