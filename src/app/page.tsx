@@ -10535,7 +10535,7 @@ export default function EditorPage() {
 
       {/* JANELA MODAL CENTRALIZADA DADOS DO PROJETO */}
       <Dialog open={painelAberto} onOpenChange={setPainelAberto}>
-        <DialogContent className="w-[98vw] max-w-[98vw] h-[94vh] max-h-[94vh] flex flex-col bg-card p-4 sm:p-6 rounded-xl border shadow-2xl overflow-hidden">
+        <DialogContent className="fixed inset-0 w-screen max-w-none h-screen max-h-none rounded-none border-none flex flex-col bg-card p-4 sm:p-6 shadow-2xl overflow-hidden z-50">
           <DialogHeader className="pb-2 border-b flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide">
               <Upload className="size-4 text-indigo-500" />
