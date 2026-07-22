@@ -319,6 +319,7 @@ function Bloco({ titulo, pessoa, onChange, sugProp }: { titulo: string; pessoa: 
           >
             <option value="">Selecione...</option>
             <option value="SOLTEIRO(A)">Solteiro(a)</option>
+            <option value="CASADO(A)">Casado(a) (Regime não informado)</option>
             <option value="CASADO(A) - COMUNHÃO PARCIAL DE BENS">Casado(a) - Comunhão Parcial</option>
             <option value="CASADO(A) - COMUNHÃO UNIVERSAL DE BENS">Casado(a) - Comunhão Universal</option>
             <option value="CASADO(A) - SEPARAÇÃO TOTAL DE BENS">Casado(a) - Separação Total</option>
