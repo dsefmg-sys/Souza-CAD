@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { Ruler, Box, MapPin, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, Marker, CircleMarker, Rectangle, LayersControl, Tooltip, useMap, useMapEvents, GeoJSON, LayerGroup } from 'react-leaflet';
 import L from 'leaflet';
 import type { Vertex, ObjetoDesenho, Confrontante, VerticeVizinho, PontoLL } from '@/lib/topo/types';
 import { distanciaCota, obterPontosCotaOffset } from '@/lib/topo/objetos';
@@ -1606,6 +1606,86 @@ export default function MapEditor(props: Props) {
         <LayersControl.BaseLayer name="Ruas (OpenStreetMap)">
           <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={28} maxNativeZoom={19} />
         </LayersControl.BaseLayer>
+
+        {parcelasCert.length > 0 && (
+          <LayersControl.Overlay checked={mostrarCert} name="Imóveis Certificados (SIGEF)">
+            <LayerGroup>
+              {parcelasCert.filter((p) => p.anel.length >= 3).map((p, i) => {
+                const sel = parcelaCertSel === i;
+                const areaHa = calcularAreaSgl(p.anel.map(([lat, lon]) => ({ lat, lon, h: 0 }))).areaHa;
+                const label = `${p.info?.titulo || 'Certificado'} (${numBR(areaHa, 4)} ha)`;
+                return (
+                  <Polygon key={`pc${i}`} positions={p.anel}
+                    pathOptions={sel
+                      ? { color: '#facc15', weight: Math.max(espessuraCert, 2.5), fillColor: '#facc15', fillOpacity: Math.max(opacidadeCert, 0.12) }
+                      : { color: corBordaCert, weight: espessuraCert, fillColor: corCert, fillOpacity: opacidadeCert }}
+                    eventHandlers={{
+                      click: () => onSelParcelaCert?.(sel ? null : i),
+                      contextmenu: (e) => {
+                        if (!bloqueado) {
+                          e.originalEvent.preventDefault();
+                          e.originalEvent.stopPropagation();
+                          onContextMenuCert?.(i, e.originalEvent.clientX, e.originalEvent.clientY);
+                        }
+                      }
+                    }}>
+                    {mostrarRotulos && (
+                      <Tooltip permanent direction="center" className="bg-blue-50/95 border border-blue-300 text-blue-600 text-[9px] font-semibold px-1 py-0.5 rounded shadow-sm">
+                        {label}
+                      </Tooltip>
+                    )}
+                  </Polygon>
+                );
+              })}
+            </LayerGroup>
+          </LayersControl.Overlay>
+        )}
+
+        {outrasGlebas.length > 0 && (
+          <LayersControl.Overlay checked name="Outras Glebas do Projeto">
+            <LayerGroup>
+              {outrasGlebas.map((g, i) => {
+                const isStructured = !Array.isArray(g) && 'pts' in g;
+                const pts = isStructured ? (g as { pts: [number, number][] }).pts : (g as [number, number][]);
+                if (!pts || pts.length < 3) return null;
+
+                const gId = isStructured ? (g as { id?: string }).id : undefined;
+                const isOculta = isStructured && (g as { visivel?: boolean }).visivel === false;
+                if (isOculta) return null;
+                const isAuxiliar = isStructured && (g as { tipoGleba?: string }).tipoGleba === 'auxiliar';
+                const cor = isOculta ? '#ffffff' : (isAuxiliar ? '#d97706' : '#f97316');
+                const dash = isOculta ? '4 4' : (isAuxiliar ? '4 3' : '6 4');
+                const opacidade = isOculta ? 0.05 : 0.08;
+
+                return (
+                  <Polygon
+                    key={`gleba-${gId || i}`}
+                    positions={pts}
+                    eventHandlers={{
+                      click: (e) => {
+                        if (modo !== 'navegar') return;
+                        e.originalEvent.stopPropagation();
+                        if (gId && onCliqueUnicoGleba) {
+                          onCliqueUnicoGleba(gId, e.originalEvent.clientX, e.originalEvent.clientY);
+                        } else if (onAbrirGestaoGleba) {
+                          onAbrirGestaoGleba(gId);
+                        }
+                      },
+                      dblclick: (e) => {
+                        if (modo !== 'navegar') return;
+                        e.originalEvent.stopPropagation();
+                        if (onAbrirGestaoGleba) {
+                          onAbrirGestaoGleba(gId);
+                        }
+                      }
+                    }}
+                    pathOptions={{ color: cor, weight: isOculta ? 2 : 1.8, fillColor: cor, fillOpacity: opacidade, dashArray: dash }}
+                  />
+                );
+              })}
+            </LayerGroup>
+          </LayersControl.Overlay>
+        )}
       </LayersControl>
 
       <AjustarLimites vertices={validos} referencias={referencias} />
@@ -1656,34 +1736,7 @@ export default function MapEditor(props: Props) {
         );
       })}
 
-      {/* parcelas certificadas do INCRA: clicáveis (destaca + abre painel) + vértices clicáveis (adotar) */}
-      {mostrarCert && parcelasCert.filter((p) => p.anel.length >= 3).map((p, i) => {
-        const sel = parcelaCertSel === i;
-        const areaHa = calcularAreaSgl(p.anel.map(([lat, lon]) => ({ lat, lon, h: 0 }))).areaHa;
-        const label = `${p.info?.titulo || 'Certificado'} (${numBR(areaHa, 4)} ha)`;
-        return (
-          <Polygon key={`pc${i}`} positions={p.anel}
-            pathOptions={sel
-              ? { color: '#facc15', weight: Math.max(espessuraCert, 2.5), fillColor: '#facc15', fillOpacity: Math.max(opacidadeCert, 0.12) }
-              : { color: corBordaCert, weight: espessuraCert, fillColor: corCert, fillOpacity: opacidadeCert }}
-            eventHandlers={{
-              click: () => onSelParcelaCert?.(sel ? null : i),
-              contextmenu: (e) => {
-                if (!bloqueado) {
-                  e.originalEvent.preventDefault();
-                  e.originalEvent.stopPropagation();
-                  onContextMenuCert?.(i, e.originalEvent.clientX, e.originalEvent.clientY);
-                }
-              }
-            }}>
-            {mostrarRotulos && (
-              <Tooltip permanent direction="center" className="bg-blue-50/95 border border-blue-300 text-blue-600 text-[9px] font-semibold px-1 py-0.5 rounded shadow-sm">
-                {label}
-              </Tooltip>
-            )}
-          </Polygon>
-        );
-      })}
+
 
       {/* vértices de imóveis VIZINHOS já certificados: coordenada oficial + sigma + código. Clicáveis
           para adotar a coordenada num vértice nosso; também são alvo de encaixe ao desenhar. */}
@@ -1713,46 +1766,7 @@ export default function MapEditor(props: Props) {
         );
       })}
 
-      {/* demais glebas (ativas, auxiliares e ocultas em pontilhado branco) */}
-      {outrasGlebas.map((g, i) => {
-        const isStructured = !Array.isArray(g) && 'pts' in g;
-        const pts = isStructured ? (g as { pts: [number, number][] }).pts : (g as [number, number][]);
-        if (!pts || pts.length < 3) return null;
 
-        const gId = isStructured ? (g as { id?: string }).id : undefined;
-        const isOculta = isStructured && (g as { visivel?: boolean }).visivel === false;
-        if (isOculta) return null;
-        const isAuxiliar = isStructured && (g as { tipoGleba?: string }).tipoGleba === 'auxiliar';
-        const cor = isOculta ? '#ffffff' : (isAuxiliar ? '#d97706' : '#f97316');
-        const dash = isOculta ? '4 4' : (isAuxiliar ? '4 3' : '6 4');
-        const opacidade = isOculta ? 0.05 : 0.08;
-
-        return (
-          <Polygon
-            key={`gleba-${gId || i}`}
-            positions={pts}
-            eventHandlers={{
-              click: (e) => {
-                if (modo !== 'navegar') return;
-                e.originalEvent.stopPropagation();
-                if (gId && onCliqueUnicoGleba) {
-                  onCliqueUnicoGleba(gId, e.originalEvent.clientX, e.originalEvent.clientY);
-                } else if (onAbrirGestaoGleba) {
-                  onAbrirGestaoGleba(gId);
-                }
-              },
-              dblclick: (e) => {
-                if (modo !== 'navegar') return;
-                e.originalEvent.stopPropagation();
-                if (onAbrirGestaoGleba) {
-                  onAbrirGestaoGleba(gId);
-                }
-              }
-            }}
-            pathOptions={{ color: cor, weight: isOculta ? 2 : 1.8, fillColor: cor, fillOpacity: opacidade, dashArray: dash }}
-          />
-        );
-      })}
 
       {/* polígono ativo */}
       {camadasVisiveis.divisas !== false && (

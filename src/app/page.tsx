@@ -3006,6 +3006,8 @@ export default function EditorPage() {
       setReferencias([]);
       setParcelasCert([]);
       setVerticesVizinho([]);
+      setGradeAltimetrica([]);
+      setVerticesOnlineElev({});
       setSituacaoUrl(undefined);
       setPrint3dUrl(undefined);
       setObjetos([]);
@@ -6779,6 +6781,8 @@ export default function EditorPage() {
     setReferencias([]);
     setParcelasCert([]);
     setVerticesVizinho([]);
+    setGradeAltimetrica([]);
+    setVerticesOnlineElev({});
     setSituacaoUrl(undefined);
     setPrint3dUrl(undefined);
     setObjetos([]);

@@ -149,6 +149,50 @@ export default function ImportPreviewModal({ open, onOpenChange, pontos, zona, h
           <span className="ml-auto text-xs text-muted-foreground">{qtdImportar}/{n} a importar · {qtdPoligono} no polígono</span>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2 border-y bg-muted/20 px-3 py-2 text-xs">
+          <span className="font-bold text-muted-foreground uppercase tracking-wider text-[10px]">Ações nos Vértices:</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2.5 text-[10px] font-black uppercase tracking-wider gap-1"
+            onClick={() => setImportar(pontos.map(() => true))}
+          >
+            Importar Todos
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2.5 text-[10px] font-black uppercase tracking-wider gap-1 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+            onClick={() => {
+              setImportar(pontos.map(() => false));
+              setNoPoligono(pontos.map(() => false));
+            }}
+          >
+            Não Importar Nenhum
+          </Button>
+          <div className="h-4 w-px bg-border mx-1" />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2.5 text-[10px] font-black uppercase tracking-wider gap-1"
+            onClick={() => setNoPoligono(pontos.map(() => true))}
+          >
+            Considerar Todos (No Polígono)
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 px-2.5 text-[10px] font-black uppercase tracking-wider gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+            onClick={() => setNoPoligono(pontos.map(() => false))}
+          >
+            Ignorar Todos (Fora do Polígono)
+          </Button>
+        </div>
+
         {cruzado && (
           <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
             <AlertTriangle className="size-4 shrink-0" />
