@@ -11574,7 +11574,7 @@ export default function EditorPage() {
                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    Principal
+                    Ativa
                   </button>
                   <button
                     type="button"
@@ -12752,7 +12752,7 @@ function PainelImovel({ aba, imovel, onChange, onMunicipio, onLocal, nome, onNom
                           ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
                           : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
                       }`}>
-                        {!isVisivel ? 'Oculta' : isAuxiliar ? 'Auxiliar' : 'Principal'}
+                        {!isVisivel ? 'Oculta' : isAuxiliar ? 'Auxiliar' : 'Ativa'}
                       </span>
                     </div>
 
@@ -14041,7 +14041,7 @@ function PainelGlebas({
                     }}
                     className="h-6 text-[10px] font-bold rounded border border-slate-300 dark:border-zinc-700 bg-background px-1 focus:outline-none"
                   >
-                    <option value="principal">Principal</option>
+                    <option value="principal">Ativa</option>
                     <option value="auxiliar">Auxiliar</option>
                     <option value="oculta">Oculta</option>
                   </select>
@@ -14207,7 +14207,7 @@ function PainelGlebas({
                                     }}
                                     className="h-5 text-[9.5px] font-bold rounded border border-slate-300 dark:border-zinc-700 bg-background px-1 focus:outline-none shrink-0"
                                   >
-                                    <option value="principal">Principal</option>
+                                    <option value="principal">Ativa</option>
                                     <option value="auxiliar">Auxiliar</option>
                                     <option value="oculta">Oculta</option>
                                   </select>
